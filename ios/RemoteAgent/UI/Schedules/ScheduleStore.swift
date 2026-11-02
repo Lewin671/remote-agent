@@ -13,9 +13,26 @@ final class ScheduleStore {
     }
     @ObservationIgnored private let defaults: UserDefaults?
     @ObservationIgnored private let scope: [String]
-    @ObservationIgnored private var viewing: Route?
+    // Observed: detailResult reads these, and a pushed detail may render before setViewing runs.
+    private var viewing: Route?
     @ObservationIgnored private var foreground = false
-    @ObservationIgnored private var capturedDetail = false
+    @ObservationIgnored private var detailReturnTime: Date?
+    private var capturedDetail = false
+    // Manual unread survives automatic reads on this page, including the page
+    // returned to from a detail. The next different page/background ends it.
+    @ObservationIgnored private var heldUnread: [String: Set<String>] = [:]
+    @ObservationIgnored private var heldUnreadPage: Route?
+    private(set) var detailResultID: String?
+    @ObservationIgnored private var completeMachines: Set<String> = []
+    var detailResult: ScheduleRun? {
+        guard case .schedule(let machine, let id) = viewing, let task = task(machine: machine, id: id) else { return nil }
+        if !capturedDetail { return task.latestNotification }
+        return task.history.first { $0.id == detailResultID }
+    }
+    var hasNewDetailResult: Bool {
+        guard capturedDetail, case .schedule(let machine, let id) = viewing else { return false }
+        return task(machine: machine, id: id)?.latestNotification?.id != detailResultID
+    }
     private(set) var detailUnread: Set<String> = []
     private var seen: [String: Set<String>] = [:]
     init(defaults: UserDefaults? = nil, scope: [String] = []) { self.defaults = defaults; self.scope = scope }
@@ -24,11 +41,21 @@ final class ScheduleStore {
     private func saveSeen(_ machine: String, _ ids: Set<String>) {
         seen[machine] = ids; defaults?.set(Array(ids), forKey: key(machine))
     }
-    private func observe(_ machine: String, _ list: [ScheduleTask]) {
+    private func observe(_ machine: String, _ list: [ScheduleTask], complete: Bool = true) {
+        if complete { completeMachines.insert(machine) } else { completeMachines.remove(machine) }
         let ids = Set(list.flatMap { t in t.history.filter(\.notified).map { token(t.id, $0.id) } })
         if seen[machine] == nil {
             if let stored = defaults?.stringArray(forKey: key(machine)) { seen[machine] = Set(stored) }
             else { saveSeen(machine, ids) }
+        }
+        if complete, let current = seen[machine], current != current.intersection(ids) { saveSeen(machine, current.intersection(ids)) }
+        if complete, let held = heldUnread[machine] { heldUnread[machine] = held.intersection(ids) }
+        if complete, foreground, let returned = detailReturnTime,
+           case .schedule(let selectedMachine, let id) = viewing, selectedMachine == machine,
+           let task = list.first(where: { $0.id == id }) {
+            let unread = unreadRunIDs(machine: machine, task: task)
+            detailUnread.formUnion(task.history.filter { unread.contains($0.id) && $0.notificationTime <= returned }.map(\.id))
+            detailReturnTime = nil
         }
         captureDetail(machine, list)
         markViewing(machine, list)
@@ -36,26 +63,62 @@ final class ScheduleStore {
     func unreadRunIDs(machine: String, task: ScheduleTask) -> Set<String> {
         Set(task.history.filter { $0.notified && seen[machine]?.contains(token(task.id, $0.id)) == false }.map(\.id))
     }
-    func unreadCount(_ entry: MachineSchedule) -> Int { unreadRunIDs(machine: entry.machineID, task: entry.task).count }
+    func hasNewResult(_ entry: MachineSchedule) -> Bool { !unreadRunIDs(machine: entry.machineID, task: entry.task).isEmpty }
+    func rows(_ group: ScheduleInboxGroup) -> [MachineSchedule] { scheduleInbox(tasks, group: group, hasNew: hasNewResult) }
+    func markRead(_ entries: [MachineSchedule]) {
+        for entry in entries {
+            var ids = seen[entry.machineID] ?? []
+            for run in entry.task.history where run.notified {
+                let id = token(entry.task.id, run.id)
+                ids.insert(id); heldUnread[entry.machineID]?.remove(id)
+            }
+            saveSeen(entry.machineID, ids)
+        }
+    }
+    func markUnread(_ entry: MachineSchedule) { markUnread(entry, keepingUnreadOn: viewing) }
+    func markUnread(_ entry: MachineSchedule, keepingUnreadOn page: Route?) {
+        guard let run = entry.task.latestNotification else { return }
+        if heldUnreadPage != page { heldUnread.removeAll() }
+        heldUnreadPage = page
+        let id = token(entry.task.id, run.id)
+        heldUnread[entry.machineID, default: []].insert(id)
+        var ids = seen[entry.machineID] ?? []
+        ids.remove(id); saveSeen(entry.machineID, ids)
+    }
+    func refreshDetailResult(machine: String, task id: String) {
+        guard capturedDetail, completeMachines.contains(machine), viewing == .schedule(machine: machine, id: id) else { return }
+        detailResultID = task(machine: machine, id: id)?.latestNotification?.id
+    }
 
     /// The navigator's top page is the existing source of truth for what is visible.
     /// A backgrounded page keeps its visit snapshot but does not consume new notifications.
     func setViewing(_ page: Route?, foreground: Bool) {
-        if viewing != page {
-            viewing = page; capturedDetail = false; detailUnread = []
+        if !foreground || (viewing != page && page != heldUnreadPage) {
+            heldUnread.removeAll(); heldUnreadPage = nil
         }
+        if viewing != page {
+            viewing = page; capturedDetail = false; detailUnread = []; detailResultID = nil; detailReturnTime = nil
+        }
+        let returning = !self.foreground && foreground
+        if returning && capturedDetail { detailReturnTime = Date() }
         self.foreground = foreground
         for machine in Set(tasks.map(\.machineID)) {
             let list = tasks.filter { $0.machineID == machine }.map(\.task)
+            if returning, capturedDetail, case .schedule(let selectedMachine, let id) = viewing,
+               machine == selectedMachine, let task = list.first(where: { $0.id == id }) {
+                detailUnread.formUnion(unreadRunIDs(machine: machine, task: task))
+            }
             captureDetail(machine, list)
             markViewing(machine, list)
         }
     }
     private func captureDetail(_ machine: String, _ list: [ScheduleTask]) {
-        guard foreground, !capturedDetail, case .schedule(let selectedMachine, let id) = viewing,
+        guard foreground, completeMachines.contains(machine), !capturedDetail, case .schedule(let selectedMachine, let id) = viewing,
               selectedMachine == machine, let task = list.first(where: { $0.id == id }) else { return }
         detailUnread = unreadRunIDs(machine: machine, task: task)
+        detailResultID = task.latestNotification?.id
         capturedDetail = true
+        detailReturnTime = nil
     }
     private func markViewing(_ machine: String, _ list: [ScheduleTask]) {
         guard foreground else { return }
@@ -64,11 +127,12 @@ final class ScheduleStore {
             for run in task.history where run.notified {
                 let read: Bool
                 switch viewing {
-                case .schedule(let selectedMachine, let id): read = selectedMachine == machine && id == task.id
+                case .schedule(let selectedMachine, let id): read = capturedDetail && completeMachines.contains(machine) && selectedMachine == machine && id == task.id
                 case .session(let id, _): read = run.sessionID == id
                 default: read = false
                 }
-                if read { ids.insert(token(task.id, run.id)) }
+                let id = token(task.id, run.id)
+                if read && heldUnread[machine]?.contains(id) != true { ids.insert(id) }
             }
         }
         if ids != seen[machine] { saveSeen(machine, ids) }
@@ -76,11 +140,8 @@ final class ScheduleStore {
     func wasUnreadOnEntry(machine: String, task: String, run: String) -> Bool {
         viewing == .schedule(machine: machine, id: task) && detailUnread.contains(run)
     }
-    var badgeCount: Int {
-        tasks.filter { $0.task.visible }.reduce(0) { count, entry in
-            count + max(unreadCount(entry), entry.task.group == .attention ? 1 : 0)
-        }
-    }
+    var badgeCount: Int { tasks.filter { $0.task.visible && $0.task.group == .attention }.count }
+    var hasNewResults: Bool { tasks.contains { $0.task.visible && hasNewResult($0) } }
     private(set) var tasks: [MachineSchedule] = []
     private(set) var errors: [String: String] = [:]
     private(set) var loading: Set<String> = []
@@ -113,6 +174,8 @@ final class ScheduleStore {
         latest = state
         let supported = Set(state.machines.values.filter { state.currentMachines.contains($0.id) && $0.meta?.capabilities.scheduledTasks == true && protocolMismatch($0) == nil }.map(\.id))
         restored.formIntersection(supported)
+        completeMachines.formIntersection(supported)
+        heldUnread = heldUnread.filter { supported.contains($0.key) }
         for id in revisions.keys where !supported.contains(id) { revisions[id] = nil }
         for id in resolutions.keys where !supported.contains(id) { for job in resolutions[id]!.values { job.cancel() }; resolutions[id] = nil }
         tasks.removeAll { !supported.contains($0.machineID) }
@@ -141,7 +204,7 @@ final class ScheduleStore {
                 let cached = await calls.cached(id)
                 guard !Task.isCancelled else { return }
                 restored.insert(id)
-                if let cached { replace(id, cached) }
+                if let cached { replace(id, cached, complete: false) }
             }
             guard online(id) else { return }
             do {
@@ -168,9 +231,9 @@ final class ScheduleStore {
         guard online(id), let job = beginRead(id) else { return }
         await job.value
     }
-    private func replace(_ id: String, _ list: [ScheduleTask]) {
+    private func replace(_ id: String, _ list: [ScheduleTask], complete: Bool = true) {
         guard latest.currentMachines.contains(id), latest.machines[id]?.meta?.capabilities.scheduledTasks == true else { return }
-        observe(id, list)
+        observe(id, list, complete: complete)
         tasks.removeAll { $0.machineID == id }
         tasks += list.filter(\.visible).map { MachineSchedule(machineID: id, task: $0) }
     }

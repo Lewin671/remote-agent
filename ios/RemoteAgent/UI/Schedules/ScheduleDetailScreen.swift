@@ -48,6 +48,7 @@ struct ScheduleDetailScreen: View {
     @State private var delete = false
     @State private var expanded: Set<String> = []
     @State private var allHistory = false
+    @State private var menu = false
     var body: some View {
         let store = context.schedules
         let task = store.task(machine: machine, id: id)
@@ -71,7 +72,16 @@ struct ScheduleDetailScreen: View {
         .background(ScheduleConflictObserver(mutation: mutation) {
             timing = false; targetEdit = false; permissions = false; rename = false; message = false
         })
-        .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { $0.stateText(online: store.online(machine)) })
+        .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { detailSubtitle($0) }, onMore: { menu = true })
+        .actionMenu(isPresented: $menu, actions: task.map { menuActions($0, mutation: mutation) } ?? [], rowHeight: 44) {
+            if let task {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(task.spec.title).type(T.bodyB, Theme.fg)
+                    Text(scheduleLocation(task, state: model.state, machine: machine) + " · " + task.creator +
+                         (scheduleDate(task.createdAt).map { " · " + scheduleDay($0) } ?? "")).type(T.meta, Theme.muted)
+                }
+            }
+        }
         .kitSheet(isPresented: $timing, size: .large) {
             if let task = editor.task {
                 ScheduleTimingSheet(trigger: task.spec.trigger, onSave: { t in var spec = task.spec; spec.trigger = t; update(task, spec: spec) }, onClose: { timing = false })
@@ -109,6 +119,11 @@ struct ScheduleDetailScreen: View {
         .confirm(isPresented: $delete, title: "删除这个任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
             if let task { perform(task, operation: "cancel", done: { nav.back(from: page) }) }
         }
+        .debugSignal("schedule.more") { menu = true }
+        .debugSignal("schedule.result.latest") { store.refreshDetailResult(machine: machine, task: id) }
+        .debugSignal("schedule.mark-unread") {
+            markScheduleUnreadAndBack(machine: machine, taskID: id, store: store, nav: nav, page: page)
+        }
         .debugSignal("schedule.history.all") { allHistory = true }
         .debugSignal("schedule.edit-message") {
             if let current = store.task(machine: machine, id: id) { editor.open(current); message = true }
@@ -137,13 +152,13 @@ struct ScheduleDetailScreen: View {
     }
     @ViewBuilder private func content(_ task: ScheduleTask, mutation: ScheduleMutation) -> some View {
         let online = context.schedules.online(machine)
-        let failedOnce = task.status == "failed" && task.oneShot
-        let recoveryLabel = failedOnce ? "立即额外执行" : "恢复"
         let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
         let mutable = access.definition
+        let displayedResult = context.schedules.detailResult
         VStack(alignment: .leading, spacing: 0) {
             if access.showsReason {
-                Banner(scheduleStopBanner(task), tone: .warn).padding(16)
+                ScheduleRecoveryNotice(text: scheduleStopBanner(task), recovery: access.primaryRecovery,
+                    enabled: online && !mutation.running && !mutation.frozen && (task.active == nil || task.active?.status == "uncertain") && task.manualRequest == nil) { recover(task) }
             }
             if !mutation.error.isEmpty { Banner(mutation.error, tone: .error).padding(16) }
             if mutation.frozen {
@@ -151,23 +166,49 @@ struct ScheduleDetailScreen: View {
                 Hint("电脑上可能已经执行，请先查看最新任务状态。").padding(.horizontal, 16)
                 TextAction("放弃原请求", enabled: online && !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
             }
-            if task.group == .attention && !task.missingTarget {
-                Btn(recoveryLabel, kind: .primary, enabled: online && !mutation.running && !mutation.frozen && (task.active == nil || task.active?.status == "uncertain") && task.manualRequest == nil) { recover(task) }
-                    .padding(.horizontal, 16).padding(.vertical, 12)
+            if context.schedules.hasNewDetailResult {
+                TextAction("有新结果") { context.schedules.refreshDetailResult(machine: machine, task: id) }
+                    .padding(.horizontal, 16)
+            }
+            if let running = task.running {
+                HStack(spacing: 6) {
+                    Ic(Lucide.loaderCircle, style: T.sm, color: Theme.blue)
+                    Text("正在运行 · " + scheduleTime(running.date) + " 开始").type(T.sm, Theme.blue)
+                    Spacer(minLength: 0)
+                    if !(running.sessionID ?? "").isEmpty { TextAction("对话", arrow: true) { open(running) } }
+                }.padding(16).background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
+                    .padding(.horizontal, 16).padding(.top, 16)
+            }
+            if let result = displayedResult {
+                ScheduleResultCard(run: result,
+                    unread: context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: result.id),
+                    showConversation: task.spec.target.type != "resume_session" || (task.running?.sessionID ?? "").isEmpty) { open(result) }
+                    .id(result.id)
+            }
+            let earlier = task.earlierRuns(resultID: displayedResult?.id)
+            if !earlier.isEmpty {
+                HStack {
+                    Text("更早").type(T.sm, Theme.muted)
+                    Spacer()
+                    Text("\(earlier.count) 次").type(T.sm, Theme.muted)
+                }.padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 6)
+                history(task, runs: earlier)
             }
             GroupCard {
-                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
-            }.padding(.top, 16)
-            GroupCard {
-                GRow("让 agent 做什么", value: "编辑", chevron: mutable, valueColor: mutable ? Theme.blue : Theme.muted, onTap: mutable ? { editor.open(task); message = true } : nil)
-                ScheduleMessageText(text: task.spec.message).padding(14)
-            }.padding(.top, 16)
-            GroupLabel("运行记录", count: task.history.count).padding(.top, 16)
-            history(task)
-            Hint("“通知了你”表示已请求通知，不保证送达。记录保留最近 100 次，已开的对话仍可查看。").padding(.horizontal, 16).padding(.bottom, 16)
+                VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("让 agent 做什么").type(T.smB, Theme.fg)
+                    Spacer()
+                    TextAction("编辑", enabled: mutable) { editor.open(task); message = true }
+                }.padding(.horizontal, 14)
+                Text(task.spec.message).type(T.body, Theme.fg).lineLimit(3)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(14)
+                }
+            }.padding(.top, 16).padding(.bottom, 16)
             GroupLabel("设置")
             GroupCard {
                 GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
+                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
                 let limits = scheduleLimits(task.spec.trigger)
                 if !limits.isEmpty { GRow("结束", value: limits, chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
                 if task.spec.target.type == "new_session" {
@@ -182,18 +223,6 @@ struct ScheduleDetailScreen: View {
                 GRow("任务名", value: task.spec.title, chevron: access.rename, valueLines: 1, onTap: access.rename ? { editor.open(task); rename = true } : nil)
             }
             Hint((task.spec.target.type == "new_session" ? "每次新开一个对话，归在这个任务下面。" : "消息发到当前对话，等待当前轮结束。") + " " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16).padding(.bottom, 16)
-            GroupCard {
-                if task.group != .attention {
-                    GRow("立即运行一次", action: true, enabled: access.run) { perform(task, operation: "run") }
-                }
-                if task.group == .attention && task.missingTarget {
-                    GRow("恢复", action: true, enabled: online && !mutation.running && !mutation.frozen) { recover(task) }
-                }
-                if task.group != .ended && task.group != .attention {
-                    GRow(task.group == .paused ? "恢复" : "暂停", action: true, enabled: online && !mutation.running && !mutation.frozen) { perform(task, operation: task.group == .paused ? "resume" : "pause") }
-                }
-                GRow("删除任务", action: true, danger: true, enabled: online && !mutation.running && !mutation.frozen) { delete = true }
-            }
             if !online { Hint(machineLabel(model.state, id: machine) + " 连上后才能修改、运行或删除。").padding(.horizontal, 16).padding(.bottom, 16) }
         }
     }
@@ -208,39 +237,76 @@ struct ScheduleDetailScreen: View {
         if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? "请在对话里核实当前权限" }
         return ["ask": "询问", "auto": "自动", "full": "完全放行"][task.spec.target.mode ?? ""] ?? "跟随 CLI 设置"
     }
-    @ViewBuilder private func history(_ task: ScheduleTask) -> some View {
-        let groups = scheduleHistoryGroups(task.history)
+    @ViewBuilder private func history(_ task: ScheduleTask, runs: [ScheduleRun]) -> some View {
+        let groups = scheduleHistoryGroups(runs)
         GroupCard {
             if groups.isEmpty { GRow("还没有运行") }
             if allHistory {
-                ForEach(task.history) { run in record(run, task: task) }
+                ForEach(runs) { run in record(run, task: task) }
             } else {
                 ForEach(Array(groups.prefix(5))) { group in
                     let run = group.runs[0]
                     if group.folded {
-                        GRow(scheduleDay(run.date) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.date))：\(run.foldedSummary)", chevron: false) {
+                        GRow(scheduleDay(run.notificationTime) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.notificationTime))：\(run.foldedSummary)", chevron: false) {
                             if expanded.contains(group.id) { expanded.remove(group.id) } else { expanded.insert(group.id) }
                         }.trailing { Arrow(Theme.muted, direction: expanded.contains(group.id) ? .up : .down) }
                         if expanded.contains(group.id) { ForEach(group.runs) { record($0, task: task) } }
                     } else { record(run, task: task) }
                 }
             }
-            if task.history.count > 5 && !allHistory {
-                GRow("查看全部 \(task.history.count) 次", action: true) { allHistory = true }
+            if groups.count > 5 && !allHistory {
+                GRow("查看全部 \(runs.count) 次", action: true) { allHistory = true }
             }
         }
     }
     private func record(_ run: ScheduleRun, task: ScheduleTask) -> some View {
         let sid = run.sessionID ?? ""
-        return GRow(scheduleMoment(run.date) + " · " + run.result + (run.notificationLabel.isEmpty ? "" : " · " + run.notificationLabel) + (run.manual == true ? " · 手动" : ""), sub: run.detail, chevron: !sid.isEmpty, danger: run.status == "failed", onTap: sid.isEmpty ? nil : {
-            open(run)
-        })
-        .lead {
-            if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
-                Dot(Theme.blue)
-            }
+        return Button { open(run) } label: {
+            HStack(alignment: .top, spacing: 0) {
+                ZStack {
+                    if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
+                        Circle().fill(Theme.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读")
+                    }
+                }.frame(width: 22, height: 20)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(scheduleMoment(run.notificationTime)).type(T.sm, Theme.muted)
+                    Text(scheduleRunSummary(run)).type(T.body, Theme.fg).lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                if !sid.isEmpty { Arrow(Theme.muted).padding(.leading, 8).padding(.top, 12) }
+            }.padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
+        }.buttonStyle(RowPressStyle()).disabled(sid.isEmpty).accessibilityElement(children: .combine)
+    }
+    private func detailSubtitle(_ task: ScheduleTask) -> String {
+        if task.group == .attention { return "已停下" }
+        let frequency = scheduleListFrequency(task.spec.trigger)
+        if task.spec.target.type == "resume_session" { return frequency + " · 发到「" + scheduleDestination(task, state: model.state) + "」" }
+        return frequency + (task.nextRunAt.flatMap(scheduleDate).map { " · 下次 " + scheduleMoment($0) } ?? "")
+    }
+    private func menuActions(_ task: ScheduleTask, mutation: ScheduleMutation) -> [SheetAction] {
+        let online = context.schedules.online(machine)
+        let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
+        var actions = [SheetAction("立即运行一次", enabled: access.run || (access.rename && task.oneShot && task.status == "failed" && task.active == nil && task.manualRequest == nil)) {
+            perform(task, operation: "run")
+        }]
+        if task.latestNotification != nil {
+            actions.append(SheetAction("标为未读") {
+                afterMenu {
+                    markScheduleUnreadAndBack(machine: machine, taskID: id, store: context.schedules, nav: nav, page: page)
+                }
+            })
         }
-        .accessibilityValue(context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) ? "进入时未读" : "")
+        if let toggle = access.menuToggle {
+            actions.append(SheetAction(toggle, enabled: online && !mutation.running && !mutation.frozen) {
+                if task.group == .paused || task.group == .attention { afterMenu { recover(task) } }
+                else { perform(task, operation: "pause") }
+            })
+        }
+        actions.append(SheetAction("删除任务…", danger: true, enabled: online && !mutation.running && !mutation.frozen) { afterMenu { delete = true } })
+        return actions
+    }
+    private func afterMenu(_ action: @escaping @MainActor () -> Void) {
+        Task { try? await Task.sleep(for: .milliseconds(220)); action() }
     }
     private func open(_ run: ScheduleRun) {
         guard let sid = run.sessionID, !sid.isEmpty else { return }
@@ -266,4 +332,27 @@ struct ScheduleConflictObserver: View {
     let mutation: ScheduleMutation
     let dismiss: () -> Void
     var body: some View { Color.clear.frame(width: 0, height: 0).onChange(of: mutation.conflicts) { _, _ in dismiss() } }
+}
+
+@MainActor func markScheduleUnreadAndBack(machine: String, taskID: String, store: ScheduleStore, nav: Navigator, page: Route?) {
+    guard nav.showing(page), let task = store.task(machine: machine, id: taskID) else { return }
+    store.markUnread(.init(machineID: machine, task: task), keepingUnreadOn: nav.path.dropLast().last)
+    nav.back(from: page)
+}
+
+/// The notice and its primary action share the result cards' 16 pt edges.
+/// Its surface is explicitly soft, including inside a grey detail page.
+struct ScheduleRecoveryNotice: View {
+    let text: String
+    let recovery: String?
+    let enabled: Bool
+    let action: () -> Void
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(text).type(T.sm, Theme.orangeInk)
+                .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm))
+            if let recovery { Btn(recovery, kind: .primary, enabled: enabled, action: action) }
+        }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
+    }
 }

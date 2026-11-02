@@ -107,9 +107,7 @@ import RAProto
         #expect(scheduleEmpty == f.empty && scheduleOffline == f.offline && scheduleOfflineRow == f.offlineRow)
         for pair in f.titleFromMessage { #expect(scheduleTitle("", message: pair[0]) == pair[1]) }
         for group in ScheduleGroup.allCases {
-            // The shared fixture predates notification-first ordering.
-            let expected = group == .active ? ["conversation", "quiet"] : f.groups[group.title]
-            #expect(sortedSchedules(f.tasks.map { MachineSchedule(machineID: "computer", task: $0) }, group: group).map { $0.task.id } == expected)
+            #expect(Set(f.tasks.filter { $0.visible && $0.group == group }.map(\.id)) == Set(f.groups[group.title] ?? []))
         }
         let attention = try #require(f.tasks.first { $0.id == "attention" })
         #expect(attention.lastResult() == "创建任务时的权限已改变，任务已停下")
@@ -122,7 +120,7 @@ import RAProto
         var a=task("paused",reason:"user_paused"), b=a
         a.id="old";a.updatedAt="2026-10-24T10:00:00Z";a.nextRunAt="2026-10-24T20:00:00Z"
         b.id="new";b.updatedAt="2026-10-24T11:00:00Z";b.nextRunAt="2026-10-25T20:00:00Z"
-        #expect(sortedSchedules([.init(machineID:"m",task:a),.init(machineID:"m",task:b)],group:.paused).map { $0.task.id } == ["new","old"])
+        #expect(scheduleInbox([.init(machineID:"m",task:a),.init(machineID:"m",task:b)],group:.recent,hasNew:{ _ in false }).map { $0.task.id } == ["old","new"])
         var run=ScheduleRun(id:"r",startedAt:"",status:"completed");run.startSeq=42;run.afterSeq=9
         #expect(run.firstSeq==43);run.startSeq=0;#expect(run.firstSeq==10)
     }
@@ -168,26 +166,42 @@ import RAProto
     @Test func listSortsByNextOccurrenceAcrossMachines() {
         var a = task(), b = task(); a.nextRunAt = "2026-10-24T18:00:00Z"; b.nextRunAt = "2026-10-24T17:00:00Z"
         let entries = [MachineSchedule(machineID: "a", task: a), MachineSchedule(machineID: "b", task: b)]
-        #expect(sortedSchedules(entries, group: .active).map(\.machineID) == ["b", "a"])
+        #expect(scheduleInbox(entries, group: .recent, hasNew: { _ in false }).map(\.machineID) == ["b", "a"])
     }
-    @Test func notificationsLeadEveryGroupAndKeepTheOldOrderForUnnotifiedTasks() {
-        for (status, group) in [("failed", ScheduleGroup.attention), ("active", .active), ("paused", .paused), ("completed", .ended)] {
-            func make(_ id: String, next: String, updated: String, notifiedAt: String? = nil) -> MachineSchedule {
-                var t = task(status); t.id = id; t.nextRunAt = next; t.updatedAt = updated
-                // A later silent run cannot move a notification down or change its preview.
-                t.runs = [ScheduleRun(id: "silent", startedAt: "2026-10-30T00:00:00Z", status: "completed")]
-                if let notifiedAt { t.runs?.append(ScheduleRun(id: "notice", startedAt: notifiedAt, status: "completed", notified: true)) }
-                return .init(machineID: id, task: t)
-            }
-            let early = make("early", next: "2026-10-24T17:00:00Z", updated: "2026-10-24T10:00:00Z")
-            let late = make("late", next: "2026-10-24T18:00:00Z", updated: "2026-10-24T11:00:00Z")
-            let old = make("old", next: "2026-10-24T19:00:00Z", updated: "2026-10-24T12:00:00Z", notifiedAt: "2026-10-24T08:00:00Z")
-            let new = make("new", next: "2026-10-24T20:00:00Z", updated: "2026-10-24T09:00:00Z", notifiedAt: "2026-10-24T09:00:00Z")
-            let expected = ["new", "old"] + (group == .active ? ["early", "late"] : ["late", "early"])
-            #expect(sortedSchedules([late, old, early, new], group: group).map(\.machineID) == expected)
-            var cancelled = new; cancelled.task.status = "cancelled"; cancelled.task.reason = "user_cancelled"
-            #expect(sortedSchedules([cancelled], group: group).isEmpty)
+    @Test func inboxIncludesPausedAndUnreadEndedTasksAndSortsStopsByLatestRun() {
+        var old = task("failed"), new = task("failed")
+        old.id = "old"; new.id = "new"
+        old.runs = [ScheduleRun(id: "notice", startedAt: "2026-10-20T08:00:00Z", status: "completed", notified: true),
+                    ScheduleRun(id: "stop", startedAt: "2026-10-25T08:00:00Z", status: "failed")]
+        new.updatedAt = "2026-10-24T08:00:00Z"
+        let stops = [old, new].map { MachineSchedule(machineID: "m", task: $0) }
+        #expect(scheduleInbox(stops, group: .attention, hasNew: { _ in false }).map { $0.task.id } == ["old", "new"])
+        var paused = task("paused"); paused.id = "paused"; paused.nextRunAt = "2026-10-26T08:00:00Z"
+        var fresh = task("completed"); fresh.id = "fresh"; fresh.runs = [old.runs![0]]
+        var ended = fresh; ended.id = "ended"
+        var never = task(); never.id = "never"; never.nextRunAt = "2026-10-25T08:00:00Z"
+        var deleted = task("cancelled", reason: "user_cancelled"); deleted.id = "deleted"
+        let entries = [paused, fresh, ended, never, deleted].map { MachineSchedule(machineID: "m", task: $0) }
+        let unread: (MachineSchedule) -> Bool = { $0.task.id == "fresh" }
+        #expect(scheduleInbox(entries, group: .recent, hasNew: unread).map { $0.task.id } == ["fresh", "never", "paused"])
+        #expect(scheduleInbox(entries, group: .ended, hasNew: unread).map { $0.task.id } == ["ended"])
+        #expect(scheduleInbox(entries, group: .recent, hasNew: { _ in false }).map { $0.task.id } == ["never", "paused"])
+    }
+    @Test func endedTasksUseUpdatedOrCreatedTimeAfterNotificationOrdering() {
+        func ended(_ id: String, updated: String?, created: String, notice: String? = nil) -> MachineSchedule {
+            var t = task("completed"); t.id = id; t.updatedAt = updated; t.createdAt = created
+            t.nextRunAt = id == "old" ? "2026-01-01T00:00:00Z" : "2027-01-01T00:00:00Z"
+            if let notice { t.runs = [ScheduleRun(id: "notice", startedAt: notice, status: "completed", notified: true)] }
+            return .init(machineID: "m", task: t)
         }
+        let old = ended("old", updated: "2026-10-20T00:00:00Z", created: "2026-10-01T00:00:00Z")
+        let updated = ended("updated", updated: "2026-10-24T00:00:00Z", created: "2026-10-01T00:00:00Z")
+        let created = ended("created", updated: nil, created: "2026-10-23T00:00:00Z")
+        let notice = ended("notice", updated: nil, created: "2026-10-01T00:00:00Z", notice: "2026-10-10T00:00:00Z")
+        #expect(scheduleInbox([old, created, updated, notice], group: .ended, hasNew: { _ in false }).map { $0.task.id } == ["notice", "updated", "created", "old"])
+        var sameNoticeOld = old, sameNoticeNew = updated
+        sameNoticeOld.task.runs = notice.task.runs; sameNoticeNew.task.runs = notice.task.runs
+        #expect(scheduleInbox([sameNoticeOld, sameNoticeNew], group: .ended, hasNew: { _ in false }).map { $0.task.id } == ["updated", "old"])
     }
     @Test func notificationTimeDecodesAndFallsBackWithoutChangingTheHistoryDate() throws {
         let data = Data(#"{"id":"notice","started_at":"2026-10-24T17:00:00Z","ended_at":"2026-10-24T20:00:00Z","scheduled_at":"2026-10-24T16:00:00Z","status":"completed","notified":true,"start_seq":0,"after_seq":0}"#.utf8)
@@ -222,7 +236,7 @@ import RAProto
         for (status, group) in [("failed", ScheduleGroup.attention), ("active", .active), ("paused", .paused), ("completed", .ended)] {
             var earlyTask = task(status); earlyTask.id = "early-task"; earlyTask.runs = [earlyStart]
             var lateTask = task(status); lateTask.id = "late-task"; lateTask.runs = [lateStart]
-            #expect(sortedSchedules([.init(machineID: "m", task: lateTask), .init(machineID: "m", task: earlyTask)], group: group).map { $0.task.id } == ["early-task", "late-task"])
+            #expect(scheduleInbox([.init(machineID: "m", task: lateTask), .init(machineID: "m", task: earlyTask)], group: group == .attention ? .attention : .recent, hasNew: { _ in true }).map { $0.task.id } == ["early-task", "late-task"])
         }
     }
     @Test func notificationPreviewUsesNoticeThenFinalSummaryAndAttentionReason() {
@@ -241,6 +255,56 @@ import RAProto
         #expect(t.notificationPreview() == "运行被中断，任务已停下")
         t.status = "failed"; t.reason = "relay_session_limit"
         #expect(t.notificationPreview() == "中继上的会话数已满")
+    }
+    @Test func firstRunningTaskHasNoResultPreviewAndLaterRunsKeepTheLastResult() {
+        var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"
+        #expect(t.listPreview(now: now, zone: zone) == "还没有运行 · 下次 今天 11:05")
+        for status in ["dispatching", "queued", "running"] {
+            t.active = ScheduleRun(id: "first", startedAt: "2026-10-24T17:00:00Z", status: status)
+            #expect(t.awaitingFirstResult && t.listPreview(now: now, zone: zone) == "还没有结果")
+            #expect(!t.listPreview(now: now, zone: zone).contains("正在运行") && t.latestNotification == nil)
+        }
+        t.runs = [ScheduleRun(id: "silent", startedAt: "2026-10-23T17:00:00Z", status: "completed")]
+        #expect(t.listPreview(now: now, zone: zone) == "还没有结果")
+        var result = ScheduleRun(id: "result", startedAt: "2026-10-23T17:00:00Z", status: "completed", notified: true)
+        result.notificationText = "有新回复"; result.finalSummary = "回复全文的摘要"
+        result.endedAt = "2026-10-23T17:03:00Z"; t.runs?.append(result)
+        #expect(!t.awaitingFirstResult && t.listPreview(now: now, zone: zone) == "有新回复")
+        #expect(t.latestNotification?.notificationTime == scheduleDate("2026-10-23T17:03:00Z"))
+        t.runs?[1].notificationText = nil
+        #expect(t.listPreview(now: now, zone: zone) == "回复全文的摘要")
+    }
+    @Test func resultTitlesRequireADistinctAgentNotificationWithoutChangingListPreviews() {
+        for status in ["completed", "failed", "interrupted", "cancelled"] {
+            for source in [nil, "", "daemon", "undeliverable", "agent", "agent_and_daemon"] as [String?] {
+                var run = ScheduleRun(id: "result", startedAt: "2026-10-24T17:00:00Z", status: status, notified: true)
+                run.notificationSource = source; run.notificationText = "  新的变化 \n"; run.finalSummary = "完整结果的摘要"
+                #expect(run.resultTitle == (["agent", "agent_and_daemon"].contains(source ?? "") ? "新的变化" : nil))
+                run.notificationText = " \n完整结果的摘要\t"
+                #expect(run.resultTitle == nil)
+                run.finalSummary = "  完整结果的摘要\n"
+                #expect(run.resultTitle == nil)
+                run.notificationText = " \n\t"; #expect(run.resultTitle == nil)
+                run.notificationText = nil; #expect(run.resultTitle == nil)
+            }
+        }
+        var run = ScheduleRun(id: "notice", startedAt: "2026-10-24T17:00:00Z", status: "completed", notified: true)
+        run.notificationSource = "daemon"; run.notificationText = "完成通知摘要"; run.finalSummary = "结果摘要"
+        var t = task(); t.runs = [run]
+        #expect(run.resultTitle == nil && t.listPreview() == "完成通知摘要")
+        #expect(scheduleRunSummary(run) == "完成通知摘要") // Earlier rows use one summary, not a separate title.
+    }
+    @Test func earlierRunsAreEmptyUntilThereIsAnotherHistoricalRun() {
+        var t = task()
+        #expect(t.earlierRuns(resultID: nil).isEmpty)
+        let result = ScheduleRun(id: "latest", startedAt: "2026-10-24T17:00:00Z", status: "completed", notified: true)
+        t.runs = [result]; #expect(t.earlierRuns(resultID: result.id).isEmpty)
+        t.active = ScheduleRun(id: "active", startedAt: "2026-10-25T17:00:00Z", status: "running")
+        #expect(t.earlierRuns(resultID: result.id).isEmpty)
+        t.runs?.append(ScheduleRun(id: "older", startedAt: "2026-10-23T17:00:00Z", status: "completed"))
+        #expect(t.earlierRuns(resultID: result.id).map(\.id) == ["older"])
+        t.runs?.append(ScheduleRun(id: "newer", startedAt: "2026-10-25T18:00:00Z", status: "completed", notified: true))
+        #expect(t.earlierRuns(resultID: result.id).map(\.id) == ["older"])
     }
     @Test func localTimeAndOfflineState() {
         var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"
@@ -437,5 +501,40 @@ import RAProto
         #expect(run.notificationLabel == "完成后通知")
         run.notificationSource = "undeliverable"; run.notified = false
         #expect(run.notificationLabel == "无法请求通知" && run.result == "没有通知")
+    }
+}
+
+@Suite struct ScheduleInboxLogicTests {
+    @Test func scheduleRowUsesCalendarDaysAndYearsRatherThanElapsedHours() {
+        let zone = TimeZone(identifier: "America/Los_Angeles")!
+        let now = scheduleDate("2026-11-02T08:15:00Z")!
+        for (stamp, expected) in [("2026-11-02T08:01:00Z", "00:01"), ("2026-11-01T07:30:00Z", "昨天"),
+                                  ("2026-10-31T17:00:00Z", "周六"), ("2026-10-26T17:00:00Z", "10月26日"),
+                                  ("2025-11-01T07:30:00Z", "2025年11月1日")] {
+            #expect(scheduleRowTime(scheduleDate(stamp)!, now: now, zone: zone) == expected)
+        }
+        #expect(scheduleRowTime(scheduleDate("2025-12-31T20:00:00Z")!, now: scheduleDate("2026-01-02T20:00:00Z")!, zone: zone) == "周三")
+    }
+    @Test func frequencyKeepsTaskWallClockAndUsesCityLabels() {
+        var trigger = ScheduleTrigger(type: "calendar"); trigger.time = "08:00"; trigger.timezone = "Asia/Shanghai"
+        #expect(scheduleListFrequency(trigger, zone: TimeZone(identifier: "America/Los_Angeles")!) == "每天 08:00（北京时间）")
+        #expect(scheduleListFrequency(trigger, zone: TimeZone(identifier: "Asia/Shanghai")!) == "每天 08:00")
+        trigger.timezone = "America/Argentina/Buenos_Aires"
+        #expect(scheduleListFrequency(trigger, zone: TimeZone(identifier: "Asia/Shanghai")!) == "每天 08:00（Buenos Aires时间）")
+    }
+    @Test func finalAnswerUsesLastFinalAndStopsAtEveryDaemonBoundary() {
+        func user(_ run: String = "", kind: PBOriginKind = .system) -> PBEvent {
+            .with { $0.userMessage.text = "检查"; $0.origin.scheduledRunID = run; $0.origin.kind = kind }
+        }
+        func reply(_ text: String, phase: String = "final_answer") -> PBEvent { .with { $0.agentMessage.text = text; $0.agentMessage.phase = phase } }
+        let prefix = [reply("以前"), user("run"), reply("过程", phase: "commentary"), reply("初稿"), reply("## 完整结果\n\n| 列 | 值 |\n| --- | --- |\n| a | b |")]
+        let expected = prefix.last!.agentMessage.text
+        let boundaries: [PBEvent] = [user(kind: .client), user(kind: .local), user("other"),
+            .with { $0.sessionState.detail = "resumed"; $0.origin.kind = .local }, .with { $0.sessionState.status = .exited }]
+        for boundary in boundaries { #expect(scheduleFinalAnswer(prefix + [boundary, reply("不属于本次")], runID: "run") == expected) }
+        #expect(scheduleFinalAnswer(prefix + [reply("后续最终回复")], runID: "run") == "后续最终回复")
+        #expect(scheduleFinalAnswer([reply("没有对应输入")], runID: "run") == nil)
+        #expect(scheduleFinalAnswer([user("run"), reply("过程", phase: "commentary")], runID: "run") == nil)
+        #expect(scheduleFinalAnswer([user("run"), reply("  ")], runID: "run") == nil)
     }
 }

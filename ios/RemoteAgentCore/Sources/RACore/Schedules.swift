@@ -78,6 +78,14 @@ public struct ScheduleRun: Codable, Equatable, Sendable, Identifiable {
     public var notificationTime: Date {
         endedAt.flatMap(scheduleDate) ?? scheduleDate(startedAt) ?? scheduledAt.flatMap(scheduleDate) ?? .distantPast
     }
+    /// Only a distinct notification written by the agent is a result-card title.
+    /// Daemon completion notices repeat the summary and remain list previews only.
+    public var resultTitle: String? {
+        guard notificationSource == "agent" || notificationSource == "agent_and_daemon" else { return nil }
+        let title = (notificationText ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = (finalSummary ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty || title == summary ? nil : title
+    }
     public var silent: Bool { status == "completed" && !notified && inputPaused != true }
     public var foldedSummary: String { (finalSummary ?? "").isEmpty ? "没有通知" : finalSummary! }
     public var notificationLabel: String {
@@ -190,20 +198,105 @@ public struct MachineSchedule: Equatable, Sendable, Identifiable {
     public var id: String { machineID + "/" + task.id }
     public init(machineID: String, task: ScheduleTask) { self.machineID = machineID; self.task = task }
 }
-public func sortedSchedules(_ tasks: [MachineSchedule], group: ScheduleGroup) -> [MachineSchedule] {
-    tasks.filter { $0.task.visible && $0.task.group == group }.sorted {
-        let ln = $0.task.latestNotification, rn = $1.task.latestNotification
+/// Inbox grouping is separate from the task's execution state.
+public enum ScheduleInboxGroup: Int, CaseIterable, Sendable {
+    case attention, recent, ended
+    public var title: String { ["需要你看一下", "最近", "已结束"][rawValue] }
+}
+public func scheduleInbox(_ tasks: [MachineSchedule], group: ScheduleInboxGroup, hasNew: (MachineSchedule) -> Bool) -> [MachineSchedule] {
+    tasks.filter {
+        guard $0.task.visible else { return false }
+        let actual: ScheduleInboxGroup = $0.task.group == .attention ? .attention :
+            ($0.task.group == .ended && !hasNew($0) ? .ended : .recent)
+        return actual == group
+    }.sorted {
+        let l = $0.task, r = $1.task
+        if group == .attention {
+            return l.stoppedAt == r.stoppedAt ? $0.id < $1.id : l.stoppedAt > r.stoppedAt
+        }
+        let ln = l.latestNotification, rn = r.latestNotification
         if (ln != nil) != (rn != nil) { return ln != nil }
         if let ln, let rn, ln.notificationTime != rn.notificationTime { return ln.notificationTime > rn.notificationTime }
-        if group == .active {
-            let l = $0.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
-            let r = $1.task.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
-            return l == r ? $0.id < $1.id : l < r
+        if group == .ended {
+            let ld = scheduleDate(l.updatedAt ?? l.createdAt) ?? .distantPast
+            let rd = scheduleDate(r.updatedAt ?? r.createdAt) ?? .distantPast
+            return ld == rd ? $0.id < $1.id : ld > rd
         }
-        let l = scheduleDate($0.task.updatedAt ?? $0.task.createdAt) ?? .distantPast
-        let r = scheduleDate($1.task.updatedAt ?? $1.task.createdAt) ?? .distantPast
-        return l == r ? $0.id < $1.id : l > r
+        let ld = l.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
+        let rd = r.nextRunAt.flatMap(scheduleDate) ?? .distantFuture
+        return ld == rd ? $0.id < $1.id : ld < rd
     }
+}
+extension ScheduleTask {
+    public var stoppedAt: Date {
+        history.first?.notificationTime ?? updatedAt.flatMap(scheduleDate) ?? .distantPast
+    }
+    public var running: ScheduleRun? {
+        active.flatMap { ["dispatching", "queued", "running"].contains($0.status) ? $0 : nil }
+    }
+    public func earlierRuns(resultID: String?) -> [ScheduleRun] {
+        let result = history.first { $0.id == resultID }
+        return history.filter { run in
+            run.id != resultID && run.id != running?.id &&
+                (!run.notified || result == nil || run.notificationTime <= result!.notificationTime)
+        }
+    }
+    public var awaitingFirstResult: Bool { running != nil && latestNotification == nil }
+    public var attentionWord: String { oneShot && status == "failed" ? "没能运行" : "已停下" }
+    public func listPreview(now: Date = Date(), zone: TimeZone = .current) -> String {
+        if awaitingFirstResult { return "还没有结果" }
+        if history.isEmpty && group != .attention {
+            return "还没有运行" + (nextRunAt.flatMap(scheduleDate).map { " · 下次 " + scheduleMoment($0, now: now, zone: zone) } ?? "")
+        }
+        return notificationPreview(now: now, zone: zone)
+    }
+}
+/// Only schedule rows use this clock; conversation clocks retain their own format.
+public func scheduleRowTime(_ date: Date, now: Date = Date(), zone: TimeZone = .current) -> String {
+    var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
+    if cal.isDate(date, inSameDayAs: now) { return scheduleTime(date, zone: zone) }
+    let days = cal.dateComponents([.day], from: cal.startOfDay(for: date), to: cal.startOfDay(for: now)).day ?? 0
+    if days == 1 { return "昨天" }
+    if (2..<7).contains(days) {
+        return ["周日", "周一", "周二", "周三", "周四", "周五", "周六"][cal.component(.weekday, from: date) - 1]
+    }
+    return scheduleDay(date, now: now, zone: zone)
+}
+public func scheduleListFrequency(_ trigger: ScheduleTrigger, zone: TimeZone = .current, now: Date = Date()) -> String {
+    let name = canonicalScheduleZone(trigger.timezone ?? zone.identifier)
+    let taskZone = TimeZone(identifier: name) ?? zone
+    let frequency = scheduleFrequency(trigger, zone: taskZone, now: now)
+    guard name != canonicalScheduleZone(zone.identifier) else { return frequency }
+    let cities = ["Asia/Shanghai": "北京", "Asia/Hong_Kong": "香港", "Asia/Tokyo": "东京", "Asia/Singapore": "新加坡",
+                  "America/Los_Angeles": "洛杉矶", "America/New_York": "纽约", "Europe/London": "伦敦", "Europe/Berlin": "柏林", "Australia/Sydney": "悉尼"]
+    let city = cities[name] ?? name.split(separator: "/").last.map { String($0).replacingOccurrences(of: "_", with: " ") } ?? name
+    return frequency + "（" + city + "时间）"
+}
+public func scheduleRunSummary(_ run: ScheduleRun) -> String {
+    for text in [run.notificationText, run.finalSummary] {
+        if let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text }
+    }
+    return (run.reason ?? "").isEmpty ? run.result : scheduleReason(run.reason)
+}
+/// Match the daemon's follow-up boundary: human input/resume, another scheduled
+/// user message or an exited session closes this run. Never borrow a later reply.
+public func scheduleFinalAnswer<S: Sequence>(_ events: S, runID: String) -> String? where S.Element == PBEvent {
+    var found = false
+    var answer: String?
+    for event in events {
+        if !found {
+            if case .userMessage = event.kind, event.origin.scheduledRunID == runID { found = true }
+            continue
+        }
+        let human = event.origin.kind == .client || event.origin.kind == .local
+        if case .sessionState(let state) = event.kind {
+            if state.status == .exited || (human && state.detail == "resumed") { break }
+        }
+        if case .userMessage = event.kind,
+           human || (!event.origin.scheduledRunID.isEmpty && event.origin.scheduledRunID != runID) { break }
+        if case .agentMessage(let message) = event.kind, message.phase == "final_answer" { answer = message.text }
+    }
+    return answer.flatMap { $0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : $0 }
 }
 public func scheduleTitle(_ typed: String, message: String) -> String {
     func clean(_ s: String) -> String { s.split(whereSeparator: \.isWhitespace).joined(separator: " ") }
@@ -285,8 +378,8 @@ public struct ScheduleHistoryGroup: Identifiable, Equatable, Sendable {
 public func scheduleHistoryGroups(_ runs: [ScheduleRun], zone: TimeZone = .current) -> [ScheduleHistoryGroup] {
     var cal = Calendar(identifier: .gregorian); cal.timeZone = zone
     var out = [ScheduleHistoryGroup]()
-    for r in runs.sorted(by: { $0.date > $1.date }) {
-        if r.silent, let i = out.firstIndex(where: { $0.runs.allSatisfy(\.silent) && cal.isDate($0.runs[0].date, inSameDayAs: r.date) }) {
+    for r in runs.sorted(by: { $0.notificationTime > $1.notificationTime }) {
+        if r.silent, let i = out.firstIndex(where: { $0.runs.allSatisfy(\.silent) && cal.isDate($0.runs[0].notificationTime, inSameDayAs: r.notificationTime) }) {
             out[i].runs.append(r)
         } else { out.append(.init(id: r.id, runs: [r])) }
     }

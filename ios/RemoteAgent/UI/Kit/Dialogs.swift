@@ -140,6 +140,7 @@ struct SheetAction {
 private struct ActionMenu<Info: View>: View {
     let actions: [SheetAction]
     let hasInfo: Bool
+    let rowHeight: CGFloat
     let info: Info
     let dismiss: () -> Void
     @State private var pull: CGFloat = 0
@@ -175,7 +176,7 @@ private struct ActionMenu<Info: View>: View {
                 }
             }
             .padding(.horizontal, 2)
-            .frame(maxWidth: .infinity, minHeight: 50, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: rowHeight, alignment: .leading)
             .bottomLine(last ? .clear : Theme.line)
         }
         .buttonStyle(RowPressStyle())
@@ -397,9 +398,9 @@ extension View {
     }
 
     /// A ⋯ menu: a sheet of left-aligned rows from the bottom; `info` is what stands at its top.
-    func actionMenu<Info: View>(isPresented: Binding<Bool>, actions: [SheetAction], @ViewBuilder info: @escaping () -> Info) -> some View {
+    func actionMenu<Info: View>(isPresented: Binding<Bool>, actions: [SheetAction], rowHeight: CGFloat = 50, @ViewBuilder info: @escaping () -> Info) -> some View {
         modifier(OverlayCover(isPresented: isPresented, alignment: .bottom, canDismiss: { !actions.contains { $0.busy } }) {
-            ActionMenu(actions: actions, hasInfo: Info.self != EmptyView.self, info: info()) { isPresented.wrappedValue = false }
+            ActionMenu(actions: actions, hasInfo: Info.self != EmptyView.self, rowHeight: rowHeight, info: info()) { isPresented.wrappedValue = false }
         })
     }
 

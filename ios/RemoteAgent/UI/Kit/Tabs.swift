@@ -110,12 +110,21 @@ struct TabBarItem: Identifiable, Sendable {
     let label: String
     let icon: LucideIcon
     var badge = 0
+    var dot = false
+    var scheduleBadge = false
 
-    init(id: String, label: String, icon: LucideIcon, badge: Int = 0) {
+    init(id: String, label: String, icon: LucideIcon, badge: Int = 0, dot: Bool = false, scheduleBadge: Bool = false) {
         self.id = id
         self.label = label
         self.icon = icon
         self.badge = badge
+        self.dot = dot
+        self.scheduleBadge = scheduleBadge
+    }
+    var badgeText: String { scheduleBadge ? tabBadgeText(badge) : String(badge) }
+    var badgeAccessibilityValue: String {
+        if badge > 0 { return "\(badge) " + (scheduleBadge ? "件需要处理" : "个需要处理") }
+        return scheduleBadge && dot ? "有新结果" : ""
     }
 }
 
@@ -143,10 +152,14 @@ struct TabBar: View {
                             // The count sits on the icon's top right corner, 5 pt in and 4 pt up, at any text size.
                             .overlay(alignment: .topLeading) {
                                 if item.badge > 0 {
-                                    Text("\(item.badge)").type(T.tab.with(weight: .bold), Theme.onSolid)
+                                    Text(item.badgeText).type(T.tab.with(weight: .bold), Theme.onSolid)
                                         .padding(.horizontal, 5).frame(minHeight: 16)
                                         .background(Theme.orange, in: Capsule())
                                         .fixedSize()
+                                        .offset(x: iconSize - 5, y: -4)
+                                } else if item.scheduleBadge && item.dot {
+                                    Circle().fill(Theme.blue).frame(width: 8, height: 8)
+                                        .padding(2).background(Theme.card, in: Circle())
                                         .offset(x: iconSize - 5, y: -4)
                                 }
                             }
@@ -160,7 +173,7 @@ struct TabBar: View {
                 .buttonStyle(PressStyle())
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(item.label)
-                .accessibilityValue(item.badge > 0 ? "\(item.badge) 个需要处理" : "")
+                .accessibilityValue(item.badgeAccessibilityValue)
                 .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
             }
         }
@@ -244,3 +257,5 @@ struct ContextBox: View {
         .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
     }
 }
+
+func tabBadgeText(_ count: Int) -> String { count > 99 ? "99+" : String(count) }

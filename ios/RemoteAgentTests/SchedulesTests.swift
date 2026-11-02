@@ -27,7 +27,7 @@ import UIKit
         p.paused = true
         #expect(scheduledPendingLabel(p, label: "已暂停")?.hasSuffix(" · 已暂停") == true)
     }
-    @Test func unreadRunsAreCountedAndOnlyTheViewedTaskOrSessionIsRead() async throws {
+    @Test func attentionIsCountedAndOnlyTheViewedTaskOrSessionIsRead() async throws {
         let store = ScheduleStore()
         var current = task()
         current.runs = [ScheduleRun(id: "old", startedAt: "", status: "completed", notified: true)]
@@ -44,15 +44,15 @@ import UIKit
         current.status = "failed"
         other.runs = [ScheduleRun(id: "same-session", startedAt: "", status: "completed", notified: true, sessionID: "shared")]
         await store.refresh("m")
-        #expect(store.badgeCount == 4) // max(3, 1) + max(1, 1), never 6.
+        #expect(store.badgeCount == 2 && store.hasNewResults) // Only attention tasks count.
         store.setViewing(.schedules, foreground: true)
-        #expect(store.badgeCount == 4)
+        #expect(store.badgeCount == 2)
         current.runs?.append(ScheduleRun(id: "tab-open", startedAt: "", status: "completed", notified: true))
-        await store.refresh("m"); #expect(store.badgeCount == 5)
+        await store.refresh("m"); #expect(store.badgeCount == 2)
         store.setViewing(.session(id: "shared"), foreground: true)
         #expect(store.unreadRunIDs(machine: "m", task: current) == ["c", "tab-open"])
         #expect(store.unreadRunIDs(machine: "m", task: other).isEmpty)
-        #expect(store.badgeCount == 3)
+        #expect(store.badgeCount == 2)
         store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
         #expect(store.badgeCount == 2) // Both attention tasks remain.
         #expect(store.detailUnread == ["c", "tab-open"])
@@ -70,7 +70,7 @@ import UIKit
         store.setViewing(nil, foreground: true)
         await store.refresh("m"); #expect(store.badgeCount == 0)
         current.runs?.append(ScheduleRun(id: "later", startedAt: "", status: "completed", notified: true))
-        await store.refresh("m"); #expect(store.badgeCount == 1)
+        await store.refresh("m"); #expect(store.badgeCount == 0 && store.hasNewResults)
         current.status = "cancelled"; current.reason = "user_cancelled"
         await store.refresh("m"); #expect(store.badgeCount == 0)
         store.configure(.init(cached: { _ in nil }, list: { _ in [] }))
@@ -86,7 +86,7 @@ import UIKit
         await store.refresh("m"); #expect(store.badgeCount == 0)
         store.setViewing(.session(id: "shared"), foreground: false)
         current.runs?.append(ScheduleRun(id: "b", startedAt: "", status: "completed", notified: true, sessionID: "shared"))
-        await store.refresh("m"); #expect(store.badgeCount == 1)
+        await store.refresh("m"); #expect(store.badgeCount == 0 && store.hasNewResults)
         store.setViewing(.session(id: "shared"), foreground: true)
         #expect(store.badgeCount == 0)
         current.active = ScheduleRun(id: "c", startedAt: "", status: "running", notified: true, sessionID: "shared")
@@ -103,7 +103,7 @@ import UIKit
         store.reconcile(state()); await eventually("detail loaded") { store.loading.isEmpty }
         #expect(store.badgeCount == 0 && store.detailUnread == ["new"])
     }
-    @Test func unreadCountsAboveNinetyNineAndDetailReadsAreMachineScoped() async {
+    @Test func newResultsAreBooleanAndDetailReadsAreMachineScoped() async {
         let store = ScheduleStore()
         var current = task()
         var state = state(); state.currentMachines.insert("second")
@@ -112,13 +112,13 @@ import UIKit
         store.reconcile(state); await eventually("both computers loaded") { store.loading.isEmpty }
         current.runs = (0..<100).map { ScheduleRun(id: "r-\($0)", startedAt: "", status: "completed", notified: true) }
         await store.refresh("m"); await store.refresh("second")
-        #expect(store.badgeCount == 200)
+        #expect(store.badgeCount == 0 && store.hasNewResults)
         store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
-        #expect(store.badgeCount == 100 && store.detailUnread.count == 100)
+        #expect(store.badgeCount == 0 && store.hasNewResults && store.detailUnread.count == 100)
         #expect(store.unreadRunIDs(machine: "second", task: current).count == 100)
         var offline = state; offline.conn = .offline
         store.reconcile(offline)
-        #expect(store.badgeCount == 100)
+        #expect(store.badgeCount == 0 && store.hasNewResults)
         offline.currentMachines.remove("second"); store.reconcile(offline)
         #expect(store.badgeCount == 0)
     }
@@ -138,7 +138,7 @@ import UIKit
         var current = task()
         current.runs = [ScheduleRun(id: "r", startedAt: "", status: "completed", notified: true)]
         let reload = await make(scope, [current])
-        #expect(reload.badgeCount == 1)
+        #expect(reload.badgeCount == 0 && reload.hasNewResults)
         for scope in [["relay-b", "client-a"], ["relay-a", "client-b"]] {
             let other = await make(scope, [current]); #expect(other.badgeCount == 0)
         }
@@ -153,6 +153,257 @@ import UIKit
         #expect(other.badgeCount == 0)
         reload.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
         let seen = await make(scope, [current]); #expect(seen.badgeCount == 0)
+    }
+
+    @Test func detailFreezesResultAndAddsBackgroundDotsWhenReturning() async {
+        let store = ScheduleStore()
+        var current = task()
+        store.configure(.init(cached: { _ in [] }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        current.runs = [ScheduleRun(id: "first", startedAt: "2026-10-30T08:00:00Z", status: "completed", notified: true)]
+        await store.refresh("m")
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.detailResult?.id == "first" && store.detailUnread == ["first"] && !store.hasNewResults)
+        current.runs?.append(ScheduleRun(id: "second", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true))
+        await store.refresh("m")
+        #expect(store.detailResult?.id == "first" && store.detailUnread == ["first"] && !store.hasNewResults)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: false)
+        current.runs?.append(ScheduleRun(id: "third", startedAt: "2026-11-01T08:00:00Z", status: "completed", notified: true))
+        await store.refresh("m"); #expect(store.hasNewResults)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.detailUnread == ["first", "third"] && !store.hasNewResults)
+        #expect(store.detailResult?.id == "first")
+        store.refreshDetailResult(machine: "m", task: "t")
+        #expect(store.detailResult?.id == "third")
+    }
+    @Test func foregroundCatchupAddsDotsEvenWhenTheListWasNotReadInBackground() async {
+        let store = ScheduleStore(); var current = task()
+        store.configure(.init(cached: { _ in [] }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: false)
+        current.runs = [ScheduleRun(id: "while-away", startedAt: scheduleISO(Date().addingTimeInterval(-30)), status: "completed", notified: true)]
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        await store.refresh("m")
+        #expect(store.detailUnread == ["while-away"] && !store.hasNewResults && store.detailResult == nil)
+        store.refreshDetailResult(machine: "m", task: "t")
+        #expect(store.detailResult?.id == "while-away")
+    }
+    @Test func cachedDetailWaitsForFirstCompleteListAndResolvesSelectedRunFromLiveData() async {
+        let store = ScheduleStore()
+        var cached = task()
+        cached.runs = [ScheduleRun(id: "old", startedAt: "2026-10-30T08:00:00Z", status: "completed", notified: true)]
+        var complete: CheckedContinuation<[ScheduleTask], Never>?
+        store.configure(.init(cached: { _ in [cached] }, list: { _ in await withCheckedContinuation { complete = $0 } }))
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        store.reconcile(state())
+        await eventually("cache loaded; complete list pending") { complete != nil && !store.tasks.isEmpty }
+        #expect(store.detailResultID == nil && store.detailResult?.id == "old" && store.detailUnread.isEmpty && !store.hasNewDetailResult)
+        store.setViewing(nil, foreground: true)
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.detailResultID == nil && !store.hasNewDetailResult)
+        var current = cached
+        current.runs?.append(ScheduleRun(id: "latest", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true))
+        complete?.resume(returning: [current])
+        await eventually("complete list captured") { store.loading.isEmpty }
+        #expect(store.detailResultID == "latest" && store.detailResult?.id == "latest")
+        #expect(store.detailUnread == ["latest"] && !store.hasNewDetailResult && !store.hasNewResults)
+        current.runs?.append(ScheduleRun(id: "newer", startedAt: "2026-11-01T08:00:00Z", status: "completed", notified: true))
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        await store.refresh("m")
+        #expect(store.hasNewDetailResult && store.detailResultID == "latest" && store.detailUnread == ["latest"])
+        current.runs?[1].finalSummary = "后补的摘要"
+        current.runs?[1].endedAt = "2026-10-31T08:03:00Z"
+        await store.refresh("m")
+        #expect(store.detailResultID == "latest" && store.detailResult?.finalSummary == "后补的摘要")
+        #expect(store.detailResult?.notificationTime == scheduleDate("2026-10-31T08:03:00Z"))
+        store.refreshDetailResult(machine: "m", task: "t")
+        #expect(store.detailResultID == "newer" && !store.hasNewDetailResult)
+    }
+    @Test func offlineCacheDoesNotConsumeUnreadOrCaptureUntilOnlineListArrives() async throws {
+        let suite = "schedule-detail-cache-test-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let baseline = ScheduleStore(defaults: defaults)
+        baseline.configure(.init(cached: { _ in nil }, list: { _ in [] }))
+        baseline.reconcile(state()); await eventually("baseline") { baseline.loading.isEmpty }
+        var cached = task(); cached.runs = [ScheduleRun(id: "unread", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        let store = ScheduleStore(defaults: defaults)
+        store.configure(.init(cached: { _ in [cached] }, list: { _ in [cached] }))
+        store.reconcile(state(online: false)); await eventually("offline cache") { store.loading.isEmpty }
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.hasNewResults && store.detailUnread.isEmpty && store.detailResultID == nil && !store.hasNewDetailResult)
+        store.reconcile(state()); await eventually("online list") { store.loading.isEmpty }
+        #expect(store.detailUnread == ["unread"] && store.detailResultID == "unread" && !store.hasNewResults && !store.hasNewDetailResult)
+    }
+    @Test(arguments: [false, true])
+    func cachedResultsStayVisibleAndUnreadWhileOfflineOrCompleteReadFails(online: Bool) async throws {
+        let suite = "schedule-cached-result-test-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let baseline = ScheduleStore(defaults: defaults)
+        baseline.configure(.init(cached: { _ in nil }, list: { _ in [] }))
+        baseline.reconcile(state()); await eventually("seen baseline established") { baseline.loading.isEmpty }
+        var cached = task()
+        cached.runs = [ScheduleRun(id: "older", startedAt: "2026-10-30T08:00:00Z", status: "completed", notified: true),
+                       ScheduleRun(id: "latest", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true, sessionID: "cached-session")]
+        cached.runs?[1].finalSummary = "缓存里的最终摘要"
+        let store = ScheduleStore(defaults: defaults)
+        store.configure(.init(cached: { _ in [cached] }, list: { _ in throw UserError("测试读取失败") }))
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        store.reconcile(state(online: online)); await eventually("cached results loaded") { store.loading.isEmpty }
+        #expect((store.errors["m"] != nil) == online)
+        #expect(store.detailResult?.id == "latest" && store.detailResult?.sessionID == "cached-session")
+        #expect(store.detailResult?.finalSummary == "缓存里的最终摘要" && store.detailResultID == nil)
+        #expect(store.detailUnread.isEmpty && !store.wasUnreadOnEntry(machine: "m", task: "t", run: "latest"))
+        #expect(store.unreadRunIDs(machine: "m", task: cached) == ["older", "latest"] && !store.hasNewDetailResult)
+        #expect(cached.earlierRuns(resultID: store.detailResult?.id).map(\.id) == ["older"])
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        #expect(store.unreadRunIDs(machine: "m", task: cached) == ["older", "latest"])
+        store.configure(.init(cached: { _ in nil }, list: { _ in [cached] }))
+        store.reconcile(state()); await store.refresh("m")
+        #expect(store.detailResultID == "latest" && store.detailUnread == ["older", "latest"])
+        #expect(!store.hasNewDetailResult && !store.hasNewResults)
+    }
+    @Test func manualUnreadSurvivesReturnToItsSessionAndRefreshesUntilLeaving() async {
+        let store = ScheduleStore(); var current = task()
+        current.spec.target.type = "resume_session"; current.spec.target.session = "shared"
+        current.runs = [ScheduleRun(id: "result", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true, sessionID: "shared")]
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        let session = Route.session(id: "shared"), detail = Route.schedule(machine: "m", id: "t")
+        let nav = Navigator(); nav.path = [session]
+        store.setViewing(session, foreground: true)
+        nav.open(detail); store.setViewing(detail, foreground: true)
+        markScheduleUnreadAndBack(machine: "m", taskID: "t", store: store, nav: nav, page: detail)
+        #expect(nav.path == [session])
+        store.setViewing(detail, foreground: true) // A repeated visibility callback during dismissal must not clear protection.
+        store.setViewing(nav.path.last, foreground: true)
+        await store.refresh("m"); store.setViewing(session, foreground: true)
+        #expect(store.unreadRunIDs(machine: "m", task: current) == ["result"])
+        current.runs?.append(ScheduleRun(id: "new-result", startedAt: "2026-11-01T08:00:00Z", status: "completed", notified: true, sessionID: "shared"))
+        await store.refresh("m")
+        #expect(store.unreadRunIDs(machine: "m", task: current) == ["result"]) // Only the explicitly unread result is protected.
+        store.setViewing(.schedules, foreground: true)
+        #expect(store.hasNewResults)
+        store.setViewing(session, foreground: true)
+        #expect(!store.hasNewResults)
+    }
+    @Test func manualUnreadInDetailSurvivesRefreshButEndsOnBackgroundOrAnotherPage() async {
+        let store = ScheduleStore(); var current = task()
+        current.runs = [ScheduleRun(id: "result", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        let detail = Route.schedule(machine: "m", id: "t")
+        store.setViewing(detail, foreground: true)
+        let entry = MachineSchedule(machineID: "m", task: current)
+        store.markUnread(entry)
+        store.setViewing(detail, foreground: true); await store.refresh("m")
+        #expect(store.hasNewResults)
+        store.markRead([entry]); await store.refresh("m")
+        #expect(!store.hasNewResults) // Explicit read still wins while staying here.
+        store.markUnread(entry)
+        store.setViewing(detail, foreground: false); await store.refresh("m")
+        #expect(store.hasNewResults)
+        store.setViewing(detail, foreground: true)
+        #expect(!store.hasNewResults)
+        store.markUnread(entry); await store.refresh("m")
+        #expect(store.hasNewResults)
+        store.setViewing(.session(id: "other"), foreground: true)
+        store.setViewing(detail, foreground: true)
+        #expect(!store.hasNewResults)
+    }
+    @Test func delayedUnreadActionResolvesTheNewestResultAtExecutionTime() async {
+        let store = ScheduleStore(); var current = task()
+        current.runs = [ScheduleRun(id: "old", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true, sessionID: "shared")]
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        let detail = Route.schedule(machine: "m", id: "t"), session = Route.session(id: "shared")
+        let nav = Navigator(); nav.path = [session, detail]
+        store.setViewing(detail, foreground: true)
+        let menuTaskID = current.id // Captured when the menu was rendered, before the new result.
+        current.runs?.append(ScheduleRun(id: "newest", startedAt: "2026-11-01T08:00:00Z", status: "completed", notified: true, sessionID: "shared"))
+        await store.refresh("m"); #expect(!store.hasNewResults)
+        markScheduleUnreadAndBack(machine: "m", taskID: menuTaskID, store: store, nav: nav, page: detail)
+        store.setViewing(nav.path.last, foreground: true); await store.refresh("m")
+        #expect(store.unreadRunIDs(machine: "m", task: current) == ["newest"])
+        store.setViewing(.schedules, foreground: true); store.setViewing(session, foreground: true)
+        #expect(!store.hasNewResults)
+    }
+    @Test func recoveryPlacementKeepsMissingTargetsInMenuAndOmitsDuplicateOneShotRecovery() {
+        var once = task(); once.status = "failed"; once.spec.trigger.type = "at"
+        func access(_ t: ScheduleTask) -> ScheduleEditAccess { ScheduleEditAccess(task: t, online: true, saving: false, unknown: false) }
+        #expect(access(once).primaryRecovery == "立即运行一次" && access(once).menuToggle == nil)
+        var recurring = once; recurring.spec.trigger.type = "interval"
+        #expect(access(recurring).primaryRecovery == "恢复" && access(recurring).menuToggle == nil)
+        recurring.spec.target.type = "resume_session"; recurring.reason = "execution_session_missing"
+        #expect(access(recurring).primaryRecovery == nil && access(recurring).menuToggle == "恢复")
+        #expect(scheduleStopBanner(recurring).contains("恢复后还会失败"))
+        var paused = task(); paused.status = "paused"; paused.reason = "user_paused"
+        #expect(access(paused).primaryRecovery == nil && access(paused).menuToggle == "恢复")
+        #expect(access(task()).menuToggle == "暂停")
+        var ended = task(); ended.status = "completed"; #expect(access(ended).menuToggle == nil)
+    }
+    @Test func markingUnreadReturnsToTheCallingPageAndPreservesItsStack() async {
+        let store = ScheduleStore(); var current = task()
+        current.runs = [ScheduleRun(id: "result", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        let entry = MachineSchedule(machineID: "m", task: current), detail = Route.schedule(machine: "m", id: "t")
+        let prefixes: [[Route]] = [[], [.session(id: "calling-session")], [.devices, .session(id: "calling-session")]]
+        for prefix in prefixes {
+            let nav = Navigator(); nav.path = prefix + [detail]
+            store.markRead([entry])
+            markScheduleUnreadAndBack(machine: entry.machineID, taskID: entry.task.id, store: store, nav: nav, page: detail)
+            #expect(nav.path == prefix && store.hasNewResult(entry))
+        }
+        let nav = Navigator(); nav.path = [detail, .session(id: "other")]
+        store.markRead([entry])
+        markScheduleUnreadAndBack(machine: entry.machineID, taskID: entry.task.id, store: store, nav: nav, page: detail)
+        #expect(nav.path == [detail, .session(id: "other")] && !store.hasNewResult(entry))
+    }
+    @Test func staleCacheCannotPruneThePersistedSeenSet() async throws {
+        let suite = "schedule-cache-test-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        var current = task(); current.runs = [ScheduleRun(id: "known", startedAt: "", status: "completed", notified: true)]
+        let first = ScheduleStore(defaults: defaults, scope: ["test"])
+        first.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        first.reconcile(state()); await eventually("first loaded") { first.loading.isEmpty }
+        let reloaded = ScheduleStore(defaults: defaults, scope: ["test"])
+        reloaded.configure(.init(cached: { _ in [] }, list: { _ in [current] }))
+        reloaded.reconcile(state()); await eventually("reloaded") { reloaded.loading.isEmpty }
+        #expect(!reloaded.hasNewResults)
+    }
+    @Test func readActionsOnlyAffectTheirGroupAndUnreadOnlyTheLatestResult() async {
+        let store = ScheduleStore(); let recent = task("recent"); var stopped = task("stopped"), ended = task("ended")
+        stopped.status = "failed"; ended.status = "completed"
+        var current = [recent, stopped, ended]
+        store.configure(.init(cached: { _ in [] }, list: { _ in current }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        for index in current.indices {
+            current[index].runs = [ScheduleRun(id: "old", startedAt: "2026-10-30T08:00:00Z", status: "completed", notified: true),
+                                   ScheduleRun(id: "latest", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        }
+        await store.refresh("m")
+        #expect(store.rows(.recent).count == 2 && store.rows(.ended).isEmpty && store.badgeCount == 1)
+        store.markRead(store.rows(.recent))
+        #expect(store.rows(.ended).count == 1 && store.hasNewResult(store.rows(.attention)[0]))
+        let entry = store.rows(.recent)[0]; store.markUnread(entry)
+        #expect(store.unreadRunIDs(machine: "m", task: entry.task) == ["latest"])
+    }
+    @Test func completeListPrunesSeenIncludingHiddenTasksAndPersistedHistory() async throws {
+        let suite = "schedule-prune-test-" + UUID().uuidString
+        let defaults = try #require(UserDefaults(suiteName: suite)); defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ScheduleStore(defaults: defaults, scope: ["test"])
+        var current = task(); current.runs = [ScheduleRun(id: "old", startedAt: "", status: "completed", notified: true)]
+        var list = [current]
+        store.configure(.init(cached: { _ in nil }, list: { _ in list }))
+        store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
+        current.status = "cancelled"; current.reason = "user_cancelled"; list = [current]
+        await store.refresh("m")
+        #expect(defaults.dictionaryRepresentation().values.compactMap { $0 as? [String] }.flatMap { $0 }.count == 1)
+        list = []; await store.refresh("m")
+        #expect(defaults.dictionaryRepresentation().values.compactMap { $0 as? [String] }.flatMap { $0 }.isEmpty)
+        list = [task()]; list[0].runs = current.runs; await store.refresh("m")
+        #expect(store.hasNewResults) // Deleted seen token did not survive removal.
     }
 
     func task(_ id: String = "t") -> ScheduleTask {
@@ -315,12 +566,47 @@ import UIKit
         #expect(nav.path.count == 1 && nav.tab == .schedules)
     }
     @Test func taskRowsRemainWithinNarrowAndTabletColumnsAtLargeTextSizes() {
+        let context = AccountContext(account: Demo.account, remote: Demo.remote())
+        let settings = SettingsStore(defaults: UserDefaults(suiteName: "schedule-layout-" + UUID().uuidString)!)
+        let model = AppModel(settings: settings)
+        var task = task(); task.spec.title = String(repeating: "很长的任务名", count: 12)
+        task.spec.target.cwd = "/example/project"
+        task.runs = [ScheduleRun(id: "new", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        task.runs?[0].notificationText = String(repeating: "很长的结果摘要", count: 20)
+        let entry = MachineSchedule(machineID: "m", task: task)
+        context.schedules.show([], state: state()); context.schedules.show([entry], state: state())
         for width in [320.0, 760] {
-            let row = SessionListRowContent(title: "检查新回复", right: "下次 今天 15:00", third: "今天 4 次，都没有通知", color: Theme.gray, last: false) { Text("每小时 · 在「修复登录超时」里").type(T.sm, Theme.muted) }
-                .environment(\.dynamicTypeSize, .accessibility3)
-            let host = UIHostingController(rootView: row)
-            let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
-            #expect(size.width <= width + 0.5 && size.height >= 44)
+            for scheme in [ColorScheme.light, .dark] {
+                let row = ScheduleListRow(entry: entry, now: 1793520000000, last: false)
+                    .environment(context).environment(model).environment(Navigator())
+                    .environment(\.dynamicTypeSize, .accessibility3).environment(\.colorScheme, scheme)
+                let host = UIHostingController(rootView: row)
+                let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
+                #expect(size.width <= width + 0.5 && size.height >= 44 && size.height < 500)
+            }
+        }
+    }
+    @Test func firstRunMetadataAndPreviewDoNotRepeatRunningText() {
+        var current = task()
+        current.active = ScheduleRun(id: "first", startedAt: "2026-10-31T08:00:00Z", status: "running")
+        let entry = MachineSchedule(machineID: "m", task: current)
+        #expect(current.listPreview() == "还没有结果")
+        #expect(scheduleListMetadata(entry, entries: [entry], state: state(), online: true).hasPrefix("正在运行 · "))
+        #expect(current.latestNotification == nil)
+    }
+    @Test func recoveryNoticeFitsTheSameNarrowAndWideContentColumn() {
+        let minimumHeight: CGFloat = Theme.minHit + 32 + 12 + 28
+        for offered in [320.0, 760, 1200] {
+            for scheme in [ColorScheme.light, .dark] {
+                let notice = ScheduleRecoveryNotice(text: String(repeating: "创建任务时的权限已改变，任务已停下。", count: 4), recovery: "恢复", enabled: true, action: {})
+                    .environment(\.onSoft, true).environment(\.colorScheme, scheme)
+                    .environment(\.dynamicTypeSize, .accessibility3)
+                    .frame(maxWidth: Theme.readableWidth)
+                let host = UIHostingController(rootView: notice)
+                let size = host.sizeThatFits(in: CGSize(width: offered, height: 3000))
+                #expect(abs(size.width - min(offered, Theme.readableWidth)) <= 0.5)
+                #expect(size.height >= minimumHeight)
+            }
         }
     }
     @Test func navigationObserverKeepsListUnreadAndReadsTheSelectedDetail() async throws {
@@ -343,29 +629,26 @@ import UIKit
         nav.open(.schedules)
         host.view.layoutIfNeeded()
         for _ in 0..<5 { await Task.yield() }
-        #expect(store.badgeCount == 1)
+        #expect(store.hasNewResults)
         nav.open(.schedule(machine: "m", id: "t"))
-        await eventually("navigation reads detail") { store.badgeCount == 0 }
+        await eventually("navigation reads detail") { !store.hasNewResults }
         #expect(store.detailUnread == ["new"])
         nav.open(.session(id: "s"))
         await eventually("leaving detail removes entry dots") { store.detailUnread.isEmpty }
     }
-    @Test func unreadRowsAndBadgesFitLongTextAtTwoHundredPercentInBothThemes() {
-        #expect(ScheduleUnreadBadge(count: 100).text == "99+")
-        #expect(ScheduleUnreadBadge(count: 99).text == "99")
-        for width in [320.0, 760] {
-            for scheme in [ColorScheme.light, .dark] {
-                let row = SessionListRowContent(title: String(repeating: "很长的任务名", count: 12), right: "昨天", third: String(repeating: "每小时 · 项目 · Codex · 电脑 · 下次 今天 15:00", count: 5), color: Theme.green, last: false, titleStyle: T.bodyB, singleLinePreview: true) {
-                    HStack(spacing: 8) {
-                        Text(String(repeating: "很长的通知摘要", count: 30)).type(T.sm, Theme.fg).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                        ScheduleUnreadBadge(count: 999)
-                    }
-                }.environment(\.dynamicTypeSize, .accessibility3).environment(\.colorScheme, scheme)
-                let host = UIHostingController(rootView: row)
-                let size = host.sizeThatFits(in: CGSize(width: width, height: 1000))
-                #expect(size.width <= width + 0.5 && size.height >= 44 && size.height < 500)
-            }
-        }
+    @Test func tabBadgeCapsCountsAndWholeBlocksFitWithoutClipping() {
+        let conversation = TabBarItem(id: "home", label: "会话", icon: Lucide.messageSquare, badge: 100)
+        let schedules = TabBarItem(id: "schedules", label: "定时", icon: Lucide.clock, badge: 100, scheduleBadge: true)
+        let newResult = TabBarItem(id: "schedules", label: "定时", icon: Lucide.clock, dot: true, scheduleBadge: true)
+        #expect(conversation.badgeText == "100" && conversation.badgeAccessibilityValue == "100 个需要处理")
+        #expect(schedules.badgeText == "99+" && schedules.badgeAccessibilityValue == "100 件需要处理")
+        #expect(newResult.badgeAccessibilityValue == "有新结果")
+        #expect(tabBadgeText(99) == "99")
+        #expect(scheduleResultBlockCount([24, 48, 96], budget: 192) == 2)
+        #expect(scheduleResultBlockCount([240], budget: 192) == 1)
+        #expect(scheduleResultBlockCount([193, 193], budget: 192) == 1) // Still show the first block before measurement.
+        #expect(scheduleResultBlockCount([24, 48], budget: 192) == 2)
+        #expect(scheduleResultBlockCount([], budget: 192) == 0)
     }
     @Test func builderKeepsNotificationAndScheduledCaptionVisibleAndFoldsSilentRounds() async throws {
         var events = [PBEvent]()
