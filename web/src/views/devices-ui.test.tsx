@@ -8,11 +8,16 @@ import {
   ManagementEntry,
   PairCodePage,
 } from "./DeviceManagement";
+// This UI test exercises pairing/SAS, not Vite's cold QR-library import.
+// QR loading behavior is covered in lazy-qr.test.tsx.
+const qr = vi.hoisted(() => ({ generate: vi.fn(async (_url: string) => "data:image/gif;base64,pairing-fixture") }));
+vi.mock("../qr-code", () => ({ pairingQRCode: qr.generate }));
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 let host: HTMLDivElement, root: Root;
 afterEach(() => {
   if (root) act(() => root.unmount());
   host?.remove();
+  qr.generate.mockClear();
 });
 async function mount(node: React.ReactNode) {
   host = document.createElement("div");
@@ -48,7 +53,8 @@ it("shows a QR code and waits for explicit candidate-first SAS confirmation", as
   const r = demo("role=authority&pair=compare");
   await mount(<PairCodePage remote={r} onBack={() => {}} />);
   await click("生成配对码");
-  expect(host.querySelector(".security-qr")).toBeTruthy();
+  expect(qr.generate).toHaveBeenCalledExactlyOnceWith("https://app.example.com/#/pair?code=12345678");
+  expect(host.querySelector(".security-qr")?.getAttribute("src")).toBe("data:image/gif;base64,pairing-fixture");
   expect(button("允许加入").disabled).toBe(true);
   await act(async () =>
     host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
