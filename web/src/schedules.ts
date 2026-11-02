@@ -1,9 +1,10 @@
 // JSON contract owned by internal/schedule. Only encrypted machine commands
 // carry these definitions; the relay never receives task content in plaintext.
-import { derive, isBackground, toolOk, type Tone, type Item } from "./model";
+import { derive, isBackground, toolOk, type Item } from "./model";
 import { isSkeleton } from "./skeleton";
 import {
   InputStatus,
+  OriginKind,
   SessionStatus,
   TurnOutcome,
   type Event,
@@ -75,14 +76,10 @@ export interface ScheduleTask {
   manual_request?: { request_id: string };
 }
 export type TaskEntry = { machineId: string; task: ScheduleTask };
-export const scheduleGroups = [
-  "需要你看一下",
-  "进行中",
-  "已暂停",
-  "已结束",
-] as const;
+export const scheduleGroups = ["需要你看一下", "最近", "已结束"] as const;
 export type ScheduleGroup = (typeof scheduleGroups)[number];
-export function taskGroup(t: ScheduleTask): ScheduleGroup {
+type TaskState = "需要你看一下" | "进行中" | "已暂停" | "已结束";
+export function taskGroup(t: ScheduleTask): TaskState {
   if (t.status === "cancelled" && t.reason && t.reason !== "user_cancelled")
     return "需要你看一下";
   if (["completed", "cancelled"].includes(t.status)) return "已结束";
@@ -98,38 +95,46 @@ export function taskVisible(t: ScheduleTask): boolean {
     t.status !== "cancelled" || (!!t.reason && t.reason !== "user_cancelled")
   );
 }
-export function groupTasks(
-  entries: TaskEntry[],
-): Map<ScheduleGroup, TaskEntry[]> {
-  return new Map(
-    scheduleGroups.map((g) => [
-      g,
-      entries
-        .filter((e) => taskVisible(e.task) && taskGroup(e.task) === g)
-        .sort(
-          (a, b) =>
-            notificationMillis(latestNotification(b.task)) - notificationMillis(latestNotification(a.task)) ||
-            (g === "进行中"
-              ? (a.task.next_run_at ?? "9999").localeCompare(
-                  b.task.next_run_at ?? "9999",
-                )
-              : b.task.updated_at.localeCompare(a.task.updated_at)) ||
-            a.machineId.localeCompare(b.machineId) ||
-            a.task.id.localeCompare(b.task.id),
-        ),
-    ]),
-  );
+export function stoppedTime(task: ScheduleTask): string {
+  return notificationTime(allRuns(task)[0]) || task.updated_at;
 }
-export function taskTone(t: ScheduleTask, online: boolean): Tone {
-  if (!online) return "off";
-  const g = taskGroup(t);
-  return g === "需要你看一下"
-    ? "wait"
-    : g === "进行中"
-      ? t.active_run
-        ? "run"
-        : "idle"
-      : "off";
+export function groupTasks(entries: TaskEntry[], hasNew: (entry: TaskEntry) => boolean = () => false): Map<ScheduleGroup, TaskEntry[]> {
+  const group = (e: TaskEntry): ScheduleGroup => taskGroup(e.task) === "需要你看一下" ? "需要你看一下"
+    : taskGroup(e.task) === "已结束" && !hasNew(e) ? "已结束" : "最近";
+  return new Map(scheduleGroups.map(g => [g, entries.filter(e => taskVisible(e.task) && group(e) === g).sort((a, b) => {
+    const time = (e: TaskEntry) => Date.parse(g === "需要你看一下" ? stoppedTime(e.task) : notificationTime(latestNotification(e.task))) || 0;
+    return time(b) - time(a) || (g === "最近"
+      ? (a.task.next_run_at ?? "9999").localeCompare(b.task.next_run_at ?? "9999")
+      : b.task.updated_at.localeCompare(a.task.updated_at)) || a.machineId.localeCompare(b.machineId) || a.task.id.localeCompare(b.task.id);
+  })]));
+}
+/** Calendar-day comparisons avoid DST's 23/25-hour days. Schedules only. */
+export function scheduleTime(at: string, now = Date.now()): string {
+  const d = new Date(at), today = new Date(now);
+  const days = (Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400_000;
+  if (!days) return clockTime(at);
+  if (days === 1) return "昨天";
+  if (days > 1 && days < 7) return "周" + "日一二三四五六"[d.getDay()];
+  if (d.getFullYear() !== today.getFullYear()) return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
+/** Same ownership fences as the daemon's scheduled follow-up watcher. */
+export function finalRunText(events: Event[], runId: string): string {
+  let found = false, text = "";
+  for (const e of events) {
+    const k = e.kind, origin = e.origin;
+    if (!found) {
+      if (k.case === "userMessage" && origin?.scheduledRunId === runId) found = true;
+      continue;
+    }
+    if (!k.case || isSkeleton(e)) return "";
+    const human = origin?.kind === OriginKind.CLIENT || origin?.kind === OriginKind.LOCAL;
+    if ((human && (k.case === "userMessage" || (k.case === "sessionState" && k.value.detail === "resumed"))) ||
+      (k.case === "userMessage" && origin?.scheduledRunId && origin.scheduledRunId !== runId) ||
+      (k.case === "sessionState" && k.value.status === SessionStatus.EXITED)) break;
+    if (k.case === "agentMessage" && k.value.phase === "final_answer" && !isSkeleton(e)) text = k.value.text;
+  }
+  return text;
 }
 export function clockTime(at: string | number): string {
   return new Date(at).toLocaleTimeString("zh-CN", {
@@ -183,6 +188,9 @@ export function frequency(tr: ScheduleTrigger): string {
       return `${tr.repeat ? "每轮" : "当前轮"}结束 ${tr.delay_seconds ?? 0} 秒后`;
   }
 }
+function zoneName(zone: string): string {
+  return ({ "Asia/Shanghai": "北京时间", "Asia/Hong_Kong": "香港时间", "Asia/Tokyo": "东京时间", "America/Los_Angeles": "洛杉矶时间", "America/New_York": "纽约时间", "Europe/London": "伦敦时间", "Asia/Singapore": "新加坡时间" } as Record<string, string>)[zone] ?? zone.split("/").at(-1)!.replaceAll("_", " ");
+}
 /** The same explicit zone label on every client; local calendar zones stay implicit. */
 export function timingText(
   tr: ScheduleTrigger,
@@ -202,7 +210,7 @@ export function timingText(
     (tr.type === "calendar" &&
     tr.timezone &&
     canonical(tr.timezone) !== canonical(localZone)
-      ? " · " + tr.timezone
+      ? "（" + zoneName(canonical(tr.timezone)) + "）"
       : "")
   );
 }
@@ -284,9 +292,6 @@ const stoppedRunLabels: Record<string, string> = {
   skipped: "跳过",
   cancelled: "已取消",
 };
-export function notificationSource(r: ScheduleRun): string {
-  return ({ agent: "agent 通知", daemon: "完成后通知", agent_and_daemon: "agent 通知、完成后通知", undeliverable: "无法请求通知" } as Record<string, string>)[r.notification_source ?? ""] ?? "";
-}
 export function runResult(r: ScheduleRun): string {
   if (stoppedRunLabels[r.status]) return stoppedRunLabels[r.status];
   if (r.notified) return "通知了你";
@@ -301,6 +306,12 @@ export function runResult(r: ScheduleRun): string {
     )[r.status] ?? "等待结果"
   );
 }
+/** Only an agent-authored notification can add a distinct result heading. */
+export function runTitle(run: ScheduleRun): string {
+  const text = run.notification_text?.trim() ?? "";
+  return (run.notification_source === "agent" || run.notification_source === "agent_and_daemon") &&
+    text !== (run.final_summary?.trim() ?? "") ? text : "";
+}
 export function runSummary(r: ScheduleRun): string {
   if (stoppedRunLabels[r.status]) return reasonText(r.reason);
   return (
@@ -314,6 +325,7 @@ export function lastResult(t: ScheduleTask, now = Date.now()): string {
   const runs = allRuns(t);
   const latest = runs[0];
   if (!latest) return "还没有运行";
+  if (["dispatching", "queued", "running"].includes(latest.status)) return "还没有结果";
   const today = runs.filter((r) => dayKey(r.started_at) === dayKey(now));
   if (
     today.length > 1 &&
@@ -336,7 +348,7 @@ export function groupRuns(t: ScheduleTask): RunGroup[] {
   const groups: RunGroup[] = [];
   const days = new Map<string, RunGroup>();
   for (const r of allRuns(t)) {
-    const day = dayKey(r.started_at);
+    const day = dayKey(notificationTime(r));
     const quiet = r.status === "completed" && !r.notified;
     if (quiet) {
       const existing = days.get(day);
@@ -589,6 +601,10 @@ export type ScheduleDetailVisit = { unread?: ReadonlySet<string> };
 export class ScheduleSeen {
   private seen = new Map<string, Set<string>>();
   private loaded = new Map<string, ScheduleTask[]>();
+  private live = new Set<string>();
+  private protectedUnread = new Map<string, Set<string>>();
+  private page?: string;
+  private handoff = false;
   private detail?: { machine: string; task: string; visit: ScheduleDetailVisit };
   private dismissed = new Map<string, Set<string>>();
   private session?: string;
@@ -601,10 +617,11 @@ export class ScheduleSeen {
   }
   // Only a complete, verified list may establish a baseline or prune history.
   // Loading placeholders, partial pages and failed responses must not enter it.
-  observe(machine: string, tasks: ScheduleTask[], options: { complete?: boolean; prune?: boolean } = {}) {
+  observe(machine: string, tasks: ScheduleTask[], options: { complete?: boolean; prune?: boolean; live?: boolean } = {}) {
     if (options.complete === false) return;
-    const ids = new Set(tasks.flatMap(t => allRuns(t).filter(r => r.notified).map(r => JSON.stringify([t.id, r.id]))));
+    const ids = new Set(tasks.filter(taskVisible).flatMap(t => allRuns(t).filter(r => r.notified).map(r => JSON.stringify([t.id, r.id]))));
     this.loaded.set(machine, tasks);
+    if (options.live !== false) this.live.add(machine);
     if (!this.seen.has(machine)) {
       try {
         const stored: unknown = JSON.parse(this.storage.getItem(this.key(machine)) ?? "null");
@@ -613,10 +630,11 @@ export class ScheduleSeen {
       if (!this.seen.has(machine)) this.save(machine, ids);
     }
     if (options.prune !== false) {
+      this.protectedUnread.set(machine, new Set([...(this.protectedUnread.get(machine) ?? [])].filter(id => ids.has(id))));
       const previous = this.seen.get(machine)!;
       const retained = new Set([...previous].filter(id => ids.has(id)));
       if (retained.size !== previous.size) this.save(machine, retained);
-      const notifications = new Set(tasks.flatMap(t => allRuns(t).filter(r => r.notified).map(r => this.dismissKey(t, r))));
+      const notifications = new Set(tasks.filter(taskVisible).flatMap(t => allRuns(t).filter(r => r.notified).map(r => this.dismissKey(t, r))));
       this.dismissed.set(machine, new Set([...(this.dismissed.get(machine) ?? [])].filter(id => notifications.has(id))));
     }
     this.markVisible(machine, tasks);
@@ -625,14 +643,32 @@ export class ScheduleSeen {
     const seen = this.seen.get(machine);
     return new Set(allRuns(task).filter(r => r.notified && seen && !seen.has(JSON.stringify([task.id, r.id]))).map(r => r.id));
   }
+  private viewing(): string | undefined {
+    return this.detail ? taskRoute(this.detail.machine, this.detail.task) : this.session ? "s/" + encodeURIComponent(this.session) : undefined;
+  }
+  private moveViewing(before?: string, next?: string) {
+    if (before === next) return;
+    // Leaving the detail after the action is a handoff to the destination,
+    // not another visit. Empty setters during React cleanup are intermediate.
+    if (this.handoff) {
+      if (next !== undefined) this.handoff = false;
+    } else this.protectedUnread.clear();
+  }
+  setPage(page: string) {
+    this.moveViewing(this.page ?? this.viewing(), page);
+    this.page = page;
+  }
   setDetail(machine?: string, task?: string, visit: ScheduleDetailVisit = {}): ScheduleDetailVisit | undefined {
+    const before = this.viewing();
     this.detail = machine && task ? { machine, task, visit } : undefined;
+    if (this.page === undefined) this.moveViewing(before, this.viewing());
     for (const [id, tasks] of this.loaded) this.markVisible(id, tasks);
     return this.detail?.visit;
   }
   // A hidden page is not being looked at: keep its notifications unread until it shows again.
   setVisible(visible: boolean) {
     const shown = visible && !this.visible;
+    if (!visible) { this.protectedUnread.clear(); this.handoff = false; }
     this.visible = visible;
     const detail = this.detail;
     if (shown && detail?.visit.unread) {
@@ -643,10 +679,13 @@ export class ScheduleSeen {
     for (const [machine, tasks] of this.loaded) this.markVisible(machine, tasks);
   }
   setSession(session?: string) {
+    const before = this.viewing();
     this.session = session;
+    if (this.page === undefined) this.moveViewing(before, this.viewing());
     for (const [machine, tasks] of this.loaded) this.markVisible(machine, tasks);
   }
   private markVisible(machine: string, tasks: ScheduleTask[]) {
+    if (!this.live.has(machine)) return;
     const detail = this.detail;
     if (detail?.machine === machine && detail.visit.unread === undefined) {
       const task = tasks.find(t => t.id === detail.task);
@@ -659,7 +698,7 @@ export class ScheduleSeen {
     const dismissed = this.dismissed.get(machine) ?? new Set<string>();
     this.dismissed.set(machine, dismissed);
     for (const t of tasks) for (const r of allRuns(t)) {
-      if (r.notified && ((this.detail?.machine === machine && this.detail.task === t.id) ||
+      if (r.notified && !this.protectedUnread.get(machine)?.has(JSON.stringify([t.id, r.id])) && ((this.detail?.machine === machine && this.detail.task === t.id) ||
         (this.session && r.session_id === this.session))) {
         seen.add(JSON.stringify([t.id, r.id]));
         const key = this.dismissKey(t, r);
@@ -674,10 +713,40 @@ export class ScheduleSeen {
   private dismissKey(task: ScheduleTask, run: ScheduleRun) {
     return JSON.stringify([task.id, run.id, run.session_id, run.notification_seq]);
   }
-  forget(machine: string) { this.loaded.delete(machine); this.dismissed.delete(machine); }
+  forget(machine: string) { this.loaded.delete(machine); this.dismissed.delete(machine); this.live.delete(machine); this.protectedUnread.delete(machine); }
+  hasNew(machine: string, task: ScheduleTask): boolean { return this.unread(machine, task).size > 0; }
+  markRead(machine: string, task: ScheduleTask) {
+    const ids = new Set(this.seen.get(machine));
+    const dismissed = this.dismissed.get(machine) ?? new Set<string>();
+    this.dismissed.set(machine, dismissed);
+    for (const r of allRuns(task).filter(r => r.notified)) {
+      ids.add(JSON.stringify([task.id, r.id]));
+      this.protectedUnread.get(machine)?.delete(JSON.stringify([task.id, r.id]));
+      const key = this.dismissKey(task, r);
+      if (!dismissed.has(key)) {
+        dismissed.add(key);
+        try { this.onRead(r); } catch { /* Notification cleanup cannot affect reading. */ }
+      }
+    }
+    this.save(machine, ids);
+  }
+  markUnread(machine: string, task: ScheduleTask, leaving = false) {
+    const latest = latestNotification(task);
+    if (!latest) return;
+    if (this.detail?.machine === machine && this.detail.task === task.id) {
+      this.detail = undefined;
+      this.handoff = true;
+    }
+    if (leaving) this.handoff = true;
+    const identity = JSON.stringify([task.id, latest.id]);
+    const protectedIds = this.protectedUnread.get(machine) ?? new Set<string>();
+    protectedIds.add(identity);
+    this.protectedUnread.set(machine, protectedIds);
+    const ids = new Set(this.seen.get(machine));
+    ids.delete(identity);
+    this.save(machine, ids);
+  }
   count(entries: TaskEntry[]) {
-    return entries.reduce((sum, { machineId, task }) => sum + (taskVisible(task)
-      ? Math.max(this.unread(machineId, task).size, taskGroup(task) === "需要你看一下" ? 1 : 0)
-      : 0), 0);
+    return entries.filter(({ task }) => taskVisible(task) && taskGroup(task) === "需要你看一下").length;
   }
 }

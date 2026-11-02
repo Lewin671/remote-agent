@@ -29,7 +29,6 @@ import {
   scheduleEmpty, scheduleOffline, scheduleOfflineRow, validScheduleMessage,
   taskName,
   runResult,
-  notificationSource,
   runSummary,
 } from "./schedules";
 import { task, run } from "./test/schedule-fixture";
@@ -62,8 +61,7 @@ it("groups tasks after one failed execution and counts only attention", () => {
       ?.map((e) => e.task.id)
       .sort(),
   ).toEqual(["failed", "permission", "unknown"]);
-  expect(groups.get("进行中")?.map((e) => e.task.id)).toEqual(["task-1"]);
-  expect(groups.get("已暂停")?.map((e) => e.task.id)).toEqual(["pause"]);
+  expect(groups.get("最近")?.map((e) => e.task.id)).toEqual(["pause", "task-1"]);
   expect(groups.get("已结束")?.map((e) => e.task.id)).toEqual(["done"]);
   expect(
     taskGroup(task({ status: "cancelled", reason: "message_cancelled" })),
@@ -86,7 +84,7 @@ it("aggregates today's quiet results without hiding notified or failed runs", ()
   const runs = [
     run("1"),
     run("2", { started_at: "2026-10-24T11:00:00Z", manual: true }),
-    run("old", { started_at: "2026-10-23T11:00:00Z" }),
+    run("old", { started_at: "2026-10-23T11:00:00Z", ended_at: "2026-10-23T11:01:00Z" }),
   ];
   const t = task({ runs, active_run: runs[1] });
   expect(lastResult(t, now)).toBe("今天 2 次，都没有通知");
@@ -397,7 +395,7 @@ it("only appends a foreign calendar zone to the timing value", () => {
   };
   expect(timingText(tr, "America/Los_Angeles")).toBe("每天 09:49");
   expect(timingText(tr, "Asia/Shanghai")).toBe(
-    "每天 09:49 · America/Los_Angeles",
+    "每天 09:49（洛杉矶时间）",
   );
   expect(timingText({ ...tr, timezone: "Etc/UTC" }, "UTC")).toBe("每天 09:49");
   expect(timingText({ type: "interval", interval_seconds: 3600 }, "UTC")).toBe(
@@ -435,7 +433,7 @@ it("derives the final shared grouping, attention reason and state copy from task
   expect(scheduleEmpty).toBe(shared.empty);expect(scheduleOffline).toBe(shared.offline);
   const tasks = shared.tasks as ScheduleTask[];
   const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
-  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ ...shared.groups, "进行中": ["conversation", "quiet"] });
+  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ "需要你看一下": shared.groups["需要你看一下"], "最近": ["conversation", "quiet", "paused"], "已结束": shared.groups["已结束"] });
   const attention = tasks.find(t => t.id === "attention")!;
   expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已停下");
   expect(runResult(attention.runs![0])).toBe("没有通知");
@@ -513,11 +511,6 @@ it("uses the shared v52 title and offline-row vectors and UTF-8 message limit", 
   expect(validScheduleMessage("中".repeat(10923))).toBe(false);
 });
 
-it("shows undeliverable completion attempts without claiming they notified", () => {
- const value = run("undeliverable", {notified:false, notification_source:"undeliverable"});
- expect(notificationSource(value)).toBe("无法请求通知");
- expect(runResult(value)).toBe("没有通知");
-});
 
 it("sorts each group by latest notified run, then preserves the no-notification ordering", () => {
   const notified = (id: string, time: string) => run(id, { notified: true, ended_at: time });
@@ -527,10 +520,10 @@ it("sorts each group by latest notified run, then preserves the no-notification 
     task({ id: "newer", next_run_at: "2026-11-03T01:00:00Z", runs: [notified("old", "2026-10-31T01:00:00Z"), notified("new", "2026-11-01T12:00:00.100Z")] }),
     task({ id: "quiet-early", next_run_at: "2026-11-02T01:00:00Z" }),
   ];
-  expect(groupTasks(tasks.map(task => ({ machineId: "m", task }))).get("进行中")!.map(e => e.task.id)).toEqual(["newer", "older", "quiet-early", "quiet-late"]);
+  expect(groupTasks(tasks.map(task => ({ machineId: "m", task }))).get("最近")!.map(e => e.task.id)).toEqual(["newer", "older", "quiet-early", "quiet-late"]);
   for (const status of ["failed", "paused", "completed"]) {
     const entries = tasks.map((t, i) => ({ machineId: "m", task: { ...t, status, updated_at: `2026-11-0${i + 1}T00:00:00Z` } }));
-    expect([...groupTasks(entries).values()].flat().map(e => e.task.id)).toEqual(["newer", "older", "quiet-early", "quiet-late"]);
+    expect([...groupTasks(entries).values()].flat().map(e => e.task.id)).toEqual(status === "failed" ? ["quiet-early", "quiet-late", "older", "newer"] : ["newer", "older", "quiet-early", "quiet-late"]);
   }
 });
 it("uses notification summaries even when a newer quiet run exists", async () => {

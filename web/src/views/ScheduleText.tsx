@@ -4,23 +4,23 @@ import { scheduleMessageLimit, validScheduleMessage } from "../schedules";
 import { Alert, Banner, useEscape } from "../ui";
 
 /** Measure wrapped lines too, so paths and paragraphs obey the same six-line limit. */
-export function ScheduleText({ text, meta }: { text: string; meta?: string }) {
+export function ScheduleText({ text, meta, lines = 6 }: { text: string; meta?: string; lines?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const [long, setLong] = useState(text.split("\n").length > 6);
+  const [long, setLong] = useState(text.split("\n").length > lines);
   useEffect(() => {
     const el = ref.current!;
     const measure = () => {
       const style = getComputedStyle(el);
-      setLong(el.scrollHeight > (parseFloat(style.lineHeight) || 24) * 6 + 1 || text.split("\n").length > 6);
+      setLong(el.scrollHeight > (parseFloat(style.lineHeight) || 24) * lines + 1 || text.split("\n").length > lines);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [text]);
+  }, [text, lines]);
   return <>
-    <div className={"schedule-text" + (expanded ? " expanded" : "")}><div ref={ref} className="schedule-text-content">{text}</div></div>
+    <div className={"schedule-text" + (expanded ? " expanded" : "")}><div ref={ref} className="schedule-text-content" style={{ WebkitLineClamp: lines }}>{text}</div></div>
     {long ? <button className={meta ? "schedule-text-meta" : "schedule-expand"} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{meta && `${meta} · `}{expanded ? "收起" : "展开全文"}{expanded ? <ChevronUp /> : <ChevronDown />}</button> : meta && <small>{meta}</small>}
   </>;
 }

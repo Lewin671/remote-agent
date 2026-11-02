@@ -302,7 +302,7 @@ it("retains read history while a complete list is pending, fails, or has an inco
   expect(r.scheduleBadge()).toBe(0);
   send.mockResolvedValueOnce(result({ tasks: [task({ runs: [retained, run("new", { notified: true })] })] }));
   await r.refreshSchedules("computer");
-  expect(r.scheduleBadge()).toBe(1);
+  expect(r.scheduleNewResults()).toBe(true);
 });
 
 it("does not prune read history with a stale cache that decrypts after a live complete snapshot", async () => {
@@ -318,9 +318,9 @@ it("does not prune read history with a stale cache that decrypts after a live co
   await r.refreshSchedules("computer");
   tasks = [task({ runs: [retained, run("new", { notified: true })] })];
   await r.refreshSchedules("computer");
-  expect(r.scheduleBadge()).toBe(1);
+  expect(r.scheduleNewResults()).toBe(true);
   finish({ msg: result({ tasks: [] }) }); await restoring;
   expect(r.taskEntries()).toHaveLength(1);
   await r.refreshSchedules("computer");
-  expect(r.scheduleBadge()).toBe(1);
+  expect(r.scheduleNewResults()).toBe(true);
 });

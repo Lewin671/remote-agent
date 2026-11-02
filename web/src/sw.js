@@ -88,7 +88,7 @@ async function adopt(cache, res) {
 }
 
 // Fetches the page again and keeps it for next time; one at a time.
-// The open pages are told when it is in, so that they can offer it.
+// The open pages are told when it is in, so that they can move to it.
 let refreshing = null;
 function refresh() {
   refreshing ||= (async () => {

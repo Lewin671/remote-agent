@@ -215,3 +215,27 @@ it("scheduled event tags retain separate results and replace only redelivery of 
   expect(tags[0]).not.toBe(tags[1]);
   for (const [, options] of sw.showNotification.mock.calls) expect(options.data).toEqual({ session: "target-session", security: false });
 });
+
+it("does not wait for old tabs to close before activating and claiming clients", async () => {
+  const handlers: Record<string, (e?: any) => void> = {};
+  const skipWaiting = vi.fn(), claim = vi.fn().mockResolvedValue(undefined), waitUntil = vi.fn();
+  worker("self", "caches", "fetch", source)({ addEventListener: (type: string, fn: (e?: any) => void) => { handlers[type] = fn; }, skipWaiting, clients: { claim } }, {}, vi.fn());
+  handlers.install();
+  handlers.activate({ waitUntil });
+  expect(skipWaiting).toHaveBeenCalledOnce();
+  expect(claim).toHaveBeenCalledOnce();
+  expect(waitUntil).toHaveBeenCalledOnce();
+  await waitUntil.mock.calls[0][0];
+});
+
+it("first activation claims clients without navigating pages or fetching a replacement document", async () => {
+  const handlers: Record<string, (e?: any) => void> = {};
+  const navigate = vi.fn(), fetch = vi.fn();
+  const self = { addEventListener: (kind: string, fn: (e?: any) => void) => { handlers[kind] = fn; }, clients: { claim: async () => {}, matchAll: async () => [{ url: "https://app.example.com/#/tasks", navigate }] } };
+  worker("self", "caches", "fetch", source)(self, {}, fetch);
+  let work!: Promise<void>;
+  handlers.activate({ waitUntil: (pending: Promise<void>) => { work = pending; } });
+  await work;
+  expect(navigate).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});

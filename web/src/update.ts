@@ -113,16 +113,58 @@ export function applyUpdate() {
 // installed app is mostly brought back, not opened anew.
 const AGAIN = 10 * 60_000;
 
+// Include retained drafts on other routes, not just the mounted input boxes.
+const inputGuards = new Set<() => boolean>();
+export function guardUpdateInput(hasInput: () => boolean): () => void {
+  inputGuards.add(hasInput);
+  return () => { inputGuards.delete(hasInput); };
+}
+function hasUnsentInput(): boolean {
+  for (const guard of inputGuards) {
+    try { if (guard()) return true; } catch { return true; }
+  }
+  return [...document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>(
+    'textarea, input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="hidden"])',
+  )].some(input => input.value.length > 0) ||
+    [...document.querySelectorAll<HTMLElement>('[contenteditable]:not([contenteditable="false"])')].some(input => !!input.textContent);
+}
 export function watchUpdates() {
   if (!("serviceWorker" in navigator)) return;
-  // The service worker says when it has kept a page.
-  navigator.serviceWorker.addEventListener("message", (e) => {
-    if (e.data?.type === "shell") void newer().then((yes) => yes && set("ready"));
-  });
+  const sw = navigator.serviceWorker;
+  let controlled = !!sw.controller;
+  let upgrade = controlled;
+  let moving = false;
+  const discover = () => { void newer().then(yes => { if (yes) set("ready"); }); };
+  const message = (e: MessageEvent) => { if (e.data?.type === "shell") discover(); };
+  const controller = () => {
+    // Claiming a page on first installation is not an upgrade. A later
+    // controller replacing that worker is, even if the page stayed open.
+    upgrade ||= controlled;
+    controlled = !!sw.controller;
+    void checkUpdate();
+  };
   let last = Date.now();
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden || Date.now() - last < AGAIN) return;
+  const visibility = () => {
+    if (document.hidden) {
+      // Never navigate a client from the worker: only the page knows whether
+      // inputs and drafts are safe. reload() also reloads hash-routed pages.
+      if (upgrade && state === "ready" && !moving && !hasUnsentInput()) {
+        moving = true;
+        applyUpdate();
+      }
+      return;
+    }
+    if (Date.now() - last < AGAIN) return;
     last = Date.now();
     void checkUpdate();
-  });
+  };
+  sw.addEventListener("message", message);
+  sw.addEventListener("controllerchange", controller);
+  document.addEventListener("visibilitychange", visibility);
+  void checkUpdate();
+  return () => {
+    sw.removeEventListener("message", message);
+    sw.removeEventListener("controllerchange", controller);
+    document.removeEventListener("visibilitychange", visibility);
+  };
 }

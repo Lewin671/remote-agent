@@ -498,14 +498,25 @@ export class Remote {
   }
   scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
   scheduleUnread(machineId: string, task: ScheduleTask) { return this.scheduleSeen.unread(machineId, task); }
+  scheduleHasNew(machineId: string, task: ScheduleTask) { return this.scheduleSeen.hasNew(machineId, task); }
+  scheduleNewResults() { return this.taskEntries().some(e => this.scheduleHasNew(e.machineId, e.task)); }
+  markScheduleRead(machineId: string, task: ScheduleTask) { this.scheduleSeen.markRead(machineId, task); this.changed(); }
+  markScheduleUnread(machineId: string, task: ScheduleTask, leaving = false) {
+    const latest = this.schedules.get(machineId)?.tasks.find(current => current.id === task.id);
+    if (!latest) return;
+    this.scheduleSeen.markUnread(machineId, latest, leaving);
+    this.changed();
+  }
   setScheduleDetail(machineId?: string, taskId?: string, visit?: ScheduleDetailVisit) {
     const unread = this.scheduleSeen.setDetail(machineId, taskId, visit);
     this.changed();
     return unread;
   }
   setScheduleSession(sessionId?: string) { this.scheduleSeen.setSession(sessionId); this.changed(); }
+  setSchedulePage(page: string) { this.scheduleSeen.setPage(page); }
   setScheduleVisible(visible: boolean) { this.scheduleSeen.setVisible(visible); this.changed(); }
   private scheduleLive = new Set<string>();
+  hasLiveSchedules(machineId: string): boolean { return this.scheduleLive.has(machineId); }
   private scheduleRequests = new Map<string, string>();
   private scheduleLoading = new Map<string, Promise<void>>();
   private scheduleAgain = new Set<string>();
@@ -1395,7 +1406,7 @@ export class Remote {
       const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
       if (Array.isArray(parsed.tasks)) {
         // A verified cache may predate the local read state; only a live full list can prune it.
-        this.scheduleSeen.observe(id, parsed.tasks, { prune: false });
+        this.scheduleSeen.observe(id, parsed.tasks, { prune: false, live: false });
         this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
       }
     }

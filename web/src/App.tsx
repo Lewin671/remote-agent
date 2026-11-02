@@ -4,6 +4,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -26,8 +27,10 @@ import {
   Settings,
 } from "./views/Settings";
 import { PairCodePage, SecurityPage } from "./views/Security";
-import { taskRoute, unreadLabel } from "./schedules";
-import { ScheduleCreate, ScheduleDetail, SchedulesPage } from "./views/Schedules";
+import { taskRoute } from "./schedules";
+import { ScheduleBadge } from "./views/ScheduleBadge";
+import { guardUpdateInput } from "./update";
+import { ScheduleCreate, hasScheduleDrafts, ScheduleDetail, SchedulesPage } from "./views/Schedules";
 import { Clock, MessageSquare, Settings as SettingsIcon } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -125,6 +128,11 @@ export function App() {
   useEffect(() => {
     void load();
   }, []);
+  useEffect(() => {
+    if (!remote) return;
+    return guardUpdateInput(() => [...remote.drafts.values(), ...remote.approvalReasons.values()].some(text => text.length > 0) ||
+      [...remote.trays.values()].some(tray => tray.items.length > 0) || hasScheduleDrafts(remote));
+  }, [remote]);
   useEffect(() => {
     if (!remote) return;
     let running = false;
@@ -232,6 +240,7 @@ function useWide() {
 function Main({ remote }: { remote: Remote }) {
   useRemote(remote);
   const [route, go] = useRoute();
+  useLayoutEffect(() => { remote.setSchedulePage(route); }, [remote, route]);
   useEffect(() => { remote.syncSchedules(); });
   const wide = useWide();
   const [kind, ...rest] = route.split("/");
@@ -285,8 +294,8 @@ function Main({ remote }: { remote: Remote }) {
     const [machineId, taskId] = rest.map(decodeURIComponent);
     page = machineId === "new" ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} />
       : taskId ? <ScheduleDetail key={machineId + taskId} remote={remote} machineId={machineId} id={taskId} go={go} onBack={() => go("tasks")} />
-      // Opening a task marks its notifications read, so a wide window selects none by itself; its main area creates one, as for sessions.
-      : wide ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} /> : <SchedulesPage remote={remote} go={go} />;
+      // Selecting a task marks its results read; a wide window starts with none selected.
+      : wide ? <div className="center muted schedule-selection-empty">选一个任务查看结果</div> : <SchedulesPage remote={remote} go={go} />;
   }
   // A wide window has no project page: its sidebar lists sessions and the main area starts one.
   else if (kind === "p")
@@ -337,7 +346,6 @@ function Main({ remote }: { remote: Remote }) {
       </div>
     );
   const tabs = kind === "" || kind === "settings" && !arg || kind === "tasks" && !arg;
-  const taskTodo = remote.scheduleBadge();
   const todo = todoList(remote).length;
   return (
     <div className={"phone" + (kind === "settings" ? " gray" : "")}>
@@ -349,7 +357,7 @@ function Main({ remote }: { remote: Remote }) {
             会话
             {todo > 0 && <span className="n">{todo}</span>}
           </button>
-          <button className={kind === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock />定时{taskTodo > 0 && <span className="n schedule-unread" aria-label={`${taskTodo} 条待查看`}>{unreadLabel(taskTodo)}</span>}</button>
+          <button className={kind === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock />定时<ScheduleBadge remote={remote} /></button>
           <button
             className={kind === "settings" ? "on" : ""}
             onClick={() => go("settings")}

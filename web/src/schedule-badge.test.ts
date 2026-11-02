@@ -9,7 +9,7 @@ function storage() {
   const data = new Map<string, string>();
   return { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => { data.set(k, v); } };
 }
-it("counts unread runs, deduplicates active/history, and combines attention without double counting", () => {
+it("counts only attention tasks and exposes new results as a boolean", () => {
   const seen = new ScheduleSeen(["relay", "client"], storage());
   const entry = (t = task(), machineId = "m") => ({ machineId, task: t });
   const old = run("old", { notified: true });
@@ -18,12 +18,12 @@ it("counts unread runs, deduplicates active/history, and combines attention with
   const current = task({ status: "failed", runs: [old, run("a", { notified: true, notification_count: 8 }), run("b", { notified: true })], active_run: run("b", { notified: true }) });
   seen.observe("m", [current]);
   expect(seen.unread("m", current)).toEqual(new Set(["a", "b"]));
-  expect(seen.count([entry(current), entry(task({ id: "attention", status: "uncertain" }))])).toBe(3);
+  expect(seen.count([entry(current), entry(task({ id: "attention", status: "uncertain" }))])).toBe(2);
   expect(seen.count([entry({ ...current, status: "cancelled", reason: "user_cancelled" })])).toBe(0);
   expect(seen.count([])).toBe(0);
   seen.observe("other", []);
   seen.observe("other", [current]);
-  expect(seen.count([entry(current), entry(current, "other")])).toBe(5); // 2 + 3
+  expect(seen.count([entry(current), entry(current, "other")])).toBe(2); // One attention task on each machine.
 });
 it("reads only the selected task, including notifications arriving during the visit", () => {
   const seen = new ScheduleSeen(["relay", "client"], storage());
@@ -87,7 +87,7 @@ it("persists seen state per relay, client identity and machine, including an ini
   new ScheduleSeen(["relay-a", "account-a"], store).observe("m", []);
   const reload = new ScheduleSeen(["relay-a", "account-a"], store);
   reload.observe("m", [t]);
-  expect(reload.count([{ machineId: "m", task: t }])).toBe(1);
+  expect(reload.hasNew("m", t)).toBe(true);
   for (const scope of [["relay-b", "account-a"], ["relay-a", "account-b"]]) {
     const other = new ScheduleSeen(scope, store); other.observe("m", [t]);
     expect(other.count([{ machineId: "m", task: t }])).toBe(0);
@@ -191,4 +191,70 @@ it("retains newer read identities when an older verified cache loads before the 
   reload.observe("m", [task({ runs: [a] })], { prune: false });
   reload.observe("m", [current]);
   expect(reload.unread("m", current).size).toBe(0);
+});
+
+it("does not automatically read cached-only runs or capture entry dots before a live list", () => {
+  const saved = storage();
+  saved.setItem('ra-schedule-seen:["relay","client","m"]', "[]");
+  const seen = new ScheduleSeen(["relay", "client"], saved);
+  const t = task({ runs: [run("cached", { notified: true, session_id: "source" })] });
+  seen.observe("m", [t], { prune: false, live: false });
+  const visit = seen.setDetail("m", t.id)!;
+  seen.setSession("source");
+  expect(visit.unread).toBeUndefined();
+  expect(seen.unread("m", t)).toEqual(new Set(["cached"]));
+  seen.observe("m", [t]);
+  expect(visit.unread).toEqual(new Set(["cached"]));
+  expect(seen.hasNew("m", t)).toBe(false);
+});
+
+it("preserves a manual unread when returning to its source session, until leaving and coming back", () => {
+  const seen = new ScheduleSeen([], storage());
+  const t = task({ runs: [run("result", { notified: true, session_id: "source" })] });
+  seen.observe("m", [t]); seen.setDetail("m", t.id);
+  seen.markUnread("m", t);
+  seen.setDetail(); // Detail cleanup must not consume the navigation handoff.
+  seen.setSession("source");
+  seen.setSession("source");
+  seen.observe("m", [t]);
+  expect(seen.unread("m", t)).toEqual(new Set(["result"]));
+  seen.setSession("other");
+  seen.setSession("source");
+  expect(seen.hasNew("m", t)).toBe(false);
+});
+
+it("protects only the cancelled read identity from session, detail and refresh reads", () => {
+  const seen = new ScheduleSeen([], storage());
+  const t = task({ runs: [run("result", { notified: true, session_id: "source", ended_at: "2026-11-01T08:00:00Z" })] });
+  seen.observe("m", [t]); seen.setSession("source");
+  seen.markUnread("m", t);
+  seen.setSession("source");
+  seen.observe("m", [t]);
+  expect(seen.unread("m", t)).toEqual(new Set(["result"]));
+  t.runs!.push(run("later", { notified: true, session_id: "source", ended_at: "2026-11-01T09:00:00Z" }));
+  seen.observe("m", [t]);
+  expect(seen.unread("m", t)).toEqual(new Set(["result"]));
+  seen.setVisible(false);
+  seen.setSession("source");
+  expect(seen.unread("m", t)).toEqual(new Set(["result"]));
+  seen.setVisible(true);
+  expect(seen.hasNew("m", t)).toBe(false);
+});
+
+it("keeps unread through route handoff and repeated bindings, and releases it on the next page change", () => {
+  const seen = new ScheduleSeen([], storage());
+  const t = task({ runs: [run("result", { notified: true, session_id: "source" })] });
+  seen.observe("m", [t]);
+  seen.setPage("tasks/m/task-1"); seen.setDetail("m", t.id);
+  seen.markUnread("m", t);
+  seen.setDetail("m", t.id); // A rerender of the current detail is not another visit.
+  seen.observe("m", [t]);
+  expect(seen.hasNew("m", t)).toBe(true);
+  seen.setDetail();
+  seen.setPage("s/source"); seen.setSession("source");
+  seen.setPage("s/source"); seen.observe("m", [t]);
+  expect(seen.hasNew("m", t)).toBe(true);
+  seen.setPage("tasks"); seen.setSession();
+  seen.setPage("s/source"); seen.setSession("source");
+  expect(seen.hasNew("m", t)).toBe(false);
 });

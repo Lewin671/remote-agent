@@ -17,8 +17,9 @@ function setUp(ok: boolean, kept?: string) {
   vi.stubGlobal("caches", { open: async () => ({ match: async () => page }) });
 }
 
+const watching: (() => void)[] = [];
 beforeEach(() => vi.resetModules());
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => { watching.splice(0).forEach(stop => stop()); document.body.replaceChildren(); vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); history.replaceState(null, "", "/"); });
 
 async function check(advance = false) {
   const update = await import("./update");
@@ -82,4 +83,65 @@ it("reports registration failure immediately and retries registration on the nex
   expect(navigator.serviceWorker.register).toHaveBeenCalledOnce();
   setUp(true, "/assets/index-old.js");
   expect(await check()).toBe("latest");
+});
+
+async function watch(firstInstall = false) {
+  setUp(true, "/assets/index-new.js");
+  const handlers: Record<string, (event: any) => void> = {};
+  let controller: object | null = firstInstall ? null : {};
+  const sw = navigator.serviceWorker;
+  Object.defineProperty(sw, "controller", { configurable: true, get: () => controller });
+  sw.addEventListener = ((kind: string, fn: (e: any) => void) => { handlers[kind] = fn; }) as typeof sw.addEventListener;
+  sw.removeEventListener = vi.fn();
+  const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(false);
+  const reload = vi.spyOn(location, "reload").mockImplementation(() => {});
+  const update = await import("./update");
+  watching.push(update.watchUpdates()!);
+  await vi.waitFor(async () => expect(await check()).toBe("ready"));
+  const visibility = (hide: boolean) => { hidden.mockReturnValue(hide); document.dispatchEvent(new Event("visibilitychange")); };
+  return { update, reload, visibility, handlers, claim: () => { controller = {}; handlers.controllerchange({}); } };
+}
+it("never reloads a visible page when the shell or controller changes", async () => {
+  const w = await watch();
+  w.handlers.message({ data: { type: "shell" } }); w.claim();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  expect(w.reload).not.toHaveBeenCalled();
+});
+it("does not reload on first installation or the first controller claim", async () => {
+  const w = await watch(true);
+  w.claim();
+  w.handlers.message({ data: { type: "shell" } });
+  await new Promise(resolve => setTimeout(resolve, 0));
+  w.visibility(true);
+  expect(w.reload).not.toHaveBeenCalled();
+});
+it.each(["textarea", "pair-code", "task-form", "contenteditable"])("waits while %s has input, then reloads only on the next safe background transition", async kind => {
+  const w = await watch();
+  const input = document.createElement(kind === "textarea" || kind === "task-form" ? "textarea" : kind === "contenteditable" ? "div" : "input");
+  document.body.append(input);
+  if (input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) input.value = kind === "pair-code" ? "1234 5678" : "unsent draft";
+  else { input.setAttribute("contenteditable", "true"); input.textContent = "unsent draft"; }
+  w.visibility(true);
+  expect(w.reload).not.toHaveBeenCalled();
+  if (input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) input.value = "";
+  else input.textContent = "";
+  expect(w.reload).not.toHaveBeenCalled();
+  w.visibility(false);
+  expect(w.reload).not.toHaveBeenCalled();
+  w.visibility(true);
+  expect(w.reload).toHaveBeenCalledOnce();
+});
+it("protects retained drafts on other routes and reloads hash-routed documents using location.reload", async () => {
+  const w = await watch();
+  history.replaceState(null, "", "/#/tasks");
+  let draft = "a draft on another route";
+  watching.push(w.update.guardUpdateInput(() => !!draft));
+  w.visibility(true);
+  expect(w.reload).not.toHaveBeenCalled();
+  draft = "";
+  w.visibility(false); w.visibility(true);
+  expect(w.reload).toHaveBeenCalledOnce();
+  expect(location.hash).toBe("#/tasks");
+  w.visibility(false); w.visibility(true);
+  expect(w.reload).toHaveBeenCalledOnce();
 });
