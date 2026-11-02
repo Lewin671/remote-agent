@@ -105,6 +105,7 @@ object Notifier {
     const val EXTRA_APPROVAL = "approval"
     const val EXTRA_SECURITY = "security"
     const val EXTRA_SCHEDULE_SEQ = "schedule_seq"
+    const val EXTRA_SCHEDULED = "scheduled"
 
     /** A recovery request: generic text only, tapping opens the device page. */
     fun showSecurity(context: Context) {
@@ -139,11 +140,13 @@ object Notifier {
         code: Int,
         scheduleSeq: Long = 0,
         scheduleEvent: String? = null,
+        scheduled: Boolean = false,
     ): PendingIntent {
         val i =
             Intent(context, MainActivity::class.java)
                 .putExtra(MainActivity.EXTRA_SESSION, session)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        if (scheduled) i.putExtra(EXTRA_SCHEDULED, true)
         if (approval != null) i.putExtra(EXTRA_APPROVAL, approval)
         if (scheduleSeq > 0) i.putExtra(EXTRA_SCHEDULE_SEQ, scheduleSeq)
         // Extras do not identify PendingIntents; the numeric request code may collide.
@@ -269,6 +272,7 @@ object Notifier {
                 .setContentIntent(
                     openIntent(
                         context, session, approval?.approvalId, nid,
+                        scheduled = kind == NotifyKind.NOTIFY_KIND_SCHEDULED,
                         scheduleSeq = if (kind == NotifyKind.NOTIFY_KIND_SCHEDULED) c?.sourceEventSeq ?: 0 else 0,
                         scheduleEvent = eventKey.takeIf { kind == NotifyKind.NOTIFY_KIND_SCHEDULED },
                     ),

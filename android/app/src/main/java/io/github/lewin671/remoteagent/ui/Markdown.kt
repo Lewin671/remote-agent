@@ -3,6 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
@@ -46,6 +47,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -755,6 +757,69 @@ fun Markdown(text: String, modifier: Modifier = Modifier, bleed: Dp = 0.dp) {
     SelectionContainer(modifier) { Blocks(blocks, pal.fg, Place.REPLY, bleed = bleed) }
 }
 
+/** Keep whole blocks, except an oversize leading paragraph previews eight complete lines. */
+@Composable
+internal fun ScheduleResultMarkdown(text: String) {
+    val blocks = remember(text) { parseMarkdown(text) }
+    val rows = remember(blocks) { spaced(blocks, Place.REPLY) }
+    var expanded by remember(text) { mutableStateOf(false) }
+    val color = pal.fg
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val limit = with(density) { (T.chat.lineHeight * 8).toPx() }.toInt()
+    val windowWidth = with(density) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() }
+    val collapse = windowWidth < WIDE_WINDOW_MIN_WIDTH && !expanded
+    Box {
+        SelectionContainer {
+            androidx.compose.ui.layout.SubcomposeLayout { constraints ->
+                val placed = mutableListOf<androidx.compose.ui.layout.Placeable>()
+                var height = 0
+                var count = 0
+                var clippedParagraph = false
+                for ((index, row) in rows.withIndex()) {
+                    val (gap, block) = row
+                    val childConstraints = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+                    var oversizeFirst = false
+                    if (collapse) {
+                        // Measurement-only text must not appear in accessibility or selection.
+                        val probe = subcompose("probe-$index") {
+                            Box(Modifier.clearAndSetSemantics {}.padding(top = gap.dp)) {
+                                DisableSelection { Blocks(listOf(block), color, Place.REPLY) }
+                            }
+                        }.single().measure(childConstraints)
+                        if (height + probe.height > limit) {
+                            if (index > 0) break
+                            oversizeFirst = true
+                            clippedParagraph = block is Block.Para
+                        }
+                    }
+                    val previewParagraph = clippedParagraph
+                    val child = subcompose(index) {
+                        Box(Modifier.padding(top = gap.dp)) {
+                            if (previewParagraph && block is Block.Para) RichText(richLines(block.text, pal), T.chat.copy(color = color), maxLines = 8)
+                            else Blocks(listOf(block), color, Place.REPLY)
+                        }
+                    }.single().measure(childConstraints)
+                    placed += child; height += child.height; count++
+                    if (oversizeFirst) break
+                }
+                if (count < rows.size || clippedParagraph) {
+                    val more = subcompose("expand") {
+                        Row(Modifier.heightIn(min = 44.dp).clickable { expanded = true }, verticalAlignment = Alignment.CenterVertically) {
+                            Text("展开全文", style = T.sm, color = pal.blue)
+                            Ic(Lucide.ChevronDown, 14.dp, pal.blue)
+                        }
+                    }.single().measure(constraints.copy(minHeight = 0))
+                    placed += more; height += more.height
+                }
+                layout(constraints.maxWidth, height) {
+                    var y = 0
+                    placed.forEach { it.placeRelative(0, y); y += it.height }
+                }
+            }
+        }
+    }
+}
+
 /** [color] is the text's: `fg` in a reply, `fg2` in a quote, `muted` under a finished task. [level] counts the lists around. */
 @Composable
 private fun Blocks(blocks: List<Block>, color: Color, place: Place, level: Int = 0, bleed: Dp = 0.dp, afterText: Boolean = false) {
@@ -835,12 +900,12 @@ private fun Items(list: Block.ItemList, color: Color, level: Int) {
  * its own, so its sides reach into the space around the code.
  */
 @Composable
-fun RichText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier, codeSize: TextUnit = 13.sp) {
+fun RichText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier, codeSize: TextUnit = 13.sp, maxLines: Int = Int.MAX_VALUE) {
     val bg = pal.chip
     val codes = remember(text) { text.getStringAnnotations(CODE, 0, text.length) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
-        text, style = style, onTextLayout = { layout = it },
+        text, style = style, maxLines = maxLines, onTextLayout = { layout = it },
         modifier = if (codes.isEmpty()) modifier else modifier.drawBehind {
             val l = layout ?: return@drawBehind
             val padX = 4.dp.toPx()

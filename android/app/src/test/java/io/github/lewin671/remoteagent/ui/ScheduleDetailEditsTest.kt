@@ -78,7 +78,7 @@ class ScheduleDetailEditsTest {
         }
     }
     @Test fun deletionReturnsToListAndHidesTheCancelledTask() {
-        prepare();render();ui.onNodeWithText("删除任务").performScrollTo().performClick()
+        prepare();render();ui.onNodeWithContentDescription("更多").performClick();ui.onNodeWithText("删除任务…").performClick()
         ui.onNodeWithText("删除这个任务？").assertExists();ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
         ui.runOnIdle { assertEquals(1,backs);assertTrue(repository.tasks().isEmpty()) }
     }
@@ -94,7 +94,7 @@ class ScheduleDetailEditsTest {
             assertEquals(latest.spec,Json.parseToJsonElement(sent.specJson.toStringUtf8()));assertEquals(3L,sent.expectedRevision)
             assertFalse(requests.any { it.operation=="resume" })
         }
-        ui.onNodeWithText("删除任务").performScrollTo().assertIsEnabled().performClick()
+        ui.onNodeWithContentDescription("更多").performClick();ui.onNodeWithText("删除任务…").assertIsEnabled().performClick()
         ui.onNodeWithText("删除",useUnmergedTree=true).performClick()
         ui.runOnIdle { assertEquals(1,requests.count { it.operation=="cancel" });assertEquals(1,backs) }
     }
@@ -109,17 +109,17 @@ class ScheduleDetailEditsTest {
         prepare();render()
         ui.onNodeWithText("任务名").performScrollTo().assertHasClickAction()
         for(label in listOf("什么时候","编辑","在哪运行")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
-        ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
         ui.onNodeWithText("完成后通知").performScrollTo().assertIsEnabled().performClick()
         ui.runOnIdle {
             val sent=requests.single { it.operation=="update" }
             assertEquals("agent_only",Json.parseToJsonElement(sent.specJson.toStringUtf8()).jsonObject.text("notify"))
             assertEquals(3L,sent.expectedRevision)
         }
+        ui.onNodeWithContentDescription("更多").performClick();ui.onNodeWithText("立即运行一次").assertIsNotEnabled()
     }
     @Test fun pendingManualRequestDisablesAnotherRun() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("manual_request" to buildJsonObject { put("request_id","queued") })))
-        prepare();render();ui.onNodeWithText("立即运行一次").performScrollTo().assertIsNotEnabled()
+        prepare();render();ui.onNodeWithContentDescription("更多").performClick();ui.onNodeWithText("立即运行一次").assertIsNotEnabled()
     }
     @Test fun endedTasksCollapseAndRememberExpansionOnThisDevice() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("status" to JsonPrimitive("completed"))))
@@ -143,23 +143,76 @@ class ScheduleDetailEditsTest {
         latest=ScheduledTask(original.machine,JsonObject(original.json+("runs" to runs)))
         prepare();render()
         ui.onNodeWithText("记录 1").assertDoesNotExist()
-        ui.onNodeWithText("查看全部 7 次").performScrollTo().performClick()
+        ui.onNodeWithText("查看全部 6 次").performScrollTo().performClick()
         ui.onNodeWithText("记录 1").assertExists()
     }
     @Test fun offlineDetailDisablesEditsAndExplainsWhenTheyReturn() {
         prepare();render()
         ui.runOnIdle { val state=remote.state.value;remote.showForTest(state.copy(conn=ConnState.OFFLINE)) }
-        ui.onAllNodesWithText(SCHEDULE_OFFLINE).assertCountEquals(1)
-        for (label in listOf("编辑","什么时候","在哪运行","任务名","立即运行一次","删除任务")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
+        ui.onAllNodesWithText("每小时").assertCountEquals(2)
+        for (label in listOf("编辑","什么时候","在哪运行","任务名")) ui.onNodeWithText(label).performScrollTo().assertIsNotEnabled()
         ui.onNodeWithText("连上后才能修改、运行或删除。",substring=true).performScrollTo().assertExists()
     }
 
-    @Test fun missingConversationKeepsRecoveryOnlyInTheActionGroup() {
+    @Test fun missingConversationKeepsTheExistingRecoveryAction() {
         latest=ScheduledTask(original.machine,JsonObject(original.json+mapOf("status" to JsonPrimitive("failed"),"reason" to JsonPrimitive("execution_session_missing"),"spec" to JsonObject(original.spec+("target" to buildJsonObject { put("type","resume_session");put("session","gone") })))))
         prepare();render()
-        ui.onAllNodesWithText("恢复").assertCountEquals(1)
-        ui.onNodeWithText("恢复").performScrollTo().performClick()
+        ui.onNodeWithText("恢复").assertDoesNotExist()
+        ui.onNodeWithText("恢复后还会失败", substring = true).assertExists()
+        ui.onNodeWithContentDescription("更多").performClick()
+        ui.onNodeWithText("恢复").performClick()
         ui.runOnIdle { assertEquals(1,requests.count { it.operation=="resume" }) }
+    }
+
+    @Test fun menuRecoveryReschedulesSystemCancelledRecurringTaskWithItsFullDefinition() {
+        cancelled(); prepare(); render()
+        ui.onNodeWithContentDescription("更多").performClick(); ui.onAllNodesWithText("恢复").onLast().performClick()
+        ui.runOnIdle {
+            val sent = requests.single { it.operation == "update" }
+            assertEquals(latest.spec, Json.parseToJsonElement(sent.specJson.toStringUtf8()))
+            assertEquals(latest.revision, sent.expectedRevision)
+            assertFalse(requests.any { it.operation == "resume" || it.operation == "run" })
+        }
+    }
+    @Test fun menuRecoveryRequiresNewTimeForCancelledOneShot() {
+        cancelled(buildJsonObject { put("type", "at"); put("at", "2026-10-01T10:00:00Z") }); prepare(); render()
+        ui.onNodeWithContentDescription("更多").performClick(); ui.onAllNodesWithText("恢复").onLast().performClick()
+        ui.onNodeWithText("完成").assertExists()
+        ui.runOnIdle { assertFalse(requests.any { it.operation in setOf("update", "resume", "run") }) }
+    }
+    @Test fun failedOneShotMenuOnlyOffersRunOnceRatherThanResume() {
+        latest = original.copy(json = JsonObject(original.json + mapOf("status" to JsonPrimitive("failed"), "reason" to JsonPrimitive("execution_failed"),
+            "spec" to JsonObject(original.spec + ("trigger" to buildJsonObject { put("type", "at"); put("at", "2026-10-01T10:00:00Z") })))))
+        prepare(); render()
+        ui.onNodeWithContentDescription("更多").performClick()
+        ui.onNodeWithText("恢复").assertDoesNotExist()
+        ui.onAllNodesWithText("立即运行一次").onLast().performClick()
+        ui.runOnIdle {
+            assertEquals(1, requests.count { it.operation == "run" })
+            assertFalse(requests.any { it.operation == "resume" })
+        }
+    }
+    @Test fun failedOneShotPrimaryButtonRunsOnce() {
+        latest = original.copy(json = JsonObject(original.json + mapOf("status" to JsonPrimitive("failed"), "reason" to JsonPrimitive("execution_failed"),
+            "spec" to JsonObject(original.spec + ("trigger" to buildJsonObject { put("type", "at"); put("at", "2026-10-01T10:00:00Z") })))))
+        prepare(); render(); ui.onNodeWithText("立即运行一次").performClick()
+        ui.runOnIdle { assertEquals(1, requests.count { it.operation == "run" }); assertFalse(requests.any { it.operation == "resume" }) }
+    }
+    @Test fun menuRecoveryResumesAnOrdinaryPausedTask() {
+        latest = original.copy(json = JsonObject(original.json + mapOf("status" to JsonPrimitive("paused"), "reason" to JsonPrimitive("user_paused"))))
+        prepare(); render(); ui.onNodeWithContentDescription("更多").performClick(); ui.onAllNodesWithText("恢复").onLast().performClick()
+        ui.runOnIdle { assertEquals(1, requests.count { it.operation == "resume" }); assertFalse(requests.any { it.operation == "run" }) }
+    }
+
+    @Test fun aSingleResultHasNoEarlierGroupCountOrOldDeliveryFootnote() {
+        val run = buildJsonObject { put("id", "only"); put("notified", true); put("status", "completed"); put("started_at", "2026-10-24T10:00:00Z"); put("final_summary", "唯一结果的正文") }
+        latest = original.copy(json = JsonObject(original.json + ("runs" to JsonArray(listOf(run)))))
+        prepare(); render()
+        ui.onNodeWithText("唯一结果的正文").assertExists()
+        ui.onNodeWithText("更早").assertDoesNotExist()
+        ui.onNodeWithText("0 次").assertDoesNotExist()
+        ui.onNodeWithText("已请求通知", substring = true).assertDoesNotExist()
+        ui.onNodeWithText("不保证送达", substring = true).assertDoesNotExist()
     }
 
 }

@@ -20,16 +20,16 @@ class ScheduleComponentsTest {
     @get:Rule val ui = createComposeRule()
     @Test fun taskRowOpensItsDetailAndShowsAllThreeLines() {
         var clicked = false
-        val fixture=Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
+        val fixture=Json.parseToJsonElement(java.io.File(requireNotNull(System.getProperty("scheduleClients"))).readText()).jsonObject
         val task=ScheduledTask("computer",fixture["tasks"]!!.jsonArray.first { it.jsonObject.text("id")=="quiet" }.jsonObject)
         val state=RemoteState(conn=ConnState.ONLINE,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())))
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow(task,state,Instant.parse(fixture.text("now"))) { clicked = true } } }
-        ui.onNodeWithText("每小时 · project · Claude Code · 下次", substring = true).assertIsDisplayed()
+        ui.onNodeWithText("每小时", substring = true).assertIsDisplayed()
         ui.onNodeWithText("今天 2 次，都没有通知").assertIsDisplayed()
         ui.onNodeWithText(task.title).performClick()
         assertTrue(clicked)
     }
-    @Test fun unreadRowUsesBodyInkEmphasisAndCapsTheBadgeWithoutWrapping() {
+    @Test fun newResultRowUsesBlueDotAndTwoLineBodyWithoutUnreadCount() {
         val run = buildJsonObject { put("id", "r"); put("status", "completed"); put("notified", true); put("started_at", "2026-10-24T08:00:00Z"); put("notification_text", "最近摘要".repeat(100)) }
         val task = ScheduledTask("computer", buildJsonObject {
             put("id", "task"); put("status", "scheduled"); put("runs", JsonArray(listOf(run)))
@@ -39,11 +39,11 @@ class ScheduleComponentsTest {
         ui.setContent {
             val density = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 2f)) {
-                RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { fg = pal.fg; TaskRow(task, RemoteState(), unread = 120) {} }
+                RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { fg = pal.fg; TaskRow(task, RemoteState(), hasNew = true) {} }
             }
         }
-        ui.onNodeWithText("99+").assertExists()
-        ui.onNodeWithContentDescription("120 条未读通知").assertExists()
+        ui.onNodeWithText("99+").assertDoesNotExist()
+        ui.onNodeWithContentDescription("有新结果").assertExists()
         fun layout(text: String): androidx.compose.ui.text.TextLayoutResult {
             val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
             ui.onNodeWithText(text, useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
@@ -51,7 +51,8 @@ class ScheduleComponentsTest {
         }
         val preview = layout(run.text("notification_text"))
         assertEquals(fg, preview.layoutInput.style.color)
-        assertEquals(1, preview.lineCount)
+        assertEquals(2, preview.layoutInput.maxLines)
+        assertTrue(preview.lineCount <= 2)
         assertEquals(T.bodyB.fontWeight, layout(task.title).layoutInput.style.fontWeight)
         assertEquals(1, layout(task.title).lineCount)
         ui.onNodeWithText(SCHEDULE_OFFLINE_ROW, substring = true, useUnmergedTree = true).assertExists()
@@ -62,18 +63,18 @@ class ScheduleComponentsTest {
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { androidx.compose.foundation.layout.Column {
             ScheduleRunGroup(RunGroup("runs", runs, false), Instant.parse("2026-10-24T09:00:00Z"), highlighted.value) {}
         } } }
-        ui.onAllNodesWithContentDescription("本次查看前未读", useUnmergedTree = true).assertCountEquals(1)
+        ui.onAllNodesWithContentDescription("进入时未读", useUnmergedTree = true).assertCountEquals(1)
         ui.runOnIdle { highlighted.value = emptySet() }
-        ui.onAllNodesWithContentDescription("本次查看前未读", useUnmergedTree = true).assertCountEquals(0)
+        ui.onAllNodesWithContentDescription("进入时未读", useUnmergedTree = true).assertCountEquals(0)
     }
     @Test fun attentionReasonUsesMutedTextRatherThanTheOrangeStatusColor() {
-        val fixture=Json.parseToJsonElement(java.io.File(System.getProperty("scheduleClients")).readText()).jsonObject
+        val fixture=Json.parseToJsonElement(java.io.File(requireNotNull(System.getProperty("scheduleClients"))).readText()).jsonObject
         val task=ScheduledTask("computer",fixture["tasks"]!!.jsonArray.first { it.jsonObject.text("id")=="attention" }.jsonObject)
         val state=RemoteState(conn=ConnState.ONLINE,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())))
         var muted=androidx.compose.ui.graphics.Color.Unspecified
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { muted=pal.muted; TaskRow(task,state,Instant.parse(fixture.text("now"))) {} } }
         val layouts=mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-        ui.onNodeWithText(scheduleReason(task.reason), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        ui.onNodeWithText(schedulePreview(task), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(muted,layouts.single().layoutInput.style.color)
     }
     @Test fun tabBadgeShowsTheSharedScheduleCountAndNavigates() {
@@ -82,6 +83,34 @@ class ScheduleComponentsTest {
         ui.onNodeWithText("2").assertExists()
         ui.onNodeWithText("定时").performClick()
         assertEquals("schedules", selected)
+    }
+    @Test fun tabBadgeCapsAttentionAndOnlyShowsBlueWhenThereIsNoAttention() {
+        val attention = androidx.compose.runtime.mutableIntStateOf(120)
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { TabBar("schedules", 0, attention.intValue, true) {} } }
+        ui.onNodeWithText("99+").assertExists()
+        ui.onNodeWithContentDescription("120 件需要处理").assertExists()
+        ui.onNodeWithContentDescription("有新结果").assertDoesNotExist()
+        ui.runOnIdle { attention.intValue = 0 }
+        ui.onNodeWithText("99+").assertDoesNotExist()
+        ui.onNodeWithContentDescription("有新结果").assertExists()
+    }
+    @Test fun rowExposesReadActionAndSwipeInvokesIt() {
+        val task = ScheduledTask("m", Json.parseToJsonElement("""{"id":"t","status":"completed","spec":{"title":"测试任务"},"runs":[{"id":"r","notified":true}]}""").jsonObject)
+        var marks = 0
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow(task, RemoteState(), hasNew = true, onMark = { marks++ }) {} } }
+        val actions = ui.onNodeWithText("测试任务").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.CustomActions]
+        ui.runOnIdle { assertEquals("标为已读", actions.single().label); actions.single().action() }
+        ui.onNodeWithText("测试任务").performTouchInput { swipeLeft() }
+        ui.runOnIdle { assertEquals(2, marks) }
+    }
+    @Test fun markdownPreviewPreservesWholeBlocksAndExpandsTablesAndCode() {
+        val text = "开头一段。\n\n" + (1..10).joinToString("\n\n") { "第 $it 段。" } + "\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n```go\nfmt.Println(1)\n```"
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier) { ScheduleResultMarkdown(text) } } }
+        ui.onNodeWithText("开头一段。").assertExists()
+        ui.onNodeWithText("第 10 段。").assertDoesNotExist()
+        ui.onNodeWithText("展开全文").performClick()
+        ui.onNodeWithText("第 10 段。").assertExists()
+        ui.onNodeWithText("fmt.Println(1)", substring = true).assertExists()
     }
     @Test fun quietTurnsExpandToTheirOriginalText() {
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ChatItemView(ChatItem.QuietScheduled("quiet", listOf(ChatItem.Agent("e1", "Original result")), listOf(1_800_000_000_000), 3), "Codex") } }
@@ -188,6 +217,37 @@ class ScheduleComponentsTest {
         ui.onNodeWithText("保存").assertIsNotEnabled()
         ui.onNodeWithText("取消").assertIsEnabled().performClick()
         assertTrue(closed)
+    }
+
+    @Test fun conversationTabRetainsItsUncappedBadgeAndOriginalSemantics() {
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TabBar("home", 120, 120) {} } }
+        ui.onNodeWithText("120").assertExists()
+        ui.onNodeWithText("99+").assertExists()
+        ui.onAllNodesWithContentDescription("120 件需要处理").assertCountEquals(1)
+    }
+    @Test fun conversationSidebarRetainsPlainOrangeText() {
+        var orangeInk = androidx.compose.ui.graphics.Color.Unspecified
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) {
+            orangeInk = pal.orangeInk; SidebarTabs("home", 120, 120) {}
+        } }
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithText("120", useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(orangeInk, layouts.single().layoutInput.style.color)
+        ui.onNodeWithText("99+").assertExists()
+    }
+
+    @Test fun firstRunningTaskShowsMutedNoResultWithoutRepeatingRunningInItsPreview() {
+        val task = ScheduledTask("computer", buildJsonObject {
+            put("id", "first"); put("status", "running")
+            put("spec", buildJsonObject { put("title", "首次检查"); put("trigger", buildJsonObject { put("type", "interval"); put("interval_seconds", 3600) }) })
+            put("active_run", buildJsonObject { put("id", "active"); put("status", "running"); put("started_at", "2026-10-24T08:00:00Z") })
+        })
+        var muted = androidx.compose.ui.graphics.Color.Unspecified
+        ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { muted = pal.muted; TaskRow(task, RemoteState()) {} } }
+        val layouts = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithText("还没有结果", useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        assertEquals(muted, layouts.single().layoutInput.style.color)
+        ui.onAllNodesWithText("正在运行", substring = true, useUnmergedTree = true).assertCountEquals(1)
     }
 
 }

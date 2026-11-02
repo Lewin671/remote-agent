@@ -610,9 +610,11 @@ fun Page(
     }
 }
 
+internal val WIDE_WINDOW_MIN_WIDTH = 840.dp
+
 /** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
 @Composable
-fun TabBar(route: String?, waiting: Int, scheduledAttention: Int = 0, onSelect: (String) -> Unit) {
+fun TabBar(route: String?, waiting: Int, scheduledAttention: Int = 0, hasNewResults: Boolean = false, onSelect: (String) -> Unit) {
     val p = pal
     Row(Modifier.fillMaxWidth().background(p.card).topLine(p.line).padding(top = 6.dp, bottom = 8.dp)) {
         for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
@@ -621,15 +623,29 @@ fun TabBar(route: String?, waiting: Int, scheduledAttention: Int = 0, onSelect: 
                 Box {
                     Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, if (on) p.blue else p.muted)
                     val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
-                    if (count > 0) Text(
-                        "$count", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
-                        modifier = Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp).clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
-                    )
+                    Box(Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp)) {
+                        if (r == "schedules") NavigationBadge(count, hasNewResults)
+                        else if (count > 0) Text(
+                            "$count", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
+                        )
+                    }
                 }
                 Text(label, style = T.tab, color = if (on) p.blue else p.muted, modifier = Modifier.padding(top = 2.dp))
             }
         }
     }
+}
+
+/** Orange counts actions; blue only says that a result is available. */
+@Composable
+internal fun NavigationBadge(count: Int, hasNewResults: Boolean) {
+    if (count > 0) Text(
+        io.github.lewin671.remoteagent.core.scheduleBadgeText(count), style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(pal.orange)
+            .semantics { contentDescription = "$count 件需要处理" }.padding(horizontal = 5.dp),
+    ) else if (hasNewResults) Box(Modifier.size(12.dp).border(2.dp, pal.card, CircleShape).padding(2.dp).background(pal.blue, CircleShape)
+        .semantics { contentDescription = "有新结果" })
 }
 
 /** A confirmation with one line of text to enter, such as a name. */
@@ -670,7 +686,7 @@ fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
 
 /** Top-level destinations share the same labels, icons and badge counts on wide displays. */
 @Composable
-fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, onSelect: (String) -> Unit) {
+fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, hasNewResults: Boolean = false, onSelect: (String) -> Unit) {
     Column(Modifier.width(200.dp).fillMaxHeight().background(pal.soft).padding(top = 16.dp)) {
         Text("remote-agent", style = T.h17, color = pal.fg, modifier = Modifier.padding(16.dp))
         for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
@@ -679,7 +695,8 @@ fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, onSelect:
                 Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, color)
                 Text(label, Modifier.weight(1f).padding(start = 12.dp), style = T.body, color = color)
                 val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
-                if (count > 0) Text("$count", style = T.metaB, color = pal.orangeInk)
+                if (r == "schedules") NavigationBadge(count, hasNewResults)
+                else if (count > 0) Text("$count", style = T.metaB, color = pal.orangeInk)
             }
         }
     }

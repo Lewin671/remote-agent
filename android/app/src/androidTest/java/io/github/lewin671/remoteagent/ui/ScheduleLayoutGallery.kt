@@ -128,7 +128,8 @@ class ScheduleLayoutGallery {
     private fun both(name: String) { save("$name-light");ui.runOnIdle { dark=true };save("$name-dark");ui.runOnIdle { dark=false } }
     @Composable private fun TaskPage() {
         val badge by remote.schedules.badge.collectAsState()
-        Column(Modifier.fillMaxSize()) { Box(Modifier.weight(1f)) { SchedulesScreen() }; TabBar("schedules",0,badge) {} }
+        val hasNew by remote.schedules.hasNewResults.collectAsState()
+        Column(Modifier.fillMaxSize()) { Box(Modifier.weight(1f)) { SchedulesScreen() }; TabBar("schedules",0,badge,hasNew) {} }
     }
     @Test fun detail() { prepare();content { ScheduleDetailScreen(machine,task.id) };both("detail") }
     @Test fun foreignTimezone() {
@@ -137,7 +138,7 @@ class ScheduleLayoutGallery {
         val spec = JsonObject(task.spec + ("trigger" to trigger))
         val foreign = ScheduledTask(machine, JsonObject(task.json + ("spec" to spec)))
         prepare(listOf(foreign));content { ScheduleDetailScreen(machine,foreign.id) }
-        ui.onNodeWithText("每天 08:00 · $zone").assertExists();both("detail-foreign")
+        ui.onNodeWithText(scheduleTiming(trigger), substring = true).assertExists();both("detail-foreign")
     }
     @Test fun currentDetail() { prepare();content { ScheduleDetailScreen(machine,current.id) };both("current-detail") }
     @Test fun rename() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("任务名").performScrollTo().performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed();both("rename") }
@@ -174,7 +175,7 @@ class ScheduleLayoutGallery {
     }
     @Test fun jump() { prepare();ScheduleJump.requested["layout-session"]=6;content { SessionScreen("layout-session") };save("current-run-jump-light") }
     @Test fun takeover() { prepare(owned=true);content { SessionScreen("layout-owned") };ui.onNodeWithText("回复后，这个对话会移到会话列表").assertExists();both("takeover") }
-    @Test fun deleteConfirm() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("删除任务").performScrollTo().performClick();ui.onNodeWithText("删除这个任务？").assertExists();save("delete-confirm-light") }
+    @Test fun deleteConfirm() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithContentDescription("更多").performClick();ui.onNodeWithText("删除任务…").performClick();ui.onNodeWithText("删除这个任务？").assertExists();save("delete-confirm-light") }
 
     private val longMessage = (1..16).joinToString("\n") { "$it. 检查项目里的更新、构建和测试；有重要结果再通知我。" }
     @Test fun empty() { prepare(emptyList());content { TaskPage() };both("tasks-empty") }

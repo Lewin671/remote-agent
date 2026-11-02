@@ -40,7 +40,8 @@ class SchedulePresentationTest {
         val local = ZoneId.of("America/Los_Angeles")
         fun calendar(zone: String) = buildJsonObject { put("type", "calendar"); put("time", "09:49"); put("timezone", zone) }
         assertEquals("每天 09:49", scheduleTiming(calendar("US/Pacific"), local))
-        assertEquals("每天 09:49 · Asia/Shanghai", scheduleTiming(calendar("Asia/Shanghai"), local))
+        assertEquals("每天 09:49（北京时间）", scheduleTiming(calendar("Asia/Shanghai"), local))
+        assertEquals("每天 09:49（柏林时间）", scheduleTiming(calendar("Europe/Berlin"), local))
         assertEquals("每小时", scheduleTiming(buildJsonObject { put("type", "interval"); put("interval_seconds", 3600); put("timezone", "Asia/Shanghai") }, local))
         assertTrue(scheduleTiming(buildJsonObject { put("type", "at"); put("at", "2026-10-24T13:00:00Z") }, local).endsWith("06:00，一次"))
     }
@@ -93,6 +94,26 @@ class SchedulePresentationTest {
         assertFalse(scheduleTargetMissing(exited))
         assertEquals("运行中的对话已结束。$recurring",scheduleAttentionText(exited))
         assertFalse(scheduleTargetMissing(task("failed","execution_session_missing")))
+    }
+
+    @Test fun metadataUsesOnlyVarietyWithinTheTaskScopeAndKeepsStateLast() {
+        fun task(id: String, cwd: String, agent: String, machine: String = "m") = ScheduledTask(machine, Json.parseToJsonElement("""{"id":"$id","status":"paused","spec":{"trigger":{"type":"interval","interval_seconds":3600},"target":{"type":"new_session","cwd":"$cwd","agent":"$agent"}}}""").jsonObject)
+        val first = task("a", "/example/alpha", "claude")
+        assertEquals("每小时 · 已暂停 · 未连接", scheduleRowMetadata(first, RemoteState(), listOf(first)))
+        val second = task("b", "/example/beta", "codex")
+        assertEquals("每小时 · alpha · Claude Code · 已暂停 · 未连接", scheduleRowMetadata(first, RemoteState(), listOf(first, second)))
+        assertTrue(scheduleCanMark(first.copy(json = JsonObject(first.json + ("runs" to buildJsonArray { add(buildJsonObject { put("id", "r"); put("notified", true) }) }))), false))
+        val stopped = first.copy(json = JsonObject(first.json + ("status" to JsonPrimitive("failed"))))
+        assertFalse(scheduleCanMark(stopped, false))
+        assertFalse(scheduleCanMark(first, true))
+    }
+    @Test fun notificationRoutesNewSessionToTaskAndResumedSessionToConversation() {
+        val task = ScheduledTask("m", Json.parseToJsonElement("""{"id":"t","spec":{"target":{"type":"new_session"}},"runs":[{"id":"r","session_id":"s"}]}""").jsonObject)
+        assertEquals(ScheduleTaskKey("m", "t"), scheduleNotificationTask("s", listOf(task), null))
+        val resumed = task.copy(json = JsonObject(task.json + ("spec" to buildJsonObject { put("target", buildJsonObject { put("type", "resume_session"); put("session", "s") }) })))
+        assertNull(scheduleNotificationTask("s", listOf(resumed), null))
+        val view = SessionView("s", "m", Session.newBuilder().setTaskOwned(true).setScheduledTaskId("t").build())
+        assertEquals(ScheduleTaskKey("m", "t"), scheduleNotificationTask("s", emptyList(), view))
     }
 
 }

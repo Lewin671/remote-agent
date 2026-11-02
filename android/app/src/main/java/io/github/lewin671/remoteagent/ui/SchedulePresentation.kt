@@ -6,7 +6,12 @@ import java.time.*
 
 fun scheduleTiming(trigger: JsonObject, localZone: ZoneId = ZoneId.systemDefault()): String {
     fun canonical(id: String) = android.icu.util.TimeZone.getCanonicalID(id) ?: id
-    return scheduleFrequency(trigger, localZone) + if (trigger.text("type") == "calendar" && trigger.text("timezone").isNotEmpty() && canonical(trigger.text("timezone")) != canonical(localZone.id)) " · ${trigger.text("timezone")}" else ""
+    val id = trigger.text("timezone")
+    val city = if (canonical(id) == "Asia/Shanghai") "北京" else
+        android.icu.text.TimeZoneNames.getInstance(java.util.Locale.SIMPLIFIED_CHINESE)
+            .getExemplarLocationName(canonical(id))?.takeIf { it.isNotBlank() }
+            ?: id.substringAfterLast('/').replace('_', ' ')
+    return scheduleFrequency(trigger, localZone) + if (trigger.text("type") == "calendar" && id.isNotEmpty() && canonical(id) != canonical(localZone.id)) "（${city}时间）" else ""
 }
 fun taskLocation(task: ScheduledTask, state: RemoteState): String {
     val target = task.target
@@ -66,4 +71,34 @@ fun scheduleAttentionText(task: ScheduledTask, now: Instant = Instant.now(), zon
     }
     val takeover = if (task.reason == "agent_schedule_permissions_changed") "继续会由你接管任务，按任务中显示的权限运行。" else ""
     return "${scheduleReason(task.reason)}。$next$takeover"
+}
+
+/** Optional row metadata follows the variety within the visible schedule scope. */
+fun scheduleRowMetadata(task: ScheduledTask, state: RemoteState, tasks: List<ScheduledTask>): String {
+    fun cwd(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.cwd.orEmpty() else t.target.text("cwd")
+    fun agent(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.agent?.let(::agentName).orEmpty()
+        else if (t.target.text("agent") == "claude") "Claude Code" else "Codex"
+    return buildList {
+        add(scheduleTiming(task.trigger))
+        if (tasks.map(::cwd).filter { it.isNotEmpty() }.distinct().size > 1 && cwd(task).isNotEmpty()) add(projectName(cwd(task)))
+        if (tasks.map(::agent).filter { it.isNotEmpty() }.distinct().size > 1 && agent(task).isNotEmpty()) add(agent(task))
+        if (tasks.map { it.machine }.distinct().size > 1) add(machineLabel(state, task.machine))
+        if (task.target.text("type") == "resume_session") add("在「${scheduleDestination(task, state)}」里")
+        if (task.status == "paused") add("已暂停")
+        if (!scheduleWritable(state, task.machine)) add(SCHEDULE_OFFLINE_ROW)
+    }.joinToString(" · ")
+}
+fun scheduleDetailSubtitle(task: ScheduledTask, state: RemoteState, now: Instant): String = when {
+    taskGroup(task) == TaskGroup.ATTENTION -> "已停下"
+    task.target.text("type") == "resume_session" -> "${scheduleTiming(task.trigger)} · 发到「${scheduleDestination(task, state)}」"
+    else -> scheduleTiming(task.trigger) + task.next?.let { " · 下次 ${scheduleWhen(it, now)}" }.orEmpty()
+}
+fun scheduleCanMark(task: ScheduledTask, hasNew: Boolean) = task.latestNotification != null && (taskGroup(task) != TaskGroup.ATTENTION || hasNew)
+
+/** New-session results lead with their task; resumed-session results lead with the conversation. */
+fun scheduleNotificationTask(session: String, tasks: List<ScheduledTask>, view: SessionView?): ScheduleTaskKey? {
+    val task = tasks.firstOrNull { it.target.text("type") == "new_session" && it.allRuns.any { run -> run.session == session } }
+    if (task != null) return ScheduleTaskKey(task.machine, task.id)
+    return view?.takeIf { it.info?.taskOwned == true && it.info?.scheduledTaskId?.isNotEmpty() == true }
+        ?.let { ScheduleTaskKey(it.machineId, it.info!!.scheduledTaskId) }
 }

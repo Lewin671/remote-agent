@@ -165,16 +165,16 @@ class SchedulesTest {
         })
         runCurrent(); assertEquals(0, repo.badge.value)
         list = listOf(task(runs = "[${run("new", 12, true)}]"))
-        remote.value = online(2); runCurrent(); assertEquals(1, repo.badge.value)
-        remote.value = online(2, false); runCurrent(); assertEquals(1, repo.badge.value)
-        assertEquals(1, repo.unread.value[ScheduleTaskKey("computer","task")])
+        remote.value = online(2); runCurrent(); assertEquals(0, repo.badge.value); assertTrue(repo.hasNewResults.value)
+        remote.value = online(2, false); runCurrent(); assertEquals(0, repo.badge.value); assertTrue(repo.hasNewResults.value)
+        assertEquals(true, repo.unread.value[ScheduleTaskKey("computer","task")])
         repo.openTask("computer", "task"); assertEquals(0, repo.badge.value)
         assertEquals(setOf("new"), repo.detailUnread.value)
         remote.value = online(3); list = listOf(task(runs = "[${run("arriving", 13, true)}]"))
         runCurrent(); assertEquals(0, repo.badge.value)
         repo.closeTask("computer", "task")
         list = listOf(task(runs = "[${run("later", 14, true)}]"))
-        remote.value = online(4); runCurrent(); assertEquals(1, repo.badge.value)
+        remote.value = online(4); runCurrent(); assertEquals(0, repo.badge.value); assertTrue(repo.hasNewResults.value)
         remote.value = RemoteState(); runCurrent(); assertEquals(0, repo.badge.value)
     }
     @Test fun repositorySubscribesWithoutPollingAndRefetchesRevisionArrivingDuringRead() = runTest {
@@ -290,10 +290,8 @@ class SchedulesTest {
         assertEquals(data.text("offlineRow"),SCHEDULE_OFFLINE_ROW)
         data["titleFromMessage"]!!.jsonArray.forEach { pair -> assertEquals(pair.jsonArray[1].jsonPrimitive.content, scheduleName("",pair.jsonArray[0].jsonPrimitive.content)) }
         val tasks = data["tasks"]!!.jsonArray.map { ScheduledTask("computer", it.jsonObject) }
-        TaskGroup.entries.forEach { group ->
-            val expected = data["groups"]!!.jsonObject[group.label]!!.jsonArray.map { it.jsonPrimitive.content }
-            assertEquals(if (group == TaskGroup.ACTIVE) listOf("conversation", "quiet") else expected, scheduleSorted(tasks,group).map { it.id })
-        }
+        assertEquals(listOf("attention"), scheduleSorted(tasks, ScheduleInboxGroup.ATTENTION).map { it.id })
+        assertEquals(setOf("conversation", "quiet", "paused"), scheduleSorted(tasks, ScheduleInboxGroup.RECENT).map { it.id }.toSet())
         val stopped=tasks.first { it.id=="attention" }
         assertEquals("创建任务时的权限已改变，任务已停下",scheduleLastResult(stopped))
         assertEquals("没有通知",runResult(stopped.runs.single()))
@@ -303,7 +301,7 @@ class SchedulesTest {
         assertEquals("已暂停：期间计划已到期",scheduleReason("completed_while_paused"))
         val old=ScheduledTask("computer",JsonObject(task("paused","user_paused").json + mapOf("id" to JsonPrimitive("old"),"updated_at" to JsonPrimitive("2026-10-24T10:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T13:00:00Z"))))
         val newer=ScheduledTask("computer",JsonObject(old.json + mapOf("id" to JsonPrimitive("new"),"updated_at" to JsonPrimitive("2026-10-24T11:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T14:00:00Z"))))
-        assertEquals(listOf("new","old"),scheduleSorted(listOf(old,newer),TaskGroup.PAUSED).map { it.id })
+        assertEquals(listOf("old","new"),scheduleSorted(listOf(old,newer),ScheduleInboxGroup.RECENT).map { it.id })
     }
     @Test fun messageLimitCountsUtf8Bytes() {
         assertTrue(scheduleMessageValid("a".repeat(32768)))
@@ -332,6 +330,42 @@ class SchedulesTest {
         assertTrue(scheduleDefinitionAllowed(manual));assertTrue(scheduleRunAllowed(t))
         assertEquals("运行中",scheduleNext(active,now,utc))
         assertEquals("明天 08:00",scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"),now,utc))
+    }
+
+    @Test fun repositoryCacheRestoreNeverDiscardsReadIdsMissingFromThatCache() = runTest {
+        val data = mutableMapOf<String, String>()
+        fun seen() = ScheduleSeen(read = { data[it] }, write = { key, value -> data[key] = value })
+        val full = task(runs = "[${run("old", 12, true)},${run("retained", 13, true)}]")
+        seen().observe("computer", listOf(full))
+        val cached = task(runs = "[${run("old", 12, true)}]")
+        val remote = MutableStateFlow(online(connected = false))
+        val repo = ScheduleRepository(backgroundScope, remote,
+            send = { _, _ -> """{"tasks":[${full.json}]}""".toByteArray() },
+            read = { """{"tasks":[${cached.json}]}""".toByteArray() }, seen = seen())
+        runCurrent(); assertTrue(repo.state.value.getValue("computer").cached)
+        remote.value = online(); runCurrent()
+        assertFalse(repo.hasNewResults.value)
+        assertEquals(false, repo.unread.value[ScheduleTaskKey("computer", "task")])
+    }
+
+    @Test fun markUnreadResolvesTheCurrentTaskInsteadOfTheMenuOpeningSnapshot() = runTest {
+        val remote = MutableStateFlow(online())
+        var current = task(runs = "[${run("old", 12, true)}]")
+        val seen = ScheduleSeen(read = { "[]" })
+        val repo = ScheduleRepository(backgroundScope, remote,
+            send = { _, _ -> """{"tasks":[${current.json}]}""".toByteArray() }, seen = seen)
+        runCurrent(); repo.openTask("computer", "task")
+        val opening = repo.tasks().single()
+        current = task(runs = "[${run("old", 12, true)},${run("new", 13, true)}]")
+        remote.value = online(2); runCurrent()
+        repo.markUnread(opening)
+        assertEquals(setOf("new"), seen.unreadIds(current))
+        remote.value = online(3); runCurrent()
+        assertEquals(setOf("new"), seen.unreadIds(current))
+        val removed = current.copy(json = JsonObject(current.json + mapOf("status" to JsonPrimitive("cancelled"), "reason" to JsonPrimitive("user_cancelled"))))
+        current = removed; remote.value = online(4); runCurrent()
+        repo.markUnread(opening)
+        assertTrue(repo.tasks().isEmpty())
     }
 
 }

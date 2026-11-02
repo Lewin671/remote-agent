@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.platform.testTag
+import androidx.compose.material3.Text
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.*
@@ -84,4 +88,39 @@ class ScheduleSettingsLayoutTest {
         ui.onNodeWithText("Codex").assertIsNotEnabled().performClick()
         assertEquals(Agent.AGENT_CLAUDE, selected)
     }
+    @Test
+    @Config(qualifiers = "w1000dp-h1000dp")
+    fun attentionBannerSharesTheCardAndButtonEdgesInTheConstrainedWideColumn() {
+        var dark by mutableStateOf(false)
+        var fontScale by mutableStateOf(1f)
+        var orangeInk = androidx.compose.ui.graphics.Color.Unspecified
+        val reason = "创建任务时的权限已改变，任务已停下。"
+        ui.setContent {
+            val density = LocalDensity.current
+            RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
+                orangeInk = pal.orangeInk
+                CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+                    Column(Modifier.fillMaxWidth().readableColumn()) {
+                        ScheduleAttentionBanner(reason, Modifier.testTag("attention-banner"))
+                        Btn("恢复", {}, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("attention-button"), BtnKind.PRIMARY)
+                        Card(Modifier.padding(horizontal = 16.dp).testTag("attention-card")) { Text("结果内容") }
+                    }
+                }
+            }
+        }
+        for (night in listOf(false, true)) for (scale in listOf(1f, 2f)) {
+            ui.runOnIdle { dark = night; fontScale = scale }
+            val banner = ui.onNodeWithTag("attention-banner").fetchSemanticsNode().boundsInRoot
+            for (tag in listOf("attention-button", "attention-card")) {
+                val bounds = ui.onNodeWithTag(tag).fetchSemanticsNode().boundsInRoot
+                assertEquals(bounds.left, banner.left, 1f); assertEquals(bounds.right, banner.right, 1f)
+            }
+            ui.onNodeWithTag("attention-banner").assertWidthIsEqualTo(640.dp)
+            val layouts = mutableListOf<TextLayoutResult>()
+            ui.onNodeWithText(reason).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
+            assertEquals(orangeInk, layouts.single().layoutInput.style.color)
+            assertEquals(T.sm.fontSize, layouts.single().layoutInput.style.fontSize)
+        }
+    }
+
 }

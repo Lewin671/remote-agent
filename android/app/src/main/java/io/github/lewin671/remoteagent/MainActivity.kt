@@ -71,6 +71,7 @@ import io.github.lewin671.remoteagent.ui.RemovedScreen
 import io.github.lewin671.remoteagent.ui.SessionScreen
 import io.github.lewin671.remoteagent.ui.SettingsScreen
 import io.github.lewin671.remoteagent.ui.pal
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
     private val openSession = mutableStateOf<Pair<String, String?>?>(null)
     /** The device page, from a recovery notification. */
     private val openDevices = mutableStateOf(false)
+    private val openScheduled = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -131,6 +133,7 @@ class MainActivity : ComponentActivity() {
 
     private fun target(i: Intent?): Pair<String, String?>? =
         i?.getStringExtra(EXTRA_SESSION)?.let {
+            openScheduled.value = i.getBooleanExtra(Notifier.EXTRA_SCHEDULED, false)
             val seq = i.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ, 0)
             if (seq > 0) io.github.lewin671.remoteagent.ui.ScheduleJump.requested[it] = seq
             it to i.getStringExtra(Notifier.EXTRA_APPROVAL)
@@ -143,6 +146,7 @@ class MainActivity : ComponentActivity() {
         // Every page change drops the keyboard first, so the page that leaves
         // does not shrink back under it halfway through the slide.
         val actions = remember(nav, remote) { focus.clearFocus() }
+        val notificationScope = rememberCoroutineScope()
         val target by openSession
         LaunchedEffect(openDevices.value) {
             if (openDevices.value) {
@@ -152,7 +156,36 @@ class MainActivity : ComponentActivity() {
         }
         LaunchedEffect(target) {
             target?.let { (sid, approval) ->
-                actions.session(sid)
+                val scheduled = openScheduled.value
+                if (scheduled) {
+                    val destination = io.github.lewin671.remoteagent.ui.resolveScheduleNotificationRoute(
+                        cached = { io.github.lewin671.remoteagent.ui.cachedScheduleNotificationRoute(sid, remote.schedules.tasks(), remote.state.value.sessions[sid]) },
+                        load = {
+                            remote.state.first { it.loaded || it.removed }
+                            remote.fetchSession(sid)
+                        },
+                    )
+                    when (destination) {
+                        is io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task -> {
+                            io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid)
+                            actions.task(destination.key.machine, destination.key.task)
+                        }
+                        io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Conversation -> actions.session(sid)
+                        io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Inbox -> {
+                            io.github.lewin671.remoteagent.ui.ScheduleJump.requested.remove(sid)
+                            actions.schedules()
+                        }
+                    }
+                    // Navigation is already complete; a slow/offline computer never blocks the tap.
+                    notificationScope.launch {
+                        kotlinx.coroutines.withTimeoutOrNull(3_000) {
+                            val machine = (destination as? io.github.lewin671.remoteagent.ui.ScheduleNotificationRoute.Task)?.key?.machine
+                                ?: remote.state.value.sessions[sid]?.machineId
+                            if (machine != null && io.github.lewin671.remoteagent.core.scheduleWritable(remote.state.value, machine)) remote.schedules.refresh(machine)
+                        }
+                    }
+                } else actions.session(sid)
+                openScheduled.value = false
                 if (approval != null) actions.approval(sid, approval)
                 openSession.value = null
             }
@@ -180,6 +213,9 @@ class MainActivity : ComponentActivity() {
         CompositionLocalProvider(LocalRemote provides remote, LocalNav provides actions) {
             val entry by nav.currentBackStackEntryAsState()
             val route = entry?.destination?.route
+            LaunchedEffect(route) {
+                if (route != null && route != "session/{id}" && route != "task/{machine}/{id}") remote.schedules.showList()
+            }
             VisiblePushSession(
                 RaApp.instance,
                 entry?.takeIf { route == "session/{id}" }?.arguments?.getString("id"),
@@ -276,18 +312,19 @@ class MainActivity : ComponentActivity() {
                     .tone == Tone.WAIT
             }
         val attention by remote.schedules.badge.collectAsState()
+        val hasNewResults by remote.schedules.hasNewResults.collectAsState()
         val select: (String) -> Unit = { r ->
             if (r == "home") {
                 if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
             } else nav.navigate(r) { popUpTo("home"); launchSingleTop = true }
         }
         BoxWithConstraints(Modifier.fillMaxSize().background(pal.card)) {
-            if (maxWidth >= 840.dp) Row {
-                io.github.lewin671.remoteagent.ui.SidebarTabs(route, waiting, attention, select)
+            if (maxWidth >= io.github.lewin671.remoteagent.ui.WIDE_WINDOW_MIN_WIDTH) Row {
+                io.github.lewin671.remoteagent.ui.SidebarTabs(route, waiting, attention, hasNewResults, select)
                 Box(Modifier.weight(1f)) { content() }
             } else Column {
                 Box(Modifier.weight(1f)) { content() }
-                io.github.lewin671.remoteagent.ui.TabBar(route, waiting, attention, select)
+                io.github.lewin671.remoteagent.ui.TabBar(route, waiting, attention, hasNewResults, select)
             }
         }
     }
@@ -311,7 +348,10 @@ class MainActivity : ComponentActivity() {
                 if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
             },
             settings = { go("settings") },
-            schedules = { go("schedules") },
+            schedules = {
+                leave()
+                if (!nav.popBackStack("schedules", inclusive = false)) nav.navigate("schedules") { popUpTo("home"); launchSingleTop = true }
+            },
             task = { machine, id ->
                 val current = nav.currentBackStackEntry
                 val sid = current?.arguments?.getString("id")

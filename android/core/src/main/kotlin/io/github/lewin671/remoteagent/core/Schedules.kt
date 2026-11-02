@@ -39,6 +39,9 @@ data class ScheduledRun(val json: JsonObject) {
     val notificationSource get() = when (json.text("notification_source")) { "agent" -> "agent 通知"; "daemon" -> "完成后通知"; "agent_and_daemon" -> "agent 通知、完成后通知"; "undeliverable" -> "无法请求通知"; else -> "" }
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true
     val summary get() = if (status in stoppedScheduleRuns) scheduleReason(json.text("reason")) else json.text("notification_text").ifEmpty { json.text("final_summary") }.ifEmpty { json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
+    val resultTitle get() = json.text("notification_text").trim().takeIf {
+        json.text("notification_source") in setOf("agent", "agent_and_daemon") && it.isNotEmpty() && it != json.text("final_summary").trim()
+    }.orEmpty()
     val foldedSummary get() = json.text("final_summary").ifBlank { "没有通知" }
     val quiet get() = status == "completed" && !notified
 }
@@ -65,19 +68,69 @@ fun scheduleMessageValid(message: String) = message.isNotBlank() && message.toBy
 const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。"
 const val SCHEDULE_INTERVAL_HINT = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
 fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
-fun scheduleSorted(tasks: List<ScheduledTask>, group: TaskGroup): List<ScheduledTask> {
-    val previous = if (group == TaskGroup.ACTIVE) compareBy<ScheduledTask> { it.next ?: Instant.MAX }
-        else compareByDescending<ScheduledTask> { scheduleInstant(it.json.text("updated_at")) ?: Instant.EPOCH }
-    return tasks.filter { scheduleVisible(it) && taskGroup(it) == group }.sortedWith(
-        compareByDescending<ScheduledTask> { it.latestNotification?.notificationTime }.then(previous).thenBy { it.machine }.thenBy { it.id })
+enum class ScheduleInboxGroup(val label: String) { ATTENTION("需要你看一下"), RECENT("最近"), ENDED("已结束") }
+fun scheduleStopTime(task: ScheduledTask): Instant = task.allRuns.firstOrNull()?.notificationTime
+    ?: scheduleInstant(task.json.text("updated_at")) ?: Instant.EPOCH
+fun scheduleInboxGroup(task: ScheduledTask, hasNew: Boolean): ScheduleInboxGroup = when {
+    taskGroup(task) == TaskGroup.ATTENTION -> ScheduleInboxGroup.ATTENTION
+    taskGroup(task) == TaskGroup.ENDED && !hasNew -> ScheduleInboxGroup.ENDED
+    else -> ScheduleInboxGroup.RECENT
 }
-fun schedulePreview(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String =
-    if (taskGroup(task) == TaskGroup.ATTENTION) scheduleReason(task.reason)
-    else task.latestNotification?.summary ?: scheduleLastResult(task, now, zone)
+fun scheduleSorted(tasks: List<ScheduledTask>, group: ScheduleInboxGroup, hasNew: (ScheduledTask) -> Boolean = { false }): List<ScheduledTask> =
+    tasks.filter { scheduleVisible(it) && scheduleInboxGroup(it, hasNew(it)) == group }.sortedWith(
+        (when (group) {
+            ScheduleInboxGroup.ATTENTION -> compareByDescending<ScheduledTask> { scheduleStopTime(it) }
+            ScheduleInboxGroup.ENDED -> compareByDescending<ScheduledTask> { it.latestNotification?.notificationTime }
+                .thenByDescending { scheduleInstant(it.json.text("updated_at")) ?: Instant.EPOCH }
+            ScheduleInboxGroup.RECENT -> compareByDescending<ScheduledTask> { it.latestNotification?.notificationTime }
+                .thenBy { it.next ?: Instant.MAX }
+        })
+            .thenBy { it.machine }.thenBy { it.id })
+fun scheduleAttentionWord(task: ScheduledTask) = if (task.status == "failed" &&
+    (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)) "没能运行" else "已停下"
+fun scheduleInProgress(task: ScheduledTask) = task.active != null || task.allRuns.any { it.status in setOf("dispatching", "queued", "running") }
+fun schedulePreview(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
+    scheduleInProgress(task) -> task.latestNotification?.summary ?: "还没有结果"
+    taskGroup(task) == TaskGroup.ATTENTION -> "${scheduleAttentionWord(task)} · ${scheduleReason(task.reason).removeSuffix("，任务已停下")}"
+    else -> task.latestNotification?.summary ?: if (task.allRuns.isEmpty()) "还没有运行" + task.next?.let { " · 下次 ${scheduleWhen(it, now, zone)}" }.orEmpty()
+        else scheduleLastResult(task, now, zone)
+}
 
-/** Reuse the compact relative dates from session rows. */
+/** Task rows deliberately use clock/calendar dates, independently of conversation rows. */
+fun scheduleRowTime(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+    val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate(); val date = dt.toLocalDate()
+    return when {
+        date == today -> scheduleClock(at, zone)
+        date == today.minusDays(1) -> "昨天"
+        date < today && date >= today.minusDays(6) -> "周" + listOf("一", "二", "三", "四", "五", "六", "日")[date.dayOfWeek.value - 1]
+        dt.year != today.year -> "${dt.year}年${dt.monthValue}月${dt.dayOfMonth}日"
+        else -> "${dt.monthValue}月${dt.dayOfMonth}日"
+    }
+}
 fun scheduleNotificationTime(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String =
-    task.latestNotification?.let { whenText(it.notificationTime.toEpochMilli(), now.toEpochMilli(), zone) }.orEmpty()
+    (if (taskGroup(task) == TaskGroup.ATTENTION) scheduleStopTime(task) else task.latestNotification?.notificationTime)
+        ?.let { scheduleRowTime(it, now, zone) }.orEmpty()
+
+/** Match the daemon's follow-up boundary; never borrow another scheduled or human turn's reply. */
+fun scheduleFinalAnswer(run: ScheduledRun, events: List<Event>): String? {
+    if (run.id.isEmpty()) return null
+    val ordered = events.sortedBy { it.seq }
+    val start = ordered.indexOfFirst { it.hasUserMessage() && it.origin.scheduledRunId == run.id }
+    if (start < 0) return null
+    var seq = ordered[start].seq
+    var answer: String? = null
+    for (event in ordered.drop(start + 1)) {
+        if (event.seq != seq + 1) return null
+        seq = event.seq
+        val human = event.origin.kind in setOf(OriginKind.ORIGIN_KIND_CLIENT, OriginKind.ORIGIN_KIND_LOCAL)
+        if (human && (event.hasUserMessage() || event.hasSessionState() && event.sessionState.detail == "resumed") ||
+            event.hasUserMessage() && event.origin.scheduledRunId.isNotEmpty() && event.origin.scheduledRunId != run.id ||
+            event.hasSessionState() && event.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) break
+        if (event.hasAgentMessage() && event.agentMessage.phase == "final_answer") answer = event.agentMessage.text.takeIf { it.isNotBlank() }
+    }
+    return answer
+}
+fun scheduleBadgeText(count: Int) = if (count > 99) "99+" else count.toString()
 
 data class ScheduleTaskKey(val machine: String, val task: String)
 fun scheduleRunAllowed(t: ScheduledTask) = t.active == null && t.json["manual_request"] !is JsonObject && taskGroup(t) !in setOf(TaskGroup.ATTENTION, TaskGroup.ENDED)
@@ -187,10 +240,10 @@ fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: Zon
 }
 data class RunGroup(val key: String, val runs: List<ScheduledRun>, val quiet: Boolean)
 fun scheduleRunGroups(runs: List<ScheduledRun>, zone: ZoneId = ZoneId.systemDefault()): List<RunGroup> {
-    val days = runs.filter { it.quiet }.groupBy { it.time.atZone(zone).toLocalDate().toString() }
+    val days = runs.filter { it.quiet }.sortedByDescending { it.notificationTime }.groupBy { it.notificationTime.atZone(zone).toLocalDate().toString() }
     val emitted = HashSet<String>()
-    return runs.sortedByDescending { it.time }.mapNotNull { r ->
-        val day = r.time.atZone(zone).toLocalDate().toString()
+    return runs.sortedByDescending { it.notificationTime }.mapNotNull { r ->
+        val day = r.notificationTime.atZone(zone).toLocalDate().toString()
         if (!r.quiet) RunGroup(r.id, listOf(r), false)
         else if (emitted.add(day)) RunGroup("quiet-$day", days.getValue(day), true) else null
     }
@@ -209,28 +262,36 @@ class ScheduleSeen(
 ) {
     private val seen = HashMap<String, Set<String>>()
     private val loaded = HashMap<String, List<ScheduledTask>>()
+    private val verified = HashSet<String>()
+    private data class UnreadRun(val machine: String, val task: String, val run: String)
+    // Explicit unread marks survive repeated automatic reads in this viewing context.
+    private val manuallyUnread = HashSet<UnreadRun>()
+    private var unreadReturnSession: String? = null
+    private fun clearUnreadGuards() { manuallyUnread.clear(); unreadReturnSession = null }
     private var detail: ScheduleTaskKey? = null
     // The detail page whose visit the dots belong to; it survives the page going to the background.
     private var visit: ScheduleTaskKey? = null
     private var entryUnread: Set<String>? = null
     private var session: String? = null
     val detailUnread: Set<String> @Synchronized get() = entryUnread.orEmpty()
+    val capturedDetail: ScheduleTaskKey? @Synchronized get() = visit?.takeIf { entryUnread != null }
     private fun key(machine: String) = "ra-schedule-seen:" + JsonArray((scope + machine).map(::JsonPrimitive)).toString()
     private fun token(task: String, run: String) = JsonArray(listOf(task, run).map(::JsonPrimitive)).toString()
     private fun save(machine: String, ids: Set<String>) {
         seen[machine] = ids
         runCatching { write(key(machine), JsonArray(ids.map(::JsonPrimitive)).toString()) }
     }
-    @Synchronized fun observe(machine: String, tasks: List<ScheduledTask>) {
-        val ids = tasks.flatMap { t -> t.allRuns.filter { it.notified }.map { token(t.id, it.id) } }.toSet()
+    @Synchronized fun observe(machine: String, tasks: List<ScheduledTask>, authoritative: Boolean = true) {
+        val ids = tasks.filter(::scheduleVisible).flatMap { t -> t.allRuns.filter { it.notified }.map { token(t.id, it.id) } }.toSet()
         loaded[machine] = tasks
+        if (authoritative) verified.add(machine) else verified.remove(machine)
         if (machine !in seen) {
             val stored = runCatching { read(key(machine))?.let { raw -> Json.parseToJsonElement(raw).jsonArray.map { it.jsonPrimitive.also { p -> require(p.isString) }.content }.toSet() } }.getOrNull()
             if (stored != null) seen[machine] = stored else save(machine, ids)
         }
         // Read identities only need to cover the retained run history.
         val retained = seen[machine].orEmpty().intersect(ids)
-        if (retained != seen[machine]) save(machine, retained)
+        if (authoritative && retained != seen[machine]) save(machine, retained)
         markViewed(machine)
     }
     @Synchronized fun unreadIds(task: ScheduledTask): Set<String> = task.allRuns.filter {
@@ -238,6 +299,7 @@ class ScheduleSeen(
     }.map { it.id }.toSet()
     @Synchronized fun openTask(machine: String, task: String) {
         val next = ScheduleTaskKey(machine, task)
+        if (detail != next) clearUnreadGuards()
         if (visit != next) { visit = next; entryUnread = null }
         // Back from the background: notifications that arrived meanwhile were not seen, so they get dots too.
         else entryUnread = entryUnread?.let { kept -> kept + loaded[machine]?.firstOrNull { it.id == task }?.let(::unreadIds).orEmpty() }
@@ -246,22 +308,38 @@ class ScheduleSeen(
     }
     /** The page went to the background: stop reading, but keep this visit's dots. */
     @Synchronized fun hideTask(machine: String, task: String) {
-        if (detail == ScheduleTaskKey(machine, task)) detail = null
+        if (detail == ScheduleTaskKey(machine, task)) {
+            detail = null
+            if (session == null && unreadReturnSession == null) clearUnreadGuards()
+        }
     }
     @Synchronized fun closeTask(machine: String, task: String) {
         val key = ScheduleTaskKey(machine, task)
         if (detail == key) detail = null
-        if (visit == key) { visit = null; entryUnread = null }
+        // Keep the explicit unread mark during the immediate return to its source conversation.
+        if (visit == key) {
+            visit = null; entryUnread = null
+            if (session == null && unreadReturnSession == null) clearUnreadGuards()
+        }
     }
     @Synchronized fun setVisibleSession(value: String?) {
-        session = value?.takeIf { it.isNotEmpty() }
+        val next = value?.takeIf { it.isNotEmpty() }
+        if (next != null && next == unreadReturnSession) unreadReturnSession = null
+        else if (session != next) clearUnreadGuards()
+        session = next
         loaded.keys.forEach(::markViewed)
     }
+    @Synchronized fun showList() {
+        detail = null; session = null; clearUnreadGuards()
+    }
     private fun markViewed(machine: String) {
-        val tasks = loaded[machine].orEmpty()
-        if (entryUnread == null) tasks.firstOrNull { detail == ScheduleTaskKey(machine, it.id) }?.let { entryUnread = unreadIds(it) }
+        // Cached results can render, but a detail visit cannot read them before its full list arrives.
+        val detailVerified = machine in verified
+        val tasks = loaded[machine].orEmpty().filter(::scheduleVisible)
+        if (detailVerified && entryUnread == null) tasks.firstOrNull { detail == ScheduleTaskKey(machine, it.id) }?.let { entryUnread = unreadIds(it) }
         val read = tasks.flatMap { task -> task.allRuns.filter { run -> run.notified &&
-            (detail == ScheduleTaskKey(machine, task.id) || session != null && run.session == session)
+            UnreadRun(machine, task.id, run.id) !in manuallyUnread &&
+            (detailVerified && detail == ScheduleTaskKey(machine, task.id) || session != null && run.session == session)
         }.map { task.id to it } }
         if (read.isEmpty()) return
         val ids = seen[machine].orEmpty() + read.map { (task, run) -> token(task, run.id) }
@@ -269,10 +347,24 @@ class ScheduleSeen(
         // Also dismiss later notification events for an already-read, still-visible run.
         runCatching { onRead(read.map { it.second }) }
     }
-    @Synchronized fun forget(machine: String) { loaded.remove(machine) }
-    @Synchronized fun count(tasks: List<ScheduledTask>) = tasks.filter(::scheduleVisible).sumOf { t ->
-        maxOf(unreadIds(t).size, if (taskGroup(t) == TaskGroup.ATTENTION) 1 else 0)
+    @Synchronized fun forget(machine: String) {
+        loaded.remove(machine); verified.remove(machine); manuallyUnread.removeAll { it.machine == machine }
     }
+    @Synchronized fun markRead(task: ScheduledTask) {
+        val runs = task.allRuns.filter { it.notified }
+        manuallyUnread.removeAll { it.machine == task.machine && it.task == task.id }
+        save(task.machine, seen[task.machine].orEmpty() + runs.map { token(task.id, it.id) })
+        runCatching { onRead(runs) }
+    }
+    @Synchronized fun markUnread(task: ScheduledTask) {
+        val run = task.latestNotification ?: return
+        manuallyUnread.add(UnreadRun(task.machine, task.id, run.id))
+        if (detail == ScheduleTaskKey(task.machine, task.id)) unreadReturnSession = run.session.takeIf { it.isNotEmpty() }
+        save(task.machine, seen[task.machine].orEmpty() - token(task.id, run.id))
+    }
+    @Synchronized fun hasNewResult(task: ScheduledTask) = unreadIds(task).isNotEmpty()
+    @Synchronized fun count(tasks: List<ScheduledTask>) = tasks.count { scheduleVisible(it) && taskGroup(it) == TaskGroup.ATTENTION }
+
 }
 
 /** Event-driven discovery. The in-flight request captures the advertised revision, so metadata
@@ -289,19 +381,32 @@ class ScheduleRepository(
     val state = _state.asStateFlow()
     private val _badge = MutableStateFlow(0)
     val badge = _badge.asStateFlow()
-    private val _unread = MutableStateFlow<Map<ScheduleTaskKey, Int>>(emptyMap())
+    private val _unread = MutableStateFlow<Map<ScheduleTaskKey, Boolean>>(emptyMap())
     val unread = _unread.asStateFlow()
+    private val _hasNewResults = MutableStateFlow(false)
+    val hasNewResults = _hasNewResults.asStateFlow()
     private val _detailUnread = MutableStateFlow<Set<String>>(emptySet())
     val detailUnread = _detailUnread.asStateFlow()
+    private val _capturedDetail = MutableStateFlow<ScheduleTaskKey?>(null)
+    val capturedDetail = _capturedDetail.asStateFlow()
     fun openTask(machine: String, task: String) { seen.openTask(machine, task); updateBadge() }
     fun hideTask(machine: String, task: String) { seen.hideTask(machine, task); updateBadge() }
     fun closeTask(machine: String, task: String) { seen.closeTask(machine, task); updateBadge() }
     fun setVisibleSession(session: String?) { seen.setVisibleSession(session); updateBadge() }
+    fun showList() { seen.showList(); updateBadge() }
+    fun markRead(tasks: List<ScheduledTask>) { tasks.forEach(seen::markRead); updateBadge() }
+    fun markUnread(task: ScheduledTask) = markUnread(task.machine, task.id)
+    fun markUnread(machine: String, id: String) {
+        val current = state.value[machine]?.tasks?.firstOrNull { it.id == id && scheduleVisible(it) } ?: return
+        seen.markUnread(current); updateBadge()
+    }
     private fun updateBadge() {
         val tasks = tasks()
-        _unread.value = tasks.associate { ScheduleTaskKey(it.machine, it.id) to seen.unreadIds(it).size }
+        _unread.value = tasks.associate { ScheduleTaskKey(it.machine, it.id) to seen.hasNewResult(it) }
         _detailUnread.value = seen.detailUnread
+        _capturedDetail.value = seen.capturedDetail
         _badge.value = seen.count(tasks)
+        _hasNewResults.value = tasks.any(seen::hasNewResult)
     }
     private val worker = scope.coroutineContext.minusKey(Job)
     private val loaded = HashSet<String>()
@@ -352,7 +457,7 @@ class ScheduleRepository(
             val raw = read(id) ?: return
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
-            if (id !in removed) { seen.observe(id, tasks); set(id) { ScheduleSnapshot(tasks = tasks, cached = true) } }
+            if (id !in removed) { seen.observe(id, tasks, authoritative = false); set(id) { ScheduleSnapshot(tasks = tasks, cached = true) } }
         } catch (e: CancellationException) { throw e
         } catch (_: Exception) { if (id !in removed) set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
     }
