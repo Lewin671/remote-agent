@@ -37,7 +37,7 @@
 | [acceptance-notes.md](acceptance-notes.md) | 验收 | 各阶段和各端做过的验收：自动测试、真实 CLI、模拟器，以及复现办法 |
 | [design/client-v53.html](design/client-v53.html) | 界面稿 | 当前界面稿：网页（手机和宽屏）和 Android 的全部画面和状态。旧版本在 git 历史里，见第 5 节 |
 
-根目录的 README（英文，附 README.zh-CN.md）面向使用者，只放一眼能看完的东西：动画、四条要点、试用、自部署简版、限制和链接；组件、命令、安全模型、下载校验和更新放在 reference.md。README、reference 和自部署指南是公开的门面，内容以本目录的设计文档为准，两种语言同步改；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
+根目录的 README（英文，附 README.zh-CN.md）面向使用者，也是搜索引擎和 AI 了解本项目的首要入口：动画、一段「是什么」的定义、功能表、工作原理、试用（含让编程 agent 代装的提示词）、自部署简版、和其他方案的对比、常见问题、限制和链接，每节都要能单独读懂；组件、命令、安全模型、下载校验和更新放在 reference.md。README、reference 和自部署指南是公开的门面，内容以本目录的设计文档为准，两种语言同步改；AGENTS.md 只写开发流程和给 agent 的规则，其中重述的核心约束属于有意保留的摘要，以 scope.md 为准。
 
 ## 3. 写之前：内容放哪
 

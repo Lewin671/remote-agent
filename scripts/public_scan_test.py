@@ -154,7 +154,7 @@ class PublicScanTests(unittest.TestCase):
         self.assertEqual([], public_scan.scan([root / p for p in pages]))
         # The README names the official site and public relay in the section
         # on trying them, and nowhere else.
-        for name, section in (('README.md', '## Try it on the public relay'), ('README.zh-CN.md', '## 在公共中继上试用')):
+        for name, section in (('README.md', '## Quick start on the public relay'), ('README.zh-CN.md', '## 在公共中继上试用')):
             text = (root / name).read_text()
             start = text.index(section)
             end = text.index('\n## ', start + len(section))
