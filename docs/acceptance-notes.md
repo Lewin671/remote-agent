@@ -1658,7 +1658,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务：三端按 client-v52 改版（2026-10-30）
 
-产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v53 · 定时任务](design/client-v53.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v54 · 定时任务](design/client-v54.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
 
 | 检查 | 结果 |
 |---|---|
@@ -1677,7 +1677,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务完成通知与接管说明（2026-10-30）
 
-基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v53](design/client-v53.html#schedules)。
+基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v54](design/client-v54.html#schedules)。
 
 - 最终 `go test ./...` 全部通过；`go test ./internal/protocol -count=1` 的文档/协议约束检查也通过。通知标题复用原规则，包括允许尚未生成会话标题的缺失值；`TestScheduledFinish|TestScheduledNotifyTitleUsesExecutionSource` 定向复核通过。
 - 后端定向测试：`go test ./internal/daemon -run 'TestScheduledFinish|TestScheduledNotificationPolicySnapshot|TestMCPTakenOver' -count=1` 通过。覆盖缺省/显式开启、手动运行、已由 agent 通知不补发、关闭时不补发但仍允许 agent 通知、200 字摘要、失败/中断正文、来源会话承载启动失败通知、事件不可写时不记已通知及恢复重试、事件提交而任务保存前重启去重、策略快照、非法值拒绝、接管任务列表只读/来源/全部六种操作报错及跨会话拒绝。后续轮次回归 `TestFollowupSurvivesLaterSkippedRun|TestNonCompletedScheduledFollowups` 通过，保留 daemon 与 agent 通知的合计计数及原始运行结果。
@@ -1719,3 +1719,66 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 `RA_RUN_SCHEDULE_PUSH_E2E=1 go test ./internal/server -run '^TestScheduledWebPushDaemonE2E$' -count=1 -v` 通过。dev-env.sh 从当前 checkout 构建二进制，独立 RA_DEV_DIR、临时账户、数据库、daemon 状态和 tmux socket；测试另起仅替换 HTTP 发送传输的本地 relay。合成加密客户端经 relay 创建任务，真实 Claude Code 2.1.300 / Haiku 5.5 到点完成，daemon 记录通知，relay 发出 Web Push；测试传输独立解开外层后，payload 仍无明文任务名或摘要，客户端再验签解密内层 NotifyContent 并核对结果。环境已清理，无线上中继、日常账户或会话参与。
 
 这是协议客户端触发，未直接操作产品界面；真实 CLI 场景覆盖 daemon 完成通知，Agent notify_user 与 resume_session 由回归测试覆盖。Chrome 扩展未连接，未验证真实浏览器 SW、iPhone PWA、外部 Web Push 投递或 Android 真机 FCM/锁屏；未使用内置浏览器。没有执行完整发布打包或 iOS 全量测试。
+
+## 定时任务 IM 未读：网页（2026-11-01）
+
+基于 `64707901`、产品版本 0.50.2、协议 12 的独立 worktree，仅修改 `web/` 和 `docs/`，不提交、推送、发版或部署。界面与共同文案见 [client-v54 · 定时任务](design/client-v54.html#schedules)，视觉样式见 [design-system](design-system.md#6-组件)。本节只记录自动检查及边界，视觉验收由负责人完成。
+
+### 自动检查
+
+以下命令在 `web/` 下运行；最终全量检查没有使用 retry：
+
+| 命令 | 结果 |
+|---|---|
+| `pnpm install --frozen-lockfile` | 安装成功，锁文件未修改 |
+| `pnpm test` | 92 个文件、1318 项通过 |
+| `pnpm typecheck` | `tsc -b` 成功，退出码 0 |
+| `pnpm build` | `tsc -b && vite build` 成功，2180 个模块转换完成，退出码 0 |
+| `pnpm exec vitest run src/views/devices-ui.test.tsx src/views/lazy-qr.test.tsx --repeats 19 --retry 0 --reporter verbose` | 2 个文件、6 个用例均通过；每例首次执行加重复 19 次，共 20 次，无重试 |
+
+构建保留依赖 `@hpke/common` 的 `crypto` 外部化提示，以及 `authority-setup.ts` 同时静态/动态导入的提示。`git diff --check` 与已暂存改动的同项检查通过。
+
+新增或更新的断言覆盖：
+
+- 以 notified 运行计数，活动运行与历史中相同 ID 去重；同一次运行通知多次只计一条，已读后再次通知不重新变未读；首次有效列表建立历史基线，沿用本地键和存储格式，按中继、客户端和机器隔离。
+- 组内通知时间倒序，有通知先于无通知；无通知保持原来的下次时间或更新时间顺序，包括小数秒差异；较新的静默运行不遮住最近通知摘要。列表复用会话行的 `when()`，测试覆盖「刚刚 / 3 分钟前 / HH:mm / 昨天 / M月D日」；删除独立 `notificationDate` 及其测试。
+- 打开列表保留未读；打开详情只读所选任务。详情绑定后等待首次可用的该任务快照，先捕获未读集合再标已读，覆盖先打开深链详情、后返回列表，以及 StrictMode 重放。后续新运行立即已读，不改变本次蓝点集合；离开后新通知重新计数。
+- 打开实际 SessionPage 后，所有匹配 session_id 的运行已读；覆盖多个任务/运行共用会话、停留期间的新运行，以及其他会话的未读保留。
+- tab 角标按每任务 max（未读数，需要处理时的 1）求和，用户删除的任务不计；手机和宽屏共用数字。宽屏打开定时 tab 时不自动选中任务，主区域是新建任务（与会话 tab 宽屏时主区域新建会话相同），否则排在最前、通知最新的任务会在用户没点开时被标为已读；用户选中的详情不随其他任务的新通知跳转。超过 99 显示 99+，读屏保留实际数字。
+- 长标题、长摘要、离线状态点与第三行元信息；需要处理时原因优先；已有对话的 CLI 从会话元数据取得。界面稿覆盖网页手机、宽屏与 Android 的日常、拥挤、无通知和详情蓝点，宽屏拥挤示例展开全部任务行。
+- 已读集合在完整在线快照成功返回后，与当前 notified 运行身份取交集并保存；过期运行和不再 notified 的身份被删除，其他机器不受影响。部分数据不建立或裁剪基线，加载中/失败响应不调用 observe；已验证缓存可能落后于本地已读状态，加载时不裁剪，迟到缓存不覆盖已到达的在线列表。测试验证重新读取后保留运行不会重新变成未读，完整空列表能清空历史。
+- 精确通知清理：模拟 `serviceWorker.ready`、`getNotifications({ tag })` 和 `close()`；校验等待 ready、相同会话不同 seq 不误关、其他通知类型不误关、缺字段/非安全正整数时跳过、API 各阶段异常静默。组件集成测试覆盖 SessionPage/详情清读到通知 API 的连接，失败时角标照常更新且页面不显示错误；已读运行出现新 seq 时也尝试清理新 tag。
+
+本轮另临时回退 4 处实现：提前捕获空详情集合、按前缀匹配通知、断开 Remote 的清理回调、取消已读历史裁剪。4/4 均由断言检出，随后恢复原文件，再运行最终全量检查；临时回退未留在工作区。
+
+独立审查后的修正：
+
+- 页面在后台时不标已读。网页按 `document.visibilityState`（页面隐藏后连接还会保留 60 秒），Android 按生命周期 STOP/START，iOS 原本就按前台状态。此前停在详情或会话页时切走，新通知会被立即标已读并关掉刚弹出的系统通知。回到前台时补标已读，期间到达的通知补上蓝点；Android 详情页切后台再回来不再丢失本次的蓝点。
+- 网页通知时间补上 `scheduled_at` 的最后一级回退；iOS 失败、中断等运行的列表摘要改为中文原因，与网页、Android 一致。
+
+已知限制（不改协议的前提下保留）：
+
+- 运行记录只有最后一条通知的 `notification_seq`，一次运行发了多条通知时，只能关掉最后一条系统通知。
+- 停在详情页时，如果列表更新先于推送到达，标已读时那条系统通知还没显示，之后弹出的通知会留在通知栏（网页本次加载内不再尝试关闭，Android 在下次列表刷新时关闭）。
+
+### 配对测试超时排查
+
+此前发生 5000ms 超时的用例是 `web/src/views/devices-ui.test.tsx` 的 `shows a QR code and waits for explicit candidate-first SAS confirmation`。该文件已经通过无延迟的 DemoRemote 代替网络，但「生成配对码」仍调用真实 `pairingQRCode()`，它在计时中的用例内动态导入 `qrcode-generator`，将 Vite 的冷模块加载时延与 QR/SAS 界面断言耦合。已有 `lazy-qr.test.tsx` 明确记录过同类冷导入占用 5 秒预算的问题，并使用可控的异步二维码结果隔离它。历史那次超时没有保存分段计时，不能还原当次各阶段的具体耗时；本轮确定并修复的是这个测试隔离缺陷。
+
+本次让 `devices-ui.test.tsx` mock 异步二维码生成，明确校验请求 URL 和返回图像 src，保留候选端先确认、批准按钮禁用/启用及完成绑定断言；二维码异步加载/复用继续由 `lazy-qr.test.tsx` 覆盖。没有修改配对业务代码或放宽超时阈值。上述两个文件每个用例 20 次执行全部通过，`--retry 0`；之后完整 `pnpm test` 一次通过，不再以偶现失败后重跑作为通过证据。
+
+### 系统通知 tag 的依据与边界
+
+本次实现 brief 第 7 项中能够精确确定的部分。`ScheduleRun.notification_seq` 只是声明 daemon 已有 JSON 字段，不改变协议。
+
+- [daemon · schedule_events.go](../internal/daemon/schedule_events.go) 的 `recordRunNotification` 将通知事件 `e.Seq` 写入 `run.NotificationSeq`。`watchScheduledRun` / `watchScheduledFollowup` 从 `run.SessionID` 的日志取该事件；完成通知也仅在 `sid == run.SessionID` 时调用此函数。因此可用的非零序号对应运行的执行会话。
+- [relay · notifyRequest](../internal/relay/sync.go) 将同一事件的 `e.Seq` 写入 `NotifyContent.SourceEventSeq`，将日志的 `sessionID` 写入 `NotifyContent.SessionId`，并用 `scheduled:<e.Seq>` 作去重键；[server · pushNotificationTag](../internal/server/push.go) 拼接会话、去重键和通知类型。
+- [网页 · sw-notify.ts](../web/src/sw-notify.ts) 验证 tag 必须恰好等于 `${c.sessionId}/scheduled:${c.sourceEventSeq}/NOTIFY_KIND_SCHEDULED`。因此有 `run.session_id` 和安全正整数 `run.notification_seq` 时，客户端可用同样的模板精确匹配并关闭通知。
+
+关闭路径为 `navigator.serviceWorker.ready → registration.getNotifications({ tag }) → close()`，返回结果再次核对完整 tag；失败静默，不影响已读。只关闭已知的最后一条执行会话通知。同一运行更早的通知序号没有完整列表；借来源会话补发时，daemon 故意不把来源日志序号写进执行日志游标，因此缺少 seq 的情况跳过。不从 `start_seq` / `after_seq` 推断，也不按会话前缀批量关闭。
+
+### 未覆盖与数据限制
+
+- 按任务要求不使用电脑操作或图形界面工具。本轮没有浏览器操作、截图或目视验收；亮色/暗色、200% 字号、真实窄屏/宽屏布局、长文字省略和点击区域的实际效果由负责人验收。第 9 节清单中颜色 token、字重、元信息、图标、按钮数量和布局约束已做代码自查，不能代替视觉验收。
+- 没有启动隔离 server/daemon，也未触发真实 CLI、实际 Web Push 或系统通知点击。React/模拟 DOM 与模拟 Service Worker API 验证的是客户端行为，不作为整条产品链路或真实通知送达/关闭的证据。Android/iOS 仅更新共同界面稿，未修改或运行它们的代码与测试。
+- 时间来源继续为 `ended_at || started_at`。运行记录没有通知事件时刻，不能精确反映同一次运行中多条或迟到通知的实际发送时间。
