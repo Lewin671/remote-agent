@@ -1,7 +1,7 @@
 import { Clock, MessageSquare } from "../icons";
 import { SchedulesPage } from "./Schedules";
 import { SessionLine } from "./SessionLine";
-import { frequency } from "../schedules";
+import { frequency, unreadLabel } from "../schedules";
 import { authorityName, RecoveryNotice } from "./Security";
 // The home page: a timeline of sessions within a scope (one project, or
 // all of them), its wide-screen form as the sidebar, and the list rows
@@ -917,7 +917,7 @@ export function Sidebar({
       </>}
       <nav className="side-tabs">
         <button className={active === "sessions" ? "on" : ""} onClick={() => go("")}><MessageSquare /> 会话</button>
-        <button className={active === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock /> 定时{remote.scheduleBadge() > 0 && <span className="task-count">{remote.scheduleBadge()}</span>}</button>
+        <button className={active === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock /> 定时{remote.scheduleBadge() > 0 && <span className="task-count schedule-unread" aria-label={`${remote.scheduleBadge()} 条待查看`}>{unreadLabel(remote.scheduleBadge())}</span>}</button>
         <button className={active === "settings" ? "on" : ""} onClick={() => go("settings")}><Settings /> 设置</button>
       </nav>
       <div className="foot">

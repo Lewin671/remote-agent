@@ -1,4 +1,4 @@
-import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type TaskEntry } from "./schedules";
+import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
@@ -53,7 +53,7 @@ import {
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { relayFetch } from "./transport";
-import { restorePushPrefs, watchSecurityPush } from "./push";
+import { closeScheduleNotification, restorePushPrefs, watchSecurityPush } from "./push";
 import {
   checkServer,
   concat,
@@ -494,10 +494,18 @@ export class Remote {
   private get scheduleSeen() {
     return this.scheduleSeenState ??= new ScheduleSeen([this.account.server, this.account.deviceId], {
       getItem: key => localStorage.getItem(key), setItem: (key, value) => localStorage.setItem(key, value),
-    });
+    }, run => { void closeScheduleNotification(run); });
   }
   scheduleBadge() { return this.scheduleSeen.count(this.taskEntries()); }
-  setSchedulesOpen(open: boolean) { this.scheduleSeen.setOpen(open); this.changed(); }
+  scheduleUnread(machineId: string, task: ScheduleTask) { return this.scheduleSeen.unread(machineId, task); }
+  setScheduleDetail(machineId?: string, taskId?: string, visit?: ScheduleDetailVisit) {
+    const unread = this.scheduleSeen.setDetail(machineId, taskId, visit);
+    this.changed();
+    return unread;
+  }
+  setScheduleSession(sessionId?: string) { this.scheduleSeen.setSession(sessionId); this.changed(); }
+  setScheduleVisible(visible: boolean) { this.scheduleSeen.setVisible(visible); this.changed(); }
+  private scheduleLive = new Set<string>();
   private scheduleRequests = new Map<string, string>();
   private scheduleLoading = new Map<string, Promise<void>>();
   private scheduleAgain = new Set<string>();
@@ -567,6 +575,7 @@ export class Remote {
   }
   private forgetSchedules(id: string) {
     this.scheduleSeen.forget(id);
+    this.scheduleLive.delete(id);
     this.schedules.delete(id);
     this.scheduleRequests.delete(id);
     this.scheduleAgain.delete(id);
@@ -616,6 +625,7 @@ export class Remote {
           )
             return;
           this.scheduleSeen.observe(id, tasks);
+          this.scheduleLive.add(id);
           this.schedules.set(id, {
             tasks,
             revision,
@@ -1376,11 +1386,12 @@ export class Remote {
   private async restoreScheduleSnapshot(id: string, kept: Record<string, unknown>) {
     const { msg } = await this.openSecureMessage(fromBinary(EnvelopeSchema, kept.bytes as Uint8Array),
       { kind: PayloadKind.COMMAND_RESULT, machineId: id, sessionId: "", requestId: kept.requestId as string }, CommandResultSchema, true);
-    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed) return;
+    if (!this.machines.has(id) || !this.supportsSchedules(id) || this.removed || this.scheduleLive.has(id)) return;
     if (msg.kind.case === "schedule") {
       const parsed = JSON.parse(new TextDecoder().decode(msg.kind.value.resultJson)) as { tasks: ScheduleTask[] };
       if (Array.isArray(parsed.tasks)) {
-        this.scheduleSeen.observe(id, parsed.tasks);
+        // A verified cache may predate the local read state; only a live full list can prune it.
+        this.scheduleSeen.observe(id, parsed.tasks, { prune: false });
         this.schedules.set(id, { tasks: parsed.tasks, revision: 0n, loading: false, error: "" });
       }
     }

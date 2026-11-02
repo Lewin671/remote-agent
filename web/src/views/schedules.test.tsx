@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { create } from "@bufbuild/protobuf";
 import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
-import { act } from "react";
+import { act, StrictMode } from "react";
 import { Sidebar } from "./Home";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -9,12 +9,13 @@ import { DemoRemote } from "../dev/demo";
 import {
   ScheduleCreate,
   ScheduleDetail,
+  ScheduleRow,
   ScheduleStrip,
   SchedulesPage,
   TimingSheet,
 } from "./Schedules";
 import { PendingBubbles } from "./Queue";
-import { derive } from "../model";
+import { agentName, agentOf, derive, when } from "../model";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { EventSchema, InputStatus, SendMode } from "../gen/remoteagent/v1/event_pb";
 import { SessionPage } from "./Session";
@@ -33,6 +34,7 @@ afterEach(async () => {
   host?.remove();
   for (const r of remotes.splice(0)) r.stop();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   localStorage.clear();
 });
 async function mount(node: React.ReactNode) {
@@ -409,15 +411,16 @@ it("starts a newly selected interval after the full interval", async () => {
   });
 });
 
-it("writes the conversation context in the schedule list's second line", async () => {
+it("writes the conversation context in the schedule list's third line", async () => {
   const t = task();
   t.spec.target = { type: "resume_session", session: "s-idle" };
   const r = remote([t]);
   await mount(<SchedulesPage remote={r} go={() => {}} />);
   const title = r.sessions.get("s-idle")!.info!.title;
-  expect(host.querySelector(".sess .pv")?.textContent).toContain(
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(
     `在「${title}」里`,
   );
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(agentName(agentOf(r.sessions.get("s-idle"))));
 });
 it("creates with an optional name after the message and preserves that name in the draft", async () => {
   const r = remote([]);
@@ -661,11 +664,11 @@ it("uses shared empty copy and resolves a missing conversation before naming it"
   const t=task();t.spec.target={type:"resume_session",session:"not-loaded"};
   r.schedules.get("mac")!.tasks=[t];
   await act(async()=>r.touch());
-  expect(host.querySelector(".sess .pv")?.textContent).toContain("在对话里");
-  expect(host.querySelector(".sess .pv")?.textContent).toContain(t.spec.trigger.timezone);
+  expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(t.spec.trigger.timezone);
   r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",key:{} as CryptoKey,metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
   await act(async()=>r.touch());
-  expect(host.querySelector(".sess .pv")?.textContent).toContain("在对话里");
+  expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
 });
 it("keeps the original interval phase and both unchanged end limits", async () => {
   const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};
@@ -836,25 +839,53 @@ it.each(["at", "cutoff"])("rejects a DST gap and saves the first repeated time f
   expect(save.mock.calls.at(-1)![0][field === "at" ? "at" : "until"]).toBe("2027-10-31T00:30:00.000Z");
 });
 
-it("clears the real navigation badge on opening the list and sees notifications arriving while it stays open", async () => {
+it("keeps unread on opening the list, reads only the detail, and keeps entry dots for this visit", async () => {
   const r = remote([]);
   let tasks: ScheduleTask[] = [];
   vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
     kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
   }));
-  await r.refreshSchedules("mac"); // A real empty result, not a loading placeholder.
-  tasks = [task({ runs: [run("new-notice", { notified: true })] })];
   await r.refreshSchedules("mac");
-  expect(r.scheduleBadge()).toBe(1);
+  tasks = [task({ runs: [run("new-notice", { notified: true })] }), task({ id: "other", runs: [run("other-notice", { notified: true })] })];
+  await r.refreshSchedules("mac");
+  expect(r.scheduleBadge()).toBe(2);
   await mount(<SchedulesPage remote={r} go={() => {}} />);
-  expect(r.scheduleBadge()).toBe(0);
-  tasks[0].runs!.push(run("while-open", { notified: true }));
+  expect(r.scheduleBadge()).toBe(2);
+  expect(host.querySelectorAll(".sess.unread")).toHaveLength(2);
+  tasks[0].runs!.push(run("while-list-open", { notified: true }));
   await act(async () => { await r.refreshSchedules("mac"); });
-  expect(r.scheduleBadge()).toBe(0);
-  await act(async () => root!.unmount()); root = undefined;
-  tasks[0].runs!.push(run("later-notice", { notified: true }));
-  await r.refreshSchedules("mac");
+  expect(r.scheduleBadge()).toBe(3);
+  expect([...host.querySelectorAll(".schedule-unread")].map(e => e.textContent)).toContain("2");
+  await act(async () => root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />));
+  expect(r.scheduleBadge()).toBe(1);
+  expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(2);
+  tasks[0].runs!.push(run("while-detail-open", { notified: true }));
+  await act(async () => { await r.refreshSchedules("mac"); });
+  expect(r.scheduleBadge()).toBe(1);
+  expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(2);
+  await act(async () => root!.render(<SchedulesPage remote={r} go={() => {}} />));
+  tasks[0].runs!.push(run("after-leaving", { notified: true }));
+  await act(async () => { await r.refreshSchedules("mac"); });
   r.conn = "offline";
+  expect(r.scheduleBadge()).toBe(2);
+  await act(async () => root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />));
+  expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(1);
+});
+
+it("reads runs when their actual session page opens and as new runs arrive", async () => {
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac");
+  const session = [...r.sessions.values()][0];
+  tasks = [task({ runs: [run("a", { notified: true, session_id: session.id }), run("b", { notified: true, session_id: session.id }), run("c", { notified: true })] })];
+  await r.refreshSchedules("mac");
+  await mount(<SessionPage remote={r} session={session} wide={false} onBack={() => {}} />);
+  expect(r.scheduleBadge()).toBe(1);
+  tasks[0].runs!.push(run("new", { notified: true, session_id: session.id }));
+  await act(async () => { await r.refreshSchedules("mac"); });
   expect(r.scheduleBadge()).toBe(1);
 });
 
@@ -889,7 +920,7 @@ it("puts new task in the header and remembers the ended group on this device", a
 it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
   const r = remote(); r.machines.get("mac")!.online = false;
   await mount(<SchedulesPage remote={r} go={()=>{}} />);
-  expect(host.querySelector(".row1")?.textContent).toContain("未连接");
+  expect(host.querySelector(".mc")?.textContent).toContain("未连接");
   expect(host.querySelector(".row1")?.textContent).not.toContain("上次");
   await act(async()=>root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />));
   expect(host.querySelectorAll(".schedule-field .ic")).toHaveLength(0);
@@ -1031,4 +1062,103 @@ it("defaults completion notifications on, submits opt-out, and edits the full sn
   expect(edit.getAttribute("aria-checked")).toBe("false");
   await act(async () => edit.click());
   expect(write.mock.calls[0][2].spec).toEqual({ ...original.spec, notify: "finish" });
+});
+
+it("shows the latest notified preview instead of a newer quiet result, caps unread, and retains offline metadata", async () => {
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac");
+  const ended_at = new Date().toISOString();
+  const longTitle = "检查发布记录并汇总需要注意的变化".repeat(4);
+  const summary = "发布说明有值得关注的变化，请核实后再更新。".repeat(10);
+  tasks = [task({
+    spec: { ...task().spec, title: longTitle },
+    runs: [
+      ...Array.from({ length: 105 }, (_, i) => run(`n-${i}`, { notified: true, ended_at, notification_text: summary, final_summary: "最终摘要" })),
+      run("quiet-newer", { started_at: new Date(Date.now() + 60_000).toISOString(), final_summary: "静默结果" }),
+    ],
+  })];
+  await r.refreshSchedules("mac");
+  r.machines.get("mac")!.online = false;
+  await mount(<SchedulesPage remote={r} go={() => {}} />);
+  const row = host.querySelector(".sess")!;
+  expect(row.classList.contains("unread")).toBe(true);
+  expect(row.querySelector(".dot.off")).not.toBeNull();
+  expect(row.querySelector(".row1 b")?.textContent).toBe(longTitle);
+  expect(row.querySelector(".row1 > span")?.textContent).toBe(when(Date.parse(ended_at)));
+  expect(row.querySelector(".pv")?.textContent).toBe(summary);
+  expect(row.querySelector(".schedule-unread")?.textContent).toBe("99+");
+  expect(row.querySelector(".schedule-unread")?.getAttribute("aria-label")).toBe("105 条未读通知");
+  expect(row.querySelector(".mc")?.textContent).toContain("未连接");
+  expect(row.querySelector(".mc")?.textContent).toContain("Claude Code");
+  expect(row.querySelector(".mc")?.textContent).not.toContain("下次");
+  tasks[0].status = "failed";
+  tasks[0].reason = "relay_session_limit";
+  await act(async () => { r.schedules.get("mac")!.tasks = tasks; r.touch(); });
+  expect(host.querySelector(".sess .pv")?.textContent).toBe("中继上的会话数已满");
+});
+
+it("captures unread dots when a deep-linked detail receives its first task snapshot", async () => {
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  const command = vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac");
+  let finish!: (value: ReturnType<typeof create<typeof CommandResultSchema>>) => void;
+  command.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  const loading = r.refreshSchedules("mac");
+  await mount(<StrictMode><ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} /></StrictMode>);
+  expect(host.querySelector(".schedule-unread-dot")).toBeNull();
+  tasks = [task({ runs: [run("entry", { notified: true })] }), task({ id: "other", runs: [run("other", { notified: true })] })];
+  await act(async () => {
+    finish(create(CommandResultSchema, { kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } } }));
+    await loading;
+  });
+  expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(1);
+  expect(r.scheduleBadge()).toBe(1);
+  tasks[0].runs!.push(run("during", { notified: true }));
+  await act(async () => { await r.refreshSchedules("mac"); });
+  expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(1);
+  expect(r.scheduleBadge()).toBe(1);
+});
+
+it.each([
+  [new Date(2026, 10, 1, 13, 59, 40), "刚刚"],
+  [new Date(2026, 10, 1, 13, 57), "3 分钟前"],
+  [new Date(2026, 10, 1, 12), "12:00"],
+  [new Date(2026, 9, 31, 12), "昨天"],
+  [new Date(2026, 9, 28, 12), "10月28日"],
+])("uses the session-row when formatter for notification time %s", async (at, expected) => {
+  const r = remote([]);
+  const t = task({ runs: [run("notice", { notified: true, ended_at: at.toISOString() })] });
+  await mount(<ScheduleRow remote={r} task={t} machineId="mac" go={() => {}} now={new Date(2026, 10, 1, 14).getTime()} />);
+  expect(host.querySelector(".row1 > span")?.textContent).toBe(expected);
+});
+
+it("connects session/detail read transitions to exact notification cleanup without making API errors visible", async () => {
+  const getNotifications = vi.fn().mockImplementation(async ({ tag }: { tag: string }) => [{ tag, close: vi.fn() }]);
+  // Simulated worker API only; this test does not control a browser.
+  vi.stubGlobal("navigator", { serviceWorker: { ready: Promise.resolve({ getNotifications }) } });
+  const r = remote([]);
+  let tasks: ScheduleTask[] = [];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => create(CommandResultSchema, {
+    kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
+  }));
+  await r.refreshSchedules("mac");
+  const session = r.sessions.get("s-idle")!;
+  tasks = [task({ runs: [run("visible", { notified: true, session_id: session.id, notification_seq: 7 }), run("other", { notified: true, notification_seq: 8 })] })];
+  await r.refreshSchedules("mac");
+  expect(getNotifications).not.toHaveBeenCalled();
+  await mount(<SessionPage remote={r} session={session} wide={false} onBack={() => {}} />);
+  expect(getNotifications).toHaveBeenCalledExactlyOnceWith({ tag: `${session.id}/scheduled:7/NOTIFY_KIND_SCHEDULED` });
+  expect(r.scheduleBadge()).toBe(1);
+  getNotifications.mockRejectedValueOnce(new Error("notification API failed"));
+  await act(async () => root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />));
+  expect(getNotifications).toHaveBeenLastCalledWith({ tag: "session-other/scheduled:8/NOTIFY_KIND_SCHEDULED" });
+  expect(r.scheduleBadge()).toBe(0);
+  expect(host.textContent).not.toContain("notification API failed");
 });

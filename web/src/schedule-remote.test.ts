@@ -5,7 +5,7 @@ import {
   MachineMetaSchema,
   CommandResultSchema,
 } from "./gen/remoteagent/v1/remote_pb";
-import { task } from "./test/schedule-fixture";
+import { task, run } from "./test/schedule-fixture";
 import { PROTOCOL_VERSION } from "./protocol";
 
 class Probe extends Remote {
@@ -282,4 +282,45 @@ it("removes a snapshot whose cache write completes after revocation",async()=>{
   const writing=(r as any).keepScheduleSnapshot("computer",{bytes:new Uint8Array([1]),requestId:"read"});
   (r as any).archiveMachines.add("computer");r.machines.get("computer")!.online=false;r.syncSchedules();
   finish();await writing;expect(stored.get("schedules:computer")).toBeUndefined();
+});
+
+it("retains read history while a complete list is pending, fails, or has an incomplete response", async () => {
+  const r = probe();
+  const retained = run("retained", { notified: true });
+  const current = task({ runs: [retained] });
+  const send = vi.spyOn(r, "machineCommand").mockResolvedValue(result({ tasks: [current] }));
+  await r.refreshSchedules("computer");
+  expect(r.scheduleBadge()).toBe(0);
+  let fail!: (reason: Error) => void;
+  send.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+  const loading = r.refreshSchedules("computer");
+  expect(r.schedules.get("computer")!.loading).toBe(true);
+  expect(r.scheduleBadge()).toBe(0);
+  fail(new Error("offline")); await loading;
+  send.mockResolvedValueOnce(result({})); await r.refreshSchedules("computer");
+  expect(r.schedules.get("computer")!.error).toBeTruthy();
+  expect(r.scheduleBadge()).toBe(0);
+  send.mockResolvedValueOnce(result({ tasks: [task({ runs: [retained, run("new", { notified: true })] })] }));
+  await r.refreshSchedules("computer");
+  expect(r.scheduleBadge()).toBe(1);
+});
+
+it("does not prune read history with a stale cache that decrypts after a live complete snapshot", async () => {
+  const r = probe();
+  const retained = run("retained", { notified: true });
+  let tasks = [task({ runs: [retained] })];
+  vi.spyOn(r, "machineCommand").mockImplementation(async () => result({ tasks }));
+  let finish!: (value: unknown) => void;
+  vi.spyOn(r as any, "openSecureMessage").mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const { toBinary } = await import("@bufbuild/protobuf");
+  const { EnvelopeSchema } = await import("./gen/remoteagent/v1/envelope_pb");
+  const restoring = (r as any).restoreScheduleSnapshot("computer", { bytes: toBinary(EnvelopeSchema, create(EnvelopeSchema)), requestId: "cache" });
+  await r.refreshSchedules("computer");
+  tasks = [task({ runs: [retained, run("new", { notified: true })] })];
+  await r.refreshSchedules("computer");
+  expect(r.scheduleBadge()).toBe(1);
+  finish({ msg: result({ tasks: [] }) }); await restoring;
+  expect(r.taskEntries()).toHaveLength(1);
+  await r.refreshSchedules("computer");
+  expect(r.scheduleBadge()).toBe(1);
 });

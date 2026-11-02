@@ -435,7 +435,7 @@ it("derives the final shared grouping, attention reason and state copy from task
   expect(scheduleEmpty).toBe(shared.empty);expect(scheduleOffline).toBe(shared.offline);
   const tasks = shared.tasks as ScheduleTask[];
   const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
-  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual(shared.groups);
+  expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ ...shared.groups, "进行中": ["conversation", "quiet"] });
   const attention = tasks.find(t => t.id === "attention")!;
   expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已停下");
   expect(runResult(attention.runs![0])).toBe("没有通知");
@@ -517,4 +517,29 @@ it("shows undeliverable completion attempts without claiming they notified", () 
  const value = run("undeliverable", {notified:false, notification_source:"undeliverable"});
  expect(notificationSource(value)).toBe("无法请求通知");
  expect(runResult(value)).toBe("没有通知");
+});
+
+it("sorts each group by latest notified run, then preserves the no-notification ordering", () => {
+  const notified = (id: string, time: string) => run(id, { notified: true, ended_at: time });
+  const tasks = [
+    task({ id: "quiet-late", next_run_at: "2026-11-02T12:00:00Z", runs: [run("quiet", { ended_at: "2026-11-03T12:00:00Z" })] }),
+    task({ id: "older", next_run_at: "2026-11-01T01:00:00Z", runs: [notified("older", "2026-11-01T12:00:00Z")] }),
+    task({ id: "newer", next_run_at: "2026-11-03T01:00:00Z", runs: [notified("old", "2026-10-31T01:00:00Z"), notified("new", "2026-11-01T12:00:00.100Z")] }),
+    task({ id: "quiet-early", next_run_at: "2026-11-02T01:00:00Z" }),
+  ];
+  expect(groupTasks(tasks.map(task => ({ machineId: "m", task }))).get("进行中")!.map(e => e.task.id)).toEqual(["newer", "older", "quiet-early", "quiet-late"]);
+  for (const status of ["failed", "paused", "completed"]) {
+    const entries = tasks.map((t, i) => ({ machineId: "m", task: { ...t, status, updated_at: `2026-11-0${i + 1}T00:00:00Z` } }));
+    expect([...groupTasks(entries).values()].flat().map(e => e.task.id)).toEqual(["newer", "older", "quiet-early", "quiet-late"]);
+  }
+});
+it("uses notification summaries even when a newer quiet run exists", async () => {
+  const { latestNotification, notificationTime, unreadLabel } = await import("./schedules");
+  const notice = run("notice", { notified: true, notification_text: "主动通知", final_summary: "最终摘要", ended_at: "2026-11-01T09:30:00Z" });
+  const t = task({ runs: [notice, run("quiet", { started_at: "2026-11-02T01:00:00Z" })] });
+  expect(latestNotification(t)?.id).toBe("notice");
+  expect(runSummary(latestNotification(t)!)).toBe("主动通知");
+  expect(latestNotification(task())).toBeUndefined();
+  expect(notificationTime(run("active", { notified: true, ended_at: undefined }))).toBe("2026-10-24T10:00:00Z");
+  expect([1, 99, 100, 1000].map(unreadLabel)).toEqual(["1", "99", "99+", "99+"]);
 });

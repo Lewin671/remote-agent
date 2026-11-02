@@ -2,6 +2,23 @@
 
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
 import type { Remote } from "./remote";
+import type { ScheduleRun } from "./schedules";
+
+/** A run only identifies its last execution-log notification. Never match a
+ * session prefix: other unread runs may share that session. */
+export async function closeScheduleNotification(run: ScheduleRun): Promise<void> {
+  try {
+    if (!run.session_id || !Number.isSafeInteger(run.notification_seq) || run.notification_seq! <= 0 ||
+        typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    const tag = `${run.session_id}/scheduled:${run.notification_seq}/NOTIFY_KIND_SCHEDULED`;
+    const registration = await navigator.serviceWorker.ready;
+    for (const notification of await registration.getNotifications({ tag })) {
+      if (notification.tag === tag) {
+        try { notification.close(); } catch { /* Continue closing other exact matches. */ }
+      }
+    }
+  } catch { /* Unsupported, denied or failed cleanup must not affect reading. */ }
+}
 
 export interface PushPrefs {
   attention: boolean;

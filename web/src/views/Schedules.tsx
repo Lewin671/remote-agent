@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp } from "../icons";
 import {
   agentName,
+  agentOf,
   defaultModeOf,
   machineName,
   modeOf,
   projectName,
   projects,
   titleOf,
+  when,
   type NewConfig,
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
@@ -38,6 +40,8 @@ import {
   groupRuns,
   groupTasks,
   lastResult,
+  latestNotification,
+  notificationTime,
   localInput,
   nextText,
   oneShot,
@@ -48,6 +52,7 @@ import {
   taskRoute,
   taskTone,
   zonedISO,
+  type ScheduleDetailVisit,
   type ScheduleRun,
   type ScheduleSpec,
   type ScheduleTask,
@@ -96,40 +101,41 @@ export function ScheduleRow({
   const m = remote.machines.get(machineId);
   const multiple = remote.machines.size > 1;
   const target = task.spec.target;
+  const targetSession = remote.sessions.get(target.session ?? "");
   const location =
     target.type === "resume_session"
-      ? remote.sessions.get(target.session ?? "")?.info ? `在「${titleOf(remote.sessions.get(target.session!)!)}」里` : "在对话里"
+      ? targetSession?.info ? `在「${titleOf(targetSession)}」里` : "在对话里"
       : projectName(target.cwd ?? "");
+  const agent = target.type === "resume_session"
+    ? targetSession?.info ? agentName(agentOf(targetSession)) : ""
+    : target.agent === "claude" ? "Claude Code" : "Codex";
   const status =
     remote.conn !== "online" || !m?.online ? scheduleOfflineRow : nextText(task, now);
+  const notification = latestNotification(task);
+  const unread = remote.scheduleUnread(machineId, task).size;
   return (
     <SessionLine
       tone={taskTone(task, remote.conn === "online" && !!m?.online)}
       title={task.spec.title}
-      right={status}
-      preview={[
+      schedule
+      unread={unread}
+      right={notification ? when(Date.parse(notificationTime(notification)), now) : ""}
+      preview={taskGroup(task) === "需要你看一下" ? reasonText(task.reason) : notification ? runSummary(notification) || runResult(notification) : lastResult(task, now)}
+      meta={[
         timingText(task.spec.trigger),
         location,
-        target.agent === "claude"
-          ? "Claude Code"
-          : target.type === "new_session"
-            ? "Codex"
-            : "",
+        agent,
         multiple ? machineName(m) : "",
+        status,
       ]
         .filter(Boolean)
         .join(" · ")}
-      meta={lastResult(task, now)}
       onClick={() => go(taskRoute(machineId, task.id))}
     />
   );
 }
 export function SchedulesPage({ remote, go, sidebar = false, selected }: { remote: Remote; go: Go; sidebar?: boolean; selected?: string }) {
   useRemote(remote);
-  useEffect(() => {
-    remote.setSchedulesOpen(true);
-    return () => remote.setSchedulesOpen(false);
-  }, [remote]);
   const [endedOpen, setEndedOpen] = useState(() => localStorage.getItem("schedule-ended-open") === "true");
   const now = useNow(60_000);
   const entries = remote.taskEntries();
@@ -503,6 +509,11 @@ export function ScheduleDetail({
   const now = useNow(60_000);
   const state = remote.schedules.get(machineId);
   const task = state?.tasks.find((t) => t.id === id);
+  const visit = useMemo<ScheduleDetailVisit>(() => ({}), [machineId, id]);
+  useEffect(() => {
+    remote.setScheduleDetail(machineId, id, visit);
+    return () => { remote.setScheduleDetail(); };
+  }, [remote, machineId, id, visit]);
   const [edit, setEdit] = useState<"" | "name" | "time" | "message" | "target">(
     "",
   );
@@ -585,6 +596,7 @@ export function ScheduleDetail({
       onClick={() => openRun(r)}
     >
       <span>
+        {visit.unread?.has(r.id) && <span className="schedule-unread-dot" role="img" aria-label="进入时未读" />}
         {dateTime(r.started_at, now)} · {runResult(r)}{notificationSource(r) && ` · ${notificationSource(r)}`}
         {r.manual ? " · 手动" : ""}
         <small>{runSummary(r)}</small>

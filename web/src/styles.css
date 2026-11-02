@@ -1114,3 +1114,14 @@ input.field { margin: 0; }
 .schedules-page .large .nb { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--blue); font-size: 22px; }
 .schedule-field .task-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .schedule-run-back { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: var(--blue); }
+
+/* Schedule conversations share SessionLine; blue marks unread notification runs. */
+.sess .preview-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.sess .preview-line .pv { flex: 1; min-width: 0; }
+.sess.schedule-line .row1 { flex-wrap: wrap; }
+.sess.schedule-line .row1 b { flex: 1; min-width: 3em; font-weight: var(--w5); }
+.sess.schedule-line .row1 > span { margin-left: auto; flex: none; }
+.sess.schedule-line.unread .row1 b { font-weight: var(--w6); }
+.sess.schedule-line.unread .pv { color: var(--fg); }
+.schedule-unread, .tabbar .n.schedule-unread, .side-tabs .task-count.schedule-unread { flex: none; background: var(--blue-bg); color: var(--on-solid); border-radius: 999px; font-size: 12px; font-weight: var(--w7); line-height: 1.5; min-width: 20px; padding: 0 6px; text-align: center; font-variant-numeric: tabular-nums; }
+.schedule-unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); margin-right: 8px; vertical-align: middle; }

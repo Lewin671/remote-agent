@@ -173,6 +173,10 @@ export function SessionPage({
   wide: boolean;
 }) {
   useRemote(remote);
+  useEffect(() => {
+    remote.setScheduleSession(session.id);
+    return () => remote.setScheduleSession();
+  }, [remote, session.id]);
   const sid = session.id;
   const events = remote.events(sid);
   const d = useDerived(remote, sid);

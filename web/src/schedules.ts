@@ -52,6 +52,7 @@ export interface ScheduleRun {
   notified: boolean;
   notification_text?: string;
   notification_count?: number;
+  notification_seq?: number;
   notification_source?: "agent" | "daemon" | "agent_and_daemon" | "undeliverable";
   final_summary?: string;
   manual?: boolean;
@@ -107,6 +108,7 @@ export function groupTasks(
         .filter((e) => taskVisible(e.task) && taskGroup(e.task) === g)
         .sort(
           (a, b) =>
+            notificationMillis(latestNotification(b.task)) - notificationMillis(latestNotification(a.task)) ||
             (g === "进行中"
               ? (a.task.next_run_at ?? "9999").localeCompare(
                   b.task.next_run_at ?? "9999",
@@ -263,6 +265,18 @@ export function allRuns(t: ScheduleTask): ScheduleRun[] {
       b.started_at.localeCompare(a.started_at) || b.id.localeCompare(a.id),
   );
 }
+// The run record has no notification timestamp. Use completion time when
+// available, otherwise the start, then the scheduled time; the same on every client.
+export function notificationTime(run?: ScheduleRun): string {
+  return run ? run.ended_at || run.started_at || run.scheduled_at : "";
+}
+function notificationMillis(run?: ScheduleRun): number { return Date.parse(notificationTime(run)) || 0; }
+export function latestNotification(task: ScheduleTask): ScheduleRun | undefined {
+  return allRuns(task).filter(r => r.notified).sort((a, b) =>
+    notificationMillis(b) - notificationMillis(a) || b.id.localeCompare(a.id),
+  )[0];
+}
+export function unreadLabel(count: number): string { return count > 99 ? "99+" : String(count); }
 const stoppedRunLabels: Record<string, string> = {
   failed: "失败",
   uncertain: "无法确认",
@@ -569,20 +583,28 @@ export function localInput(at: string, timezone: string): string {
     .replace(" ", "T");
 }
 
+export type ScheduleDetailVisit = { unread?: ReadonlySet<string> };
+
 /** Only opaque run identities are persisted; task content stays in the encrypted cache. */
 export class ScheduleSeen {
   private seen = new Map<string, Set<string>>();
-  private loaded = new Map<string, Set<string>>();
-  private open = false;
-  constructor(private scope: string[], private storage: Pick<Storage, "getItem" | "setItem">) {}
+  private loaded = new Map<string, ScheduleTask[]>();
+  private detail?: { machine: string; task: string; visit: ScheduleDetailVisit };
+  private dismissed = new Map<string, Set<string>>();
+  private session?: string;
+  private visible = true;
+  constructor(private scope: string[], private storage: Pick<Storage, "getItem" | "setItem">, private onRead: (run: ScheduleRun) => void = () => {}) {}
   private key(machine: string) { return "ra-schedule-seen:" + JSON.stringify([...this.scope, machine]); }
   private save(machine: string, ids: Set<string>) {
     this.seen.set(machine, ids);
     try { this.storage.setItem(this.key(machine), JSON.stringify([...ids])); } catch { /* Keep working in memory when storage is unavailable. */ }
   }
-  observe(machine: string, tasks: ScheduleTask[]) {
+  // Only a complete, verified list may establish a baseline or prune history.
+  // Loading placeholders, partial pages and failed responses must not enter it.
+  observe(machine: string, tasks: ScheduleTask[], options: { complete?: boolean; prune?: boolean } = {}) {
+    if (options.complete === false) return;
     const ids = new Set(tasks.flatMap(t => allRuns(t).filter(r => r.notified).map(r => JSON.stringify([t.id, r.id]))));
-    this.loaded.set(machine, ids);
+    this.loaded.set(machine, tasks);
     if (!this.seen.has(machine)) {
       try {
         const stored: unknown = JSON.parse(this.storage.getItem(this.key(machine)) ?? "null");
@@ -590,16 +612,72 @@ export class ScheduleSeen {
       } catch { /* A missing or unreadable baseline starts with known notifications seen. */ }
       if (!this.seen.has(machine)) this.save(machine, ids);
     }
-    if (this.open) this.save(machine, ids);
+    if (options.prune !== false) {
+      const previous = this.seen.get(machine)!;
+      const retained = new Set([...previous].filter(id => ids.has(id)));
+      if (retained.size !== previous.size) this.save(machine, retained);
+      const notifications = new Set(tasks.flatMap(t => allRuns(t).filter(r => r.notified).map(r => this.dismissKey(t, r))));
+      this.dismissed.set(machine, new Set([...(this.dismissed.get(machine) ?? [])].filter(id => notifications.has(id))));
+    }
+    this.markVisible(machine, tasks);
   }
-  setOpen(open: boolean) {
-    this.open = open;
-    if (open) for (const [machine, ids] of this.loaded) this.save(machine, ids);
+  unread(machine: string, task: ScheduleTask): Set<string> {
+    const seen = this.seen.get(machine);
+    return new Set(allRuns(task).filter(r => r.notified && seen && !seen.has(JSON.stringify([task.id, r.id]))).map(r => r.id));
   }
-  forget(machine: string) { this.loaded.delete(machine); }
+  setDetail(machine?: string, task?: string, visit: ScheduleDetailVisit = {}): ScheduleDetailVisit | undefined {
+    this.detail = machine && task ? { machine, task, visit } : undefined;
+    for (const [id, tasks] of this.loaded) this.markVisible(id, tasks);
+    return this.detail?.visit;
+  }
+  // A hidden page is not being looked at: keep its notifications unread until it shows again.
+  setVisible(visible: boolean) {
+    const shown = visible && !this.visible;
+    this.visible = visible;
+    const detail = this.detail;
+    if (shown && detail?.visit.unread) {
+      // Notifications that arrived while hidden were not seen during the visit, so they get dots too.
+      const task = this.loaded.get(detail.machine)?.find(t => t.id === detail.task);
+      if (task) detail.visit.unread = new Set([...detail.visit.unread, ...this.unread(detail.machine, task)]);
+    }
+    for (const [machine, tasks] of this.loaded) this.markVisible(machine, tasks);
+  }
+  setSession(session?: string) {
+    this.session = session;
+    for (const [machine, tasks] of this.loaded) this.markVisible(machine, tasks);
+  }
+  private markVisible(machine: string, tasks: ScheduleTask[]) {
+    const detail = this.detail;
+    if (detail?.machine === machine && detail.visit.unread === undefined) {
+      const task = tasks.find(t => t.id === detail.task);
+      // Capture exactly once, when this visit first has its task snapshot.
+      if (task) detail.visit.unread = this.unread(machine, task);
+    }
+    if (!this.visible) return;
+    const seen = new Set(this.seen.get(machine));
+    const before = seen.size;
+    const dismissed = this.dismissed.get(machine) ?? new Set<string>();
+    this.dismissed.set(machine, dismissed);
+    for (const t of tasks) for (const r of allRuns(t)) {
+      if (r.notified && ((this.detail?.machine === machine && this.detail.task === t.id) ||
+        (this.session && r.session_id === this.session))) {
+        seen.add(JSON.stringify([t.id, r.id]));
+        const key = this.dismissKey(t, r);
+        if (!dismissed.has(key)) {
+          dismissed.add(key);
+          try { this.onRead(r); } catch { /* Notification cleanup cannot affect reading. */ }
+        }
+      }
+    }
+    if (seen.size !== before) this.save(machine, seen);
+  }
+  private dismissKey(task: ScheduleTask, run: ScheduleRun) {
+    return JSON.stringify([task.id, run.id, run.session_id, run.notification_seq]);
+  }
+  forget(machine: string) { this.loaded.delete(machine); this.dismissed.delete(machine); }
   count(entries: TaskEntry[]) {
-    return entries.filter(({ machineId, task }) => taskVisible(task) && (
-      taskGroup(task) === "需要你看一下" || allRuns(task).some(r => r.notified && this.seen.has(machineId) && !this.seen.get(machineId)!.has(JSON.stringify([task.id, r.id])))
-    )).length;
+    return entries.reduce((sum, { machineId, task }) => sum + (taskVisible(task)
+      ? Math.max(this.unread(machineId, task).size, taskGroup(task) === "需要你看一下" ? 1 : 0)
+      : 0), 0);
   }
 }
