@@ -19,7 +19,7 @@ fun taskLocation(task: ScheduledTask, state: RemoteState): String {
         val agent = it.info?.agent?.takeIf { a -> a != io.github.lewin671.remoteagent.proto.Agent.AGENT_UNSPECIFIED }
         "在「${titleOf(it)}」里" + agent?.let { a -> " · ${agentName(a)}" }.orEmpty()
     } ?: "在对话里"
-        else "${projectName(target.text("cwd"))} · ${if (target.text("agent") == "claude") "Claude Code" else "Codex"}"
+        else "${projectName(target.text("cwd"))} · ${(target.text("agent").takeIf { it.isNotEmpty() }?.let(::agentById) ?: agentInfo()).name}"
     return location + if (state.machines.size > 1) " · ${machineLabel(state, task.machine)}" else ""
 }
 fun taskPermission(task: ScheduledTask, state: RemoteState): String = if (task.target.text("type") == "resume_session")
@@ -77,7 +77,7 @@ fun scheduleAttentionText(task: ScheduledTask, now: Instant = Instant.now(), zon
 fun scheduleRowMetadata(task: ScheduledTask, state: RemoteState, tasks: List<ScheduledTask>): String {
     fun cwd(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.cwd.orEmpty() else t.target.text("cwd")
     fun agent(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.agent?.let(::agentName).orEmpty()
-        else if (t.target.text("agent") == "claude") "Claude Code" else "Codex"
+        else (t.target.text("agent").takeIf { it.isNotEmpty() }?.let(::agentById) ?: agentInfo()).name
     return buildList {
         add(scheduleTiming(task.trigger))
         if (tasks.map(::cwd).filter { it.isNotEmpty() }.distinct().size > 1 && cwd(task).isNotEmpty()) add(projectName(cwd(task)))

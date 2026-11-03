@@ -447,12 +447,18 @@ internal fun ScheduleAgentSetting(agents: List<Agent>, selected: Agent, enabled:
     }
 }
 
-fun scheduleConfig(task: ScheduledTask): NewConfig = NewConfig(task.machine, task.target.text("cwd"), if (task.target.text("agent") == "claude") Agent.AGENT_CLAUDE else Agent.AGENT_CODEX,
-    task.target.text("model"), task.target.text("effort"), when(task.target.text("mode")) { "ask" -> Mode.ASK; "auto" -> Mode.AUTO; "full" -> Mode.FULL; else -> null })
+fun scheduleConfig(task: ScheduledTask): NewConfig = NewConfig(
+    task.machine,
+    task.target.text("cwd"),
+    (task.target.text("agent").takeIf { it.isNotEmpty() }?.let(::agentById) ?: agentInfo()).agent,
+    task.target.text("model"),
+    task.target.text("effort"),
+    when(task.target.text("mode")) { "ask" -> Mode.ASK; "auto" -> Mode.AUTO; "full" -> Mode.FULL; else -> null }
+)
 fun scheduleTarget(cfg: NewConfig, base: JsonObject = JsonObject(emptyMap())): JsonObject {
     val fields = base.toMutableMap()
     fields.putAll(buildJsonObject {
-        put("type", "new_session"); put("cwd", cfg.cwd); put("agent", if (cfg.agent == Agent.AGENT_CLAUDE) "claude" else "codex")
+        put("type", "new_session"); put("cwd", cfg.cwd); put("agent", agentInfo(cfg.agent).id)
         put("model", cfg.model); put("effort", cfg.effort)
     })
     if (cfg.mode == null) fields.remove("mode") else fields["mode"] = JsonPrimitive(cfg.mode.name.lowercase())
