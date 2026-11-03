@@ -1,5 +1,6 @@
 import { isSkeleton } from "./skeleton";
 import { approvalDisplay } from "./approval-display";
+import { agentInfo, agentName, DEFAULT_AGENT, isKnownAgent } from "./agents";
 // View models derived from the decrypted state: projects, session states
 // by priority, what is docked above the input, how a sent message is
 // doing, and how the chat timeline groups events. Everything here is pure,
@@ -77,25 +78,23 @@ export function compareAttention(
 
 // --- agents ---
 
+export { agentName } from "./agents";
+
 /** The CLI a session runs; Codex until the session's record says. */
 export function agentOf(s?: { info?: Session } | Session): Agent {
   const a =
     s && "info" in s ? s.info?.agent : (s as Session | undefined)?.agent;
-  return a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
-}
-
-export function agentName(a: Agent): string {
-  return a === Agent.CLAUDE ? "Claude Code" : "Codex";
+  return agentInfo(a).agent;
 }
 
 /** The CLIs a machine can start; Codex while its list is not known. */
 export function machineAgents(m?: MachineLike): Agent[] {
   const list =
-    m?.meta?.agents.map((a) =>
-      a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX,
-    ) ?? [];
+    m?.meta?.agents
+      .map((a) => agentInfo(a.agent).agent)
+      .filter((a) => isKnownAgent(a)) ?? [];
   const uniq = [...new Set(list)];
-  return uniq.length ? uniq : [Agent.CODEX];
+  return uniq.length ? uniq : [DEFAULT_AGENT];
 }
 
 // --- projects ---
@@ -732,18 +731,13 @@ export function contextText(tokens: bigint | undefined): string {
 export function modelLabel<M extends { slug: string; displayName: string }>(
   models: M[] | undefined,
   id: string,
-  agent: Agent = Agent.CODEX,
+  agent: Agent = DEFAULT_AGENT,
 ): string {
   if (!id) return "";
   const m = findModel(models, id);
   if (m?.displayName) return m.displayName;
-  if (!models || agent === Agent.CLAUDE) return id;
-  return id
-    .split("-")
-    .map((w) =>
-      /^gpt$/i.test(w) ? "GPT" : w.charAt(0).toUpperCase() + w.slice(1),
-    )
-    .join("-");
+  if (!models) return id;
+  return agentInfo(agent).modelLabel(id);
 }
 
 /** Whether the model a CLI reports (id) is the one chosen by slug or
@@ -841,7 +835,7 @@ export function newConfigIssue(
   models?: ModelInfo[],
 ): string {
   if (
-    agent === Agent.CLAUDE &&
+    agentInfo(agent).autoMayBeUnavailable &&
     mode === ApprovalMode.AUTO &&
     autoUnavailable(models, model)
   )
@@ -863,9 +857,9 @@ export function defaultModeOf(
   m: MachineLike | undefined,
   agent: Agent,
 ): DefaultMode {
-  const want = agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX;
+  const want = agentInfo(agent).agent;
   const info = m?.meta?.agents.find(
-    (a) => (a.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) === want,
+    (a) => agentInfo(a.agent).agent === want,
   );
   const known =
     !!info &&
@@ -965,7 +959,7 @@ function usagePercent(u?: TokenUsage): number | undefined {
 }
 
 /** Folds a session's events into what is pending and what happened. */
-export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
+export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
   const d: Derived = {
     approvals: new Map(),
     resolved: new Map(),
@@ -1088,7 +1082,7 @@ export function derive(events: Event[], agent: Agent = Agent.CODEX): Derived {
           const since = queuedAt.get(k.value.requestId);
           if (
             !late &&
-            agent === Agent.CLAUDE &&
+            agentInfo(agent).reconcilesUnclaimedInput &&
             unclaimed !== undefined &&
             e.seq - unclaimed <= 3n &&
             (since === undefined || unclaimed > since)

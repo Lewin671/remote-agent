@@ -1,5 +1,6 @@
 import { forgetSecurity } from "./device-security-store";
-import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { isKnownAgent } from "./agents";
 import { clearEventCache } from "./eventcache";
 import type { NewConfig } from "./model";
 import { checkServer, deviceID, hex } from "./crypto";
@@ -180,7 +181,7 @@ export function loadProjectConfig(
       typeof c.cwd !== "string" ||
       typeof c.model !== "string" ||
       typeof c.effort !== "string" ||
-      ![Agent.CODEX, Agent.CLAUDE].includes(c.agent) ||
+      !isKnownAgent(c.agent) ||
       ![ApprovalMode.UNSPECIFIED, ApprovalMode.ASK, ApprovalMode.AUTO].includes(
         c.mode,
       )

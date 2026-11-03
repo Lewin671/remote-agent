@@ -12,6 +12,7 @@ import {
 } from "./gen/remoteagent/v1/remote_pb";
 import type { SecurityRecord } from "./device-security-store";
 import { derive, agentOf, type Derived } from "./model";
+import { DEFAULT_AGENT } from "./agents";
 import { isSkeleton } from "./skeleton";
 import {
   DeviceSecurityClient,
@@ -4189,7 +4190,7 @@ export class Remote {
   /** The models a machine's CLI offers; pickers refresh completed reads. */
   listModels(
     machineId: string,
-    agent: Agent = Agent.CODEX,
+    agent: Agent = DEFAULT_AGENT,
     fresh = false,
   ): Promise<ListModelsResponse> {
     const key = machineId + "/" + agent;
