@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { agentById, agentInfo } from "../agents";
 import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp, Ellipsis, LoaderCircle } from "../icons";
 import {
   agentName,
@@ -106,7 +107,7 @@ export function ScheduleRow({
   const location = (t: ScheduleTask) => t.spec.target.type === "new_session" ? t.spec.target.cwd ?? "" : remote.sessions.get(t.spec.target.session ?? "")?.info?.cwd ?? "";
   const agent = (t: ScheduleTask) => t.spec.target.type === "resume_session"
     ? remote.sessions.get(t.spec.target.session ?? "")?.info ? agentName(agentOf(remote.sessions.get(t.spec.target.session!))) : ""
-    : t.spec.target.agent === "claude" ? "Claude Code" : "Codex";
+    : t.spec.target.agent ? agentById(t.spec.target.agent).name : agentInfo().name;
   const multiple = (value: (t: ScheduleTask) => string) => new Set(entries.map(e => value(e.task)).filter(Boolean)).size > 1;
   const attention = taskGroup(task) === "需要你看一下";
   const fresh = remote.scheduleHasNew(machineId, task);
@@ -146,7 +147,7 @@ function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, o
   const paused = taskGroup(task) !== "进行中";
   const targetSession = remote.sessions.get(task.spec.target.session ?? "");
   const menuProject = task.spec.target.cwd || targetSession?.info?.cwd;
-  const menuAgent = task.spec.target.type === "resume_session" ? targetSession?.info ? agentName(agentOf(targetSession)) : "" : task.spec.target.agent === "claude" ? "Claude Code" : "Codex";
+  const menuAgent = task.spec.target.type === "resume_session" ? targetSession?.info ? agentName(agentOf(targetSession)) : "" : (task.spec.target.agent ? agentById(task.spec.target.agent).name : agentInfo().name);
   const perform = async (operation: string, spec = task.spec, revision = task.revision) => {
     const after = fromHere(() => onDeleted?.());
     setBusy(true); setError("");
@@ -832,7 +833,7 @@ export function ScheduleDetail({
                 ? (targetSession?.info ? titleOf(targetSession) : "对话")
                 : [
                     projectName(target.cwd ?? ""),
-                    target.agent === "claude" ? "Claude Code" : "Codex",
+                    target.agent ? agentById(target.agent).name : agentInfo().name,
                     remote.machines.size > 1 ? machineName(m) : "",
                   ]
                     .filter(Boolean)
@@ -1025,7 +1026,7 @@ function TaskTargetEditor({
   const [cfg, setCfg] = useState<NewConfig>({
     machineId,
     cwd: target.cwd ?? "",
-    agent: target.agent === "claude" ? Agent.CLAUDE : Agent.CODEX,
+    agent: (target.agent ? agentById(target.agent) : agentInfo()).agent,
     model: target.model ?? "",
     effort: target.effort ?? "",
     mode:
@@ -1048,7 +1049,7 @@ function TaskTargetEditor({
     onSave({
       type: "new_session",
       cwd: cfg.cwd,
-      agent: cfg.agent === Agent.CLAUDE ? "claude" : "codex",
+      agent: agentInfo(cfg.agent).id,
       model: cfg.model,
       effort: cfg.effort,
       mode: (
@@ -1382,7 +1383,7 @@ function ScheduleCreateConfig({
         : {
             type: "new_session",
             cwd: project,
-            agent: ns.cfg.agent === Agent.CLAUDE ? "claude" : "codex",
+            agent: agentInfo(ns.cfg.agent).id,
             model: ns.cfg.model,
             effort: ns.cfg.effort,
             mode: (
