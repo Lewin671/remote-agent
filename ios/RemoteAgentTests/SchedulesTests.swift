@@ -399,9 +399,9 @@ import UIKit
         store.reconcile(state()); await eventually("loaded") { store.loading.isEmpty }
         current.status = "cancelled"; current.reason = "user_cancelled"; list = [current]
         await store.refresh("m")
-        #expect(defaults.dictionaryRepresentation().values.compactMap { $0 as? [String] }.flatMap { $0 }.count == 1)
+        #expect((defaults.persistentDomain(forName: suite) ?? [:]).values.compactMap { $0 as? [String] }.flatMap { $0 }.count == 1)
         list = []; await store.refresh("m")
-        #expect(defaults.dictionaryRepresentation().values.compactMap { $0 as? [String] }.flatMap { $0 }.isEmpty)
+        #expect((defaults.persistentDomain(forName: suite) ?? [:]).values.compactMap { $0 as? [String] }.flatMap { $0 }.isEmpty)
         list = [task()]; list[0].runs = current.runs; await store.refresh("m")
         #expect(store.hasNewResults) // Deleted seen token did not survive removal.
     }
