@@ -56,8 +56,51 @@ var (
 // Code is not installed). home is its settings directory, ~/.claude.
 func New(bin, home string) *Adapter { return &Adapter{bin: bin, home: home} }
 
+func (a *Adapter) ID() string   { return "claude" }
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CLAUDE }
 func (a *Adapter) Name() string   { return "Claude Code" }
+
+func (a *Adapter) StandardWindow() int64 { return StandardWindow }
+
+func (a *Adapter) Env(standardContext bool) map[string]string {
+	env := map[string]string{
+		"CLAUDE_CODE_DISABLE_CRON": "1",
+	}
+	if standardContext {
+		env[StandardContextEnv] = "1"
+	}
+	return env
+}
+
+func (a *Adapter) FileRef(path string) string {
+	return `File: @"` + path + `" (file)`
+}
+
+func (a *Adapter) ParseFileRef(line string) (string, bool) {
+	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
+		return strings.TrimSuffix(strings.TrimPrefix(line, `File: @"`), `" (file)`), true
+	}
+	return "", false
+}
+
+func (a *Adapter) ApprovalsByInput() bool  { return true }
+func (a *Adapter) HoldsInputMidTurn() bool { return true }
+
+func (a *Adapter) ExactScheduleMode(info *pb.Session) string {
+	switch info.PermissionMode {
+	case "default":
+		return "ask"
+	case "auto":
+		return "auto"
+	case "bypassPermissions":
+		return "full"
+	}
+	return ""
+}
+
+func (a *Adapter) RestoredPrompt(styled, prompt string) bool {
+	return RestoredPrompt(styled, prompt)
+}
 
 func (a *Adapter) Bin() string {
 	a.mu.Lock()
@@ -683,6 +726,9 @@ func (a *Adapter) DoctorModels() (string, string, string, string) {
 	cheap, other := picks[len(picks)-1], picks[0]
 	return cheap.ID, cheap.DefaultEffort, other.ID, other.DefaultEffort
 }
+
+func (a *Adapter) DoctorDescription() string { return "the catalog's models" }
+func (a *Adapter) PromptMarks() string       { return "❯" }
 
 // DoctorModes: from manual through accept edits to plan, and back, which
 // needs no auto mode.

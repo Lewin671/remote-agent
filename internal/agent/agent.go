@@ -45,10 +45,25 @@ type Adapter interface {
 	Launcher
 	Source
 	Controller
+	// FileRef formats an uploaded file path for inclusion in a prompt.
+	FileRef(path string) string
+	// ParseFileRef extracts a file path from a line formatted as FileRef.
+	ParseFileRef(line string) (path string, ok bool)
+	// ApprovalsByInput reports whether approval requests are identified by
+	// input digest and retracted at turn end.
+	ApprovalsByInput() bool
+	// HoldsInputMidTurn reports whether the CLI has its own queue that holds
+	// injected input while a turn is running.
+	HoldsInputMidTurn() bool
+	// ExactScheduleMode returns the exact standard mode ("ask", "auto", "full")
+	// for a session's settings, or "" if custom or nonstandard.
+	ExactScheduleMode(info *pb.Session) string
 }
 
 // Launcher starts and resumes the CLI.
 type Launcher interface {
+	// ID is the CLI's short identifier and command name, e.g. "codex", "claude".
+	ID() string
 	// Kind is the CLI's protocol value.
 	Kind() pb.Agent
 	// Name is the CLI's name for messages, e.g. "Codex".
@@ -78,6 +93,11 @@ type Launcher interface {
 	// default). known is false when the configuration could not be read;
 	// varies, when settings in a session's folder may change it.
 	DefaultMode(cwd string) (mode pb.ApprovalMode, known, varies bool)
+	// StandardWindow is the fixed context window when standard context is
+	// enabled, or 0 if the CLI does not offer standard context.
+	StandardWindow() int64
+	// Env returns the extra environment variables for a session of this CLI.
+	Env(standardContext bool) map[string]string
 	// Argv is the command line after the executable that starts, resumes
 	// or forks a session. It may write files the CLI reads into l.Dir and
 	// set l.SessionID when the adapter chooses the CLI's session ID.
@@ -212,6 +232,9 @@ type Controller interface {
 	Compact(t Term, started func() bool) error
 	// AnswerPlan answers the CLI's prompt about a proposed plan.
 	AnswerPlan(t Term, choice pb.PlanChoice) error
+	// RestoredPrompt reports whether the terminal screen shows the original
+	// prompt restored after an early cancel without a turn end record.
+	RestoredPrompt(styled, prompt string) bool
 }
 
 // ModeFacts is what the daemon knows about a session that tells which
@@ -429,7 +452,14 @@ type Checkable interface {
 	// StartupKeys are the tmux key names a local user presses to get past
 	// a startup popup; nil if there is nothing to press.
 	StartupKeys(popup string) []string
+	// DoctorDescription is a human-readable description of how doctor tests the CLI.
+	DoctorDescription() string
+	// PromptMarks returns the prompt characters the terminal input box displays.
+	PromptMarks() string
 }
+
+// SafeValue matches safe model and effort identifiers.
+var SafeValue = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 // EventImages lists the image refs of an event.
 func EventImages(e *pb.Event) []*pb.ImageRef {

@@ -42,8 +42,40 @@ func New(bin, home, history string) *Adapter {
 	return &Adapter{bin: bin, home: home, history: history}
 }
 
+func (a *Adapter) ID() string   { return "codex" }
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CODEX }
 func (a *Adapter) Name() string   { return "Codex" }
+
+func (a *Adapter) StandardWindow() int64                       { return 0 }
+func (a *Adapter) Env(standardContext bool) map[string]string { return nil }
+func (a *Adapter) FileRef(path string) string                  { return "File: " + path }
+
+func (a *Adapter) ParseFileRef(line string) (string, bool) {
+	if strings.HasPrefix(line, "File: ") {
+		return strings.TrimPrefix(line, "File: "), true
+	}
+	if strings.HasPrefix(line, "@") {
+		return strings.TrimPrefix(line, "@"), true
+	}
+	return "", false
+}
+
+func (a *Adapter) ApprovalsByInput() bool  { return false }
+func (a *Adapter) HoldsInputMidTurn() bool { return false }
+
+func (a *Adapter) ExactScheduleMode(info *pb.Session) string {
+	switch {
+	case info.ApprovalsReviewer == "user" && info.ApprovalPolicy == "on-request" && info.Sandbox == "workspace-write":
+		return "ask"
+	case info.ApprovalsReviewer == "auto_review" && info.ApprovalPolicy == "on-request" && info.Sandbox == "workspace-write":
+		return "auto"
+	case info.ApprovalsReviewer == "user" && info.ApprovalPolicy == "never" && info.Sandbox == "danger-full-access":
+		return "full"
+	}
+	return ""
+}
+
+func (a *Adapter) RestoredPrompt(styled, prompt string) bool { return false }
 
 func (a *Adapter) Bin() string {
 	a.mu.Lock()
@@ -392,6 +424,9 @@ func (a *Adapter) Interrupt() []byte { return []byte(agent.KeyEsc) }
 func (a *Adapter) DoctorModels() (string, string, string, string) {
 	return "gpt-6-luna", "low", "gpt-6-luna", "medium"
 }
+
+func (a *Adapter) DoctorDescription() string { return "GPT-6-Luna, low effort" }
+func (a *Adapter) PromptMarks() string       { return "›" }
 
 func (a *Adapter) DoctorModes() []pb.ApprovalMode {
 	return []pb.ApprovalMode{pb.ApprovalMode_APPROVAL_MODE_AUTO, pb.ApprovalMode_APPROVAL_MODE_PLAN, pb.ApprovalMode_APPROVAL_MODE_ASK}
