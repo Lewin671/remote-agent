@@ -378,6 +378,12 @@ struct EventReducer: Sendable {
     }
 
     func snapshot() -> Derived { d }
+
+    /// Whether the tool started at `start` has its call, as far as the events go.
+    func completed(_ start: UInt64) -> Bool { d.completedAt[start] != nil }
+
+    /// Whether the turn context at `seq` shows a change made in the terminal.
+    func changedInTerminal(_ seq: UInt64) -> Bool { d.terminalChanges[seq] != nil }
 }
 
 /// Derives a session's state as its events grow: the reducer's state is

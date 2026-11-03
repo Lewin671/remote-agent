@@ -77,6 +77,7 @@ actor ChatBuilder {
     private let parse: @Sendable (String) -> [MarkdownBlock]
     private var reduce = EventProjection()
     private var chat = ChatProjection()
+    private var fold = ScheduledFold()
     private var key: Key?
     private var parsed: [String: Parsed] = [:]
 
@@ -125,7 +126,7 @@ actor ChatBuilder {
                 rows.append(ChatRow(item: item, blocks: blocks))
             }
         }
-        for group in silentScheduledGroups(events).reversed() {
+        for group in fold.update(events).reversed() {
             let first = rows.firstIndex { $0.id == "e\(group.firstSeq)" }
             let last = rows.lastIndex { row in
                 guard row.id.hasPrefix("e"), let seq = UInt64(row.id.dropFirst()) else { return false }
