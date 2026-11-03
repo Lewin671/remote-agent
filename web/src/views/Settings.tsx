@@ -1,11 +1,12 @@
 import { Switch } from "../ui";
 import { useEffect, useState } from "react";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type {
   AgentDefaults,
   DaemonSettings,
   ListModelsResponse,
 } from "../gen/remoteagent/v1/local_pb";
+import { agentInfo, defaultsFor, machineVersions, withDefaults } from "../agents";
 import {
   agentName,
   ago,
@@ -252,13 +253,12 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   // Reset times pass with nothing else changing.
   const now = useNow(30_000);
   const views = machineQuotaViews(m.meta, agents, now, m.online);
-  const kind = (a: Agent) => (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX);
   return (
     <>
       <div className="glabel">账户额度</div>
       <div className="grp">
         {agents.map((a) => {
-          const mine = views.filter((v) => v.agent === kind(a));
+          const mine = views.filter((v) => v.agent === agentInfo(a).agent);
           const tone = mine.some((v) => v.rows.some((r) => r.tone === "full"))
             ? " full"
             : mine.some((v) => v.rows.some((r) => r.tone === "warn"))
@@ -805,43 +805,6 @@ type Field =
   | { agent: Agent; what: "model" | "effort" | "mode" }
   | { what: "timeout" };
 
-function defaultsFor(
-  st: DaemonSettings,
-  agent: Agent,
-): { model: string; effort: string; mode: ApprovalMode } {
-  if (agent === Agent.CLAUDE)
-    return {
-      model: st.claude?.model ?? "",
-      effort: st.claude?.effort ?? "",
-      mode: st.claude?.mode ?? ApprovalMode.UNSPECIFIED,
-    };
-  return {
-    model: st.defaultModel,
-    effort: st.defaultEffort,
-    mode: st.defaultMode,
-  };
-}
-
-function withDefaults(
-  st: DaemonSettings,
-  agent: Agent,
-  patch: Partial<Omit<AgentDefaults, "$typeName">>,
-): DaemonSettings {
-  if (agent === Agent.CLAUDE) {
-    const cur = defaultsFor(st, agent);
-    return {
-      ...st,
-      claude: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
-    };
-  }
-  return {
-    ...st,
-    ...(patch.model !== undefined && { defaultModel: patch.model }),
-    ...(patch.effort !== undefined && { defaultEffort: patch.effort }),
-    ...(patch.mode !== undefined && { defaultMode: patch.mode }),
-  };
-}
-
 /** One machine: usage, CLI versions, new-session defaults per CLI, its
  * projects. */
 export function MachinePage({
@@ -903,19 +866,7 @@ export function MachinePage({
   ).filter((p) => p.machines.includes(id));
   const name = machineName(m);
   const meta = m.meta;
-  const codex =
-    meta?.agents.find((a) => a.agent === Agent.CODEX) ??
-    (meta?.codexVersion
-      ? {
-          agent: Agent.CODEX,
-          version: meta.codexVersion,
-          verified: meta.codexVerified,
-        }
-      : undefined);
-  const versions = [
-    codex,
-    ...(meta?.agents.filter((a) => a.agent !== Agent.CODEX) ?? []),
-  ].filter((v): v is NonNullable<typeof v> => !!v?.version);
+  const versions = machineVersions(meta);
   const modelName = (a: Agent, slug: string) =>
     modelLabel(models.get(a)?.models, slug, a);
 
