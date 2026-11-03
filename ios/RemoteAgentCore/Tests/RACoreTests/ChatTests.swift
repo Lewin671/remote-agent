@@ -376,6 +376,67 @@ import Testing
         #expect(p.update(array, d: derive(array), machine: "M") == buildChat(array, d: derive(array), machine: "M"))
     }
 
+    @Test func theSameHistoryAndStateAgainBuildsNoRows() {
+        let zone = Mk.shanghai
+        let now = Mk.at(2026, 10, 4, 18, 0)
+        let ended = Mk.at(2026, 10, 4, 14, 6) / 1000
+        var events = PagedList(numbered([
+            Mk.user("hello"),
+            .toolStarted(.with { $0.callID = "c"; $0.title = "go test" }),
+            Mk.agent("reply"),
+        ]))
+        events = events.appending([Mk.ev(4, .sessionState(.with { $0.status = .exited }), sec: ended)])
+        let asked = Counter()
+        var p = ChatProjection()
+        func update(_ list: PagedList<PBEvent>, _ d: Derived, now: Int64 = now, zone: TimeZone = zone) -> [ChatItem] {
+            p.update(list, d: d, machine: "M", now: now, zone: zone, who: { _ in asked.increment(); return nil })
+        }
+        let d = derive(events)
+        let first = update(events, d)
+        #expect(first == buildChat(events, d: d, machine: "M", now: now, zone: zone))
+        #expect(p.builds == 1)
+        let whos = asked.value
+        // The same snapshot again, later the same day: nothing is built or asked.
+        for later in [now, now + 60_000, Mk.at(2026, 10, 4, 23, 59)] {
+            #expect(update(events, d, now: later) == first)
+        }
+        #expect(p.builds == 1 && asked.value == whos)
+        // The state changed (the live snapshot says a turn runs): built again, as a full build.
+        var running = d
+        running.running = true
+        running.tools = [RunningTool(title: "go test", callId: "c", since: 0, kind: .unspecified, itemType: "", seq: 2, input: "", inputDigest: "")]
+        #expect(update(events, running) == buildChat(events, d: running, machine: "M", now: now, zone: zone))
+        #expect(p.builds == 2)
+        #expect(update(events, running) != first && p.builds == 2)
+        // Another day names the date of the end; another zone may name another day.
+        let tomorrow = Mk.at(2026, 10, 5, 9, 0)
+        let next = update(events, running, now: tomorrow)
+        #expect(next == buildChat(events, d: running, machine: "M", now: tomorrow, zone: zone) && p.builds == 3)
+        #expect(next.last == .turnEnd(.init(key: "e4", text: "10月4日 14:06 结束")))
+        let utc = TimeZone(identifier: "UTC")!
+        #expect(update(events, running, now: tomorrow, zone: utc) == buildChat(events, d: running, machine: "M", now: tomorrow, zone: utc))
+        #expect(p.builds == 4)
+        // A copy built apart is not known to hold the same history: built once more, then kept.
+        let copy = PagedList(Array(events))
+        #expect(update(copy, running, now: tomorrow, zone: utc) == buildChat(copy, d: running, machine: "M", now: tomorrow, zone: utc))
+        #expect(p.builds == 5)
+        #expect(update(copy, running, now: tomorrow, zone: utc) != [] && p.builds == 5)
+    }
+
+    @Test func aPassAfterAppendedMessagesBuildsTheRowsOnceAsBefore() {
+        var events = PagedList(numbered([Mk.user("hello"), Mk.agent("reply")]))
+        var p = ChatProjection()
+        _ = p.update(events, d: derive(events), machine: "M")
+        #expect(p.builds == 1)
+        events = events.appending([Mk.ev(3, Mk.user("again")), Mk.ev(4, Mk.agent("more"))])
+        _ = p.update(events, d: derive(events), machine: "M")
+        #expect(p.builds == 1, "messages append")
+        #expect(p.update(events, d: derive(events), machine: "M") == buildChat(events, d: derive(events), machine: "M"))
+        #expect(p.builds == 2)
+        _ = p.update(events, d: derive(events), machine: "M")
+        #expect(p.builds == 2)
+    }
+
     @Test func ordinaryAppendRetainsExistingRowObjects() {
         // Rows are values here: what is kept is that the old rows are not built again, so they stay equal and in place.
         let first = Mk.ev(1, Mk.user("hello"))

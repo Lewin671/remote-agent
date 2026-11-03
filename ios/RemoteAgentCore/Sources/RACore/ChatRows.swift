@@ -625,6 +625,8 @@ public func duration(_ ms: Int64) -> String {
 }
 
 /// Ordinary messages append without rebuilding old rows. State-changing events use the full builder.
+/// The same events, state, day and zone again give the rows kept from before: `textOf` and `who`
+/// must answer as they did for the same context (a caller whose answers change starts a new projection).
 public struct ChatProjection: Sendable {
     private struct Context: Equatable {
         var machine: String
@@ -633,9 +635,20 @@ public struct ChatProjection: Sendable {
         var agent: PBAgent
     }
 
+    /// What the rows were built from besides the events and the context: dates name the day only when it is not today.
+    private struct Inputs: Equatable {
+        var d: Derived
+        var zone: TimeZone
+        var day: LocalDay
+        static func == (a: Inputs, b: Inputs) -> Bool { a.zone == b.zone && a.day.sameDay(b.day) && a.d == b.d }
+    }
+
     private var previous = PagedList<PBEvent>()
     private var items = [ChatItem]()
     private var context: Context?
+    private var inputs: Inputs?
+    /// Passes that built every row, for tests.
+    private(set) var builds = 0
 
     public init() {}
 
@@ -652,11 +665,15 @@ public struct ChatProjection: Sendable {
         who: (PBOrigin?) -> String? = { _ in nil }
     ) -> [ChatItem] {
         let next = Context(machine: machine, cwd: cwd, home: home, agent: agent)
+        let given = Inputs(d: d, zone: zone, day: LocalDay(ms: now, zone: zone))
         // Published histories share immutable pages. Check their append lineage
         // instead of comparing every old protobuf on every arriving message.
-        let append = context == next && !previous.isEmpty && events.count > previous.count
+        let continues = context == next && !previous.isEmpty && events.count >= previous.count
             && ((events as? PagedList<PBEvent>).map { $0.extends(previous) }
                 ?? zip(events, previous).allSatisfy { $0 == $1 })
+        // Nothing the rows are built from changed (a live snapshot that says what the history says).
+        if continues && events.count == previous.count && inputs == given { return items }
+        let append = continues && events.count > previous.count
         let tail = append ? Array(events.dropFirst(previous.count)) : []
         let messages = append && tail.allSatisfy {
             switch $0.kind {
@@ -680,9 +697,14 @@ public struct ChatProjection: Sendable {
                 }
             }
             previous = (events as? PagedList<PBEvent>) ?? previous.appending(tail)
+            // Rows appended were not built against the whole state: the next
+            // pass, even with nothing new, builds them all once more, as before.
+            inputs = nil
         } else {
             items = buildChat(events, d: d, machine: machine, cwd: cwd, home: home, now: now, zone: zone, textOf: textOf, who: who)
             previous = (events as? PagedList<PBEvent>) ?? PagedList(events)
+            builds += 1
+            inputs = given
         }
         context = next
         return items

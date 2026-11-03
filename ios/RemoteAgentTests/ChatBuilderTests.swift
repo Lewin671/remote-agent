@@ -283,4 +283,80 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(model.rows.last?.item == .turnEnd(.init(key: "e4", text: "本轮用时 2 秒")))
         #expect(model.fetchError == "没能读取历史：超时")
     }
+
+    /// Two silent scheduled checks and a reply to a person, two hours apart on one day.
+    private func scheduledChecks() -> [PBEvent] {
+        var out = [PBEvent]()
+        func add(_ change: (inout PBEvent) -> Void) {
+            var e = PBEvent()
+            e.seq = UInt64(out.count + 1)
+            change(&e)
+            out.append(e)
+        }
+        for (hour, run) in [(9, "a"), (11, "b")] {
+            add {
+                $0.time.seconds = 1_793_000_000 + Int64(hour) * 3600
+                $0.userMessage.text = "检查"
+                $0.origin.scheduledRunID = run
+            }
+            add { $0.agentMessage.text = "没有新回复" }
+            add {
+                $0.turnEnded.outcome = .completed
+                $0.turnEnded.scheduledRunID = run
+            }
+        }
+        add { $0.userMessage.text = "看一下" }
+        add { $0.agentMessage.text = "**好的**" }
+        return out
+    }
+
+    private func storage(_ rows: [ChatRow]) -> UnsafeRawPointer? {
+        rows.withUnsafeBufferPointer { UnsafeRawPointer($0.baseAddress) }
+    }
+
+    @Test func theSameHistoryAgainKeepsTheRowsBuiltBefore() async {
+        let parses = Parses()
+        let builder = ChatBuilder(parse: parses.parse)
+        let list = PagedList(scheduledChecks())
+        let first = await builder.build(list, ChatParams())
+        #expect(first.rows.map(\.id) == ["scheduled-1", "e7", "e8"])
+        #expect(first.rows[0].folded.map(\.id) == ["e1", "e2", "e4", "e5"])
+        // A live snapshot that says what the history says, then the same snapshot again.
+        let idle = ChatParams(live: .with { $0.running = false })
+        let again = await builder.build(list, idle)
+        let still = await builder.build(list, idle)
+        #expect(again.rows == first.rows && still.rows == first.rows)
+        #expect(storage(again.rows) == storage(first.rows) && storage(still.rows) == storage(first.rows))
+        #expect(parses.all == ["没有新回复", "没有新回复", "**好的**"])
+        // Another check after the reply: the rows are built anew.
+        var next = scheduledChecks()
+        for i in 0..<3 {
+            var e = next[i]
+            e.seq = UInt64(next.count + 1)
+            if i == 0 { e.time.seconds += 4 * 3600; e.origin.scheduledRunID = "c" }
+            if i == 2 { e.turnEnded.scheduledRunID = "c" }
+            next.append(e)
+        }
+        let grown = await builder.build(list.appending(Array(next[8...])), idle)
+        #expect(grown.rows.map(\.id) == ["scheduled-1", "e7", "e8", "e9", "e10"])
+        #expect(storage(grown.rows) != storage(first.rows))
+    }
+
+    @Test func aSentTextChangedUnderTheSameIdIsShown() async {
+        let builder = ChatBuilder()
+        let list = PagedList(
+            events([
+                user("开始"),
+                .inputState(
+                    .with {
+                        $0.requestID = "q1"
+                        $0.status = .canceled
+                        $0.reason = "exited"
+                    }),
+            ]))
+        let first = await builder.build(list, ChatParams(texts: ["q1": "原来的"]))
+        #expect(first.rows.last?.item == .unsent(.init(key: "uq1", requestId: "q1", text: "原来的")))
+        let changed = await builder.build(list, ChatParams(texts: ["q1": "改过的"]))
+        #expect(changed.rows.last?.item == .unsent(.init(key: "uq1", requestId: "q1", text: "改过的")))
+    }
 }

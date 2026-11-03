@@ -64,7 +64,7 @@ actor ChatBuilder {
         var agent: PBAgent
         var machine, cwd, home, me: String
         var devices: [String: DeviceView]
-        var sent: Int
+        var texts: [String: String]
         var prompt: String?
         var initialId: String?
     }
@@ -80,6 +80,10 @@ actor ChatBuilder {
     private var fold = ScheduledFold()
     private var key: Key?
     private var parsed: [String: Parsed] = [:]
+    /// The rows last built, and what from: the same items and groups give the same rows.
+    private var items: [ChatItem] = []
+    private var groups: [SilentScheduledGroup] = []
+    private var rows: [ChatRow] = []
 
     init(parse: @escaping @Sendable (String) -> [MarkdownBlock] = { Markdown.parse($0) }) {
         self.parse = parse
@@ -95,7 +99,7 @@ actor ChatBuilder {
         let initialId = p.prompt == nil ? nil : d.inputs.keys.first { !local.contains($0) }
         let next = Key(
             agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
-            devices: p.devices, sent: p.texts.count,
+            devices: p.devices, texts: p.texts,
             prompt: p.prompt, initialId: initialId)
         // Rows name clients and carry the texts sent from here: when those
         // change, the rows kept from before may say something else.
@@ -109,6 +113,23 @@ actor ChatBuilder {
             events, d: d, machine: p.machine, cwd: p.cwd, home: p.home, agent: p.agent,
             textOf: { id in p.texts[id] ?? (id == initialId ? p.prompt : nil) },
             who: { originLabel($0, state: named, me: p.me, machine: p.machine) })
+        let groups = fold.update(events)
+        // Nothing new (a live snapshot that changed nothing): the rows are the
+        // same array, which the screen compares at no cost.
+        if items != self.items || groups != self.groups {
+            self.items = items
+            self.groups = groups
+            rows = self.rows(items, groups)
+        }
+        return ChatSnapshot(
+            derived: d, rows: rows,
+            startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local, agent: p.agent),
+            // The title is the screen's to look at; this is the other half of the rule.
+            spoke: sentMessage(SessionView(id: "", machineId: ""), events: events))
+    }
+
+    /// Rows for the items, with replies' Markdown parsed once per text and silent scheduled rounds folded.
+    private func rows(_ items: [ChatItem], _ groups: [SilentScheduledGroup]) -> [ChatRow] {
         var rows: [ChatRow] = []
         rows.reserveCapacity(items.count)
         var live = 0
@@ -126,7 +147,7 @@ actor ChatBuilder {
                 rows.append(ChatRow(item: item, blocks: blocks))
             }
         }
-        for group in fold.update(events).reversed() {
+        for group in groups.reversed() {
             let first = rows.firstIndex { $0.id == "e\(group.firstSeq)" }
             let last = rows.lastIndex { row in
                 guard row.id.hasPrefix("e"), let seq = UInt64(row.id.dropFirst()) else { return false }
@@ -142,11 +163,7 @@ actor ChatBuilder {
             let keys = Set(items.map(\.key))
             parsed = parsed.filter { keys.contains($0.key) }
         }
-        return ChatSnapshot(
-            derived: d, rows: rows,
-            startPrompt: pendingStartPrompt(p.prompt, events: events, d: d, localIds: local, agent: p.agent),
-            // The title is the screen's to look at; this is the other half of the rule.
-            spoke: sentMessage(SessionView(id: "", machineId: ""), events: events))
+        return rows
     }
 }
 
