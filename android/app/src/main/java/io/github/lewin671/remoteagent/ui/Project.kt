@@ -71,9 +71,11 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.MachineView
-import io.github.lewin671.remoteagent.core.effectiveAgent
 import io.github.lewin671.remoteagent.core.Mode
+import io.github.lewin671.remoteagent.core.agentInfo
+import io.github.lewin671.remoteagent.core.defaultsFor
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
@@ -112,7 +114,7 @@ val newSessionModes = listOf(Mode.ASK, Mode.AUTO, Mode.FULL)
 data class NewConfig(
     val machineId: String,
     val cwd: String,
-    val agent: Agent = Agent.AGENT_CODEX,
+    val agent: Agent = DEFAULT_AGENT,
     val model: String = "",
     val effort: String = "",
     val mode: Mode? = null,
@@ -232,7 +234,7 @@ fun agentConfig(machineId: String, cwd: String, s: AgentSettings): NewConfig =
 
 /** The configuration's CLI set, as project settings store it. */
 fun NewConfig.agentSettings(): AgentSettings = AgentSettings.newBuilder().setAgent(agent).setModel(model).setEffort(effort)
-    .setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setStandardContext(agent == Agent.AGENT_CLAUDE && standardContext).build()
+    .setMode(mode?.proto ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED).setStandardContext(agentInfo(agent).standardContextOption && standardContext).build()
 
 /**
  * The CLI that was meant but that the machine of [c] does not have, so [c]
@@ -268,7 +270,7 @@ data class DefaultMode(
 )
 
 fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
-    val info = m?.meta?.agentsList?.firstOrNull { effectiveAgent(it.agent) == effectiveAgent(agent) }
+    val info = m?.meta?.agentsList?.firstOrNull { agentInfo(it.agent).agent == agentInfo(agent).agent }
     val known = info != null && info.defaultModeSource != io.github.lewin671.remoteagent.proto.DefaultModeSource.DEFAULT_MODE_SOURCE_UNSPECIFIED &&
         info.defaultModeSource != io.github.lewin671.remoteagent.proto.DefaultModeSource.UNRECOGNIZED
     return DefaultMode(if (known) modeOf(info!!.defaultMode) else null, known, info?.defaultModeVaries == true)
@@ -637,7 +639,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
                     val ids = start.imageIds
                     remote.prepare(cfg.machineId, "", remote.cmd {
                         createSession = CreateSessionRequest.newBuilder().setCwd(cfg.cwd).setPrompt(start.prompt).setAgent(cfg.agent)
-                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(cfg.agent == Agent.AGENT_CLAUDE && cfg.standardContext).addAllImageIds(ids).addAllFileIds(start.fileIds).build()
+                            .setModel(cfg.model).setEffort(cfg.effort).setMode(mode).setStandardContext(agentInfo(cfg.agent).standardContextOption && cfg.standardContext).addAllImageIds(ids).addAllFileIds(start.fileIds).build()
                     })
                 }
                 remote.forward(prepared, retryOfUnknown = retry).also { start.attempt.settle() }
@@ -795,7 +797,7 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
 }
 
 fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSettings? = null): io.github.lewin671.remoteagent.proto.ModelInfo? {
-    val defaultModel = if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()
+    val defaultModel = defaultsFor(settings, c.agent).model
     val id = c.model.ifEmpty { defaultModel.ifEmpty { models.defaultModel } }
     return io.github.lewin671.remoteagent.core.findModel(models.modelsList, id) { it.slug }
 }
@@ -874,7 +876,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     {
                         SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
                     },
-                    *(if (c.agent == Agent.AGENT_CLAUDE && !scheduling) arrayOf<@Composable () -> Unit>({
+                    *(if (agentInfo(c.agent).standardContextOption && !scheduling) arrayOf<@Composable () -> Unit>({
                         // A model without a larger window has nothing to choose.
                         val fixed = shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW
                         SetRow("上下文", if (fixed) "标准 200k · 这个模型只有标准窗口" else if (c.standardContext) "标准 200k" else "1M", if (fixed) null else ({ page = "context" }))
@@ -944,7 +946,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
                     ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
-                        val defaultModel = (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.model.orEmpty() else settings?.defaultModel.orEmpty()).ifEmpty { ms.defaultModel }
+                        val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         ms.modelsList.forEachIndexed { i, m ->
                             ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
@@ -953,7 +955,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
                             val defaultEffort = if (c.model.isEmpty()) {
-                                (if (c.agent == Agent.AGENT_CLAUDE) settings?.claude?.effort.orEmpty() else settings?.defaultEffort.orEmpty()).ifEmpty { m.defaultEffort }
+                                defaultsFor(settings, c.agent).effort.ifEmpty { m.defaultEffort }
                             } else m.defaultEffort
                             FieldLabel("推理强度")
                             ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { edit(c.copy(effort = it)) }
