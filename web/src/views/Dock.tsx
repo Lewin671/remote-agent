@@ -5,11 +5,11 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 // and the buttons stay in view.
 
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import type { ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
+import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "../approval-display";
 import { Markdown } from "../markdown";
-import { Agent } from "../gen/remoteagent/v1/event_pb";
+import { agentInfo } from "../agents";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
 import { Banner, Exp, NavBar, useNow } from "../ui";
@@ -438,7 +438,7 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
           {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : "批准执行"}
         </button>
       </div>
-      {full && agentOf(remote.sessions.get(sid)) !== Agent.CLAUDE && (
+      {full && agentInfo(agentOf(remote.sessions.get(sid))).planClearContext && (
         <div className="btns decide" style={{ marginTop: 8 }}>
           <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
             {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}
@@ -476,7 +476,7 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
         <>
           <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
           {/* Claude Code leaves plan mode for manual approval of edits. */}
-          {!isSkeleton(plan) && agentOf(remote.sessions.get(sid)) === Agent.CLAUDE && (
+          {!isSkeleton(plan) && agentInfo(agentOf(remote.sessions.get(sid))).planApprovalReturnsToAsk && (
             <div className="foot">
               <span>批准后使用询问模式</span>
             </div>
@@ -484,6 +484,13 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
         </>
       }
     />
+  );
+}
+
+function formatTrustHint(text: string) {
+  const parts = text.split(/(No, exit|Yes, I trust this folder)/g);
+  return parts.map((part, i) =>
+    part === "No, exit" || part === "Yes, I trust this folder" ? <b key={i}>{part}</b> : part,
   );
 }
 
@@ -501,9 +508,9 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
             {/* Claude Code's trust prompt starts on "No, exit": Enter alone
                 ends the session (claude-code-notes §1). Trusting stays the
                 user's choice, made in the terminal. */}
-            {agent === Agent.CLAUDE && /trust/i.test(title) && (
+            {agentInfo(agent).trustFolderHint && /trust/i.test(title) && (
               <div className="desc">
-                默认选中的是 <b>No, exit</b>。按 ↓ 选中 <b>Yes, I trust this folder</b> 再按 ⏎
+                {formatTrustHint(agentInfo(agent).trustFolderHint!)}
               </div>
             )}
           </>
