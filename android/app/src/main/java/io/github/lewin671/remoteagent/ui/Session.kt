@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -32,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -479,8 +481,21 @@ private fun ChatPane(
     val requestedRun = ScheduleJump.requested[s.id]
     val reveal = requestedRun ?: revealedRun
     val currentReveal by rememberUpdatedState(reveal)
+    val list = rememberLazyListState()
+    // Follow new messages while the user is at the bottom; stop once they
+    // drag away from it, until they come back. Our own jumps to the end
+    // never turn it off, even while the layout has not caught up.
+    val followState = remember { Follow() }
+    val unseen = remember { NewMessages() }
     fun show(next: ChatProjectionWorker.Rows?) {
-        if (next != null && next.version > rows.value.version) rows.value = next
+        if (next == null || next.version <= rows.value.version) return
+        // History joining in front is not new, and the reader stays where they were.
+        val joined = joinedRows(rows.value, next)
+        if (joined > 0 && !followState.on) {
+            unseen.joined(joined)
+            list.keepPlace(rows.value.items.map { it.key }, next.items.map { it.key }, joined)
+        }
+        rows.value = next
     }
     // Capture UI-owned outbox state before handing the immutable inputs to the worker.
     val texts = outbox.associate { it.requestId to it.text }
@@ -518,17 +533,11 @@ private fun ChatPane(
         }
     }
     var allPending by remember { mutableStateOf(false) }
-    val list = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
-    // Follow new messages while the user is at the bottom; stop once they
-    // drag away from it, until they come back. Our own jumps to the end
-    // never turn it off, even while the layout has not caught up.
-    val followState = remember { Follow() }
     val dragged by list.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged, atBottom) { followState.observe(dragged, atBottom) }
     val follow = followState.on
-    var seen by remember { mutableStateOf(items.size) }
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     // The dock appearing or going also moves the bottom.
     LaunchedEffect(
@@ -544,14 +553,14 @@ private fun ChatPane(
         // Past the end: the list stops at its last item, even before its first layout.
         if (follow && items.isNotEmpty())
             list.scrollToItem(items.size + d.tools.size + outbox.size + 3)
-        if (follow) seen = items.size
+        if (follow) unseen.saw(items.size)
     }
-    LaunchedEffect(atBottom) { if (atBottom) seen = items.size }
+    LaunchedEffect(atBottom) { if (atBottom) unseen.saw(items.size) }
     val jump = ScheduleJump.requested[s.id]
     LaunchedEffect(jump, items, loaded) {
         if (jump != null && loaded && items.isNotEmpty()) {
             val index = items.indexOfFirst { item -> item.key.removePrefix("e").toLongOrNull()?.let { it >= jump } == true || item is ChatItem.QuietScheduled && item.through >= jump }
-            if (index >= 0) { revealedRun = jump; followState.observe(true, false); list.scrollToItem(index + 1); ScheduleJump.requested.remove(s.id) }
+            if (index >= 0) { revealedRun = jump; followState.observe(true, false); list.scrollToItem(index); ScheduleJump.requested.remove(s.id) }
         }
     }
 
@@ -573,8 +582,13 @@ private fun ChatPane(
                     onSession = { nav.session(it) },
                 )
             androidx.compose.runtime.CompositionLocalProvider(LocalChat provides chatCtx) {
-                LazyColumn(state = list, modifier = Modifier.fillMaxSize()) {
-                    item { Spacer(Modifier.height(6.dp)) }
+                // Padding, not a leading item without a key: the list keeps its place by the
+                // key of the first row in view, which history joining in front must not move.
+                LazyColumn(
+                    state = list,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 6.dp),
+                ) {
                     if (!loaded && events.isEmpty() && startPrompt == null) item { Skeleton() }
                     if (startPrompt != null)
                         item(key = "start-prompt") {
@@ -645,7 +659,7 @@ private fun ChatPane(
                     item { Spacer(Modifier.height(8.dp)) }
                 }
             }
-            val fresh = items.size - seen
+            val fresh = unseen.count(items.size)
             // Only for what came in while reading back; the list keeps following otherwise.
             if (!atBottom && fresh > 0) {
                 Box(
@@ -1136,6 +1150,70 @@ class Follow {
     fun observe(userDragging: Boolean, atBottom: Boolean) {
         if (atBottom) on = true else if (userDragging) on = false
     }
+}
+
+/**
+ * What the「新消息」button counts: rows added at the end since the reader was last at the
+ * bottom. Rows the history joins in front are counted as seen (iOS `ScrollState.prepended`).
+ */
+class NewMessages {
+    private var seen by mutableIntStateOf(0)
+
+    fun saw(rows: Int) {
+        seen = rows
+    }
+
+    /** [rows] came in front while the reader was not following. */
+    fun joined(rows: Int) {
+        seen += rows
+    }
+
+    fun count(rows: Int) = maxOf(0, rows - seen)
+}
+
+/**
+ * How many of [after]'s rows came in front of [before]'s when the history before them joined:
+ * the shown events then start earlier. 0 when nothing joined.
+ */
+fun joinedRows(before: ChatProjectionWorker.Rows, after: ChatProjectionWorker.Rows): Int {
+    if (before.items.isEmpty()) return 0
+    val from = after.events.firstOrNull()?.seq ?: 1
+    val shownFrom = before.events.firstOrNull()?.seq ?: 1
+    if (java.lang.Long.compareUnsigned(from, shownFrom) >= 0) return 0
+    return rowsInFront(before.items.map { it.key }, after.items.map { it.key })
+}
+
+/**
+ * Rows of [after] in front of those of [before], by the last row both have: what [after] adds
+ * behind that row is not in front (iOS `rowsInFront`).
+ */
+fun rowsInFront(before: List<String>, after: List<String>): Int {
+    val at = HashMap<String, Int>(after.size * 2)
+    after.forEachIndexed { i, key -> at[key] = i }
+    var behind = 0
+    for (i in before.indices.reversed()) {
+        val j = at[before[i]] ?: continue
+        behind = (after.size - 1 - j) - (before.size - 1 - i)
+        break
+    }
+    return maxOf(0, after.size - before.size - maxOf(0, behind))
+}
+
+/**
+ * Keeps the row at the top of the list in view where it is while [joined] rows come in front.
+ * The list finds its first row by key only a short way from where it was, so on a long history
+ * it would keep the index and show other rows. Call before the new rows are shown.
+ */
+fun androidx.compose.foundation.lazy.LazyListState.keepPlace(
+    before: List<Any>,
+    after: List<Any>,
+    joined: Int,
+) {
+    val index = firstVisibleItemIndex
+    val key = layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }?.key
+    val was = if (key == null) -1 else before.indexOf(key)
+    val now = if (was < 0) -1 else after.indexOf(key)
+    requestScrollToItem(index + if (now >= 0) now - was else joined, firstVisibleItemScrollOffset)
 }
 
 /**
