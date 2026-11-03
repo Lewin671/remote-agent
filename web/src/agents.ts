@@ -227,7 +227,7 @@ export function withDefaults(
 export function machineVersions(meta?: MachineMeta): {
   agent: Agent;
   version: string;
-  verified?: string;
+  verified?: boolean;
 }[] {
   const primary =
     meta?.agents.find((a) => a.agent === CODEX_ENTRY.agent) ??

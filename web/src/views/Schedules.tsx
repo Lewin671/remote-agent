@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { agentById, agentInfo } from "../agents";
 import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp, Ellipsis, LoaderCircle } from "../icons";
 import {

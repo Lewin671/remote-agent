@@ -6,7 +6,7 @@
 // new project lists it again.
 
 import { useState, type ReactNode } from "react";
-import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { AGENTS } from "../agents";
 import { isHidden, isPinned, groupProjects } from "../prefs";
 import { exited, needsAttention, projectName, projects, shortPath, type Project } from "../model";

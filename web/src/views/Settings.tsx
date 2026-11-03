@@ -2,7 +2,6 @@ import { Switch } from "../ui";
 import { useEffect, useState } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type {
-  AgentDefaults,
   DaemonSettings,
   ListModelsResponse,
 } from "../gen/remoteagent/v1/local_pb";

@@ -163,10 +163,10 @@ describe("agents registry", () => {
   it("synthesizes machine versions from legacy codexVersion and modern agents list", () => {
     const legacy = create(MachineMetaSchema, {
       codexVersion: "1.2.3",
-      codexVerified: "ok",
+      codexVerified: true,
     });
     expect(machineVersions(legacy)).toEqual([
-      { agent: Agent.CODEX, version: "1.2.3", verified: "ok" },
+      { agent: Agent.CODEX, version: "1.2.3", verified: true },
     ]);
 
     const modern = create(MachineMetaSchema, {
