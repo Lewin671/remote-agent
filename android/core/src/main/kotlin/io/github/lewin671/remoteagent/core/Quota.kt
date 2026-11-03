@@ -100,7 +100,7 @@ fun quotaGroups(m: MachineView, now: Long): List<QuotaGroup> {
     val meta = m.meta
     val out = mutableListOf<QuotaGroup>()
     for (agent in machineAgents(m)) {
-        val entries = meta?.quotasList.orEmpty().filter { effectiveAgent(it.agent) == agent }
+        val entries = meta?.quotasList.orEmpty().filter { agentInfo(it.agent).agent == agentInfo(agent).agent }
         if (entries.isEmpty()) {
             out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
             continue
@@ -111,14 +111,7 @@ fun quotaGroups(m: MachineView, now: Long): List<QuotaGroup> {
 }
 
 /** A plan as people call it: Pro Lite for prolite, Max for claude_max. */
-fun planName(plan: String): String = when (plan.lowercase()) {
-    "prolite" -> "Pro Lite"
-    "claude_max" -> "Max"
-    "claude_pro" -> "Pro"
-    "claude_team" -> "Team"
-    "claude_enterprise" -> "Enterprise"
-    else -> plan.replace(Regex("^claude_", RegexOption.IGNORE_CASE), "").split(Regex("[_\\s]+")).filter { it.isNotEmpty() }.joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
-}
+fun planName(plan: String): String = normalizePlanName(plan)
 
 /**
  * The windows the account has, the CLI's usual ones first. One it does not
@@ -126,7 +119,7 @@ fun planName(plan: String): String = when (plan.lowercase()) {
  * 7 天 that never arrives.
  */
 private fun completeWindows(agent: Agent, windows: List<QuotaWindow>): List<QuotaWindow> {
-    val expected = if (agent == Agent.AGENT_CLAUDE) listOf("five_hour", "seven_day") else listOf("primary", "secondary")
+    val expected = agentInfo(agent).quotaWindows
     val byName = windows.associateBy { it.name }
     return expected.mapNotNull { byName[it] } + windows.filter { it.name !in expected }
 }
@@ -145,7 +138,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         q.sourceSessionId.isNotEmpty() -> " · 会话 ${q.sourceSessionId.takeLast(4)}"
         else -> ""
     }
-    val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${planName(q.plan)}" else "") + which
+    val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${agentInfo(agent).planName(q.plan)}" else "") + which
     val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord) }
     val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now) else ""
     return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
