@@ -2,19 +2,20 @@
 // model, reasoning effort and context use.
 
 import { useEffect, useRef, useState } from "react";
-import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
+import { agentInfo } from "./agents";
 import { agentName, agentOf, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modeOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet, useEscape } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
-  const claude = agent === Agent.CLAUDE;
+  const info = agentInfo(agent);
   return [
-    { mode: ApprovalMode.ASK, name: "询问", desc: claude ? "需要权限时由你确认" : "需要审批时由你确认，超时拒绝" },
+    { mode: ApprovalMode.ASK, name: "询问", desc: info.askModeDesc },
     { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(agent)} 自己判断，拿不准的在对话里问你` },
-    { mode: ApprovalMode.PLAN, name: "计划", desc: claude ? "先出方案，再批准执行" : "只读和出计划，你批准后才开始改" },
+    { mode: ApprovalMode.PLAN, name: "计划", desc: info.planModeDesc },
     { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
   ];
 }
@@ -138,7 +139,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     );
   return (
     <Sheet onClose={onClose}>
-      <h4>{agentOf(s) === Agent.CLAUDE ? "Claude Code · 审批模式" : "审批模式"}</h4>
+      <h4>{agentInfo(agentOf(s)).sheetTitle("审批模式")}</h4>
       {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
@@ -159,7 +160,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
           );
         })}
       </div>
-      {agentOf(s) === Agent.CLAUDE && <div className="hint">照实显示终端中的模式；不提供切到 accept edits 的按钮。</div>}
+      {agentInfo(agentOf(s)).permissionModeNotice && <div className="hint">{agentInfo(agentOf(s)).permissionModeNotice}</div>}
       {error && (
         <Banner kind="err" action="去终端" onAction={onClose}>
           没能切换：{error}
@@ -227,7 +228,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const offered = cur?.efforts.length ? cur.efforts : efforts;
   return (
     <Sheet onClose={onClose}>
-      <h4>{agent === Agent.CLAUDE ? "Claude Code · 会话设置" : "会话设置"}</h4>
+      <h4>{agentInfo(agent).sheetTitle("会话设置")}</h4>
       {pct !== undefined && (
         <div className="ctxbox">
           <div>
@@ -253,7 +254,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
             <div className="mt">
               {m.displayName || m.slug}
-              {m.efforts.length === 0 ? <small>无推理强度</small> : agent !== Agent.CLAUDE && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
+              {m.efforts.length === 0 ? <small>无推理强度</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
             </div>
             {m === cur && <span className="ck"><Check /></span>}
           </button>
