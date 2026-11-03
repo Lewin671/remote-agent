@@ -78,6 +78,105 @@ class NewestHistoryTest {
         } finally { r.close(); runCurrent() }
     }
 
+    /** Counts what the restore reads; older pages wait for [gate] when it is set. */
+    private class CountingCache(val inner: MemoryCache = MemoryCache()) : CipherCache by inner {
+        val reads = mutableListOf<String>()
+        var rows = 0
+        var gate: CompletableDeferred<Unit>? = null
+        override suspend fun newestEvents(sessionId: String): List<StoredEvent> =
+            inner.newestEvents(sessionId).also { reads += "newest"; rows += it.size }
+        override suspend fun eventPage(sessionId: String, afterSeq: Long): List<StoredEvent> {
+            reads += "after $afterSeq"
+            gate?.await()
+            return inner.eventPage(sessionId, afterSeq).also { rows += it.size }
+        }
+    }
+
+    private suspend fun cached(upTo: Long, change: (MemoryCache) -> Unit = {}) = CountingCache().apply {
+        inner.putMachine(Machine.newBuilder().setId(fixture.machine.id).build())
+        inner.putSession(fixture.sessions.getValue("long"))
+        inner.putEvents("long", fixture.events.getValue("long").filter { it.seq <= upTo })
+        change(inner)
+    }
+
+    @Test fun reopeningFromTheCacheShowsTheNewestPageBeforeReadingOlderRows() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this).apply { offline = true }
+        val cache = cached(501).apply { gate = CompletableDeferred() }
+        val r = peer.remote(cache)
+        try {
+            r.start()
+            runCurrent()
+            val flow = r.events("long")
+            runCurrent()
+            // On screen after one bounded page: nothing older was read or opened yet.
+            val first = flow.value
+            assertEquals((501L - CACHE_EVENT_PAGE + 1..501L).toList(), first.events.map { it.seq })
+            assertTrue(first.stateEvents.isEmpty())
+            assertTrue(first.historyPartial)
+            assertEquals(CACHE_EVENT_PAGE, cache.rows)
+            assertEquals(listOf("newest", "after 0"), cache.reads)
+            cache.gate!!.complete(Unit)
+            runCurrent()
+            val full = flow.value
+            assertEquals((1L..501L).toList(), full.events.map { it.seq })
+            assertEquals(full.events, full.stateEvents)
+            assertFalse(full.historyPartial)
+            // Older pages stop at the newest page; its rows are not opened again.
+            assertEquals(listOf("newest", "after 0", "after 128", "after 256"), cache.reads)
+        } finally { r.close(); runCurrent() }
+    }
+
+    @Test fun newerEventsAreFetchedWhileOlderCachedPagesAreRestored() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val cache = cached(490).apply { gate = CompletableDeferred() }
+        val r = peer.remote(cache)
+        try {
+            r.start()
+            withTimeout(15000) { r.state.first { it.loaded } }
+            val flow = r.events("long")
+            runCurrent()
+            assertEquals(listOf("newest", "after 0"), cache.reads)
+            // The cache restore is still waiting; what the server has after it is already in.
+            assertEquals((490L - CACHE_EVENT_PAGE + 1..501L).toList(), flow.value.events.map { it.seq })
+            assertEquals(listOf(490L), peer.after)
+            peer.count = 502
+            peer.push(fixture.events.getValue("long").last())
+            runCurrent()
+            assertEquals((490L - CACHE_EVENT_PAGE + 1..502L).toList(), flow.value.events.map { it.seq })
+            assertTrue(flow.value.stateEvents.isEmpty())
+            cache.gate!!.complete(Unit)
+            val full = withTimeout(15000) { flow.first { it.loaded } }
+            assertEquals((1L..502L).toList(), full.events.map { it.seq })
+            assertEquals(full.events, full.stateEvents)
+            // Nothing the cache held was downloaded again.
+            assertFalse(peer.after.any { it < 490L })
+            assertEquals(502, cache.inner.events("long").size)
+        } finally { r.close(); runCurrent() }
+    }
+
+    @Test fun anOlderCachedPageThatDoesNotOpenDropsTheWholeCache() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this)
+        val good = fixture.events.getValue("long").first { it.seq == 10L }
+        val cache = cached(501) { m ->
+            m.damage("long", 10) { e ->
+                e.toBuilder().setEnvelope(e.envelope.toBuilder().setCiphertext(
+                    com.google.protobuf.ByteString.copyFrom(e.envelope.ciphertext.toByteArray().reversedArray()))).build()
+            }
+        }
+        val r = peer.remote(cache)
+        try {
+            r.start()
+            withTimeout(15000) { r.state.first { it.loaded } }
+            val full = withTimeout(15000) { r.events("long").first { it.loaded } }
+            assertEquals((1L..501L).toList(), full.events.map { it.seq })
+            assertNull(full.error)
+            // The whole history came again from the start, and the bad copy is gone.
+            assertTrue(0L in peer.after)
+            assertEquals(501, cache.inner.events("long").size)
+            assertEquals(good.envelope, cache.inner.events("long").first { it.seq == 10L }.envelope)
+        } finally { r.close(); runCurrent() }
+    }
+
     @Test fun evictedHistoryRefetchesDespiteThePersistedSessionsLastSeq() = runTest(timeout = 5.seconds) {
         val peer = ColdOpenPeer(fixture, this)
         val cache = MemoryCache()

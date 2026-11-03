@@ -1035,13 +1035,13 @@ class RemoteTest {
             val calls = java.util.concurrent.atomic.AtomicInteger()
             val cache =
                 object : CipherCache by base {
-                    override suspend fun events(sessionId: String): List<StoredEvent> {
+                    override suspend fun newestEvents(sessionId: String): List<StoredEvent> {
                         if (calls.getAndIncrement() == 1) {
                             blocked.complete(Unit)
                             gate.await()
-                            return base.events(sessionId).take(1)
+                            return base.newestEvents(sessionId).take(1)
                         }
-                        return base.events(sessionId)
+                        return base.newestEvents(sessionId)
                     }
                 }
             val r = client(cache, historyIdleMs = 100)
@@ -2202,7 +2202,19 @@ class MemoryCache : CipherCache {
 
     override suspend fun sessions() = sessions.values.toList()
 
-    override suspend fun events(sessionId: String) = events[sessionId]?.values?.toList().orEmpty()
+    /** Every stored event of a session, for checking what the cache holds. */
+    fun events(sessionId: String): List<StoredEvent> =
+        events[sessionId]?.let { m -> synchronized(m) { m.values.toList() } }.orEmpty()
+
+    override suspend fun newestEvents(sessionId: String): List<StoredEvent> =
+        events[sessionId]?.let { m ->
+            synchronized(m) { m.descendingMap().values.take(CACHE_EVENT_PAGE).reversed() }
+        }.orEmpty()
+
+    override suspend fun eventPage(sessionId: String, afterSeq: Long): List<StoredEvent> =
+        events[sessionId]?.let { m ->
+            synchronized(m) { m.tailMap(afterSeq, false).values.take(CACHE_EVENT_PAGE) }
+        }.orEmpty()
 
     override suspend fun putMachine(m: Machine) {
         machines[m.id] = m
@@ -2213,7 +2225,7 @@ class MemoryCache : CipherCache {
     }
 
     override suspend fun putEvents(sessionId: String, events: List<StoredEvent>) {
-        val m = this.events.getOrPut(sessionId) { java.util.TreeMap() }
+        val m = this.events.getOrPut(sessionId) { java.util.TreeMap(java.lang.Long::compareUnsigned) }
         // An event already stored is left as it is, as in the app's database.
         synchronized(m) { for (e in events) m.putIfAbsent(e.seq, e) }
     }

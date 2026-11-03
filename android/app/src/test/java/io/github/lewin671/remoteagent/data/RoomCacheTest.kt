@@ -10,6 +10,7 @@ import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.RemoteSession
 import io.github.lewin671.remoteagent.proto.StoredEvent
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.core.CACHE_EVENT_PAGE
 import com.google.protobuf.ByteString
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
@@ -62,7 +63,7 @@ class RoomCacheTest {
     private val bytes get() = event(1).serializedSize.toLong()
     private suspend fun RoomCache.seed(sid: String, openedAt: Long) {
         now = openedAt
-        events(sid)
+        newestEvents(sid)
         putSession(RemoteSession.newBuilder().setSessionId(sid).setMachineId("machine").build())
         putEvents(sid, listOf(event(1), event(2)))
     }
@@ -142,7 +143,7 @@ class RoomCacheTest {
         old.seed("a", 10)
         old.seed("b", 20)
         now = 30
-        old.events("a")
+        old.newestEvents("a")
         old.putSession(RemoteSession.newBuilder().setSessionId("a").setMachineId("machine").build())
         old.close()
         cache(dao, 2 * bytes) // Startup must trim without any append.
@@ -159,9 +160,9 @@ class RoomCacheTest {
         cache.seed("unlisted", 20)
         cache.unlistSession("unlisted")
         now = 30
-        cache.events("events-only")
+        cache.newestEvents("events-only")
         cache.putEvents("events-only", listOf(event(1)))
-        cache.events("gone")
+        cache.newestEvents("gone")
         cache.setSessionOpen("current", true)
         trim()
         assertEquals(setOf("listed", "unlisted", "events-only", "current"), access.times().keys)
@@ -187,21 +188,49 @@ class RoomCacheTest {
         assertEquals(listOf(event(1), event(2)), dao.events("b").map { StoredEvent.parseFrom(it.data) })
     }
 
-    @Test fun evictedSessionWithNewTailRefetchesFromAContiguousPrefix() = runTest {
+    @Test fun evictedSessionWithNewTailRestoresWhatIsCachedForTheHistoryToFill() = runTest {
         val dao = database().dao()
         val cache = cache(dao, 2 * bytes)
         cache.seed("a", 10)
         dao.trimEvents(0, emptySet(), emptyMap())
-        assertTrue(cache.events("a").isEmpty())
-        // The engine still holding a in memory can append after eviction.
+        assertTrue(cache.newestEvents("a").isEmpty())
+        // The engine still holding a in memory can append after eviction. The rows come back
+        // with their gap; the history opens each and fetches what is missing.
         cache.putEvents("a", listOf(event(3), event(4)))
-        assertTrue(cache.events("a").isEmpty())
+        assertEquals(listOf(3L, 4L), cache.newestEvents("a").map { it.seq })
         // Relay pages refill from zero, preserving the already cached tail.
         cache.putEvents("a", listOf(event(1)))
-        assertEquals(listOf(1L), cache.events("a").map { it.seq })
+        assertEquals(listOf(1L, 3L, 4L), cache.newestEvents("a").map { it.seq })
         cache.putEvents("a", listOf(event(2), event(3), event(4)))
-        assertEquals((1L..4L).toList(), cache.events("a").map { it.seq })
+        assertEquals((1L..4L).toList(), cache.newestEvents("a").map { it.seq })
         assertEquals(4 * bytes, dao.eventSizes().find { it.sessionId == "a" }!!.bytes)
+    }
+
+    @Test fun eventsAreReadInBoundedPagesInUnsignedOrder() = runTest {
+        val dao = database().dao()
+        val cache = cache(dao, Long.MAX_VALUE)
+        val high = listOf(Long.MIN_VALUE, -2L, -1L) // 2^63, 2^64 - 2, 2^64 - 1 as unsigned.
+        val seqs = (1L..300L) + high
+        cache.putEvents("a", seqs.map { event(it) })
+        cache.putEvents("b", (1L..5L).map { event(it) })
+        now = 40
+        val newest = cache.newestEvents("a").map { it.seq }
+        assertEquals(seqs.takeLast(CACHE_EVENT_PAGE), newest)
+        assertEquals(40L, access.times()["a"])
+        val pages = mutableListOf<List<Long>>()
+        var after = 0L
+        while (true) {
+            val page = cache.eventPage("a", after).map { it.seq }
+            if (page.isEmpty()) break
+            assertTrue(page.size <= CACHE_EVENT_PAGE)
+            pages += page
+            after = page.last()
+        }
+        assertEquals(seqs, pages.flatten())
+        assertEquals(listOf(CACHE_EVENT_PAGE, CACHE_EVENT_PAGE, 300 - 2 * CACHE_EVENT_PAGE + 3), pages.map { it.size })
+        assertEquals(listOf(-1L), cache.eventPage("a", -2L).map { it.seq })
+        assertTrue(cache.eventPage("a", -1L).isEmpty())
+        assertEquals((1L..5L).toList(), cache.newestEvents("b").map { it.seq })
     }
 
     @Test fun appendsDuringTheCoalescingDelayNeedOnlyOneTrim() = runTest {
@@ -314,7 +343,7 @@ class RoomCacheTest {
             assertEquals(setOf("machines", "sessions", "events", "blobs", "room_master_table"), tables)
         }
         val cache = cache(dao, Long.MAX_VALUE)
-        assertEquals(listOf(event(1), event(2)), cache.events("old"))
+        assertEquals(listOf(event(1), event(2)), cache.newestEvents("old"))
         assertEquals(2 * bytes, dao.eventSizes().first { it.sessionId == "old" }.bytes)
         assertEquals(0, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
         assertEquals(pages, sqlite.query("PRAGMA page_count").use { it.moveToFirst(); it.getInt(0) })
@@ -351,7 +380,7 @@ class RoomCacheTest {
         assertFalse("VACUUM must run off the main thread", onMain.get())
         assertTrue("evicted pages should be returned to the filesystem", pages() < before)
         assertEquals(1, sqlite.query("PRAGMA auto_vacuum").use { it.moveToFirst(); it.getInt(0) })
-        assertEquals(listOf(event(1)), cache.events("retained"))
+        assertEquals(listOf(event(1)), cache.newestEvents("retained"))
         cache.setSessionOpen("retained", true)
         cache.putEvents("later", listOf(event(1)))
         trim()
@@ -375,7 +404,7 @@ class RoomCacheTest {
         trim()
         assertTrue(entered.isCompleted)
         try {
-            val read = async { cache.events("b") }
+            val read = async { cache.newestEvents("b") }
             runCurrent()
             assertTrue("cache reads must not wait for maintenance", read.isCompleted)
             assertEquals(listOf(event(1), event(2)), read.await())
@@ -392,12 +421,12 @@ class RoomCacheTest {
         cache.seed("b", 20)
         trim()
         assertEquals(1, attempts)
-        assertEquals(listOf(event(1), event(2)), cache.events("b"))
+        assertEquals(listOf(event(1), event(2)), cache.newestEvents("b"))
         cache.seed("c", 30)
         trim()
         assertEquals(2, attempts)
         assertTrue(dao.events("b").isEmpty())
-        assertEquals(listOf(event(1), event(2)), cache.events("c"))
+        assertEquals(listOf(event(1), event(2)), cache.newestEvents("c"))
     }
 
     @Test fun appendingToExistingEventsCountsBlobBytesWithoutDoubleCountingDuplicates() = runTest {
@@ -464,9 +493,9 @@ class RoomCacheTest {
         assertSame(db, app.db)
         assertTrue("open must validate eagerly", db.isOpen)
         val cache = cache(db.dao(), Long.MAX_VALUE)
-        assertTrue(cache.events("old").isEmpty())
+        assertTrue(cache.newestEvents("old").isEmpty())
         cache.seed("temporary", 20)
-        assertEquals(listOf(event(1), event(2)), cache.events("temporary"))
+        assertEquals(listOf(event(1), event(2)), cache.newestEvents("temporary"))
         assertArrayEquals(original, file.readBytes())
         cache.close()
         backgroundScope.coroutineContext[kotlinx.coroutines.Job]!!.children.toList().forEach { it.join() }

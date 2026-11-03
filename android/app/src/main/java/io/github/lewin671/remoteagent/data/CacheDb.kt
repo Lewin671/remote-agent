@@ -15,6 +15,7 @@ import androidx.room.Transaction
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import io.github.lewin671.remoteagent.core.CACHE_EVENT_PAGE
 import io.github.lewin671.remoteagent.core.CipherCache
 import io.github.lewin671.remoteagent.proto.Machine
 import io.github.lewin671.remoteagent.proto.RemoteSession
@@ -71,6 +72,17 @@ interface CacheDao {
     @Query("SELECT * FROM machines") suspend fun machines(): List<MachineRow>
     @Query("SELECT * FROM sessions WHERE listed = 1") suspend fun sessions(): List<SessionRow>
     @Query("SELECT * FROM events WHERE sessionId = :sid ORDER BY seq") suspend fun events(sid: String): List<EventRow>
+    // A seq is unsigned; SQLite holds its bit pattern, so the upper half sorts below zero.
+    @Query("SELECT * FROM events WHERE sessionId = :sid AND seq < 0 ORDER BY seq DESC LIMIT :limit")
+    suspend fun newestHigh(sid: String, limit: Int): List<EventRow>
+    @Query("SELECT * FROM events WHERE sessionId = :sid AND seq >= 0 ORDER BY seq DESC LIMIT :limit")
+    suspend fun newestLow(sid: String, limit: Int): List<EventRow>
+    @Query("SELECT * FROM events WHERE sessionId = :sid AND seq > :after AND seq >= 0 ORDER BY seq LIMIT :limit")
+    suspend fun pageLow(sid: String, after: Long, limit: Int): List<EventRow>
+    @Query("SELECT * FROM events WHERE sessionId = :sid AND seq > :after AND seq < 0 ORDER BY seq LIMIT :limit")
+    suspend fun pageHigh(sid: String, after: Long, limit: Int): List<EventRow>
+    @Query("SELECT * FROM events WHERE sessionId = :sid AND seq < 0 ORDER BY seq LIMIT :limit")
+    suspend fun firstHigh(sid: String, limit: Int): List<EventRow>
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(m: MachineRow)
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(s: SessionRow)
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun putIfAbsent(s: SessionRow)
@@ -241,14 +253,21 @@ class RoomCache(
     override suspend fun putImage(key: String, envelope: ByteArray) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { images?.put(key, envelope) ?: Unit }
     override suspend fun machines() = dao.machines().map { Machine.parseFrom(it.data) }
     override suspend fun sessions() = dao.sessions().map { RemoteSession.parseFrom(it.data) }
-    override suspend fun events(sessionId: String) = lock.withLock {
+    // Rows may have gaps, e.g. tail appends after an eviction: the history checks each event and
+    // fetches what is missing.
+    override suspend fun newestEvents(sessionId: String) = lock.withLock {
         access.opened(sessionId, clock())
-        // An evicted session may still receive tail appends from its in-memory buffer.
-        // Only a contiguous prefix can be restored; the relay fills everything after it.
-        val rows = dao.events(sessionId)
-        var count = 0
-        while (count < rows.size && rows[count].seq == count + 1L) count++
-        rows.subList(0, count).map { StoredEvent.parseFrom(it.data) }
+        val rows = dao.newestHigh(sessionId, CACHE_EVENT_PAGE).toMutableList()
+        if (rows.size < CACHE_EVENT_PAGE) rows += dao.newestLow(sessionId, CACHE_EVENT_PAGE - rows.size)
+        rows.asReversed().map { StoredEvent.parseFrom(it.data) }
+    }
+    override suspend fun eventPage(sessionId: String, afterSeq: Long) = lock.withLock {
+        val rows = if (afterSeq < 0) dao.pageHigh(sessionId, afterSeq, CACHE_EVENT_PAGE) else {
+            val low = dao.pageLow(sessionId, afterSeq, CACHE_EVENT_PAGE)
+            if (low.size < CACHE_EVENT_PAGE) low + dao.firstHigh(sessionId, CACHE_EVENT_PAGE - low.size)
+            else low
+        }
+        rows.map { StoredEvent.parseFrom(it.data) }
     }
     override suspend fun putMachine(m: Machine) = dao.put(MachineRow(m.id, m.toByteArray()))
     override suspend fun putSession(s: RemoteSession) = dao.put(SessionRow(s.sessionId, s.machineId, s.toByteArray()))

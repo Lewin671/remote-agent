@@ -253,6 +253,9 @@ data class SessionEvents(
     val historyPartial: Boolean = false,
 )
 
+/** Bounds how many cached envelopes are read and opened at a time while restoring a history. */
+const val CACHE_EVENT_PAGE = 128
+
 /** Where envelopes are cached between runs. Only ciphertext is stored. */
 interface CipherCache {
     /** Open transcripts are protected from disk eviction, including memory-only reopens. */
@@ -265,7 +268,14 @@ interface CipherCache {
 
     suspend fun sessions(): List<RemoteSession>
 
-    suspend fun events(sessionId: String): List<StoredEvent>
+    /**
+     * At most [CACHE_EVENT_PAGE] of a session's newest events, in sequence order. Nothing is
+     * checked here: the rows may have gaps and each is verified as it is opened.
+     */
+    suspend fun newestEvents(sessionId: String): List<StoredEvent>
+
+    /** At most [CACHE_EVENT_PAGE] events after [afterSeq] (unsigned), in sequence order. */
+    suspend fun eventPage(sessionId: String, afterSeq: Long): List<StoredEvent>
 
     suspend fun putMachine(m: Machine)
 
@@ -555,6 +565,11 @@ class Remote(
         var error: String? = null
         // The last fetch failed; cleared by the next one that works.
         var fetchError: String? = null
+        // Until the newest cached page is in, no history is fetched: the cache may already hold it.
+        var awaitingCache = false
+        // Older cached pages are still being put in place; only what is newer than everything
+        // held is fetched meanwhile, so that the restore does not hold back what is new.
+        var backfilling = false
     }
 
     // --- lifecycle ---
@@ -2655,28 +2670,57 @@ class Remote(
         }
     }
 
+    private suspend fun cachedPage(read: suspend (CipherCache) -> List<StoredEvent>): List<StoredEvent> =
+        try {
+            cache?.let { read(it) }.orEmpty()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            report(e)
+            emptyList()
+        }
+
+    /**
+     * Restores a history from the cache a bounded page at a time: the newest page is opened and
+     * shown first, then the older rows in sequence order. Meanwhile only what is newer than the
+     * cache is fetched; the gaps are fetched once the cache is in.
+     */
     private suspend fun loadEvents(sid: String) {
         if (buffers[sid] != null || sessions[sid] == null) return
         val b = Buffer().apply { usedAt = clock() }
         buffers[sid] = b
-        val cached =
-            try {
-                cache?.events(sid).orEmpty()
-            } catch (e: Exception) {
-                report(e)
-                emptyList()
-            }
+        b.awaitingCache = true
+        val newest = cachedPage { it.newestEvents(sid) }
         if (buffers[sid] !== b) return
-        if (cached.isNotEmpty()) {
-            ingest(sid, cached, fillGaps = false, save = false, live = false)
+        if (newest.isNotEmpty()) {
+            val first = newest.first().seq
+            var ok = ingest(sid, newest, fillGaps = false, save = false, live = false)
             if (buffers[sid] !== b) return
+            b.awaitingCache = false
+            // A full page that does not start at 1 leaves older rows in the cache.
+            if (ok && newest.size >= CACHE_EVENT_PAGE && ucmp(first, 1) > 0) {
+                b.backfilling = true
+                scope.launch { fetchEvents(sid) }
+                var after = 0L
+                while (ok && ucmp(after + 1, first) < 0) {
+                    val page = cachedPage { it.eventPage(sid, after) }
+                    if (buffers[sid] !== b) return
+                    val last = page.lastOrNull()?.seq ?: break
+                    if (ucmp(last, after) <= 0) break
+                    ok = ingest(sid, page, fillGaps = false, save = false, live = false)
+                    if (buffers[sid] !== b) return
+                    after = last
+                    if (page.size < CACHE_EVENT_PAGE) break
+                }
+                b.backfilling = false
+            }
             // A cached copy that does not open is dropped and the history
             // fetched whole (architecture §10 「后台和内存」): the cache keeps
             // an event as first stored, so the bad one would stay for good.
-            if (b.error != null) {
+            if (!ok) {
                 try {
                     cache?.dropEvents(sid)
                 } catch (e: Exception) {
+                    if (e is CancellationException) throw e
                     report(e)
                 }
                 if (buffers[sid] !== b) return
@@ -2690,15 +2734,39 @@ class Remote(
                 publishEvents(sid, b)
             }
         }
+        b.awaitingCache = false
+        b.backfilling = false
         fetchEvents(sid)
         trimHistory()
+    }
+
+    /** While older cached pages are restored: fetches only what is newer than everything held. */
+    private suspend fun fetchNewer(
+        sid: String,
+        b: Buffer,
+        active: () -> Boolean,
+        page: suspend (Long) -> io.github.lewin671.remoteagent.proto.GetEventsResponse,
+    ) {
+        val latest = sessions[sid]?.lastSeq ?: 0L
+        val held = if (b.pending.isEmpty()) b.events.size.toLong()
+            else umax(b.events.size.toLong(), b.pending.lastKey())
+        if (ucmp(latest, held) <= 0) return
+        var cursor = held
+        if (ucmp(latest, held + 500) > 0) cursor = latest - 500
+        while (active()) {
+            val res = page(cursor)
+            if (!active()) return
+            val next = res.eventsList.lastOrNull()?.seq ?: cursor
+            if (!res.more || b.error != null || ucmp(next, cursor) <= 0) break
+            cursor = next
+        }
     }
 
     /** Shows the newest page first, then fills every gap from the contiguous prefix. */
     private suspend fun fetchEvents(sid: String) {
         val b = buffers[sid] ?: return
         if (sessions[sid] == null || !running) return
-        if (b.fetching) {
+        if (b.fetching || b.awaitingCache) {
             b.refetch = true
             return
         }
@@ -2721,6 +2789,12 @@ class Remote(
                         if (!res.more) end = res.eventsList.lastOrNull()?.seq ?: after
                     }
                     return res
+                }
+                if (b.backfilling) {
+                    // The cache restore asks again (refetch) when it is done.
+                    fetchNewer(sid, b, { active() }, { page(it) })
+                    if (!active()) return
+                    continue
                 }
                 val latest = sessions[sid]?.lastSeq?.toULong() ?: 0uL
                 val prefix = b.events.size.toULong()
@@ -2768,16 +2842,18 @@ class Remote(
         }
     }
 
+    /** Returns false when one of [stored] did not open; [Buffer.error] then says so. */
     private suspend fun ingest(
         sid: String,
         stored: List<StoredEvent>,
         fillGaps: Boolean,
         save: Boolean,
         live: Boolean = false,
-    ) {
-        val b = buffers[sid] ?: return
-        val s = sessions[sid] ?: return
-        val key = sessionKeys[sid] ?: return
+    ): Boolean {
+        val b = buffers[sid] ?: return true
+        val s = sessions[sid] ?: return true
+        val key = sessionKeys[sid] ?: return true
+        var ok = true
         val opened = ArrayList<StoredEvent>()
         for (se in stored) {
             if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq)) continue
@@ -2796,7 +2872,7 @@ class Remote(
                         live,
                     )
                 if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
-                if (buffers[sid] !== b) return
+                if (buffers[sid] !== b) return ok
                 // Opening may suspend while resolving a content key; another ingest can win.
                 if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq)) continue
                 if (Header.parseFrom(se.envelope.header).version == DeviceSecurity.VERSION)
@@ -2806,7 +2882,7 @@ class Remote(
                 // What is held is the event as opened; its ciphertext may be packed.
                 b.bytes += ev.serializedSize + 256L
             } catch (e: RecoveryHistoryUnavailable) {
-                if (buffers[sid] !== b) return
+                if (buffers[sid] !== b) return ok
                 if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq))
                     continue
                 b.pending[se.seq] = Event.newBuilder().setSeq(se.seq).setSessionId(sid).build()
@@ -2816,6 +2892,7 @@ class Remote(
             } catch (e: Exception) {
                 report(e)
                 b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                ok = false
                 break
             }
         }
@@ -2834,7 +2911,7 @@ class Remote(
                 report(e)
             }
         }
-        if (buffers[sid] !== b) return
+        if (buffers[sid] !== b) return ok
         // The cache write suspended: newer metadata may have arrived, or the
         // session gone. Only the event progress is ours to update.
         sessions[sid]?.let { cur ->
@@ -2845,6 +2922,7 @@ class Remote(
         publishEvents(sid, b)
         publish()
         trimHistory()
+        return ok
     }
 
     private fun publishEvents(sid: String, b: Buffer) {
