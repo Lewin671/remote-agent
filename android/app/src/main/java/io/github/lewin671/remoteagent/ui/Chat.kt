@@ -38,7 +38,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Derived
+import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.core.shortenPath
 import io.github.lewin671.remoteagent.core.shortenPaths
 import io.github.lewin671.remoteagent.core.dateTime
@@ -57,7 +59,7 @@ import io.github.lewin671.remoteagent.proto.TurnOutcome
 data class StartPrompt(val text: String, val caption: String, val warning: Boolean = false, val uncertain: Boolean = false)
 
 /** A new session's acknowledged prompt until history records it; never resend it here. */
-fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: io.github.lewin671.remoteagent.proto.Agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX): StartPrompt? {
+fun pendingStartPrompt(prompt: String?, events: List<Event>, d: Derived, localIds: Set<String>, agent: Agent = DEFAULT_AGENT): StartPrompt? {
     if (prompt.isNullOrEmpty() || events.any { it.hasUserMessage() }) return null
     val first = d.inputs.keys.firstOrNull { it !in localIds }
     val status = first?.let { d.inputs[it] }
@@ -688,7 +690,7 @@ class ChatProjection {
     private var previous: List<Event> = emptyList()
     private var items: List<ChatItem> = emptyList()
     private var context: List<Any>? = null
-    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: io.github.lewin671.remoteagent.proto.Agent = io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null }): List<ChatItem> {
+    fun update(events: List<Event>, d: Derived, machine: String, cwd: String = "", home: String = "", agent: Agent = DEFAULT_AGENT, textOf: (String) -> String? = { null }, who: (io.github.lewin671.remoteagent.proto.Origin?) -> String? = { null }): List<ChatItem> {
         val nextContext = listOf(machine, cwd, home, agent)
         val append = context == nextContext && previous.isNotEmpty() && events.size > previous.size && io.github.lewin671.remoteagent.core.unchangedPrefix(events, previous)
         val tail = if (append) events.subList(previous.size, events.size) else emptyList()

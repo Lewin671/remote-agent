@@ -42,8 +42,10 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.agent
+import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.isSkeleton
 import io.github.lewin671.remoteagent.core.minutesLeft
@@ -827,7 +829,7 @@ fun QuestionPage(sid: String, qid: String) {
     val d =
         rememberDerived(
             events,
-            s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX,
+            s?.agent() ?: DEFAULT_AGENT,
         )
     val q = d.questions[qid]
     PageScaffold("回答提问", subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
@@ -918,7 +920,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     ) {
         PlanButtons(s, full = false, terminalOnly = isSkeleton(text))
         // Claude Code leaves plan mode for manual approval of edits.
-        if (!isSkeleton(text) && s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+        if (!isSkeleton(text) && agentInfo(s.agent()).planApprovalReturnsToAsk)
             Text(
                 "批准后使用询问模式",
                 style = T.meta,
@@ -1027,7 +1029,7 @@ fun PlanButtons(
     }
     // Claude Code has no such choice.
     if (
-        full && !act.running && s.agent() != io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE
+        full && !act.running && agentInfo(s.agent()).planClearContext
     ) {
         DockFoot("", "清空上下文后执行") { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
     }

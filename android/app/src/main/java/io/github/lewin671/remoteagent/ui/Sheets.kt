@@ -43,10 +43,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.agent
+import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.contextPercent
 import io.github.lewin671.remoteagent.core.errorText
@@ -73,7 +75,7 @@ val modeHelp =
 
 /** A sheet's title names the CLI only when it is not Codex, as the mockup does. */
 private fun sheetTitle(s: SessionView, what: String) =
-    if (s.agent() == Agent.AGENT_CODEX) what else "${agentName(s.agent())} · $what"
+    agentInfo(s.agent()).sheetTitle(what)
 
 /** 审批模式: the four modes; full access is confirmed first; only this session changes. */
 @Composable
@@ -479,7 +481,7 @@ fun ApprovalPage(sid: String, aid: String) {
     val s = state.sessions[sid]
     val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
-    val d = rememberDerived(events, s?.agent() ?: Agent.AGENT_CODEX)
+    val d = rememberDerived(events, s?.agent() ?: DEFAULT_AGENT)
     val a = d.approvals[aid]
     val p = pal
     val t = now()
@@ -574,7 +576,7 @@ fun PlanPage(sid: String) {
     val s = state.sessions[sid]
     val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
-    val d = rememberDerived(events, s?.agent() ?: Agent.AGENT_CODEX)
+    val d = rememberDerived(events, s?.agent() ?: DEFAULT_AGENT)
     PageScaffold("计划", subtitle = s?.let { titleOf(it) }) {
         val plan = d.plan
         if (s == null || plan == null) {

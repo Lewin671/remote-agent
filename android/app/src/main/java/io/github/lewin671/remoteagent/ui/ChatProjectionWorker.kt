@@ -1,5 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Derived
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.Event
@@ -37,7 +38,7 @@ class ChatProjectionWorker(private val dispatcher: CoroutineDispatcher = Dispatc
         machine: String,
         cwd: String = "",
         home: String = "",
-        agent: Agent = Agent.AGENT_CODEX,
+        agent: Agent = DEFAULT_AGENT,
         textOf: (String) -> String? = { null },
         who: (Origin?) -> String? = { null },
     ): List<ChatItem> = withContext(dispatcher) {

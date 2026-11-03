@@ -52,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.SessionImage
 import io.github.lewin671.remoteagent.core.agent
@@ -154,7 +155,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
             val agent =
-                agentName(s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX)
+                agentName(s?.agent() ?: DEFAULT_AGENT)
             val from =
                 when (cur.ref.source) {
                     ImageSource.IMAGE_SOURCE_TOOL -> "$agent 查看的图片"

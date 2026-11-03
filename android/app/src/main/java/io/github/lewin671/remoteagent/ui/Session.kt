@@ -50,12 +50,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.ConnState
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SessionView
 import io.github.lewin671.remoteagent.core.Status
 import io.github.lewin671.remoteagent.core.agent
+import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.contextPercent
 import io.github.lewin671.remoteagent.core.errorText
@@ -125,7 +127,7 @@ fun SessionScreen(sid: String) {
     val d =
         rememberDerived(
             events,
-            s?.agent() ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX,
+            s?.agent() ?: DEFAULT_AGENT,
         )
     val status = statusIn(state, s)
     // The view last picked on this device; every session opens in it.
@@ -238,7 +240,7 @@ private fun SessionTopBar(
             mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null)
         }
     LaunchedEffect(s.machineId, s.agent()) {
-        if (s.agent() == io.github.lewin671.remoteagent.proto.Agent.AGENT_CLAUDE)
+        if (agentInfo(s.agent()).sessionNeedsModelList)
             runCatching { models = remote.listModels(s.machineId, s.agent()) }
     }
     val raw = s.info?.model.orEmpty()
@@ -811,7 +813,7 @@ private fun OutgoingView(
     val remote = LocalRemote.current
     val agent =
         remote.state.value.sessions[sid]?.agent()
-            ?: io.github.lewin671.remoteagent.proto.Agent.AGENT_CODEX
+            ?: DEFAULT_AGENT
     val feedback = when (input) {
         InputStatus.INPUT_STATUS_FAILED, InputStatus.INPUT_STATUS_NEEDS_TERMINAL, InputStatus.INPUT_STATUS_UNCONFIRMED -> inputFeedback(input, failure.orEmpty(), agent)
         else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN)
