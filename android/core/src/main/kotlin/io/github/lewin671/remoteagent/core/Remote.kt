@@ -570,6 +570,12 @@ class Remote(
         // Older cached pages are still being put in place; only what is newer than everything
         // held is fetched meanwhile, so that the restore does not hold back what is new.
         var backfilling = false
+        // A newest segment was asked for (cached or fetched) ahead of the prefix: until the prefix
+        // reaches it, the one contiguous run ending at the newest event is what is shown.
+        var tailRequested = false
+        // That run as last shown, kept so that its list grows instead of being copied.
+        var shown = PagedList.empty<Event>()
+        var shownFirst = 0L
     }
 
     // --- lifecycle ---
@@ -2693,6 +2699,7 @@ class Remote(
         if (buffers[sid] !== b) return
         if (newest.isNotEmpty()) {
             val first = newest.first().seq
+            b.tailRequested = ucmp(first, 1) > 0
             var ok = ingest(sid, newest, fillGaps = false, save = false, live = false)
             if (buffers[sid] !== b) return
             b.awaitingCache = false
@@ -2729,6 +2736,7 @@ class Remote(
                 b.verifiedSeqs.clear()
                 b.unavailableSeqs.clear()
                 b.verifiedEvents = PagedList.empty()
+                b.tailRequested = false
                 b.bytes = 0
                 b.error = null
                 publishEvents(sid, b)
@@ -2752,7 +2760,10 @@ class Remote(
             else umax(b.events.size.toLong(), b.pending.lastKey())
         if (ucmp(latest, held) <= 0) return
         var cursor = held
-        if (ucmp(latest, held + 500) > 0) cursor = latest - 500
+        if (ucmp(latest, held + 500) > 0) {
+            cursor = latest - 500
+            b.tailRequested = true
+        }
         while (active()) {
             val res = page(cursor)
             if (!active()) return
@@ -2806,6 +2817,7 @@ class Remote(
                         seq <= prefix || b.pending.containsKey(seq.toLong())
                     }
                     if (!held) {
+                        b.tailRequested = true
                         var cursor = after.toLong()
                         while (active()) {
                             val res = page(cursor)
@@ -2918,6 +2930,9 @@ class Remote(
             sessions[sid] = cur.copy(lastSeq = umax(cur.lastSeq, b.events.size.toLong()))
         }
         if (b.pending.isNotEmpty()) b.loaded = false
+        // Once the prefix reaches the newest segment there is one list again; a later live gap
+        // must not shrink the chat to what follows it.
+        if (b.pending.isEmpty()) b.tailRequested = false
         if (fillGaps && b.pending.isNotEmpty()) scope.launch { fetchEvents(sid) }
         publishEvents(sid, b)
         publish()
@@ -2925,11 +2940,43 @@ class Remote(
         return ok
     }
 
+    /**
+     * What is shown, as on iOS and the web: the contiguous prefix, or, while a newest segment is
+     * ahead of it, only the one contiguous run ending at the newest event, never the two joined
+     * across a gap. The run's list is kept and grows at its end, so that the chat can extend it.
+     */
+    private fun shownEvents(b: Buffer): List<Event> {
+        if (!b.tailRequested || b.pending.isEmpty()) {
+            b.shown = PagedList.empty()
+            b.shownFirst = 0
+            return b.events
+        }
+        val last = b.pending.lastKey()
+        val shownLast = b.shownFirst + b.shown.size - 1
+        if (b.shown.isNotEmpty() && b.pending.containsKey(b.shownFirst) && ucmp(last, shownLast) >= 0 &&
+            (shownLast + 1..last).all { b.pending.containsKey(it) }
+        ) {
+            if (last != shownLast)
+                b.shown = b.shown.append((shownLast + 1..last).map { b.pending.getValue(it) })
+        } else {
+            b.shownFirst = last
+            b.shown = PagedList.from(listOf(b.pending.getValue(last)))
+        }
+        // Rows before the run arrive when older pages come in out of order; the list is rebuilt.
+        var first = b.shownFirst
+        while (ucmp(first, 1) > 0 && b.pending.containsKey(first - 1)) first--
+        if (first != b.shownFirst) {
+            b.shown = PagedList.from((first until b.shownFirst).map { b.pending.getValue(it) } + b.shown)
+            b.shownFirst = first
+        }
+        return b.shown
+    }
+
     private fun publishEvents(sid: String, b: Buffer) {
         if (buffers[sid] !== b) return
         eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value =
             SessionEvents(
-                if (b.pending.isEmpty()) b.events else b.events.append(b.pending.values.toList()),
+                shownEvents(b),
                 b.loaded,
                 b.error,
                 b.fetchError,

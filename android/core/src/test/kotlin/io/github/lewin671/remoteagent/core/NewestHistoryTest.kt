@@ -72,7 +72,8 @@ class NewestHistoryTest {
             val flow = r.events("long")
             runCurrent()
             val restored = flow.value
-            assertEquals(listOf(1L) + (3L..501L).toList(), restored.events.map { it.seq })
+            // Only the newest contiguous run is shown, never the prefix joined to it across the gap.
+            assertEquals((3L..501L).toList(), restored.events.map { it.seq })
             assertTrue(restored.historyPartial)
             assertEquals(listOf(1L), restored.stateEvents.map { it.seq })
         } finally { r.close(); runCurrent() }
@@ -139,10 +140,13 @@ class NewestHistoryTest {
             // The cache restore is still waiting; what the server has after it is already in.
             assertEquals((490L - CACHE_EVENT_PAGE + 1..501L).toList(), flow.value.events.map { it.seq })
             assertEquals(listOf(490L), peer.after)
+            val shown = flow.value.events
             peer.count = 502
             peer.push(fixture.events.getValue("long").last())
             runCurrent()
             assertEquals((490L - CACHE_EVENT_PAGE + 1..502L).toList(), flow.value.events.map { it.seq })
+            // The shown run grows at its end, so the chat can extend what it built.
+            assertTrue(unchangedPrefix(flow.value.events, shown))
             assertTrue(flow.value.stateEvents.isEmpty())
             cache.gate!!.complete(Unit)
             val full = withTimeout(15000) { flow.first { it.loaded } }
@@ -174,6 +178,31 @@ class NewestHistoryTest {
             assertTrue(0L in peer.after)
             assertEquals(501, cache.inner.events("long").size)
             assertEquals(good.envelope, cache.inner.events("long").first { it.seq == 10L }.envelope)
+        } finally { r.close(); runCurrent() }
+    }
+
+    @Test fun aLiveGapAfterTheHistoryJoinedKeepsShowingThePrefix() = runTest(timeout = 5.seconds) {
+        val peer = ColdOpenPeer(fixture, this).apply { count = 500 }
+        val r = peer.remote()
+        try {
+            r.start()
+            withTimeout(15000) { r.state.first { it.loaded } }
+            val flow = r.events("long")
+            val short = withTimeout(15000) { flow.first { it.fetchError != null } }
+            assertEquals((1L..500L).toList(), short.events.map { it.seq })
+            val reached = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            peer.before = { name, _ -> if (name == "GetEvents") { reached.complete(Unit); release.await() } }
+            peer.count = 502
+            peer.push(fixture.events.getValue("long").last())
+            withTimeout(15000) { reached.await() }
+            // Once joined there is one list: an event after a new gap waits for the gap.
+            assertEquals((1L..500L).toList(), flow.value.events.map { it.seq })
+            assertTrue(flow.value.historyPartial)
+            release.complete(Unit)
+            val full = withTimeout(15000) { flow.first { it.events.size == 502 } }
+            assertEquals((1L..502L).toList(), full.events.map { it.seq })
+            assertEquals(full.events, full.stateEvents)
         } finally { r.close(); runCurrent() }
     }
 
@@ -246,7 +275,9 @@ class NewestHistoryTest {
             assertFalse(gap.loaded)
             assertTrue(gap.historyPartial)
             assertEquals((missing - 1).toInt(), gap.stateEvents.size)
-            assertEquals(500, gap.events.size)
+            // An interior gap shows the run after it alone; the prefix stays the state.
+            assertEquals(if (missing == 501L) (1L..500L).toList() else (missing + 1..501L).toList(),
+                gap.events.map { it.seq })
             assertEquals(if (missing == 501L) listOf(1L, 0L) else listOf(1L, 0L, missing - 1), peer.after)
             peer.missing = 0
             r.retryEvents("long")
