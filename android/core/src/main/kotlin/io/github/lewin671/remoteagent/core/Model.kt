@@ -24,12 +24,12 @@ import java.time.ZonedDateTime
 /** The CLI a session runs; sessions from before Claude Code support are Codex. */
 fun effectiveAgent(a: Agent): Agent = agentInfo(a).agent
 
-fun SessionView.agent(): Agent = effectiveAgent(info?.agent ?: Agent.AGENT_UNSPECIFIED)
+fun SessionView.agent(): Agent = agentInfo(info?.agent).agent
 
 /** The CLIs a machine can start; Codex while it lists none. */
 fun machineAgents(m: MachineView?): List<Agent> {
-    val listed = m?.meta?.agentsList?.map { effectiveAgent(it.agent) }?.distinct().orEmpty()
-    return listed.ifEmpty { listOf(Agent.AGENT_CODEX) }
+    val listed = m?.meta?.agentsList?.map { agentInfo(it.agent).agent }?.distinct().orEmpty()
+    return listed.ifEmpty { listOf(DEFAULT_AGENT) }
 }
 
 // --- projects ---
@@ -325,9 +325,7 @@ fun statusOf(s: SessionView, machine: MachineView?): Status {
  * Enter alone ends the session (claude-code-notes.md §1); Codex's needs none. Same text as the web.
  */
 fun popupHint(agent: Agent, detail: String): String =
-    if (effectiveAgent(agent) == Agent.AGENT_CLAUDE && detail == "trust folder")
-        "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
-    else ""
+    if (detail == "trust folder") agentInfo(agent).trustFolderHint.orEmpty() else ""
 
 /** Pending work stays pending while its computer is out of reach. */
 fun needsAttention(s: SessionView): Boolean = statusOf(s, null).tone == Tone.WAIT
@@ -637,12 +635,8 @@ fun modelIs(id: String, slug: String): Boolean =
  */
 fun defaultMode(
     settings: io.github.lewin671.remoteagent.proto.DaemonSettings,
-    agent: Agent,
-): Mode? =
-    modeOf(
-        if (effectiveAgent(agent) == Agent.AGENT_CLAUDE) settings.claude.mode
-        else settings.defaultMode,
-    )
+    agent: Agent = DEFAULT_AGENT,
+): Mode? = modeOf(defaultsFor(settings, agent).mode)
 
 /** Context window use in percent, or null when unknown. */
 fun contextPercent(s: SessionView): Int? {
@@ -791,7 +785,7 @@ class Derived(
 )
 
 /** Pending approvals and questions, input states and the running turn. */
-fun derive(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived =
+fun derive(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived =
     EventReducer(agent).apply { append(events) }.snapshot()
 
 internal class EventReducer(agent: Agent) {
@@ -813,7 +807,7 @@ internal class EventReducer(agent: Agent) {
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
     private var planned = false
-    private val claude = effectiveAgent(agent) == Agent.AGENT_CLAUDE
+    private val reconcilesUnclaimedInput = agentInfo(agent).reconcilesUnclaimedInput
     // Starts a turn ended without a result, by call ID, for a result that comes later.
     private val unfinishedById = HashMap<String, RunningTool>()
 
@@ -894,7 +888,7 @@ internal class EventReducer(agent: Agent) {
                         val since = queuedAt[st.requestId]
                         if (
                             !late &&
-                                claude &&
+                                reconcilesUnclaimedInput &&
                                 u != null &&
                                 e.seq - u <= 3 &&
                                 (since == null || u > since)
@@ -1133,10 +1127,10 @@ internal class EventReducer(agent: Agent) {
 class EventProjection {
     private var previous: List<Event> = emptyList()
     private var agent: Agent? = null
-    private var reducer = EventReducer(Agent.AGENT_CODEX)
+    private var reducer = EventReducer(DEFAULT_AGENT)
     private var result = Derived()
 
-    fun update(events: List<Event>, agent: Agent = Agent.AGENT_CODEX): Derived {
+    fun update(events: List<Event>, agent: Agent = DEFAULT_AGENT): Derived {
         if (this.agent == agent && events === previous) return result
         val append = this.agent == agent && unchangedPrefix(events, previous)
         if (!append) reducer = EventReducer(agent)
@@ -1183,7 +1177,7 @@ fun toolLabel(
     agent: Agent,
 ): String =
     when {
-        effectiveAgent(agent) == Agent.AGENT_CLAUDE && itemType.isNotEmpty() -> itemType
+        agentInfo(agent).toolLabelFromItemType && itemType.isNotEmpty() -> itemType
         kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_COMMAND -> "命令"
         kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_FILE_CHANGE -> "编辑"
         kind == io.github.lewin671.remoteagent.proto.ToolKind.TOOL_KIND_MCP -> "MCP"
@@ -1662,7 +1656,7 @@ fun currentActions(
 }
 
 /** Legacy bodies remain transcript data; only verified bodies establish state. */
-fun currentState(snapshot: SessionEvents, agent: Agent = Agent.AGENT_CODEX): Derived =
+fun currentState(snapshot: SessionEvents, agent: Agent = DEFAULT_AGENT): Derived =
     (if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.stateEvents).let {
         currentActions(derive(it, agent), snapshot.live, it)
     }

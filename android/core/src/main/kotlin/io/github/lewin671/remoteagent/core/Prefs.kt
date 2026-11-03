@@ -48,7 +48,7 @@ sealed interface PrefsOp {
 }
 
 /** The CLIs a project keeps a set of settings for. */
-val settingsAgents = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)
+val settingsAgents: List<Agent> get() = AGENTS.map { it.agent }
 
 /** [op] applied to a project's stored settings, or to none. */
 fun applySettings(stored: ProjectSettings?, op: PrefsOp.SetSettings, now: Long): ProjectSettings {
