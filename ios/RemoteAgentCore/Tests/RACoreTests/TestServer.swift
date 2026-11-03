@@ -251,13 +251,15 @@ actor FakeDaemon {
         return h
     }
 
-    func putMachine(_ hostname: String, protocol version: UInt32 = protocolVersion) async throws {
+    /// `fileUpload` is what the meta advertises of sending files; nil leaves capabilities out.
+    func putMachine(_ hostname: String, protocol version: UInt32 = protocolVersion, fileUpload: Bool? = nil) async throws {
         metaRev += 1
         var meta = PBMachineMeta()
         meta.hostname = hostname
         meta.os = "darwin"
         meta.home = "/Users/me"
         meta.protocolVersion = version
+        if let fileUpload { meta.capabilities.fileUpload = fileUpload }
         var h = header(.machineMeta)
         h.seq = metaRev
         var req = PBPutMachineRequest()
