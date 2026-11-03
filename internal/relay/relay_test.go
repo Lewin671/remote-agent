@@ -741,6 +741,47 @@ func TestRenameReachesTheClients(t *testing.T) {
 	})
 }
 
+// forwardUntilRun forwards cmd sealed with a deadline budget from now, to a
+// backend that blocks until that deadline once it runs the command. The
+// phone fixes the deadline when it seals, so the Forward RPC, the hub, the
+// stream and the daemon's admission (SQLite writes included) spend the
+// budget before the backend runs; on a slow runner they can spend all of a
+// short one, and the daemon then correctly refuses or expires the command
+// without running it. Such an attempt is repeated with a new request and
+// twice the budget. ran reports, after Forward returns, whether the backend
+// ran the command with that deadline. Every attempt must end at or after its
+// deadline, run or not.
+func (e *env) forwardUntilRun(t *testing.T, sessionID string, budget time.Duration, cmd *pb.Command, ran func(deadline time.Time) bool) (time.Time, error) {
+	t.Helper()
+	for ; budget <= 5*time.Second; budget *= 2 {
+		deadline := time.UnixMilli(time.Now().Add(budget).UnixMilli())
+		request, err := e.client.Seal(e.acct.DeviceID, sessionID, remoteclient.NewRequestID(), deadline, cmd)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ctx, cancel := context.WithDeadline(context.Background(), deadline.Add(2*time.Second))
+		_, err = e.client.Forward(ctx, e.acct.DeviceID, request)
+		hung := ctx.Err() != nil
+		cancel()
+		if hung {
+			t.Fatalf("no result 2s after the command deadline: %v", err)
+		}
+		if early := time.Until(deadline); early > 0 {
+			t.Fatalf("command ended %s before its deadline: %v", early, err)
+		}
+		if ran(deadline) {
+			return deadline, err
+		}
+		var commandErr *remoteclient.CommandError
+		if !errors.As(err, &commandErr) {
+			t.Fatalf("command without an outcome: %v", err)
+		}
+		t.Logf("%s budget spent before the backend ran the command (%v); retrying", budget, err)
+	}
+	t.Fatal("the backend never ran the command before its deadline")
+	return time.Time{}, nil
+}
+
 func TestStopUsesTheSealedCommandDeadline(t *testing.T) {
 	e := setup(t)
 	e.backend.add(t, "sess1")
@@ -748,30 +789,26 @@ func TestStopUsesTheSealedCommandDeadline(t *testing.T) {
 	s := e.session(t, "sess1", 0)
 	e.online(t, true)
 
-	deadline := time.UnixMilli(time.Now().Add(350 * time.Millisecond).UnixMilli())
-	cmd, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), deadline,
-		&pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: s.ID}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	started := time.Now()
-	_, err = e.client.Forward(ctx, s.MachineID, cmd)
+	stop := &pb.Command{Kind: &pb.Command_StopSession{StopSession: &pb.StopSessionRequest{SessionId: s.ID}}}
+	// The local stop records its deadline before it waits, so a stop that
+	// ran has already recorded it when its result returns.
+	deadline, err := e.forwardUntilRun(t, s.ID, 350*time.Millisecond, stop, func(deadline time.Time) bool {
+		select {
+		case got := <-e.backend.stopDeadlines:
+			if got.IsZero() || got.UnixMilli() != deadline.UnixMilli() {
+				t.Fatalf("local stop deadline = %v, want %v", got, deadline)
+			}
+			return true
+		default:
+			return false
+		}
+	})
 	var commandErr *remoteclient.CommandError
 	if !errors.As(err, &commandErr) || commandErr.Code != connect.CodeDeadlineExceeded.String() {
 		t.Fatalf("stop result = %v, want command deadline exceeded", err)
 	}
-	select {
-	case got := <-e.backend.stopDeadlines:
-		if got.IsZero() || got.UnixMilli() != deadline.UnixMilli() {
-			t.Fatalf("local stop deadline = %v, want %v", got, deadline)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("local stop did not receive the command deadline")
-	}
-	if elapsed := time.Since(started); elapsed > time.Second {
-		t.Fatalf("stop took %s past its 350ms command deadline", elapsed)
+	if late := time.Since(deadline); late > 650*time.Millisecond {
+		t.Fatalf("stop returned %s after its command deadline", late)
 	}
 }
 

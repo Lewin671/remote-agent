@@ -16,9 +16,12 @@ import (
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 )
 
+// blockedDirectoryBackend's directory reads block until release. entered
+// receives each blocked read's deadline.
 type blockedDirectoryBackend struct {
 	*fakeBackend
-	entered, release chan struct{}
+	entered chan time.Time
+	release chan struct{}
 }
 type blockedDirectoryLocal struct {
 	remoteagentv1connect.LocalServiceHandler
@@ -29,7 +32,15 @@ func (b *blockedDirectoryBackend) Local() remoteagentv1connect.LocalServiceHandl
 	return &blockedDirectoryLocal{b.fakeBackend.Local(), b}
 }
 func (l *blockedDirectoryLocal) ListDirectories(ctx context.Context, _ *connect.Request[pb.ListDirectoriesRequest]) (*connect.Response[pb.ListDirectoriesResponse], error) {
-	_, err := contextio.Read(ctx, func() ([]os.DirEntry, error) { close(l.owner.entered); <-l.owner.release; return nil, nil })
+	deadline, _ := ctx.Deadline()
+	_, err := contextio.Read(ctx, func() ([]os.DirEntry, error) {
+		select {
+		case l.owner.entered <- deadline:
+		default:
+		}
+		<-l.owner.release
+		return nil, nil
+	})
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, connect.NewError(connect.CodeDeadlineExceeded, err)
@@ -48,25 +59,28 @@ func TestBlockedDirectoryReadReturnsDeadlineAndDoesNotPreventReconnect(t *testin
 			next.ServeHTTP(w, r)
 		})
 	})
-	backend := &blockedDirectoryBackend{e.backend, make(chan struct{}), make(chan struct{})}
+	backend := &blockedDirectoryBackend{e.backend, make(chan time.Time, contextio.Limit), make(chan struct{})}
 	defer close(backend.release)
 	r := e.startRelayBackend(backend)
 	waitFor(t, "connected", r.Connected)
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	request, err := e.client.Seal(e.acct.DeviceID, "", "blocking-dir-request", time.Now().Add(150*time.Millisecond), &pb.Command{Kind: &pb.Command_ListDirectories{ListDirectories: &pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	result := make(chan error, 1)
-	go func() { _, err := e.client.Forward(ctx, e.acct.DeviceID, request); result <- err }()
-	select {
-	case <-backend.entered:
-	case <-ctx.Done():
-		t.Fatal("reader never started")
-	}
+	list := &pb.Command{Kind: &pb.Command_ListDirectories{ListDirectories: &pb.ListDirectoriesRequest{Path: "/synthetic/blocked"}}}
+	// A read that blocked before its deadline reported it before the result
+	// could return. One that only started as its deadline passed may report
+	// it late; its deadline does not match a later attempt's.
+	_, err := e.forwardUntilRun(t, "", 150*time.Millisecond, list, func(deadline time.Time) bool {
+		for {
+			select {
+			case got := <-backend.entered:
+				if got.UnixMilli() == deadline.UnixMilli() {
+					return true
+				}
+			default:
+				return false
+			}
+		}
+	})
 	var ce *remoteclient.CommandError
-	if err := <-result; !errors.As(err, &ce) || ce.Code != "deadline_exceeded" {
+	if !errors.As(err, &ce) || ce.Code != "deadline_exceeded" {
 		t.Fatalf("phone result=%v", err)
 	}
 	// The raw OS-reader replacement remains blocked through stream teardown/reconnect.
