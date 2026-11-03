@@ -1,11 +1,16 @@
 import Foundation
 import RAProto
 
+/// Bounds ciphertext decoding and memory use during history restoration.
+public let cipherEventPageLimit = 128
+
 /// Where envelopes are cached between runs. Only ciphertext is stored.
 public protocol CipherCache: Sendable {
     func machines() async -> [PBMachine]
     func sessions() async -> [PBRemoteSession]
-    func events(sessionId: String) async -> [PBStoredEvent]
+    /// Both queries return at most cipherEventPageLimit rows, in sequence order.
+    func eventPage(sessionId: String, afterSeq: UInt64) async -> [PBStoredEvent]
+    func newestEvents(sessionId: String) async -> [PBStoredEvent]
     func putMachine(_ m: PBMachine) async
     func putSession(_ s: PBRemoteSession) async
     func putEvents(sessionId: String, events: [PBStoredEvent]) async
@@ -36,6 +41,19 @@ public protocol CipherCache: Sendable {
 }
 
 extension CipherCache {
+    /// A complete inspection, e.g. for cache diagnostics. Interactive restoration
+    /// uses the bounded queries directly so it can show the tail before backfill.
+    public func events(sessionId: String) async -> [PBStoredEvent] {
+        var all: [PBStoredEvent] = []
+        var after: UInt64 = 0
+        while true {
+            let page = await eventPage(sessionId: sessionId, afterSeq: after)
+            guard let last = page.last, last.seq > after else { return all }
+            all.append(contentsOf: page)
+            if page.count < cipherEventPageLimit { return all }
+            after = last.seq
+        }
+    }
     public func keepOwner(_ s: PBRemoteSession) async {}
     public func image(key: String) async -> Data? { nil }
     public func putImage(key: String, envelope: Data) async {}

@@ -159,7 +159,9 @@ public struct DeviceView: Equatable, Sendable, Identifiable {
     }
 }
 
-/// A session's events, contiguous from seq 1. Each snapshot shares the
+/// A readable contiguous transcript segment, possibly the newest page while
+/// older events are backfilled. Action state uses only stateEvents, the
+/// contiguous prefix from sequence 1. Each snapshot shares the
 /// pages of the one before it (`PagedList`), so a long history is not copied
 /// for every event that arrives, and `events.extends(previous.events)` tells
 /// cheaply that it only grew.
@@ -170,6 +172,13 @@ public struct SessionEvents: Sendable {
     public var unavailableCount = 0
     public var verifiedEvents = PagedList<PBEvent>()
     public var events: PagedList<PBEvent> = []
+    private var prefix: PagedList<PBEvent>?
+    /// Nil internally means the complete transcript is itself the state prefix.
+    public var stateEvents: PagedList<PBEvent> {
+        get { prefix ?? events }
+        set { prefix = newValue }
+    }
+    public var historyPartial = false
     public var loaded = false
     /// Set when an event does not open: history stops before it.
     public var error: String?
@@ -178,17 +187,22 @@ public struct SessionEvents: Sendable {
 
     public init(
         events: PagedList<PBEvent> = [], loaded: Bool = false, error: String? = nil,
-        fetchError: String? = nil
+        fetchError: String? = nil, stateEvents: PagedList<PBEvent>? = nil,
+        historyPartial: Bool = false
     ) {
         self.events = events
         self.loaded = loaded
         self.error = error
         self.fetchError = fetchError
+        self.prefix = stateEvents
+        self.historyPartial = historyPartial
     }
 
     public init(
-        events: [PBEvent], loaded: Bool = false, error: String? = nil, fetchError: String? = nil
+        events: [PBEvent], loaded: Bool = false, error: String? = nil, fetchError: String? = nil,
+        stateEvents: [PBEvent]? = nil, historyPartial: Bool = false
     ) {
-        self.init(events: PagedList(events), loaded: loaded, error: error, fetchError: fetchError)
+        self.init(events: PagedList(events), loaded: loaded, error: error, fetchError: fetchError,
+            stateEvents: stateEvents.map { PagedList($0) }, historyPartial: historyPartial)
     }
 }

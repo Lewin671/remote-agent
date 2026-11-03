@@ -47,6 +47,18 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
 }
 
 @Suite struct ChatBuilderTests {
+    @MainActor @Test func aNewestTranscriptDoesNotReduceInputStateAcrossAMissingPrefix() async {
+        var tail = PBEvent(); tail.seq = 601; tail.sessionID = "history"
+        tail.inputState.requestID = "request"; tail.inputState.status = .submitted
+        let model = SessionModel()
+        await model.show(SessionEvents(events: [tail], stateEvents: [], historyPartial: true))
+        #expect(model.ready && model.historyPartial && model.tailFirst && !model.loaded)
+        #expect(model.derived.inputs.isEmpty)
+        await model.show(SessionEvents(events: [tail], loaded: true))
+        #expect(model.derived.inputs["request"] == .submitted)
+        #expect(model.loaded && !model.historyPartial && model.tailFirst)
+    }
+
     @Test func aReplyIsParsedOnceHoweverOftenTheChatIsBuilt() async {
         let parses = Parses()
         let builder = ChatBuilder(parse: parses.parse)
@@ -192,6 +204,64 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         snapshot.verifiedEvents = PagedList(list)
         await model.show(snapshot)
         #expect(model.derived.plan?.text == markdown)
+    }
+
+    /// 3 000 events of earlier history, the last of them starting a tool call that completes as the
+    /// newest segment begins; the segment's own calls and then `more` replies follow.
+    private func joinedHistory(more: Int = 0) -> (all: [PBEvent], newest: [PBEvent]) {
+        var kinds: [PBEvent.OneOf_Kind] = []
+        for i in 1...999 { kinds += [reply("earlier \(i)"), started("o\(i)"), called("o\(i)")] }
+        kinds += [user("one more"), reply("on it"), started("edge")]
+        let from = kinds.count + 1
+        kinds += [called("edge")]
+        for i in 1...20 { kinds += [reply("newest \(i)"), started("n\(i)"), called("n\(i)")] }
+        for i in 0..<more { kinds += [reply("after \(i)")] }
+        let all = events(kinds)
+        return (all, Array(all[(from - 1)..<(all.count - more)]))
+    }
+
+    @MainActor @Test func rowsJoiningInFrontAreCountedThoughTheRowsAreKeyedAgain() async {
+        let (all, newest) = joinedHistory()
+        let model = SessionModel()
+        await model.show(SessionEvents(events: newest, stateEvents: [], historyPartial: true))
+        let partial = model.rows
+        #expect(partial.count == 41 && model.joins == 0)
+        await model.show(SessionEvents(events: all, loaded: true))
+        // The calls are shown where they started now: the first row and the last have other IDs.
+        #expect(!model.rows.contains { $0.id == partial[0].id || $0.id == partial[40].id })
+        #expect(model.joins == 1)
+        // What is in front is all that is new.
+        #expect(model.joined == model.rows.count - partial.count)
+    }
+
+    @MainActor @Test func rowsComingAfterAsTheHistoryJoinsAreNotInFront() async {
+        let (all, newest) = joinedHistory(more: 2)
+        let model = SessionModel()
+        await model.show(SessionEvents(events: newest, stateEvents: [], historyPartial: true))
+        let partial = model.rows.count
+        await model.show(SessionEvents(events: all, loaded: true))
+        #expect(model.joins == 1)
+        #expect(model.joined == model.rows.count - partial - 2)
+    }
+
+    @Test func rowsInFrontAreCountedFromTheLastRowBothHave() {
+        #expect(rowsInFront(before: [], after: []) == 0)
+        func rows(_ ids: [String]) -> [ChatRow] { ids.map { ChatRow(item: .note(.init(key: $0, text: "")), blocks: []) } }
+        // Two earlier rows, the first newest one keyed again, and one more at the end.
+        #expect(rowsInFront(before: rows(["e9", "e10", "e11"]), after: rows(["e1", "e2", "e8", "e10", "e11", "e12"])) == 2)
+        // Rows after the last both have may be keyed again: they are not new.
+        #expect(rowsInFront(before: rows(["e9", "x"]), after: rows(["e1", "e9", "y"])) == 1)
+        #expect(rowsInFront(before: rows(["e5", "c7"]), after: rows(["e1", "e5", "s6", "e9"])) == 1)
+        // None in common leaves what the rows grew by.
+        #expect(rowsInFront(before: rows(["x"]), after: rows(["e1", "y"])) == 1)
+    }
+
+    @MainActor @Test func aGapFilledAfterTheRowsIsNotAJoin() async {
+        let (all, _) = joinedHistory()
+        let model = SessionModel()
+        await model.show(SessionEvents(events: Array(all.prefix(100)), loaded: false, historyPartial: true))
+        await model.show(SessionEvents(events: all, loaded: true))
+        #expect(model.joins == 0)
     }
 
     @MainActor @Test func theModelPublishesRowsAndStateFromASnapshot() async {

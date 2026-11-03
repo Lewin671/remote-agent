@@ -12,6 +12,7 @@ public struct RecoveryHistoryUnavailable: Error, Sendable {
 /// chain, seals and opens envelopes with the current content key, pulls new
 /// states from the relay.
 public actor DeviceSecurityClient {
+    static let historyBatchSize = 128
     public typealias StateFetch =
         @Sendable (UInt64) async throws -> PBGetSecurityStatesResponse
     private let store: any DeviceSecurity.Storage
@@ -319,6 +320,51 @@ public actor DeviceSecurityClient {
         try DeviceSecurity.check(!h.purpose.control)
         var r = try read()
         if h.epoch > r.headEpoch { r = try await sync() }
+        return try openHistory(w, h, record: &r, sessionSeed: sessionSeed)
+    }
+
+    /// A bounded history read uses one freshly loaded, verified record. There
+    /// is no suspension on the known-state path; an unknown epoch still syncs.
+    /// Live authorization and subsequent batches consult storage afresh.
+    func openHistoryBatch(_ envelopes: [PBEnvelope], sessionSeed: Data? = nil) async throws
+        -> [Result<(DeviceSecurity.Header, Data), Error>]
+    {
+        try DeviceSecurity.check(envelopes.count <= Self.historyBatchSize, .capacity)
+        if envelopes.isEmpty { return [] }
+        var r = try read()
+        var syncFailure: Error?
+        var results: [Result<(DeviceSecurity.Header, Data), Error>] = []
+        results.reserveCapacity(envelopes.count)
+        for envelope in envelopes {
+            do {
+                let w = try DeviceSecurity.fromEnvelope(envelope)
+                let h = try DeviceSecurity.parseHeader(w.formed.header)
+                try DeviceSecurity.check(!h.purpose.control)
+                if h.epoch > r.headEpoch {
+                    // One failed sync per batch: it may still have stored some
+                    // states, which the rest of the batch reads like openHistory.
+                    if let syncFailure { throw syncFailure }
+                    do {
+                        r = try await sync()
+                    } catch {
+                        syncFailure = error
+                        if let stored = try? read() { r = stored }
+                        throw error
+                    }
+                }
+                try DeviceSecurity.check(!closed, .storage)
+                results.append(.success(try openHistory(w, h, record: &r, sessionSeed: sessionSeed)))
+            } catch {
+                results.append(.failure(error))
+            }
+        }
+        return results
+    }
+
+    private func openHistory(
+        _ w: DeviceSecurity.Wire, _ h: DeviceSecurity.Header,
+        record r: inout DeviceSecurity.Record, sessionSeed: Data?
+    ) throws -> (DeviceSecurity.Header, Data) {
         guard let s = r.states[h.epoch] else { throw DeviceSecurity.Failure.stale }
         let key = try contentKey(r, h, w, s, live: false)
         if r.contentKeys[h.contentEpoch] == nil {

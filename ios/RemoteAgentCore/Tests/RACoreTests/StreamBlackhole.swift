@@ -195,15 +195,16 @@ final class Intercept: URLProtocol, @unchecked Sendable {
     typealias Handler = @Sendable (URLRequest) async throws -> URLRequest
     /// Sees a request once the server has answered it, before the answer is handed on.
     typealias Answered = @Sendable (URLRequest) async -> Void
+    typealias Transform = @Sendable (URLRequest, Data, HTTPURLResponse) async throws -> (Data, HTTPURLResponse)
 
     private static let lock = NSLock()
-    nonisolated(unsafe) private static var handlers: [String: (Handler, Answered?)] = [:]
+    nonisolated(unsafe) private static var handlers: [String: (Handler, Answered?, Transform?)] = [:]
     private static let forward = URLSession(configuration: .ephemeral)
     private static let marker = "ra-test-forwarded"
 
     /// An HTTP stack whose requests to `origin` (http://host:port) pass through `handle`.
-    static func http(for origin: String, answered: Answered? = nil, _ handle: @escaping Handler) -> HTTP {
-        lock.withLock { handlers[key(URL(string: origin)!)] = (handle, answered) }
+    static func http(for origin: String, answered: Answered? = nil, transform: Transform? = nil, _ handle: @escaping Handler) -> HTTP {
+        lock.withLock { handlers[key(URL(string: origin)!)] = (handle, answered, transform) }
         let c = HTTP.defaultConfiguration()
         c.protocolClasses = [Intercept.self]
         return HTTP(configuration: c)
@@ -211,7 +212,7 @@ final class Intercept: URLProtocol, @unchecked Sendable {
 
     private static func key(_ url: URL) -> String { "\(url.host ?? ""):\(url.port ?? 0)" }
 
-    private static func handler(_ request: URLRequest) -> (Handler, Answered?)? {
+    private static func handler(_ request: URLRequest) -> (Handler, Answered?, Transform?)? {
         guard let url = request.url, url.scheme == "http" || url.scheme == "https" else { return nil }
         return lock.withLock { handlers[key(url)] }
     }
@@ -236,7 +237,7 @@ final class Intercept: URLProtocol, @unchecked Sendable {
             stream.close()
             request.httpBody = body
         }
-        guard let (handle, answered) = Intercept.handler(request) else { return }
+        guard let (handle, answered, transform) = Intercept.handler(request) else { return }
         let outgoing = request
         // URLProtocol's client may be called from any thread.
         let me = Unchecked(self)
@@ -244,7 +245,12 @@ final class Intercept: URLProtocol, @unchecked Sendable {
             let client = me.value.client
             do {
                 let target = try await handle(outgoing)
-                let (data, response) = try await Intercept.forward.data(for: target)
+                var (data, response) = try await Intercept.forward.data(for: target)
+                if let transform {
+                    guard let http = response as? HTTPURLResponse else { throw TestFailure("non-HTTP fixture response") }
+                    let changed = try await transform(outgoing, data, http)
+                    data = changed.0; response = changed.1
+                }
                 await answered?(outgoing)
                 try Task.checkCancellation()
                 client?.urlProtocol(me.value, didReceive: response, cacheStoragePolicy: .notAllowed)

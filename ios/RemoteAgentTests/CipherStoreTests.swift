@@ -49,6 +49,33 @@ private struct Stop: Error {}
         return e
     }
 
+    @Test func eventRestoreReadsBoundedNewestAndCursorPages() async throws {
+        defer { cleanUp() }
+        let store = try open()
+        await store.putEvents(sessionId: "history", events: (1...301).map { event(UInt64($0)) })
+        let newest = await store.newestEvents(sessionId: "history")
+        #expect(newest.map(\.seq) == Array(174...301).map(UInt64.init))
+        let first = await store.eventPage(sessionId: "history", afterSeq: 0)
+        let next = await store.eventPage(sessionId: "history", afterSeq: 128)
+        #expect(first.map(\.seq) == Array(1...128).map(UInt64.init))
+        #expect(next.map(\.seq) == Array(129...256).map(UInt64.init))
+        #expect(await store.eventPage(sessionId: "history", afterSeq: 301).isEmpty)
+        #expect(await store.events(sessionId: "history").count == 301)
+        #expect(await store.newestEvents(sessionId: "other").isEmpty)
+    }
+
+    @Test func boundedPagesPreserveUnsignedSequenceOrderAcrossTheSQLiteSignBit() async throws {
+        defer { cleanUp() }
+        let store = try open()
+        let boundary = UInt64(Int64.max)
+        let seqs: [UInt64] = [1, boundary, boundary + 1, UInt64.max]
+        await store.putEvents(sessionId: "history", events: seqs.map { event($0) })
+        #expect(await store.newestEvents(sessionId: "history").map(\.seq) == seqs)
+        #expect(await store.eventPage(sessionId: "history", afterSeq: boundary).map(\.seq) == [boundary + 1, UInt64.max])
+        #expect(await store.eventPage(sessionId: "history", afterSeq: boundary + 1).map(\.seq) == [UInt64.max])
+        #expect(await store.eventPage(sessionId: "history", afterSeq: UInt64.max).isEmpty)
+    }
+
     @Test func machinesArePutReplacedAndRemoved() async throws {
         defer { cleanUp() }
         let store = try open()

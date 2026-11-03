@@ -126,10 +126,34 @@ final class CipherStore: CipherCache {
         }
     }
 
-    func events(sessionId: String) async -> [PBStoredEvent] {
+    func eventPage(sessionId: String, afterSeq: UInt64) async -> [PBStoredEvent] {
         await read([]) { db in
-            try Data.fetchAll(db, sql: "SELECT data FROM events WHERE sessionId = ? ORDER BY seq", arguments: [sessionId])
-                .compactMap { try? PBStoredEvent(serializedBytes: $0) }
+            // SQLite stores the uint64 bit pattern in a signed integer. Read
+            // each half separately to preserve unsigned order and index seeks.
+            let after = Int64(bitPattern: afterSeq)
+            var data = try Data.fetchAll(db,
+                sql: "SELECT data FROM events WHERE sessionId = ? AND seq > ?" + (after < 0 ? " AND seq < 0" : "") + " ORDER BY seq LIMIT ?",
+                arguments: [sessionId, after, cipherEventPageLimit])
+            if after >= 0 && data.count < cipherEventPageLimit {
+                data += try Data.fetchAll(db,
+                    sql: "SELECT data FROM events WHERE sessionId = ? AND seq < 0 ORDER BY seq LIMIT ?",
+                    arguments: [sessionId, cipherEventPageLimit - data.count])
+            }
+            return data.compactMap { try? PBStoredEvent(serializedBytes: $0) }
+        }
+    }
+
+    func newestEvents(sessionId: String) async -> [PBStoredEvent] {
+        await read([]) { db in
+            var data = try Data.fetchAll(db,
+                sql: "SELECT data FROM events WHERE sessionId = ? AND seq < 0 ORDER BY seq DESC LIMIT ?",
+                arguments: [sessionId, cipherEventPageLimit])
+            if data.count < cipherEventPageLimit {
+                data += try Data.fetchAll(db,
+                    sql: "SELECT data FROM events WHERE sessionId = ? AND seq >= 0 ORDER BY seq DESC LIMIT ?",
+                    arguments: [sessionId, cipherEventPageLimit - data.count])
+            }
+            return data.reversed().compactMap { try? PBStoredEvent(serializedBytes: $0) }
         }
     }
 

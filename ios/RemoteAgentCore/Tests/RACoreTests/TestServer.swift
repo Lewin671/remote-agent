@@ -303,6 +303,10 @@ actor FakeDaemon {
 
     /// Appends events to a session, numbering them.
     func upload(_ sid: String, _ events: PBEvent...) async throws {
+        try await uploadBatch(sid, events)
+    }
+
+    func uploadBatch(_ sid: String, _ events: [PBEvent]) async throws {
         let key = sessionKeys[sid]!
         var req = PBUploadEventsRequest()
         req.sessionID = sid
@@ -484,6 +488,17 @@ final class MemoryCache: CipherCache, @unchecked Sendable {
     func events(sessionId: String) async -> [PBStoredEvent] {
         lock.withLock { (eventStore[sessionId] ?? [:]).values.sorted { $0.seq < $1.seq } }
     }
+    func eventPage(sessionId: String, afterSeq: UInt64) async -> [PBStoredEvent] {
+        lock.withLock {
+            Array((eventStore[sessionId] ?? [:]).values.filter { $0.seq > afterSeq }
+                .sorted { $0.seq < $1.seq }.prefix(cipherEventPageLimit))
+        }
+    }
+    func newestEvents(sessionId: String) async -> [PBStoredEvent] {
+        lock.withLock {
+            Array((eventStore[sessionId] ?? [:]).values.sorted { $0.seq < $1.seq }.suffix(cipherEventPageLimit))
+        }
+    }
     func putMachine(_ m: PBMachine) async { lock.withLock { machineStore[m.id] = m } }
     func putSession(_ s: PBRemoteSession) async { lock.withLock { sessionStore[s.sessionID] = s } }
     func putEvents(sessionId: String, events: [PBStoredEvent]) async {
@@ -561,6 +576,19 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     func events(sessionId: String) async -> [PBStoredEvent] {
         if let f = lock.withLock({ _events }) { return await f(sessionId) }
         return await inner.events(sessionId: sessionId)
+    }
+    func eventPage(sessionId: String, afterSeq: UInt64) async -> [PBStoredEvent] {
+        if let f = lock.withLock({ _events }) {
+            return Array(await f(sessionId).filter { $0.seq > afterSeq }
+                .sorted { $0.seq < $1.seq }.prefix(cipherEventPageLimit))
+        }
+        return await inner.eventPage(sessionId: sessionId, afterSeq: afterSeq)
+    }
+    func newestEvents(sessionId: String) async -> [PBStoredEvent] {
+        if let f = lock.withLock({ _events }) {
+            return Array(await f(sessionId).sorted { $0.seq < $1.seq }.suffix(cipherEventPageLimit))
+        }
+        return await inner.newestEvents(sessionId: sessionId)
     }
     func putMachine(_ m: PBMachine) async {
         if let f = lock.withLock({ _putMachine }) { await f(m) }

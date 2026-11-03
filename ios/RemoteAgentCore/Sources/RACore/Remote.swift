@@ -286,6 +286,8 @@ public actor Remote {
         var usedAt: Int64 = 0
         var useOrder = 0
         var pending: [UInt64: PBEvent] = [:]
+        var tailRequested = false
+        var restoring = false
         var fetching = false
         var refetch = false
         var loaded = false

@@ -157,6 +157,13 @@ final class SessionModel {
     private(set) var liveError: String?
     private(set) var unverifiedLegacy = false
     private(set) var unavailableCount = 0
+    private(set) var historyPartial = false
+    /// Keep a newest segment's short-content alignment through backfill.
+    private(set) var tailFirst = false
+    /// How many times earlier history joined in front of the rows shown.
+    private(set) var joins = 0
+    /// How many rows the last join put in front of those shown (`rowsInFront`).
+    private(set) var joined = 0
     private(set) var startPrompt: StartPrompt?
     /// A message was sent in the history read so far.
     private(set) var spoke = false
@@ -172,9 +179,12 @@ final class SessionModel {
     @ObservationIgnored private let builder: ChatBuilder
     @ObservationIgnored private var events = PagedList<PBEvent>()
     @ObservationIgnored private var stateEvents = PagedList<PBEvent>()
+    @ObservationIgnored private var pendingHistoryPartial = false
     @ObservationIgnored private var params = ChatParams()
     @ObservationIgnored private var asked = 0
     @ObservationIgnored private var applied = 0
+    /// The seq the rows shown begin at.
+    @ObservationIgnored private var shownFrom: UInt64 = 1
     #if DEBUG
         /// How long the last pass took off the main actor, and how long applying it took on it, in ms.
         @ObservationIgnored private(set) var lastBuildMs = 0.0
@@ -200,8 +210,9 @@ final class SessionModel {
     /// Takes a snapshot of the history. Apart from `follow` for tests and sample data.
     func show(_ snapshot: SessionEvents) async {
         events = snapshot.events
-        stateEvents = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.events
+        stateEvents = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.stateEvents
         params.live = snapshot.live
+        pendingHistoryPartial = snapshot.historyPartial
         liveError = snapshot.liveError
         unverifiedLegacy = snapshot.unverifiedLegacy
         unavailableCount = snapshot.unavailableCount
@@ -226,6 +237,9 @@ final class SessionModel {
         #if DEBUG
             let started = ContinuousClock.now
         #endif
+        let partial = pendingHistoryPartial
+        let from = events.first?.seq ?? 1
+        let newestSegment = partial && from > 1
         let snapshot = await builder.build(events, params, stateEvents: stateEvents)
         // A later pass that finished first already shows more.
         guard turn > applied else { return }
@@ -233,6 +247,14 @@ final class SessionModel {
         #if DEBUG
             let built = ContinuousClock.now
         #endif
+        if newestSegment && !tailFirst { tailFirst = true }
+        // Earlier history came in front: not a gap filled after the rows, nor the end of the history said to be further.
+        if from < shownFrom && !rows.isEmpty {
+            joined = rowsInFront(before: rows, after: snapshot.rows)
+            joins += 1
+        }
+        shownFrom = from
+        if historyPartial != partial { historyPartial = partial }
         if snapshot.rows != rows { rows = snapshot.rows }
         if snapshot.derived != derived { derived = snapshot.derived }
         if snapshot.startPrompt != startPrompt { startPrompt = snapshot.startPrompt }
@@ -255,6 +277,24 @@ final class SessionModel {
             }
         #endif
     }
+}
+
+/// How many rows came in front of `before` in `after`, when earlier history
+/// joined it. Rows need not keep their IDs across the join: until the history
+/// that holds a tool call's start is read, the call is shown by where it
+/// completed. So it is what the rows grew by, less what came after the last
+/// row both have, the rows after it in `before` having changed only their IDs.
+func rowsInFront(before: [ChatRow], after: [ChatRow]) -> Int {
+    var at: [String: Int] = [:]
+    for (i, row) in after.enumerated() { at[row.id] = i }
+    var behind = 0
+    for (i, row) in before.enumerated().reversed() {
+        if let j = at[row.id] {
+            behind = (after.count - 1 - j) - (before.count - 1 - i)
+            break
+        }
+    }
+    return max(0, after.count - before.count - max(0, behind))
 }
 
 /// Asks for a session that is not held here by its ID: the listing comes a

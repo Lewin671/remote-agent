@@ -74,8 +74,22 @@ struct ImageViewerScreen: View {
             for await events in context.remote.events(session).updates() {
                 let list = await Task.detached { sessionImages(events.events) }.value
                 if Task.isCancelled { return }
-                if list != all { all = list }
-                if page == nil, !list.isEmpty { page = viewerStart(list, seq: seq, index: index) }
+                if list != all {
+                    // Older history joining in front moves every index: stay on the image shown.
+                    if let page, all.indices.contains(page) {
+                        let shown = all[page]
+                        let first = all.firstIndex { $0.seq == shown.seq } ?? page
+                        self.page = viewerStart(list, seq: shown.seq, index: page - first)
+                    }
+                    all = list
+                }
+                // A partial history may not hold the tapped event yet.
+                if page == nil, !list.isEmpty,
+                    !events.historyPartial || events.error != nil || events.fetchError != nil
+                        || list.contains(where: { $0.seq == seq })
+                {
+                    page = viewerStart(list, seq: seq, index: index)
+                }
             }
         }
         // Opened from a link to a session that is not held here: it is fetched by its ID.

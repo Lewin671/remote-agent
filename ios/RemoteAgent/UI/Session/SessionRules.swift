@@ -38,6 +38,12 @@ struct ChatScroll: Equatable, Sendable {
         return follow.on
     }
 
+    /// Rows came in front of those there were: they are not new. Following,
+    /// the end is in sight and the rows are taken as seen when they change.
+    mutating func prepended(_ n: Int) {
+        if !follow.on { seen += n }
+    }
+
     /// The user asked for the end.
     mutating func jumpToEnd(rows: Int) {
         follow = Follow()

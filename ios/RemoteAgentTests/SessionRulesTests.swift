@@ -75,6 +75,65 @@ extension Ref<LiveAnnouncer> {
         #expect(scroll.v.fresh(rows: 18) == 0)
     }
 
+    @Test func earlierHistoryJoiningInFrontIsNotNew() {
+        let scroll = Ref(ChatScroll())
+        _ = scroll.changed(rows: 40)
+        scroll.v.observe(userDragging: true, atBottom: false, rows: 40)
+        // 1 000 earlier rows join in front, and 2 new ones come in at the end.
+        scroll.v.prepended(1_000)
+        #expect(!scroll.changed(rows: 1_042))
+        #expect(scroll.v.fresh(rows: 1_042) == 2)
+    }
+
+    @Test func earlierHistoryJoiningAtTheEndLeavesTheNextRowsToCount() {
+        let scroll = Ref(ChatScroll())
+        _ = scroll.changed(rows: 40)
+        // Following, the rows are seen as they change, before or after they are said to have come in front.
+        scroll.v.prepended(1_000)
+        #expect(scroll.changed(rows: 1_040))
+        scroll.v.observe(userDragging: true, atBottom: false, rows: 1_040)
+        #expect(scroll.v.fresh(rows: 1_043) == 3)
+    }
+
+    /// At 700 pt of a bar at 700, then moved back by a finger.
+    @MainActor private func readingBack() -> ChatScrollTracker {
+        let tracker = ChatScrollTracker()
+        _ = tracker.floor(700)
+        _ = tracker.count(10)
+        _ = tracker.content(height: 2_000, endY: 700)
+        tracker.dragging = true
+        _ = tracker.content(height: 2_000, endY: 1_500)
+        tracker.dragging = false
+        return tracker
+    }
+
+    @MainActor @Test func theTrackerIsNotSentToTheEndWhileTheReaderIsPutBack() {
+        let tracker = readingBack()
+        tracker.keep()
+        // On the way back the list passes its end at a size it already had: that is not the reader at the end.
+        #expect(!tracker.content(height: 2_000, endY: 700))
+        #expect(!tracker.scroll.following)
+        // Nor are its growth and its new rows a reason to go there.
+        #expect(!tracker.content(height: 9_000, endY: 700))
+        #expect(!tracker.count(500))
+        #expect(!tracker.scroll.following)
+        tracker.kept()
+        // Put back, it is judged again: at its end it follows.
+        _ = tracker.content(height: 9_000, endY: 700)
+        #expect(tracker.scroll.following)
+    }
+
+    @MainActor @Test func askingForTheEndWhileTheReaderIsPutBackEndsIt() {
+        let tracker = readingBack()
+        tracker.keep()
+        tracker.jump()
+        #expect(!tracker.keeping)
+        // It follows again, and a step of the way back that was under way does not undo that.
+        tracker.kept()
+        #expect(tracker.scroll.following)
+        #expect(tracker.content(height: 9_000, endY: 1_500))
+    }
+
     @MainActor @Test func theTrackerFollowsGrowthAndTheKeyboardOnlyAtTheEnd() {
         let tracker = ChatScrollTracker()
         _ = tracker.floor(700)
