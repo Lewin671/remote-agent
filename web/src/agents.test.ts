@@ -33,7 +33,8 @@ describe("agents registry", () => {
     expect(codex.reconcilesUnclaimedInput).toBe(false);
     expect(codex.sessionNeedsModelList).toBe(false);
     expect(codex.modelLabel("gpt-6-sol")).toBe("GPT-6-Sol");
-    expect(codex.planName("claude_max")).toBe("claude_max");
+    expect(codex.planName("claude_max")).toBe("Max");
+    expect(codex.planName("prolite")).toBe("Pro Lite");
 
     const claude = agentInfo(Agent.CLAUDE);
     expect(claude.id).toBe("claude");

@@ -3,9 +3,9 @@
 // trusted. A missing value is never shown as 0%, and a reset time that
 // passed does not mean the quota is back.
 
-import { Agent, type RateLimit } from "./gen/remoteagent/v1/event_pb";
+import type { Agent, RateLimit } from "./gen/remoteagent/v1/event_pb";
 import { QuotaState, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
-import { agentName } from "./model";
+import { agentInfo, agentName, normalizePlanName } from "./agents";
 
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
@@ -81,22 +81,16 @@ export interface QuotaView {
   stale: boolean;
 }
 
-const expected: Record<number, [string, string, number][]> = {
-  // name, label, minutes: the windows each CLI reports.
-  [Agent.CODEX]: [
-    ["primary", "5 小时", 300],
-    ["secondary", "7 天", 10080],
-  ],
-  [Agent.CLAUDE]: [
-    ["five_hour", "5 小时", 300],
-    ["seven_day", "7 天", 10080],
-  ],
+const fallbackLabels: Record<string, string> = {
+  primary: "5 小时",
+  secondary: "7 天",
+  five_hour: "5 小时",
+  seven_day: "7 天",
 };
 
 /** A plan as people call it: Pro Lite for prolite, Max for claude_max. */
-export function planName(plan: string): string {
-  const known: Record<string, string> = { prolite: "Pro Lite", claude_max: "Max", claude_pro: "Pro", claude_team: "Team", claude_enterprise: "Enterprise" };
-  return known[plan.toLowerCase()] ?? plan.replace(/^claude_/i, "").split(/[_\s]+/).filter(Boolean).map((w) => w[0].toUpperCase() + w.slice(1)).join(" ");
+export function planName(plan: string, agent?: Agent): string {
+  return agent ? agentInfo(agent).planName(plan) : normalizePlanName(plan);
 }
 
 /** When a reading arrived, in Beijing like the reset times beside it. */
@@ -135,7 +129,7 @@ function windowRow(w: QuotaWindow, label: string, now: number, stale: boolean): 
  * 暂不支持读取额度 for an installed CLI the daemon reports nothing for. */
 export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, online: boolean): QuotaView[] {
   const out: QuotaView[] = [];
-  const norm = (a: Agent) => (a === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX);
+  const norm = (a: Agent) => agentInfo(a).agent;
   for (const agent of agents.map(norm)) {
     const name = agentName(agent);
     const mine = quotas.filter((q) => norm(q.agent) === agent);
@@ -159,11 +153,15 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
       const observed = q.observedMs > 0n ? when(Number(q.observedMs), now) : "";
       const heard = failed ? "最近成功收到" : "最近收到";
       const byName = new Map(q.windows.map((w) => [w.name, w]));
-      const known = expected[agent] ?? [];
+      const known = agentInfo(agent).quotaWindows;
       // Only the windows the account has: a plan with one window is not
       // shown a second one that never arrives.
-      const rows = known.filter(([n]) => byName.has(n)).map(([n, label]) => windowRow(byName.get(n)!, label, now, stale));
-      for (const w of q.windows) if (!known.some(([n]) => n === w.name)) rows.push(windowRow(w, w.name, now, stale));
+      const rows = known
+        .filter((n) => byName.has(n))
+        .map((n) => windowRow(byName.get(n)!, fallbackLabels[n] ?? n, now, stale));
+      for (const w of q.windows)
+        if (!known.includes(w.name))
+          rows.push(windowRow(w, fallbackLabels[w.name] ?? w.name, now, stale));
       if (failed && !q.windows.length) {
         out.push({ ...base, title: name + who, kind: "failed", error: `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}`, head: "暂未获取额度" });
         continue;
@@ -173,7 +171,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
       const warn = got.find((r) => r.tone === "warn");
       out.push({
         ...base,
-        title: name + (q.plan ? ` · ${planName(q.plan)}` : "") + who + (stale ? " · 上次记录" : ""),
+        title: name + (q.plan ? ` · ${agentInfo(q.agent).planName(q.plan)}` : "") + who + (stale ? " · 上次记录" : ""),
         kind: failed ? "failed" : "ok",
         head: "暂未获取额度",
         seen: observed ? `${heard} ${observed}` : "",

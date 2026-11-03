@@ -63,7 +63,7 @@ const CODEX_ENTRY: AgentEntry = {
   name: "Codex",
   quotaWindows: ["primary", "secondary"],
   planName(raw: string): string {
-    return raw;
+    return normalizePlanName(raw);
   },
   modelLabel(id: string): string {
     return gptSlugLabel(id);
