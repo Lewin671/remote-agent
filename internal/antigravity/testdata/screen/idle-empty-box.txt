@@ -1,0 +1,30 @@
+[90m────────────────────────────────────────────────────────────
+[1m[34m> read the image file /tmp/ra-test-image.png and describe its dimension[0m
+
+[32m●[39m [1m[33mRan[0m [37m(file /tmp/ra-test-image.png)[39m
+[32m●[39m [1m[33mExplored[0m 1 file [37m(ra-test-image.png)[39m [37m(ctrl+o to expand)[39m
+
+  The file ra-test-image.png has dimensions of [1m1 × 1 pixel[0m (8-bit/color RGBA).
+
+[90m────────────────────────────────────────────────────────────
+[1m[34m> use the ask_question tool with is_multi_select=true to ask me to select multiple toppings from Cheese, Mushrooms,[0m
+[1m[34m  Olives, Pepperoni[0m
+
+[1m[33m?[0m Please select your toppings:
+[1m[34m> (Recommended) Cheese, Olives, Pineapple[0m
+
+  You have selected:
+
+  • [1mCheese[0m
+  • [1mOlives[0m
+  • [1mPineapple[0m
+
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[94m>[39m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+[36mGemini 3.8 Flash[39m [2m·[0m [37mlow[39m  [2m│[0m  [35mra-agy-perm-hook-work[39m  [2m│[0m  [2midle[0m [32m1s[39m [2m·[0m [2mhit[0m [31m0%[39m
+[2mctx[0m [38;5;40m▎[38;5;239m░░░░░░░░░░░░░░░░░░░[39m [38;5;40m  1%[39m
+[2m5h [0m [38;5;40m█████[38;5;76m███[38;5;148m██[38;5;239m░░░░░░░░░░[39m [38;5;148m 50%[39m  [38;5;239m↻ 3h 2m (13:00)[39m
+[2m7d [0m [38;5;40m███[38;5;239m░░░░░░░░░░░░░░░░░[39m [38;5;40m 15%[39m  [38;5;239m↻ 6d 22h (Tue 08:00)[39m
+

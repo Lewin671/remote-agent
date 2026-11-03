@@ -1,0 +1,30 @@
+[1m[33mAccessing workspace:[0m
+
+[1m/workspace/project[0m
+
+Do you trust the contents of this project?
+
+[38;5;69mAntigravity CLI[39m requires permission to read, edit, and execute files here.
+
+[94m> Yes, I trust this folder[39m
+  [90mNo, exit[39m
+
+  [1m[94m↑/↓[0m[90m Navigate · [1m[94menter[0m[90m Confirm
+
+[36mGemini 3.8 Flash[39m [2m·[0m [37mlow[39m  [2m│[0m  [35mra-agy-footer-test[39m
+[2mctx[0m [38;5;239m░░░░░░░░░░░░░░░░░░░░[39m [38;5;40m  0%[39m
+[2m5h [0m [38;5;40m█████[38;5;76m███[38;5;148m▌[38;5;239m░░░░░░░░░░░[39m [38;5;148m 42%[39m  [38;5;239m↻ 3h 11m (13:00)[39m
+[2m7d [0m [38;5;40m██▌[38;5;239m░░░░░░░░░░░░░░░░░[39m [38;5;40m 12%[39m  [38;5;239m↻ 6d 22h (Tue 08:00)[39m
+
+
+
+
+
+
+
+
+
+
+
+
+

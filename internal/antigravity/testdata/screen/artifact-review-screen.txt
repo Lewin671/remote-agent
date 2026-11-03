@@ -1,0 +1,30 @@
+
+[32m●[39m [1m[33mRan[0m [37m(sleep 5)[39m [37m(ctrl+o to expand)[39m
+
+  The command [94msleep 5[39m has finished successfully.
+
+[90m────────────────────────────────────────────────────────────
+[1m[34m> use the ask_question tool with is_multi_select=false to ask: What is your primary language? with options Python, Go,[0m
+[1m[34m  Rust[0m
+
+[1m[33m?[0m What is your primary language?
+[1m[34m> Go[0m
+
+  You selected [1mGo[0m as your primary language.
+
+[90m────────────────────────────────────────────────────────────
+[1m[34m> create an implementation plan artifact to add a README[0m
+⢿  [90mG[94menera[90mting...[39m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[94m>[39m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[1m[39mArtifacts[0m
+  [90mNo artifacts[39m
+
+[1mKeyboard: [0m[94m↑/↓[39m [90mNavigate[39m  [94mp[39m [90mpreview[39m  [94menter[39m [90mopen[39m  [94mctrl+g[39m [90mopen in editor[39m  [94mesc[39m [90mDismiss[39m
+
+
+[36mGemini 3.8 Flash[39m [2m·[0m [37mlow[39m  [2m│[0m  [35mra-agy-perm-hook-work[39m  [2m│[0m  [2midle[0m [32m17s[39m [2m·[0m [2mhit[0m [31m4%[39m
+[2mctx[0m [38;5;40m▎[38;5;239m░░░░░░░░░░░░░░░░░░░[39m [38;5;40m  1%[39m
+[2m5h [0m [38;5;40m█████[38;5;76m███[38;5;148m██▌[38;5;239m░░░░░░░░░[39m [38;5;148m 52%[39m  [38;5;239m↻ 3h 0m (13:00)[39m
+[2m7d [0m [38;5;40m███[38;5;239m░░░░░░░░░░░░░░░░░[39m [38;5;40m 15%[39m  [38;5;239m↻ 6d 22h (Tue 08:00)[39m

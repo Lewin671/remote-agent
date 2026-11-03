@@ -1,0 +1,30 @@
+
+  I have started the command [94mpython3 -c 'import time; time.sleep(10)'[39m in the background (task ID: [94mtask-10[39m). I will
+  wait for it to finish.
+
+  The command [94mpython3 -c 'import time; time.sleep(10)'[39m has completed successfully (exit code [94m0[39m).
+
+[1m[34m> /fork[0m
+[1m[34m  ⎿  [0m[37mForked conversation.[39m
+     [37mTo go back, use: /resume a67c4c71-91cf-4d7d-b90c-922ab99fb643[39m
+
+[90m────────────────────────────────────────────────────────────
+[1m[34m> reply with FIRST_FORK_REPLY[0m
+
+  FIRST_FORK_REPLY
+
+[90m────────────────────────────────────────────────────────────
+[1m[34m> run the shell command sleep 8[0m
+
+[33m○[39m [1m[33mRunning[0m [37m(sleep 8)[39m [37m(ctrl+o to expand)[39m
+⣷  [94mRun[90mning command...[39m
+[90m└ Tip: Use /model to switch between available models.[39m
+[90m▸ queued mid-turn message (alt+m to send immediately)[39m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+[94m>[39m
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+[36mGemini 3.8 Flash[39m [2m·[0m [37mlow[39m  [2m│[0m  [35mra-agy-perm-hook-work[39m  [2m│[0m  [2midle[0m [32m0s[39m [2m·[0m [2mhit[0m [31m0%[39m
+[2mctx[0m [38;5;40m▎[38;5;239m░░░░░░░░░░░░░░░░░░░[39m [38;5;40m  1%[39m
+[2m5h [0m [38;5;40m█████[38;5;76m███[38;5;148m▉[38;5;239m░░░░░░░░░░░[39m [38;5;148m 45%[39m  [38;5;239m↻ 3h 6m (13:00)[39m
+[2m7d [0m [38;5;40m██▊[38;5;239m░░░░░░░░░░░░░░░░░[39m [38;5;40m 14%[39m  [38;5;239m↻ 6d 22h (Tue 08:00)[39m
