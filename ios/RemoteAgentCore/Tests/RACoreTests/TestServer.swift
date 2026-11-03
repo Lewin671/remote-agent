@@ -549,6 +549,7 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     private let lock = NSLock()
     private var _machines: (@Sendable () async -> Void)?
     private var _events: (@Sendable (String) async -> [PBStoredEvent])?
+    private var _eventPage: (@Sendable (String, UInt64) async -> Void)?
     private var _putEvents: (@Sendable (String, [PBStoredEvent]) async -> Void)?
     private var _blob: (@Sendable (String, Data?) async -> Data?)?
     private var _putBlob: (@Sendable (String, Data) async -> Void)?
@@ -560,6 +561,10 @@ final class HookedCache: CipherCache, @unchecked Sendable {
     func hookMachines(_ f: (@Sendable () async -> Void)?) { lock.withLock { _machines = f } }
     func hookEvents(_ f: (@Sendable (String) async -> [PBStoredEvent])?) {
         lock.withLock { _events = f }
+    }
+    /// Runs before a page of older events is read (not the newest window).
+    func hookEventPage(_ f: (@Sendable (String, UInt64) async -> Void)?) {
+        lock.withLock { _eventPage = f }
     }
     func hookPutEvents(_ f: (@Sendable (String, [PBStoredEvent]) async -> Void)?) {
         lock.withLock { _putEvents = f }
@@ -580,6 +585,7 @@ final class HookedCache: CipherCache, @unchecked Sendable {
         return await inner.events(sessionId: sessionId)
     }
     func eventPage(sessionId: String, afterSeq: UInt64) async -> [PBStoredEvent] {
+        if let f = lock.withLock({ _eventPage }) { await f(sessionId, afterSeq) }
         if let f = lock.withLock({ _events }) {
             return Array(await f(sessionId).filter { $0.seq > afterSeq }
                 .sorted { $0.seq < $1.seq }.prefix(cipherEventPageLimit))

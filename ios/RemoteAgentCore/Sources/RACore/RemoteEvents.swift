@@ -102,54 +102,66 @@ extension Remote {
         // lastSeq and cache cursors are routing hints; ingest authenticates each event.
         let newest = await cache?.newestEvents(sessionId: sid) ?? []
         if buffers[sid] !== b { return }
-        if !newest.isEmpty {
-            b.tailRequested = (newest.first?.seq ?? 1) > 1
-            await ingest(sid, newest, fillGaps: false, save: false, history: true)
+        var broken = false
+        if let first = newest.first?.seq, let last = newest.last?.seq {
+            b.tailRequested = first > 1
+            broken = !(await ingest(sid, newest, fillGaps: false, save: false, history: true))
             if buffers[sid] !== b { return }
-            var after: UInt64 = 0
-            while b.error == nil {
-                let page = await cache?.eventPage(sessionId: sid, afterSeq: after) ?? []
-                if buffers[sid] !== b { return }
-                guard let last = page.last, last.seq > after else { break }
-                await ingest(sid, page, fillGaps: false, save: false, history: true)
-                if buffers[sid] !== b { return }
-                after = last.seq
-                if page.count < cipherEventPageLimit { break }
-            }
-            // As before, a cached envelope that fails authentication is discarded
-            // so the cache's insert-once policy cannot preserve it indefinitely.
-            if b.error != nil {
-                await cache?.dropEvents(sessionId: sid)
-                if buffers[sid] !== b { return }
-                b.events = PagedList()
-                b.pending = [:]
-                b.verifiedSeqs.removeAll()
-                b.unavailableSeqs.removeAll()
-                b.verifiedEvents = PagedList()
-                b.unverifiedLegacy = false
-                b.tailRequested = false
-                b.bytes = 0
-                b.error = nil
-                publishEvents(sid, b)
+            b.cachedThrough = last
+            if !broken && first > 1 {
+                // What the relay has after the cache need not wait for the
+                // cached prefix: ask for it now, and verify the prefix meanwhile.
+                Task { await self.fetchEvents(sid) }
+                var after: UInt64 = 0
+                while after + 1 < first {
+                    let page = await cache?.eventPage(sessionId: sid, afterSeq: after) ?? []
+                    if buffers[sid] !== b { return }
+                    guard let row = page.last, row.seq > after else { break }
+                    // Only an event of the cache's own decides that the cache is
+                    // bad; one from the relay failing meanwhile stops only its tail.
+                    if !(await ingest(sid, page, fillGaps: false, save: false, history: true)) {
+                        broken = true
+                        break
+                    }
+                    if buffers[sid] !== b { return }
+                    after = row.seq
+                    if page.count < cipherEventPageLimit { break }
+                }
             }
         }
-        b.restoring = false
+        if broken {
+            // As before, a cached envelope that fails authentication is discarded
+            // so the cache's insert-once policy cannot preserve it indefinitely.
+            await cache?.dropEvents(sessionId: sid)
+            if buffers[sid] !== b { return }
+            // A history of its own: a fetch of the newer events still in
+            // flight for the discarded one ends without touching this one.
+            let fresh = Buffer()
+            used(fresh)
+            buffers[sid] = fresh
+            publishEvents(sid, fresh)
+        } else {
+            b.restoring = false
+        }
         await fetchEvents(sid)
         trimHistory()
     }
 
     /// Show the newest network page first, then fill every gap from sequence 1.
+    /// While the disk cache is still restoring, only what is newer than it is asked for.
     func fetchEvents(_ sid: String) async {
         guard let b = buffers[sid], sessions[sid] != nil, running else { return }
-        if b.fetching || b.restoring {
+        if b.fetching || (b.restoring && b.cachedThrough == nil) {
             b.refetch = true
             return
         }
         b.fetching = true
         let gen = generation
+        var newerOnly = false
         defer {
             b.fetching = false
-            if b.refetch && running && gen != generation && buffers[sid] === b {
+            // A pass for the newer events that failed leaves the whole read asked for after it.
+            if b.refetch && running && (gen != generation || newerOnly) && buffers[sid] === b {
                 Task { await self.fetchEvents(sid) }
             }
             publishEvents(sid, b)
@@ -157,32 +169,40 @@ extension Remote {
         do {
             repeat {
                 b.refetch = false
+                newerOnly = b.restoring
                 var end: UInt64?
                 let latest = sessions[sid]?.lastSeq ?? 0
-                let prefix = UInt64(b.events.count)
-                if latest > prefix + 500 && b.error == nil {
-                    let after = latest - 500
-                    let held = ((after + 1)...latest).allSatisfy {
-                        $0 <= prefix || b.pending[$0] != nil
+                var tail: UInt64?
+                if newerOnly {
+                    // From the end of the cache, or the server's newest page when
+                    // that is further on; asked once even when the metadata says
+                    // there is nothing newer, as it may be old.
+                    tail = max(b.cachedThrough ?? 0, latest > 500 ? latest - 500 : 0)
+                } else if latest > UInt64(b.events.count) + 500 && b.error == nil && heldThrough(latest - 500, b) < latest {
+                    tail = latest - 500
+                }
+                if let start = tail {
+                    b.tailRequested = true
+                    var cursor = heldThrough(start, b)
+                    while true {
+                        guard let page = try await historyPage(sid, after: cursor, limit: pageLimit(after: cursor, b), buffer: b, generation: gen) else { return }
+                        let next = page.events.last?.seq ?? cursor
+                        if !page.more { end = next }
+                        if !page.more || b.error != nil || next <= cursor { break }
+                        cursor = heldThrough(next, b)
                     }
-                    if !held {
-                        b.tailRequested = true
-                        var cursor = after
-                        while true {
-                            guard let page = try await historyPage(sid, after: cursor, buffer: b, generation: gen) else { return }
-                            let next = page.events.last?.seq ?? cursor
-                            if !page.more { end = next }
-                            if !page.more || b.error != nil || next <= cursor { break }
-                            cursor = next
-                        }
-                    }
+                }
+                if newerOnly {
+                    // The rest waits for the cached prefix (`loadEvents` asks again).
+                    b.fetchError = nil
+                    continue
                 }
                 while true {
                     let before = UInt64(b.events.count)
                     // The tail already reached the server's end. Once the prefix
                     // joins it, avoid downloading the same tail a second time.
                     if let end, before >= end && before >= latest && b.pending.isEmpty { break }
-                    guard let page = try await historyPage(sid, after: before, buffer: b, generation: gen) else { return }
+                    guard let page = try await historyPage(sid, after: before, limit: pageLimit(after: before, b), buffer: b, generation: gen) else { return }
                     if !page.more { end = page.events.last?.seq ?? before }
                     // An unreadable event in the tail stops only the tail: the prefix still
                     // advances to it, as far as it makes progress.
@@ -200,12 +220,27 @@ extension Remote {
         }
     }
 
-    private func historyPage(_ sid: String, after: UInt64, buffer b: Buffer, generation gen: Int) async throws -> PBGetEventsResponse? {
+    /// The end of the run of events held from `seq` on, in the prefix or pending.
+    private func heldThrough(_ seq: UInt64, _ b: Buffer) -> UInt64 {
+        var last = max(seq, UInt64(b.events.count))
+        while b.pending[last + 1] != nil { last += 1 }
+        return last
+    }
+
+    /// A page after `after` that stops before the next event already held (from
+    /// the cache, the newest page or a live event), so none of it comes twice.
+    private func pageLimit(after: UInt64, _ b: Buffer) -> UInt64 {
+        b.pending.keys.filter { $0 > after + 1 }.min().map { min(500, $0 - after - 1) } ?? 500
+    }
+
+    private func historyPage(
+        _ sid: String, after: UInt64, limit: UInt64 = 500, buffer b: Buffer, generation gen: Int
+    ) async throws -> PBGetEventsResponse? {
         if !running || gen != generation || buffers[sid] !== b { return nil }
         var ask = PBGetEventsRequest()
         ask.sessionID = sid
         ask.afterSeq = after
-        ask.limit = 500
+        ask.limit = UInt32(limit)
         let response = try await api.client.getEvents(request: ask, headers: Api.headers(token: token)).value()
         if !running || gen != generation || buffers[sid] !== b { return nil }
         await ingest(sid, response.events, fillGaps: false, save: true, history: true)
@@ -213,12 +248,15 @@ extension Remote {
         return response
     }
 
+    /// Whether every event given opened: false when one did not and the history stops before it.
+    @discardableResult
     func ingest(
         _ sid: String, _ stored: [PBStoredEvent], fillGaps: Bool, save: Bool, history: Bool = true
-    ) async {
+    ) async -> Bool {
         guard let b = buffers[sid], let s = sessions[sid], let key = sessionKeys[sid] else {
-            return
+            return true
         }
+        var opens = true
         var opened: [PBStoredEvent] = []
         let batchSize = DeviceSecurityClient.historyBatchSize
         var historyResults: [Int: Result<(DeviceSecurity.Header, Data), Error>] = [:]
@@ -241,7 +279,7 @@ extension Remote {
                     }
                     // The actor yielded while opening: logout, eviction or a
                     // concurrent ingest may have replaced or advanced this buffer.
-                    if buffers[sid] !== b { return }
+                    if buffers[sid] !== b { return opens }
                 }
             }
             if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
@@ -269,7 +307,7 @@ extension Remote {
                     throw OpenError("malformed content")
                 }
                 if ev.seq != se.seq || ev.sessionID != sid { throw OpenError("事件的位置被改动") }
-                if buffers[sid] !== b { return }
+                if buffers[sid] !== b { return opens }
                 if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
                 if route.version != 1 { b.verifiedSeqs.insert(se.seq) }
                 b.pending[se.seq] = ev
@@ -281,7 +319,7 @@ extension Remote {
                     try Envelopes.expect(
                         projection(unavailable.header),
                         try await historicalPlace(Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq),header:projection(unavailable.header),history:history))
-                    if buffers[sid] !== b { return }
+                    if buffers[sid] !== b { return opens }
                     if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
                     var slot = PBEvent()
                     slot.seq = se.seq
@@ -293,11 +331,13 @@ extension Remote {
                 } catch {
                     report(error)
                     b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                    opens = false
                     break
                 }
             } catch {
                 report(error)
                 b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                opens = false
                 break
             }
         }
@@ -309,7 +349,7 @@ extension Remote {
         b.verifiedEvents = b.verifiedEvents.appending(
             added.filter { b.verifiedSeqs.contains($0.seq) })
         if save && !opened.isEmpty { await cache?.putEvents(sessionId: sid, events: opened) }
-        if buffers[sid] !== b { return }
+        if buffers[sid] !== b { return opens }
         // The cache write awaited: newer metadata may have arrived, or the
         // session gone. Only the event progress is ours to update.
         if var cur = sessions[sid] {
@@ -324,6 +364,7 @@ extension Remote {
         publishEvents(sid, b)
         publish()
         trimHistory()
+        return opens
     }
 
     func publishEvents(_ sid: String, _ b: Buffer) {

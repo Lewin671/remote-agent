@@ -287,7 +287,11 @@ public actor Remote {
         var useOrder = 0
         var pending: [UInt64: PBEvent] = [:]
         var tailRequested = false
+        /// The disk cache is still being read: its older prefix is verified in the background.
         var restoring = false
+        /// The newest seq the disk cache held, once its newest window is read; while
+        /// `restoring`, the relay is asked only for what comes after it.
+        var cachedThrough: UInt64?
         var fetching = false
         var refetch = false
         var loaded = false
