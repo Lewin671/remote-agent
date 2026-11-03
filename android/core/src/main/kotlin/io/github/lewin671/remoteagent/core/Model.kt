@@ -22,14 +22,7 @@ import java.time.ZonedDateTime
 // --- CLIs ---
 
 /** The CLI a session runs; sessions from before Claude Code support are Codex. */
-fun effectiveAgent(a: Agent): Agent =
-    if (a == Agent.AGENT_UNSPECIFIED || a == Agent.UNRECOGNIZED) Agent.AGENT_CODEX else a
-
-fun agentName(a: Agent): String =
-    when (effectiveAgent(a)) {
-        Agent.AGENT_CLAUDE -> "Claude Code"
-        else -> "Codex"
-    }
+fun effectiveAgent(a: Agent): Agent = agentInfo(a).agent
 
 fun SessionView.agent(): Agent = effectiveAgent(info?.agent ?: Agent.AGENT_UNSPECIFIED)
 
