@@ -34,6 +34,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -473,11 +474,18 @@ private fun ChatPane(
         ) {
             ChatProjectionWorker()
         }
-    val projected = remember(remote, s.id) { mutableStateOf(emptyList<ChatItem>()) }
+    val rows = remember(remote, s.id) { mutableStateOf(ChatProjectionWorker.Rows.EMPTY) }
+    var revealedRun by remember(s.id) { mutableStateOf(0L) }
+    val requestedRun = ScheduleJump.requested[s.id]
+    val reveal = requestedRun ?: revealedRun
+    val currentReveal by rememberUpdatedState(reveal)
+    fun show(next: ChatProjectionWorker.Rows?) {
+        if (next != null && next.version > rows.value.version) rows.value = next
+    }
     // Capture UI-owned outbox state before handing the immutable inputs to the worker.
     val texts = outbox.associate { it.requestId to it.text }
     LaunchedEffect(events, d, projection, texts) {
-        projected.value = projection.update(
+        projection.update(
             events,
             d,
             machine,
@@ -493,12 +501,10 @@ private fun ChatPane(
                 machine,
             )
         }
+        show(projection.rows { currentReveal })
     }
-    var revealedRun by remember(s.id) { mutableStateOf(0L) }
-    val requestedRun = ScheduleJump.requested[s.id]
-    val items = remember(projected.value, events, requestedRun, revealedRun) {
-        foldScheduledChat(projected.value, events, requestedRun ?: revealedRun)
-    }
+    LaunchedEffect(projection, reveal) { show(projection.rows { currentReveal }) }
+    val items = rows.value.items
     val pendingInputs = pendingInputs(d)
     LaunchedEffect(d.inputs, outbox.size) {
         // The messages the CLI has recorded are the chat's own rows from here on.

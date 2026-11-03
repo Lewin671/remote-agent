@@ -1,7 +1,11 @@
 package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.runtime.mutableStateMapOf
+import io.github.lewin671.remoteagent.core.Derived
+import io.github.lewin671.remoteagent.core.EventProjection
+import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.core.eventTime
+import io.github.lewin671.remoteagent.core.unchangedPrefix
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.TurnOutcome
 import java.time.Instant
@@ -16,10 +20,10 @@ fun scheduledMessageCaption(e: Event): String? = e.origin.scheduledTaskId.takeIf
 data class QuietSpan(val task: String, val run: String, val from: Long, val through: Long, val time: Long)
 
 /** Only completed, explicitly identified runs may be folded. Human replies, failures,
- * interruptions, notifications and incomplete runs always remain visible. */
-fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
+ * interruptions, notifications and incomplete runs always remain visible. [derived] is what
+ * `derive(events)` gives, e.g. kept up to date by an [EventProjection]. */
+fun quietScheduledSpans(events: List<Event>, derived: Derived = derive(events)): List<QuietSpan> {
     val out = mutableListOf<QuietSpan>()
-    val derived = io.github.lewin671.remoteagent.core.derive(events)
     val starts = events.indices.filter { events[it].hasUserMessage() }
     starts.forEachIndexed { i, start ->
         val first = events[start]
@@ -52,8 +56,49 @@ fun quietScheduledSpans(events: List<Event>): List<QuietSpan> {
     return out
 }
 
-fun foldScheduledChat(items: List<ChatItem>, events: List<Event>, revealSeq: Long = 0): List<ChatItem> {
-    val spans = quietScheduledSpans(events)
+fun foldScheduledChat(items: List<ChatItem>, events: List<Event>, revealSeq: Long = 0): List<ChatItem> =
+    foldSpans(items, quietScheduledSpans(events), revealSeq)
+
+/** A span starts at a user message that names its scheduled task and run. */
+private fun scheduledStart(e: Event) =
+    e.hasUserMessage() && e.origin.scheduledTaskId.isNotEmpty() && e.origin.scheduledRunId.isNotEmpty()
+
+/**
+ * [foldScheduledChat] for a chat that keeps growing, with the same results. The state is derived
+ * incrementally while the events only grow, nothing is derived while fewer than two runs could
+ * fold, and the same input gives the same list without being worked out again. Not thread-safe:
+ * one caller at a time, off the main thread.
+ */
+class ScheduledFold(private val derive: (List<Event>) -> Derived = EventProjection()::update) {
+    private var counted: List<Event> = emptyList()
+    private var starts = 0
+    private var spansOf: List<Event>? = null
+    private var spans: List<QuietSpan> = emptyList()
+    private var lastItems: List<ChatItem>? = null
+    private var lastReveal = 0L
+    private var last: List<ChatItem> = emptyList()
+
+    fun fold(items: List<ChatItem>, events: List<Event>, revealSeq: Long = 0): List<ChatItem> {
+        if (items === lastItems && events === spansOf && revealSeq == lastReveal) return last
+        if (events !== spansOf) {
+            if (!unchangedPrefix(events, counted)) {
+                counted = emptyList()
+                starts = 0
+            }
+            for (i in counted.size until events.size) if (scheduledStart(events[i])) starts++
+            counted = events
+            // Each span starts at its own scheduled message: fewer than two cannot fold.
+            spans = if (starts < 2) emptyList() else quietScheduledSpans(events, derive(events))
+            spansOf = events
+        }
+        last = foldSpans(items, spans, revealSeq)
+        lastItems = items
+        lastReveal = revealSeq
+        return last
+    }
+}
+
+private fun foldSpans(items: List<ChatItem>, spans: List<QuietSpan>, revealSeq: Long): List<ChatItem> {
     if (spans.size < 2) return items
     val out = mutableListOf<ChatItem>()
     var at = 0

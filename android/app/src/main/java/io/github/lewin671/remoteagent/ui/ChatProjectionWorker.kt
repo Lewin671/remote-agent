@@ -14,6 +14,22 @@ import kotlinx.coroutines.withContext
 class ChatProjectionWorker(private val dispatcher: CoroutineDispatcher = Dispatchers.Default) {
     private val lock = Mutex()
     private val projection = ChatProjection()
+    private val fold = ScheduledFold()
+    private var raw: List<ChatItem> = emptyList()
+    private var source: List<Event> = emptyList()
+    private var updated = false
+
+    /**
+     * The rows as shown, quiet scheduled runs folded, and the events they are made of. Of two
+     * results the one with the later [version] is the newer, from whichever worker.
+     */
+    class Rows(val items: List<ChatItem>, val events: List<Event>, val version: Long) {
+        companion object {
+            val EMPTY = Rows(emptyList(), emptyList(), 0)
+            private val versions = java.util.concurrent.atomic.AtomicLong()
+            internal fun next() = versions.incrementAndGet()
+        }
+    }
 
     suspend fun update(
         events: List<Event>,
@@ -25,6 +41,22 @@ class ChatProjectionWorker(private val dispatcher: CoroutineDispatcher = Dispatc
         textOf: (String) -> String? = { null },
         who: (Origin?) -> String? = { null },
     ): List<ChatItem> = withContext(dispatcher) {
-        lock.withLock { projection.update(events, derived, machine, cwd, home, agent, textOf, who) }
+        lock.withLock {
+            projection.update(events, derived, machine, cwd, home, agent, textOf, who).also {
+                raw = it
+                source = events
+                updated = true
+            }
+        }
+    }
+
+    /**
+     * The last [update]'s rows with quiet scheduled runs folded, except the one [reveal] names;
+     * null before the first [update], so a new worker never replaces shown rows with nothing.
+     */
+    suspend fun rows(reveal: () -> Long = { 0 }): Rows? = withContext(dispatcher) {
+        lock.withLock {
+            if (!updated) null else Rows(fold.fold(raw, source, reveal()), source, Rows.next())
+        }
     }
 }
