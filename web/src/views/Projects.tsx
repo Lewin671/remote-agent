@@ -6,7 +6,8 @@
 // new project lists it again.
 
 import { useState, type ReactNode } from "react";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
+import { AGENTS } from "../agents";
 import { isHidden, isPinned, groupProjects } from "../prefs";
 import { exited, needsAttention, projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
@@ -165,7 +166,7 @@ export function addProject(remote: Remote, machineId: string, path: string) {
   const prefs = remote.projectPrefs();
   if (isHidden(prefs, path)) void remote.changePrefs("unhide", path);
   if (prefs.settings.find((s) => s.path === path)?.machineId !== machineId) {
-    const sets = [Agent.CODEX, Agent.CLAUDE].map((agent) => ({ agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, standardContext: false }));
+    const sets = AGENTS.map((e) => ({ agent: e.agent, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED, standardContext: false }));
     void remote.changePrefs("settings", path, { id: crypto.randomUUID(), kind: "settings", path, at: Date.now(), settings: { machineId, sets } });
   }
 }

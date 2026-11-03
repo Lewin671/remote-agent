@@ -2,8 +2,9 @@
 // box and send. Project settings persist in the sealed account prefs.
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Agent, ApprovalMode } from "../gen/remoteagent/v1/event_pb";
+import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
+import { AGENTS, agentInfo, defaultsFor } from "../agents";
 import {
   agentName,
   agentOf,
@@ -75,9 +76,7 @@ export type Go = (route: string) => void;
 
 /** The machine's defaults for new sessions of a CLI. */
 function defaultsOf(st: DaemonSettings | undefined, agent: Agent): { model: string; effort: string; mode: ApprovalMode } {
-  if (!st) return { model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
-  if (agent === Agent.CLAUDE) return { model: st.claude?.model ?? "", effort: st.claude?.effort ?? "", mode: st.claude?.mode ?? ApprovalMode.UNSPECIFIED };
-  return { model: st.defaultModel, effort: st.defaultEffort, mode: st.defaultMode };
+  return defaultsFor(st, agent);
 }
 
 /** A machine's model list and settings, for showing what defaults mean.
@@ -128,7 +127,7 @@ export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: 
   // asks for the standard one or the model has no larger one.
   const max = model?.contextWindow ?? 0n;
   const fixedWindow = max > 0n && max <= STANDARD_WINDOW;
-  const window = cfg.agent !== Agent.CLAUDE ? 0n : cfg.standardContext || fixedWindow ? STANDARD_WINDOW : max || 1_000_000n;
+  const window = !agentInfo(cfg.agent).standardContextOption ? 0n : cfg.standardContext || fixedWindow ? STANDARD_WINDOW : max || 1_000_000n;
   return { machine: machineName(m), agent: agentName(cfg.agent), model: modelText, label, slug, window, fixedWindow, mode: modeLabel(cfg.mode, defaultModeOf(m, cfg.agent), cfg.agent) };
 }
 
@@ -147,13 +146,13 @@ function freshConfig(remote: Remote, key: string, machineId?: string): NewConfig
 /** The CLIs a new session can use on a machine, Codex first. */
 function agentsOf(m: MachineLike | undefined): Agent[] {
   const have = machineAgents(m);
-  return [Agent.CODEX, Agent.CLAUDE].filter((a) => have.includes(a));
+  return AGENTS.map((a) => a.agent).filter((a) => have.includes(a));
 }
 
 type AgentSet = { agent: Agent; model: string; effort: string; mode: ApprovalMode; standardContext: boolean };
 
 function setOf(c: NewConfig): AgentSet {
-  return { agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: c.agent === Agent.CLAUDE && !!c.standardContext };
+  return { agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: agentInfo(c.agent).standardContextOption && !!c.standardContext };
 }
 
 /** The mode a start with cfg will run in: the one chosen, else the CLI's
@@ -232,7 +231,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const machineId = fixedMachine ?? pinned?.machineId ?? local?.machineId ?? baseMachine;
   const machine = remote.machines.get(machineId);
   const agents = agentsOf(machine);
-  const remembered = saved?.agent ? (saved.agent === Agent.CLAUDE ? Agent.CLAUDE : Agent.CODEX) : undefined;
+  const remembered = saved?.agent ? agentInfo(saved.agent).agent : undefined;
   const wanted = picked ?? held?.agent ?? remembered ?? first?.agent ?? agents[0];
   // A CLI the machine lacks is not started: the one it has is, and the
   // box says so. What the project remembers stays.
@@ -296,7 +295,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const setCfg = (config: NewConfig, once = false) => {
     if (config.machineId !== machineId) {
       remote.draftMachines.delete(key);
-      const sets = { [Agent.CODEX]: setOf({ ...config, agent: Agent.CODEX }), [Agent.CLAUDE]: setOf({ ...config, agent: Agent.CLAUDE }) };
+      const sets = Object.fromEntries(AGENTS.map((e) => [e.agent, setOf({ ...config, agent: e.agent })])) as Record<Agent, AgentSet>;
       setLocal({ key, machineId: config.machineId, once, sets });
       if (!once) void save({ ...whole(), machineId: config.machineId, sets: Object.values(sets) });
       return;
@@ -324,7 +323,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       effort: cfg.effort,
       mode: mode ?? cfg.mode,
       agent: cfg.agent,
-      standardContext: cfg.agent === Agent.CLAUDE && !!cfg.standardContext,
+      standardContext: agentInfo(cfg.agent).standardContextOption && !!cfg.standardContext,
       // The images are part of what is started: other images, another start.
       imageIds: tray.imageIds(),
       fileIds: tray.fileIds(),
@@ -417,7 +416,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     redraw((n) => n + 1);
   };
   /** Holds the launch settings as they are now, once a draft begins. */
-  const hold = () => setLatched({ key, machineId, agent: wanted, by: { [Agent.CODEX]: unreadFor(Agent.CODEX) ? undefined : configFor(Agent.CODEX), [Agent.CLAUDE]: unreadFor(Agent.CLAUDE) ? undefined : configFor(Agent.CLAUDE) } });
+  const hold = () => setLatched({ key, machineId, agent: wanted, by: Object.fromEntries(AGENTS.map((e) => [e.agent, unreadFor(e.agent) ? undefined : configFor(e.agent)])) as Record<Agent, NewConfig | undefined> });
   // A draft begun while its CLI's settings were still being fetched is
   // held as soon as they are here.
   // The draft that began so: the one for the project's next session.
@@ -796,7 +795,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
     // A model without the auto mode (Claude Code's Haiku 4.5) cannot start
     // with it; the CLI's own list says which those are.
     const chosen = cfg.model || def.model || info.models?.defaultModel || "";
-    const noAuto = cfg.agent === Agent.CLAUDE && autoUnavailable(info.models?.models, chosen);
+    const noAuto = agentInfo(cfg.agent).autoMayBeUnavailable && autoUnavailable(info.models?.models, chosen);
     body = (
       <div className="list">
         {[
@@ -872,7 +871,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
                   <ChevronRight className="chev" />
                 </span>
               </button>
-              {cfg.agent === Agent.CLAUDE && !scheduled && (
+              {agentInfo(cfg.agent).standardContextOption && !scheduled && (
                 <div className="sr">
                   <span className="lbl">上下文</span>
                   {parts.fixedWindow ? (
