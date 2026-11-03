@@ -494,6 +494,10 @@ private fun ChatPane(
         if (joined > 0 && !followState.on) {
             unseen.joined(joined)
             list.keepPlace(rows.value.items.map { it.key }, next.items.map { it.key }, joined)
+        } else if (joined > 0) {
+            // Following: the end from the first frame of the longer list. Left to the list, it
+            // would keep the index on a long history and show older rows for a frame.
+            list.requestScrollToItem(next.items.size + d.tools.size + outbox.size + 3)
         }
         rows.value = next
     }

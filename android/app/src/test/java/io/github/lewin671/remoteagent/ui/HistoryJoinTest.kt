@@ -97,6 +97,24 @@ class HistoryJoinTest {
         }
     }
 
+    @Test fun aFollowingListShowsTheEndFromTheFirstLayoutAfterALongJoin() {
+        // Opening a session: the newest page is shown at the end, then the history before it joins.
+        val before = (374..501).map { "e$it" }
+        val after = (1..501).map { "e$it" }
+        var keys by mutableStateOf(before)
+        val list = showList { keys }
+        ui.runOnIdle { list().requestScrollToItem(before.size + 3) }
+        ui.runOnIdle { assertFalse(list().canScrollForward) }
+        ui.runOnIdle {
+            list().requestScrollToItem(after.size + 3)
+            keys = after
+        }
+        ui.runOnIdle {
+            assertFalse(list().canScrollForward)
+            assertEquals("e501", list().layoutInfo.visibleItemsInfo.last().key)
+        }
+    }
+
     @Test fun withoutKeepingItsPlaceTheListLosesItOnALongJoin() {
         // Why keepPlace exists: the list looks for its first row by key only near where it was.
         val before = (374..501).map { "e$it" }
