@@ -54,16 +54,21 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import io.github.lewin671.remoteagent.RaApp
+import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.PairingUiState
 import io.github.lewin671.remoteagent.core.RemoteState
+import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
+import io.github.lewin671.remoteagent.core.defaultsFor
 import io.github.lewin671.remoteagent.core.errorText
 import io.github.lewin671.remoteagent.core.machineAgents
+import io.github.lewin671.remoteagent.core.machineVersions
 import io.github.lewin671.remoteagent.core.modeOf
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.core.whenText
+import io.github.lewin671.remoteagent.core.withDefaults
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.Agent
@@ -611,16 +616,7 @@ fun DeviceScreen(id: String) {
                     },
             )
             if (meta != null) {
-                val agents =
-                    meta.agentsList.ifEmpty {
-                        listOf(
-                            io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder()
-                                .setAgent(Agent.AGENT_CODEX)
-                                .setVersion(meta.codexVersion)
-                                .setVerified(meta.codexVerified)
-                                .build(),
-                        )
-                    }
+                val agents = machineVersions(meta)
                 Group(
                     rows =
                         agents.map { a ->
@@ -674,14 +670,7 @@ fun DeviceScreen(id: String) {
                     Hint("读取中…", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
                 else ->
                     for (agent in machineAgents(m)) {
-                        val d =
-                            if (agent == Agent.AGENT_CLAUDE) s.claude
-                            else
-                                AgentDefaults.newBuilder()
-                                    .setModel(s.defaultModel)
-                                    .setEffort(s.defaultEffort)
-                                    .setMode(s.defaultMode)
-                                    .build()
+                        val d = defaultsFor(s, agent)
                         // What a session started without a mode really gets, as the machine reads
                         // it.
                         val eff = defaultModeOf(m, agent)
@@ -736,7 +725,7 @@ fun DeviceScreen(id: String) {
                                         )
                                     },
                                     timeoutRow.takeIf {
-                                        agent == Agent.AGENT_CODEX || machineAgents(m).size == 1
+                                        agent == DEFAULT_AGENT || machineAgents(m).size == 1
                                     },
                                 ),
                         )
@@ -855,7 +844,7 @@ fun DeviceScreen(id: String) {
     pickMode?.let { agent ->
         if (cur != null) {
             val eff = defaultModeOf(m, agent)
-            val d = if (agent == Agent.AGENT_CLAUDE) cur.claude.mode else cur.defaultMode
+            val d = defaultsFor(cur, agent).mode
             val opts = listOf(null, Mode.ASK, Mode.AUTO)
             ChoiceSheet(
                 "${agentName(agent)} · 审批模式",
@@ -947,9 +936,7 @@ private fun withModel(
     model: String,
     effort: String,
 ): DaemonSettings =
-    if (agent == Agent.AGENT_CLAUDE)
-        s.toBuilder().setClaude(s.claude.toBuilder().setModel(model).setEffort(effort)).build()
-    else s.toBuilder().setDefaultModel(model).setDefaultEffort(effort).build()
+    withDefaults(s, agent, model = model, effort = effort)
 
 /** A CLI's default model and effort for new sessions on this machine, from the models it offers. */
 @Composable
@@ -973,9 +960,7 @@ private fun DefaultModelSheet(
             error = errorText(e, remote.state.value)
         }
     }
-    val d =
-        if (agent == Agent.AGENT_CLAUDE) s.claude
-        else AgentDefaults.newBuilder().setModel(s.defaultModel).setEffort(s.defaultEffort).build()
+    val d = defaultsFor(s, agent)
     var model by remember { mutableStateOf(d.model) }
     Sheet(onClose) {
         SheetHead("${agentName(agent)} · 新会话默认模型")
@@ -1079,10 +1064,7 @@ fun QuotaScreen(id: String) {
                                     Text(
                                         g.detail.ifEmpty {
                                             "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。"
-                                        } +
-                                            if (g.agent == Agent.AGENT_CLAUDE)
-                                                " 可在本机 Claude Code 中查看 /usage。"
-                                            else "",
+                                        } + agentInfo(g.agent).usageHint.orEmpty(),
                                         style = T.meta,
                                         color = p.muted,
                                     )
@@ -1138,9 +1120,7 @@ fun QuotaScreen(id: String) {
 private fun withMode(s: DaemonSettings, agent: Agent, mode: Mode?): DaemonSettings {
     val m =
         mode?.proto ?: io.github.lewin671.remoteagent.proto.ApprovalMode.APPROVAL_MODE_UNSPECIFIED
-    return if (agent == Agent.AGENT_CLAUDE)
-        s.toBuilder().setClaude(s.claude.toBuilder().setMode(m)).build()
-    else s.toBuilder().setDefaultMode(m).build()
+    return withDefaults(s, agent, mode = m)
 }
 
 fun qrBitmap(text: String, size: Int = 512): Bitmap {
