@@ -2101,8 +2101,19 @@ class RemoteTest {
             }
             other.awaitState("other online") { it.conn == ConnState.ONLINE }
             hold.set(true)
-            val reading = launch { a.refreshDevices() }
-            withTimeout(10_000) { held.await() }
+            // A read the stream's opening started may be past its list already, and a refresh
+            // then joins it without listing again: refresh until a list is the one held.
+            var reading = launch { a.refreshDevices() }
+            while (true) {
+                withTimeout(10_000) {
+                    kotlinx.coroutines.selects.select<Unit> {
+                        held.onAwait {}
+                        reading.onJoin {}
+                    }
+                }
+                if (held.isCompleted) break
+                reading = launch { a.refreshDevices() }
+            }
             other.refreshDevices()
             removeAsAuthority(daemon.phone, leaving.deviceId, http)
             val joined = approvedClient(daemon.phone, http)
