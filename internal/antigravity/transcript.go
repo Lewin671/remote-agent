@@ -227,6 +227,7 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	if err := json.Unmarshal(raw, &r); err != nil {
 		return nil, fmt.Errorf("agy transcript: %w", err)
 	}
+	nativeArgs := false
 	if len(r.TruncatedFields) > 0 {
 		if err := p.resolveTruncated(&r, line); err != nil {
 			if errors.Is(err, agent.ErrSourcePending) {
@@ -234,6 +235,7 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			}
 			return nil, err
 		}
+		nativeArgs = true
 	}
 	if line == 0 && r.StepIndex > 1 {
 		p.artifactIndexComplete = false
@@ -375,7 +377,10 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		for i, tc := range r.ToolCalls {
 			step := r.StepIndex + int64(i) + 1
 			id := nativeCallID(p.conversation, step)
-			args := normalizeTranscriptArgs(tc.Args)
+			args := tc.Args
+			if !nativeArgs {
+				args = normalizeTranscriptArgs(args)
+			}
 			call := pendingCall{id: id, name: tc.Name, title: describeTool(tc.Name, args).title, input: string(args), digest: agent.InputDigest(tc.Name, args), kind: toolKindFor(tc.Name)}
 			if tc.Name == "write_file" {
 				call.artifact = userFacingArtifactPath(args)
@@ -891,8 +896,8 @@ func (a *Adapter) EventConversation(e *pb.Event) string {
 	return conversation
 }
 
-// Transcript args encode values as JSON strings, while hooks carry native
-// values. Normalize both before computing digests or parsing questions.
+// The compact transcript encodes values as JSON strings. Full transcript
+// records and hooks already carry native values and must not be decoded again.
 func normalizeTranscriptArgs(raw json.RawMessage) json.RawMessage {
 	var values map[string]json.RawMessage
 	if json.Unmarshal(raw, &values) != nil {
