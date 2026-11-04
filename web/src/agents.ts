@@ -2,22 +2,30 @@ import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 
+export interface QuotaWindowDescriptor {
+  readonly label: string;
+  readonly group: string | null;
+}
+
 export interface AgentEntry {
   readonly agent: Agent;
   readonly id: string;
   readonly name: string;
   readonly quotaWindows: readonly string[];
+  quotaWindow(name: string): QuotaWindowDescriptor;
   planName(raw: string): string;
   modelLabel(id: string): string;
   readonly toolLabelFromItemType: boolean;
   readonly planClearContext: boolean;
-  readonly planApprovalReturnsToAsk: boolean;
+  readonly planNote: string | null;
   readonly standardContextOption: boolean;
   readonly autoMayBeUnavailable: boolean;
   readonly trustFolderHint: string | null;
   readonly usageHint: string | null;
   readonly reconcilesUnclaimedInput: boolean;
   readonly sessionNeedsModelList: boolean;
+  readonly switchesModelInSession: boolean;
+  readonly forks: boolean;
   defaults(settings?: DaemonSettings): { model: string; effort: string; mode: ApprovalMode };
   withDefaults(
     settings: DaemonSettings,
@@ -28,7 +36,6 @@ export interface AgentEntry {
   readonly planModeDesc: string;
   readonly permissionModeNotice: string | null;
   readonly showMaxEffort: boolean;
-  sheetTitle(title: string): string;
 }
 
 export function normalizePlanName(plan: string): string {
@@ -57,11 +64,28 @@ function gptSlugLabel(id: string): string {
     .join("-");
 }
 
+function fixedWindowLabel(name: string): QuotaWindowDescriptor {
+  if (name === "primary" || name === "five_hour") return { label: "5 小时", group: null };
+  if (name === "secondary" || name === "seven_day") return { label: "7 天", group: null };
+  return { label: name, group: null };
+}
+
+const ANTIGRAVITY_QUOTA_WINDOWS: Record<string, QuotaWindowDescriptor> = {
+  "gemini-5h": { label: "Gemini · 5 小时", group: "Gemini" },
+  "gemini-weekly": { label: "Gemini · 7 天", group: "Gemini" },
+  "gemini-argon-wtu-weekly": { label: "Gemini 4 Argon · 7 天", group: "Gemini" },
+  "3p-5h": { label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）" },
+  "3p-weekly": { label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）" },
+};
+
 const CODEX_ENTRY: AgentEntry = {
   agent: Agent.CODEX,
   id: "codex",
   name: "Codex",
   quotaWindows: ["primary", "secondary"],
+  quotaWindow(name: string): QuotaWindowDescriptor {
+    return fixedWindowLabel(name);
+  },
   planName(raw: string): string {
     return normalizePlanName(raw);
   },
@@ -70,13 +94,15 @@ const CODEX_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: true,
-  planApprovalReturnsToAsk: false,
+  planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,
   trustFolderHint: null,
   usageHint: null,
   reconcilesUnclaimedInput: false,
   sessionNeedsModelList: false,
+  switchesModelInSession: true,
+  forks: true,
   defaults(settings?: DaemonSettings) {
     return {
       model: settings?.defaultModel ?? "",
@@ -96,9 +122,6 @@ const CODEX_ENTRY: AgentEntry = {
   planModeDesc: "只读和出计划，你批准后才开始改",
   permissionModeNotice: null,
   showMaxEffort: true,
-  sheetTitle(title: string): string {
-    return title;
-  },
 };
 
 const CLAUDE_ENTRY: AgentEntry = {
@@ -106,6 +129,9 @@ const CLAUDE_ENTRY: AgentEntry = {
   id: "claude",
   name: "Claude Code",
   quotaWindows: ["five_hour", "seven_day"],
+  quotaWindow(name: string): QuotaWindowDescriptor {
+    return fixedWindowLabel(name);
+  },
   planName(raw: string): string {
     return normalizePlanName(raw);
   },
@@ -114,13 +140,15 @@ const CLAUDE_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: true,
   planClearContext: false,
-  planApprovalReturnsToAsk: true,
+  planNote: "批准后使用询问模式",
   standardContextOption: true,
   autoMayBeUnavailable: true,
   trustFolderHint: "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
   usageHint: null,
   reconcilesUnclaimedInput: true,
   sessionNeedsModelList: true,
+  switchesModelInSession: true,
+  forks: true,
   defaults(settings?: DaemonSettings) {
     return {
       model: settings?.claude?.model ?? "",
@@ -139,16 +167,61 @@ const CLAUDE_ENTRY: AgentEntry = {
   planModeDesc: "先出方案，再批准执行",
   permissionModeNotice: "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
   showMaxEffort: false,
-  sheetTitle(title: string): string {
-    return `Claude Code · ${title}`;
+};
+
+const ANTIGRAVITY_ENTRY: AgentEntry = {
+  agent: Agent.ANTIGRAVITY,
+  id: "agy",
+  name: "Antigravity",
+  quotaWindows: [],
+  quotaWindow(name: string): QuotaWindowDescriptor {
+    return ANTIGRAVITY_QUOTA_WINDOWS[name] ?? { label: name, group: name };
   },
+  planName(raw: string): string {
+    return raw;
+  },
+  modelLabel(id: string): string {
+    return id;
+  },
+  toolLabelFromItemType: true,
+  planClearContext: false,
+  planNote: "批准后回到默认模式（询问）",
+  standardContextOption: false,
+  autoMayBeUnavailable: true,
+  trustFolderHint: null,
+  usageHint: null,
+  reconcilesUnclaimedInput: false,
+  sessionNeedsModelList: true,
+  switchesModelInSession: false,
+  forks: false,
+  defaults(settings?: DaemonSettings) {
+    return {
+      model: settings?.antigravity?.model ?? "",
+      effort: settings?.antigravity?.effort ?? "",
+      mode: settings?.antigravity?.mode ?? ApprovalMode.UNSPECIFIED,
+    };
+  },
+  withDefaults(settings: DaemonSettings, patch: Partial<Omit<AgentDefaults, "$typeName">>): DaemonSettings {
+    const cur = this.defaults(settings);
+    return {
+      ...settings,
+      antigravity: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
+    };
+  },
+  askModeDesc: "需要审批时由你确认，超时自动拒绝",
+  planModeDesc: "先只读探索并写方案，批准后回到默认模式执行",
+  permissionModeNotice: null,
+  showMaxEffort: false,
 };
 
 const UNKNOWN_ENTRY: AgentEntry = {
-  agent: Agent.UNSPECIFIED,
+  agent: -1 as Agent,
   id: "",
   name: "未知 CLI",
   quotaWindows: [],
+  quotaWindow(name: string): QuotaWindowDescriptor {
+    return { label: name, group: null };
+  },
   planName(raw: string): string {
     return raw;
   },
@@ -157,13 +230,15 @@ const UNKNOWN_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: false,
-  planApprovalReturnsToAsk: false,
+  planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,
   trustFolderHint: null,
   usageHint: null,
   reconcilesUnclaimedInput: false,
   sessionNeedsModelList: false,
+  switchesModelInSession: false,
+  forks: false,
   defaults() {
     return {
       model: "",
@@ -178,12 +253,9 @@ const UNKNOWN_ENTRY: AgentEntry = {
   planModeDesc: "先出方案，再批准执行",
   permissionModeNotice: null,
   showMaxEffort: false,
-  sheetTitle(title: string): string {
-    return title;
-  },
 };
 
-export const AGENTS: readonly AgentEntry[] = [CODEX_ENTRY, CLAUDE_ENTRY];
+export const AGENTS: readonly AgentEntry[] = [CODEX_ENTRY, CLAUDE_ENTRY, ANTIGRAVITY_ENTRY];
 
 export const DEFAULT_AGENT: Agent = CODEX_ENTRY.agent;
 
@@ -196,7 +268,7 @@ export function agentInfo(a?: Agent | number | null): AgentEntry {
     return CODEX_ENTRY;
   }
   const found = AGENTS.find((e) => e.agent === a);
-  return found ?? UNKNOWN_ENTRY;
+  return found ?? { ...UNKNOWN_ENTRY, agent: a as Agent };
 }
 
 export function agentById(id?: string | null): AgentEntry {

@@ -139,7 +139,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     );
   return (
     <Sheet onClose={onClose}>
-      <h4>{agentInfo(agentOf(s)).sheetTitle("审批模式")}</h4>
+      <h4>审批模式</h4>
       {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
@@ -228,7 +228,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const offered = cur?.efforts.length ? cur.efforts : efforts;
   return (
     <Sheet onClose={onClose}>
-      <h4>{agentInfo(agent).sheetTitle("会话设置")}</h4>
+      <h4>会话设置</h4>
       {pct !== undefined && (
         <div className="ctxbox">
           <div>

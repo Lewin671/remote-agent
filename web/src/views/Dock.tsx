@@ -475,10 +475,9 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
       actions={
         <>
           <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
-          {/* Claude Code leaves plan mode for manual approval of edits. */}
-          {!isSkeleton(plan) && agentInfo(agentOf(remote.sessions.get(sid))).planApprovalReturnsToAsk && (
+          {!isSkeleton(plan) && agentInfo(agentOf(remote.sessions.get(sid))).planNote && (
             <div className="foot">
-              <span>批准后使用询问模式</span>
+              <span>{agentInfo(agentOf(remote.sessions.get(sid))).planNote}</span>
             </div>
           )}
         </>
