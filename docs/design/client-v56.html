@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v55 · 2026-11-01</title>
+<title>remote-agent 客户端设计稿 v56 · 2026-11-03</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -352,12 +352,13 @@
   .conn-check .sr .v::after { content: none; }
   .ns-head .back2 { color: var(--blue); font-size: 22px; width: 28px; }
   /* 新会话的设置摘要，按钮样式，点开项目设置；宽屏上放在 .launch 里，和 CLI 切换同一行 */
-  .proj-cfg { display:inline-flex; align-items:center; gap:6px; max-width:100%; margin-top:6px; padding:0 10px; font-size:13px; color:var(--fg2); background:var(--chip); border-radius:var(--r-sm); text-decoration:none; min-height:32px; white-space:nowrap; overflow:hidden; }
+  .proj-cfg { display:inline-flex; align-items:center; gap:0; max-width:100%; margin-top:6px; padding:0 10px; font-size:13px; color:var(--fg2); background:var(--chip); border-radius:var(--r-sm); text-decoration:none; min-height:32px; white-space:nowrap; overflow:hidden; }
   .proj-cfg em { font-style:normal; overflow:hidden; text-overflow:ellipsis; min-width:0; white-space:pre; flex:0 1 auto; }
+  .proj-cfg em:first-child { flex:none; }
   /* 放不下时先省略机器名（.mach），其余部分最后才省略 */
   .proj-cfg em.mach { flex-shrink:1000; min-width:3em; }
   .proj-cfg .red { color:var(--red); }
-  .proj-cfg::after { content: ""; width: 16px; height: 16px; flex: none; background: var(--faint); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
+  .proj-cfg::after { content: ""; width: 16px; height: 16px; margin-left: 4px; flex: none; background: var(--faint); -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E") center / contain no-repeat; }
   /* 新建输入框旁的 CLI 切换，只装了一个 CLI 时不出现；宽屏上右边跟着所选 CLI 的设置摘要 */
   .launch { flex:none; display:flex; align-items:center; gap:8px; min-height:44px; margin:0 16px; min-width:0; }
   .launch .pick { margin-left:0; flex:none; }
@@ -1160,7 +1161,7 @@
   .tfield.big { display:block; padding:10px 12px; margin:4px 16px 8px; background:var(--soft); border:0; border-radius:var(--r-sm); min-height:96px; }
   .tfield.big .msg { margin-top:4px; }
   .mini-seg { display:inline-flex; background:var(--seg); border-radius:8px; padding:2px; }
-  .mini-seg span { padding:3px 10px; border-radius:6px; color:var(--muted); font-size:13px; }
+  .mini-seg span { padding:3px 6px; border-radius:6px; color:var(--muted); font-size:13px; white-space:nowrap; }
   .mini-seg span.on { background:var(--card); color:var(--fg); font-weight:600; }
   .tstrip { display:flex; align-items:center; gap:6px; min-height:44px; margin:0 14px; border-bottom:1px solid var(--line); font-size:13px; color:var(--muted); flex:none; }
   .tstrip b { margin-left:auto; color:var(--blue); font-weight:400; display:flex; align-items:center; }
@@ -1202,7 +1203,7 @@
 .schedule-chapter .wk span{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-sm);background:var(--seg);font-size:13px;color:var(--muted)}
 .schedule-chapter .wk span.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:inset 0 0 0 1px var(--line)}
 .schedule-chapter .row .v{min-width:0}
-.schedule-chapter .grp .row > .v{max-width:62%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.schedule-chapter .grp .row > .v{max-width:78%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .schedule-chapter .sched-pane{max-width:620px;width:100%;margin:0 auto;padding:28px 0 40px;overflow:hidden}
 .schedule-chapter .sched-pane > h3{font-size:22px;margin:0 16px}
 .schedule-chapter .sched-pane > p.hint{margin:2px 16px 16px}
@@ -1241,21 +1242,22 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v55 · 2026-11-01 · 上一版 v54 在 git 历史里</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v56 · 2026-11-03 · 上一版 v55 在 git 历史里</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v54 的改动</h4><ul>
-<li>定时任务采用「需要你看一下 / 最近 / 已结束」分组、蓝点新结果与橙色待处理角标，详情优先展示最新结果全文，阅读操作进入更多菜单。</li>
-<li>网页和 Android 的实时推送连接进行中显示当前步骤与本轮已用秒数，每秒刷新。</li>
-<li>失败后显示最近一次失败原因；主连接不在线时增加「立即重连」，与只测延时的「再测一次」分开。</li>
+  <h4>相对 v55 的改动</h4><ul>
+<li>新建会话、项目设置、电脑新项目默认设置与定时任务增加第三个 CLI（Antigravity，命令 <code>agy</code>）；只列目标机器已安装的 CLI，只装一个时不显示切换器，缺少项目上次用的 CLI 时提示条写明本次改用的 CLI 并提供「换机器」，不覆盖项目记住的选择。</li>
+<li>去掉「Codex 无前缀、Claude Code 加前缀」的弹层标题差异：所有 CLI 共用「会话设置」「审批模式」标题，会话所属 CLI 统一在 <code>⋯</code> 菜单头（<code>&lt;CLI&gt; · &lt;项目&gt; · &lt;机器&gt;</code>）与会话列表第三行显示。</li>
+<li>对齐 Antigravity 实测能力与限制：会话设置照常显示上下文窗口占用（如 <code>294k / 1,048k</code>）与「压缩」（<code>/compact</code>），模型与推理强度在会话中置灰只读展示并写明「运行中不能换模型，新建会话时可选」「运行中不能换推理强度」（仅新建与项目设置可选模型和 <code>low / medium / high</code> 强度，<code>GPT-OSS 120B</code> 固定为 <code>medium</code>）；计划待批准提供「修改计划… / 批准」并注明「批准后回到默认模式（询问）」；审批模式区分未以完全放行启动、已以完全放行启动（其余三项置灰不可退回）及当前账户不支持自动模式，Claude Code 终端模式统一写 <code>accept edits</code>；启动时由 daemon 自动信任会话目录，不弹目录信任引导。</li>
+<li>电脑详情的「新项目默认设置」改为顶部按已装 CLI 切换的一组列表，「审批超时」独立在下面；「账户额度」各 CLI 统一单行显示最高已用窗口（如 <code>已用 62% · 5 小时</code>），点进 Antigravity 额度页（如 <code>Google AI Pro</code>）按模型组展示 5 小时 / 7 天及 Gemini 4 Argon 周配额卡片，保留首轮回复前的「暂未获取额度」与「API 计费」状态。</li>
 </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-long">定时 · 长描述</a><a href="#schedule-wide">定时 · 宽屏</a>
-  <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">Claude Code</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
+  <a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#input">输入与队列</a><a href="#tools">工具</a><a href="#images">图片</a><a href="#files">文件</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型</a><a href="#phone-image-storage">手机存储</a><a href="#projects">项目管理</a><a href="#devices">多端</a><a href="#quota">额度</a><a href="#device-security">设备安全</a><a href="#settings">设置</a><a href="#wide">宽屏</a><a href="#terminal-history">终端回看</a>
 </nav>
 <!-- ============================= -->
 <section id="account-management"><h2>任意客户端管理 · v48</h2><p class="hint">将来时刻使用本地 24 小时制、不带秒：今天 03:59、明天 03:59，其余为 10月22日 03:59；配对码写「有效期至 05:02」。</p><div class="screens"><div><div class="phone admin-screen admin-entry"><div class="sb"><span>9:41</span><span>100%</span></div><div class="large"><h3>remote-agent</h3></div><div class="admin-body"><div class="grp"><div class="row entry-row"><span class="row-name">新建账户<small>这台设备成为管理端</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div><div class="row entry-row"><span class="row-name">加入已有账户<small>用管理端给的配对码加入</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div><div class="row entry-row"><span class="row-name">用恢复码找回管理权<small>管理端丢失时使用</small></span><span class="v"><svg class="ic"><use href="#lu-chevron-right"/></svg></span></div></div></div></div><p class="cap">未登录：三入口同名同序。</p></div>
@@ -1322,7 +1324,7 @@ git status --short gen/</span></pre>
         <div class="label">进行中 <span>3</span></div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">foo · Codex · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">foo · Claude Code · MacBook</div></div></div>
-        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>billing · 11:25</b><span>11:25</span></div><div class="pv"><span class="stw idle">空闲</span> · 还没发消息</div><div class="mc">billing · Codex · iMac</div></div></div>
+        <div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>整理部署脚本</b><span>11:25</span></div><div class="pv"><span class="stw idle">空闲</span> · 还没发消息</div><div class="mc">billing · Antigravity · iMac</div></div></div>
         <div class="label">今天</div>
         <div class="old"><span>发布秋季文章</span><span>blog · 7:50</span></div>
         <div class="old"><span>拆分 handler 包</span><span>foo · 7:10</span></div>
@@ -1332,7 +1334,7 @@ git status --short gen/</span></pre>
       </div>
       <div class="tabbar"><div class="on"><i><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg></i>会话</div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg></i>定时</div><div><i><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg></i>设置</div></div>
     </div>
-    <div class="cap">全部项目，没有待处理时：进行中在最上面，按创建时间从新到旧，运行、空闲和离线共用同一顺序；下面是已结束的，按结束时间分组，一行一个，右边写项目和时间。这里有多个项目、两种 CLI、多台电脑，所以进行中的行有第三行</div>
+    <div class="cap">全部项目，没有待处理时：进行中在最上面，按创建时间从新到旧，运行、空闲和离线共用同一顺序；下面是已结束的，按结束时间分组，一行一个，右边写项目和时间。这里有多个项目、多种 CLI、多台电脑，所以进行中的行有第三行</div>
   </div>
 
   <div>
@@ -1396,16 +1398,19 @@ git status --short gen/</span></pre>
 
 <!-- ============================= -->
 <h2 id="new">新建会话</h2>
-<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送。用哪个 CLI 每次新建时在输入框旁选，项目记住上次用的；机器、模型和审批模式属于项目设置，模型和审批每个 CLI 各存一套，改了只影响之后新建的会话；输入框的「＋」只添加图片。主页的范围是某个项目时，右上角的新建按钮（方框加笔）直接进这个项目页；范围是全部项目时先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
+<div class="note" style="margin:0 0 20px">在项目页底部直接写任务并发送。用哪个 CLI 每次新建时在输入框旁选，只列目标机器已安装的 CLI（只装了一个时不显示切换），项目记住上次用的；机器、模型和审批模式属于项目设置，模型和审批每个 CLI 各存一套，改了只影响之后新建的会话；输入框的「＋」添加图片或文件。主页的范围是某个项目时，右上角的新建按钮（方框加笔）直接进这个项目页；范围是全部项目时先帮你选项目；「新项目…」选好机器和目录后也回到输入框。</div>
 <div class="screens">
   <div>
     <div class="phone">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="body">
-        <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
-          <div class="av lg c1">f</div>
-          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div><a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
+        <div class="pad" style="margin-bottom:2px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="av lg c1">f</div>
+            <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div></div>
+          </div>
+          <a class="proj-cfg" href="#project-settings"><em>Codex · 询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a>
         </div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
@@ -1414,10 +1419,10 @@ git status --short gen/</span></pre>
         <div class="old"><span>补充接口文档</span><span>昨天</span></div>
         <div class="old"><span>介绍下这个项目</span><span>9月27日</span></div>
       </div>
-      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div></div>
+      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span><span>Antigravity</span></div></div>
       <div class="compose-card new-compose"><div class="draft">描述任务…</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
-    <div class="cap"><span class="step">1</span>输入框上方是 CLI 切换，默认选中这个项目上次用的；项目标题下一行写选中的 CLI 和它的设置，点它或导航栏 ⋯ 进入项目设置。输入框仍只有「＋ 添加图片、描述任务、发送」</div>
+    <div class="cap"><span class="step">1</span>输入框上方是 CLI 切换，列出这台机器已安装的 CLI，默认选中这个项目上次用的；项目标题下一行写选中的 CLI 和它的设置，点它或导航栏 ⋯ 进入项目设置。输入框仍只有「＋、描述任务、发送」</div>
   </div>
 
   <div>
@@ -1425,19 +1430,22 @@ git status --short gen/</span></pre>
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
       <div class="body">
-        <div class="pad" style="display:flex;gap:14px;align-items:center;margin-bottom:2px">
-          <div class="av lg c1">f</div>
-          <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div><a class="proj-cfg" href="#project-settings"><em>Claude Code · 自动 · </em><em class="mach">MacBook</em></a></div>
+        <div class="pad" style="margin-bottom:2px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div class="av lg c1">f</div>
+            <div style="min-width:0"><div style="font-size:22px;font-weight:700;letter-spacing:-.3px">foo</div><div class="muted" style="font-size:13px">~/Code/foo · MacBook · VPS-dev</div><div style="font-size:13px;margin-top:2px"><span class="muted">2 个进行中 ·</span> <a style="text-decoration:none;font-weight:600">已结束 12<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div></div>
+          </div>
+          <a class="proj-cfg" href="#project-settings"><em>Antigravity · 询问 · </em><em class="mach">MacBook</em></a>
         </div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">Codex · VPS-dev</div></div></div>
         <div class="sess last"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">Codex · MacBook</div></div></div>
       </div>
-      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
+      <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div></div>
       <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
       <div class="kbd"><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div><i></i><i style="flex:5"></i><i></i></div></div>
     </div>
-    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 Agent，点一下切换：设置摘要换成 Claude Code 在这个项目里的那一套，草稿保留。键盘弹出时画面不动，只是列表变矮，切换仍贴在输入框上方；项目标题和设置摘要滚出屏幕后收进导航栏；空消息不发送</div>
+    <div class="cap"><span class="step">2</span>点输入框直接打字，点 ↑ 开始会话。这个任务想换 CLI，点一下切换：设置摘要换成 Antigravity 在这个项目里的那一套，草稿保留。键盘弹出时画面不动，只是列表变矮，切换仍贴在输入框上方；项目标题和设置摘要滚出屏幕后收进导航栏；空消息不发送</div>
   </div>
 
   <div>
@@ -1447,8 +1455,8 @@ git status --short gen/</span></pre>
       <div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
       <div class="body chat">
         <div class="sysline">9:41 · ~/Code/foo</div>
-        <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">等 Claude Code 就绪后发出</span><b>取消</b></small></div>
-        <div class="sysline">正在 MacBook 上启动 Claude Code…</div>
+        <div class="me pending"><div><span class="clamp">给登录接口加限流</span></div><small><span class="pt">等 Antigravity 就绪后发出</span><b>取消</b></small></div>
+        <div class="sysline">正在 MacBook 上启动 Antigravity…</div>
       </div>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
@@ -1483,18 +1491,17 @@ git status --short gen/</span></pre>
         <div class="ps-id"><div class="av sm c1">f</div><div style="min-width:0"><b>foo</b><small>~/Code/foo</small></div></div>
         <div class="fl">新会话</div>
         <div class="setrows" style="margin-top:0"><div class="sr"><span class="lbl">机器</span><span class="v"><span class="dot idle"></span>MacBook</span></div></div>
-        <div class="seg" style="margin-top:10px"><div>Codex</div><div class="on">Claude Code</div></div>
+        <div class="seg" style="margin-top:10px"><div>Codex</div><div class="on">Claude Code</div><div>Antigravity</div></div>
         <div class="setrows" style="margin-top:8px"><div class="sr"><span class="lbl">模型</span><span class="v">Sonnet · high</span></div>
           <div class="sr"><span class="lbl">上下文</span><div class="pick"><span class="on">1M</span><span>标准 200k</span></div></div>
           <div class="sr"><span class="lbl">审批</span><span class="v">自动</span></div>
         </div>
-        <div class="hint">两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
+        <div class="hint">各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。</div>
         <div class="setrows"><div class="sr act">设为常用</div><div class="sr act red">从项目列表移除</div></div>
       </div>
     </div>
-    <div class="cap">项目设置：从设置摘要或 ⋯ 打开。目录就是项目本身，只显示不可改；机器两个 CLI 共用，模型和审批每个 CLI 各存一套，用标签切换着看，打开时停在输入框旁选中的那个。「上下文」一行只在 Claude Code 下出现，排在模型和审批之间；这台机器只装了一个 CLI 时不显示标签</div>
+    <div class="cap">项目设置：从设置摘要或 ⋯ 打开。目录就是项目本身，只显示不可改；机器是项目共用的，模型和审批每个已装 CLI 各存一套，用标签切换着看，打开时停在输入框旁选中的那个。「上下文」1M / 200k 档位切换在 Claude Code 下显示；这台机器只装了一个 CLI 时不显示标签</div>
   </div>
-
 
   <div><div class="phone" id="project-config-model">
     <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
@@ -1503,18 +1510,25 @@ git status --short gen/</span></pre>
       <div class="list"><div class="mi"><div class="mt"><b>默认（gpt-6.1-sol）</b></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>GPT-6.1-Sol</b></div></div><div class="mi"><div class="mt"><b>GPT-6-Astra</b></div></div><div class="mi"><div class="mt"><b>GPT-6-Sol</b></div></div><div class="mi"><div class="mt"><b>GPT-6-Luna</b></div></div><div class="mi"><div class="mt"><b>GPT-5.6-Sol</b></div></div><div class="mi"><div class="mt"><b>GPT-5.6-Terra</b></div></div><div class="mi"><div class="mt"><b>GPT-5.6-Luna</b></div></div><div class="mi"><div class="mt"><b>GPT-5.5</b></div></div></div><div class="fl">推理强度</div><div class="effort-grid"><span>low</span><span>medium</span><span class="on">high</span><span>xhigh</span><span>max</span><span>ultra</span></div>
     </div></div><div class="cap">默认模型下仍可选择推理强度，选强度不会固定模型；点右上角「完成」保存整个项目配置并关闭；点左上角返回可继续编辑。长列表可以滚动。</div></div>
 
+  <div><div class="phone" id="project-config-model-agy">
+    <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+    <div class="body"></div><div class="dim"></div><div class="sheet">
+      <div class="grab"></div><div class="ns-head"><span class="back2"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><b>模型</b><span>完成</span></div>
+      <div class="list"><div class="mi"><div class="mt"><b>默认（Gemini 3.8 Flash）</b></div></div><div class="mi"><div class="mt"><b>Gemini 4 Argon</b></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>Gemini 3.8 Flash</b></div></div><div class="mi"><div class="mt"><b>Claude Opus 5.5</b></div></div><div class="mi"><div class="mt"><b>Claude Sonnet 5.5</b></div></div><div class="mi"><div class="mt"><b>GPT-OSS 120B</b><div class="md">推理强度固定为 medium</div></div></div></div><div class="fl">推理强度</div><div class="effort-grid"><span>low</span><span>medium</span><span class="on">high</span></div>
+    </div></div><div class="cap">Antigravity 模型面板：新建会话与项目设置可选全部 5 个实测模型与 low / medium / high 三档推理强度；GPT-OSS 120B 的推理强度固定为 medium。</div></div>
+
   <div><div class="phone" id="project-config-machine">
     <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
     <div class="body"></div><div class="dim"></div><div class="sheet">
       <div class="grab"></div><div class="ns-head"><span class="back2"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><b>机器</b><span>完成</span></div>
-      <div class="list"><div class="mi"><div class="mt"><b>MacBook</b></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>VPS-dev</b></div></div></div>
-    </div></div><div class="cap">机器：选择在线机器后返回项目设置；右上角「完成」保存整个配置并关闭。</div></div>
+      <div class="list"><div class="mi"><div class="mt"><b>MacBook</b><div class="md">Codex · Claude Code · Antigravity</div></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>VPS-dev</b><div class="md">Codex · Claude Code</div></div></div></div>
+    </div></div><div class="cap">机器：每台机器不止安装同一种 CLI 时，第二行写这台机器已安装的 CLI；选择在线机器后返回项目设置，右上角「完成」保存整个配置并关闭。</div></div>
 
   <div><div class="phone" id="project-config-mode">
     <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
     <div class="body"></div><div class="dim"></div><div class="sheet">
       <div class="grab"></div><div class="ns-head"><span class="back2"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><b>审批模式</b><span>完成</span></div>
-      <div class="list"><div class="mi"><div class="mt"><b>默认</b><div class="md">跟随 Codex 自己的配置</div></div></div><div class="mi"><div class="mt"><b>询问</b><div class="md">需要时请求审批</div></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>自动</b><div class="md">由 CLI 自动判断审批</div></div></div><div class="mi"><div class="mt"><b>完全放行</b><div class="md">所有操作都不审批</div></div></div></div>
+      <div class="list"><div class="mi"><div class="mt"><b>默认</b><div class="md">跟随 Antigravity 自己的配置</div></div></div><div class="mi"><div class="mt"><b>询问</b><div class="md">需要时请求审批</div></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div><div class="mi"><div class="mt"><b>自动</b><div class="md">由 CLI 自动判断审批</div></div></div><div class="mi"><div class="mt"><b>完全放行</b><div class="md">所有操作都不审批</div></div></div></div>
     </div></div><div class="cap">审批：选择后返回项目设置，也可点「完成」保存并关闭；只影响之后新建的会话。</div></div>
   <div>
     <div class="phone">
@@ -1655,11 +1669,11 @@ git status --short gen/</pre>
         <div class="ai">方案如下，批准后开始改。</div>
       </div>
       <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"><span class="when-closed"></span><span class="when-open"></span></span><span class="when-open pending-full">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="plan-body">1. 新建 <code>inventory</code> 包，迁移库存扣减和回滚<br>2. 订单服务改为调用接口，保留旧实现做开关<br>3. 补充集成测试，覆盖并发扣减…</div>
-        </div><div class="pending-actions"><div class="btns"><div class="btn">继续规划…</div><div class="btn pri">批准执行</div></div>
+        </div><div class="pending-actions"><div class="btns"><div class="btn">修改计划…</div><div class="btn pri">批准</div></div>
       </div></div></details>
       <div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
     </div>
-    <div class="cap">计划：同样默认展开，计划正文不单独限高，跟着内容区滚动；头部的「展开全文」进整页，全文页里还有「清空上下文后执行」。Codex 批准后按 CLI 实际模式显示；Claude Code 批准后进入询问模式，不提供清空上下文后执行</div>
+    <div class="cap">计划：同样默认展开，计划正文不单独限高，跟着内容区滚动；头部的「展开全文」进整页，Codex 全文页里还有「清空上下文后执行」。Claude Code 与 Antigravity 只提供「修改计划… / 批准」，批准后退出计划回到询问 / 默认模式</div>
   </div>
 
   <div>
@@ -3102,10 +3116,10 @@ git status --short gen/</pre>
 </div>
 
 
-<h2 id="cli">Claude Code 与 CLI 能力</h2>
+<h2 id="cli">多 CLI 与能力差异</h2>
 <div class="screens">
 <div>
-<div class="phone">
+<div class="phone" id="cli-project-3">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3121,12 +3135,12 @@ git status --short gen/</pre>
 <b>
 <span class="tname">foo</span>
 </b>
-<span>~/Code/foo</span>
+<span>Antigravity · 询问 · MacBook</span>
 </span>
 <span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
 </div>
 <div class="body pad">
-<div class="label">进行中</div>
+<div class="label">进行中 <span>3</span></div>
 <div class="sess">
 <span class="dot run">
 </span>
@@ -3149,73 +3163,130 @@ git status --short gen/</pre>
 <div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div>
 </div>
 </div>
+<div class="sess last">
+<span class="dot idle">
+</span>
+<div class="sm">
+<div class="row1">
+<b>补充端到端测试</b>
+<span>7:45</span>
 </div>
-<div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div></div>
+<div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Antigravity · MacBook</div>
+</div>
+</div>
+</div>
+<div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div></div>
 <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
 </div>
-<div class="cap">混合 CLI 的项目页：输入框仍是一行，上方点一下换 CLI，草稿保留；已经开始的会话不能换 CLI</div>
+<div class="cap">三种 CLI 并存的项目页：输入框上方按机器已安装的 CLI 显示切换，点一下切到对应 CLI 的项目设置摘要，草稿和已选附件保留；已经开始的会话固定属于创建时的 CLI，不能切换</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-missing-fallback">
 <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">foo</span></b><span>Codex · 询问 · VPS-dev</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">foo</span></b><span>Codex · 询问 · VPS-dev · GPT-6-Astra</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
 <div class="body pad">
 <div class="label">进行中</div>
-<div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>梳理登录流程</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div></div></div>
+<div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充端到端测试</b><span>7:45</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Antigravity · MacBook</div></div></div>
 </div>
-<div class="banner" style="margin:0 10px 2px">VPS-dev 没有 Claude Code，这次用 Codex<b>换机器</b></div>
+<div class="banner" style="margin:0 10px 2px">VPS-dev 没有 Antigravity，这次用 Codex<b>换机器</b></div>
+<div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div></div>
 <div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
 </div>
-<div class="cap">只列这台机器装了的 CLI：只有一个时不显示切换，和 v25 一样只有输入框，用哪个 CLI 看设置摘要。上次用的 CLI 在这台机器上没有时，提示条说明这次用哪个，不默默回退，也不改项目记住的选择；「换机器」打开项目设置的机器</div>
+<div class="cap">机器缺已记住的 CLI（VPS-dev 装了 Codex 和 Claude Code，没装 Antigravity）：切换器只列这台机器已安装的 CLI，提示条写明这次改用哪个，不默默回退，也不改项目记住的 Antigravity；「换机器」打开项目设置的机器选择</div>
 </div>
 <div>
-<div class="phone">
-<div class="sb">
-<span>9:41</span>
-<span class="sbi">
-<i class="sig">
-</i>
-<i class="bat">
-</i>
-</span>
+<div class="phone" id="cli-single-installed">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">foo</span></b><span>Codex · 询问 · Mac mini</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+<div class="body pad">
+<div class="label">进行中</div>
+<div class="sess last"><span class="dot idle"></span><div class="sm"><div class="row1"><b>梳理登录流程</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span></div><div class="mc">Claude Code · MacBook</div></div></div>
 </div>
-<div class="body">
+<div class="banner" style="margin:0 10px 2px">Mac mini 没有 Antigravity，这次用 Codex<b>换机器</b></div>
+<div class="compose-card new-compose"><div class="draft typed">给登录接口加限流</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
 </div>
-<div class="dim">
+<div class="cap">目标机器只装了一个 CLI：不显示切换器，用哪个 CLI 看设置摘要；缺项目上次用的 CLI 时同样出现提示条说明</div>
 </div>
+<div>
+<div class="phone" id="cli-session-settings">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body"></div>
+<div class="dim"></div>
 <div class="sheet">
-<div class="grab">
+<div class="grab"></div>
+<h4>会话设置</h4>
+<div class="ctxbox">
+<div>
+<div class="num">28%</div>
+<div class="muted small">上下文 294k / 1,048k</div>
 </div>
-<h4>Claude Code · 会话设置</h4>
+<div class="act">压缩</div>
+</div>
+<div class="fl">模型</div>
+<div class="list">
+<div class="mi dis" aria-disabled="true"><div class="mt">Gemini 4 Argon<div class="md">运行中不能换模型，新建会话时可选</div></div></div>
+</div>
+<div class="fl">推理强度</div>
+<div class="list">
+<div class="mi dis" aria-disabled="true"><div class="mt">high<div class="md">运行中不能换推理强度</div></div></div>
+</div>
+</div>
+</div>
+<div class="cap">Antigravity 会话设置：statusLine 报告上下文窗口（如 294k / 1,048k）且支持 /compact 压缩，满 80% 同样在 ⋯ 显示橙点；因 /model 会永久改写本机全局 settings.json，会话内模型与推理强度只读展示并写明原因，新建会话或项目设置中正常选择</div>
+</div>
+<div>
+<div class="phone" id="cli-session-settings-claude">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body"></div>
+<div class="dim"></div>
+<div class="sheet">
+<div class="grab"></div>
+<h4>会话设置</h4>
 <div class="ctxbox">
 <div>
 <div class="num">42%</div>
-<div class="muted small">上下文占用</div>
+<div class="muted small">上下文 84k / 200k</div>
 </div>
 <div class="act">压缩</div>
 </div>
 <div class="fl">模型</div>
 <div class="list">
 <div class="mi">Opus</div>
-<div class="mi">Fable</div>
-<div class="mi">Sonnet<span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
-</div>
-<div class="mi">Haiku<small>无推理强度</small>
-</div>
+<div class="mi">Sonnet<span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div>
+<div class="mi">Haiku<small>无推理强度</small></div>
 </div>
 <div class="fl">推理强度</div>
 <div class="effort-grid">
 <span>low</span>
 <span>medium</span>
 <span class="on">high</span>
+<span>max</span>
 </div>
 <div class="hint">仅显示当前模型支持的档位；空闲时点选提交，等待电脑确认后更新实际值。</div>
 </div>
 </div>
-<div class="cap">模型面板共用布局；五个以内全部显示，更多时提供全部模型入口；能力以当前 CLI 返回为准</div>
+<div class="cap">支持会话内换模的 CLI（Codex、Claude Code）：共用「会话设置」标题（不加 CLI 前缀）；五个以内全部显示，更多时提供「全部模型」入口；不支持推理强度的模型写明「无推理强度」</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-approval">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">梳理登录流程</span></b><span><span class="dot wait"></span>等待审批 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+<div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端</div></div></div>
+<div class="body chat">
+<div class="me"><div>把登录接口的限流补齐，跑完测试</div></div>
+<div class="tool"><span class="ok"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span><code>编辑 auth/login.go  +28 −6</code></div>
+<div class="ai">限流逻辑加上了，跑一下单元测试确认。</div>
+</div>
+<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">请求执行</span><span class="pending-brief"><span class="when-closed">go test ./auth/... -count=1</span><span class="when-open">剩 8 分钟</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><pre>go test ./auth/... -count=1</pre>
+<div class="desc">运行 auth 包的单元测试</div>
+</div><div class="pending-actions"><div class="appr"><div class="btns"><div class="btn no">不允许</div><div class="btn pri">允许</div></div></div>
+</div></div></details>
+<div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+</div>
+<div class="cap">Antigravity 审批卡：与 Codex、Claude Code 完全一致，远程只提供单次「允许」与「不允许」（对应终端选项 1 和 4）；会话内记住前缀或写入全局配置的选项留在终端里操作</div>
+</div>
+<div>
+<div class="phone" id="cli-question">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3243,7 +3314,7 @@ git status --short gen/</pre>
 </div>
 <div class="ai">接下来想优先覆盖哪些异常情况？</div>
 </div>
-<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Claude Code 在问你</span><span class="pending-brief"><span class="when-closed">哪些场景需要测试？</span><span class="when-open">可多选</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">哪些场景需要测试？</div>
+<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">Antigravity 在问你</span><span class="pending-brief"><span class="when-closed">哪些场景需要测试？</span><span class="when-open">可多选</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q">哪些场景需要测试？</div>
 <div class="answers-scroll">
 <div class="ans on">
 <span class="box"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
@@ -3265,7 +3336,7 @@ git status --short gen/</pre>
 </div>
 <div class="foot">
 <span>都不合适？</span>
-<b>去终端<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></b>
+<b>其他回答：去终端<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></b>
 </div>
 </div></div></details>
 <div class="compose-card slim">
@@ -3277,10 +3348,10 @@ git status --short gen/</pre>
 </div>
 </div>
 </div>
-<div class="cap">多选：勾选不立即回答，提交按钮固定；与单选即提交区分</div>
+<div class="cap">提问停靠卡：头部按当前会话 CLI 写「&lt;CLI&gt; 在问你」；单选点按即答，多选勾选后点「提交 N 项」，自由填写（Other）走「其他回答：去终端 ›」，三端三个 CLI 共用同一组件</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-question-full">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3296,7 +3367,7 @@ git status --short gen/</pre>
 <b>
 <span class="tname">回答提问</span>
 </b>
-<span>梳理登录流程 · Claude Code</span>
+<span>梳理登录流程 · Antigravity</span>
 </span>
 <span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span>
 </div>
@@ -3331,10 +3402,10 @@ git status --short gen/</pre>
 </div>
 </div>
 </div>
-<div class="cap">长问题整页：正文与选项滚动，提交固定；回到停靠卡保留选择与题目进度</div>
+<div class="cap">长问题整页：副标题写「&lt;会话标题&gt; · &lt;CLI&gt;」；正文与选项滚动，提交固定，回到停靠卡保留选择与题目进度</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-plan">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3364,11 +3435,11 @@ git status --short gen/</pre>
 </div>
 <details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">计划待批准</span><span class="pending-brief"><span class="when-closed"></span><span class="when-open"></span></span><span class="when-open pending-full">展开全文<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="plan-body">1. 抽出库存接口<br>2. 迁移扣减与回滚<br>3. 补充并发测试</div>
 </div><div class="pending-actions"><div class="btns">
-<div class="btn">继续规划</div>
-<div class="btn pri">批准执行</div>
+<div class="btn">修改计划…</div>
+<div class="btn pri">批准</div>
 </div>
 <div class="foot">
-<span>批准后使用询问模式</span>
+<span>批准后回到默认模式（询问）</span>
 </div>
 </div></div></details>
 <div class="compose-card">
@@ -3380,10 +3451,10 @@ git status --short gen/</pre>
 </div>
 </div>
 </div>
-<div class="cap">Claude Code 计划：只有继续规划和批准执行，不显示清空上下文后执行</div>
+<div class="cap">Antigravity 计划待批准：提供「修改计划… / 批准」（无「清空上下文后执行」）；agy 批准计划工件后自动离开 Plan 模式回到默认模式，底部注明「批准后回到默认模式（询问）」（Claude Code 写「批准后回到询问模式」）</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-approval-mode">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3400,7 +3471,7 @@ git status --short gen/</pre>
 <div class="sheet">
 <div class="grab">
 </div>
-<h4>Claude Code · 审批模式</h4>
+<h4>审批模式</h4>
 <div class="hint">当前：accept edits（在终端设置）</div>
 <div class="list">
 <div class="mi">
@@ -3412,7 +3483,7 @@ git status --short gen/</pre>
 <div class="mi dis" aria-disabled="true">
 <div class="mt">
 <b>自动</b>
-<div class="md">当前 Haiku 模型不支持</div>
+<div class="md">当前账户不支持自动模式</div>
 </div>
 </div>
 <div class="mi">
@@ -3431,10 +3502,65 @@ git status --short gen/</pre>
 <div class="hint">照实显示终端中的模式；不提供切到 accept edits 的按钮。</div>
 </div>
 </div>
-<div class="cap">能力受限：不可用项写明原因；Haiku 模型面板不显示推理强度</div>
+<div class="cap">审批模式（普通会话）：四种模式位置固定；未以完全放行启动的会话不能中途切到「完全放行」，账户不支持 --mode auto 时「自动」置灰并写明「当前账户不支持自动模式」（Claude Code Haiku 写「当前 Haiku 模型不支持」）</div>
 </div>
 <div>
-<div class="phone">
+<div class="phone" id="cli-approval-mode-full-access">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="body"></div>
+<div class="dim"></div>
+<div class="sheet">
+<div class="grab"></div>
+<h4>审批模式</h4>
+<div class="list">
+<div class="mi dis" aria-disabled="true">
+<div class="mt">
+<b>询问</b>
+<div class="md">本会话以完全放行启动，不能切回询问</div>
+</div>
+</div>
+<div class="mi dis" aria-disabled="true">
+<div class="mt">
+<b>自动</b>
+<div class="md">本会话以完全放行启动，不能切换模式</div>
+</div>
+</div>
+<div class="mi dis" aria-disabled="true">
+<div class="mt">
+<b>计划</b>
+<div class="md">本会话以完全放行启动，不能切换模式</div>
+</div>
+</div>
+<div class="mi danger">
+<div class="mt">
+<b>完全放行</b>
+<div class="md">所有操作都不审批</div>
+</div>
+<span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span>
+</div>
+</div>
+<div class="hint">以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。</div>
+</div>
+</div>
+<div class="cap">审批模式（以完全放行启动的会话）：会话启动时带了跳过权限标志，运行中不能离开完全放行，其余三项置灰并写明原因</div>
+</div>
+<div>
+<div class="phone" id="cli-popup-hint">
+<div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+<div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b><span class="tname">梳理登录流程</span></b><span><span class="dot wait"></span>终端里有弹窗 · 询问</span></span><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div>
+<div class="pad" style="padding-bottom:4px;flex:none"><div class="seg"><div class="on">聊天</div><div>终端<span class="n"><i class="sdot"></i></span></div></div></div>
+<div class="body chat">
+<div class="sysline">11:25 · ~/Code/billing</div>
+</div>
+<details class="dock pending" open><summary><span class="pending-dot"></span><span class="pending-label">终端里有弹窗</span><span class="pending-brief"><span class="when-closed">Permission Config Editor</span><span class="when-open">Antigravity 在等你</span></span><span class="pending-action"><span class="when-closed">处理 <i class="exp"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span><span class="when-open">收起 <i class="exp up"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-up"/></svg></i></span></span></summary><div class="pending-content"><div class="pending-scroll"><div class="q" style="font-weight:500">Permission Config Editor</div>
+</div><div class="pending-actions"><div class="btns"><div class="btn pri">去终端处理</div></div>
+</div></div></details>
+<div class="compose-card"><div class="draft">消息</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
+</div>
+<div class="cap">通用终端弹窗：remote-agent 启动 Antigravity 时自动信任会话目录，不会出现目录信任弹窗；用户在终端打开 /permissions 等未结构化交互时显示弹窗标题与「去终端处理」</div>
+</div>
+<div>
+<div class="phone" id="cli-offline-switch">
 <div class="sb">
 <span>9:41</span>
 <span class="sbi">
@@ -3462,15 +3588,15 @@ git status --short gen/</pre>
 <div class="mi">
 <div class="mt">
 <b>改用 VPS-dev</b>
-<div class="md">只有 Codex；模型和模式会按这台机器重新选择</div>
+<div class="md">已装 Codex、Claude Code；这台机器没有 Antigravity，会改用 Codex</div>
 </div>
 <span class="muted"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span>
 </div>
 </div>
-<div class="hint">只这次用 VPS-dev，项目设置里的机器不变。</div>
+<div class="hint">只这次用 VPS-dev，项目设置里的机器和记住的 CLI 不变。</div>
 </div>
 </div>
-<div class="cap">写草稿期间机器离线：主动换机器；CLI 不可用时一起明确选择，不默默回退</div>
+<div class="cap">写草稿期间机器离线：主动换机器；备用机器列出已安装的 CLI，缺少原先选中的 CLI 时明确告知将改用哪个，不默默回退</div>
 </div>
 </div>
 <!-- ============================= -->
@@ -3770,16 +3896,19 @@ git status --short gen/</pre>
       <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>MacBook</b></span><span class="more"></span></div>
       <div class="body">
         <div class="glabel">账户额度</div>
-        <div class="grp"><a class="row" href="#quota" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Codex</span><span class="v">5 小时 已用 62% · 7 天 已用 34%<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a><a class="row" href="#quota" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Claude Code</span><span class="v">5 小时 已用 28% · 7 天 已用 46%<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a></div>
-        <div class="grp"><div class="row">Codex 版本<span class="v"><span class="warn-text">未验证 ·</span> 示例版本</span></div><div class="row">Claude Code 版本<span class="v">示例版本</span></div></div>
-        <div class="glabel">Codex · 新项目默认设置</div>
+        <div class="grp"><a class="row" href="#quota" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Codex</span><span class="v">已用 62% <span class="muted">· 5 小时</span><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a><a class="row" href="#quota" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Claude Code</span><span class="v">已用 46% <span class="muted">· 7 天</span><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a><a class="row" href="#quota-agy" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Antigravity</span><span class="v">已用 40% <span class="muted">· 5 小时</span><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a></div>
+        <div class="grp"><div class="row">Codex 版本<span class="v"><span class="warn-text">未验证 ·</span> 示例版本</span></div><div class="row">Claude Code 版本<span class="v">示例版本</span></div><div class="row">Antigravity 版本<span class="v">示例版本</span></div></div>
+        <div class="glabel">新项目默认设置</div>
+        <div class="seg" style="margin:6px 12px"><div>Codex</div><div>Claude Code</div><div class="on">Antigravity</div></div>
         <div class="grp">
-          <div class="row">模型<span class="v">GPT-6-Astra<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
-          <div class="row">推理强度<span class="v">medium<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row">模型<span class="v">Gemini 4 Argon<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row">推理强度<span class="v">high<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row">审批模式<span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+        </div>
+        <div class="grp">
           <div class="row">审批超时<span class="v">10 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
         </div>
-        <div class="glabel">Claude Code · 新项目默认设置</div><div class="grp"><div class="row">模型<span class="v">Sonnet<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">推理强度<span class="v">high<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">审批模式<span class="v">询问<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">附件存储</div><div class="grp"><div class="row col"><div style="display:flex"><span>上传的图片和文件</span><span class="v">200.0 MiB</span></div><div class="hint">可清理 120.0 MiB</div></div><div class="row">空间上限<span class="v">1.0 GiB<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">预览缓存<span class="v">32.0 MiB</span></div><div class="row act">清理…<span class="v">可释放 152.0 MiB</span></div></div><div class="pad small muted">附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div>
+        <div class="glabel">附件存储</div><div class="grp"><div class="row col"><div style="display:flex"><span>上传的图片和文件</span><span class="v">200.0 MiB</span></div><div class="hint">可清理 120.0 MiB</div></div><div class="row">空间上限<span class="v">1.0 GiB<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">预览缓存<span class="v">32.0 MiB</span></div><div class="row act">清理…<span class="v">可释放 152.0 MiB</span></div></div><div class="pad small muted">附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。</div>
         <div class="glabel">项目</div>
         <div class="grp">
           <div class="row">foo<span class="v">~/Code/foo</span></div>
@@ -3789,7 +3918,36 @@ git status --short gen/</pre>
         <div class="pad small muted">移除会断开连接并吊销权限，保留中继上的会话和图片。另行确认“删除这台电脑的记录”才清除档案。</div>
       </div>
     </div>
-    <div class="cap">设置 › 设备：每个 CLI 一行额度摘要，点任一行进入额度详情；已安装 CLI 版本、两套新项目默认值（项目设置从这里开始），未安装的 CLI 不显示设置；附件存储只在大小不为零时写「可清理」「正在上传」，没有可清理的内容时清理行不可点；详情底部「移除这台机器…」打开二次确认</div>
+    <div class="cap">设置 › 设备：账户额度和版本只列这台电脑已安装的 CLI，每行只摘要已用比例最高的窗口（如「已用 62% · 5 小时」，窗口名淡色，满 80% 用警告色），保持单行；新项目默认设置与项目设置一致用分段标签切换已安装的 CLI（模型、推理强度、审批模式），整机共用的「审批超时」独立在下一组；附件存储只在大小不为零时写「可清理」「正在上传」；详情底部「移除这台机器…」打开二次确认</div>
+  </div>
+
+  <div>
+    <div class="phone gray" id="machine-detail-sparse">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>VPS-dev</b></span><span class="more"></span></div>
+      <div class="body">
+        <div class="glabel">账户额度</div>
+        <div class="grp"><a class="row" href="#quota" style="text-decoration:none;color:inherit"><span style="white-space:nowrap">Codex</span><span class="v">已用 22% <span class="muted">· 7 天</span><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></a></div>
+        <div class="grp"><div class="row">Codex 版本<span class="v">示例版本</span></div></div>
+        <div class="glabel">新项目默认设置 · Codex</div>
+        <div class="grp">
+          <div class="row">模型<span class="v">GPT-6-Astra<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row">推理强度<span class="v">medium<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row">审批模式<span class="v">询问<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+        </div>
+        <div class="grp">
+          <div class="row">审批超时<span class="v">10 分钟<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+        </div>
+        <div class="glabel">附件存储</div><div class="grp"><div class="row">上传的图片和文件<span class="v">0 B</span></div><div class="row">空间上限<span class="v">1.0 GiB<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row">预览缓存<span class="v">0 B</span></div><div class="row muted">清理…<span class="v">无可清理内容</span></div></div>
+        <div class="glabel">项目</div>
+        <div class="grp">
+          <div class="row">foo<span class="v">~/Code/foo</span></div>
+          <div class="row">remote-agent<span class="v">~/Code/remote-agent</span></div>
+        </div>
+        <div class="grp"><a class="row" href="#machine-removal" style="color:var(--red);text-decoration:none">移除这台机器…</a></div>
+      </div>
+    </div>
+    <div class="cap">只装了 1 个 CLI 的电脑：账户额度、版本都只列已安装的 Codex；新项目默认设置不显示 CLI 分段标签，直接写「新项目默认设置 · Codex」</div>
   </div>
 </div>
 
@@ -3805,19 +3963,40 @@ git status --short gen/</pre>
         <div class="glabel">Codex · Pro Lite</div>
         <div class="grp">
           <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 62%</span></div><div class="bar"><i style="width:62%"></i></div><div class="hint">4 小时 29 分后重置 · 今天 14:10</div></div>
-          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34%</span></div><div class="bar"><i style="width:34%"></i></div><div class="hint">6 天 4 小时后重置 · 10月8日 周四 14:10</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 34%</span></div><div class="bar"><i style="width:34%"></i></div><div class="hint">1 天 4 小时后重置 · 明天 14:10</div></div>
         </div>
         <div class="pad small muted" style="margin-bottom:12px">最近收到 9:40</div>
         <div class="glabel">Claude Code · Max</div>
         <div class="grp">
           <div class="row col"><div style="display:flex"><span>5 小时</span><span class="v">已用 28%</span></div><div class="bar"><i style="width:28%"></i></div><div class="hint">3 小时 39 分后重置 · 今天 13:20</div></div>
-          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 46%</span></div><div class="bar"><i style="width:46%"></i></div><div class="hint">4 天 8 小时后重置 · 10月6日 周二 18:00</div></div>
+          <div class="row col"><div style="display:flex"><span>7 天</span><span class="v">已用 46%</span></div><div class="bar"><i style="width:46%"></i></div><div class="hint">1 天 8 小时后重置 · 明天 18:00</div></div>
         </div>
         <div class="pad small muted">最近收到 9:38</div>
-        <div class="pad small muted">时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
+        <div class="pad small muted" style="margin-top:8px">时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。</div>
       </div>
     </div>
-    <div class="cap">正常：按 CLI 分组；套餐只有读到时才显示，写名称（Pro Lite、Max）而不是内部代号；每个窗口先写还有多久重置，再写重置的时刻：当天写「今天 14:10」，其他日子写出日期和星期，如「10月8日 周四 14:10」；剩余时间一天以上写到小时，一天以内写到分，不到一小时写「39 分钟后重置」，不到一分钟写「即将重置」。时刻统一按北京时间（Asia/Shanghai，UTC+8），日期和星期也按北京时间判断，「最近收到」同样按北京时间，页面底部说明一次；「最近收到」每个 CLI 只写一次</div>
+    <div class="cap">正常（Codex / Claude Code）：按这台机器已安装的 CLI 分组；套餐只有读到时才显示，写名称（Pro Lite、Max、Google AI Pro）而不是内部代号；每个窗口先写还有多久重置，再写重置的时刻：当天写「今天 14:10」，次日写「明天 14:10」，其他日子写出日期和星期；时刻统一按北京时间（Asia/Shanghai，UTC+8），页面底部说明一次；「最近收到」每个 CLI 只写一次</div>
+  </div>
+  <div>
+    <div class="phone gray" id="quota-agy">
+      <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>账户额度</b><span>MacBook · Antigravity</span></span></div>
+      <div class="body">
+        <div class="glabel">Antigravity · Google AI Pro · Gemini</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>Gemini · 5 小时</span><span class="v">已用 18%</span></div><div class="bar"><i style="width:18%"></i></div><div class="hint">4 小时 41 分后重置 · 今天 14:22</div></div>
+          <div class="row col"><div style="display:flex"><span>Gemini · 7 天</span><span class="v">已用 12%</span></div><div class="bar"><i style="width:12%"></i></div><div class="hint">1 天 6 小时后重置 · 后天 15:40</div></div>
+          <div class="row col"><div style="display:flex"><span>Gemini 4 Argon · 7 天</span><span class="v">已用 35%</span></div><div class="bar"><i style="width:35%"></i></div><div class="hint">18 小时后重置 · 明天 03:40</div></div>
+        </div>
+        <div class="glabel">第三方模型（Claude、GPT-OSS）</div>
+        <div class="grp">
+          <div class="row col"><div style="display:flex"><span>第三方模型 · 5 小时</span><span class="v">已用 40%</span></div><div class="bar"><i style="width:40%"></i></div><div class="hint">3 小时 19 分后重置 · 今天 13:00</div></div>
+          <div class="row col"><div style="display:flex"><span>第三方模型 · 7 天</span><span class="v">已用 26%</span></div><div class="bar"><i style="width:26%"></i></div><div class="hint">1 天 2 小时后重置 · 后天 11:40</div></div>
+        </div>
+        <div class="pad small muted">最近收到 9:41</div>
+      </div>
+    </div>
+    <div class="cap">Antigravity 账户额度：statusLine 返回 plan_tier（如 Google AI Pro）与 5 个配额桶，按模型族拆成「Gemini」和「第三方模型（Claude、GPT-OSS）」两组卡片，不把内部桶名（gemini-argon-wtu-weekly、3p-5h 等）直接甩给用户</div>
   </div>
   <div>
     <div class="phone gray">
@@ -3868,19 +4047,19 @@ git status --short gen/</pre>
     <div class="cap">读取失败：保留带时间的上次记录；重新读取不保证从服务商获取新用量</div>
   </div>
   <div>
-    <div class="phone gray">
+    <div class="phone gray" id="quota-states">
       <div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
-      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>账户额度 · 状态示例</b><span>Claude Code</span></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><span class="title"><b>账户额度 · 状态示例</b><span>Antigravity / Claude Code</span></span></div>
       <div class="body">
-        <div class="glabel">尚未收到数据</div>
-        <div class="grp"><div class="row col"><b>暂未获取额度</b><div class="hint">等待 Claude Code 返回额度数据</div></div></div>
+        <div class="glabel">尚未收到数据（如新会话首次回复前）</div>
+        <div class="grp"><div class="row col"><b>暂未获取额度</b><div class="hint">等待 Antigravity 返回额度数据；首次回复后自动更新</div></div></div>
         <div class="glabel">已确认 API 计费</div>
         <div class="grp"><div class="row col"><b>API 计费</b><div class="hint">此处不提供订阅额度，请到服务商控制台查看用量和账单。</div></div></div>
         <div class="glabel">当前版本或来源不支持</div>
-        <div class="grp"><div class="row col"><b>暂不支持读取额度</b><div class="hint">可在本机 Claude Code 中查看 /usage</div></div></div>
+        <div class="grp"><div class="row col"><b>暂不支持读取额度</b><div class="hint">可在本机 CLI 中查看用量</div></div></div>
       </div>
     </div>
-    <div class="cap">三种独立状态：缺少额度字段不能推断为 API 计费，也不能显示为 0%</div>
+    <div class="cap">三种独立状态：Antigravity 在首次模型回复前 statusLine 不含 quota，显示「暂未获取额度」；缺少额度字段不能推断为 API 计费，也不能显示为 0%</div>
   </div>
 </div>
 
@@ -4201,7 +4380,7 @@ git status --short gen/</pre>
         <div class="glabel">电脑 <a href="#devices" style="float:right">全部设备<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></a></div>
         <div class="grp">
 
-          <div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 7 天已用 34%</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+          <div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 已用 62% · 5 小时</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span>iMac<span class="v"><span class="dot off"></span>2 小时前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
           <div class="row" style="color:var(--blue)"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg> 添加设备</div>
         </div>
@@ -4351,7 +4530,7 @@ git status --short gen/</pre>
       <div class="scroll">
         <div class="label">需要处理 <span>2</span></div>
         <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>重构 API 层</b><span>9:31</span></div><div class="pv"><span class="stw wait">等待审批</span> · 请求执行 go test ./... -count=1</div><div class="mc">foo · Codex · VPS-dev</div></div></div>
-        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>9:20</span></div><div class="pv"><span class="stw wait">等你回答</span> · 大版本也一起升吗？</div><div class="mc">billing · Codex · iMac</div></div></div>
+        <div class="sess wait"><span class="dot wait"></span><div class="sm"><div class="row1"><b>升级依赖</b><span>9:20</span></div><div class="pv"><span class="stw wait">等你回答</span> · 大版本也一起升吗？</div><div class="mc">billing · Antigravity · MacBook</div></div></div>
         <div class="label">进行中 <span>2</span></div>
         <div class="sess"><span class="dot run"></span><div class="sm"><div class="row1"><b>修复登录超时</b><span>刚刚</span></div><div class="pv"><span class="stw run">运行中</span> · 正在执行 go test ./auth/...</div><div class="mc">foo · Codex · MacBook</div></div></div>
         <div class="sess"><span class="dot idle"></span><div class="sm"><div class="row1"><b>补充接口文档</b><span>8:12</span></div><div class="pv"><span class="stw idle">空闲</span> · 已补充 12 个接口的说明，要生成 OpenAPI 吗？</div><div class="mc">foo · Claude Code · MacBook</div></div></div>
@@ -4370,7 +4549,7 @@ git status --short gen/</pre>
       <div class="start">
         <h3>在 <span class="proj-pick"><span class="av xs c1">f</span>foo<i><svg class="ic" aria-hidden="true"><use href="#lu-chevron-down"/></svg></i></span> 里开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span><span>Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
   </div>
@@ -4472,7 +4651,7 @@ git status --short gen/</pre>
       <div class="start">
         <h3>开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · Gemini 4 Argon</em></a></div>
       </div>
     </div>
   </div>
@@ -4502,14 +4681,14 @@ git status --short gen/</pre>
       <div class="start">
         <h3>开始一个任务</h3>
         <div class="compose-card"><div class="draft">描述任务，⌘↵ 开始</div><div class="controls"><span class="compose-menu"><span class="cm-plus" aria-label="添加图片"><svg class="ic" aria-hidden="true"><use href="#lu-plus"/></svg></span></span><span class="go44"><svg class="ic" aria-hidden="true"><use href="#lu-arrow-up"/></svg></span></div></div>
-        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
+        <div class="launch"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span><span>Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">MacBook</em><em> · GPT-6-Astra</em></a></div>
       </div>
     </div>
   </div>
 </div>
 <div class="cap" style="width:auto;text-align:left">点侧栏标题打开范围菜单，内容和手机的弹层一样；选中后菜单关闭，侧栏换成那个范围；主区域是新建时跟着换成这个项目，正在看会话或设置时不动。正在看的会话不在新范围里时，仍留在进行中的最上面高亮，直到切走</div>
 <h3 id="launch-states" style="font-size:15px;margin:32px 0 12px;color:var(--fg2)">新建输入框下的设置摘要 · 各种长度</h3>
-<div class="screens" style="gap:16px"><div class="st" style="width:640px;max-width:100%"><div class="st-h">只有一台机器</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · Opus</em></a></div><div class="st-c">账户里只有一台机器时不写机器名：新建不用选它，离线时由提示条说明。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">多台机器 · 名字长</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro-office-2024</em><em> · Opus</em></a></div><div class="st-c">放不下时只省略机器名，模型留在末尾。</div></div><div class="st" style="width:380px;max-width:100%"><div class="st-h">窗口很窄</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro</em><em> · claude-opus-5-5-preview-20261001</em></a></div><div class="st-c">机器名缩到 3 个字以后，才从末尾省略；完全放行始终在最前面。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">只装了一个 CLI · 读不到模式</div><div class="launch" style="margin:0"><a class="proj-cfg" href="#project-settings"><em>Codex · 跟随 CLI 设置 · GPT-6-Astra</em></a></div><div class="st-c">没有 CLI 切换时摘要以 CLI 名开头，仍靠右。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">设置还在读取</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · 读取设置…</em></a></div><div class="st-c">内容短时摘要随内容收窄，靠右。</div></div></div>
+<div class="screens" style="gap:16px"><div class="st" style="width:640px;max-width:100%"><div class="st-h">只有一台机器 · 3 个已安装 CLI</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · Gemini 4 Argon</em></a></div><div class="st-c">账户里只有一台机器时不写机器名：新建不用选它，离线时由提示条说明。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">多台机器 · 名字长</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro-office-2024</em><em> · Gemini 4 Argon</em></a></div><div class="st-c">放不下时只省略机器名，模型留在末尾。</div></div><div class="st" style="width:380px;max-width:100%"><div class="st-h">窗口很窄</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span>Codex</span><span class="on">Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em><span class="red">完全放行</span> · </em><em class="mach">workstationM1-Pro</em><em> · Claude Sonnet 5.5</em></a></div><div class="st-c">机器名缩到 3 个字以后，才从末尾省略；完全放行始终在最前面。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">这台机器只装了 2 个 CLI · 上次用的 CLI 未安装</div><div class="banner" style="margin-bottom:8px">VPS-dev 没有 Antigravity，这次用 Codex<b>换机器</b></div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · </em><em class="mach">VPS-dev</em><em> · GPT-6-Astra</em></a></div><div class="st-c">选择器只列已安装的 CLI，未安装的用提示条交代为什么这次换成了别的 CLI。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">只装了一个 CLI · 读不到模式</div><div class="launch" style="margin:0"><a class="proj-cfg" href="#project-settings"><em>Codex · 跟随 CLI 设置 · GPT-6-Astra</em></a></div><div class="st-c">没有 CLI 切换时摘要以 CLI 名开头，仍靠右。</div></div><div class="st" style="width:640px;max-width:100%"><div class="st-h">设置还在读取</div><div class="launch" style="margin:0"><div class="pick" role="group" aria-label="新会话使用的 CLI"><span class="on">Codex</span><span>Claude Code</span><span>Antigravity</span></div><a class="proj-cfg" href="#project-settings"><em>询问 · 读取设置…</em></a></div><div class="st-c">内容短时摘要随内容收窄，靠右。</div></div></div>
 
 
 <div class="desk" style="margin-top:32px">
@@ -4541,7 +4720,7 @@ git status --short gen/</pre>
     </div>
     <nav class="stabs"><span class="on"><svg class="ic" aria-hidden="true"><use href="#lu-message-square"/></svg>会话</span><span><svg class="ic" aria-hidden="true"><use href="#lu-clock"/></svg>定时</span><span><svg class="ic" aria-hidden="true"><use href="#lu-settings"/></svg>设置</span></nav><div class="foot"><span></span><span><span class="dot idle"></span> 已连接</span></div>
   </div>
-  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 7 天已用 34%</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端（Pixel 9）上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-globe"/></svg></span><span class="row-name">Chrome · macOS</span><span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-smartphone"/></svg></span><span class="row-name">Pixel 9</span><span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
+  <div class="dm gray" style="background:var(--soft);overflow:auto"><div style="max-width:672px;margin:0 auto;padding-top:12px"><div class="large"><h3>设置</h3></div><div class="glabel">电脑</div><div class="grp"><div class="row machine-summary"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-laptop"/></svg></span><span class="row-name">MacBook<small>Codex · 已用 62% · 5 小时</small></span><span class="v"><span class="dot idle"></span>在线<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="manage-hint">要添加电脑或客户端，在管理端（Pixel 9）上打开「设置 › 添加设备」。</div><div class="glabel">客户端</div><div class="grp"><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-globe"/></svg></span><span class="row-name">Chrome · macOS</span><span class="v">当前<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div><div class="row"><span class="ico" style="background:#5b8def"><svg class="ic" aria-hidden="true"><use href="#lu-smartphone"/></svg></span><span class="row-name">Pixel 9</span><span class="v">已配对<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div><div class="glabel">外观</div><div class="grp"><div class="row">主题<div class="pick"><span class="on">自动</span><span>亮色</span><span>暗色</span></div></div></div><div class="glabel">版本</div><div class="grp"><div class="row">remote-agent<span class="v">示例版本</span></div></div></div></div>
 </div></div>
 <div class="cap" style="width:auto;text-align:left">宽屏设置：设置、电脑详情和额度页的内容限制在约 640 宽的居中一列，不随窗口拉满；Android 在平板和横屏上同样处理。本机是管理端时，「添加设备」是电脑组最后一行，使用加号图标和蓝字；否则在电脑组下面按名字指向当前管理端。</div>
 <div class="note">
@@ -4648,7 +4827,7 @@ git status --short gen/</pre>
   <div class="label">设置<span></span></div><div class="grp">
   <div class="row">什么时候<span class="v">每天 07:30 <span class="chev"><svg class="ic " aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></span></div>
   <div class="row">完成后通知<span class="sw"></span></div>
-  <div class="row">在哪运行<span class="v">sample-project · Claude Code <span class="chev"><svg class="ic " aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></span></div>
+  <div class="row">在哪运行<span class="v">sample-project · Antigravity <span class="chev"><svg class="ic " aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></span></div>
   <div class="row">权限<span class="v red">完全放行 <span class="chev"><svg class="ic " aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></span></div><div class="row">任务名<span class="v">检查依赖安全公告</span></div></div><div class="foot">sample-project · 你创建 · 10月30日</div></div></div></div><p class="cap">需要处理：原因提示与恢复在结果之前。</p></div><div><div id="d-run"><div class="phone gray"><div class="sb"><span>09:41</span><i>●●● ▮</i></div><div class="navbar"><span class="back"><svg class="ic " aria-hidden="true"><use href="#lu-chevron-left"/></svg></span><div class="title"><b>盯 PR #482 的回复</b><span class="">每小时 · 发到「修复登录超时」</span></div><span class="more" aria-label="更多"><svg class="ic " aria-hidden="true"><use href="#lu-ellipsis"/></svg></span></div><div class="scroll">
   <div class="res running"><div class="hd"><svg class="ic spin" aria-hidden="true"><use href="#lu-loader-circle"/></svg><span style="color:var(--blue);font-weight:600">正在运行</span> · 09:40 开始<span class="go">对话 <svg class="ic " aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div></div>
   <div class="res full"><div class="hd">昨天 22:00</div>
@@ -4779,14 +4958,36 @@ git status --short gen/</pre>
         <div class="tfield"><span>完成后通知</span><span class="sw" role="switch" aria-label="完成后通知" aria-checked="true"></span></div>
         <div class="tfield"><span>什么时候</span><span class="v">每天 08:00<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         <div class="tfield"><span>项目</span><span class="v">notes<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
-        <div class="tfield"><span>CLI</span><span class="v"><span class="mini-seg"><span>Codex</span><span class="on">Claude Code</span></span></span></div>
+        <div class="tfield"><span>CLI</span><span class="v"><span class="mini-seg"><span>Codex</span><span>Claude Code</span><span class="on">Antigravity</span></span></span></div>
         <div class="tfield"><span>权限</span><span class="v">自动<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
-        <div class="tfield"><span>模型</span><span class="v">haiku<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
+        <div class="tfield"><span>模型</span><span class="v">Gemini 3.8 Flash<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"></use></svg></span></div>
         <div class="hint pad16">每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。</div>
         <div class="pad16"><div class="btn pri wide">创建</div></div>
       </div>
     </div>
-    <div class="cap">从定时页新建的都是「新开对话」的任务。先写让 agent 做什么，任务名紧跟在下面、可以留空；项目、CLI、权限沿用新建会话的选择器和默认值；电脑不止一台时最后一行写「机器和模型」</div>
+    <div class="cap">从定时页新建的都是「新开对话」的任务。先写让 agent 做什么，任务名紧跟在下面、可以留空；项目、CLI、权限沿用新建会话的选择器和默认值（CLI 只列所选项目目标电脑已安装的 CLI，只装 1 个时纯文字显示）；电脑不止一台时最后一行写「机器和模型」</div>
+  </div>
+
+  <div>
+    <div class="phone gray" id="schedule-target-sheet">
+      <div class="sb"><span>09:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div>
+      <div class="navbar"><span class="back"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-left"></use></svg></span><div class="title"><b>检查依赖安全公告</b><span>已停下</span></div><span class="more"><svg class="ic" aria-hidden="true"><use href="#lu-ellipsis"></use></svg></span></div>
+      <div class="body"><div class="glabel">设置</div><div class="grp"><div class="row">什么时候<span class="v">每天 07:30</span></div><div class="row">在哪运行<span class="v">sample-project · Antigravity</span></div></div></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h4>在哪运行</h4>
+        <div class="glabel" style="padding-left:4px;padding-top:4px">CLI · 这台电脑已安装</div>
+        <div class="seg" style="margin:6px 0 12px"><div>Codex</div><div>Claude Code</div><div class="on">Antigravity</div></div>
+        <div class="glabel" style="padding-left:4px">项目</div>
+        <div class="plist" style="padding:0">
+          <div class="pi"><div class="av sm c1">s</div><div><b>sample-project</b><small>~/Code/sample-project · MacBook</small></div><span class="ck"><svg class="ic" aria-hidden="true"><use href="#lu-check"/></svg></span></div>
+          <div class="pi"><div class="av sm c2">f</div><div><b>foo</b><small>~/Code/foo · MacBook</small></div><span class="ck"></span></div>
+          <div class="pi"><div class="av sm c3">b</div><div><b>blog</b><small>~/Code/blog · MacBook</small></div><span class="ck"></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">任务详情 › 设置 › 在哪运行：弹层顶部切换所选项目目标电脑已安装的 CLI（Codex / Claude Code / Antigravity），下方选项目；切换项目若新机器没装原 CLI，顶部切换器自动切到该机器已安装的 CLI</div>
   </div>
 
   <div>
