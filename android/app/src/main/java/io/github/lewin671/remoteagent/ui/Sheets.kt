@@ -73,10 +73,6 @@ val modeHelp =
         Mode.FULL to "所有操作都不审批",
     )
 
-/** A sheet's title names the CLI only when it is not Codex, as the mockup does. */
-private fun sheetTitle(s: SessionView, what: String) =
-    agentInfo(s.agent()).sheetTitle(what)
-
 /** 审批模式: the four modes; full access is confirmed first; only this session changes. */
 @Composable
 fun ModeSheet(s: SessionView, onClose: () -> Unit) {
@@ -123,7 +119,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             it.isNotEmpty() && io.github.lewin671.remoteagent.core.permissionMode(it) == null
         }
     Sheet(onClose) {
-        SheetHead(sheetTitle(s, "审批模式"))
+        SheetHead("审批模式")
         if (outside != null)
             Text(
                 "当前：${if (outside == "acceptEdits") "accept edits" else outside}（在终端设置）",
@@ -369,7 +365,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             onClose()
         }
     Sheet(onClose) {
-        SheetHead(sheetTitle(s, "会话设置"))
+        SheetHead("会话设置")
         val pc = contextPercent(s)
         if (pc != null) {
             val i = s.info!!

@@ -7,21 +7,30 @@ import io.github.lewin671.remoteagent.proto.ApprovalMode
 import io.github.lewin671.remoteagent.proto.DaemonSettings
 import io.github.lewin671.remoteagent.proto.MachineMeta
 
+data class QuotaWindowDescriptor(
+    val label: String,
+    val group: String? = null,
+)
+
 interface AgentEntry {
     val agent: Agent
     val id: String
     val name: String
     val quotaWindows: List<String>
+    fun quotaWindow(name: String): QuotaWindowDescriptor
     fun planName(raw: String): String
     fun modelLabel(id: String): String
     val toolLabelFromItemType: Boolean
     val planClearContext: Boolean
-    val planApprovalReturnsToAsk: Boolean
+    val planNote: String?
     val standardContextOption: Boolean
+    val autoMayBeUnavailable: Boolean
     val trustFolderHint: String?
     val usageHint: String?
     val reconcilesUnclaimedInput: Boolean
     val sessionNeedsModelList: Boolean
+    val switchesModelInSession: Boolean
+    val forks: Boolean
     fun defaults(settings: DaemonSettings?): AgentDefaults
     fun withDefaults(
         settings: DaemonSettings,
@@ -29,7 +38,6 @@ interface AgentEntry {
         effort: String? = null,
         mode: ApprovalMode? = null,
     ): DaemonSettings
-    fun sheetTitle(what: String): String
 }
 
 fun normalizePlanName(plan: String): String = when (plan.lowercase()) {
@@ -51,11 +59,27 @@ fun gptSlugLabel(id: String): String =
             else word.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
         }
 
+private fun fixedWindowLabel(name: String): QuotaWindowDescriptor = when (name) {
+    "primary", "five_hour" -> QuotaWindowDescriptor("5 小时")
+    "secondary", "seven_day" -> QuotaWindowDescriptor("7 天")
+    else -> QuotaWindowDescriptor(name)
+}
+
+private val ANTIGRAVITY_QUOTA_WINDOWS = mapOf(
+    "gemini-5h" to QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"),
+    "gemini-weekly" to QuotaWindowDescriptor("Gemini · 7 天", "Gemini"),
+    "gemini-argon-wtu-weekly" to QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"),
+    "3p-5h" to QuotaWindowDescriptor("第三方模型 · 5 小时", "第三方模型（Claude、GPT-OSS）"),
+    "3p-weekly" to QuotaWindowDescriptor("第三方模型 · 7 天", "第三方模型（Claude、GPT-OSS）"),
+)
+
 private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
     override val agent: Agent = Agent.AGENT_CODEX
     override val id: String = "codex"
     override val name: String = "Codex"
     override val quotaWindows: List<String> = listOf("primary", "secondary")
+
+    override fun quotaWindow(name: String): QuotaWindowDescriptor = fixedWindowLabel(name)
 
     override fun planName(raw: String): String = normalizePlanName(raw)
 
@@ -63,12 +87,15 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = true
-    override val planApprovalReturnsToAsk: Boolean = false
+    override val planNote: String? = null
     override val standardContextOption: Boolean = false
+    override val autoMayBeUnavailable: Boolean = false
     override val trustFolderHint: String? = null
     override val usageHint: String? = null
     override val reconcilesUnclaimedInput: Boolean = false
     override val sessionNeedsModelList: Boolean = false
+    override val switchesModelInSession: Boolean = true
+    override val forks: Boolean = true
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         if (settings == null) AgentDefaults.getDefaultInstance()
@@ -90,8 +117,6 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
         if (mode != null) b.setDefaultMode(mode)
         return b.build()
     }
-
-    override fun sheetTitle(what: String): String = what
 }
 
 private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
@@ -100,18 +125,23 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
     override val name: String = "Claude Code"
     override val quotaWindows: List<String> = listOf("five_hour", "seven_day")
 
+    override fun quotaWindow(name: String): QuotaWindowDescriptor = fixedWindowLabel(name)
+
     override fun planName(raw: String): String = normalizePlanName(raw)
 
     override fun modelLabel(id: String): String = id
 
     override val toolLabelFromItemType: Boolean = true
     override val planClearContext: Boolean = false
-    override val planApprovalReturnsToAsk: Boolean = true
+    override val planNote: String? = "批准后使用询问模式"
     override val standardContextOption: Boolean = true
+    override val autoMayBeUnavailable: Boolean = true
     override val trustFolderHint: String? = "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
     override val usageHint: String? = " 可在本机 Claude Code 中查看 /usage。"
     override val reconcilesUnclaimedInput: Boolean = true
     override val sessionNeedsModelList: Boolean = true
+    override val switchesModelInSession: Boolean = true
+    override val forks: Boolean = true
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         if (settings != null && settings.hasClaude()) settings.claude
@@ -130,15 +160,16 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
         if (mode != null) cb.setMode(mode)
         return settings.toBuilder().setClaude(cb.build()).build()
     }
-
-    override fun sheetTitle(what: String): String = "$name · $what"
 }
 
-private val UNKNOWN_ENTRY: AgentEntry = object : AgentEntry {
-    override val agent: Agent = Agent.AGENT_UNSPECIFIED
-    override val id: String = ""
-    override val name: String = "未知 CLI"
+private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
+    override val agent: Agent = Agent.AGENT_ANTIGRAVITY
+    override val id: String = "agy"
+    override val name: String = "Antigravity"
     override val quotaWindows: List<String> = emptyList()
+
+    override fun quotaWindow(name: String): QuotaWindowDescriptor =
+        ANTIGRAVITY_QUOTA_WINDOWS[name] ?: QuotaWindowDescriptor(name, name)
 
     override fun planName(raw: String): String = raw
 
@@ -146,12 +177,57 @@ private val UNKNOWN_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = false
-    override val planApprovalReturnsToAsk: Boolean = false
+    override val planNote: String? = "批准后回到默认模式（询问）"
     override val standardContextOption: Boolean = false
+    override val autoMayBeUnavailable: Boolean = true
+    override val trustFolderHint: String? = null
+    override val usageHint: String? = null
+    override val reconcilesUnclaimedInput: Boolean = false
+    override val sessionNeedsModelList: Boolean = true
+    override val switchesModelInSession: Boolean = false
+    override val forks: Boolean = false
+
+    override fun defaults(settings: DaemonSettings?): AgentDefaults =
+        if (settings != null && settings.hasAntigravity()) settings.antigravity
+        else AgentDefaults.getDefaultInstance()
+
+    override fun withDefaults(
+        settings: DaemonSettings,
+        model: String?,
+        effort: String?,
+        mode: ApprovalMode?,
+    ): DaemonSettings {
+        val cur = defaults(settings)
+        val cb = cur.toBuilder()
+        if (model != null) cb.setModel(model)
+        if (effort != null) cb.setEffort(effort)
+        if (mode != null) cb.setMode(mode)
+        return settings.toBuilder().setAntigravity(cb.build()).build()
+    }
+}
+
+private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
+    override val id: String = ""
+    override val name: String = "未知 CLI"
+    override val quotaWindows: List<String> = emptyList()
+
+    override fun quotaWindow(name: String): QuotaWindowDescriptor = QuotaWindowDescriptor(name)
+
+    override fun planName(raw: String): String = raw
+
+    override fun modelLabel(id: String): String = id
+
+    override val toolLabelFromItemType: Boolean = false
+    override val planClearContext: Boolean = false
+    override val planNote: String? = null
+    override val standardContextOption: Boolean = false
+    override val autoMayBeUnavailable: Boolean = false
     override val trustFolderHint: String? = null
     override val usageHint: String? = null
     override val reconcilesUnclaimedInput: Boolean = false
     override val sessionNeedsModelList: Boolean = false
+    override val switchesModelInSession: Boolean = false
+    override val forks: Boolean = false
 
     override fun defaults(settings: DaemonSettings?): AgentDefaults =
         AgentDefaults.getDefaultInstance()
@@ -162,11 +238,11 @@ private val UNKNOWN_ENTRY: AgentEntry = object : AgentEntry {
         effort: String?,
         mode: ApprovalMode?,
     ): DaemonSettings = settings
-
-    override fun sheetTitle(what: String): String = what
 }
 
-val AGENTS: List<AgentEntry> = listOf(CODEX_ENTRY, CLAUDE_ENTRY)
+private val UNKNOWN_ENTRY: AgentEntry = UnknownAgentEntry(Agent.AGENT_UNSPECIFIED)
+
+val AGENTS: List<AgentEntry> = listOf(CODEX_ENTRY, CLAUDE_ENTRY, ANTIGRAVITY_ENTRY)
 
 val DEFAULT_AGENT: Agent = CODEX_ENTRY.agent
 
@@ -176,7 +252,7 @@ fun agentInfo(a: Agent? = null): AgentEntry {
     if (a == null || a == Agent.AGENT_UNSPECIFIED) {
         return CODEX_ENTRY
     }
-    return AGENTS.firstOrNull { it.agent == a } ?: UNKNOWN_ENTRY
+    return AGENTS.firstOrNull { it.agent == a } ?: UnknownAgentEntry(a)
 }
 
 fun agentById(id: String?): AgentEntry {

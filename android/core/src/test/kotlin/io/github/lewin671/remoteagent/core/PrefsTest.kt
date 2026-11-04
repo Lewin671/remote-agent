@@ -99,14 +99,14 @@ class PrefsTest {
         assertEquals(Agent.AGENT_CLAUDE, next.agent)
         assertEquals(listOf(set(Agent.AGENT_CODEX, "astra"), set(Agent.AGENT_CLAUDE, "sonnet")), next.agentsList)
         assertEquals(2L, next.updatedMs)
-        // Another machine: both CLIs get an empty entry, the remembered CLI stays.
+        // Another machine: all CLIs get an empty entry, the remembered CLI stays.
         val moved = applySettings(next, PrefsOp.SetSettings("/a", "vps", moved = true), 3)
         assertEquals("vps", moved.machineId)
         assertEquals(Agent.AGENT_CLAUDE, moved.agent)
-        assertEquals(listOf(set(Agent.AGENT_CODEX), set(Agent.AGENT_CLAUDE)), moved.agentsList)
+        assertEquals(listOf(set(Agent.AGENT_CODEX), set(Agent.AGENT_CLAUDE), set(Agent.AGENT_ANTIGRAVITY)), moved.agentsList)
         // A set edited together with the machine is kept.
         val both = applySettings(next, PrefsOp.SetSettings("/a", "vps", moved = true, sets = listOf(set(Agent.AGENT_CLAUDE, "opus"))), 3)
-        assertEquals(listOf(set(Agent.AGENT_CODEX), set(Agent.AGENT_CLAUDE, "opus")), both.agentsList)
+        assertEquals(listOf(set(Agent.AGENT_CODEX), set(Agent.AGENT_CLAUDE, "opus"), set(Agent.AGENT_ANTIGRAVITY)), both.agentsList)
     }
 
     @Test

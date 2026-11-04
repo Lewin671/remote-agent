@@ -919,10 +919,10 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
         },
     ) {
         PlanButtons(s, full = false, terminalOnly = isSkeleton(text))
-        // Claude Code leaves plan mode for manual approval of edits.
-        if (!isSkeleton(text) && agentInfo(s.agent()).planApprovalReturnsToAsk)
+        val planNote = agentInfo(s.agent()).planNote
+        if (!isSkeleton(text) && planNote != null)
             Text(
-                "批准后使用询问模式",
+                planNote,
                 style = T.meta,
                 color = p.muted,
                 modifier = Modifier.padding(top = 7.dp),

@@ -15,8 +15,11 @@ import org.junit.Test
 class AgentsTest {
     @Test
     fun listsKnownClisInStableOrder() {
-        assertEquals(listOf("codex", "claude"), AGENTS.map { it.id })
-        assertEquals(listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE), AGENTS.map { it.agent })
+        assertEquals(listOf("codex", "claude", "agy"), AGENTS.map { it.id })
+        assertEquals(
+            listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE, Agent.AGENT_ANTIGRAVITY),
+            AGENTS.map { it.agent },
+        )
         assertEquals(Agent.AGENT_CODEX, DEFAULT_AGENT)
     }
 
@@ -26,29 +29,61 @@ class AgentsTest {
         assertEquals("codex", codex.id)
         assertEquals("Codex", codex.name)
         assertEquals(listOf("primary", "secondary"), codex.quotaWindows)
+        assertEquals(QuotaWindowDescriptor("5 小时"), codex.quotaWindow("primary"))
+        assertEquals(QuotaWindowDescriptor("7 天"), codex.quotaWindow("secondary"))
         assertTrue(codex.planClearContext)
-        assertFalse(codex.planApprovalReturnsToAsk)
+        assertNull(codex.planNote)
         assertFalse(codex.standardContextOption)
+        assertFalse(codex.autoMayBeUnavailable)
         assertFalse(codex.reconcilesUnclaimedInput)
         assertFalse(codex.sessionNeedsModelList)
+        assertTrue(codex.switchesModelInSession)
+        assertTrue(codex.forks)
         assertEquals("GPT-6-Sol", codex.modelLabel("gpt-6-sol"))
         assertEquals("Max", codex.planName("claude_max"))
         assertEquals("Pro Lite", codex.planName("prolite"))
-        assertEquals("设置", codex.sheetTitle("设置"))
 
         val claude = agentInfo(Agent.AGENT_CLAUDE)
         assertEquals("claude", claude.id)
         assertEquals("Claude Code", claude.name)
         assertEquals(listOf("five_hour", "seven_day"), claude.quotaWindows)
+        assertEquals(QuotaWindowDescriptor("5 小时"), claude.quotaWindow("five_hour"))
+        assertEquals(QuotaWindowDescriptor("7 天"), claude.quotaWindow("seven_day"))
         assertFalse(claude.planClearContext)
-        assertTrue(claude.planApprovalReturnsToAsk)
+        assertEquals("批准后使用询问模式", claude.planNote)
         assertTrue(claude.standardContextOption)
+        assertTrue(claude.autoMayBeUnavailable)
         assertTrue(claude.reconcilesUnclaimedInput)
         assertTrue(claude.sessionNeedsModelList)
+        assertTrue(claude.switchesModelInSession)
+        assertTrue(claude.forks)
         assertEquals("claude-sonnet-5-5", claude.modelLabel("claude-sonnet-5-5"))
         assertEquals("Max", claude.planName("claude_max"))
         assertEquals("Pro Lite", claude.planName("prolite"))
-        assertEquals("Claude Code · 设置", claude.sheetTitle("设置"))
+
+        val agy = agentInfo(Agent.AGENT_ANTIGRAVITY)
+        assertEquals("agy", agy.id)
+        assertEquals("Antigravity", agy.name)
+        assertEquals(emptyList<String>(), agy.quotaWindows)
+        assertEquals(QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"), agy.quotaWindow("gemini-5h"))
+        assertEquals(QuotaWindowDescriptor("Gemini · 7 天", "Gemini"), agy.quotaWindow("gemini-weekly"))
+        assertEquals(QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"), agy.quotaWindow("gemini-argon-wtu-weekly"))
+        assertEquals(QuotaWindowDescriptor("第三方模型 · 5 小时", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-5h"))
+        assertEquals(QuotaWindowDescriptor("第三方模型 · 7 天", "第三方模型（Claude、GPT-OSS）"), agy.quotaWindow("3p-weekly"))
+        assertEquals(QuotaWindowDescriptor("custom", "custom"), agy.quotaWindow("custom"))
+        assertFalse(agy.toolLabelFromItemType)
+        assertFalse(agy.planClearContext)
+        assertEquals("批准后回到默认模式（询问）", agy.planNote)
+        assertFalse(agy.standardContextOption)
+        assertTrue(agy.autoMayBeUnavailable)
+        assertNull(agy.trustFolderHint)
+        assertNull(agy.usageHint)
+        assertFalse(agy.reconcilesUnclaimedInput)
+        assertTrue(agy.sessionNeedsModelList)
+        assertFalse(agy.switchesModelInSession)
+        assertFalse(agy.forks)
+        assertEquals("gemini-3.1-pro-high", agy.modelLabel("gemini-3.1-pro-high"))
+        assertEquals("my-plan", agy.planName("my-plan"))
     }
 
     @Test
@@ -63,26 +98,36 @@ class AgentsTest {
     @Test
     fun mapsUnrecognizedAgentValuesToUnknownEntryAndNeverCodex() {
         val unknown = agentInfo(Agent.UNRECOGNIZED)
+        assertEquals(Agent.UNRECOGNIZED, unknown.agent)
         assertEquals("", unknown.id)
         assertEquals("未知 CLI", unknown.name)
         assertEquals(emptyList<String>(), unknown.quotaWindows)
+        assertEquals(QuotaWindowDescriptor("primary"), unknown.quotaWindow("primary"))
         assertFalse(unknown.planClearContext)
-        assertFalse(unknown.planApprovalReturnsToAsk)
+        assertNull(unknown.planNote)
         assertFalse(unknown.standardContextOption)
+        assertFalse(unknown.autoMayBeUnavailable)
         assertNull(unknown.trustFolderHint)
         assertNull(unknown.usageHint)
         assertFalse(unknown.reconcilesUnclaimedInput)
         assertFalse(unknown.sessionNeedsModelList)
+        assertFalse(unknown.switchesModelInSession)
+        assertFalse(unknown.forks)
         assertEquals("any-slug", unknown.modelLabel("any-slug"))
         assertEquals("any-plan", unknown.planName("any-plan"))
-        assertEquals("设置", unknown.sheetTitle("设置"))
         assertEquals("未知 CLI", agentName(Agent.UNRECOGNIZED))
+
+        // Retains unrecognized agent on roundtrip through agentInfo
+        val roundtrip = agentInfo(unknown.agent)
+        assertEquals("未知 CLI", roundtrip.name)
+        assertEquals(Agent.UNRECOGNIZED, roundtrip.agent)
     }
 
     @Test
     fun looksUpAgentsByTargetId() {
         assertEquals(Agent.AGENT_CODEX, agentById("codex").agent)
         assertEquals(Agent.AGENT_CLAUDE, agentById("claude").agent)
+        assertEquals(Agent.AGENT_ANTIGRAVITY, agentById("agy").agent)
         assertEquals("", agentById("").id)
         assertEquals("", agentById("unknown").id)
         assertEquals("", agentById(null).id)
@@ -92,6 +137,7 @@ class AgentsTest {
     fun checksWhetherAnAgentEnumIsRecognized() {
         assertTrue(isKnownAgent(Agent.AGENT_CODEX))
         assertTrue(isKnownAgent(Agent.AGENT_CLAUDE))
+        assertTrue(isKnownAgent(Agent.AGENT_ANTIGRAVITY))
         assertFalse(isKnownAgent(Agent.AGENT_UNSPECIFIED))
         assertFalse(isKnownAgent(Agent.UNRECOGNIZED))
         assertFalse(isKnownAgent(null))
@@ -145,6 +191,33 @@ class AgentsTest {
         val updatedDefaults = defaultsFor(updated, Agent.AGENT_CLAUDE)
         assertEquals("claude-opus-9", updatedDefaults.model)
         assertEquals("low", updatedDefaults.effort)
+        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
+    }
+
+    @Test
+    fun roundTripsDefaultsAndWithDefaultsForAntigravity() {
+        val base = DaemonSettings.newBuilder()
+            .setAntigravity(
+                AgentDefaults.newBuilder()
+                    .setModel("gemini-3.1-pro-high")
+                    .setEffort("high")
+                    .setMode(ApprovalMode.APPROVAL_MODE_ASK),
+            )
+            .build()
+
+        val defaults = defaultsFor(base, Agent.AGENT_ANTIGRAVITY)
+        assertEquals("gemini-3.1-pro-high", defaults.model)
+        assertEquals("high", defaults.effort)
+        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, defaults.mode)
+
+        val updated = withDefaults(base, Agent.AGENT_ANTIGRAVITY, model = "gemini-3.8-flash")
+        assertEquals("gemini-3.8-flash", updated.antigravity.model)
+        assertEquals("high", updated.antigravity.effort)
+        assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updated.antigravity.mode)
+
+        val updatedDefaults = defaultsFor(updated, Agent.AGENT_ANTIGRAVITY)
+        assertEquals("gemini-3.8-flash", updatedDefaults.model)
+        assertEquals("high", updatedDefaults.effort)
         assertEquals(ApprovalMode.APPROVAL_MODE_ASK, updatedDefaults.mode)
     }
 
