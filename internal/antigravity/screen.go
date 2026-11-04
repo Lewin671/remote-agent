@@ -210,7 +210,7 @@ func (a *Adapter) Interrupted(styled string) bool {
 	return false
 }
 
-var mediaAttachedRE = regexp.MustCompile(`^(?:▸ 📎 ([1-9][0-9]*) media attached(?: |$)|▾ 📎 ([1-9][0-9]*) Media\(s\) attached$)`)
+var mediaAttachedRE = regexp.MustCompile(`^(?:▸ 📎 ([1-9][0-9]*) media attached(?: \([^()]*\))? +\(ctrl\+o to expand\)|▾ 📎 ([1-9][0-9]*) Media\(s\) attached)$`)
 
 // Attached media is outside the text box, immediately above its top rule.
 // Expanded media has a header, one row per attachment and a collapse hint.
@@ -226,17 +226,19 @@ func attachedMedia(lines []string, top int) int {
 			if strings.HasPrefix(row, "▾ 📎") {
 				break
 			}
-			if end < top-102 {
-				return -1
+			// Do not borrow a historical media header across a transcript
+			// separator. Wrapped native media rows are left untrusted below.
+			if row == "" || dividerRE.MatchString(row) || end < top-102 {
+				return 0
 			}
 		}
 		if end < 0 {
-			return -1
+			return 0
 		}
 	}
 	match := mediaAttachedRE.FindStringSubmatch(row)
 	if match == nil {
-		if strings.Contains(row, "📎") {
+		if strings.HasPrefix(row, "▸ 📎 ") && strings.Contains(row, "(ctrl+o to expand)") || strings.HasPrefix(row, "▾ 📎 ") && strings.TrimSpace(StripANSI(lines[top-1])) == "(ctrl+o to collapse)" {
 			return -1
 		}
 		return 0

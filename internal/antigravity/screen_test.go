@@ -227,3 +227,16 @@ func TestAttachedMediaIsPartOfDraft(t *testing.T) {
 		t.Fatalf("wrong native media clear %q", keys)
 	}
 }
+
+func TestChatPaperclipIsNotComposerMedia(t *testing.T) {
+	a := New("", "")
+	base := readScreenFixture(t, "image-terminal.txt")
+	for _, line := range []string{"The file is attached 📎", "▸ 📎 2 media attached", "(ctrl+o to collapse)"} {
+		s := strings.Replace(base, "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", line, 1)
+		scr := a.Analyze(s)
+		text, indexes, ok := a.ImageInput(s, "")
+		if !scr.ComposerReady || !scr.DraftEmpty || !ok || text != "" || len(indexes) != 0 {
+			t.Fatalf("chat line %q became composer media: %+v %q %v", line, scr, text, indexes)
+		}
+	}
+}
