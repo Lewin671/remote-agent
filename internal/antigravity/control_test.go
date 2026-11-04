@@ -119,3 +119,24 @@ func TestFilePermissionDenyUsesObservedMenuNumber(t *testing.T) {
 		t.Fatalf("deny file %q %v", term.written, err)
 	}
 }
+
+func TestNativeModePlaceholderStyle(t *testing.T) {
+	a := New("agy", t.TempDir())
+	s := a.Analyze(readScreenFixture(t, "mode-1.5.0-plan.txt"))
+	if !s.ComposerReady || !s.DraftEmpty {
+		t.Fatalf("styled plan placeholder is a draft: %+v", s)
+	}
+	s = a.Analyze(readScreenFixture(t, "mode-1.5.0-accept-edits.txt"))
+	if s.DraftEmpty {
+		t.Fatal("unstyled text was erased without placeholder evidence")
+	}
+}
+
+func TestRealMultilineDraft(t *testing.T) {
+	a := New("agy", t.TempDir())
+	styled := readScreenFixture(t, "multiline-1.5.0-draft.txt")
+	text, ok := a.ComposerText(styled, "")
+	if !ok || text != "line one\nline two" || a.Analyze(styled).DraftEmpty {
+		t.Fatalf("draft %q %v", text, ok)
+	}
+}

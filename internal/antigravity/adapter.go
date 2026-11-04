@@ -23,10 +23,11 @@ var TestedVersions = []string{"1.4.12"}
 
 // Adapter is Antigravity's agent.Adapter implementation.
 type Adapter struct {
-	mu      sync.Mutex // guards mutable fields
-	bin     string
-	home    string
-	history string
+	mu         sync.Mutex // guards mutable fields
+	bin        string
+	commandEnv []string
+	home       string
+	history    string
 
 	version agent.BinVersion
 	models  *ModelCache
@@ -78,6 +79,7 @@ func (a *Adapter) Version() string {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, a.Bin(), "--version")
+		cmd.Env = a.execEnv()
 		out, err := cmd.Output()
 		if err != nil {
 			return ""
@@ -96,7 +98,7 @@ func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	defaultModel := a.readDefaultModel()
-	return a.models.Get(ctx, a.Bin(), a.AutoUnavailable(), defaultModel)
+	return a.models.Get(ctx, a.Bin(), a.AutoUnavailable(), defaultModel, a.execEnv())
 }
 
 func (a *Adapter) CheckEffort(effort string) error {
@@ -232,4 +234,24 @@ func (a *Adapter) readDefaultModel() string {
 		return st.Model
 	}
 	return ""
+}
+
+// SetCommandEnv applies agent.env to metadata subprocesses too: agy models
+// contacts the CLI's service and needs the same proxy configuration as sessions.
+func (a *Adapter) SetCommandEnv(overlay map[string]string) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if len(overlay) == 0 {
+		a.commandEnv = nil
+		return
+	}
+	a.commandEnv = os.Environ()
+	for k, v := range overlay {
+		a.commandEnv = append(a.commandEnv, k+"="+v)
+	}
+}
+func (a *Adapter) execEnv() []string {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return slices.Clone(a.commandEnv)
 }

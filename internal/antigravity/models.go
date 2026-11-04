@@ -181,7 +181,7 @@ func NewModelCache(ttl time.Duration) *ModelCache {
 }
 
 // Get returns the cached models response if fresh, or invokes fetch.
-func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool, defaultModel string) (*pb.ListModelsResponse, error) {
+func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool, defaultModel string, env []string) (*pb.ListModelsResponse, error) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
@@ -190,6 +190,7 @@ func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool,
 	}
 
 	cmd := exec.CommandContext(ctx, bin, "models")
+	cmd.Env = env
 	out, err := cmd.Output()
 	if err != nil {
 		if mc.cached != nil && mc.bin == bin {

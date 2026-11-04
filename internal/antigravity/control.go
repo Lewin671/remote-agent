@@ -30,9 +30,9 @@ func (a *Adapter) Interrupt() []byte {
 // Answer validates the visible question and its entire numbered option list
 // before sending keys. Local selections are respected when toggling multi-select.
 func (a *Adapter) Answer(t agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
-	styled, err := t.Capture()
+	styled, err := agent.WaitFor(t, "native question", func(s string) bool { return a.Analyze(s).QuestionOpen })
 	if err != nil {
-		return err
+		return agent.ErrNotAnswering
 	}
 	if !a.Analyze(styled).QuestionOpen || q == nil {
 		return agent.ErrNotAnswering

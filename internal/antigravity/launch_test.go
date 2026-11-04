@@ -21,6 +21,8 @@ func TestLaunchPermissionAndResume(t *testing.T) {
 	}{
 		{"explicit ask", "always-proceed", pb.ApprovalMode_APPROVAL_MODE_ASK, "request-review", false},
 		{"explicit full", "request-review", pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS, "always-proceed", true},
+		{"explicit auto", "always-proceed", pb.ApprovalMode_APPROVAL_MODE_AUTO, "request-review", false},
+		{"explicit plan", "always-proceed", pb.ApprovalMode_APPROVAL_MODE_PLAN, "request-review", false},
 		{"follow full", "always-proceed", 0, "always-proceed", true},
 		{"follow strict", "strict", 0, "strict", false},
 	} {

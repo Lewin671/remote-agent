@@ -126,7 +126,10 @@ func (a *Adapter) ComposerText(styled, _ string) (string, bool) {
 						dim = true
 					}
 				}
-				if dim {
+				// agy 1.5.0 uses bright-black SGR (90), not SGR dim.
+				// With NO_COLOR there is no proof it is a placeholder, so a
+				// matching unstyled draft is deliberately left untouched.
+				if dim || strings.Contains(lines[i], "\x1b[90m"+line) {
 					line = ""
 				}
 			}

@@ -1,6 +1,8 @@
 package antigravity
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
 	"testing"
 )
@@ -87,5 +89,42 @@ func TestCheckEffort(t *testing.T) {
 		if err := CheckEffort(e); err == nil {
 			t.Errorf("CheckEffort(%q) expected error, got nil", e)
 		}
+	}
+}
+
+func TestModelCacheClonesAndUpdatesAccountFlags(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "agy")
+	script := `#!/bin/sh
+[ "$RA_AGY_METADATA_TEST" = configured ] || exit 3
+case "$1" in
+--version) echo 'Antigravity CLI 1.4.12';;
+models) printf '%s\n' 'gemini-3.8-flash-low Gemini 3.8 Flash (Low)' 'gemini-3.8-flash-medium Gemini 3.8 Flash (Medium)';;
+esac
+`
+	if err := os.WriteFile(bin, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	a := New(bin, dir)
+	a.SetCommandEnv(map[string]string{"RA_AGY_METADATA_TEST": "configured"})
+	if a.Version() != "1.4.12" {
+		t.Fatal("metadata command did not receive agent environment")
+	}
+	mustWrite(t, filepath.Join(dir, "settings.json"), []byte(`{"model":"Gemini 3.8 Flash (Low)"}`))
+	list, err := a.Models()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.DefaultModel != "gemini-3.8-flash" {
+		t.Fatal(list)
+	}
+	list.Models[0].Slug = "mutated"
+	a.SetAutoUnavailable(true)
+	list, err = a.Models()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if list.Models[0].Slug != "gemini-3.8-flash" || !list.Models[0].AutoUnavailable {
+		t.Fatal("cache was mutable or auto flag stale")
 	}
 }

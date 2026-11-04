@@ -85,14 +85,15 @@ func (a *Adapter) Options(extra []string, model, effort string, mode pb.Approval
 
 	switch mode {
 	case pb.ApprovalMode_APPROVAL_MODE_AUTO:
-		args = append(args, "--mode", "auto")
+		args = append(args, "--mode", "auto", "--ra-tool-permission=request-review")
 	case pb.ApprovalMode_APPROVAL_MODE_PLAN:
-		args = append(args, "--mode", "plan")
+		args = append(args, "--mode", "plan", "--ra-tool-permission=request-review")
 	case pb.ApprovalMode_APPROVAL_MODE_ASK:
 		args = append(args, "--ra-tool-permission=request-review")
 	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
 		args = append(args, "--ra-tool-permission=always-proceed")
 	case pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED:
+		args = append(args, "--ra-tool-permission="+a.launchPermission(nil))
 	default:
 		return nil, fmt.Errorf("unknown approval mode %v", mode)
 	}
@@ -171,7 +172,7 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 	// 3. User statusline preservation
 	userSL := a.userStatusLine()
 	ownSL := []byte("{}")
-	if userSL != nil && userSL.Type == "command" && userSL.Command != "" {
+	if userSL != nil && (userSL.Type == "command" || userSL.Type == "") && userSL.Command != "" {
 		ownSL, _ = json.Marshal(userSL)
 	}
 	if err := os.WriteFile(filepath.Join(l.Dir, agent.StatusLineFile), ownSL, 0o600); err != nil {
