@@ -50,13 +50,7 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 	if mode == "" && in.State != "" {
 		mode = "default"
 	}
-	model := in.Model.ID
-	// agy reports display names in id, including the effort suffix.
-	for _, effort := range efforts {
-		model = strings.TrimSuffix(model, " ("+strings.ToUpper(effort[:1])+effort[1:]+")")
-	}
-	model = strings.ToLower(strings.ReplaceAll(model, " ", "-"))
-	model, _ = splitModelEffort(model)
+	model := a.models.Resolve(a.Bin(), in.Model.ID)
 	out := &agent.StatusLine{ConversationID: in.Conversation, TranscriptPath: a.transcriptFor(in.Conversation, in.Transcript), CycleMode: mode, IdleKnown: in.State == "idle" || in.State == "reviewing", Background: in.State != "idle",
 		Context:       &pb.TurnContext{Model: model, Effort: in.Model.Effort, PermissionMode: mode},
 		ContextWindow: in.Window.Size,

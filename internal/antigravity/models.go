@@ -179,6 +179,34 @@ func NewModelCache(ttl time.Duration) *ModelCache {
 	return &ModelCache{ttl: ttl}
 }
 
+// Resolve uses the CLI's actual catalog, without metadata I/O in the status
+// callback. A display name is not a slug: punctuation differs by model family.
+func (mc *ModelCache) Resolve(bin, raw string) string {
+	if raw == "" {
+		return ""
+	}
+	if modelIDRE.MatchString(raw) {
+		id, _ := splitModelEffort(raw)
+		return id
+	}
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+	if mc.cached == nil || mc.bin != bin {
+		return ""
+	}
+	name := cleanDisplayName(raw, "")
+	id := ""
+	for _, model := range mc.cached.Models {
+		if strings.EqualFold(name, model.DisplayName) {
+			if id != "" && id != model.Slug {
+				return "" // Ambiguous names cannot select a launch identifier.
+			}
+			id = model.Slug
+		}
+	}
+	return id
+}
+
 // Get returns the cached models response if fresh, or invokes fetch.
 func (mc *ModelCache) Get(ctx context.Context, bin string, defaultModel string, env []string) (*pb.ListModelsResponse, error) {
 	mc.mu.Lock()

@@ -214,6 +214,9 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 	}
 
 	// 5. Construct CLI argv
+	// Discover display-name/slug associations before status callbacks arrive.
+	// Failure leaves the reported model unknown; never invent a resume slug.
+	_, _ = a.Models()
 	argv := []string{
 		"--add-dir", addonPath,
 		"--settings", settingsPath,

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -31,7 +32,7 @@ func TestLaunchPermissionAndResume(t *testing.T) {
 			config := filepath.Join(home, "settings.json")
 			original := []byte(`{"toolPermission":"` + tc.global + `","statusLine":{"type":"command","command":"cat","padding":2,"refreshInterval":5}}`)
 			mustWrite(t, config, original)
-			a := New("agy", home)
+			a := launchTestAdapter(t, home)
 			args, err := a.Options(nil, "gemini-3.8-flash", "low", tc.mode)
 			if err != nil {
 				t.Fatal(err)
@@ -99,7 +100,7 @@ func mustWrite(t *testing.T, path string, b []byte) {
 	}
 }
 func TestOptionsAndDefaultMode(t *testing.T) {
-	a := New("agy", t.TempDir())
+	a := launchTestAdapter(t, t.TempDir())
 	for _, flag := range ownFlags {
 		if _, err := a.Options([]string{flag}, "", "", 0); err == nil {
 			t.Fatalf("accepted %s", flag)
@@ -129,4 +130,15 @@ func TestOptionsAndDefaultMode(t *testing.T) {
 	if _, err := a.Argv(&agent.Launch{ForkOf: "parent"}); err != agent.ErrUnsupported {
 		t.Fatal("fork must be unsupported")
 	}
+}
+
+func launchTestAdapter(t *testing.T, home string) *Adapter {
+	t.Helper()
+	a := New("agy", home)
+	models, err := ParseModels(sampleAgyModelsOutput)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.models.cached, a.models.bin, a.models.fetchedAt = &pb.ListModelsResponse{Models: models}, a.Bin(), time.Now()
+	return a
 }
