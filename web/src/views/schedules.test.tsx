@@ -755,6 +755,9 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
 
 it("shows CLI as plain text on a single-CLI computer and a segmented control when multiple CLIs are installed", async () => {
   const r = remote([task()]);
+  const idle = r.sessions.get("s-idle")!;
+  r.sessions.clear();
+  r.sessions.set("s-idle", idle);
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".mini-seg")).not.toBeNull();
   await act(async () => {
