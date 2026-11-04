@@ -101,9 +101,6 @@ func adapterForKind(k pb.Agent) agent.Adapter {
 			return a
 		}
 	}
-	if len(defaultAdapters) > 0 {
-		return defaultAdapters[0]
-	}
 	return nil
 }
 

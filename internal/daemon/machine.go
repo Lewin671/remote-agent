@@ -172,7 +172,7 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 	if st.ApprovalTimeoutSeconds != 0 && (t < 30*time.Second || t > maxApprovalTimeout) {
 		return nil, fmt.Errorf("approval timeout must be between 30s and %s", maxApprovalTimeout)
 	}
-	for _, a := range d.adapters {
+	for _, a := range d.adapterList() {
 		def := defaultsFor(st, a.Kind())
 		if def.Mode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
 			return nil, errors.New("new sessions cannot start in Plan mode")
