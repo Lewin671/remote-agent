@@ -20,7 +20,6 @@ import (
 	"github.com/Lewin671/remote-agent/internal/antigravity"
 	localclient "github.com/Lewin671/remote-agent/internal/client"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
@@ -98,11 +97,7 @@ func run() (runErr error) {
 		return err
 	}
 	defer phone.Close()
-	keys, err := e2e.Derive(auth.Root)
-	if err != nil {
-		return err
-	}
-	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone)
 	socket := read(filepath.Join(dir, "tmux-socket")) + "-agy"
 	must(os.Setenv("REMOTE_AGENT_TMUX_SOCKET", socket))
 	binary := filepath.Join(dir, "bin", "remote-agent")

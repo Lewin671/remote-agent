@@ -21,7 +21,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/schedule"
@@ -85,9 +84,7 @@ func main() {
 	phone, err := deviceauth.InitEndpoint("", auth.Pin, auth.States, auth.Proofs, auth.Member.ID, auth.Ed.Seed(), auth.X, auth.Lease)
 	must(err)
 	defer phone.Close()
-	keys, err := e2e.Derive(auth.Root)
-	must(err)
-	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone)
 	if subscription := os.Getenv("RA_DEV_WEB_PUSH_SUBSCRIPTION"); subscription != "" {
 		_, err := client.API().SetPushSubscription(ctx, connect.NewRequest(&pb.SetPushSubscriptionRequest{
 			SubscriptionJson: read(subscription), Kinds: []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_SCHEDULED},
@@ -194,7 +191,7 @@ func main() {
 				if strings.Contains(string(out), "Notify User") && strings.Contains(string(out), "Do you want to proceed?") {
 					// A fresh encrypted client, with no stream, by-ID fetch or
 					// session cache: this is the same default cold directory read.
-					cold := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+					cold := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone)
 					waiting, e := cold.API().ListRemoteSessions(ctx, connect.NewRequest(&pb.ListRemoteSessionsRequest{}))
 					if e != nil {
 						return false

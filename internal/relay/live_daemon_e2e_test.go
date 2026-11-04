@@ -255,7 +255,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	mustLive(t, err)
 	handoffLease, err := deviceauth.BuildLease(handoff, nextEd, uint64(time.Now().UnixMilli()))
 	mustLive(t, err)
-	nextClient := remoteclient.NewClient(hs.URL, nextPhone.Token, nextPhone.ID, nextPhone.Endpoint, nil)
+	nextClient := remoteclient.NewClient(hs.URL, nextPhone.Token, nextPhone.ID, nextPhone.Endpoint)
 	mustLive(t, nextClient.Sync(ctx))
 	livePutState(t, ctx, phoneAPI, handoff, nil, handoffLease)
 	mustLive(t, nextPhone.Endpoint.Install([]deviceauth.State{handoff}, []*deviceauth.RecoveryStatement{nil}))
@@ -322,7 +322,7 @@ func TestLiveDaemonPhoneAuthority(t *testing.T) {
 	proofs[len(proofs)-1] = &statement
 	recoveredEndpoint, err := deviceauth.InitEndpoint("", phone.Pin, states, proofs, recoveredMember.ID, recoveredEd.Seed(), recoveredX, recoveryLease)
 	mustLive(t, err)
-	recoveredClient := remoteclient.NewClient(hs.URL, recoveredToken, recoveredMember.ID, recoveredEndpoint, nil)
+	recoveredClient := remoteclient.NewClient(hs.URL, recoveredToken, recoveredMember.ID, recoveredEndpoint)
 	defer recoveredClient.Close()
 	if _, e := nextAPI.GetSecurityStates(ctx, connect.NewRequest(&pb.GetSecurityStatesRequest{})); e == nil {
 		t.Fatal("old phone survived recovery")

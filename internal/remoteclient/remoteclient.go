@@ -29,7 +29,6 @@ import (
 type Client struct {
 	Server   string
 	DeviceID string
-	keys     *e2e.Keys
 	token    string
 	api      remoteagentv1connect.ClientServiceClient
 	// CommandTTL is how long a command stays valid.
@@ -211,9 +210,6 @@ func (c *Client) Seal(machineID, sessionID, requestID string, deadline time.Time
 	}
 	return wire.Envelope()
 }
-
-// Keys are the account's derived keys.
-func (c *Client) Keys() *e2e.Keys { return c.keys }
 
 // Do sends cmd to the session's machine and returns the opened result.
 func (c *Client) Do(ctx context.Context, s Session, cmd *pb.Command) (*pb.CommandResult, error) {
@@ -444,9 +440,9 @@ func (c *Client) Image(ctx context.Context, s Session, imageID string) (img *pb.
 func (c *Client) Close() error { return c.endpoint.Close() }
 
 // NewClient wraps an existing endpoint and token.
-func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint, keys *e2e.Keys) *Client {
+func NewClient(server, token, deviceID string, endpoint *deviceauth.Endpoint) *Client {
 	hc := netpolicy.Client(time.Minute)
-	c := &Client{Server: server, DeviceID: deviceID, token: token, endpoint: endpoint, keys: keys, CommandTTL: time.Minute}
+	c := &Client{Server: server, DeviceID: deviceID, token: token, endpoint: endpoint, CommandTTL: time.Minute}
 	c.api = remoteagentv1connect.NewClientServiceClient(hc, server, connect.WithInterceptors(bearerToken(token)))
 	return c
 }

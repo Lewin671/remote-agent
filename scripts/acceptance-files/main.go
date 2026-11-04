@@ -16,7 +16,6 @@ import (
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/deviceauth"
-	"github.com/Lewin671/remote-agent/internal/e2e"
 	"github.com/Lewin671/remote-agent/internal/relay"
 	"github.com/Lewin671/remote-agent/internal/remoteclient"
 	"github.com/Lewin671/remote-agent/internal/updater"
@@ -94,9 +93,7 @@ func main() {
 	phone, err := deviceauth.InitEndpoint("", auth.Pin, auth.States, auth.Proofs, auth.Member.ID, auth.Ed.Seed(), auth.X, auth.Lease)
 	must(err)
 	defer phone.Close()
-	keys, err := e2e.Derive(auth.Root)
-	must(err)
-	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone, keys)
+	client := remoteclient.NewClient(server, auth.Token, auth.Member.ID, phone)
 	pollApprovals = func() {
 		sessions, err := client.Sessions(ctx)
 		if err != nil {
