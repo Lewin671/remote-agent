@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -299,13 +300,31 @@ func run() (runErr error) {
 	if evidence := os.Getenv("RA_AGY_EVIDENCE_DIR"); evidence != "" {
 		defer func() {
 			_ = os.MkdirAll(evidence, 0700)
-			_ = os.WriteFile(filepath.Join(evidence, "native-screen-last.txt"), []byte(capture()), 0600)
+			if b, e := exec.Command("tmux", "-L", socket, "capture-pane", "-p", "-e", "-t", pane).Output(); e == nil {
+				_ = os.WriteFile(filepath.Join(evidence, "native-screen-last.txt"), b, 0600)
+			}
 			if b, e := os.ReadFile(filepath.Join(home, "sessions", sid, "events.jsonl")); e == nil {
 				_ = os.WriteFile(filepath.Join(evidence, "events.jsonl"), b, 0600)
 			}
 			if b, e := os.ReadFile(filepath.Join(home, "sessions", sid, "session.json")); e == nil {
 				_ = os.WriteFile(filepath.Join(evidence, "session.json"), b, 0600)
 			}
+			if b, e := os.ReadFile(filepath.Join(home, "sessions", sid, "session.json")); e == nil {
+				var m struct {
+					Rollout string `json:"rollout_path"`
+				}
+				if json.Unmarshal(b, &m) == nil && m.Rollout != "" {
+					for _, name := range []string{"transcript.jsonl", "transcript_full.jsonl"} {
+						if data, e := os.ReadFile(filepath.Join(filepath.Dir(m.Rollout), name)); e == nil {
+							_ = os.WriteFile(filepath.Join(evidence, name), data, 0600)
+						}
+					}
+				}
+			}
+			if b, e := os.ReadFile(filepath.Join(dir, "agy-daemon.log")); e == nil {
+				_ = os.WriteFile(filepath.Join(evidence, "daemon.log"), b, 0600)
+			}
+
 		}()
 	}
 
@@ -476,6 +495,54 @@ func run() (runErr error) {
 		return err
 	}
 	fmt.Println("PASS --conversation resumes the same transcript after process exit")
+	if err := wait("resumed conversation metadata", func() bool { return refresh() && view.Info.CodexSessionId != "" }); err != nil {
+		return err
+	}
+	originalConversation := view.Info.CodexSessionId
+	localCommand := func(text string) error {
+		if e := exec.Command("tmux", "-L", socket, "send-keys", "-t", pane, "-l", text).Run(); e != nil {
+			return e
+		}
+		return exec.Command("tmux", "-L", socket, "send-keys", "-t", pane, "Enter").Run()
+	}
+	seq = sequence()
+	if err := localCommand("/fork"); err != nil {
+		return err
+	}
+	if err := wait("native local fork identity", func() bool {
+		return refresh() && view.Info.CodexSessionId != "" && view.Info.CodexSessionId != originalConversation && view.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE
+	}); err != nil {
+		return err
+	}
+	if err := send("Reply exactly FORKED-LOCAL-OK, without tools."); err != nil {
+		return err
+	}
+	if _, err := event(seq, "local fork reply", func(e *pb.Event) bool { return e.GetAgentMessage().GetText() == "FORKED-LOCAL-OK" }); err != nil {
+		return err
+	}
+	if _, err := event(seq, "local fork completion", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }); err != nil {
+		return err
+	}
+	seq = sequence()
+	if err := localCommand("/resume " + originalConversation); err != nil {
+		return err
+	}
+	if err := wait("native local resume identity", func() bool {
+		return refresh() && view.Info.CodexSessionId == originalConversation && view.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE
+	}); err != nil {
+		return err
+	}
+	if err := send("Reply exactly BACK-LOCAL-OK, without tools."); err != nil {
+		return err
+	}
+	if _, err := event(seq, "local resume reply", func(e *pb.Event) bool { return e.GetAgentMessage().GetText() == "BACK-LOCAL-OK" }); err != nil {
+		return err
+	}
+	if _, err := event(seq, "local resume completion", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }); err != nil {
+		return err
+	}
+	fmt.Println("PASS native local /fork and /resume rebind identity and transcript; encrypted input follows verified conversation")
+
 	seq = sequence()
 	if err := do(&pb.Command{Kind: &pb.Command_Compact{Compact: &pb.CompactRequest{SessionId: sid}}}); err != nil {
 		return err
