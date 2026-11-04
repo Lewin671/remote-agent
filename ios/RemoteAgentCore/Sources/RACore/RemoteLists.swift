@@ -396,7 +396,8 @@ extension Remote {
                 await cache?.keepOwner(rs)
             }
         } catch {
-            if error is UnsupportedHistoryError {
+            // An unauthenticated retired header must not erase verified revision/owner state.
+            if error is UnsupportedHistoryError, sessions[sid] == nil {
                 var view = SessionView(id: sid, machineId: rs.machineID, lastSeq: rs.lastSeq,
                     updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs)
                 view.historyError = errorText(error)

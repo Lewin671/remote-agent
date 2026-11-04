@@ -2336,7 +2336,8 @@ export class Remote {
         }
       }
     } catch (e) {
-      if (e instanceof UnsupportedHistoryError) {
+      // An unauthenticated retired header must not erase verified revision/owner state.
+      if (e instanceof UnsupportedHistoryError && !this.sessions.has(rs.sessionId)) {
         this.sessions.set(rs.sessionId, { id: rs.sessionId, machineId: rs.machineId,
           metaRev: 0n, lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, endedMs: rs.endedMs, historyError: e.message });
       }

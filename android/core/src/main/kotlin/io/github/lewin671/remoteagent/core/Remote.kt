@@ -1568,7 +1568,8 @@ class Remote(
                 cache?.keepOwner(rs)
             }
         } catch (e: Exception) {
-            if (e is UnsupportedHistoryException) {
+            // An unauthenticated retired header must not erase verified revision/owner state.
+            if (e is UnsupportedHistoryException && rs.sessionId !in sessions) {
                 sessions[rs.sessionId] = SessionView(rs.sessionId, rs.machineId, lastSeq = rs.lastSeq,
                     updatedMs = rs.updatedMs, listedEndedMs = rs.endedMs, historyError = RETIRED_HISTORY_ERROR)
                 eventFlows.getOrPut(rs.sessionId) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(error = RETIRED_HISTORY_ERROR)

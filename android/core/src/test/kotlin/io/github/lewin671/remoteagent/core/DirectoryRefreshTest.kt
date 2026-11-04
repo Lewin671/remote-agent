@@ -11,6 +11,34 @@ import org.junit.Test
 class DirectoryRefreshTest {
     private val fixture = ColdOpenFixture(2)
 
+    @Test fun retiredHeaderCannotEraseVerifiedRevisionOrAllowMetadataReplay() = runTest {
+        val peer = ColdOpenPeer(fixture, this)
+        val older = fixture.session("short", 1, SessionStatus.SESSION_STATUS_IDLE)
+        val current = fixture.session("short", 2, SessionStatus.SESSION_STATUS_RUNNING)
+        var response = current
+        peer.response = { method, _ -> if (method == "ListRemoteSessions")
+            ListRemoteSessionsResponse.newBuilder().addSessions(response).build() else null }
+        val remote = peer.remote()
+        try {
+            assertTrue(remote.refresh())
+            val verified = remote.state.value.sessions.getValue("short")
+            assertEquals(2L, verified.metaRev)
+            for (kind in listOf(PayloadKind.PAYLOAD_KIND_SESSION_KEY, PayloadKind.PAYLOAD_KIND_SESSION_META)) {
+                val retired = Envelope.newBuilder().setHeader(Header.newBuilder().setVersion(1)
+                    .setKind(kind).build().toByteString()).build()
+                response = older.toBuilder().apply {
+                    if (kind == PayloadKind.PAYLOAD_KIND_SESSION_KEY) setKey(retired) else setMeta(retired)
+                }.build()
+                remote.refresh()
+                assertEquals(RETIRED_HISTORY_ERROR, remote.state.value.error)
+                assertEquals(verified, remote.state.value.sessions.getValue("short"))
+                response = older
+                remote.refresh()
+                assertEquals(verified, remote.state.value.sessions.getValue("short"))
+            }
+        } finally { remote.close(); runCurrent() }
+    }
+
     @Test fun coldListingRetainsTaskOwnedApprovalThroughRefresh() = runTest {
         val peer = ColdOpenPeer(fixture, this)
         peer.response = { method, _ -> if (method == "ListRemoteSessions")

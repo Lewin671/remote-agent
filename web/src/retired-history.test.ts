@@ -2,6 +2,7 @@ import { create, toBinary } from "@bufbuild/protobuf";
 import { afterEach, expect, it } from "vitest";
 import { EnvelopeSchema, HeaderSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { RETIRED_HISTORY_ERROR } from "./crypto";
+import { SessionSchema } from "./gen/remoteagent/v1/local_pb";
 import { SyntheticRemote } from "./test/remote-fixture";
 
 let remote: SyntheticRemote | undefined;
@@ -35,4 +36,23 @@ it("reports the same error for an old event and image", async () => {
   expect(r.history("s")).toMatchObject({ error: RETIRED_HISTORY_ERROR, broken: true });
   expect(r.events("s")).toHaveLength(0);
   expect(await r.getImage("s", "old")).toEqual({ kind: "bad", why: RETIRED_HISTORY_ERROR });
+});
+
+it("a retired header cannot erase a verified revision or allow metadata replay", async () => {
+  const r = remote = await SyntheticRemote.create();
+  const older = await r.sessionRow("known", "older title");
+  const current = { ...older, meta: await r.seal(
+    { kind: PayloadKind.SESSION_META, sessionId: "known", seq: 2n },
+    SessionSchema, create(SessionSchema, { id: "known", title: "current title" })) };
+  await (r as any).putSession(current);
+  const verified = structuredClone(r.sessions.get("known"));
+  for (const field of ["key", "meta"] as const) {
+    await (r as any).putSession({ ...older, [field]: retired(field === "key" ? PayloadKind.SESSION_KEY : PayloadKind.SESSION_META) });
+    expect(r.error).toBe(RETIRED_HISTORY_ERROR);
+    expect(r.sessions.get("known")).toEqual(verified);
+    await (r as any).putSession(older);
+    expect(r.sessions.get("known")?.metaRev).toBe(2n);
+    expect(r.sessions.get("known")?.info?.title).toBe("current title");
+    expect(r.sessions.get("known")?.machineId).toBe(r.machine);
+  }
 });
