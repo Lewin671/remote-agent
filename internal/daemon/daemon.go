@@ -1183,23 +1183,7 @@ drain:
 	_ = d.cfg.Tmux.SetSessionOption(m.Tmux, "status", "off")
 
 	s.mu.Lock()
-	s.meta.Exited = false
-	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
-	s.identityResume = s.identityPending
-	s.identityObservedAt = time.Now()
-	s.identityEmptySince = time.Time{}
-	s.identityFailed = false
-	s.meta.ScheduledClosed = false
-	// Explicit/scheduled resume is independent of the old creation. An
-	// implicit resume remains owned until canonical input admission takes over.
-	if s.meta.ScheduledTaskID != "" {
-		s.meta.TaskCLIClosed = !pendingInput
-		if pendingInput && s.meta.TaskOwned {
-			s.scheduledClose = true
-			s.scheduledCloseAfter = time.Time{}
-		}
-	}
-	s.sawComposer = false
+	s.resumeStateLocked(pendingInput)
 	m = s.meta
 	if err := m.save(s.dir); err != nil {
 		slog.Error("save session", "session", id, "err", errClass(err))
@@ -1247,4 +1231,27 @@ func (d *Daemon) sessionsDir() string         { return filepath.Join(d.dir, "ses
 func (d *Daemon) sessionDir(id string) string { return filepath.Join(d.sessionsDir(), id) }
 func (d *Daemon) ptySocket(id string) string {
 	return filepath.Join(d.dir, "run", id[:min(len(id), 12)]+".sock")
+}
+
+// resumeStateLocked records the newly launched lifetime without claiming a
+// pending human input. Queue persistence remains the ownership boundary.
+// The caller holds mu and persists this state before starting workers.
+func (s *session) resumeStateLocked(pendingInput bool) {
+	s.meta.Exited = false
+	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
+	s.identityResume = s.identityPending
+	s.identityObservedAt = time.Now()
+	s.identityEmptySince = time.Time{}
+	s.identityFailed = false
+	s.meta.ScheduledClosed = false
+	// Explicit/scheduled resume is independent of the old creation. An
+	// implicit resume remains owned until canonical input admission takes over.
+	if s.meta.ScheduledTaskID != "" {
+		s.meta.TaskCLIClosed = !pendingInput
+		if pendingInput && s.meta.TaskOwned {
+			s.scheduledClose = true
+			s.scheduledCloseAfter = time.Time{}
+		}
+	}
+	s.sawComposer = false
 }
