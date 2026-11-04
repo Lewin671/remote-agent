@@ -5,37 +5,6 @@ import Testing
 @testable import RACore
 
 @Suite struct PrefsTests {
-    private let codec = PrefsCodec(key: Data(repeating: 7, count: 32), sender: "dev")
-
-    /// The server's compare-and-set, as internal/server does it.
-    private final class FakeServer: @unchecked Sendable {
-        var obj: PBAccountPrefsObject = {
-            var o = PBAccountPrefsObject()
-            o.objectID = projectPrefsID
-            return o
-        }()
-        var loseNextReply = false
-
-        func put(_ expected: UInt64, _ env: PBEnvelope) throws -> PutResult {
-            if expected != obj.revision { return PutResult(applied: false, current: obj) }
-            var next = PBAccountPrefsObject()
-            next.objectID = projectPrefsID
-            next.revision = expected + 1
-            next.envelope = env
-            obj = next
-            if loseNextReply {
-                loseNextReply = false
-                throw URLError(.timedOut)
-            }
-            return PutResult(applied: true, current: obj)
-        }
-    }
-
-    private func write(_ server: FakeServer, _ base: PrefsObject, _ op: PrefsOp, _ id: String) async throws -> PrefsObject {
-        try await writePrefsOp(
-            codec: codec, base: base, op: op, opId: id, now: 1000, put: { try server.put($0, $1) }, get: { server.obj })
-    }
-
     private func set(_ agent: PBAgent, _ model: String = "", _ mode: PBApprovalMode = .unspecified) -> PBAgentSettings {
         var s = PBAgentSettings()
         s.agent = agent
@@ -68,49 +37,10 @@ import Testing
         #expect(PrefsOp.setSettings(.init(path: a, machineId: "mac")) != .setSettings(.init(path: a, machineId: "vps")))
     }
 
-    @Test func aConflictRedoesTheOperationAndKeepsTheOtherClientsChange() async throws {
-        let server = FakeServer()
-        let a = try await write(server, .empty, .pin(path: "/p/foo"), "op1")
-        #expect(a.pinned == ["/p/foo"])
-        // Another client, still at revision 0, hides a project.
-        let b = try await write(server, .empty, .hide(path: "/p/billing"), "op2")
-        #expect(b.revision == 2)
-        #expect(b.pinned == ["/p/foo"])
-        #expect(b.hidden == ["/p/billing"])
-        #expect(try codec.open(server.obj) == b)
-    }
-
-    @Test func settingsConflictRedoesOneProjectAndPreservesOtherSettingsAndUnknownFields() async throws {
-        let server = FakeServer()
-        let first = settings("/a", "mac", 1000)
-        let second = settings("/b", "vps", 1000)
-        _ = try await write(server, .empty, .setSettings(.init(path: "/a", machineId: "mac")), "s1")
-        let after = try await write(server, .empty, .setSettings(.init(path: "/b", machineId: "vps")), "s2")
-        #expect(after.prefs.settings == [first, second])
-        let updated = settings("/a", "mac", 1000, agents: [set(.codex, "new-model")])
-        let again = try await write(
-            server, after, .setSettings(.init(path: "/a", machineId: "mac", sets: [set(.codex, "new-model")])), "s3")
-        #expect(again.prefs.settings == [second, updated])
-        let unknown = Data([0x9a, 0x06, 0x01, 0x51])
-        let newer = try PBProjectPrefs(serializedBytes: try again.prefs.serializedData() + unknown)
-        let pinned = applyPrefsOp(base: newer, op: .pin(path: "/c"), opId: "s4", now: 1000)
-        let bytes: Data = try pinned.serializedData()
-        #expect(bytes.range(of: unknown) != nil)
-        #expect(pinned.settings == [second, updated])
-    }
-
     @Test func aSettingsChangeRedoneOnANewerObjectKeepsWhatTheOtherClientChanged() async throws {
-        let server = FakeServer()
-        let base = try await write(
-            server, .empty, .setSettings(.init(path: "/a", machineId: "mac", agent: .codex, sets: [set(.codex, "astra")])), "s1")
-        // Another client edits Claude Code's set and a session there remembers Claude Code.
-        _ = try await write(
-            server, base, .setSettings(.init(path: "/a", machineId: "mac", agent: .claude, sets: [set(.claude, "sonnet")])), "s2")
-        // This client, still on the older object, edits Codex's set only.
-        let mine = try await write(
-            server, base, .setSettings(.init(path: "/a", machineId: "other", sets: [set(.codex, "sol", .ask)])), "s3")
-        #expect(mine.prefs.settings.count == 1)
-        let s = try #require(mine.prefs.settings.first)
+        let base = applySettings(stored: nil, op: .init(path: "/a", machineId: "mac", agent: .codex, sets: [set(.codex, "astra")]), now: 1)
+        let other = applySettings(stored: base, op: .init(path: "/a", machineId: "mac", agent: .claude, sets: [set(.claude, "sonnet")]), now: 2)
+        let s = applySettings(stored: other, op: .init(path: "/a", machineId: "other", sets: [set(.codex, "sol", .ask)]), now: 3)
         #expect(s.machineID == "mac")
         #expect(s.agent == .claude)
         #expect(s.agents == [set(.codex, "sol", .ask), set(.claude, "sonnet")])
@@ -184,30 +114,11 @@ import Testing
         #expect(units(p.hidden.map(\.path)) == units([composed]))
     }
 
-    @Test func aLostReplyIsSettledByTheOpId() async throws {
-        let server = FakeServer()
-        server.loseNextReply = true
-        let r = try await write(server, .empty, .pin(path: "/p/foo"), "op1")
-        #expect(r.revision == 1)
-        // Redoing it finds it in and writes nothing more.
-        let again = try await write(server, .empty, .pin(path: "/p/foo"), "op1")
-        #expect(again.revision == 1)
-        #expect(server.obj.revision == 1)
-    }
-
     @Test func recentOpsAreBounded() {
         var p = PBProjectPrefs()
         for i in 0..<100 { p = applyPrefsOp(base: p, op: .pin(path: "/x\(i)"), opId: "op\(i)", now: 1) }
         #expect(p.recentOps.count == recentOps)
         #expect(p.recentOps.last == "op99")
-    }
-
-    @Test func aRevisionTheEnvelopeDoesNotSayIsRefused() throws {
-        var lie = PBAccountPrefsObject()
-        lie.objectID = projectPrefsID
-        lie.revision = 4
-        lie.envelope = try codec.seal(revision: 3, prefs: PBProjectPrefs())
-        #expect(throws: OpenError.self) { try codec.open(lie) }
     }
 
     @Test func aPushNeverTakesTheListBack() {

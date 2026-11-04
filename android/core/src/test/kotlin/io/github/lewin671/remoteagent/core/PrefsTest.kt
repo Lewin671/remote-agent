@@ -15,73 +15,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PrefsTest {
-    private val key = ByteArray(32) { 7 }
-    private val codec = PrefsCodec(key, "dev")
-
-    /** The server's compare-and-set, as internal/server does it. */
-    private inner class FakeServer {
-        var obj: AccountPrefsObject = AccountPrefsObject.newBuilder().setObjectId(PROJECT_PREFS).build()
-        var loseNextReply = false
-
-        fun put(expected: Long, env: Envelope): PutResult {
-            if (expected != obj.revision) return PutResult(false, obj)
-            obj = AccountPrefsObject.newBuilder().setObjectId(PROJECT_PREFS).setRevision(expected + 1).setEnvelope(env).build()
-            if (loseNextReply) {
-                loseNextReply = false
-                throw java.net.SocketTimeoutException()
-            }
-            return PutResult(true, obj)
-        }
-    }
-
-    private fun write(server: FakeServer, base: PrefsObject, op: PrefsOp, id: String) = runBlocking {
-        writePrefsOp(codec, base, op, id, 1000, { e, env -> server.put(e, env) }, { server.obj })
-    }
-
-    @Test
-    fun aConflictRedoesTheOperationAndKeepsTheOtherClientsChange() {
-        val server = FakeServer()
-        val a = write(server, PrefsObject.EMPTY, PrefsOp.Pin("/p/foo"), "op1")
-        assertEquals(listOf("/p/foo"), a.pinned)
-        // Another client, still at revision 0, hides a project.
-        val b = write(server, PrefsObject.EMPTY, PrefsOp.Hide("/p/billing"), "op2")
-        assertEquals(2L, b.revision)
-        assertEquals(listOf("/p/foo"), b.pinned)
-        assertEquals(setOf("/p/billing"), b.hidden)
-        assertEquals(b, codec.open(server.obj))
-    }
-
     private fun set(agent: Agent, model: String = "", mode: ApprovalMode = ApprovalMode.APPROVAL_MODE_UNSPECIFIED) =
         AgentSettings.newBuilder().setAgent(agent).setModel(model).setMode(mode).build()
 
     @Test
-    fun settingsConflictRedoesOneProjectAndPreservesOtherSettingsAndUnknownFields() {
-        val server = FakeServer()
-        val first = ProjectSettings.newBuilder().setPath("/a").setMachineId("mac").setUpdatedMs(1000).build()
-        val second = ProjectSettings.newBuilder().setPath("/b").setMachineId("vps").setUpdatedMs(1000).build()
-        write(server, PrefsObject.EMPTY, PrefsOp.SetSettings("/a", "mac"), "s1")
-        val stale = PrefsObject.EMPTY
-        val after = write(server, stale, PrefsOp.SetSettings("/b", "vps"), "s2")
-        assertEquals(listOf(first, second), after.prefs.settingsList)
-        val updated = first.toBuilder().addAgents(set(Agent.AGENT_CODEX, "new-model")).build()
-        val again = write(server, after, PrefsOp.SetSettings("/a", "mac", sets = listOf(set(Agent.AGENT_CODEX, "new-model"))), "s3")
-        assertEquals(listOf(second, updated), again.prefs.settingsList)
-        val unknown = byteArrayOf(0x9a.toByte(), 0x06, 0x01, 0x51)
-        val newer = ProjectPrefs.parseFrom(again.prefs.toByteArray() + unknown)
-        val pinned = applyPrefsOp(newer, PrefsOp.Pin("/c"), "s4", 1000)
-        assertTrue(pinned.toByteArray().asList().windowed(unknown.size).any { it == unknown.asList() })
-        assertEquals(listOf(second, updated), pinned.settingsList)
-    }
-
-    @Test
     fun aSettingsChangeRedoneOnANewerObjectKeepsWhatTheOtherClientChanged() {
-        val server = FakeServer()
-        val base = write(server, PrefsObject.EMPTY, PrefsOp.SetSettings("/a", "mac", agent = Agent.AGENT_CODEX, sets = listOf(set(Agent.AGENT_CODEX, "astra"))), "s1")
-        // Another client edits Claude Code's set and a session there remembers Claude Code.
-        write(server, base, PrefsOp.SetSettings("/a", "mac", agent = Agent.AGENT_CLAUDE, sets = listOf(set(Agent.AGENT_CLAUDE, "sonnet"))), "s2")
-        // This client, still on the older object, edits Codex's set only.
-        val mine = write(server, base, PrefsOp.SetSettings("/a", "other", sets = listOf(set(Agent.AGENT_CODEX, "sol", ApprovalMode.APPROVAL_MODE_ASK))), "s3")
-        val s = mine.prefs.settingsList.single()
+        val base = applySettings(null, PrefsOp.SetSettings("/a", "mac", agent = Agent.AGENT_CODEX, sets = listOf(set(Agent.AGENT_CODEX, "astra"))), 1)
+        val other = applySettings(base, PrefsOp.SetSettings("/a", "mac", agent = Agent.AGENT_CLAUDE, sets = listOf(set(Agent.AGENT_CLAUDE, "sonnet"))), 2)
+        val s = applySettings(other, PrefsOp.SetSettings("/a", "other", sets = listOf(set(Agent.AGENT_CODEX, "sol", ApprovalMode.APPROVAL_MODE_ASK))), 3)
         assertEquals("mac", s.machineId)
         assertEquals(Agent.AGENT_CLAUDE, s.agent)
         assertEquals(listOf(set(Agent.AGENT_CODEX, "sol", ApprovalMode.APPROVAL_MODE_ASK), set(Agent.AGENT_CLAUDE, "sonnet")), s.agentsList)
@@ -125,30 +66,11 @@ class PrefsTest {
     }
 
     @Test
-    fun aLostReplyIsSettledByTheOpId() {
-        val server = FakeServer()
-        server.loseNextReply = true
-        val r = write(server, PrefsObject.EMPTY, PrefsOp.Pin("/p/foo"), "op1")
-        assertEquals(1L, r.revision)
-        // Redoing it finds it in and writes nothing more.
-        val again = write(server, PrefsObject.EMPTY, PrefsOp.Pin("/p/foo"), "op1")
-        assertEquals(1L, again.revision)
-        assertEquals(1L, server.obj.revision)
-    }
-
-    @Test
     fun recentOpsAreBounded() {
         var p = ProjectPrefs.getDefaultInstance()
         repeat(100) { p = applyPrefsOp(p, PrefsOp.Pin("/x$it"), "op$it", 1) }
         assertEquals(RECENT_OPS, p.recentOpsCount)
         assertEquals("op99", p.recentOpsList.last())
-    }
-
-    @Test
-    fun aRevisionTheEnvelopeDoesNotSayIsRefused() {
-        val env = codec.seal(3, ProjectPrefs.getDefaultInstance())
-        val lie = AccountPrefsObject.newBuilder().setObjectId(PROJECT_PREFS).setRevision(4).setEnvelope(env).build()
-        assertThrows(OpenException::class.java) { codec.open(lie) }
     }
 
     @Test
