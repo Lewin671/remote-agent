@@ -614,7 +614,13 @@ func (p *Parser) readMedia(media []transcriptMedia, source pb.ImageSource) []*pb
 		if err != nil || len(data) > 20<<20 {
 			continue
 		}
-		ref := &pb.ImageRef{Source: source, CliIndex: int32(i + 1), Path: path}
+		ref := &pb.ImageRef{Source: source, CliIndex: int32(i + 1)}
+		// Native user media is a copy, not the original uploaded file. Keep
+		// reconciliation on the session-bound image index; bytes are loaded
+		// from the confined media path above, independently of upload identity.
+		if source != pb.ImageSource_IMAGE_SOURCE_USER {
+			ref.Path = path
+		}
 		refs = append(refs, ref)
 		p.found = append(p.found, agent.FoundImage{Ref: ref, Data: base64.StdEncoding.EncodeToString(data)})
 	}
