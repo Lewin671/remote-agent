@@ -50,11 +50,14 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
     public let agent: PBAgent
     public let id: String
     public let name: String
-    public let quotaWindows: [String]
+    /// Nil means the CLI reports its own windows; otherwise order these names first.
+    public let expectedQuotaWindows: [String]?
     private let _quotaWindow: @Sendable (String) -> QuotaWindowDescriptor
     public let toolLabelFromItemType: Bool
     public let planClearContext: Bool
     public let planNote: String?
+    public let planKeepLabel: String
+    public let planApproveLabel: String
     public let standardContextOption: Bool
     public let autoMayBeUnavailable: Bool
     public let trustFolderHint: String?
@@ -73,7 +76,7 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         agent: PBAgent,
         id: String,
         name: String,
-        quotaWindows: [String],
+        expectedQuotaWindows: [String]?,
         quotaWindow: @escaping @Sendable (String) -> QuotaWindowDescriptor,
         toolLabelFromItemType: Bool,
         planClearContext: Bool,
@@ -86,6 +89,8 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         sessionNeedsModelList: Bool,
         switchesModelInSession: Bool,
         forks: Bool,
+        planKeepLabel: String = "继续规划…",
+        planApproveLabel: String = "批准执行",
         planName: @escaping @Sendable (String) -> String,
         modelLabel: @escaping @Sendable (String) -> String,
         defaults: @escaping @Sendable (PBDaemonSettings?) -> PBAgentDefaults,
@@ -94,11 +99,13 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         self.agent = agent
         self.id = id
         self.name = name
-        self.quotaWindows = quotaWindows
+        self.expectedQuotaWindows = expectedQuotaWindows
         self._quotaWindow = quotaWindow
         self.toolLabelFromItemType = toolLabelFromItemType
         self.planClearContext = planClearContext
         self.planNote = planNote
+        self.planKeepLabel = planKeepLabel
+        self.planApproveLabel = planApproveLabel
         self.standardContextOption = standardContextOption
         self.autoMayBeUnavailable = autoMayBeUnavailable
         self.trustFolderHint = trustFolderHint
@@ -157,7 +164,7 @@ private let CODEX_ENTRY = AgentEntry(
     agent: .codex,
     id: "codex",
     name: "Codex",
-    quotaWindows: ["primary", "secondary"],
+    expectedQuotaWindows: ["primary", "secondary"],
     quotaWindow: { fixedWindowLabel($0) },
     toolLabelFromItemType: false,
     planClearContext: true,
@@ -193,7 +200,7 @@ private let CLAUDE_ENTRY = AgentEntry(
     agent: .claude,
     id: "claude",
     name: "Claude Code",
-    quotaWindows: ["five_hour", "seven_day"],
+    expectedQuotaWindows: ["five_hour", "seven_day"],
     quotaWindow: { fixedWindowLabel($0) },
     toolLabelFromItemType: true,
     planClearContext: false,
@@ -226,7 +233,7 @@ private let ANTIGRAVITY_ENTRY = AgentEntry(
     agent: .antigravity,
     id: "agy",
     name: "Antigravity",
-    quotaWindows: [],
+    expectedQuotaWindows: nil,
     quotaWindow: { name in
         ANTIGRAVITY_QUOTA_WINDOWS[name] ?? QuotaWindowDescriptor(label: name, group: name)
     },
@@ -241,6 +248,8 @@ private let ANTIGRAVITY_ENTRY = AgentEntry(
     sessionNeedsModelList: true,
     switchesModelInSession: false,
     forks: false,
+    planKeepLabel: "修改计划…",
+    planApproveLabel: "批准",
     planName: { $0 },
     modelLabel: { $0 },
     defaults: { settings in
@@ -262,7 +271,7 @@ private func unknownEntry(agent: PBAgent) -> AgentEntry {
         agent: agent,
         id: "",
         name: "未知 CLI",
-        quotaWindows: [],
+        expectedQuotaWindows: nil,
         quotaWindow: { QuotaWindowDescriptor(label: $0, group: nil) },
         toolLabelFromItemType: false,
         planClearContext: false,
