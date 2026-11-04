@@ -18,7 +18,10 @@ import (
 // reset_time is RFC3339, and the window size is context_window_size.
 func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusLine, error) {
 	var in struct {
-		Sandbox struct {
+		Conversation string `json:"conversation_id"`
+		Transcript   string `json:"transcript_path"`
+		State        string `json:"agent_state"`
+		Sandbox      struct {
 			Enabled *bool `json:"enabled"`
 		} `json:"sandbox"`
 		Product string `json:"product"`
@@ -44,7 +47,7 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 		return nil, fmt.Errorf("unexpected status line product")
 	}
 	mode := in.Mode
-	if mode == "" {
+	if mode == "" && in.State != "" {
 		mode = "default"
 	}
 	model := in.Model.ID
@@ -54,7 +57,7 @@ func (a *Adapter) ParseStatusLine(raw []byte, sessionDir string) (*agent.StatusL
 	}
 	model = strings.ToLower(strings.ReplaceAll(model, " ", "-"))
 	model, _ = splitModelEffort(model)
-	out := &agent.StatusLine{
+	out := &agent.StatusLine{ConversationID: in.Conversation, TranscriptPath: in.Transcript, CycleMode: mode, IdleKnown: in.State == "idle" || in.State == "reviewing", Background: in.State != "idle",
 		Context:       &pb.TurnContext{Model: model, Effort: in.Model.Effort, PermissionMode: mode},
 		ContextWindow: in.Window.Size,
 	}

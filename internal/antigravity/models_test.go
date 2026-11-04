@@ -24,7 +24,7 @@ gpt-oss-120b-medium       GPT-OSS 120B (Medium)
 `
 
 func TestParseModels(t *testing.T) {
-	models, err := ParseModels(sampleAgyModelsOutput, true)
+	models, err := ParseModels(sampleAgyModelsOutput)
 	if err != nil {
 		t.Fatalf("ParseModels failed: %v", err)
 	}
@@ -45,8 +45,8 @@ func TestParseModels(t *testing.T) {
 		if models[i].Slug != slug {
 			t.Errorf("expected slug %q at index %d, got %q", slug, i, models[i].Slug)
 		}
-		if !models[i].AutoUnavailable {
-			t.Errorf("expected AutoUnavailable=true for %s", slug)
+		if models[i].AutoUnavailable {
+			t.Errorf("expected AutoUnavailable=false for %s", slug)
 		}
 	}
 
@@ -92,7 +92,7 @@ func TestCheckEffort(t *testing.T) {
 	}
 }
 
-func TestModelCacheClonesAndUpdatesAccountFlags(t *testing.T) {
+func TestModelCacheClonesAndDoesNotBlacklistAuto(t *testing.T) {
 	dir := t.TempDir()
 	bin := filepath.Join(dir, "agy")
 	script := `#!/bin/sh
@@ -119,12 +119,12 @@ esac
 		t.Fatal(list)
 	}
 	list.Models[0].Slug = "mutated"
-	a.SetAutoUnavailable(true)
+	_ = a.Analyze("warning: --mode auto is not available for this account")
 	list, err = a.Models()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if list.Models[0].Slug != "gemini-3.8-flash" || !list.Models[0].AutoUnavailable {
+	if list.Models[0].Slug != "gemini-3.8-flash" || list.Models[0].AutoUnavailable {
 		t.Fatal("cache was mutable or auto flag stale")
 	}
 }

@@ -53,9 +53,7 @@ func composerRegion(styled string) (lines []string, top, bottom int, ok bool) {
 }
 func (a *Adapter) Analyze(styled string) agent.Screen {
 	plain := StripANSI(styled)
-	if strings.Contains(plain, "--mode auto is not available for this account") {
-		a.SetAutoUnavailable(true)
-	}
+
 	var s agent.Screen
 	lines, top, bottom, composer := composerRegion(styled)
 	tail := plain

@@ -163,9 +163,7 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	default:
 		return agent.ErrUnsupported
 	}
-	if target == "auto" && a.AutoUnavailable() {
-		return agent.ErrUnsupported
-	}
+
 	styled, err := t.Capture()
 	if err != nil {
 		return err
@@ -177,10 +175,21 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 	if running || scr.Busy {
 		return agent.ErrBusy
 	}
-	if facts.CurrentMode == nil {
+	if facts.Observation == nil {
 		return errors.New("no status line mode observation")
 	}
-	start := facts.CurrentMode()
+	observation := func() string {
+		o := facts.Observation()
+		if o.At.IsZero() || time.Since(o.At) > 10*time.Second || !o.IdleKnown || o.Background {
+			return ""
+		}
+		return o.Mode
+	}
+
+	if facts.Observation().ToolPermission != "request-review" {
+		return agent.ErrUnsupported
+	}
+	start := observation()
 	if start == "" {
 		return errors.New("no status line mode observation")
 	}
@@ -188,14 +197,14 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 		return nil
 	}
 	for i := 0; i < 4; i++ {
-		before := facts.CurrentMode()
+		before := observation()
 		if err := t.Write([]byte(agent.KeyBTab)); err != nil {
 			return err
 		}
-		if _, err := agent.WaitFor(t, "status line cycle_mode to change", func(string) bool { return facts.CurrentMode() != "" && facts.CurrentMode() != before }); err != nil {
+		if _, err := agent.WaitFor(t, "status line cycle_mode to change", func(string) bool { return observation() != "" && observation() != before }); err != nil {
 			return err
 		}
-		now := facts.CurrentMode()
+		now := observation()
 		if now == target {
 			return nil
 		}
@@ -222,50 +231,24 @@ func (a *Adapter) Compact(t agent.Term, _ func() bool) error {
 	return agent.Slash(t, "/compact")
 }
 
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice) error {
-	if choice != pb.PlanChoice_PLAN_CHOICE_IMPLEMENT && choice != pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
-		return agent.ErrUnsupported
-	}
-	styled, err := t.Capture()
-	if err != nil {
-		return err
-	}
-	scr := a.Analyze(styled)
-	if !scr.PlanOpen {
-		plain := StripANSI(styled)
-		if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || !strings.Contains(plain, "/artifact to review") {
-			return agent.ErrNoPlan
-		}
-		if err := t.Write([]byte("\x12")); err != nil {
-			return err
-		}
-		if _, err := agent.WaitFor(t, "plan review", func(s string) bool { return a.Analyze(s).PlanOpen }); err != nil {
-			return err
-		}
-	}
-	key := "y"
-	if choice == pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
-		key = "n"
-	}
-	return t.Write([]byte(key))
-}
-
 // Mode returns the high-level ApprovalMode corresponding to TurnContext.
 func (a *Adapter) Mode(ctx *pb.TurnContext) pb.ApprovalMode {
 	if ctx == nil {
 		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 	}
-	switch ctx.PermissionMode {
-	case "always-proceed":
+	if ctx.ApprovalPolicy == "always-proceed" && ctx.PermissionMode == "default" {
 		return pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS
+	}
+	if ctx.ApprovalPolicy != "request-review" {
+		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+	}
+	switch ctx.PermissionMode {
+	case "default":
+		return pb.ApprovalMode_APPROVAL_MODE_ASK
 	case "auto":
 		return pb.ApprovalMode_APPROVAL_MODE_AUTO
 	case "plan":
 		return pb.ApprovalMode_APPROVAL_MODE_PLAN
-	case "", "default", "request-review", "strict":
-		return pb.ApprovalMode_APPROVAL_MODE_ASK
-	case "accept-edits":
-		return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 	}
 	return pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
 }

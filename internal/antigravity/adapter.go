@@ -32,9 +32,8 @@ type Adapter struct {
 	version agent.BinVersion
 	models  *ModelCache
 
-	autoUnavailable bool
-	account         string
-	planTier        string
+	account  string
+	planTier string
 }
 
 var (
@@ -98,7 +97,7 @@ func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	defaultModel := a.readDefaultModel()
-	return a.models.Get(ctx, a.Bin(), a.AutoUnavailable(), defaultModel, a.execEnv())
+	return a.models.Get(ctx, a.Bin(), defaultModel, a.execEnv())
 }
 
 func (a *Adapter) CheckEffort(effort string) error {
@@ -132,38 +131,29 @@ func (a *Adapter) HoldsInputMidTurn() bool {
 	return true
 }
 
-func (a *Adapter) Capabilities() agent.Capabilities { return agent.Capabilities{} }
+func (a *Adapter) Capabilities() agent.Capabilities {
+	return agent.Capabilities{NativeApproval: true, ConversationIdentity: true}
+}
 func (a *Adapter) ExactScheduleMode(info *pb.Session) string {
+	if info.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+		return ""
+	}
 	if info.Sandbox != "disabled" {
 		return ""
 	}
-	if info.ApprovalPolicy == "always-proceed" && info.PermissionMode == "always-proceed" {
+	if info.ApprovalPolicy == "always-proceed" && info.PermissionMode == "default" {
 		return "full"
 	}
 	if info.ApprovalPolicy != "request-review" {
 		return ""
 	}
 	switch info.PermissionMode {
-	case "default", "request-review":
+	case "default":
 		return "ask"
 	case "auto":
 		return "auto"
 	}
 	return ""
-}
-
-// AutoUnavailable reports whether the --mode auto flag is rejected for this account.
-func (a *Adapter) AutoUnavailable() bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	return a.autoUnavailable
-}
-
-// SetAutoUnavailable marks whether the account supports auto mode.
-func (a *Adapter) SetAutoUnavailable(val bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.autoUnavailable = val
 }
 
 // SetAccountInfo updates the account email and plan tier observed from statusline.

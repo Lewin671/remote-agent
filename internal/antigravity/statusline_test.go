@@ -11,7 +11,7 @@ import (
 
 func TestStatusLineObservedContract(t *testing.T) {
 	a := New("agy", t.TempDir())
-	raw := []byte(`{"product":"antigravity","email":"user@example.com","plan_tier":"Google AI Pro","model":{"id":"Claude Sonnet 5.5 (Low)","effort":"low"},"context_window":{"context_window_size":200000},"quota":{"gemini-5h":{"remaining_fraction":0.64207405,"reset_time":"2026-11-03T21:00:07Z","reset_in_seconds":11975},"3p-weekly":{"remaining_fraction":0.9},"gemini-weekly":{}}}`)
+	raw := []byte(`{"product":"antigravity","agent_state":"idle","email":"user@example.com","plan_tier":"Google AI Pro","model":{"id":"Claude Sonnet 5.5 (Low)","effort":"low"},"context_window":{"context_window_size":200000},"quota":{"gemini-5h":{"remaining_fraction":0.64207405,"reset_time":"2026-11-03T21:00:07Z","reset_in_seconds":11975},"3p-weekly":{"remaining_fraction":0.9},"gemini-weekly":{}}}`)
 	r, err := a.ParseStatusLine(raw, "")
 	if err != nil {
 		t.Fatal(err)

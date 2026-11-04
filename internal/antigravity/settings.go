@@ -21,13 +21,14 @@ func applySettings(ctx *pb.TurnContext, ch *pb.SettingsChanged) *pb.TurnContext 
 	}
 	switch ch.Mode {
 	case pb.ApprovalMode_APPROVAL_MODE_ASK:
-		next.PermissionMode = "request-review"
+		next.PermissionMode = "default"
 	case pb.ApprovalMode_APPROVAL_MODE_AUTO:
 		next.PermissionMode = "auto"
 	case pb.ApprovalMode_APPROVAL_MODE_PLAN:
 		next.PermissionMode = "plan"
 	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
-		next.PermissionMode = "always-proceed"
+		next.ApprovalPolicy = "always-proceed"
+		next.PermissionMode = "default"
 	}
 	return next
 }

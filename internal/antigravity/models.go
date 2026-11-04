@@ -39,7 +39,7 @@ var modelIDRE = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9.]+)+$`)
 // ParseModels parses the stdout of `agy models` into grouped ModelInfo entries.
 // Lines formatted as "<id> <DisplayName>" (e.g. "gemini-3.8-flash-low Gemini 3.8 Flash (Low)")
 // are parsed and grouped by their base ID (e.g. "gemini-3.8-flash").
-func ParseModels(output string, autoUnavailable bool) ([]*pb.ModelInfo, error) {
+func ParseModels(output string) ([]*pb.ModelInfo, error) {
 	type modelGroup struct {
 		baseID      string
 		displayName string
@@ -108,11 +108,10 @@ func ParseModels(output string, autoUnavailable bool) ([]*pb.ModelInfo, error) {
 		}
 
 		info := &pb.ModelInfo{
-			Slug:            baseID,
-			DisplayName:     g.displayName,
-			Efforts:         g.efforts,
-			DefaultEffort:   defaultEffort,
-			AutoUnavailable: autoUnavailable,
+			Slug:          baseID,
+			DisplayName:   g.displayName,
+			Efforts:       g.efforts,
+			DefaultEffort: defaultEffort,
 		}
 		result = append(result, info)
 	}
@@ -181,12 +180,12 @@ func NewModelCache(ttl time.Duration) *ModelCache {
 }
 
 // Get returns the cached models response if fresh, or invokes fetch.
-func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool, defaultModel string, env []string) (*pb.ListModelsResponse, error) {
+func (mc *ModelCache) Get(ctx context.Context, bin string, defaultModel string, env []string) (*pb.ListModelsResponse, error) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
 	if mc.cached != nil && mc.bin == bin && time.Since(mc.fetchedAt) < mc.ttl {
-		return modelResponse(mc.cached, autoUnavailable, defaultModel), nil
+		return modelResponse(mc.cached, defaultModel), nil
 	}
 
 	cmd := exec.CommandContext(ctx, bin, "models")
@@ -194,15 +193,15 @@ func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool,
 	out, err := cmd.Output()
 	if err != nil {
 		if mc.cached != nil && mc.bin == bin {
-			return modelResponse(mc.cached, autoUnavailable, defaultModel), nil
+			return modelResponse(mc.cached, defaultModel), nil
 		}
 		return nil, fmt.Errorf("agy models: %w", err)
 	}
 
-	models, err := ParseModels(string(out), autoUnavailable)
+	models, err := ParseModels(string(out))
 	if err != nil {
 		if mc.cached != nil && mc.bin == bin {
-			return modelResponse(mc.cached, autoUnavailable, defaultModel), nil
+			return modelResponse(mc.cached, defaultModel), nil
 		}
 		return nil, err
 	}
@@ -214,14 +213,13 @@ func (mc *ModelCache) Get(ctx context.Context, bin string, autoUnavailable bool,
 	mc.cached = resp
 	mc.fetchedAt = time.Now()
 	mc.bin = bin
-	return modelResponse(resp, autoUnavailable, defaultModel), nil
+	return modelResponse(resp, defaultModel), nil
 }
 
-func modelResponse(cached *pb.ListModelsResponse, unavailable bool, defaultModel string) *pb.ListModelsResponse {
+func modelResponse(cached *pb.ListModelsResponse, defaultModel string) *pb.ListModelsResponse {
 	resp := proto.CloneOf(cached)
 	baseDefault, _ := splitModelEffort(defaultModel)
 	for _, m := range resp.Models {
-		m.AutoUnavailable = unavailable
 		if m.Slug == baseDefault || strings.EqualFold(m.DisplayName, cleanDisplayName(defaultModel, "")) {
 			resp.DefaultModel = m.Slug
 		}

@@ -93,7 +93,11 @@ func (a *Adapter) Options(extra []string, model, effort string, mode pb.Approval
 	case pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS:
 		args = append(args, "--ra-tool-permission=always-proceed")
 	case pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED:
-		args = append(args, "--ra-tool-permission="+a.launchPermission(nil))
+		policy := a.launchPermission(nil)
+		if policy == "" {
+			policy = "request-review"
+		}
+		args = append(args, "--ra-tool-permission="+policy)
 	default:
 		return nil, fmt.Errorf("unknown approval mode %v", mode)
 	}
@@ -181,6 +185,9 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 
 	// 4. Write agy-settings.json
 	permission := a.launchPermission(l.Args)
+	if permission == "" {
+		permission = "request-review"
+	}
 	if l.Resume {
 		var old struct {
 			ToolPermission string `json:"toolPermission"`
@@ -193,6 +200,9 @@ func (a *Adapter) Argv(l *agent.Launch) ([]string, error) {
 			return nil, err
 		}
 		permission = old.ToolPermission
+		if permission == "" {
+			return nil, fmt.Errorf("original toolPermission is unknown; handle this conversation in the terminal")
+		}
 		if l.FullAccess {
 			permission = "always-proceed"
 		}
