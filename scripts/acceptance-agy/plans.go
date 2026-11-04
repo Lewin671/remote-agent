@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -62,7 +63,7 @@ func (r *planAcceptance) handleApprovals() {
 	}
 	for _, e := range evs {
 		if a := e.GetApprovalRequested(); a != nil && !done[a.ApprovalId] {
-			_ = r.resolve(e, true)
+			_ = r.resolve(e, r.allowedFixtureOperation(a))
 		}
 	}
 }
@@ -189,7 +190,7 @@ func (r *planAcceptance) propose(name string) (*pb.Event, error) {
 		return nil, err
 	}
 	seq := r.sequence()
-	prompt := fmt.Sprintf("Create a short implementation plan artifact named %s using write_file with ArtifactMetadata RequestFeedback true. Its only proposed change is to add hello.txt containing hello. Stop after presenting the artifact. Do not implement anything until I approve it.", name)
+	prompt := fmt.Sprintf("Create a short implementation plan artifact named %s using write_file with ArtifactMetadata RequestFeedback true. Its only proposed change is to add hello.txt containing hello. Stop after presenting the artifact. Do not implement anything until I approve it. When approved, implement with write_file only; do not run shell commands.", name)
 	if err := r.send(prompt); err != nil {
 		return nil, err
 	}
@@ -222,6 +223,10 @@ func (r *planAcceptance) run() error {
 	_ = r.closeReview()
 	if err := r.idle(); err != nil {
 		return err
+	}
+	data, err := os.ReadFile(filepath.Join(r.view.Info.Cwd, "hello.txt"))
+	if err != nil || strings.TrimSpace(string(data)) != "hello" {
+		return fmt.Errorf("approved plan did not create the expected isolated file")
 	}
 	fmt.Println("PASS specific plan artifact approved through encrypted Forward; native screen hash observed by debug capture")
 
@@ -357,4 +362,37 @@ func (r *planAcceptance) run() error {
 	// Leave pending artifacts to the native user; the test session is stopped
 	// during cleanup and no ordinary account or conversation is touched.
 	return nil
+}
+
+// Only operations needed for these synthetic fixtures are automatically
+// answered. A real CLI remains responsible for presenting its native menu.
+func (r *planAcceptance) allowedFixtureOperation(a *pb.ApprovalRequested) bool {
+	if a.Command != "" {
+		return a.Command == "pwd" || a.Command == "ls" || a.Command == "ls -la" || a.Command == "ls -l" || a.Command == "ls -a"
+	}
+	var in struct {
+		Path string `json:"Path"`
+	}
+	if json.Unmarshal([]byte(a.ToolInputJson), &in) != nil || in.Path == "" {
+		return false
+	}
+	path := in.Path
+	if !filepath.IsAbs(path) {
+		path = filepath.Join(r.view.Info.Cwd, path)
+	}
+	parent, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		return false
+	}
+	work, err := filepath.EvalSymlinks(r.view.Info.Cwd)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(work, parent)
+	if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
+		return true
+	}
+	root := filepath.Dir(filepath.Dir(filepath.Dir(r.view.Info.RolloutPath)))
+	root, err = filepath.EvalSymlinks(root)
+	return err == nil && parent == root && filepath.Ext(path) == ".md"
 }
