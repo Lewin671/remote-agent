@@ -70,7 +70,7 @@ import Testing
         let claude = Demo.models.first { $0.agent == .claude }?.models.models ?? []
         #expect(claude.contains { !$0.efforts.isEmpty && $0.contextWindow > 200_000 } && claude.contains { $0.efforts.isEmpty })
         let agy = Demo.models.first { $0.agent == .antigravity }?.models.models ?? []
-        #expect(agy.contains { $0.autoUnavailable })
+        #expect(!agy.isEmpty && agy.allSatisfy { !$0.autoUnavailable })
     }
 
     @Test func antigravitySamplesExerciseTheMultiCliScreens() throws {
@@ -85,7 +85,7 @@ import Testing
         let quota = try #require(quotaGroups(machine, now: now).first { $0.agent == .antigravity })
         #expect(quota.subgroups.count == 2 && quota.rows.count == 5)
         let models = try #require(Demo.models.first { $0.machineId == "mac" && $0.agent == .antigravity }?.models)
-        #expect(allAutoUnavailable(models.models))
+        #expect(!allAutoUnavailable(models.models))
         #expect(Set(models.models.map(\.slug)).count == models.models.count)
         #expect(models.models.first { $0.slug == "gpt-oss-120b" }?.efforts == ["medium"])
         #expect(models.models.contains { $0.slug == session.info?.model })

@@ -198,8 +198,8 @@ enum SessionSamples {
         let agy = PBListModelsResponse.with {
             $0.defaultModel = "gemini-3.1-pro"
             $0.models = [
-                model("gemini-3.1-pro", "Gemini 3.1 Pro", ["low", "medium", "high"], autoUnavailable: true),
-                model("gemini-3-flash", "Gemini 3 Flash", ["low", "medium", "high"], autoUnavailable: true),
+                model("gemini-3.1-pro", "Gemini 3.1 Pro", ["low", "medium", "high"]),
+                model("gemini-3-flash", "Gemini 3 Flash", ["low", "medium", "high"]),
             ]
         }
         return [machine, oldMachine].flatMap {

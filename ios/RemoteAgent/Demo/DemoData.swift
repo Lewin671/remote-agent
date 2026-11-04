@@ -91,11 +91,11 @@ enum Demo {
         let agy = PBListModelsResponse.with {
             $0.defaultModel = "gemini-3.1-pro"
             $0.models = [
-                model("gemini-3.1-pro", "Gemini 3.1 Pro", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
-                model("gemini-3-flash", "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
-                model("claude-sonnet-4-6", "Claude Sonnet 4.6", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
-                model("claude-opus-4-6-thinking", "Claude Opus 4.6 (Thinking)", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
-                model("gpt-oss-120b", "GPT-OSS 120B", efforts: ["medium"], defaultEffort: "medium", window: 1_048_000, autoUnavailable: true),
+                model("gemini-3.1-pro", "Gemini 3.1 Pro", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000),
+                model("gemini-3-flash", "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000),
+                model("claude-sonnet-4-6", "Claude Sonnet 4.6", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000),
+                model("claude-opus-4-6-thinking", "Claude Opus 4.6 (Thinking)", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000),
+                model("gpt-oss-120b", "GPT-OSS 120B", efforts: ["medium"], defaultEffort: "medium", window: 1_048_000),
             ]
         }
         let machines = ["mac", "vps", "imac", "studio", "ci", "nas"]

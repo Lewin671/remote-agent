@@ -365,8 +365,8 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
           value: {
             defaultModel: "gemini-3.1-pro-high",
             models: [
-              { slug: "gemini-3.1-pro-high", displayName: "Gemini 3.1 Pro (High)", efforts: ["low", "medium", "high"], defaultEffort: "high", autoUnavailable: true },
-              { slug: "gemini-3-flash", displayName: "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high", autoUnavailable: true },
+              { slug: "gemini-3.1-pro-high", displayName: "Gemini 3.1 Pro (High)", efforts: ["low", "medium", "high"], defaultEffort: "high" },
+              { slug: "gemini-3-flash", displayName: "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high" },
             ],
           },
         },
@@ -375,8 +375,8 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
   mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
-  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(true), { timeout: 3000 });
-  expect(host.textContent).toContain("当前账户不支持自动模式");
+  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(false), { timeout: 3000 });
+  expect(host.textContent).not.toContain("当前账户不支持自动模式");
   expect(button(/^完全放行/)?.disabled).toBe(true);
   expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
   expect(button(/^询问/)?.disabled).toBe(false);
