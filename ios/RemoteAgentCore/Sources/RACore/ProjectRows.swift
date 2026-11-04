@@ -229,10 +229,14 @@ public struct NewSessionProgress: Equatable, Sendable {
 /// The machines a draft can move to while its own is offline (Android's OfflineChoice): the others the project used that are online.
 public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMachineChoice] {
     projectMachines(state, key: c.cwd).filter { $0 != c.machineId && state.machines[$0]?.online == true }.map { id in
-        let agents = machineAgents(state.machines[id])
-        let note = agents.contains(c.agent)
-            ? "有 \(agentName(c.agent))；模型和模式会按这台机器重新选择"
-            : "只有 \(agents.map(agentName).joined(separator: "、"))；会改用 \(agentName(agents[0]))，模型和模式按这台机器重新选择"
+        let m = state.machines[id]
+        let agents = machineAgents(m)
+        let installed = agents.map(agentName).joined(separator: "、")
+        let has = agents.contains(c.agent)
+        let fallback = switchMachine(c, machineId: id, agents: agents).agent
+        let note = has
+            ? "已装 \(installed)"
+            : "已装 \(installed)；这台机器没有 \(agentName(c.agent))，会改用 \(agentName(fallback))"
         return OfflineMachineChoice(
             id: id, title: "改用 \(machineLabel(state, id: id))", note: note, config: switchMachine(c, machineId: id, agents: agents))
     }
@@ -472,10 +476,20 @@ public struct ProjectMachineRow: Equatable, Sendable, Identifiable {
 /// The machines the project used. `agent` is the CLI selected next to the message box: 换机器 comes here to find it.
 public func machineRows(_ state: RemoteState, cwd: String, agent: PBAgent) -> [ProjectMachineRow] {
     projectMachines(state, key: cwd).map { id in
-        let online = state.machines[id]?.online == true
-        let has = machineAgents(state.machines[id]).contains(agent)
+        let m = state.machines[id]
+        let online = m?.online == true
+        let installed = machineAgents(m).map(agentName).joined(separator: "、")
+        let has = machineAgents(m).contains(agent)
+        let note: String
+        if !online {
+            note = "不在线，现在不能新建"
+        } else {
+            let base = "已装 \(installed)"
+            let fallback = (!has && m != nil) ? switchMachine(NewConfig(machineId: "", cwd: cwd, agent: agent), machineId: id, agents: machineAgents(m)).agent : agent
+            note = has ? base : "\(base)；这台机器没有 \(agentName(agent))，会改用 \(agentName(fallback))"
+        }
         return ProjectMachineRow(
             id: id, name: machineLabel(state, id: id), online: online,
-            note: !online ? "不在线，现在不能新建" : !has ? "没有 \(agentName(agent))" : nil)
+            note: note)
     }
 }

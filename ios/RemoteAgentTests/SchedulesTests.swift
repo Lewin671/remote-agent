@@ -813,7 +813,7 @@ import UIKit
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
-        for agents in [[PBAgent.codex, .claude], [.claude]] {
+        for agents in [[PBAgent.codex, .claude, .antigravity], [PBAgent.codex, .claude], [.claude]] {
             var state = ScheduleStoreTests().state()
             state.machines["m"]?.meta?.agents = agents.map { agent in .with { $0.agent = agent } }
             let draft = ScheduleDraft(); draft.config = NewConfig(machineId: "m", cwd: "/example", agent: .claude, model: "haiku")
@@ -827,8 +827,9 @@ import UIKit
             let controls = segments(host.view)
             #expect(controls.count == (agents.count > 1 ? 1 : 0))
             if let control = controls.first {
-                #expect(control.numberOfSegments == 2)
+                #expect(control.numberOfSegments == agents.count)
                 #expect(control.titleForSegment(at: 0) == "Codex" && control.titleForSegment(at: 1) == "Claude Code")
+                if agents.count > 2 { #expect(control.titleForSegment(at: 2) == "Antigravity") }
                 #expect(control.selectedSegmentIndex == 1)
                 #expect(control.selectedSegmentTintColor?.resolvedColor(with: control.traitCollection) == UIColor(Theme.card).resolvedColor(with: control.traitCollection))
                 let normal = control.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor

@@ -166,7 +166,7 @@ import Testing
         #expect(title == "MacBook 已离线，任务尚未开始" && none == nil)
         #expect(choices.map(\.title) == ["改用 VPS-dev"])
         // That machine has only Codex: said, and the draft's model does not carry over.
-        #expect(choices[0].note == "只有 Codex；会改用 Codex，模型和模式按这台机器重新选择")
+        #expect(choices[0].note == "已装 Codex；这台机器没有 Claude Code，会改用 Codex")
         #expect(choices[0].config == NewConfig(machineId: "vps", cwd: "/p/foo", agent: .codex))
         st.machines["vps"]?.online = false
         guard case .offlineChoice(_, _, let empty, let said)? = notices(st, c, drafting: true).first else { return }
@@ -307,7 +307,10 @@ import Testing
 
     @Test func theMachinesOfAProjectSayWhyOneCannotBeChosen() {
         var st = state([session("a", "/p/foo"), session("b", "/p/foo", machine: "vps")])
-        #expect(machineRows(st, cwd: "/p/foo", agent: .claude).map(\.note) == [nil, "没有 Claude Code"])
+        #expect(machineRows(st, cwd: "/p/foo", agent: .claude).map(\.note) == [
+            "已装 Codex、Claude Code",
+            "已装 Codex；这台机器没有 Claude Code，会改用 Codex"
+        ])
         st.machines["vps"]?.online = false
         #expect(machineRows(st, cwd: "/p/foo", agent: .codex).last == ProjectMachineRow(id: "vps", name: "VPS-dev", online: false, note: "不在线，现在不能新建"))
     }

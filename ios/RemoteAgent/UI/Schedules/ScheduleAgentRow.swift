@@ -18,7 +18,7 @@ struct ScheduleAgentRow: View {
                         guard let agent = agents.first(where: { $0.rawValue == raw }) else { return }
                         let defaults = projectStart(state, key: c.cwd, pick: agent, machine: c.machineId)?.config
                         config = RACore.switchAgent(c, project: defaults, agent: agent)
-                    })).frame(width: 208, height: 32)
+                    })).frame(width: agents.count > 2 ? 260 : 208, height: 32)
                     .accessibilityIdentifier("schedule-cli-picker")
                 }
             }

@@ -15,6 +15,7 @@ struct MachineScreen: View {
     @State private var settings: MachineSettingsModel?
     @State private var cleaning = false
     @State private var picking: Pick?
+    @State private var selectedAgent: PBAgent?
 
     /// What a sheet of this page chooses.
     private enum Pick: Identifiable, Hashable {
@@ -215,18 +216,34 @@ struct MachineScreen: View {
         } else if let settings, let s {
             let busy = settings.saving || !shown
             let agents = machineAgents(m)
-            ForEach(agents, id: \.rawValue) { agent in
-                let d = s.defaults(for: agent)
-                // What a session started without a mode really gets, as the machine reads it.
-                let effective = defaultModeOf(m, agent: agent)
+            if !agents.isEmpty {
+                let activeAgent: PBAgent
+                if agents.count > 1 {
+                    GroupLabel("新项目默认设置")
+                    let current = (selectedAgent != nil && agents.contains(selectedAgent!)) ? selectedAgent! : agents[0]
+                    activeAgent = current
+                    SegPick(
+                        agents.map(agentName),
+                        selected: Binding(
+                            get: { agents.firstIndex(of: current) ?? 0 },
+                            set: { selectedAgent = agents[$0] }
+                        )
+                    )
+                    .padding(.horizontal, Theme.Space.page)
+                } else {
+                    activeAgent = agents[0]
+                    GroupLabel("新项目默认设置 · \(agentName(activeAgent))")
+                }
+
+                let d = s.defaults(for: activeAgent)
+                let effective = defaultModeOf(m, agent: activeAgent)
                 let chosen = modeOf(d.mode)
-                GroupLabel("\(agentName(agent)) · 新项目默认设置")
                 GroupCard {
                     GRow("模型", value: d.model.or("默认"), chevron: true, enabled: !busy) {
-                        picking = .model(agent)
+                        picking = .model(activeAgent)
                     }
                     GRow("推理强度", value: d.effort.or("默认"), chevron: true, enabled: !busy) {
-                        picking = .model(agent)
+                        picking = .model(activeAgent)
                     }
                     // One line: that project settings may differ is said in the picker.
                     GRow(
@@ -236,18 +253,18 @@ struct MachineScreen: View {
                                 chosen: nil,
                                 default: DefaultMode(
                                     mode: effective.mode, known: effective.known, varies: false),
-                                agent: agent),
+                                agent: activeAgent),
                         chevron: true, enabled: !busy,
                         valueColor: chosen == nil && (effective.mode == .full || !effective.known)
                             ? Theme.red : nil
-                    ) { picking = .mode(agent) }
-                    // The timeout is the daemon's, not a CLI's: it is listed once, with Codex or the only CLI there is.
-                    if agent == defaultAgent || agents.count == 1 {
-                        GRow(
-                            "审批超时", value: timeoutText(seconds: s.approvalTimeoutSeconds),
-                            chevron: true, enabled: !busy
-                        ) { picking = .timeout }
-                    }
+                    ) { picking = .mode(activeAgent) }
+                }
+
+                GroupCard {
+                    GRow(
+                        "审批超时", value: timeoutText(seconds: s.approvalTimeoutSeconds),
+                        chevron: true, enabled: !busy
+                    ) { picking = .timeout }
                 }
             }
             if settings.saving { LoadingRow("正在保存…", inset: 30).padding(.bottom, 4) }

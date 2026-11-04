@@ -174,7 +174,7 @@ struct ProjectSettingsSheet: View {
             )
             .padding(.top, 6)
             SetCard(own)
-            if !unread { Hint("两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
+            if !unread { Hint("各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
         } else {
             SetCard([AnyView(machineRow)] + own)
             if !unread { Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
