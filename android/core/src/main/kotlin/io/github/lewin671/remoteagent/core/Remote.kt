@@ -119,6 +119,7 @@ data class SessionView(
      * from [info].
      */
     val listedEndedMs: Long = 0,
+    val historyError: String? = null,
 )
 
 /**
@@ -244,7 +245,6 @@ data class SessionEvents(
     /** Set when the last fetch failed; the next connection fetches again. */
     val fetchError: String? = null,
     val live: io.github.lewin671.remoteagent.proto.LiveSnapshot? = null,
-    val unverifiedLegacy: Boolean = false,
     val liveError: String? = null,
     val verifiedEvents: List<Event> = events,
     val unavailableCount: Int = 0,
@@ -394,7 +394,6 @@ class Remote(
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
 ) {
-    private val keys: Keys? = if (account.hasRoot) Keys.derive(account.root) else null
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
     val security =
@@ -452,7 +451,7 @@ class Remote(
         val raw = cache?.blob("schedule:$machine") ?: return@withContext null
         val snapshot = kotlinx.serialization.json.Json.parseToJsonElement(raw.decodeToString()).jsonObject
         val env = Envelope.parseFrom(java.util.Base64.getDecoder().decode(snapshot.text("envelope")))
-        val (_, reply) = openSecureMessage(keys?.command ?: ByteArray(0), env,
+        val (_, reply) = openSecureMessage(env,
             Place(PayloadKind.PAYLOAD_KIND_COMMAND_RESULT, machineId = machine, requestId = snapshot.text("request")), CommandResult::parseFrom, live = false)
         require(reply.hasSchedule() && reply.errorCode.isEmpty())
         if (!currentScheduleMember(machine)) { cache?.removeBlob("schedule:$machine"); return@withContext null }
@@ -468,7 +467,6 @@ class Remote(
     private val liveSnapshots =
         ConcurrentHashMap<String, io.github.lewin671.remoteagent.proto.LiveSnapshot>()
     private val liveJobs = HashMap<String, Job>()
-    private val legacySessions = HashSet<String>()
     private var conn = ConnState.CONNECTING
     private var error = ""
     private var connStep = ""
@@ -1409,7 +1407,6 @@ class Remote(
                 } else {
                     val (h, opened) =
                         openSecureMessage(
-                            keys?.meta ?: ByteArray(0),
                             m.meta,
                             Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
                             MachineMeta::parseFrom,
@@ -1453,21 +1450,13 @@ class Remote(
             return
         // The metadata is opened and its origin checked below; the relay cannot forge it.
         val rs = incoming
-        var view = sessions[rs.sessionId]
+        var view = sessions[rs.sessionId]?.takeUnless { it.historyError != null }
         val removals = removedPushes[rs.machineId] ?: 0
         try {
+            rejectRetiredHistory(rs.key)
             if (view == null) {
-                val route = Header.parseFrom(rs.key.header)
-                val (h, raw) =
-                    if (route.version == 1)
-                        Envelopes.open(
-                            keys?.wrap ?: throw OpenException("历史不可读：这台设备没有账户根密钥"),
-                            rs.key,
-                        )
-                    else {
-                        val (h, raw) = security.openHistory(rs.key)
-                        projection(h) to raw
-                    }
+                val (header, raw) = security.openHistory(rs.key)
+                val h = projection(header)
                 Envelopes.expect(
                     h,
                     Place(
@@ -1484,7 +1473,6 @@ class Remote(
             if (view.machineId != rs.machineId) {
                 val (_, info) =
                     openSecureMessage(
-                        sessionKeys[rs.sessionId]!!,
                         rs.meta,
                         Place(
                             PayloadKind.PAYLOAD_KIND_SESSION_META,
@@ -1523,10 +1511,9 @@ class Remote(
             var store = sessions[rs.sessionId] == null
             if (store) view = view.copy(listedEndedMs = rs.endedMs)
             if (rs.hasMeta()) {
-                val key = sessionKeys[rs.sessionId]!!
+                checkNotNull(sessionKeys[rs.sessionId])
                 val (h, info) =
                     openSecureMessage(
-                        key,
                         rs.meta,
                         Place(
                             PayloadKind.PAYLOAD_KIND_SESSION_META,
@@ -1581,6 +1568,11 @@ class Remote(
                 cache?.keepOwner(rs)
             }
         } catch (e: Exception) {
+            if (e is UnsupportedHistoryException) {
+                sessions[rs.sessionId] = SessionView(rs.sessionId, rs.machineId, lastSeq = rs.lastSeq,
+                    updatedMs = rs.updatedMs, listedEndedMs = rs.endedMs, historyError = RETIRED_HISTORY_ERROR)
+                eventFlows.getOrPut(rs.sessionId) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(error = RETIRED_HISTORY_ERROR)
+            }
             report(e)
         }
         if (publish) publish()
@@ -1639,7 +1631,6 @@ class Remote(
             try {
                 val (h, p) =
                     openSecureMessage(
-                        keys?.prefs ?: ByteArray(0),
                         o.envelope,
                         Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
                         io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
@@ -1680,7 +1671,6 @@ class Remote(
             return PrefsObject.EMPTY
         val (h, p) =
             openSecureMessage(
-                keys?.prefs ?: ByteArray(0),
                 o.envelope,
                 Place(PayloadKind.PAYLOAD_KIND_ACCOUNT_PREFS, requestId = PROJECT_PREFS),
                 io.github.lewin671.remoteagent.proto.ProjectPrefs::parseFrom,
@@ -2428,7 +2418,6 @@ class Remote(
                         if (m.kind == 2u) {
                             val (h, meta) =
                                 openSecureMessage(
-                                    keys?.deviceMeta ?: ByteArray(0),
                                     env,
                                     Place(PayloadKind.PAYLOAD_KIND_DEVICE_META, requestId = m.id),
                                     io.github.lewin671.remoteagent.proto.DeviceMeta::parseFrom,
@@ -2437,7 +2426,6 @@ class Remote(
                         } else {
                             val (h, meta) =
                                 openSecureMessage(
-                                    keys?.meta ?: ByteArray(0),
                                     env,
                                     Place(PayloadKind.PAYLOAD_KIND_MACHINE_META, machineId = m.id),
                                     MachineMeta::parseFrom,
@@ -2691,6 +2679,10 @@ class Remote(
      * cache is fetched; the gaps are fetched once the cache is in.
      */
     private suspend fun loadEvents(sid: String) {
+        sessions[sid]?.historyError?.let {
+            eventFlows.getOrPut(sid) { MutableStateFlow(SessionEvents()) }.value = SessionEvents(error = it)
+            return
+        }
         if (buffers[sid] != null || sessions[sid] == null) return
         val b = Buffer().apply { usedAt = clock() }
         buffers[sid] = b
@@ -2723,6 +2715,7 @@ class Remote(
             // A cached copy that does not open is dropped and the history
             // fetched whole (architecture §10 「后台和内存」): the cache keeps
             // an event as first stored, so the bad one would stay for good.
+            if (b.error == RETIRED_HISTORY_ERROR) { publishEvents(sid, b); return }
             if (!ok) {
                 try {
                     cache?.dropEvents(sid)
@@ -2864,7 +2857,7 @@ class Remote(
     ): Boolean {
         val b = buffers[sid] ?: return true
         val s = sessions[sid] ?: return true
-        val key = sessionKeys[sid] ?: return true
+        if (sessionKeys[sid] == null) return true
         var ok = true
         val opened = ArrayList<StoredEvent>()
         for (se in stored) {
@@ -2872,7 +2865,6 @@ class Remote(
             try {
                 val (_, ev) =
                     openSecureMessage(
-                        key,
                         se.envelope,
                         Place(
                             PayloadKind.PAYLOAD_KIND_EVENT,
@@ -2903,7 +2895,7 @@ class Remote(
                 b.bytes += 256L
             } catch (e: Exception) {
                 report(e)
-                b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                b.error = if (e is UnsupportedHistoryException) e.message else "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
                 ok = false
                 break
             }
@@ -2978,10 +2970,9 @@ class Remote(
             SessionEvents(
                 shownEvents(b),
                 b.loaded,
-                b.error,
+                sessions[sid]?.historyError ?: b.error,
                 b.fetchError,
                 liveSnapshots[sid],
-                legacySessions.contains(sid),
                 liveErrors[sid]
                     ?: if (sessions[sid]?.checkpointStatus == "waiting") "等待所属电脑更新当前状态" else null,
                 b.verifiedEvents,
@@ -3383,7 +3374,6 @@ class Remote(
                     val (_, msg) =
                         try {
                             openSecureMessage(
-                                keys?.command ?: ByteArray(0),
                                 res.result,
                                 Place(
                                     PayloadKind.PAYLOAD_KIND_COMMAND_RESULT,
@@ -3569,7 +3559,6 @@ class Remote(
     sealed interface ImageResult {
         class Loaded(
             val payload: io.github.lewin671.remoteagent.proto.ImagePayload,
-            val unverifiedLegacy: Boolean = false,
         ) : ImageResult
 
         /** Kept past its retention: only the preview in the event is left. */
@@ -3593,7 +3582,7 @@ class Remote(
     private suspend fun imageOnWorker(sid: String, imageId: String): ImageResult {
         val s =
             withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
-        val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
+        if (sessionKeys[sid] == null) throw CommandException("not_found", "未知会话")
         val cacheKey = "$sid/$imageId"
         var env =
             try {
@@ -3624,7 +3613,6 @@ class Remote(
         val payload =
             try {
                 openSecureMessage(
-                        key,
                         env,
                         Place(
                             PayloadKind.PAYLOAD_KIND_IMAGE,
@@ -3636,6 +3624,8 @@ class Remote(
                         live = false,
                     )
                     .second
+            } catch (e: UnsupportedHistoryException) {
+                return ImageResult.Corrupt(RETIRED_HISTORY_ERROR)
             } catch (e: OpenException) {
                 return ImageResult.Corrupt(e.message ?: "打不开")
             }
@@ -3647,7 +3637,7 @@ class Remote(
             if (e is CancellationException) throw e
             report(e)
         }
-        return ImageResult.Loaded(payload, Header.parseFrom(env.header).version == 1)
+        return ImageResult.Loaded(payload)
     }
 
     /** The image upload commands on one machine. */
@@ -3723,7 +3713,7 @@ class Remote(
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
         val s =
             withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
-        val key = sessionKeys[sid] ?: throw CommandException("not_found", "未知会话")
+        if (sessionKeys[sid] == null) throw CommandException("not_found", "未知会话")
         val tok = currentToken()
         val streamId = newRequestId()
         val opened = CompletableDeferred<Unit>()
@@ -3752,7 +3742,6 @@ class Remote(
                         val env = Envelope.parseFrom(raw)
                         val (h, frame) =
                             openSecureMessage(
-                                key,
                                 env,
                                 Place(
                                     PayloadKind.PAYLOAD_KIND_TERMINAL_OUTPUT,
@@ -3847,7 +3836,6 @@ class Remote(
                         seq++
                         val env =
                             sealSecureMessage(
-                                key,
                                 Header.newBuilder()
                                     .setKind(PayloadKind.PAYLOAD_KIND_TERMINAL_INPUT)
                                     .setMachineId(s.machineId)
@@ -3923,7 +3911,6 @@ class Remote(
     }
 
     private suspend fun <T : com.google.protobuf.MessageLite> openSecureMessage(
-        legacyKey: ByteArray,
         env: Envelope,
         want: Place,
         parse: (ByteArray) -> T,
@@ -3939,19 +3926,7 @@ class Remote(
                         PayloadKind.PAYLOAD_KIND_SESSION_META,
                         PayloadKind.PAYLOAD_KIND_IMAGE,
                     )
-        val route = Header.parseFrom(env.header)
-        if (
-            want.kind in setOf(PayloadKind.PAYLOAD_KIND_EVENT, PayloadKind.PAYLOAD_KIND_IMAGE) &&
-                route.version == 1
-        ) {
-            legacySessions.add(want.sessionId)
-            return Envelopes.openMessage(
-                legacyKey,
-                env,
-                historicalPlace(want, route, history),
-                parse,
-            )
-        }
+        rejectRetiredHistory(env)
         val h = DeviceSecurity.parseHeader(env.securityHeader.toByteArray())
         val seed = if (h.purpose.sessionKey) sessionKeys[h.session] else null
         val (header, m) =
@@ -3982,7 +3957,6 @@ class Remote(
     }
 
     private suspend fun sealSecureMessage(
-        legacyKey: ByteArray,
         h: Header,
         m: com.google.protobuf.MessageLite,
     ): Envelope {

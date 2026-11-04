@@ -1,26 +1,7 @@
 {
     "root": "5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a5a",
     "account_public_key": "5842660e1b40ac001e6958be94dfb6a357e079114061f5150c752843f02a5b4c",
-    "wrap": "8a7b8b85d7212ff9eed51e9c234f8a4c6c53c272dd46dcedff2b2470a161d7fc",
-    "meta": "cf05905ed127658ae7e745cf46ad158d57321cf419e650f9b3e4fd38f2e759bb",
-    "command": "b48bab82af4ee134083c03ddcf18774dcfc52a09fd2da395e17c0f1801905dff",
-    "notify": "96efea566fbf2013052947760903d9277d97103124e84fb367b8e91c4354ab88",
     "device_id": "39b9c74d4c9c39aa254cca7cbbb45bd7",
-    "envelope": {
-        "key": "3333333333333333333333333333333333333333333333333333333333333333",
-        "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b28f0ffffffffffffffff0132057265712d6b3880f0cc86a63742086465766963652d6b",
-        "nonce": "0c0c0c0c0c0c0c0c0c0c0c0c",
-        "ciphertext": "165f227a60d39a2272320ba84ca90b02e99336194043ca86ef07607d28b3ab3d58",
-        "plaintext": "来自 Kotlin ✓",
-        "seq": "18446744073709551600"
-    },
-    "packed": {
-        "key": "3333333333333333333333333333333333333333333333333333333333333333",
-        "header": "080110011a096d616368696e652d6b220973657373696f6e2d6b280542086465766963652d6b4801",
-        "nonce": "0e0e0e0e0e0e0e0e0e0e0e0e",
-        "ciphertext": "539d6253976e5d433b381fc6eb4a837adb16d134db806933bff60d88ba4e937a96d9e1d66135a6819a1cc0e18ee32edc1264093bf5dab007a9fa2dbde084e950bdf89c43",
-        "plaintext": "来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ 来自 Kotlin 的压缩载荷 ✓ "
-    },
     "register_signature": {
         "message": "6b6f746c696e20726567697374726174696f6e",
         "signature": "3840ebe56ff72a53cbfe113fc6cde8e53a3bd0655309b1a3d48b73abb16776335874c73e4a54672108a3f8631c023f8473d6b64defd23d53ec8d64568fbdd90b"

@@ -173,7 +173,6 @@ final class SessionModel {
     private(set) var rows: [ChatRow] = []
     private(set) var derived = Derived()
     private(set) var liveError: String?
-    private(set) var unverifiedLegacy = false
     private(set) var unavailableCount = 0
     private(set) var historyPartial = false
     /// Keep a newest segment's short-content alignment through backfill.
@@ -228,11 +227,10 @@ final class SessionModel {
     /// Takes a snapshot of the history. Apart from `follow` for tests and sample data.
     func show(_ snapshot: SessionEvents) async {
         events = snapshot.events
-        stateEvents = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.stateEvents
+        stateEvents = snapshot.stateEvents
         params.live = snapshot.live
         pendingHistoryPartial = snapshot.historyPartial
         liveError = snapshot.liveError
-        unverifiedLegacy = snapshot.unverifiedLegacy
         unavailableCount = snapshot.unavailableCount
         await rebuild()
         if loaded != snapshot.loaded { loaded = snapshot.loaded }

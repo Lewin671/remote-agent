@@ -50,7 +50,7 @@ async function setup(pageSize: number | null = PAGE) {
   vi.setSystemTime(Number(member.record.floor));
   const r = new (class extends Remote {
     constructor() {
-      super(member.account, f.legacyKeys, undefined,
+      super(member.account, undefined,
         new MemorySecurityStorage(structuredClone(member.record)), undefined, pageSize ?? undefined);
     }
   })();
@@ -479,31 +479,22 @@ it("does not take a session that was being opened when its machine turned out to
     server.set(ended(i), { machineId: "m2", endedMs: 1000 + i });
   await setMachines(["m1", "m2"]);
   await r.refresh();
-  // The next page arrives. While the key of its first session is being
-  // imported, a refresh finds m2 removed and is done before the key is in.
-  const real = crypto.subtle.importKey.bind(crypto.subtle);
+  // Remove the machine while its session seed is being opened, before putSession installs it.
+  const real = r.security.openHistory.bind(r.security);
   let again: Promise<void> | undefined;
   let switched = false;
-  const spy = vi
-    .spyOn(crypto.subtle, "importKey")
-    .mockImplementation(async (...args: Parameters<typeof real>) => {
-      // Only the client's own import of a session key, not the fake server's sealing.
-      if (
-        !switched &&
-        args[0] === "raw" &&
-        args[1] instanceof Uint8Array &&
-        args[1].length === raw.length &&
-        args[1].every((b, i) => b === raw[i]) &&
-        (args[4] as string[]).includes("decrypt")
-      ) {
-        switched = true;
-        await setMachines(["m1"]);
-        for (let i = 1; i <= SOME; i++) server.delete(ended(i));
-        again = r.refresh();
-        await again;
-      }
-      return real(...args);
-    });
+  const spy = vi.spyOn(r.security, "openHistory").mockImplementation(async (...args) => {
+    const opened = await real(...args);
+    if (!switched && opened.header.kind === 3 &&
+        opened.plaintext.length === raw.length && opened.plaintext.every((b, i) => b === raw[i])) {
+      switched = true;
+      await setMachines(["m1"]);
+      for (let i = 1; i <= SOME; i++) server.delete(ended(i));
+      again = r.refresh();
+      await again;
+    }
+    return opened;
+  });
   try {
     await r.loadMoreSessions();
   } finally {

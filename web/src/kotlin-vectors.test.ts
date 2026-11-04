@@ -4,40 +4,21 @@ import { create, fromBinary } from "@bufbuild/protobuf";
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { expect as want, it } from "vitest";
 import v from "../../internal/e2e/testdata/kotlin-vectors.json";
-import { accountKey, concat, deriveRaw, deviceID, expect, fromHex, hex, importRoot, importSessionKey, LOGIN_CONTEXT, open, REGISTER_CONTEXT, utf8 } from "./crypto";
-import { Compression, EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
+import { accountKey, concat, deviceID, expect, fromHex, hex, importRoot, importSessionKey, LOGIN_CONTEXT, open, REGISTER_CONTEXT, utf8 } from "./crypto";
+import { EnvelopeSchema, PayloadKind } from "./gen/remoteagent/v1/envelope_pb";
 import { PairingPayloadSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derivePair, newPairKey, pairTranscript } from "./pair";
 
 it("derives the same keys as Kotlin", async () => {
   const root = await importRoot(fromHex(v.root));
-  want(hex(await deriveRaw(root, "wrap"))).toBe(v.wrap);
-  want(hex(await deriveRaw(root, "machine-meta"))).toBe(v.meta);
-  want(hex(await deriveRaw(root, "command"))).toBe(v.command);
-  want(hex(await deriveRaw(root, "notify"))).toBe(v.notify);
   const acct = await accountKey(root);
   want(hex(acct.publicKey)).toBe(v.account_public_key);
   want(await deviceID(fromHex(v.account_public_key))).toBe(v.device_id);
 });
 
-it("opens a Kotlin envelope with a uint64 seq", async () => {
-  const e = v.envelope;
-  const env = create(EnvelopeSchema, { header: fromHex(e.header), nonce: fromHex(e.nonce), ciphertext: fromHex(e.ciphertext) });
-  const { header, plaintext } = await open(await importSessionKey(fromHex(e.key)), env);
-  want(new TextDecoder().decode(plaintext)).toBe(e.plaintext);
-  want(header.seq).toBe(BigInt(e.seq));
-  want(header.seq).toBe(18446744073709551600n);
-  expect(header, { kind: PayloadKind.EVENT, machineId: "machine-k", sessionId: "session-k", seq: BigInt(e.seq), requestId: "req-k" });
-});
 
-it("opens a packed Kotlin envelope", async () => {
-  const e = v.packed;
-  const env = create(EnvelopeSchema, { header: fromHex(e.header), nonce: fromHex(e.nonce), ciphertext: fromHex(e.ciphertext) });
-  const { header, plaintext } = await open(await importSessionKey(fromHex(e.key)), env);
-  want(header.compression).toBe(Compression.DEFLATE);
-  want(new TextDecoder().decode(plaintext)).toBe(e.plaintext);
-  want(env.ciphertext.length).toBeLessThan(plaintext.length);
-});
+
+
 
 it("verifies Kotlin signatures", async () => {
   const acct = await accountKey(await importRoot(fromHex(v.root)));

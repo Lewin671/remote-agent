@@ -187,6 +187,6 @@ extension Remote {
 }
 
 public func currentState(_ snapshot: SessionEvents, agent: PBAgent = defaultAgent) -> Derived {
-    let events = snapshot.unverifiedLegacy ? snapshot.verifiedEvents : snapshot.stateEvents
+    let events = snapshot.stateEvents
     return currentActions(derive(events, agent: agent), live: snapshot.live, events: events)
 }

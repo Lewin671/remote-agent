@@ -14,7 +14,7 @@ import (
 // work together: each refuses the other and says to update, instead of
 // falling back feature by feature. Raise it with any change an older peer
 // would misread, in step with PROTOCOL_VERSION in web/src and android/core.
-// Data already stored keeps its envelope version (e2e.Version).
+// Stored content uses deviceauth.Version; pairing uses e2e.Version.
 const Version = 13
 
 // Header carries Version on the daemon's local socket, in both directions.

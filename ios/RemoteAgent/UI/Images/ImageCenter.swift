@@ -62,7 +62,6 @@ struct PickedPhoto: Transferable, Sendable {
 
 /// A display copy decrypted for the viewer: in memory only, for as long as the account is in use.
 struct ViewedImage: @unchecked Sendable {
-    var unverifiedLegacy = false
     let image: UIImage
     let bytes: Data
     let format: PBImageFormat

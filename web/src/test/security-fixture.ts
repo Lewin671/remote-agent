@@ -18,7 +18,6 @@ import {
   deviceID,
   importRoot,
   accountKey,
-  deriveKeys,
 } from "../crypto";
 import {
   DeviceSecurityClient,
@@ -136,7 +135,6 @@ export class GoSecurityFixture {
   machineRecord!: { json: FixtureRecordJSON };
   rootRaw!: B;
   root!: CryptoKey;
-  legacyKeys!: Awaited<ReturnType<typeof deriveKeys>>;
   private constructor() {
     this.process = spawn(inject("securityFixtureBinary"), [], { stdio: "pipe" });
     this.process.stdout.setEncoding("utf8");
@@ -295,14 +293,13 @@ export class GoSecurityFixture {
     f.machineRecord = { json: machine.json };
     f.rootRaw = rootRaw;
     f.root = root;
-    f.legacyKeys = await deriveKeys(root);
     return {
       fixture: f,
       machine: f.machine,
       phone: f.phone,
       rootRaw,
       root,
-      legacyKeys: f.legacyKeys,
+
       machineRecord: f.machineRecord,
     };
   }

@@ -17,7 +17,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -28,7 +27,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// Version is the envelope format version in Header.version.
+// Version is the current pairing envelope format; history uses deviceauth.
 const Version = 1
 
 // Signature contexts. Each signed message starts with its context so that a
@@ -36,33 +35,13 @@ const Version = 1
 const (
 	RegisterContext = "remote-agent/v1/register\x00"
 	LoginContext    = "remote-agent/v1/login\x00"
-	// EnvelopeContext starts what a device signs over an envelope
-	// (Envelope.signature); see SignedEnvelopeBytes.
-	EnvelopeContext = "remote-agent/v1/envelope-signature\x00"
 )
 
 // KeySize is the size of the root key and of every derived key.
 const KeySize = 32
 
-// Keys are the keys derived from an account's root key. Each has one
-// purpose, fixed by its HKDF info string.
-type Keys struct {
-	// Account signs device registrations.
-	Account ed25519.PrivateKey
-	// Wrap seals session keys.
-	Wrap []byte
-	// Meta seals machine metadata.
-	Meta []byte
-	// Command seals commands and their results.
-	Command []byte
-	// Notify seals push content for the Android app, which opens it in
-	// the background without unwrapping the root key.
-	Notify []byte
-	// Prefs seals account preference objects (project pins and hides).
-	Prefs []byte
-	// DeviceMeta seals client device metadata (names).
-	DeviceMeta []byte
-}
+// Keys contains the account signing key pair. Content keys belong to deviceauth.
+type Keys struct{ Account ed25519.PrivateKey }
 
 // Derive computes the keys of the account with root key root.
 func Derive(root []byte) (*Keys, error) {
@@ -78,24 +57,6 @@ func Derive(root []byte) (*Keys, error) {
 		return nil, err
 	}
 	k.Account = ed25519.NewKeyFromSeed(seed)
-	if k.Wrap, err = derive("wrap"); err != nil {
-		return nil, err
-	}
-	if k.Meta, err = derive("machine-meta"); err != nil {
-		return nil, err
-	}
-	if k.Command, err = derive("command"); err != nil {
-		return nil, err
-	}
-	if k.Notify, err = derive("notify"); err != nil {
-		return nil, err
-	}
-	if k.Prefs, err = derive("account-prefs"); err != nil {
-		return nil, err
-	}
-	if k.DeviceMeta, err = derive("device-meta"); err != nil {
-		return nil, err
-	}
 	return k, nil
 }
 
@@ -123,39 +84,10 @@ func DeviceID(pub ed25519.PublicKey) string {
 // way: a relay derives it, no client names it.
 func AccountID(pub ed25519.PublicKey) string { return DeviceID(pub) }
 
-// Packing limits. A payload below PackMin is sent as it is: packing would
-// save nothing worth the work. A payload that unpacks to more than
-// MaxUnpacked is refused, so that a small envelope cannot fill memory.
-const (
-	PackMin     = 256
-	MaxUnpacked = 64 << 20
-)
+// MaxUnpacked bounds compressed pairing payloads accepted by Open.
+const MaxUnpacked = 64 << 20
 
-// packs reports whether payloads of a kind are packed before sealing.
-// Session keys are random, images are already compressed, and pairing
-// payloads are small and read before the devices share a protocol check.
-func packs(kind pb.PayloadKind) bool {
-	switch kind {
-	case pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, pb.PayloadKind_PAYLOAD_KIND_IMAGE, pb.PayloadKind_PAYLOAD_KIND_PAIRING:
-		return false
-	}
-	return true
-}
-
-// pack returns plaintext deflated, or nil when that is not smaller.
-func pack(plaintext []byte) []byte {
-	var b bytes.Buffer
-	w, err := flate.NewWriter(&b, flate.DefaultCompression)
-	if err != nil {
-		return nil
-	}
-	if _, err := w.Write(plaintext); err != nil || w.Close() != nil || b.Len() >= len(plaintext) {
-		return nil
-	}
-	return b.Bytes()
-}
-
-// unpack inflates what pack produced, up to MaxUnpacked bytes.
+// unpack inflates a raw DEFLATE payload up to MaxUnpacked bytes.
 func unpack(packed []byte) ([]byte, error) {
 	r := flate.NewReader(bytes.NewReader(packed))
 	defer r.Close()
@@ -167,7 +99,7 @@ func unpack(packed []byte) ([]byte, error) {
 }
 
 // Seal encrypts plaintext under key, authenticating h as additional data.
-// A payload that packs smaller is sealed packed, which the header says.
+// Only pairing uses this envelope; current content uses deviceauth.
 func Seal(key []byte, h *pb.Header, plaintext []byte) (*pb.Envelope, error) {
 	nonce := make([]byte, 12)
 	if _, err := rand.Read(nonce); err != nil {
@@ -177,16 +109,15 @@ func Seal(key []byte, h *pb.Header, plaintext []byte) (*pb.Envelope, error) {
 }
 
 func sealWithNonce(key []byte, h *pb.Header, plaintext, nonce []byte) (*pb.Envelope, error) {
+	if h.Kind != pb.PayloadKind_PAYLOAD_KIND_PAIRING {
+		return nil, ErrVersion
+	}
 	h = proto.CloneOf(h)
 	if h.Version == 0 {
 		h.Version = Version
 	}
 	h.Compression = pb.Compression_COMPRESSION_NONE
-	if packs(h.Kind) && len(plaintext) >= PackMin {
-		if packed := pack(plaintext); packed != nil {
-			plaintext, h.Compression = packed, pb.Compression_COMPRESSION_DEFLATE
-		}
-	}
+
 	header, err := proto.MarshalOptions{Deterministic: true}.Marshal(h)
 	if err != nil {
 		return nil, err
@@ -233,7 +164,7 @@ func Open(key []byte, env *pb.Envelope) (*pb.Header, []byte, error) {
 	if err := proto.Unmarshal(env.Header, h); err != nil {
 		return nil, nil, ErrOpen
 	}
-	if h.Version != Version {
+	if h.Version != Version || h.Kind != pb.PayloadKind_PAYLOAD_KIND_PAIRING {
 		return nil, nil, ErrVersion
 	}
 	switch h.Compression {
@@ -345,63 +276,4 @@ func SignLogin(device ed25519.PrivateKey, challenge []byte) []byte {
 func VerifyLogin(device ed25519.PublicKey, challenge, sig []byte) bool {
 	return len(device) == ed25519.PublicKeySize &&
 		ed25519.Verify(device, append([]byte(LoginContext), challenge...), sig)
-}
-
-// SignedEnvelopeBytes is what a device signs over an envelope: the context,
-// then the header, nonce and ciphertext exactly as transmitted, each
-// preceded by its length as a 4-byte big-endian number.
-func SignedEnvelopeBytes(env *pb.Envelope) []byte {
-	n := len(EnvelopeContext) + 12 + len(env.Header) + len(env.Nonce) + len(env.Ciphertext)
-	b := make([]byte, 0, n)
-	b = append(b, EnvelopeContext...)
-	for _, part := range [][]byte{env.Header, env.Nonce, env.Ciphertext} {
-		b = binary.BigEndian.AppendUint32(b, uint32(len(part)))
-		b = append(b, part...)
-	}
-	return b
-}
-
-// SignEnvelope sets env's signature by the device key.
-func SignEnvelope(device ed25519.PrivateKey, env *pb.Envelope) {
-	env.Signature = ed25519.Sign(device, SignedEnvelopeBytes(env))
-}
-
-// VerifyEnvelope checks env's signature against a device's public key.
-func VerifyEnvelope(device ed25519.PublicKey, env *pb.Envelope) bool {
-	return env != nil && len(device) == ed25519.PublicKeySize && len(env.Signature) == ed25519.SignatureSize &&
-		ed25519.Verify(device, SignedEnvelopeBytes(env), env.Signature)
-}
-
-// Errors from VerifySender. They never include content.
-var (
-	ErrUnsigned     = errors.New("e2e: the envelope is not signed")
-	ErrRegistration = errors.New("e2e: the sender's registration is not signed by the account")
-	ErrSignature    = errors.New("e2e: the envelope's signature does not verify")
-)
-
-// VerifySender checks who sent env: registration must carry the account's
-// signature and name the device in the header's sender, whose key must
-// have signed env. It returns the device ID. An envelope without a
-// signature gives ErrUnsigned.
-func VerifySender(account ed25519.PublicKey, env *pb.Envelope, sender string, registration, regSig []byte) (string, error) {
-	if len(env.GetSignature()) == 0 {
-		return "", ErrUnsigned
-	}
-	if !VerifyRegistration(account, registration, regSig) {
-		return "", ErrRegistration
-	}
-	reg := &pb.DeviceRegistration{}
-	if proto.Unmarshal(registration, reg) != nil || len(reg.DevicePublicKey) != ed25519.PublicKeySize ||
-		!bytes.Equal(reg.AccountPublicKey, account) {
-		return "", ErrRegistration
-	}
-	pub := ed25519.PublicKey(reg.DevicePublicKey)
-	id := DeviceID(pub)
-	if id != sender {
-		return "", ErrSignature
-	}
-	if !VerifyEnvelope(pub, env) {
-		return "", ErrSignature
-	}
-	return id, nil
 }

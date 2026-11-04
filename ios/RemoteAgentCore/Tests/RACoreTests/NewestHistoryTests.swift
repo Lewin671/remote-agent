@@ -358,9 +358,6 @@ extension ServerTests.NewestHistoryTests {
         #expect(currentState(snapshot).inputs.isEmpty)
         snapshot.stateEvents = PagedList([tail])
         #expect(currentState(snapshot).inputs["request"] == .submitted)
-        snapshot.unverifiedLegacy = true
-        snapshot.verifiedEvents = []
-        #expect(currentState(snapshot).inputs.isEmpty)
     }
 }
 

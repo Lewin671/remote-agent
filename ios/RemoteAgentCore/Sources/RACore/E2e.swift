@@ -42,28 +42,13 @@ public struct CryptoError: Error, CustomStringConvertible, Equatable {
     public init(_ description: String) { self.description = description }
 }
 
-/// The keys derived from an account's root key, one per purpose.
+/// The account signing key derived from its root key.
 public struct Keys: Sendable {
     public let account: SigningKey
-    public let wrap: Data
-    public let meta: Data
-    public let command: Data
-    public let notify: Data
-    /// Seals account preference objects (ProjectPrefs).
-    public let prefs: Data
-    /// Seals client devices' metadata (DeviceMeta).
-    public let deviceMeta: Data
-
     public static func derive(root: Data) throws -> Keys {
         guard root.count == keySize else { throw CryptoError("root key must be \(keySize) bytes") }
         return Keys(
-            account: try SigningKey(seed: deriveKey(root: root, purpose: "account-sign")),
-            wrap: deriveKey(root: root, purpose: "wrap"),
-            meta: deriveKey(root: root, purpose: "machine-meta"),
-            command: deriveKey(root: root, purpose: "command"),
-            notify: deriveKey(root: root, purpose: "notify"),
-            prefs: deriveKey(root: root, purpose: "account-prefs"),
-            deviceMeta: deriveKey(root: root, purpose: "device-meta"))
+            account: try SigningKey(seed: deriveKey(root: root, purpose: "account-sign")))
     }
 
     public static func deriveKey(root: Data, purpose: String) -> Data {
@@ -172,32 +157,21 @@ public struct Place: Sendable {
     }
 }
 
-/// Whether payloads of a kind are packed before sealing. Session keys are
-/// random, images are already compressed, and pairing payloads are read
-/// before the devices share a protocol check.
-private func packs(_ kind: PBPayloadKind) -> Bool {
-    switch kind {
-    case .sessionKey, .image, .pairing: return false
-    default: return true
-    }
-}
-
 public enum Envelopes {
     public static let version = envelopeVersion
     static let tagSize = 16
 
     /// Seals plaintext; the header is serialized once and authenticated as
-    /// sent. A payload that packs smaller is sealed packed, which the header
-    /// says (Header.compression); the caller's value of it is not used.
+    /// sent. Pairing payloads are sent without compression.
     public static func seal(key: Data, header: PBHeader, plaintext: Data, nonce: Data = randomBytes(12)) throws -> PBEnvelope {
         guard key.count == keySize, nonce.count == 12 else { throw CryptoError("bad key or nonce size") }
-        let packed = packs(header.kind) && plaintext.count >= packMin ? pack(plaintext) : nil
+        guard header.kind == .pairing else { throw UnsupportedHistoryError() }
         var h = header
         if h.version == 0 { h.version = version }
-        h.compression = packed != nil ? .deflate : .none
+        h.compression = .none
         let headerBytes: Data = try h.serializedData()
         let box = try AES.GCM.seal(
-            packed ?? plaintext, using: SymmetricKey(data: key), nonce: AES.GCM.Nonce(data: nonce),
+            plaintext, using: SymmetricKey(data: key), nonce: AES.GCM.Nonce(data: nonce),
             authenticating: headerBytes)
         var env = PBEnvelope()
         env.header = headerBytes
@@ -228,6 +202,7 @@ public enum Envelopes {
         }
         guard let h = try? PBHeader(serializedBytes: env.header) else { throw OpenError("malformed header") }
         guard h.version == version else { throw OpenError("unsupported envelope version") }
+        guard h.kind == .pairing else { throw UnsupportedHistoryError() }
         switch h.compression {
         case .none: return (h, pt)
         case .deflate: return (h, try unpack(pt))
@@ -257,25 +232,13 @@ public enum Envelopes {
     }
 }
 
-private let envelopeSignatureContext = "remote-agent/v1/envelope-signature\u{0}"
-
-/// What a device signs for an envelope (Envelope.signature): a context,
-/// then the header, nonce and ciphertext as transmitted, each with its
-/// length as a big-endian uint32. Same as SignedEnvelopeBytes in Go.
-public func signedEnvelopeBytes(_ env: PBEnvelope) -> Data {
-    var out = Data(envelopeSignatureContext.utf8)
-    for part in [env.header, env.nonce, env.ciphertext] {
-        out += u32be(part.count)
-        out += part
-    }
-    return out
-}
-
-/// The envelope with the device's signature, so the daemon can tell which device sent it.
-public func signEnvelope(device: SigningKey, _ env: PBEnvelope) -> PBEnvelope {
-    var out = env
-    out.signature = device.sign(signedEnvelopeBytes(env))
-    return out
-}
-
 public func newRequestId() -> String { randomBytes(16).hex }
+
+public let retiredHistoryError = "这条历史是旧版加密格式，已不再支持查看"
+public struct UnsupportedHistoryError: Error, LocalizedError, Sendable {
+    public init() {}
+    public var errorDescription: String? { retiredHistoryError }
+}
+func rejectRetiredHistory(_ envelope: PBEnvelope) throws {
+    if try PBHeader(serializedBytes: envelope.header).version == 1 { throw UnsupportedHistoryError() }
+}

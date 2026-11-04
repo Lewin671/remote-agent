@@ -20,7 +20,6 @@
 
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
-import type { Keys } from "../crypto";
 import {
   Agent,
   ApprovalDecision,
@@ -1480,7 +1479,6 @@ export class DemoRemote extends Remote {
         devicePrivate: {} as CryptoKey,
         deviceId: ME,
       },
-      {} as Keys,
     );
     r.opts = q;
     r.pause = pause;
@@ -1806,7 +1804,6 @@ export class DemoRemote extends Remote {
       this.sessions.set(id, {
         id,
         machineId: f.machine,
-        key: {} as CryptoKey,
         info,
         metaRev: 1n,
         lastSeq: BigInt(f.events.length),
@@ -1847,7 +1844,6 @@ export class DemoRemote extends Remote {
         this.sessions.set(id, {
           id,
           machineId: "mac",
-          key: {} as CryptoKey,
           info,
           metaRev: 1n,
           lastSeq: 0n,
@@ -2285,7 +2281,6 @@ export class DemoRemote extends Remote {
         const view: SessionView = {
           id,
           machineId: src.machineId,
-          key: {} as CryptoKey,
           info,
           metaRev: 1n,
           lastSeq: 0n,
@@ -2457,7 +2452,6 @@ export class DemoRemote extends Remote {
         const view: SessionView = {
           id,
           machineId,
-          key: {} as CryptoKey,
           info,
           metaRev: 1n,
           lastSeq: 0n,

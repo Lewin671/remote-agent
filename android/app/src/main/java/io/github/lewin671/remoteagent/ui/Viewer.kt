@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
+import io.github.lewin671.remoteagent.core.RETIRED_HISTORY_ERROR
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.SessionImage
 import io.github.lewin671.remoteagent.core.agent
@@ -76,7 +77,6 @@ sealed interface Big {
         val bitmap: ImageBitmap,
         val bytes: ByteArray,
         val format: ImageFormat,
-        val unverifiedLegacy: Boolean = false,
     ) : Big
 
     /** The event says there is no display copy. */
@@ -222,14 +222,14 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
         val note =
             when (b) {
                 Big.Loading -> null
-                is Big.Ready -> if (b.unverifiedLegacy) "旧图片的内容和来源未验证，仅供阅读" else null
+                is Big.Ready -> null
                 Big.NotSynced ->
                     if (ref.sync == ImageSync.IMAGE_SYNC_NAME_ONLY) "图片没有同步：只有文件名，原图在电脑上"
                     else "只有预览，原图在电脑上"
                 Big.Expired -> "大图已过期，只剩预览"
                 Big.Offline -> "连上后加载"
                 is Big.Failed -> "没能下载：${b.why} · 点按重试"
-                is Big.Corrupt -> "图片校验失败：${b.why}"
+                is Big.Corrupt -> if (b.why == RETIRED_HISTORY_ERROR) b.why else "图片校验失败：${b.why}"
             }
         if (b == Big.Loading)
             CircularProgressIndicator(
@@ -264,7 +264,7 @@ private suspend fun load(remote: Remote, sid: String, img: SessionImage, online:
                     withContext(Dispatchers.Default) {
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                     } ?: return Big.Corrupt("解不出图片")
-                Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format, r.unverifiedLegacy).also {
+                Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also {
                     ViewerImages.put(remote, "$sid/${ref.imageId}", it)
                 }
             }

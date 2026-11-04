@@ -11,7 +11,6 @@ import {
   GoSecurityFixture,
   webMember,
 } from "./test/security-fixture";
-import { importSessionKey } from "./crypto";
 import type { Envelope } from "./gen/remoteagent/v1/envelope_pb";
 
 async function setup() {
@@ -73,7 +72,6 @@ async function setup() {
   r.sessions.set("s", {
     id: "s",
     machineId: world.machine,
-    key: await importSessionKey(seed),
     metaRev: 0n,
     lastSeq: 0n,
     updatedMs: 0n,

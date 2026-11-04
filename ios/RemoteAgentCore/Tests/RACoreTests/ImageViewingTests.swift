@@ -45,15 +45,13 @@ import Testing
     }
 
     @Test func howAFetchEndedBecomesAState() {
+        #expect(viewerNote(.corrupt(why: retiredHistoryError), sync: .synced) == retiredHistoryError)
         let payload = PBImagePayload.with {
             $0.format = .png
             $0.data = Data([1, 2, 3])
         }
         let loaded = viewerOutcome(.success(.loaded(payload)), online: true)
         #expect(loaded.state == .ready && loaded.payload == payload)
-        let old = viewerOutcome(.success(.legacy(payload)), online: true)
-        #expect(old.state == .unverifiedLegacy && old.payload == payload)
-        #expect(viewerNote(old.state, sync: .synced) == "旧图片的内容和来源未验证，仅供阅读")
         #expect(viewerOutcome(.success(.expired), online: true).state == .expired)
         #expect(viewerOutcome(.success(.missing), online: true).state == .notSynced)
         #expect(

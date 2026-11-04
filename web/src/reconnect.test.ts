@@ -30,7 +30,7 @@ async function probe(mockLogin = true) {
   const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
   const device = await crypto.subtle.generateKey({ name: "Ed25519" }, false, ["sign", "verify"]) as CryptoKeyPair;
   class Probe extends Remote {
-    constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }, { wrap: key, meta: key, command: key, prefs: key, deviceMeta: key }); }
+    constructor() { super({ server: "https://ra.example.com", root: key, rootRaw: new Uint8Array(32), devicePrivate: device.privateKey, deviceId: "d" }); }
   }
   const r = new Probe(); remotes.push(r);
   vi.stubGlobal("WebSocket", Socket);
@@ -130,8 +130,7 @@ it("releases a blackholed history fetch so a new connection can catch up", async
     if (++count > 1) return Promise.resolve(new Response(new Uint8Array(), { headers: { "Content-Type": "application/proto" } }));
     return new Promise((_resolve, reject) => init!.signal!.addEventListener("abort", () => reject(init!.signal!.reason), { once: true }));
   });
-  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-  r.sessions.set("s", { id: "s", machineId: "m", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
+  r.sessions.set("s", { id: "s", machineId: "m", metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
   r.start(); await flush(); Socket.all[0].frame("ready"); await flush();
   r.events("s"); await flush(); expect(count).toBe(1);
   Socket.all[0].onclose?.({ code: 1006 });
@@ -143,8 +142,7 @@ it("releases a blackholed history fetch so a new connection can catch up", async
 
 it("bounds terminal opening and cancels it without waiting for socket callbacks", async () => {
   const r = await probe(); vi.useFakeTimers();
-  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-  r.sessions.set("s", { id: "s", machineId: "m", key, metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
+  r.sessions.set("s", { id: "s", machineId: "m", metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n });
   const close = vi.fn();
   const timedOut = r.openTerminal("s", vi.fn(), close).catch(e => e);
   await vi.advanceTimersByTimeAsync(15_000);

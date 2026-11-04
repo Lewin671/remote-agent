@@ -48,7 +48,7 @@ struct ViewerLoader {
         #endif
         guard hasDisplayCopy(ref) else { return (.notSynced, nil) }
         if let held = held(ref) {
-            return (held.unverifiedLegacy ? .unverifiedLegacy : .ready, held)
+            return (.ready, held)
         }
         let fetched: Result<ImageResult, any Error>
         do {
@@ -64,7 +64,6 @@ struct ViewerLoader {
         let decoded = await Task.detached { () -> ViewedImage? in
             guard let image = UIImage(data: data) else { return nil }
             return ViewedImage(
-                unverifiedLegacy: state == .unverifiedLegacy,
                 image: image.preparingForDisplay() ?? image, bytes: data, format: format)
         }.value
         guard let decoded else { return (.corrupt(why: "解不出图片"), nil) }
@@ -149,9 +148,9 @@ struct ViewerPage: View {
         }
         .task(id: Ask(id: ref.imageID, attempt: attempt, online: online)) {
             // A copy already here is not asked for again when the connection comes and goes.
-            if sharp != nil, big == .ready || big == .unverifiedLegacy { return }
+            if sharp != nil, big == .ready { return }
             if let held = loader.held(ref) {
-                (big, sharp) = (held.unverifiedLegacy ? .unverifiedLegacy : .ready, held.image)
+                (big, sharp) = (.ready, held.image)
                 return
             }
             big = .loading

@@ -273,25 +273,7 @@ it("shows a display copy only where it belongs and in the format it claims", asy
       ImagePayloadSchema,
       create(ImagePayloadSchema, { format, width: 2, height: 1, data }),
     );
-  const { sealMessage, importSessionKey } = await import("./crypto");
-  const oldImage = await sealMessage(
-    await importSessionKey(r.seed),
-    {
-      kind: PayloadKind.IMAGE,
-      machineId: r.machine,
-      sessionId: "s1",
-      requestId: "legacy",
-    },
-    ImagePayloadSchema,
-    create(ImagePayloadSchema, {
-      format: ImageFormat.PNG,
-      width: 2,
-      height: 1,
-      data: png,
-    }),
-  );
   const store: Record<string, unknown> = {
-    legacy: { image: oldImage },
     good: { image: await seal("good", ImageFormat.PNG, png) },
     liar: {
       image: await seal(
@@ -313,8 +295,6 @@ it("shows a display copy only where it belongs and in the format it claims", asy
   const good = await r.getImage("s1", "good");
   expect(good.kind).toBe("ok");
   expect(good.kind === "ok" && good.blob.type).toBe("image/png");
-  const old = await r.getImage("s1", "legacy");
-  expect(old.kind === "ok" && old.unverifiedLegacy).toBe(true);
   expect((await r.getImage("s1", "liar")).kind).toBe("bad");
   // An envelope for another image, served under this ID, does not open here.
   expect((await r.getImage("s1", "moved")).kind).toBe("bad");
@@ -572,7 +552,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   };
   class Kept extends DemoRemote {
     static open() {
-      return new Kept(account, {} as never, cache);
+      return new Kept(account, cache);
     }
     warmed() {
       return (this as unknown as { warm(): Promise<void> }).warm();
@@ -605,7 +585,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
   // Another account's or device's values are not taken.
   const other = new (class extends DemoRemote {
     constructor() {
-      super({ ...account, deviceId: "someone-else" }, {} as never, cache);
+      super({ ...account, deviceId: "someone-else" }, cache);
     }
   })();
   vi.spyOn(other.security, "localIdentity").mockResolvedValue(identity);
@@ -615,7 +595,7 @@ it("restores, for the next visit's first paint, the model lists and settings the
 
 it("keeps an unauthenticated command result unknown and retries its slot", async () => {
   const { Attempt } = await import("./attempt");
-  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./crypto");
   const { create } = await import("@bufbuild/protobuf");
   const { CommandResultSchema } = await import(
     "./gen/remoteagent/v1/remote_pb"
@@ -626,8 +606,7 @@ it("keeps an unauthenticated command result unknown and retries its slot", async
     forward: async ({ command }: { command: Envelope }) => {
       const requestId = fromBinary(HeaderSchema, command.header).requestId;
       ids.push(requestId);
-      const result = await sealMessage(
-        r.legacy.command,
+      const result = await r.seal(
         { kind: PayloadKind.COMMAND_RESULT, machineId: r.machine, requestId },
         CommandResultSchema,
         create(CommandResultSchema, {

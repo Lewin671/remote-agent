@@ -101,14 +101,7 @@ extension Remote {
     ) async throws -> (PBHeader, M) {
         guard let envelope else { throw DeviceSecurity.Failure.invalid }
         let history = history || [PBPayloadKind.accountPrefs, .deviceMeta, .machineMeta, .sessionMeta, .image].contains(want.kind)
-        // Old images are readable transcript data only. They never establish
-        // current permissions, directory metadata, or command results.
-        if want.kind == .image, try PBHeader(serializedBytes: envelope.header).version == 1 {
-            guard let key = sessionKeys[want.sessionId] else {
-                throw DeviceSecurity.Failure.invalid
-            }
-            return try Envelopes.openMessage(key: key, envelope: envelope, want: try await historicalPlace(want,header:PBHeader(serializedBytes:envelope.header),history:true), as: type)
-        }
+        try rejectRetiredHistory(envelope)
         // Live frames are authorized by the state they name and the sender's
         // current membership; stored history is checked against its own state.
         let seed: [DeviceSecurity.Purpose] = [

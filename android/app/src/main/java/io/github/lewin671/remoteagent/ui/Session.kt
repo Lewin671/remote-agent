@@ -175,7 +175,6 @@ fun SessionScreen(sid: String) {
             if (events.historyPartial) Hint("历史记录尚未读全。")
             if (events.unavailableCount > 0)
                 Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。")
-            if (events.unverifiedLegacy) Hint("旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。")
             events.liveError?.let { Hint(it) }
             ChatPane(
                 state,

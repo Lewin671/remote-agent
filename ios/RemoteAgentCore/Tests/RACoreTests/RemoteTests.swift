@@ -1351,17 +1351,7 @@ extension SyncServerTests {
                     return
                 }
                 #expect(loaded.data == png)
-                let legacyID = "00000000000000000000000000000003"
-                let legacyKey = try #require(await w.daemon.sessionKeys["s1"])
-                var legacyHeader = PBHeader()
-                legacyHeader.kind = .image
-                legacyHeader.machineID = w.daemon.id
-                legacyHeader.sessionID = "s1"
-                legacyHeader.requestID = legacyID
-                let legacy = try Envelopes.seal(
-                    key: legacyKey, header: legacyHeader, message: payload)
-                await cache.putImage(key: "s1/" + legacyID, envelope: try legacy.serializedData())
-                #expect(try await r.image("s1", imageId: legacyID) == .legacy(payload))
+
                 // What the cache holds is the sealed envelope, not the picture.
                 let stored = try #require(cache.images["s1/00000000000000000000000000000001"])
                 #expect(stored.range(of: png) == nil)

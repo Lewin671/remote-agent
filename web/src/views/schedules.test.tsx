@@ -686,7 +686,7 @@ it("uses shared empty copy and resolves a missing conversation before naming it"
   await act(async()=>r.touch());
   expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
   expect(host.querySelector(".sess .mc")?.textContent).toContain("北京时间");
-  r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",key:{} as CryptoKey,metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
+  r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
   await act(async()=>r.touch());
   expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
 });
@@ -774,7 +774,7 @@ it("shows CLI as plain text on a single-CLI computer and a segmented control whe
 
 it("shows the shared destination placeholder until target metadata is loaded",async()=>{
  const t=task();t.spec.target={type:"resume_session",session:"missing"};const r=remote([t]);
- r.sessions.set("missing",{id:"missing",machineId:"mac",updatedMs:0n,key:{} as CryptoKey,metaRev:0n,lastSeq:0n,endedMs:0n});
+ r.sessions.set("missing",{id:"missing",machineId:"mac",updatedMs:0n,metaRev:0n,lastSeq:0n,endedMs:0n});
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
  expect(button("发到对话")).toBeTruthy();
 });

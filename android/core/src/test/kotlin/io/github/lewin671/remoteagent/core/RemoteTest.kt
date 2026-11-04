@@ -99,6 +99,29 @@ class RemoteTest {
         return r
     }
 
+    @Test
+    fun retiredSessionAndCachedEventShowTheSameExplicitError() = runBlocking<Unit> {
+        val cache = MemoryCache()
+        val old = Envelope.newBuilder().setHeader(Header.newBuilder().setVersion(1)
+            .setKind(PayloadKind.PAYLOAD_KIND_SESSION_KEY).build().toByteString()).build()
+        cache.putSession(RemoteSession.newBuilder().setSessionId("retired")
+            .setMachineId(daemon.account.deviceId).setKey(old).build())
+        cache.putEvents("s1", listOf(StoredEvent.newBuilder().setSeq(1).setEnvelope(old.toBuilder()
+            .setHeader(Header.newBuilder().setVersion(1).setKind(PayloadKind.PAYLOAD_KIND_EVENT).build().toByteString())).build()))
+        val r = client(cache = cache)
+        r.start()
+        r.awaitState("retired session error") { it.sessions["retired"]?.historyError == RETIRED_HISTORY_ERROR }
+        assertEquals(RETIRED_HISTORY_ERROR, withTimeout(5000) { r.events("retired").first { it.error != null } }.error)
+        r.awaitState("current session") { it.sessions["s1"]?.info != null }
+        val events = withTimeout(5000) { r.events("s1").first { it.error != null } }
+        assertEquals(RETIRED_HISTORY_ERROR, events.error)
+        assertTrue(events.events.isEmpty())
+        assertEquals(1, cache.events("s1").size)
+        cache.putImage("s1/retired", old.toBuilder().setHeader(Header.newBuilder().setVersion(1)
+            .setKind(PayloadKind.PAYLOAD_KIND_IMAGE).build().toByteString()).build().toByteArray())
+        assertEquals(Remote.ImageResult.Corrupt(RETIRED_HISTORY_ERROR), r.image("s1", "retired"))
+    }
+
     private suspend fun Remote.awaitState(what: String, ok: (RemoteState) -> Boolean): RemoteState =
         try {
             withTimeout(10_000) { state.first(ok) }
@@ -1959,23 +1982,7 @@ class RemoteTest {
             assertTrue(
                 (got as Remote.ImageResult.Loaded).payload.data.toByteArray().contentEquals(png),
             )
-            val legacyID = "00000000000000000000000000000003"
-            val legacy =
-                Envelopes.seal(
-                    daemon.sessionKeys.getValue("s1"),
-                    io.github.lewin671.remoteagent.proto.Header.newBuilder()
-                        .setKind(
-                            io.github.lewin671.remoteagent.proto.PayloadKind.PAYLOAD_KIND_IMAGE,
-                        )
-                        .setMachineId(daemon.id)
-                        .setSessionId("s1")
-                        .setRequestId(legacyID)
-                        .build(),
-                    got.payload,
-                )
-            cache.putImage("s1/$legacyID", legacy.toByteArray())
-            val old = r.image("s1", legacyID)
-            assertTrue(old is Remote.ImageResult.Loaded && old.unverifiedLegacy)
+
             // What the cache holds is the sealed envelope, not the picture.
             val stored = cache.images.getValue("s1/00000000000000000000000000000001")
             assertFalse(

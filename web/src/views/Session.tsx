@@ -902,11 +902,6 @@ function ChatBody({
   );
   const footer = (
     <>
-      {remote.hasUnverifiedHistory(sid) && (
-        <Banner kind="warn">
-          旧格式记录的内容和来源未验证，仅供阅读。当前操作以电脑的已验证快照为准。
-        </Banner>
-      )}
       {remote.liveSnapshotError(sid) && (
         <Banner
           kind="warn"
@@ -923,12 +918,12 @@ function ChatBody({
       )}
       {hist.broken && (
         <Banner kind="warn">
-          有一条记录读不出来，历史停在这里，后面的内容和状态可能不全
+          {hist.error || "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"}
         </Banner>
       )}
       {/* Offline, the connection banner says the content may be stale and the
             next connection fetches again: a failed fetch adds nothing. */}
-      {hist.error && remote.conn === "online" && (
+      {hist.error && !hist.broken && remote.conn === "online" && (
         <Banner
           kind="err"
           action="重试"

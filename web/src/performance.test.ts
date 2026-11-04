@@ -597,7 +597,7 @@ it("starts from what the browser kept: the token, and the last listing", async (
 
 it("deduplicates an event after concurrent decryption", async () => {
   const r = await probe();
-  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./crypto");
   const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
   (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
   r.events("s");
@@ -605,8 +605,7 @@ it("deduplicates an event after concurrent decryption", async () => {
   const s = r.sessions.get("s")!;
   const row = {
     seq: 1n,
-    envelope: await sealMessage(
-      s.key,
+    envelope: await r.seal(
       {
         kind: PayloadKind.EVENT,
         machineId: r.machine,
@@ -628,7 +627,7 @@ it("deduplicates an event after concurrent decryption", async () => {
 
 it("commits the valid prefix before a broken event", async () => {
   const r = await probe();
-  const { sealMessage, PayloadKind } = await import("./crypto");
+  const { PayloadKind } = await import("./crypto");
   const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
   (r as any).api = { getEvents: async () => ({ events: [], more: false }) };
   r.events("s");
@@ -637,8 +636,7 @@ it("commits the valid prefix before a broken event", async () => {
   const rows = await Promise.all(
     [1n, 2n].map(async (seq) => ({
       seq,
-      envelope: await sealMessage(
-        s.key,
+      envelope: await r.seal(
         { kind: PayloadKind.EVENT, machineId: r.machine, sessionId: "s", seq },
         EventSchema,
         create(EventSchema, { sessionId: "s", seq: seq === 2n ? 99n : seq }),

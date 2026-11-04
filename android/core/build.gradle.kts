@@ -72,7 +72,6 @@ tasks.test {
     systemProperty("recoveryVectors", rootProject.file("../internal/deviceauth/testdata/recovery-v3.json").absolutePath)
     systemProperty("recoveryRemovedVectors", rootProject.file("../internal/deviceauth/testdata/recovery-removed-v3.json").absolutePath)
     systemProperty("chainVectors", rootProject.file("../internal/deviceauth/testdata/chain-v3.json").absolutePath)
-    systemProperty("v2Vectors", rootProject.file("../internal/e2e/testdata/v2-vectors.json").absolutePath)
     systemProperty("kotlinVectors", rootProject.file("../internal/e2e/testdata/kotlin-vectors.json").absolutePath)
     // ./gradlew :core:test -PupdateVectors rewrites kotlin-vectors.json.
     if (project.hasProperty("updateVectors")) systemProperty("updateVectors", "1")

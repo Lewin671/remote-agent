@@ -30,6 +30,7 @@ public struct MachineView: Equatable, Sendable, Identifiable {
 }
 
 public struct SessionView: Equatable, Sendable, Identifiable {
+    public var historyError: String?
     public var id: String
     public var machineId: String
     public var checkpoint: PBLiveSnapshot?
@@ -168,7 +169,6 @@ public struct DeviceView: Equatable, Sendable, Identifiable {
 public struct SessionEvents: Sendable {
     public var live: PBLiveSnapshot?
     public var liveError: String?
-    public var unverifiedLegacy = false
     public var unavailableCount = 0
     public var verifiedEvents = PagedList<PBEvent>()
     public var events: PagedList<PBEvent> = []

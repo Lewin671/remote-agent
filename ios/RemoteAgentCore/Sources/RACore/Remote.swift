@@ -131,7 +131,6 @@ public actor Remote {
     public nonisolated let state: Feed<RemoteState>
 
     nonisolated let http: HTTP
-    nonisolated let keys: Keys?
     nonisolated let device: SigningKey
     nonisolated let cache: (any CipherCache)?
     nonisolated let log: @Sendable (String) -> Void
@@ -277,7 +276,6 @@ public actor Remote {
     }
 
     final class Buffer {
-        var unverifiedLegacy = false
         var verifiedSeqs = Set<UInt64>()
         var unavailableSeqs = Set<UInt64>()
         var verifiedEvents = PagedList<PBEvent>()
@@ -352,7 +350,6 @@ public actor Remote {
         self.historyIdleBytes = historyIdleBytes
         self.streamOpenMs = streamOpenMs
         self.linkGraceMs = linkGraceMs
-        keys = account.hasRoot ? try? Keys.derive(root: account.root) : nil
         device = try SigningKey(seed: account.deviceSeed)
         api = try Api(server: account.server, http: http)
         state = Feed(RemoteState())

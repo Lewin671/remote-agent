@@ -315,29 +315,6 @@ class DeviceSecurityTest {
     }
 
     @Test
-    fun legacyBodiesCannotEstablishCurrentInputState() {
-        val forged =
-            io.github.lewin671.remoteagent.proto.Event.newBuilder()
-                .setSeq(1)
-                .setInputState(
-                    io.github.lewin671.remoteagent.proto.InputState.newBuilder()
-                        .setRequestId("same-id")
-                        .setStatus(
-                            io.github.lewin671.remoteagent.proto.InputStatus.INPUT_STATUS_CANCELED
-                        )
-                )
-                .build()
-        val old =
-            SessionEvents(
-                events = listOf(forged),
-                loaded = true,
-                unverifiedLegacy = true,
-                verifiedEvents = emptyList(),
-            )
-        assertFalse(currentState(old).inputs.containsKey("same-id"))
-    }
-
-    @Test
     fun counterSurvivesLeaseRenewalsButResetsWithTheContentKey() {
         val signer = SigningKey(s("phone_seed").unhex())
         val phone = Authority.newMember(signer, s("phone_x").unhex(), 2u)

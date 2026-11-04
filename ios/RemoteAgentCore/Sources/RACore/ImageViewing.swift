@@ -8,7 +8,6 @@ import RAProto
 public enum BigImage: Equatable, Sendable {
     case loading
     case ready
-    case unverifiedLegacy
     /// The event says there is no display copy.
     case notSynced
     case expired
@@ -22,12 +21,11 @@ public enum BigImage: Equatable, Sendable {
 public func viewerNote(_ big: BigImage, sync: PBImageSync) -> String? {
     switch big {
     case .loading, .ready: return nil
-    case .unverifiedLegacy: return "旧图片的内容和来源未验证，仅供阅读"
     case .notSynced: return sync == .nameOnly ? "图片没有同步：只有文件名，原图在电脑上" : "只有预览，原图在电脑上"
     case .expired: return "大图已过期，只剩预览"
     case .offline: return "连上后加载"
     case .failed(let why): return "没能下载：\(why) · 点按重试"
-    case .corrupt(let why): return "图片校验失败：\(why)"
+    case .corrupt(let why): return why == retiredHistoryError ? why : "图片校验失败：\(why)"
     }
 }
 
@@ -50,7 +48,6 @@ public func viewerOutcome(_ result: Result<ImageResult, any Error>, online: Bool
 ) {
     switch result {
     case .success(.loaded(let payload)): return (.ready, payload)
-    case .success(.legacy(let payload)): return (.unverifiedLegacy, payload)
     case .success(.expired): return (.expired, nil)
     case .success(.missing): return (.notSynced, nil)
     case .success(.corrupt(let why)): return (.corrupt(why: why), nil)

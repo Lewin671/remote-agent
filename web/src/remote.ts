@@ -1,3 +1,4 @@
+import { rejectRetiredHistory, UnsupportedHistoryError, RETIRED_HISTORY_ERROR } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
 import { readSecurityOperation } from "./security-operation";
@@ -58,15 +59,10 @@ import { closeScheduleNotification, restorePushPrefs, watchSecurityPush } from "
 import {
   checkServer,
   concat,
-  deriveKeys,
   deviceID,
-  importSessionKey,
   newRequestID,
-  openMessage as openLegacyMessage,
-  open as openLegacyEnvelope,
   signLogin,
   expect,
-  type Keys,
 } from "./crypto";
 import {
   EnvelopeSchema,
@@ -166,7 +162,7 @@ export interface MachineView {
 export interface SessionView {
   id: string;
   machineId: string;
-  key: CryptoKey;
+  historyError?: string;
   info?: Session;
   checkpoint?: LiveSnapshot;
   checkpointStatus?: "ready" | "waiting" | "invalid";
@@ -186,10 +182,8 @@ export const SESSION_PAGE = 50;
 
 interface EventBuffer {
   unavailableSeqs?: Set<bigint>;
-  unverifiedLegacy?: boolean;
   verifiedSeqs?: Set<bigint>;
   verifiedEvents?: Event[];
-  verifiedDerived?: { count: number; agent: Agent; value: Derived };
   events: Event[]; // contiguous from seq 1
   recent?: Event[]; // a contiguous suffix, shown alone until backfill joins it
   tailRequested?: boolean;
@@ -302,15 +296,14 @@ const IMAGE_CACHE = 40;
 export type ImageResult =
   | {
       kind: "ok";
-      unverifiedLegacy?: boolean;
-      blob: Blob;
+          blob: Blob;
       width: number;
       height: number;
       format: ImageFormat;
     }
   | { kind: "expired" } // kept past its retention: only the preview is left
   | { kind: "missing" } // never stored
-  | { kind: "bad" }; // did not open, or is not the format it claims
+  | { kind: "bad"; why?: string }; // did not open, or is not the format it claims
 
 /** The account preferences object with the project list's settings. */
 export const PREFS_OBJECT = "project-prefs";
@@ -960,7 +953,6 @@ export class Remote {
 
   protected constructor(
     readonly account: StoredAccount,
-    private legacyKeys: Keys | undefined,
     private cache?: EventCache,
     securityStorage?: SecurityStorage,
     protected readonly historyPageSize = 500,
@@ -1121,24 +1113,7 @@ export class Remote {
     ].includes(want.kind)
       ? this.sessionSeeds.get(want.sessionId ?? "")
       : undefined;
-    if (
-      history &&
-      [PayloadKind.EVENT, PayloadKind.IMAGE].includes(want.kind) &&
-      fromBinary(HeaderSchema, env.header).version === 1
-    ) {
-      const rawSeed = this.sessionSeeds.get(want.sessionId ?? "");
-      if (!rawSeed) throw new Error("旧历史的会话种子缺失");
-      return openLegacyMessage(
-        await importSessionKey(rawSeed),
-        env,
-        await this.historicalPlace(
-          want,
-          fromBinary(HeaderSchema, env.header),
-          history,
-        ),
-        schema,
-      );
-    }
+    rejectRetiredHistory(env);
     let out: Awaited<ReturnType<DeviceSecurityClient["openHistory"]>>;
     try {
       if (historical?.status === "rejected") throw historical.reason;
@@ -1214,7 +1189,6 @@ export class Remote {
     if (!acct) return undefined;
     const r = new Remote(
       acct,
-      acct.root ? await deriveKeys(acct.root) : undefined,
       eventCache(),
     );
     // What the last visit kept is there for the first paint.
@@ -2245,24 +2219,15 @@ export class Remote {
     )
       return;
     let view = this.sessions.get(rs.sessionId);
+    const retired = !!view?.historyError;
+    if (retired) view = undefined;
     const removals = this.removedPushes.get(rs.machineId) ?? 0;
     try {
+      rejectRetiredHistory(rs.key);
       if (!view) {
         if (!rs.key) throw new Error("缺少会话密钥信封");
-        const route = fromBinary(HeaderSchema, rs.key.header);
-        let header: import("./gen/remoteagent/v1/envelope_pb").Header,
-          plaintext: Uint8Array;
-        if (route.version === 1) {
-          if (!this.legacyKeys)
-            throw new Error("旧版历史需要账户根密钥，这台设备没有");
-          const legacy = await openLegacyEnvelope(this.legacyKeys.wrap, rs.key);
-          header = legacy.header;
-          plaintext = legacy.plaintext;
-        } else {
-          const opened = await this.security.openHistory(rs.key);
-          header = this.projectHeader(opened.header);
-          plaintext = opened.plaintext;
-        }
+        const opened = await this.security.openHistory(rs.key);
+        const header = this.projectHeader(opened.header), plaintext = opened.plaintext;
         if (plaintext.length !== 32) throw new Error("无效的会话种子");
         this.sessionSeeds.set(rs.sessionId, new Uint8Array(plaintext));
         expect(header, {
@@ -2270,9 +2235,6 @@ export class Remote {
           machineId: rs.machineId,
           sessionId: rs.sessionId,
         });
-        const key = await importSessionKey(
-          plaintext as Uint8Array<ArrayBuffer>,
-        );
         // The machine may have been removed while the key was opened.
         if (
           (this.removedPushes.get(rs.machineId) ?? 0) !== removals ||
@@ -2282,10 +2244,10 @@ export class Remote {
           this.sessionSeeds.delete(rs.sessionId);
           return;
         }
-        view = this.sessions.get(rs.sessionId) ?? {
+        const current = this.sessions.get(rs.sessionId);
+        view = (current?.historyError ? undefined : current) ?? {
           id: rs.sessionId,
           machineId: rs.machineId,
-          key,
           metaRev: 0n,
           lastSeq: 0n,
           updatedMs: 0n,
@@ -2323,7 +2285,6 @@ export class Remote {
           ...view,
           machineId: rs.machineId,
           metaRev: 0n,
-          key: await importSessionKey(new Uint8Array(opened.plaintext)),
         };
         this.sessions.set(rs.sessionId, view);
       }
@@ -2366,7 +2327,19 @@ export class Remote {
           view.endedMs = rs.endedMs;
         }
       }
+      if (retired) {
+        const buffer = this.buffers.get(rs.sessionId);
+        if (buffer?.error === RETIRED_HISTORY_ERROR) {
+          buffer.error = "";
+          buffer.broken = false;
+          void this.fetchEvents(rs.sessionId);
+        }
+      }
     } catch (e) {
+      if (e instanceof UnsupportedHistoryError) {
+        this.sessions.set(rs.sessionId, { id: rs.sessionId, machineId: rs.machineId,
+          metaRev: 0n, lastSeq: rs.lastSeq, updatedMs: rs.updatedMs, endedMs: rs.endedMs, historyError: e.message });
+      }
       this.report(e);
     }
     this.changed();
@@ -2406,8 +2379,8 @@ export class Remote {
     return {
       backfilling: !!b?.recent,
       loaded: b?.loaded ?? false,
-      error: b?.error ?? "",
-      broken: b?.broken ?? false,
+      error: this.sessions.get(sid)?.historyError ?? b?.error ?? "",
+      broken: !!this.sessions.get(sid)?.historyError || (b?.broken ?? false),
       unavailable: b?.unavailableSeqs?.size ?? 0,
     };
   }
@@ -2439,7 +2412,7 @@ export class Remote {
       if (b.broken) break;
       after = BigInt(b.events.length);
     }
-    if (stale()) return;
+    if (stale() || b.error === RETIRED_HISTORY_ERROR) return;
     Object.assign(b, {
       events: [],
       pending: new Map(),
@@ -2448,9 +2421,7 @@ export class Remote {
       inputStatuses: undefined,
       verifiedSeqs: undefined,
       verifiedEvents: undefined,
-      verifiedDerived: undefined,
       unavailableSeqs: undefined,
-      unverifiedLegacy: false,
     });
     await this.cache.drop(s.id).catch(() => undefined);
   }
@@ -2460,6 +2431,7 @@ export class Remote {
     const b = this.buffers.get(sid);
     const s = this.sessions.get(sid);
     if (!b || !s || this.closed) return;
+    if (s.historyError) { b.broken = true; b.error = s.historyError; this.changed(); return; }
     if (b.fetching) {
       b.refetch = true;
       return;
@@ -2469,6 +2441,7 @@ export class Remote {
     let tailThrough: bigint | undefined;
     try {
       if (!b.restored && this.cache) await this.restore(s, b);
+      if (b.error === RETIRED_HISTORY_ERROR) return;
       // lastSeq is a routing hint, not authenticated event content. Every
       // returned envelope still passes the normal historical checks.
       if (!b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize)) {
@@ -2522,7 +2495,7 @@ export class Remote {
         }
       } while (b.refetch);
       b.loaded = true;
-      b.error = "";
+      if (b.error !== RETIRED_HISTORY_ERROR) b.error = "";
     } catch (e) {
       if (this.closed || generation !== this.generation) return;
       b.error = errorText(e);
@@ -2593,8 +2566,6 @@ export class Remote {
           throw new Error("事件的位置被改动");
         if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
           continue;
-        if (fromBinary(HeaderSchema, se.envelope!.header).version === 1)
-          b.unverifiedLegacy = true;
         if (fromBinary(HeaderSchema, se.envelope!.header).version === 3)
           (b.verifiedSeqs ??= new Set()).add(se.seq);
         b.pending.set(se.seq, msg);
@@ -2618,6 +2589,7 @@ export class Remote {
           continue;
         }
         b.broken = true;
+        if (e instanceof UnsupportedHistoryError) b.error = e.message;
         this.report(e);
         break;
       }
@@ -2711,21 +2683,6 @@ export class Remote {
 
   currentDerived(sid: string, d: Derived): Derived {
     const buffer = this.buffers.get(sid);
-    if (buffer?.unverifiedLegacy) {
-      const verified = buffer.verifiedEvents ?? [],
-        agent = agentOf(this.sessions.get(sid));
-      if (
-        !buffer.verifiedDerived ||
-        buffer.verifiedDerived.count !== verified.length ||
-        buffer.verifiedDerived.agent !== agent
-      )
-        buffer.verifiedDerived = {
-          count: verified.length,
-          agent,
-          value: derive(verified, agent),
-        };
-      d = buffer.verifiedDerived.value;
-    }
     const live = this.liveSnapshots.get(sid);
     const checkpoint = this.sessions.get(sid)?.checkpoint;
     const agent = agentOf(this.sessions.get(sid));
@@ -2797,7 +2754,7 @@ export class Remote {
           live,
           b?.events ?? [],
           (seq) =>
-            !this.unverifiedEvent(sid, seq) && !b?.unavailableSeqs?.has(seq),
+            !b?.unavailableSeqs?.has(seq),
         ),
       });
     }
@@ -2810,13 +2767,6 @@ export class Remote {
         ? "等待所属电脑更新当前状态"
         : undefined)
     );
-  }
-  unverifiedEvent(sid: string, seq: bigint): boolean {
-    const b = this.buffers.get(sid);
-    return !!b?.unverifiedLegacy && !b.verifiedSeqs?.has(seq);
-  }
-  hasUnverifiedHistory(sid: string): boolean {
-    return this.buffers.get(sid)?.unverifiedLegacy ?? false;
   }
   /** Sends a command about a session. slot, when given, is the request
    * ID and deadline of an earlier attempt of the same command. */
@@ -4122,9 +4072,6 @@ export class Remote {
       out = matchesFormat(msg.data, msg.format)
         ? {
             kind: "ok",
-            ...(fromBinary(HeaderSchema, res.image.header).version === 1
-              ? { unverifiedLegacy: true }
-              : {}),
             blob: new Blob([msg.data as Uint8Array<ArrayBuffer>], {
               type: mimeOf(msg.format),
             }),
@@ -4135,7 +4082,7 @@ export class Remote {
         : { kind: "bad" };
     } catch (e) {
       this.report(e);
-      out = { kind: "bad" };
+      out = { kind: "bad", ...(e instanceof UnsupportedHistoryError ? { why: e.message } : {}) };
     }
     if (out.kind === "ok") {
       this.imageCache.set(key, out);

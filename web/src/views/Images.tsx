@@ -274,13 +274,13 @@ function loadNote(l: Load): string {
     case "missing":
       return "电脑没有上传大图，只有预览";
     case "bad":
-      return "图片校验失败，没有显示";
+      return l.why ?? "图片校验失败，没有显示";
     case "preview-only":
       return "只有预览，原图在电脑上";
     case "name-only":
       return "图片没有同步";
     case "ok":
-      return l.unverifiedLegacy ? "旧图片的内容和来源未验证，仅供阅读" : "";
+      return "";
   }
   return "";
 }

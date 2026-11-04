@@ -93,6 +93,7 @@ extension Remote {
     }
 
     func loadEvents(_ sid: String) async {
+        if let error = sessions[sid]?.historyError { eventFeed(sid).set(SessionEvents(error: error)); return }
         if buffers[sid] != nil || sessions[sid] == nil { return }
         let b = Buffer()
         used(b)
@@ -129,6 +130,7 @@ extension Remote {
                 }
             }
         }
+        if b.error == retiredHistoryError { b.restoring = false; publishEvents(sid, b); return }
         if broken {
             // As before, a cached envelope that fails authentication is discarded
             // so the cache's insert-once policy cannot preserve it indefinitely.
@@ -284,23 +286,15 @@ extension Remote {
             }
             if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
             do {
-                let route = try PBHeader(serializedBytes: se.envelope.header)
-                let h: PBHeader
-                let plain: Data
-                if route.version == 1 {
-                    b.unverifiedLegacy = true
-                    (h, plain) = try Envelopes.open(key: key, envelope: se.envelope)
+                try rejectRetiredHistory(se.envelope)
+                let result: (DeviceSecurity.Header, Data)
+                if history {
+                    guard let value = historyResults[index] else { throw DeviceSecurity.Failure.storage }
+                    result = try value.get()
                 } else {
-                    let opened: (DeviceSecurity.Header, Data)
-                    if history {
-                        guard let result = historyResults[index] else { throw DeviceSecurity.Failure.storage }
-                        opened = try result.get()
-                    } else {
-                        opened = try await securitySession().openCurrent(se.envelope, sessionSeed: key)
-                    }
-                    h = projection(opened.0)
-                    plain = opened.1
+                    result = try await securitySession().openCurrent(se.envelope, sessionSeed: key)
                 }
+                let h = projection(result.0), plain = result.1
                 try Envelopes.expect(
                     h, try await historicalPlace(Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq),header:h,history:history))
                 guard let ev = try? PBEvent(serializedBytes: plain) else {
@@ -309,7 +303,7 @@ extension Remote {
                 if ev.seq != se.seq || ev.sessionID != sid { throw OpenError("事件的位置被改动") }
                 if buffers[sid] !== b { return opens }
                 if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
-                if route.version != 1 { b.verifiedSeqs.insert(se.seq) }
+                b.verifiedSeqs.insert(se.seq)
                 b.pending[se.seq] = ev
                 opened.append(se)
                 // What is held is the event as opened; its ciphertext may be packed.
@@ -330,13 +324,13 @@ extension Remote {
                     opened.append(se)
                 } catch {
                     report(error)
-                    b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                    b.error = error is UnsupportedHistoryError ? errorText(error) : "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
                     opens = false
                     break
                 }
             } catch {
                 report(error)
-                b.error = "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                b.error = error is UnsupportedHistoryError ? errorText(error) : "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
                 opens = false
                 break
             }
@@ -385,7 +379,6 @@ extension Remote {
         snapshot.loaded = b.loaded && !snapshot.historyPartial
         snapshot.live = liveSnapshots[sid]
         snapshot.liveError = liveErrors[sid] ?? (sessions[sid]?.checkpointStatus == "waiting" ? "等待所属电脑更新当前状态" : nil)
-        snapshot.unverifiedLegacy = b.unverifiedLegacy
         snapshot.verifiedEvents = b.verifiedEvents
         snapshot.unavailableCount = b.unavailableSeqs.count
         eventFeed(sid).set(snapshot)

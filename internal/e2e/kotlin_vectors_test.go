@@ -14,21 +14,9 @@ import (
 // kotlinVectors are made by the Android client's :core tests
 // (android/core, KotlinVectorsTest): the reverse of vectors.json.
 type kotlinVectors struct {
-	Root             string `json:"root"`
-	AccountPublicKey string `json:"account_public_key"`
-	Wrap             string `json:"wrap"`
-	Meta             string `json:"meta"`
-	Command          string `json:"command"`
-	Notify           string `json:"notify"`
-	DeviceID         string `json:"device_id"`
-	Envelope         struct {
-		Key        string `json:"key"`
-		Header     string `json:"header"`
-		Nonce      string `json:"nonce"`
-		Ciphertext string `json:"ciphertext"`
-		Plaintext  string `json:"plaintext"`
-		Seq        uint64 `json:"seq,string"`
-	} `json:"envelope"`
+	Root              string `json:"root"`
+	AccountPublicKey  string `json:"account_public_key"`
+	DeviceID          string `json:"device_id"`
 	RegisterSignature struct {
 		Message   string `json:"message"`
 		Signature string `json:"signature"`
@@ -57,14 +45,6 @@ type kotlinVectors struct {
 			Ciphertext string `json:"ciphertext"`
 		} `json:"payload"`
 	} `json:"pairing"`
-	// An envelope Kotlin sealed packed (Header.compression).
-	Packed struct {
-		Key        string `json:"key"`
-		Header     string `json:"header"`
-		Nonce      string `json:"nonce"`
-		Ciphertext string `json:"ciphertext"`
-		Plaintext  string `json:"plaintext"`
-	} `json:"packed"`
 }
 
 func unhex(t *testing.T, s string) []byte {
@@ -92,36 +72,11 @@ func TestKotlinVectors(t *testing.T) {
 	}
 	for name, pair := range map[string][2]string{
 		"account": {hex.EncodeToString(k.AccountPublicKey()), v.AccountPublicKey},
-		"wrap":    {hex.EncodeToString(k.Wrap), v.Wrap},
-		"meta":    {hex.EncodeToString(k.Meta), v.Meta},
-		"command": {hex.EncodeToString(k.Command), v.Command},
-		"notify":  {hex.EncodeToString(k.Notify), v.Notify},
 		"device":  {DeviceID(k.AccountPublicKey()), v.DeviceID},
 	} {
 		if pair[0] != pair[1] {
 			t.Errorf("%s: Go %s, Kotlin %s", name, pair[0], pair[1])
 		}
-	}
-
-	e := v.Envelope
-	env := &pb.Envelope{Header: unhex(t, e.Header), Nonce: unhex(t, e.Nonce), Ciphertext: unhex(t, e.Ciphertext)}
-	h, plain, err := Open(unhex(t, e.Key), env)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(plain) != e.Plaintext {
-		t.Errorf("plaintext %q", plain)
-	}
-	pk := v.Packed
-	ph, packed, err := Open(unhex(t, pk.Key), &pb.Envelope{Header: unhex(t, pk.Header), Nonce: unhex(t, pk.Nonce), Ciphertext: unhex(t, pk.Ciphertext)})
-	if err != nil || string(packed) != pk.Plaintext || ph.Compression != pb.Compression_COMPRESSION_DEFLATE || len(pk.Ciphertext)/2 >= len(pk.Plaintext) {
-		t.Errorf("packed envelope: %v, compression %v", err, ph.GetCompression())
-	}
-	if h.Seq != e.Seq || e.Seq != 18446744073709551600 {
-		t.Errorf("seq %d, want %d", h.Seq, e.Seq)
-	}
-	if err := Expect(h, &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: "machine-k", SessionId: "session-k", Seq: e.Seq, RequestId: "req-k"}); err != nil {
-		t.Error(err)
 	}
 
 	reg := unhex(t, v.RegisterSignature.Message)

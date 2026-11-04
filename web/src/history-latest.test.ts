@@ -3,7 +3,6 @@ import { create } from "@bufbuild/protobuf";
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { LiveSnapshotSchema } from "./gen/remoteagent/v1/remote_pb";
 import { derive } from "./model";
-import { importSessionKey } from "./crypto";
 import { Remote } from "./remote";
 import { securityFixture, storedEvent, storedSecurity } from "./test/stored-security-fixture";
 
@@ -27,7 +26,7 @@ beforeAll(async () => {
 class HistoryRemote extends Remote {
   constructor(pageSize?: number) {
     super({ server: "https://relay.example.com", deviceId: fixture.memberID,
-      devicePrivate: fixture.ed }, undefined, undefined, undefined, pageSize);
+      devicePrivate: fixture.ed }, undefined, undefined, pageSize);
   }
 }
 let remote: HistoryRemote | undefined;
@@ -36,8 +35,7 @@ async function probe(n: number, pageSize: number | null = PAGE) {
   await storedSecurity();
   const r = remote = new HistoryRemote(pageSize ?? undefined);
   const machineId = fixture.states.at(-1)!.core.members.find(m => m.kind === 1)!.id;
-  r.sessions.set(SID, { id: SID, machineId, key: await importSessionKey(seed),
-    metaRev: 0n, lastSeq: BigInt(n), updatedMs: 0n, endedMs: 0n });
+  r.sessions.set(SID, { id: SID, machineId, metaRev: 0n, lastSeq: BigInt(n), updatedMs: 0n, endedMs: 0n });
   (r as any).sessionSeeds.set(SID, seed);
   return r;
 }

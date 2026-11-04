@@ -11,7 +11,6 @@ import { type Header } from "../gen/remoteagent/v1/envelope_pb";
 import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { SessionSchema } from "../gen/remoteagent/v1/local_pb";
 import { SessionStatus } from "../gen/remoteagent/v1/event_pb";
-import { importSessionKey } from "../crypto";
 
 type B = Uint8Array<ArrayBuffer>;
 type Fields = Omit<Partial<Header>, "$typeName">;
@@ -24,7 +23,7 @@ export class SyntheticRemote extends Remote {
     readonly member: Awaited<ReturnType<typeof webMember>>,
     seed: B,
   ) {
-    super(member.account, world.legacyKeys, undefined, member.storage);
+    super(member.account, undefined, member.storage);
     this.seed = seed;
     // This synthetic member uses in-memory security storage, with no durable operations.
     this.authority.pending = async () => undefined;
@@ -66,9 +65,6 @@ export class SyntheticRemote extends Remote {
   }
   get machine() {
     return this.world.machine;
-  }
-  get legacy() {
-    return this.world.legacyKeys;
   }
   async seal<D extends DescMessage>(
     header: Fields,
@@ -132,11 +128,9 @@ export class SyntheticRemote extends Remote {
         ],
       }),
     };
-    const key = await importSessionKey(seed);
     r.sessions.set("s", {
       id: "s",
       machineId: r.machine,
-      key,
       metaRev: 0n,
       lastSeq: 0n,
       updatedMs: 0n,

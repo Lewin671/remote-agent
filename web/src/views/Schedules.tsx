@@ -549,7 +549,7 @@ function ScheduleResult({ remote, run, unread, now, open }: { remote: Remote; ru
     return () => { cancelled = true; release?.(); };
   }, [remote, sid]);
   const history = sid ? remote.history(sid) : undefined;
-  const full = sid && history?.loaded && !history.error && !history.broken && !history.backfilling && !remote.hasUnverifiedHistory(sid) ? finalRunText(remote.events(sid), run.id) : "";
+  const full = sid && history?.loaded && !history.error && !history.broken && !history.backfilling ? finalRunText(remote.events(sid), run.id) : "";
   const text = full || run.final_summary || (run.reason ? reasonText(run.reason) : "");
   const title = runTitle(run);
   useEffect(() => {

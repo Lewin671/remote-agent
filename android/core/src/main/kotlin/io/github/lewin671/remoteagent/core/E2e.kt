@@ -23,7 +23,6 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 import java.util.zip.DataFormatException
-import java.util.zip.Deflater
 import java.util.zip.Inflater
 import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
@@ -84,26 +83,12 @@ fun verifyEd25519(publicKey: ByteArray, message: ByteArray, signature: ByteArray
 /** The keys derived from an account's root key, one per purpose. */
 class Keys private constructor(
     val account: SigningKey,
-    val wrap: ByteArray,
-    val meta: ByteArray,
-    val command: ByteArray,
-    val notify: ByteArray,
-    /** Seals account preference objects (ProjectPrefs). */
-    val prefs: ByteArray,
-    /** Seals client devices' metadata (DeviceMeta). */
-    val deviceMeta: ByteArray,
 ) {
     companion object {
         fun derive(root: ByteArray): Keys {
             require(root.size == KEY_SIZE) { "root key must be $KEY_SIZE bytes" }
             return Keys(
                 account = SigningKey(deriveKey(root, "account-sign")),
-                wrap = deriveKey(root, "wrap"),
-                meta = deriveKey(root, "machine-meta"),
-                command = deriveKey(root, "command"),
-                notify = deriveKey(root, "notify"),
-                prefs = deriveKey(root, "account-prefs"),
-                deviceMeta = deriveKey(root, "device-meta"),
             )
         }
 
@@ -175,42 +160,11 @@ data class Place(
     val requestId: String = "",
 )
 
-/**
- * Packing limits, as in internal/e2e. A payload below [PACK_MIN] is sent as
- * it is: packing would save nothing worth the work. One that unpacks to
- * more than [MAX_UNPACKED] is refused, so that a small envelope cannot fill
- * memory.
- */
-const val PACK_MIN = 256
+/** Maximum decompressed payload size, including current device-security history. */
 const val MAX_UNPACKED = 64 shl 20
 
 /**
- * Whether payloads of a kind are packed before sealing. Session keys are
- * random, images are already compressed, and pairing payloads are read
- * before the devices share a protocol check.
- */
-private fun packs(kind: PayloadKind): Boolean = when (kind) {
-    PayloadKind.PAYLOAD_KIND_SESSION_KEY, PayloadKind.PAYLOAD_KIND_IMAGE, PayloadKind.PAYLOAD_KIND_PAIRING -> false
-    else -> true
-}
-
-/** [plaintext] as raw DEFLATE (RFC 1951, no zlib or gzip wrapper), or null when that is not smaller. */
-internal fun pack(plaintext: ByteArray): ByteArray? {
-    val d = Deflater(Deflater.DEFAULT_COMPRESSION, true)
-    try {
-        d.setInput(plaintext)
-        d.finish()
-        // Only a result smaller than the input is of use: a buffer of that size is enough to tell.
-        val out = ByteArray(plaintext.size)
-        val n = d.deflate(out)
-        return if (d.finished() && n < plaintext.size) out.copyOf(n) else null
-    } finally {
-        d.end()
-    }
-}
-
-/**
- * Inflates what [pack] produced. It stops at [max] bytes: a payload that
+ * Inflates raw DEFLATE. It stops at [max] bytes: a payload that
  * would unpack to more is refused before the rest of it is produced.
  */
 internal fun unpack(packed: ByteArray, max: Int = MAX_UNPACKED): ByteArray {
@@ -240,19 +194,18 @@ object Envelopes {
 
     /**
      * Seals plaintext; the header is serialized once and authenticated as
-     * sent. A payload that packs smaller is sealed packed, which the header
-     * says (Header.compression); the caller's value of it is not used.
+     * sent. Pairing payloads are sent without compression.
      */
     fun seal(key: ByteArray, header: Header, plaintext: ByteArray, nonce: ByteArray = randomBytes(12)): Envelope {
-        val packed = if (packs(header.kind) && plaintext.size >= PACK_MIN) pack(plaintext) else null
+        if (header.kind != PayloadKind.PAYLOAD_KIND_PAIRING) throw UnsupportedHistoryException()
         val h = header.toBuilder()
             .setVersion(if (header.version == 0) VERSION else header.version)
-            .setCompression(if (packed != null) Compression.COMPRESSION_DEFLATE else Compression.COMPRESSION_NONE)
+            .setCompression(Compression.COMPRESSION_NONE)
             .build().toByteArray()
         val c = Cipher.getInstance("AES/GCM/NoPadding")
         c.init(Cipher.ENCRYPT_MODE, SecretKeySpec(key, "AES"), GCMParameterSpec(128, nonce))
         c.updateAAD(h)
-        val ct = c.doFinal(packed ?: plaintext)
+        val ct = c.doFinal(plaintext)
         return Envelope.newBuilder()
             .setHeader(ByteString.copyFrom(h))
             .setNonce(ByteString.copyFrom(nonce))
@@ -280,6 +233,7 @@ object Envelopes {
             throw OpenException("malformed header")
         }
         if (h.version != VERSION) throw OpenException("unsupported envelope version")
+        if (h.kind != PayloadKind.PAYLOAD_KIND_PAIRING) throw UnsupportedHistoryException()
         return h to when (h.compression) {
             Compression.COMPRESSION_NONE -> pt
             Compression.COMPRESSION_DEFLATE -> unpack(pt)
@@ -312,26 +266,10 @@ object Envelopes {
     }
 }
 
-private const val ENVELOPE_SIGNATURE_CONTEXT = "remote-agent/v1/envelope-signature\u0000"
-
-/**
- * What a device signs for an envelope (Envelope.signature): a context,
- * then the header, nonce and ciphertext as transmitted, each with its
- * length as a big-endian uint32. Same as SignedEnvelopeBytes in Go.
- */
-fun signedEnvelopeBytes(env: Envelope): ByteArray {
-    val out = java.io.ByteArrayOutputStream()
-    out.write(ENVELOPE_SIGNATURE_CONTEXT.toByteArray())
-    for (part in listOf(env.header, env.nonce, env.ciphertext)) {
-        val n = part.size()
-        out.write(byteArrayOf((n ushr 24).toByte(), (n ushr 16).toByte(), (n ushr 8).toByte(), n.toByte()))
-        part.writeTo(out)
-    }
-    return out.toByteArray()
-}
-
-/** The envelope with the device's signature, so the daemon can tell which device sent it. */
-fun signEnvelope(device: SigningKey, env: Envelope): Envelope =
-    env.toBuilder().setSignature(ByteString.copyFrom(device.sign(signedEnvelopeBytes(env)))).build()
-
 fun newRequestId(): String = randomBytes(16).hex()
+
+const val RETIRED_HISTORY_ERROR = "这条历史是旧版加密格式，已不再支持查看"
+class UnsupportedHistoryException : Exception(RETIRED_HISTORY_ERROR)
+internal fun rejectRetiredHistory(env: Envelope) {
+    if (Header.parseFrom(env.header).version == 1) throw UnsupportedHistoryException()
+}

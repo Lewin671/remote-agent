@@ -196,14 +196,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         snapshot.loaded = true
         await model.show(snapshot)
         #expect(model.loaded && model.derived.plan?.text == markdown)
-        // Unverified legacy history cannot provide the plan body.
-        snapshot.unverifiedLegacy = true
-        snapshot.verifiedEvents = PagedList(Array(list.prefix(1)))
-        await model.show(snapshot)
-        #expect(model.derived.plan?.text == screen)
-        snapshot.verifiedEvents = PagedList(list)
-        await model.show(snapshot)
-        #expect(model.derived.plan?.text == markdown)
+
     }
 
     /// 3 000 events of earlier history, the last of them starting a tool call that completes as the

@@ -113,5 +113,4 @@ data class PrefsObject(val revision: Long, val prefs: ProjectPrefs) {
 
 class PrefsConflictException : Exception("项目偏好一直在被其他客户端修改，没能保存")
 
-/** Seals and opens the prefs object; the header binds its ID and revision. */
 fun newerPrefs(have: PrefsObject?, got: PrefsObject): PrefsObject = if (have == null || got.revision >= have.revision) got else have

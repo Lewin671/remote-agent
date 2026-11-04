@@ -4,14 +4,12 @@ import { inflateBounded } from "./inflate";
 // serialized header is the additional data, and Ed25519 signatures.
 // internal/e2e/testdata/vectors.json keeps the two implementations in step.
 
-import { deflateSync } from "fflate";
 import { create, fromBinary, toBinary, type DescMessage, type MessageShape } from "@bufbuild/protobuf";
 import { Compression, EnvelopeSchema, HeaderSchema, PayloadKind, type Envelope, type Header } from "./gen/remoteagent/v1/envelope_pb";
 
 export const VERSION = 1;
 export const REGISTER_CONTEXT = "remote-agent/v1/register\0";
 export const LOGIN_CONTEXT = "remote-agent/v1/login\0";
-export const ENVELOPE_SIGNATURE_CONTEXT = "remote-agent/v1/envelope-signature\0";
 
 const enc = new TextEncoder();
 
@@ -92,35 +90,6 @@ async function deriveBits(root: CryptoKey, info: string): Promise<Uint8Array<Arr
   return new Uint8Array(bits);
 }
 
-function aesKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
-
-/** Keys derived from the root key, one per purpose. */
-export interface Keys {
-  wrap: CryptoKey;
-  meta: CryptoKey;
-  command: CryptoKey;
-  // The account's project list preferences, and client device metadata.
-  prefs: CryptoKey;
-  deviceMeta: CryptoKey;
-}
-
-export async function deriveKeys(root: CryptoKey): Promise<Keys> {
-  return {
-    wrap: await aesKey(await deriveBits(root, "wrap")),
-    meta: await aesKey(await deriveBits(root, "machine-meta")),
-    command: await aesKey(await deriveBits(root, "command")),
-    prefs: await aesKey(await deriveBits(root, "account-prefs")),
-    deviceMeta: await aesKey(await deriveBits(root, "device-meta")),
-  };
-}
-
-/** Raw derived key bytes, for the test vectors only. */
-export async function deriveRaw(root: CryptoKey, info: string): Promise<Uint8Array> {
-  return deriveBits(root, info);
-}
-
 /** The account key pair, which signs device registrations. */
 export async function accountKey(root: CryptoKey): Promise<{ publicKey: Uint8Array; sign(msg: Uint8Array): Uint8Array }> {
   const seed = await deriveBits(root, "account-sign");
@@ -151,26 +120,7 @@ export async function signLogin(device: CryptoKey, challenge: Uint8Array): Promi
 
 export async function importSessionKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   if (raw.length !== 32) throw new Error("bad session key");
-  return aesKey(raw);
-}
-
-/** What a device signs of an envelope: its bytes as transmitted, each
- * part length-prefixed, after a context (Envelope.signature). */
-export function envelopeSigned(env: Envelope): Uint8Array<ArrayBuffer> {
-  const len = (b: Uint8Array) => {
-    const out = new Uint8Array(4);
-    new DataView(out.buffer).setUint32(0, b.length);
-    return out;
-  };
-  return concat(utf8(ENVELOPE_SIGNATURE_CONTEXT), len(env.header), env.header, len(env.nonce), env.nonce, len(env.ciphertext), env.ciphertext);
-}
-
-/** Signs a command envelope with this device's key, so that the daemon
- * can tell which device sent it even though the server is not trusted.
- * The header's sender must be this device's ID. */
-export async function signEnvelope(device: CryptoKey, env: Envelope): Promise<Envelope> {
-  const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", device, envelopeSigned(env)));
-  return create(EnvelopeSchema, { ...env, signature: sig });
+  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
 }
 
 export class OpenError extends Error {}
@@ -180,25 +130,13 @@ export class OpenError extends Error {}
 // of what this page needs, and a page that cannot unpack cannot read
 // anything a daemon sends.
 //
-// Packing limits, as in internal/e2e: a payload under PACK_MIN goes as it
-// is, and one that unpacks to more than MAX_UNPACKED is refused, so that
-// a small envelope cannot fill memory.
-export const PACK_MIN = 256;
+// Bound accepted compressed pairing payloads; current history uses device security.
 export const MAX_UNPACKED = 64 << 20;
 
-/** Session keys are random, images are compressed already, and pairing
- * payloads are read before the devices have compared protocol versions. */
-const packs = (kind: PayloadKind | undefined) => kind !== PayloadKind.SESSION_KEY && kind !== PayloadKind.IMAGE && kind !== PayloadKind.PAIRING;
-
-/** Seals plaintext; the header is serialized once and authenticated as
- * sent. A payload that deflates smaller is sealed packed, which the
- * header says. */
+/** Seals a pairing payload, authenticating the serialized header as sent. */
 export async function seal(key: CryptoKey, header: Omit<Partial<Header>, "$typeName">, plaintext: Uint8Array): Promise<Envelope> {
-  let compression = Compression.NONE;
-  if (packs(header.kind) && plaintext.length >= PACK_MIN) {
-    const packed = deflateSync(plaintext);
-    if (packed.length < plaintext.length) [plaintext, compression] = [packed, Compression.DEFLATE];
-  }
+  if (header.kind !== PayloadKind.PAIRING) throw new UnsupportedHistoryError();
+  const compression = Compression.NONE;
   const h = toBinary(HeaderSchema, create(HeaderSchema, { version: VERSION, ...header, compression }));
   const nonce = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv: nonce, additionalData: h }, key, plaintext as Uint8Array<ArrayBuffer>);
@@ -230,6 +168,7 @@ export async function open(key: CryptoKey, env: Envelope | undefined): Promise<{
   }
   const header = fromBinary(HeaderSchema, env.header);
   if (header.version !== VERSION) throw new OpenError("unsupported envelope version");
+  if (header.kind !== PayloadKind.PAIRING) throw new UnsupportedHistoryError();
   if (header.compression === Compression.NONE) return { header, plaintext: new Uint8Array(pt) };
   if (header.compression !== Compression.DEFLATE) throw new OpenError("unknown compression");
   try {
@@ -283,3 +222,12 @@ export function newRequestID(): string {
 }
 
 export { PayloadKind };
+
+/** The old history envelope is recognized only to report its retirement. */
+export const RETIRED_HISTORY_ERROR = "这条历史是旧版加密格式，已不再支持查看";
+export class UnsupportedHistoryError extends Error {
+  constructor() { super(RETIRED_HISTORY_ERROR); }
+}
+export function rejectRetiredHistory(env: Envelope | undefined): void {
+  if (env && fromBinary(HeaderSchema, env.header).version === 1) throw new UnsupportedHistoryError();
+}

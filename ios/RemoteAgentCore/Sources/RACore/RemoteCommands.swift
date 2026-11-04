@@ -12,8 +12,6 @@ public let unknownOutcomePrefix = "不确定电脑有没有执行："
 /// A display copy fetched for viewing: its pixels, or why there are none.
 public enum ImageResult: Equatable, Sendable {
     case loaded(PBImagePayload)
-    /// Readable old-root data without authenticated provenance.
-    case legacy(PBImagePayload)
     /// Kept past its retention: only the preview in the event is left.
     case expired
     /// The server never had it.
@@ -289,15 +287,14 @@ extension Remote {
                 envelope: env,
                 want: Place(.image, machineId: s.machineId, sessionId: sid, requestId: imageId),
                 as: PBImagePayload.self, history: true)
+        } catch is UnsupportedHistoryError {
+            return .corrupt(why: errorText(UnsupportedHistoryError()))
         } catch {
             return .corrupt(why: "图片的内容或来源无法核实")
         }
         if detectFormat(payload.data) != payload.format { return .corrupt(why: "图片内容和格式对不上") }
         if let env, let bytes: Data = try? env.serializedData() {
             await cache?.putImage(key: cacheKey, envelope: bytes)
-        }
-        if let env, try PBHeader(serializedBytes: env.header).version == 1 {
-            return .legacy(payload)
         }
         return .loaded(payload)
     }

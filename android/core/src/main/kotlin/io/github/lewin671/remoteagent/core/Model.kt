@@ -1677,8 +1677,8 @@ fun currentActions(
     )
 }
 
-/** Legacy bodies remain transcript data; only verified bodies establish state. */
+/** Verified history supplies state; fresh snapshots supply current actions. */
 fun currentState(snapshot: SessionEvents, agent: Agent = DEFAULT_AGENT): Derived =
-    (if (snapshot.unverifiedLegacy) snapshot.verifiedEvents else snapshot.stateEvents).let {
+    snapshot.stateEvents.let {
         currentActions(derive(it, agent), snapshot.live, it)
     }

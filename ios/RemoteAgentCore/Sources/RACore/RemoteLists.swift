@@ -335,28 +335,18 @@ extension Remote {
         let sid = rs.sessionID
         let removal = removedPushes[rs.machineID] ?? 0
         do {
+            try rejectRetiredHistory(rs.key)
             var view: SessionView
-            if let held = sessions[sid], held.machineId == rs.machineID {
+            if let held = sessions[sid], held.machineId == rs.machineID, held.historyError == nil {
                 view = held
             } else {
-                if let held = sessions[sid] {
+                if let held = sessions[sid], held.machineId != rs.machineID {
                     let (_, info) = try await openSecureMessage(envelope:rs.meta,want:Place(.sessionMeta,machineId:rs.machineID,sessionId:sid),as:PBSession.self)
                     let origins = try await securitySession().replacementOrigins(target:rs.machineID,proofs:info.machineReplacements)
                     guard origins.contains(held.machineId) else {throw OpenError("会话记录的机器被改动")}
                 }
-                let route = try PBHeader(serializedBytes: rs.key.header)
-                let h: PBHeader
-                let raw: Data
-                if route.version == 1 {
-                    guard let keys else {
-                        throw OpenError("这份旧历史需要账户根密钥，本机没有")
-                    }
-                    (h, raw) = try Envelopes.open(key: keys.wrap, envelope: rs.key)
-                } else {
-                    let opened = try await securitySession().openHistory(rs.key)
-                    h = projection(opened.0)
-                    raw = opened.1
-                }
+                let opened = try await securitySession().openHistory(rs.key)
+                let h = projection(opened.0), raw = opened.1
                 try Envelopes.expect(h, Place(.sessionKey, machineId: rs.machineID, sessionId: sid))
                 if raw.count != keySize { throw OpenError("bad session key") }
                 guard (removedPushes[rs.machineID] ?? 0) == removal,
@@ -406,7 +396,13 @@ extension Remote {
                 await cache?.keepOwner(rs)
             }
         } catch {
-            report(error)
+            if error is UnsupportedHistoryError {
+                var view = SessionView(id: sid, machineId: rs.machineID, lastSeq: rs.lastSeq,
+                    updatedMs: rs.updatedMs, listedEndedMs: rs.endedMs)
+                view.historyError = errorText(error)
+                sessions[sid] = view
+                eventFeed(sid).set(SessionEvents(error: errorText(error)))
+            }
             report(error)
         }
         if announce { publish() }

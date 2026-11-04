@@ -1,4 +1,5 @@
 import Foundation
+import zlib
 import RAProto
 import Testing
 
@@ -20,9 +21,6 @@ import Testing
 
     @Test func derivesTheSameKeys() throws {
         let k = try Keys.derive(root: v.bytes("root"))
-        #expect(k.wrap.hex == v.s("wrap"))
-        #expect(k.meta.hex == v.s("meta"))
-        #expect(k.command.hex == v.s("command"))
         #expect(k.account.publicKey.hex == v.s("account_public_key"))
         #expect(deviceId(publicKey: v.bytes("account_public_key")) == v.s("device_id"))
     }
@@ -37,66 +35,6 @@ import Testing
         #expect(ours.count == 64)
         #expect(verifyEd25519(publicKey: k.account.publicKey, message: msg, signature: ours))
         #expect(!verifyEd25519(publicKey: k.account.publicKey, message: msg + Data([0]), signature: ours))
-    }
-
-    @Test func opensAGoEnvelope() throws {
-        let e = v.o("envelope")
-        let key = e.bytes("key")
-        let env = envelope(e)
-        let (h, pt) = try Envelopes.open(key: key, envelope: env)
-        #expect(String(decoding: pt, as: UTF8.self) == e.s("plaintext"))
-        try Envelopes.expect(h, Place(.event, machineId: "machine", sessionId: "session", seq: 3))
-        #expect(throws: OpenError.self) { try Envelopes.expect(h, Place(.event, seq: 4)) }
-        #expect(throws: OpenError.self) { try Envelopes.expect(h, Place(.sessionMeta, seq: 3)) }
-        var moved = env
-        moved.header[moved.header.count - 1] ^= 1
-        #expect(throws: OpenError.self) { try Envelopes.open(key: key, envelope: moved) }
-        var cut = env
-        cut.ciphertext = cut.ciphertext.prefix(15)
-        #expect(throws: OpenError.self) { try Envelopes.open(key: key, envelope: cut) }
-        #expect(throws: OpenError.self) { try Envelopes.open(key: key, envelope: nil) }
-    }
-
-    @Test func opensAPackedGoEnvelope() throws {
-        // Sealed packed by Go (Header.compression): its plaintext went through DEFLATE first.
-        let e = v.o("packed")
-        let env = envelope(e)
-        let (h, pt) = try Envelopes.open(key: e.bytes("key"), envelope: env)
-        #expect(String(decoding: pt, as: UTF8.self) == e.s("plaintext"))
-        #expect(h.compression == .deflate)
-        #expect(env.ciphertext.count < pt.count)
-        try Envelopes.expect(h, Place(.event, machineId: "machine", sessionId: "session", seq: 4))
-    }
-
-    @Test func sealsWhatItOpens() throws {
-        let key = Data(repeating: 7, count: 32)
-        var h = PBHeader()
-        h.kind = .event
-        h.machineID = "m"
-        h.sessionID = "s"
-        // The largest uint64 but 15: seq must not pass through a signed number.
-        h.seq = UInt64.max - 15
-        let short = Data("短 ✓".utf8)
-        let env = try Envelopes.seal(key: key, header: h, plaintext: short)
-        let (oh, opt) = try Envelopes.open(key: key, envelope: env)
-        #expect(opt == short)
-        #expect(oh.seq == UInt64.max - 15)
-        #expect(oh.compression == .none)
-        #expect(oh.version == envelopeVersion)
-
-        let long = Data(String(repeating: "压缩载荷 ✓ ", count: 60).utf8)
-        let packed = try Envelopes.seal(key: key, header: h, plaintext: long)
-        let (ph, ppt) = try Envelopes.open(key: key, envelope: packed)
-        #expect(ppt == long)
-        #expect(ph.compression == .deflate)
-        #expect(packed.ciphertext.count < long.count)
-
-        // Kinds that are never packed stay as they are, however well they would pack.
-        h.kind = .image
-        let image = try Envelopes.seal(key: key, header: h, plaintext: long)
-        #expect(try Envelopes.open(key: key, envelope: image).0.compression == .none)
-
-        #expect(throws: OpenError.self) { try Envelopes.open(key: Data(repeating: 8, count: 32), envelope: env) }
     }
 
     @Test func refusesAPayloadThatUnpacksTooLarge() throws {
@@ -210,29 +148,6 @@ import Testing
     @Test func agreesWithKotlin() throws {
         let k = try Keys.derive(root: v.bytes("root"))
         #expect(k.account.publicKey.hex == v.s("account_public_key"))
-        #expect(k.wrap.hex == v.s("wrap"))
-        #expect(k.meta.hex == v.s("meta"))
-        #expect(k.command.hex == v.s("command"))
-        #expect(k.notify.hex == v.s("notify"))
-
-        for name in ["envelope", "packed"] {
-            let e = v.o(name)
-            var env = PBEnvelope()
-            env.header = e.bytes("header")
-            env.nonce = e.bytes("nonce")
-            env.ciphertext = e.bytes("ciphertext")
-            let (h, pt) = try Envelopes.open(key: e.bytes("key"), envelope: env)
-            #expect(String(decoding: pt, as: UTF8.self) == e.s("plaintext"))
-            if let seq = e["seq"] as? String { #expect(String(h.seq) == seq) }
-            // Sealing the same content under the same nonce gives Kotlin's bytes: same header encoding, same tag layout.
-            if name == "envelope" {
-                var again = h
-                again.compression = .none
-                let ours = try Envelopes.seal(key: e.bytes("key"), header: again, plaintext: pt, nonce: e.bytes("nonce"))
-                #expect(ours.header.hex == e.s("header"))
-                #expect(ours.ciphertext.hex == e.s("ciphertext"))
-            }
-        }
 
         let reg = v.o("register_signature")
         #expect(verifyEd25519(
@@ -247,4 +162,29 @@ import Testing
             publicKey: device.publicKey, message: loginMessage(login.bytes("challenge")),
             signature: login.bytes("signature")))
     }
+}
+
+// Builds compressed fixtures for the current bounded decoder.
+/// `plaintext` as raw DEFLATE (RFC 1951, no zlib or gzip wrapper), or nil when that is not smaller.
+func pack(_ plaintext: Data) -> Data? {
+    guard !plaintext.isEmpty else { return nil }
+    var z = z_stream()
+    // Negative window bits: no zlib header or checksum.
+    guard deflateInit2_(&z, Z_DEFAULT_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY,
+                        ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { return nil }
+    defer { deflateEnd(&z) }
+    // Only a result smaller than the input is of use: a buffer of that size is enough to tell.
+    var out = [UInt8](repeating: 0, count: plaintext.count)
+    let (status, produced): (Int32, Int) = plaintext.withUnsafeBytes { src in
+        out.withUnsafeMutableBytes { dst in
+            z.next_in = UnsafeMutablePointer(mutating: src.bindMemory(to: Bytef.self).baseAddress)
+            z.avail_in = uInt(src.count)
+            z.next_out = dst.bindMemory(to: Bytef.self).baseAddress
+            z.avail_out = uInt(dst.count)
+            let s = deflate(&z, Z_FINISH)
+            return (s, dst.count - Int(z.avail_out))
+        }
+    }
+    guard status == Z_STREAM_END, produced < plaintext.count else { return nil }
+    return Data(out[0..<produced])
 }
