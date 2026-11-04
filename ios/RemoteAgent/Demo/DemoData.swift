@@ -52,16 +52,16 @@ enum Demo {
         }
     }
 
-    /// What each computer lists for each CLI: Codex's models and Claude
-    /// Code's, with efforts and context windows, one of them with a long
+    /// What each computer lists for each CLI: Codex's models, Claude
+    /// Code's, and Antigravity's, with efforts and context windows, one of them with a long
     /// slug and no display name. For every computer of every set.
     static let models: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
-        func model(_ slug: String, _ name: String, efforts: [String] = [], window: Int64 = 0, autoUnavailable: Bool = false) -> PBModelInfo {
+        func model(_ slug: String, _ name: String, efforts: [String] = [], defaultEffort: String = "", window: Int64 = 0, autoUnavailable: Bool = false) -> PBModelInfo {
             .with {
                 $0.slug = slug
                 $0.displayName = name
                 $0.efforts = efforts
-                $0.defaultEffort = efforts.isEmpty ? "" : "medium"
+                $0.defaultEffort = defaultEffort.isEmpty ? (efforts.isEmpty ? "" : "medium") : defaultEffort
                 $0.contextWindow = window
                 $0.autoUnavailable = autoUnavailable
             }
@@ -88,9 +88,20 @@ enum Demo {
                 model("claude-haiku-4-5-20251001", "Haiku 4.5", window: 200_000, autoUnavailable: true),
             ]
         }
+        let agy = PBListModelsResponse.with {
+            $0.defaultModel = "gemini-3.1-pro"
+            $0.models = [
+                model("gemini-3.1-pro", "Gemini 3.1 Pro", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
+                model("gemini-3-flash", "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
+                model("claude-sonnet-4-6", "Claude Sonnet 4.6", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
+                model("claude-opus-4-6-thinking", "Claude Opus 4.6 (Thinking)", efforts: ["low", "medium", "high"], defaultEffort: "high", window: 1_048_000, autoUnavailable: true),
+                model("gpt-oss-120b", "GPT-OSS 120B", efforts: ["medium"], defaultEffort: "medium", window: 1_048_000, autoUnavailable: true),
+            ]
+        }
         let machines = ["mac", "vps", "imac", "studio", "ci", "nas"]
         return machines.map { (machineId: $0, agent: PBAgent.codex, models: codex) }
             + machines.map { (machineId: $0, agent: PBAgent.claude, models: claude) }
+            + machines.map { (machineId: $0, agent: PBAgent.antigravity, models: agy) }
     }()
 
     /// A made-up home folder for 新项目 · 选目录: what each folder holds, by path.
@@ -134,7 +145,7 @@ enum Demo {
     }
 
     private static func machine(
-        _ id: String, _ name: String, now: Int64, online: Bool = true, claude: Bool = false, quotas: [PBAgentQuota] = []
+        _ id: String, _ name: String, now: Int64, online: Bool = true, agents: [PBAgent] = [.codex], quotas: [PBAgentQuota] = []
     ) -> MachineView {
         MachineView(
             id: id, online: online, lastSeenMs: online ? now : now - 2 * 3_600_000,
@@ -144,7 +155,7 @@ enum Demo {
                 meta.os = "darwin"
                 meta.protocolVersion = protocolVersion
                 meta.capabilities = .with { $0.approvalAlways = true }
-                meta.agents = (claude ? [PBAgent.codex, .claude] : [.codex]).map { agent in
+                meta.agents = agents.map { agent in
                     .with {
                         $0.agent = agent
                         $0.defaultMode = .ask
@@ -160,9 +171,13 @@ enum Demo {
         _ id: String, _ machine: String, _ cwd: String, _ title: String, now: Int64, status: PBSessionStatus = .idle,
         agent: PBAgent = .codex, approvals: Int32 = 0, questions: Int32 = 0, plan: Bool = false, preview: String = "",
         updated: Int64? = nil, created: Int64? = nil, mode: PBApprovalMode = .ask, detail: String = "", context: Int64 = 0,
-        queued: Int32 = 0
+        queued: Int32 = 0, model: String? = nil, effort: String? = nil, contextWindow: Int64? = nil,
+        modeLocked: Bool = false, fullAccessUnavailable: Bool = false
     ) -> SessionView {
         let updated = updated ?? now
+        let defaultModel = agent == .claude ? "claude-sonnet-5-5" : (agent == .antigravity ? "gemini-3.1-pro" : "gpt-6-astra")
+        let defaultEffort = (agent == .claude || agent == .antigravity) ? "high" : "medium"
+        let defaultWindow: Int64 = context > 0 ? (agent == .antigravity ? 1_048_000 : 760_000) : 0
         let info = PBSession.with {
             $0.id = id
             $0.cwd = cwd
@@ -175,11 +190,13 @@ enum Demo {
             $0.preview = preview
             $0.createdAt = ts(created ?? now - 3_600_000)
             $0.mode = mode
+            $0.modeLocked = modeLocked
+            $0.fullAccessUnavailable = fullAccessUnavailable
             $0.statusDetail = detail
-            $0.model = agent == .claude ? "claude-sonnet-5-5" : "gpt-6-astra"
-            $0.effort = agent == .claude ? "high" : "medium"
+            $0.model = model ?? defaultModel
+            $0.effort = effort ?? defaultEffort
             $0.contextTokens = context
-            $0.contextWindow = context > 0 ? 760_000 : 0
+            $0.contextWindow = contextWindow ?? defaultWindow
             $0.queuedInputs = queued
             if approvals > 0 || questions > 0 || plan || status == .blocked { $0.attentionSince = ts(updated) }
             if status == .exited { $0.endedAt = ts(updated) }
@@ -293,7 +310,7 @@ enum Demo {
     // MARK: Everyday
 
     private static func quotaMac(_ now: Int64) -> MachineView {
-        machine("mac", "MacBook", now: now, claude: true, quotas: [
+        machine("mac", "MacBook", now: now, agents: [.codex, .claude, .antigravity], quotas: [
             .with {
                 $0.agent = .codex
                 $0.state = .ok
@@ -327,6 +344,44 @@ enum Demo {
                     .with { $0.name = "seven_day" },
                 ]
             },
+            .with {
+                $0.agent = .antigravity
+                $0.state = .ok
+                $0.plan = "Google AI Pro"
+                $0.observedMs = now - 60_000
+                $0.windows = [
+                    .with {
+                        $0.name = "gemini-5h"
+                        $0.windowMinutes = 300
+                        $0.usedPercent = 18
+                        $0.resetsAtMs = now + 222 * 60_000
+                    },
+                    .with {
+                        $0.name = "gemini-weekly"
+                        $0.windowMinutes = 10080
+                        $0.usedPercent = 12
+                        $0.resetsAtMs = now + 5 * 86_400_000
+                    },
+                    .with {
+                        $0.name = "gemini-argon-wtu-weekly"
+                        $0.windowMinutes = 10080
+                        $0.usedPercent = 35
+                        $0.resetsAtMs = now + 4 * 86_400_000
+                    },
+                    .with {
+                        $0.name = "3p-5h"
+                        $0.windowMinutes = 300
+                        $0.usedPercent = 40
+                        $0.resetsAtMs = now + 135 * 60_000
+                    },
+                    .with {
+                        $0.name = "3p-weekly"
+                        $0.windowMinutes = 10080
+                        $0.usedPercent = 26
+                        $0.resetsAtMs = now + 6 * 86_400_000
+                    },
+                ]
+            },
         ])
     }
 
@@ -336,6 +391,8 @@ enum Demo {
         s.sessions = keyed([
             session("run", "mac", foo, "修复登录超时", now: now, status: .running, preview: "正在执行 go test ./auth/...", updated: now - 20_000, created: now - 60_000, context: 87_000),
             session("doc", "mac", foo, "补充接口文档", now: now, agent: .claude, preview: "已补充 12 个接口的说明，要生成 OpenAPI 吗？", updated: at(8, 12, now: now), created: at(8, 12, now: now)),
+            session("s-agy", "mac", home + "/Code/web", "梳理状态栏组件", now: now, agent: .antigravity, preview: "状态栏和抽屉入口已合并。", updated: now - 18 * 60_000, created: now - 30 * 60_000, context: 294_000, model: "gemini-3.1-pro", effort: "high", contextWindow: 1_048_000, fullAccessUnavailable: true),
+            session("s-agy-full", "mac", home + "/Code/web", "批量格式化配置", now: now, agent: .antigravity, preview: "已完成所有配置文件的格式化。", updated: now - 19 * 60_000, created: now - 40 * 60_000, mode: .fullAccess, context: 120_000, model: "gemini-3-flash", effort: "medium", contextWindow: 1_048_000, modeLocked: true),
             session("bill", "imac", home + "/Code/billing", "", now: now, updated: at(11, 25, now: now), created: at(11, 25, now: now)),
             session("blog1", "mac", home + "/Code/blog", "发布秋季文章", now: now, status: .exited, updated: now - 2 * 3_600_000),
             session("blog2", "vps", home + "/work/blog", "修复 RSS", now: now, status: .exited, updated: now - 26 * 3_600_000),
@@ -365,6 +422,14 @@ enum Demo {
                 call("rg -n Login auth"), call("sed -n 40,80p auth/login.go"), call("git log -3 auth"),
                 agent("问题在 `auth/login.go:58`：\n\n- 每次登录都新建 Redis 连接\n- 连接没设超时，池子耗尽后请求挂住\n\n我改成复用连接池并加上 `2s` 超时。"),
                 call("auth/login.go", kind: .fileChange), started("go test ./auth/..."),
+            ]),
+            "s-agy": events(now, [
+                turn, user("梳理状态栏组件"),
+                agent("状态栏和抽屉入口已合并。"),
+            ]),
+            "s-agy-full": events(now, [
+                turn, user("批量格式化配置文件"),
+                agent("已完成所有配置文件的格式化。"),
             ]),
             "api": events(now, [
                 turn, user("把 handler 拆到单独的包里"), call("internal/handler", kind: .fileChange),
@@ -432,14 +497,28 @@ enum Demo {
                 $0.detail = "claude: not logged in"
                 $0.observedMs = now - 3 * 86_400_000
             },
+            .with {
+                $0.agent = .antigravity
+                $0.state = .ok
+                $0.plan = "Google AI Ultra"
+                $0.observedMs = now - 60_000
+                $0.windows = [
+                    .with {
+                        $0.name = "gemini-5h"
+                        $0.windowMinutes = 300
+                        $0.usedPercent = 95
+                        $0.resetsAtMs = now + 15 * 60_000
+                    },
+                ]
+            },
         ]
         s.machines = keyed([
-            machine("mac", "alex-macbook-pro-16-inch-2026.local", now: now, claude: true, quotas: nearlyOut),
-            machine("vps", "ip-10-0-12-231.ap-southeast-1.compute.internal", now: now),
-            machine("imac", "iMac", now: now, online: false, claude: true),
-            machine("studio", "Mac-Studio-录音棚", now: now, claude: true),
-            machine("ci", "ci-runner-07", now: now, online: false),
-            machine("nas", "", now: now),
+            machine("mac", "alex-macbook-pro-16-inch-2026.local", now: now, agents: [.codex, .claude, .antigravity], quotas: nearlyOut),
+            machine("vps", "ip-10-0-12-231.ap-southeast-1.compute.internal", now: now, agents: [.codex]),
+            machine("imac", "iMac", now: now, online: false, agents: [.codex, .claude]),
+            machine("studio", "Mac-Studio-录音棚", now: now, agents: [.codex, .claude, .antigravity]),
+            machine("ci", "ci-runner-07", now: now, online: false, agents: [.codex]),
+            machine("nas", "", now: now, agents: [.codex]),
         ])
         let projects = [
             foo, home + "/Code/billing", home + "/Code/shop", home + "/Code/remote-agent", home + "/work/blog",
@@ -461,7 +540,7 @@ enum Demo {
             session("start", "studio", projects[9], "", now: now, status: .starting, updated: now - 4_000, created: now - 5_000),
         ]
         for i in 0..<18 {
-            let agent: PBAgent = i % 3 == 0 ? .claude : .codex
+            let agent: PBAgent = i % 3 == 0 ? .claude : (i % 3 == 1 ? .antigravity : .codex)
             list.append(session(
                 "live\(i)", hosts[i % hosts.count], projects[i % projects.count],
                 i % 5 == 0 ? "" : "进行中的任务 \(i + 1)：" + String(longTitle.prefix(6 + i * 3)), now: now,

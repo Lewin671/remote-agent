@@ -14,7 +14,7 @@ import Testing
         let s = Demo.state(.everyday, now: now)
         #expect(s.machines.count == 3)
         #expect(s.machines["imac"]?.online == false)
-        #expect(s.sessions.count == 10)
+        #expect(s.sessions.count == 12)
         #expect(s.devices[Demo.me]?.kind == .client)
         #expect(s.link == .online && s.loaded && s.synced && !s.removed)
         // One of each thing that waits, on computers that are online.
@@ -58,9 +58,9 @@ import Testing
     }
 
     @Test(arguments: DemoSet.allCases)
-    func everyComputerOfASetListsModelsForBothCLIs(set: DemoSet) {
+    func everyComputerOfASetListsModelsForAllCLIs(set: DemoSet) {
         for id in Demo.state(set, now: now).machines.keys {
-            for agent in [PBAgent.codex, .claude] {
+            for agent in [PBAgent.codex, .claude, .antigravity] {
                 let list = Demo.models.first { $0.machineId == id && $0.agent == agent }?.models
                 #expect(list?.models.isEmpty == false, "\(id) \(agent)")
                 #expect(list?.models.contains { $0.slug == list?.defaultModel } == true)
@@ -69,6 +69,27 @@ import Testing
         // Claude Code's have what its settings choose between: efforts, and a window larger than the standard one.
         let claude = Demo.models.first { $0.agent == .claude }?.models.models ?? []
         #expect(claude.contains { !$0.efforts.isEmpty && $0.contextWindow > 200_000 } && claude.contains { $0.efforts.isEmpty })
+        let agy = Demo.models.first { $0.agent == .antigravity }?.models.models ?? []
+        #expect(agy.contains { $0.autoUnavailable })
+    }
+
+    @Test func antigravitySamplesExerciseTheMultiCliScreens() throws {
+        let state = Demo.state(.everyday, now: now)
+        #expect(machineAgents(state.machines["mac"]) == [.codex, .claude, .antigravity])
+        #expect(state.machines.values.contains { machineAgents($0).count == 1 })
+        let session = try #require(state.sessions["s-agy"])
+        #expect(session.agent == .antigravity && session.info?.fullAccessUnavailable == true)
+        #expect(session.info?.contextWindow == 1_048_000)
+        #expect(state.sessions["s-agy-full"]?.info?.modeLocked == true)
+        let machine = try #require(state.machines["mac"])
+        let quota = try #require(quotaGroups(machine, now: now).first { $0.agent == .antigravity })
+        #expect(quota.subgroups.count == 2 && quota.rows.count == 5)
+        let models = try #require(Demo.models.first { $0.machineId == "mac" && $0.agent == .antigravity }?.models)
+        #expect(allAutoUnavailable(models.models))
+        #expect(Set(models.models.map(\.slug)).count == models.models.count)
+        #expect(models.models.first { $0.slug == "gpt-oss-120b" }?.efforts == ["medium"])
+        #expect(models.models.contains { $0.slug == session.info?.model })
+        #expect(SettingsDemo.daemonSettings.antigravity.model == "gemini-3.1-pro")
     }
 
     @Test func theMadeUpHomeIsListedFolderByFolder() {

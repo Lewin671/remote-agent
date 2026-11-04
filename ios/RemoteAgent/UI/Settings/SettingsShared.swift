@@ -262,6 +262,7 @@ extension View {
             if AGENTS.count > 1 {
                 s = withDefaults(s, agent: AGENTS[1].agent, model: "claude-opus-5-5-preview-20261001-extended")
             }
+            s = withDefaults(s, agent: .antigravity, model: "gemini-3.1-pro", effort: "high", mode: Mode.ask)
             return s
         }
 

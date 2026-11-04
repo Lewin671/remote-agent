@@ -108,7 +108,7 @@ enum SessionSamples {
                     $0.os = "darwin"
                     $0.protocolVersion = version
                     $0.capabilities = .with { $0.imageUpload = true }
-                    $0.agents = [PBAgent.codex, .claude].map { agent in .with { $0.agent = agent } }
+                    $0.agents = [PBAgent.codex, .claude, .antigravity].map { agent in .with { $0.agent = agent } }
                 }, metaRev: 1)
         }
         return [make(machine, "MacBook", version: protocolVersion), make(oldMachine, "旧 Mac mini", version: protocolVersion - 1)]
@@ -128,10 +128,10 @@ enum SessionSamples {
             $0.mode = mode
             $0.pendingApprovals = approvals
             $0.createdAt = ts(now - 3_600_000)
-            $0.model = agent == .claude ? "claude-sonnet-5-5" : "gpt-6-astra"
-            $0.effort = agent == .claude ? "high" : "medium"
+            $0.model = agent == .claude ? "claude-sonnet-5-5" : (agent == .antigravity ? "gemini-3.1-pro" : "gpt-6-astra")
+            $0.effort = (agent == .claude || agent == .antigravity) ? "high" : "medium"
             $0.contextTokens = context
-            $0.contextWindow = context > 0 ? 400_000 : 0
+            $0.contextWindow = context > 0 ? (agent == .antigravity ? 1_048_000 : 400_000) : 0
         }
         edit(&info)
         return SessionView(id: id, machineId: machine, info: info, metaRev: 1, updatedMs: now)
@@ -147,6 +147,11 @@ enum SessionSamples {
                 $0.mode = .unspecified
                 $0.permissionMode = "acceptEdits"
                 $0.model = "claude-haiku-4-5-20251001"
+                $0.fullAccessUnavailable = true
+            },
+            session("sample-agy", "Antigravity 会话", now: now, agent: .antigravity) {
+                $0.model = "gemini-3.1-pro"
+                $0.effort = "high"
                 $0.fullAccessUnavailable = true
             },
             session("sample-old", "另一个协议版本的电脑", now: now, machine: oldMachine),
@@ -190,8 +195,19 @@ enum SessionSamples {
                 model("claude-haiku-4-5-20251001", "Haiku 4.5", [], autoUnavailable: true),
             ]
         }
+        let agy = PBListModelsResponse.with {
+            $0.defaultModel = "gemini-3.1-pro"
+            $0.models = [
+                model("gemini-3.1-pro", "Gemini 3.1 Pro", ["low", "medium", "high"], autoUnavailable: true),
+                model("gemini-3-flash", "Gemini 3 Flash", ["low", "medium", "high"], autoUnavailable: true),
+            ]
+        }
         return [machine, oldMachine].flatMap {
-            [(machineId: $0, agent: PBAgent.codex, models: codex), (machineId: $0, agent: PBAgent.claude, models: claude)]
+            [
+                (machineId: $0, agent: PBAgent.codex, models: codex),
+                (machineId: $0, agent: PBAgent.claude, models: claude),
+                (machineId: $0, agent: PBAgent.antigravity, models: agy),
+            ]
         }
     }()
 
