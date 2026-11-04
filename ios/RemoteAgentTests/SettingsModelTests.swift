@@ -359,7 +359,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
                 ]
             }]
         })
-        #expect(machineQuotaSummary(m, now: now) == "Codex · 7 天已用 34%")
+        #expect(machineQuotaSummary(m, now: now) == "Codex · 已用 62% · 5 小时")
         let none = MachineView(id: "b", online: true, lastSeenMs: now, meta: .with { $0.agents = [.with { $0.agent = .codex }] })
         #expect(machineQuotaSummary(none, now: now) == nil)
     }

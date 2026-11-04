@@ -91,7 +91,7 @@ import Testing
         #expect(g.lastRecord)
         #expect(g.rows[0].used == "已用 28%")
         #expect(g.rows[0].tone == .stale)
-        #expect(quotaLine(g) == "5 小时 已用 28%（上次记录）")
+        #expect(quotaLine(g) == "已用 28% · 5 小时（上次记录）")
         #expect(g.received.hasPrefix("最近成功收到"))
         #expect(try claude(machine(false, quota(.claude, .ok, [w("five_hour", 28.0)]))).rows[0].tone == .stale)
     }
@@ -142,6 +142,42 @@ import Testing
         // The usual windows first, whatever order they came in; others after.
         let g = try claude(machine(true, quota(.claude, .ok, [w("opus", 1), w("seven_day", 2), w("five_hour", 3)])))
         #expect(g.rows.map(\.label) == ["5 小时", "7 天", "opus"])
-        #expect(quotaLine(g) == "5 小时 已用 3% · 7 天 已用 2% · opus 已用 1%")
+        #expect(quotaLine(g) == "已用 3% · 5 小时")
+    }
+
+    @Test func groupsAntigravityQuotaWindowsByModelFamily() throws {
+        let q = quota(.antigravity, .ok, [
+            w("gemini-5h", 18, minutes: 300),
+            w("gemini-weekly", 12, minutes: 10080),
+            w("gemini-argon-wtu-weekly", 35, minutes: 10080),
+            w("3p-5h", 40, minutes: 300),
+            w("3p-weekly", 26, minutes: 10080),
+            w("custom-bucket", 5, minutes: 60),
+        ]) { $0.plan = "Google AI Pro"; $0.observedMs = now }
+        let m = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with {
+            $0.agents = [.with { $0.agent = .antigravity }]
+            $0.quotas = [q]
+        })
+        let groups = quotaGroups(m, now: now)
+        #expect(groups.count == 1)
+        let v = groups[0]
+        #expect(v.title == "Antigravity · Google AI Pro")
+        #expect(v.subgroups.count == 3)
+        #expect(v.subgroups[0].title == "Antigravity · Google AI Pro · Gemini")
+        #expect(v.subgroups[0].rows.map { [$0.label, $0.used] } == [
+            ["Gemini · 5 小时", "已用 18%"],
+            ["Gemini · 7 天", "已用 12%"],
+            ["Gemini 4 Argon · 7 天", "已用 35%"],
+        ])
+        #expect(v.subgroups[1].title == "第三方模型（Claude、GPT-OSS）")
+        #expect(v.subgroups[1].rows.map { [$0.label, $0.used] } == [
+            ["第三方模型 · 5 小时", "已用 40%"],
+            ["第三方模型 · 7 天", "已用 26%"],
+        ])
+        #expect(v.subgroups[2].title == "custom-bucket")
+        #expect(v.subgroups[2].rows.map { [$0.label, $0.used] } == [
+            ["custom-bucket", "已用 5%"],
+        ])
+        #expect(quotaLine(v) == "已用 40% · 5 小时")
     }
 }

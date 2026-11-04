@@ -125,12 +125,11 @@ func asKnown(_ m: MachineView, state: RemoteState) -> MachineView {
 }
 
 /// A computer's quota in one short line under its name: the first CLI's
-/// last window that has a number (Android's SettingsScreen).
+/// tightest window that has a number (Android's SettingsScreen, web's quotaLine).
 func machineQuotaSummary(_ m: MachineView, now: Int64) -> String? {
-    guard let g = quotaGroups(m, now: now).first,
-        let row = g.rows.last(where: { $0.percent != nil })
-    else { return nil }
-    return "\(agentName(g.agent)) · \(row.label)\(row.used)"
+    guard let g = quotaGroups(m, now: now).first(where: { $0.rows.contains(where: { $0.percent != nil }) }) else { return nil }
+    let s = quotaLine(g)
+    return s.isEmpty ? nil : "\(agentName(g.agent)) · \(s)"
 }
 
 /// The operating system as people call it.

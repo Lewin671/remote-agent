@@ -120,8 +120,23 @@ struct MachineScreen: View {
             GroupLabel("账户额度")
             GroupCard {
                 for (i, g) in groups.enumerated() {
-                    GRow(quotaRowTitle(g, among: groups, at: i), value: quotaLine(g), chevron: true)
-                    { nav.open(.quota(machine: id)) }
+                    let title = quotaRowTitle(g, among: groups, at: i)
+                    let line = quotaLine(g)
+                    let sep = " · "
+                    if let idx = line.range(of: sep) {
+                        let usedPart = String(line[..<idx.lowerBound])
+                        let winPart = "· " + String(line[idx.upperBound...])
+                        GRow(title, value: winPart, chevron: true) {
+                            nav.open(.quota(machine: id))
+                        }
+                        .valueLead {
+                            Text(usedPart).type(T.sm, Theme.fg)
+                        }
+                    } else {
+                        GRow(title, value: line, chevron: true) {
+                            nav.open(.quota(machine: id))
+                        }
+                    }
                 }
             }
         }

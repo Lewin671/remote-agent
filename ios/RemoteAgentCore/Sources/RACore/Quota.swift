@@ -9,14 +9,16 @@ public enum QuotaTone: Sendable { case normal, warn, full, stale }
 /// One window as shown: 5 小时 · 已用 62% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted.
 public struct QuotaRow: Equatable, Sendable {
     public var label: String
+    public var windowName: String
     public var used: String
     public var percent: Double?
     public var reset: String
     public var tone: QuotaTone
     public var note: String
 
-    public init(label: String, used: String, percent: Double?, reset: String, tone: QuotaTone, note: String) {
+    public init(label: String, windowName: String = "", used: String, percent: Double?, reset: String, tone: QuotaTone, note: String) {
         self.label = label
+        self.windowName = windowName.isEmpty ? label : windowName
         self.used = used
         self.percent = percent
         self.reset = reset
@@ -28,12 +30,23 @@ public struct QuotaRow: Equatable, Sendable {
 /// What a CLI's quota group shows instead of, or besides, its windows.
 public enum QuotaStatus: Sendable { case ok, waiting, failed, unsupported }
 
+public struct QuotaSubgroup: Equatable, Sendable {
+    public var title: String
+    public var rows: [QuotaRow]
+
+    public init(title: String, rows: [QuotaRow]) {
+        self.title = title
+        self.rows = rows
+    }
+}
+
 public struct QuotaGroup: Equatable, Sendable {
     public var agent: PBAgent
     /// Codex · Pro Lite; with several accounts, which one.
     public var title: String
     public var status: QuotaStatus
     public var rows: [QuotaRow]
+    public var subgroups: [QuotaSubgroup]
     /// 最近收到 9:40, or empty.
     public var received: String
     /// The daemon's words for a failure or no support.
@@ -41,11 +54,12 @@ public struct QuotaGroup: Equatable, Sendable {
     /// The numbers are a last record: the machine is offline, or reading failed.
     public var lastRecord: Bool
 
-    public init(agent: PBAgent, title: String, status: QuotaStatus, rows: [QuotaRow], received: String, detail: String, lastRecord: Bool) {
+    public init(agent: PBAgent, title: String, status: QuotaStatus, rows: [QuotaRow], subgroups: [QuotaSubgroup] = [], received: String, detail: String, lastRecord: Bool) {
         self.agent = agent
         self.title = title
         self.status = status
         self.rows = rows
+        self.subgroups = subgroups
         self.received = received
         self.detail = detail
         self.lastRecord = lastRecord
@@ -105,19 +119,27 @@ public func resetText(resetMs: Int64, now: Int64) -> String {
 
 /// One window: used share, reset time, and whether the reading can still be trusted.
 public func quotaRow(_ w: PBQuotaWindow, now: Int64, lastRecord: Bool) -> QuotaRow {
-    let label = nameLabel(w)
+    quotaRow(w, agent: .codex, now: now, lastRecord: lastRecord)
+}
+
+public func quotaRow(_ w: PBQuotaWindow, agent: PBAgent, now: Int64, lastRecord: Bool) -> QuotaRow {
+    let desc = agentInfo(agent).quotaWindow(w.name)
+    let known = agentInfo(agent).quotaWindows
+    let useMinutes = desc.group == nil && known.contains(w.name)
+    let label = (useMinutes && w.windowMinutes > 0) ? windowLabel(minutes: w.windowMinutes) : desc.label
+    let windowName = w.windowMinutes > 0 ? windowLabel(minutes: w.windowMinutes) : label
     if !w.hasUsedPercent {
-        return QuotaRow(label: label, used: "未获取", percent: nil, reset: "", tone: .normal, note: "没有收到这项额度数据")
+        return QuotaRow(label: label, windowName: windowName, used: "未获取", percent: nil, reset: "", tone: .normal, note: "没有收到这项额度数据")
     }
     let pct = w.usedPercent
     let used = pct >= 100 ? "已用尽" : "已用 \(jvmInt(pct.rounded(.down)))%"
     let passed = w.resetsAtMs >= 1 && w.resetsAtMs <= now
     let reset = w.resetsAtMs > 0 && !passed ? resetText(resetMs: w.resetsAtMs, now: now) : ""
     if passed {
-        return QuotaRow(label: label, used: "等待更新", percent: pct, reset: "", tone: .stale, note: "上次\(used)；重置时间已过，不能据此确认额度已经恢复")
+        return QuotaRow(label: label, windowName: windowName, used: "等待更新", percent: pct, reset: "", tone: .stale, note: "上次\(used)；重置时间已过，不能据此确认额度已经恢复")
     }
-    if lastRecord { return QuotaRow(label: label, used: used, percent: pct, reset: reset, tone: .stale, note: "") }
-    return QuotaRow(label: label, used: used, percent: pct, reset: reset, tone: pct >= 100 ? .full : pct >= 80 ? .warn : .normal, note: "")
+    if lastRecord { return QuotaRow(label: label, windowName: windowName, used: used, percent: pct, reset: reset, tone: .stale, note: "") }
+    return QuotaRow(label: label, windowName: windowName, used: used, percent: pct, reset: reset, tone: pct >= 100 ? .full : pct >= 80 ? .warn : .normal, note: "")
 }
 
 /// Each installed CLI's quota on `m`, one group per account the daemon could
@@ -170,10 +192,39 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
         which = ""
     }
     let title = agentName(agent) + (q.plan.isEmpty ? "" : " · \(agentInfo(agent).planName(q.plan))") + which
-    let rows = status == .unsupported || status == .waiting || q.windows.isEmpty
-        ? [] : completeWindows(agent: agent, q.windows).map { quotaRow($0, now: now, lastRecord: lastRecord) }
+
+    var rows = [QuotaRow]()
+    var groupOrder = [String]()
+    var groupRows = [String: [QuotaRow]]()
+
+    if status != .unsupported && status != .waiting && !q.windows.isEmpty {
+        let ordered = completeWindows(agent: agent, q.windows)
+        for w in ordered {
+            let row = quotaRow(w, agent: agent, now: now, lastRecord: lastRecord)
+            rows.append(row)
+            let desc = agentInfo(agent).quotaWindow(w.name)
+            if let g = desc.group {
+                if groupRows[g] == nil {
+                    groupOrder.append(g)
+                    groupRows[g] = []
+                }
+                groupRows[g]?.append(row)
+            }
+        }
+    }
+
+    let subgroups: [QuotaSubgroup]
+    if !groupOrder.isEmpty {
+        subgroups = groupOrder.enumerated().map { idx, g in
+            let subgroupTitle = idx == 0 ? "\(title) · \(g)" : g
+            return QuotaSubgroup(title: subgroupTitle, rows: groupRows[g] ?? [])
+        }
+    } else {
+        subgroups = []
+    }
+
     let received = q.observedMs > 0 ? (status == .failed ? "最近成功收到 " : "最近收到 ") + clockText(q.observedMs, now: now) : ""
-    return QuotaGroup(agent: agent, title: title, status: status, rows: rows, received: received, detail: q.detail, lastRecord: lastRecord && !rows.isEmpty)
+    return QuotaGroup(agent: agent, title: title, status: status, rows: rows, subgroups: subgroups, received: received, detail: q.detail, lastRecord: lastRecord && !rows.isEmpty)
 }
 
 /// The warning above a group: a window used up, or close to it; nothing switches by itself.
@@ -184,13 +235,18 @@ public func quotaBanner(_ g: QuotaGroup) -> String {
     return ""
 }
 
-/// The device page's line for a CLI: its windows in short, or its state.
+/// The device page's line for a CLI: its most-used window, or its state.
 public func quotaLine(_ g: QuotaGroup) -> String {
     switch g.status {
     case .unsupported: return "暂不支持读取额度"
     case .waiting: return "暂未获取额度"
     default:
-        return g.rows.filter { $0.used != "未获取" }.map { "\($0.label) \($0.used)" }.joined(separator: " · ").ifEmpty("暂未获取额度")
-            + (g.lastRecord ? "（上次记录）" : "")
+        let got = g.rows.filter { $0.used != "未获取" && $0.percent != nil }
+        guard let tightest = got.max(by: { ($0.percent ?? -1) < ($1.percent ?? -1) }) else {
+            return "暂未获取额度" + (g.lastRecord ? "（上次记录）" : "")
+        }
+        let win = tightest.windowName.ifEmpty(tightest.label)
+        let staleSuffix = g.lastRecord && !tightest.used.contains("上次") ? "（上次记录）" : ""
+        return "\(tightest.used) · \(win)\(staleSuffix)"
     }
 }

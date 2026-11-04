@@ -32,22 +32,31 @@ struct QuotaScreen: View {
         // Not connected, the connection bar says so and the numbers are what was last heard.
         if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: Theme.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
-            GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
-            // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
-            if g.status == .failed {
-                GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: Theme.red)
-            }
-            if g.status == .unsupported || g.status == .waiting || !g.rows.isEmpty {
-                GroupCard {
-                    if g.status == .unsupported {
-                        QuotaState(
-                            "暂不支持读取额度",
-                            g.detail.or("这台电脑上的 remote-agent 读不到 \(agentName(g.agent)) 的额度。")
-                                + (agentInfo(g.agent).usageHint ?? ""))
-                    } else if g.status == .waiting {
-                        QuotaState("暂未获取额度", "等待 \(agentName(g.agent)) 返回额度数据")
+            if !g.subgroups.isEmpty {
+                ForEach(Array(g.subgroups.enumerated()), id: \.offset) { _, sub in
+                    GroupLabel(sub.title + (g.lastRecord && !sub.title.contains("上次记录") ? " · 上次记录" : ""))
+                    GroupCard {
+                        for row in sub.rows { QuotaWindow(row: row) }
                     }
-                    for row in g.rows { QuotaWindow(row: row) }
+                }
+            } else {
+                GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
+                // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
+                if g.status == .failed {
+                    GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: Theme.red)
+                }
+                if g.status == .unsupported || g.status == .waiting || !g.rows.isEmpty {
+                    GroupCard {
+                        if g.status == .unsupported {
+                            QuotaState(
+                                "暂不支持读取额度",
+                                g.detail.or("这台电脑上的 remote-agent 读不到 \(agentName(g.agent)) 的额度。")
+                                    + (agentInfo(g.agent).usageHint ?? ""))
+                        } else if g.status == .waiting {
+                            QuotaState("暂未获取额度", "等待 \(agentName(g.agent)) 返回额度数据")
+                        }
+                        for row in g.rows { QuotaWindow(row: row) }
+                    }
                 }
             }
             // When it was heard, once for the group rather than on every row.
