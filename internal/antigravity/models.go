@@ -41,7 +41,6 @@ var modelIDRE = regexp.MustCompile(`^[a-z][a-z0-9]*(?:-[a-z0-9.]+)+$`)
 // are parsed and grouped by their base ID (e.g. "gemini-3.8-flash").
 func ParseModels(output string) ([]*pb.ModelInfo, error) {
 	type modelGroup struct {
-		baseID      string
 		displayName string
 		efforts     []string
 	}
@@ -78,7 +77,6 @@ func ParseModels(output string) ([]*pb.ModelInfo, error) {
 		g, exists := groups[baseID]
 		if !exists {
 			g = &modelGroup{
-				baseID:      baseID,
 				displayName: displayName,
 			}
 			groups[baseID] = g
