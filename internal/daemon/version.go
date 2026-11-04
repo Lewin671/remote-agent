@@ -48,7 +48,7 @@ func (d *Daemon) verified(a agent.Adapter) bool {
 
 // Version is the installed version of a CLI.
 func (d *Daemon) Version(k pb.Agent) string {
-	a, err := d.adapter(k)
+	a, err := d.knownAgent(k)
 	if err != nil {
 		return ""
 	}

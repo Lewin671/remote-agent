@@ -260,7 +260,7 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	if d.approvalTimeout().Seconds() != 300 {
 		t.Fatal("timeout not applied")
 	}
-	ag, _ := d.adapter(0)
+	ag, _ := d.knownAgent(0)
 	args, err := d.sessionArgs(ag, &pb.CreateSessionRequest{})
 	if err != nil || !strings.Contains(strings.Join(args, " "), `-m gpt-6-sol -c model_reasoning_effort="high" -c approvals_reviewer="auto_review"`) {
 		t.Fatalf("defaults: %q %v", args, err)

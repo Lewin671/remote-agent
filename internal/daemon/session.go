@@ -221,7 +221,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		slog.Error("load input queue; the session accepts no input until it can be read", "session", m.ID, "err", errClass(err))
 		q = &queueState{}
 	}
-	ag, aerr := d.adapter(m.Agent)
+	ag, aerr := d.knownAgent(m.Agent)
 	if aerr != nil {
 		return nil, fmt.Errorf("session %s agent: %w", m.ID, aerr)
 	}

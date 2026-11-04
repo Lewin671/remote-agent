@@ -106,7 +106,6 @@ type Daemon struct {
 	ctx             context.Context
 	adapters        []agent.Adapter
 	agents          map[pb.Agent]agent.Adapter
-	byIDMap         map[string]agent.Adapter
 
 	// uploads are images clients sent for messages.
 	uploads *uploads
@@ -159,7 +158,6 @@ func New(dir string, cfg Config) *Daemon {
 		sessions: map[string]*session{},
 		starting: map[string]chan struct{}{},
 		agents:   map[pb.Agent]agent.Adapter{},
-		byIDMap:  map[string]agent.Adapter{},
 		uploads:  newUploads(dir),
 	}
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
@@ -167,7 +165,6 @@ func New(dir string, cfg Config) *Daemon {
 	d.adapters = Adapters(cfg)
 	for _, a := range d.adapters {
 		d.agents[a.Kind()] = a
-		d.byIDMap[a.ID()] = a
 	}
 	return d
 }
@@ -206,11 +203,6 @@ func (d *Daemon) knownAgent(k pb.Agent) (agent.Adapter, error) {
 		return nil, fmt.Errorf("%v: %w", k, agent.ErrUnsupported)
 	}
 	return a, nil
-}
-
-// adapter returns the adapter for a session's CLI.
-func (d *Daemon) adapter(k pb.Agent) (agent.Adapter, error) {
-	return d.knownAgent(k)
 }
 
 func (d *Daemon) defaultAdapter() agent.Adapter {
@@ -849,7 +841,7 @@ func (d *Daemon) ownEnv(env map[string]string, id string) {
 // the executable the hooks run, and the CLI's own switches.
 func (d *Daemon) cliEnv(env map[string]string, m *meta) {
 	d.ownEnv(env, m.ID)
-	if ag, err := d.adapter(m.Agent); err == nil {
+	if ag, err := d.knownAgent(m.Agent); err == nil {
 		for k, v := range ag.Env(m.StandardContext) {
 			env[k] = v
 		}
@@ -893,7 +885,7 @@ func (d *Daemon) ptyHostArgv(dir string, m *meta, bin string, args []string, env
 	// daemon's own environment, with its outdated PATH, must not leak in.
 	shell := loginShell()
 	agentName := "unknown"
-	if a, err := d.adapter(m.Agent); err == nil {
+	if a, err := d.knownAgent(m.Agent); err == nil {
 		agentName = a.Name()
 	}
 	slog.Info("starting a session through the login shell", "session", m.ID, "agent", agentName, "shell", shell)

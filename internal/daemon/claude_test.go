@@ -169,8 +169,8 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{DefaultModel: "gpt-6-luna", Claude: &pb.AgentDefaults{Model: "haiku", Mode: pb.ApprovalMode_APPROVAL_MODE_ASK}}); err != nil {
 		t.Fatal(err)
 	}
-	clAg, _ := h.d.adapter(pb.Agent_AGENT_CLAUDE)
-	cxAg, _ := h.d.adapter(pb.Agent_AGENT_CODEX)
+	clAg, _ := h.d.knownAgent(pb.Agent_AGENT_CLAUDE)
+	cxAg, _ := h.d.knownAgent(pb.Agent_AGENT_CODEX)
 	args, err := h.d.sessionArgs(clAg, &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE})
 	if err != nil || strings.Join(args, " ") != "--model haiku --permission-mode default" {
 		t.Fatalf("claude defaults %q %v", args, err)

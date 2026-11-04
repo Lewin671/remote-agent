@@ -122,8 +122,8 @@ func adapterForKind(k pb.Agent) agent.Adapter {
 	return nil
 }
 
-// resolveKind returns the effective Agent enum value, treating AGENT_UNSPECIFIED
-// as Codex for backwards compatibility with older sessions and requests.
+// resolveKind applies the current request default: an omitted Agent selects
+// Codex. Protocol-version negotiation is independent of this missing value.
 func resolveKind(k pb.Agent) pb.Agent {
 	if k == pb.Agent_AGENT_UNSPECIFIED {
 		return pb.Agent_AGENT_CODEX

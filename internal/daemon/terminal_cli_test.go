@@ -119,7 +119,7 @@ func TestTerminalSessionRunsTheCLIOfItsPATH(t *testing.T) {
 	if got != want {
 		t.Fatalf("the session runs %q, want the terminal's %q", got, want)
 	}
-	ag, err := h.d.adapter(pb.Agent_AGENT_CODEX)
+	ag, err := h.d.knownAgent(pb.Agent_AGENT_CODEX)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -419,7 +419,7 @@ func TestShellReportIsLearned(t *testing.T) {
 	if !h.s.checkShellStart(context.Background()) {
 		t.Fatal("the session was ended although the shell reported its CLI")
 	}
-	ag, err := h.d.adapter(pb.Agent_AGENT_CODEX)
+	ag, err := h.d.knownAgent(pb.Agent_AGENT_CODEX)
 	if err != nil {
 		t.Fatal(err)
 	}
