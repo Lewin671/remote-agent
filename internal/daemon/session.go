@@ -1123,12 +1123,15 @@ func (s *session) infoLocked() *pb.Session {
 		out.PermissionMode = c.PermissionMode
 	}
 	out.Mode = s.ag.Mode(s.context)
-	if s.ag.Capabilities().ConversationIdentity && out.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
-		out.PermissionMode = fmt.Sprintf("toolPermission=%s; cycle_mode=%s", out.ApprovalPolicy, out.PermissionMode)
-	}
-	if s.ag.Capabilities().ConversationIdentity && (s.identityPending || s.identityFailed || s.statusLineAt.IsZero() || time.Since(s.statusLineAt) > 10*time.Second) {
-		out.Mode = pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
-		out.PermissionMode = fmt.Sprintf("toolPermission=%s; cycle_mode=%s (unknown or stale)", out.ApprovalPolicy, out.PermissionMode)
+	if s.ag.Capabilities().ConversationIdentity {
+		// Freshness gates actions separately. An idle status line need not
+		// rerun, so age alone cannot erase the last confirmed display mode.
+		if s.identityPending || s.identityFailed || s.statusLineAt.IsZero() {
+			out.Mode = pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED
+		}
+		if out.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
+			out.PermissionMode = "未知审批模式"
+		}
 	}
 	out.FullAccessUnavailable = s.meta.NoFullAccess
 	out.ModeLocked = s.ag.ModeLocked(s.context)

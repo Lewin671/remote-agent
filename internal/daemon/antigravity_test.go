@@ -288,3 +288,24 @@ func TestAgyPlanIsActionableOnlyAfterForegroundTurnEnds(t *testing.T) {
 		t.Fatalf("revision mismatch not withdrawn: %v", info)
 	}
 }
+
+func TestAgyModeDisplayRetainsConfirmedModeWhenStale(t *testing.T) {
+	for _, policy := range []string{"request-review", "always-proceed"} {
+		h := agyHarness(t)
+		h.s.context = &pb.TurnContext{ApprovalPolicy: policy, PermissionMode: "default"}
+		h.s.statusLineAt = time.Now().Add(-time.Hour)
+		expected := h.s.ag.Mode(h.s.context)
+		if info := h.s.info(); info.Mode != expected || info.PermissionMode != "default" || info.ModeLocked != (policy == "always-proceed") {
+			t.Fatal(info)
+		}
+		h.s.statusLineAt = time.Time{}
+		if info := h.s.info(); info.Mode != 0 || strings.Contains(info.PermissionMode, "toolPermission") || strings.Contains(info.PermissionMode, "cycle_mode") {
+			t.Fatal(info)
+		}
+		h.s.statusLineAt = time.Now()
+		h.s.context.PermissionMode = "unknown"
+		if info := h.s.info(); info.Mode != 0 || info.PermissionMode != "未知审批模式" {
+			t.Fatal(info)
+		}
+	}
+}
