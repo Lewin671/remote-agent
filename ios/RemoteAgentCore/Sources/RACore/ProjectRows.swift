@@ -441,12 +441,14 @@ public struct ApprovalModeChoice: Equatable, Sendable, Identifiable {
 /// (projectModel), so nothing is greyed out until the list has come.
 public func modeChoices(_ c: NewConfig, models: PBListModelsResponse?, settings: PBDaemonSettings? = nil) -> [ApprovalModeChoice] {
     let name = agentName(c.agent)
-    let off = models.map { projectModel(c, models: $0, settings: settings)?.autoUnavailable == true } ?? false
+    let allOff = allAutoUnavailable(models?.models)
+    let off = allOff || (models.map { projectModel(c, models: $0, settings: settings)?.autoUnavailable == true } ?? false)
+    let autoHelp = allOff ? "当前账户不支持自动模式" : "当前模型不支持"
     return [ApprovalModeChoice(mode: nil, title: "默认", desc: "跟随 \(name) 自己的配置", enabled: true, checked: c.mode == nil)]
         + newSessionModes.map { m in
             let disabled = m == .auto && off
             return ApprovalModeChoice(
-                mode: m, title: m.text, desc: disabled ? "当前模型不支持" : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
+                mode: m, title: m.text, desc: disabled ? autoHelp : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
                 enabled: !disabled, checked: c.mode == m)
         }
 }

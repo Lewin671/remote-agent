@@ -302,20 +302,22 @@ private struct SessionPage: View {
         })
         if reachable {
             list.append(SheetAction("重命名", enabled: !forking) { afterMenu { rename = true } })
-            // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
-            let row = forkAction(blocked: forkBlock, running: forking, error: fork.error, frozen: fork.frozen, expired: fork.expired)
-            list.append(SheetAction(
-                row.text, enabled: row.enabled, note: row.note, noteError: row.noteError, busy: row.busy, keepOpen: true
-            ) {
-                if row.tap == .abandon { return store.abandonFork(sid) }
-                let made = store.forkSession(context.remote, machineId: s.machineId, sid: sid)
-                Task {
-                    guard let forked = await made.value else { return }
-                    // The new session may not be in the list yet: its page waits for it, as after starting one.
-                    menu = false
-                    afterMenu { nav.open(.session(id: forked), from: page) }
-                }
-            })
+            if agentInfo(s.agent).forks {
+                // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
+                let row = forkAction(blocked: forkBlock, running: forking, error: fork.error, frozen: fork.frozen, expired: fork.expired)
+                list.append(SheetAction(
+                    row.text, enabled: row.enabled, note: row.note, noteError: row.noteError, busy: row.busy, keepOpen: true
+                ) {
+                    if row.tap == .abandon { return store.abandonFork(sid) }
+                    let made = store.forkSession(context.remote, machineId: s.machineId, sid: sid)
+                    Task {
+                        guard let forked = await made.value else { return }
+                        // The new session may not be in the list yet: its page waits for it, as after starting one.
+                        menu = false
+                        afterMenu { nav.open(.session(id: forked), from: page) }
+                    }
+                })
+            }
         }
         if running {
             list.append(SheetAction("中断本轮", danger: true, enabled: !forking) {

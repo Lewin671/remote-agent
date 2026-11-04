@@ -254,6 +254,16 @@ import Testing
         #expect(!autoUnavailable(list, model: "claude-sonnet-5-5"))
         #expect(!autoUnavailable(list, model: "haiku"))
         #expect(!autoUnavailable(nil, model: "claude-haiku-4-5-20251001"))
+        let agyModels = [
+            PBModelInfo.with { $0.slug = "gemini-3.1-pro-high"; $0.autoUnavailable = true },
+            PBModelInfo.with { $0.slug = "gemini-3-flash"; $0.autoUnavailable = true },
+        ]
+        #expect(allAutoUnavailable(agyModels))
+        #expect(!allAutoUnavailable(list))
+        #expect(!allAutoUnavailable([]))
+        #expect(!allAutoUnavailable(nil))
+        #expect(autoUnavailable(agyModels, model: "gemini-3-flash"))
+        #expect(autoUnavailable(agyModels, model: "unknown-model"))
         let models = ["opus", "sonnet", "haiku"]
         #expect(findModel(models, id: "claude-haiku-4-5-20251001") { $0 } == "haiku")
         #expect(findModel(models, id: "sonnet") { $0 } == "sonnet")

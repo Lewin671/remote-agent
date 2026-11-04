@@ -290,6 +290,15 @@ import Testing
         #expect(choices[0].checked && choices[0].desc == "跟随 Claude Code 自己的配置")
         #expect(!choices[2].enabled && choices[2].desc == "当前模型不支持")
         #expect(modeChoices(c, models: models)[2].desc == "由 Claude Code 自己判断，拿不准的在对话里问你")
+        let agyModels = PBListModelsResponse.with {
+            $0.models = [
+                .with { $0.slug = "gemini-3.1-pro-high"; $0.autoUnavailable = true },
+                .with { $0.slug = "gemini-3-flash"; $0.autoUnavailable = true },
+            ]
+        }
+        let agyConfig = NewConfig(machineId: "m", cwd: "/p", agent: .antigravity)
+        let agyChoices = modeChoices(agyConfig, models: agyModels)
+        #expect(!agyChoices[2].enabled && agyChoices[2].desc == "当前账户不支持自动模式")
         // Red: full access chosen, or a default that could not be read.
         #expect(settingsModeRed(NewConfig(machineId: "m", cwd: "/p", mode: .full), default: DefaultMode(mode: .ask, known: true, varies: false)))
         #expect(settingsModeRed(NewConfig(machineId: "m", cwd: "/p"), default: DefaultMode(mode: nil, known: false, varies: false)))

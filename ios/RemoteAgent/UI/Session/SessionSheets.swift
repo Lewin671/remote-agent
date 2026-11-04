@@ -19,8 +19,22 @@ struct SessionModeSheet: View {
     /// The auto mode goes with the model, which the CLI's own list says.
     @State private var modelList: [PBModelInfo]?
 
-    private func unavailable(_ m: Mode) -> Bool {
-        (m == .full && session.info?.fullAccessUnavailable == true) || (m == .auto && autoUnavailable(modelList, model: session.info?.model ?? ""))
+    private func unavailableReason(_ m: Mode) -> String? {
+        if session.info?.modeLocked == true {
+            return "本会话以完全放行启动，不能切换审批模式"
+        }
+        if m == .full && session.info?.fullAccessUnavailable == true {
+            return "本会话启动时未启用；需要时新建会话选择"
+        }
+        if m == .auto {
+            if allAutoUnavailable(modelList) {
+                return "当前账户不支持自动模式"
+            }
+            if autoUnavailable(modelList, model: session.info?.model ?? "") {
+                return "当前模型不支持"
+            }
+        }
+        return nil
     }
 
     private func set(_ m: Mode) {
@@ -44,10 +58,9 @@ struct SessionModeSheet: View {
             SheetHead("审批模式")
             if let outside { Text("当前：\(outside)（在终端设置）").type(T.meta, Theme.muted).padding(.bottom, 4) }
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
-                let off = unavailable(m)
-                let help = off
-                    ? (m == .full ? "本会话启动时未启用；需要时新建会话选择" : "当前模型不支持")
-                    : modeHelp(m).replacingOccurrences(of: "CLI", with: agentName(session.agent))
+                let reason = unavailableReason(m)
+                let off = reason != nil
+                let help = reason ?? modeHelp(m).replacingOccurrences(of: "CLI", with: agentName(session.agent))
                 ListItem(
                     m.text, desc: help, checked: m == current, enabled: !off, danger: m == .full && !off,
                     last: i == Mode.allCases.count - 1,
@@ -125,17 +138,31 @@ struct SessionModelSheet: View {
             }
             if !compact.error.isEmpty { Hint("没能压缩：\(compact.error)", color: Theme.red) }
         }
-        FieldLabel("模型")
-        if !loadError.isEmpty {
-            Banner("没能读取模型列表：\(loadError)", tone: .error, action: "重试") { attempt += 1 }
-        } else if let models {
-            list(models.models)
+        if !agentInfo(session.agent).switchesModelInSession {
+            let cur = findModel(models?.models, id: session.info?.model ?? "") { $0.slug }
+            let modelTitle = (cur?.displayName).flatMap { $0.isEmpty ? nil : $0 }
+                ?? session.info?.model.flatMap { $0.isEmpty ? nil : $0 }
+                ?? "默认模型"
+            let effortTitle = session.info?.effort.flatMap { $0.isEmpty ? nil : $0 }
+                ?? (cur?.defaultEffort).flatMap { $0.isEmpty ? nil : $0 }
+                ?? "默认"
+            FieldLabel("模型")
+            ListItem(modelTitle, desc: "运行中不能换模型，新建会话时可选", enabled: false, last: true)
+            FieldLabel("推理强度")
+            ListItem(effortTitle, desc: "运行中不能换推理强度", enabled: false, last: true)
         } else {
-            LoadingRow(inset: 0)
+            FieldLabel("模型")
+            if !loadError.isEmpty {
+                Banner("没能读取模型列表：\(loadError)", tone: .error, action: "重试") { attempt += 1 }
+            } else if let models {
+                list(models.models)
+            } else {
+                LoadingRow(inset: 0)
+            }
+            Hint(running ? "只在空闲时能切换；这一轮结束后再选" : "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
+            if act.running { Hint("正在切换…") }
+            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: Theme.red) }
         }
-        Hint(running ? "只在空闲时能切换；这一轮结束后再选" : "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
-        if act.running { Hint("正在切换…") }
-        if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: Theme.red) }
         // Read again each time the sheet opens: the computer's list changes with the CLI.
         Color.clear.frame(height: 0).task(id: attempt) {
             do {
