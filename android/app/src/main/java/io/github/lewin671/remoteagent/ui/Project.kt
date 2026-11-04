@@ -753,8 +753,8 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
         for (id in others) {
             val agents = machineAgents(state.machines[id])
             val cliNote = when {
-                c.agent in agents -> "有 ${agentName(c.agent)}；模型和模式会按这台机器重新选择"
-                else -> "只有 ${agents.joinToString("、") { agentName(it) }}；会改用 ${agentName(agents.first())}，模型和模式按这台机器重新选择"
+                c.agent in agents -> "已装 ${agents.joinToString("、") { agentName(it) }}"
+                else -> "已装 ${agents.joinToString("、") { agentName(it) }}；这台机器没有 ${agentName(c.agent)}，会改用 ${agentName(switchMachine(c, id, agents).agent)}"
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChoose(switchMachine(c, id, agents)) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -905,7 +905,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     card(listOf(machineRow))
                     ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
                     card(rows)
-                    Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "两个 CLI 各存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                    Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 } else {
                     card(listOf(machineRow) + rows)
                     Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
@@ -921,11 +921,19 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             "machine" -> {
                 SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
                 used.forEachIndexed { i, id ->
-                    val online = state.machines[id]?.online == true
-                    // Said for the CLI selected next to the message box: 换机器 comes here to find it.
-                    val has = agent in machineAgents(state.machines[id])
+                    val m = state.machines[id]
+                    val online = m?.online == true
+                    val agents = machineAgents(m)
+                    val has = agent in agents
+                    val fallback = if (has) null else switchMachine(c, id, agents).agent
+                    val sub = when {
+                        !online -> "不在线，现在不能新建"
+                        !has -> "已装 ${agents.joinToString("、") { agentName(it) }}；这台机器没有 ${agentName(agent)}，会改用 ${agentName(fallback)}"
+                        else -> "已装 ${agents.joinToString("、") { agentName(it) }}"
+                    }
                     ListItem(
-                        machineLabel(state, id), if (!online) "不在线，现在不能新建" else if (!has) "没有 ${agentName(agent)}" else null,
+                        machineLabel(state, id),
+                        sub,
                         checked = machine == id, enabled = online, last = i == used.size - 1,
                         onClick = {
                             if (id != machine) {
@@ -949,9 +957,15 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         ms.modelsList.forEachIndexed { i, m ->
-                            ListItem(m.displayName.ifEmpty { m.slug }, checked = c.model == m.slug, last = i == ms.modelsCount - 1, onClick = {
-                                edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
-                            })
+                            ListItem(
+                                m.displayName.ifEmpty { m.slug },
+                                small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
+                                checked = c.model == m.slug,
+                                last = i == ms.modelsCount - 1,
+                                onClick = {
+                                    edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
+                                },
+                            )
                         }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
                             val defaultEffort = if (c.model.isEmpty()) {

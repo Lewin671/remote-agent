@@ -330,7 +330,7 @@ private fun SessionTopBar(
                     })
                     if (canRename) {
                         add(SheetAction("重命名", enabled = !forking) { rename = true })
-                        add(
+                        if (agentInfo(s.agent()).forks) add(
                             SheetAction(
                                 forkRow.text,
                                 enabled = forkRow.enabled,

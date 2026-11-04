@@ -505,18 +505,21 @@ private fun ChoiceSheet(
     title: String,
     options: List<Pair<String, String?>>,
     selected: Int,
+    enabled: (Int) -> Boolean = { true },
     onPick: (Int) -> Unit,
     onClose: () -> Unit,
 ) {
     Sheet(onClose) {
         SheetHead(title)
         options.forEachIndexed { i, (label, desc) ->
+            val ok = enabled(i)
             ListItem(
                 label,
                 desc,
                 checked = i == selected,
+                enabled = ok,
                 last = i == options.size - 1,
-                onClick = { onPick(i) },
+                onClick = if (ok) ({ onPick(i) }) else null,
             )
         }
     }
@@ -561,6 +564,7 @@ fun DeviceScreen(id: String) {
     var pickModel by remember { mutableStateOf<Agent?>(null) }
     var pickMode by remember { mutableStateOf<Agent?>(null) }
     var pickTimeout by remember { mutableStateOf(false) }
+    var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) =
         save.run(
             {
@@ -606,12 +610,35 @@ fun DeviceScreen(id: String) {
                 rows =
                     groups.map { g ->
                         @Composable {
-                            GRow(
-                                g.title.substringBefore(" · "),
-                                io.github.lewin671.remoteagent.core.quotaLine(g),
-                                onClick = { nav.quota(id) },
-                                chevron = true,
-                            )
+                            val qline = io.github.lewin671.remoteagent.core.quotaLine(g)
+                            val sepIdx = qline.indexOf(" · ")
+                            if (sepIdx != -1) {
+                                GRow(
+                                    g.title.substringBefore(" · "),
+                                    trailing = {
+                                        Text(
+                                            androidx.compose.ui.text.buildAnnotatedString {
+                                                append(qline.substring(0, sepIdx))
+                                                pushStyle(androidx.compose.ui.text.SpanStyle(color = p.muted))
+                                                append(" · ")
+                                                append(qline.substring(sepIdx + 3))
+                                                pop()
+                                            },
+                                            style = T.sm,
+                                            color = p.fg,
+                                        )
+                                    },
+                                    onClick = { nav.quota(id) },
+                                    chevron = true,
+                                )
+                            } else {
+                                GRow(
+                                    g.title.substringBefore(" · "),
+                                    qline,
+                                    onClick = { nav.quota(id) },
+                                    chevron = true,
+                                )
+                            }
                         }
                     },
             )
@@ -668,68 +695,67 @@ fun DeviceScreen(id: String) {
                     )
                 s == null ->
                     Hint("读取中…", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
-                else ->
-                    for (agent in machineAgents(m)) {
-                        val d = defaultsFor(s, agent)
-                        // What a session started without a mode really gets, as the machine reads
-                        // it.
-                        val eff = defaultModeOf(m, agent)
-                        val cur = modeOf(d.mode)
-                        val timeoutRow: @Composable () -> Unit = {
-                            GRow(
-                                "审批超时",
-                                "${s.approvalTimeoutSeconds / 60} 分钟",
-                                onClick = if (save.running) null else ({ pickTimeout = true }),
-                                chevron = true,
-                            )
-                        }
-                        GLabel("${agentName(agent)} · 新项目默认设置")
-                        Group(
-                            rows =
-                                listOfNotNull<@Composable () -> Unit>(
-                                    @Composable {
-                                        GRow(
-                                            "模型",
-                                            d.model.ifEmpty { "默认" },
-                                            onClick =
-                                                if (save.running) null else ({ pickModel = agent }),
-                                            chevron = true,
-                                        )
-                                    },
-                                    @Composable {
-                                        GRow(
-                                            "推理强度",
-                                            d.effort.ifEmpty { "默认" },
-                                            onClick =
-                                                if (save.running) null else ({ pickModel = agent }),
-                                            chevron = true,
-                                        )
-                                    },
-                                    @Composable {
-                                        // One line: that project settings may differ is said in the
-                                        // picker.
-                                        GRow(
-                                            "审批模式",
-                                            cur?.text
-                                                ?: modeLabel(null, eff.copy(varies = false), agent),
-                                            onClick =
-                                                if (save.running) null else ({ pickMode = agent }),
-                                            valueColor =
-                                                if (
-                                                    cur == null &&
-                                                        (eff.mode == Mode.FULL || !eff.known)
-                                                )
-                                                    p.red
-                                                else null,
-                                            chevron = true,
-                                        )
-                                    },
-                                    timeoutRow.takeIf {
-                                        agent == DEFAULT_AGENT || machineAgents(m).size == 1
-                                    },
-                                ),
+                else -> {
+                    val mAgents = machineAgents(m)
+                    val currentAgent = if (activeAgent in mAgents) activeAgent!! else mAgents.firstOrNull() ?: DEFAULT_AGENT
+                    GLabel(
+                        if (mAgents.size > 1) "新项目默认设置"
+                        else "新项目默认设置 · ${agentName(currentAgent)}"
+                    )
+                    if (mAgents.size > 1) {
+                        ViewTabs(
+                            mAgents.map { agentName(it) },
+                            mAgents.indexOf(currentAgent),
+                            { activeAgent = mAgents[it] },
+                            inset = 16.dp,
+                            modifier = Modifier.padding(bottom = 6.dp),
                         )
                     }
+                    val d = defaultsFor(s, currentAgent)
+                    val eff = defaultModeOf(m, currentAgent)
+                    val cur = modeOf(d.mode)
+                    Group(
+                        rows = listOf(
+                            @Composable {
+                                GRow(
+                                    "模型",
+                                    d.model.ifEmpty { "默认" },
+                                    onClick = if (save.running) null else ({ pickModel = currentAgent }),
+                                    chevron = true,
+                                )
+                            },
+                            @Composable {
+                                GRow(
+                                    "推理强度",
+                                    d.effort.ifEmpty { "默认" },
+                                    onClick = if (save.running) null else ({ pickModel = currentAgent }),
+                                    chevron = true,
+                                )
+                            },
+                            @Composable {
+                                GRow(
+                                    "审批模式",
+                                    cur?.text ?: modeLabel(null, eff.copy(varies = false), currentAgent),
+                                    onClick = if (save.running) null else ({ pickMode = currentAgent }),
+                                    valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
+                                    chevron = true,
+                                )
+                            },
+                        ),
+                    )
+                    Group(
+                        rows = listOf(
+                            @Composable {
+                                GRow(
+                                    "审批超时",
+                                    "${s.approvalTimeoutSeconds / 60} 分钟",
+                                    onClick = if (save.running) null else ({ pickTimeout = true }),
+                                    chevron = true,
+                                )
+                            },
+                        ),
+                    )
+                }
             }
             if (save.error.isNotEmpty())
                 Banner(
@@ -844,17 +870,30 @@ fun DeviceScreen(id: String) {
     pickMode?.let { agent ->
         if (cur != null) {
             val eff = defaultModeOf(m, agent)
-            val d = defaultsFor(cur, agent).mode
+            val d = defaultsFor(cur, agent)
+            var models by remember(id, agent) {
+                mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null)
+            }
+            LaunchedEffect(id, agent) {
+                if (agentInfo(agent).autoMayBeUnavailable) {
+                    runCatching { models = remote.listModels(id, agent) }
+                }
+            }
+            val allNoAuto = agentInfo(agent).autoMayBeUnavailable && io.github.lewin671.remoteagent.core.allAutoUnavailable(models?.modelsList)
+            val noAuto = allNoAuto || (agentInfo(agent).autoMayBeUnavailable && io.github.lewin671.remoteagent.core.autoUnavailable(models?.modelsList, d.model))
             val opts = listOf(null, Mode.ASK, Mode.AUTO)
             ChoiceSheet(
                 "${agentName(agent)} · 审批模式",
                 opts.map { mode ->
-                    (mode?.text ?: "默认") to
-                        (if (mode == null)
-                            "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：")
-                        else modeHelp.getValue(mode).replace("CLI", agentName(agent)))
+                    val desc = when {
+                        mode == null -> "不指定时实际用：" + modeLabel(null, eff, agent).removePrefix("默认：")
+                        mode == Mode.AUTO && noAuto -> if (allNoAuto) "当前账户不支持自动模式" else "当前模型不支持"
+                        else -> modeHelp.getValue(mode).replace("CLI", agentName(agent))
+                    }
+                    (mode?.text ?: "默认") to desc
                 },
-                opts.indexOf(modeOf(d)).coerceAtLeast(0),
+                opts.indexOf(modeOf(d.mode)).coerceAtLeast(0),
+                enabled = { i -> !(opts[i] == Mode.AUTO && noAuto) },
                 onPick = { i ->
                     pickMode = null
                     update(withMode(cur, agent, opts[i]))
@@ -984,7 +1023,9 @@ private fun DefaultModelSheet(
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
                         small =
-                            listOfNotNull(
+                            if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}"
+                            else
+                                listOfNotNull(
                                     io.github.lewin671.remoteagent.core.contextText(
                                         m.contextWindow,
                                     ),
@@ -1053,39 +1094,49 @@ fun QuotaScreen(id: String) {
                         color = p.red,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
                     )
-                GLabel(g.title + if (g.lastRecord) " · 上次记录" else "")
-                val rows = mutableListOf<@Composable () -> Unit>()
-                when (g.status) {
-                    io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED ->
-                        rows +=
-                            @Composable {
-                                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Text("暂不支持读取额度", style = T.bodyB, color = p.fg)
-                                    Text(
-                                        g.detail.ifEmpty {
-                                            "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。"
-                                        } + agentInfo(g.agent).usageHint.orEmpty(),
-                                        style = T.meta,
-                                        color = p.muted,
-                                    )
+                if (g.sections.isNotEmpty()) {
+                    for (sec in g.sections) {
+                        GLabel(sec.title)
+                        val srows = sec.rows.map { r ->
+                            @Composable { QuotaRowView(r) }
+                        }
+                        Group(rows = srows)
+                    }
+                } else {
+                    GLabel(g.title + if (g.lastRecord) " · 上次记录" else "")
+                    val rows = mutableListOf<@Composable () -> Unit>()
+                    when (g.status) {
+                        io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED ->
+                            rows +=
+                                @Composable {
+                                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                        Text("暂不支持读取额度", style = T.bodyB, color = p.fg)
+                                        Text(
+                                            g.detail.ifEmpty {
+                                                "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。"
+                                            } + agentInfo(g.agent).usageHint.orEmpty(),
+                                            style = T.meta,
+                                            color = p.muted,
+                                        )
+                                    }
                                 }
-                            }
-                    io.github.lewin671.remoteagent.core.QuotaStatus.WAITING ->
-                        rows +=
-                            @Composable {
-                                Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                    Text("暂未获取额度", style = T.bodyB, color = p.fg)
-                                    Text(
-                                        "等待 ${agentName(g.agent)} 返回额度数据",
-                                        style = T.meta,
-                                        color = p.muted,
-                                    )
+                        io.github.lewin671.remoteagent.core.QuotaStatus.WAITING ->
+                            rows +=
+                                @Composable {
+                                    Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                        Text("暂未获取额度", style = T.bodyB, color = p.fg)
+                                        Text(
+                                            "等待 ${agentName(g.agent)} 返回额度数据",
+                                            style = T.meta,
+                                            color = p.muted,
+                                        )
+                                    }
                                 }
-                            }
-                    else -> {}
+                        else -> {}
+                    }
+                    for (r in g.rows) rows += @Composable { QuotaRowView(r) }
+                    if (rows.isNotEmpty()) Group(rows = rows)
                 }
-                for (r in g.rows) rows += @Composable { QuotaRowView(r) }
-                if (rows.isNotEmpty()) Group(rows = rows)
                 // When it was heard, once for the group rather than on every row.
                 if (g.rows.isNotEmpty() && g.received.isNotEmpty())
                     Text(

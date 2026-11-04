@@ -89,13 +89,15 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         modelList =
             runCatching { remote.listModels(s.machineId, s.agent()) }.getOrNull()?.modelsList
     }
-    fun unavailable(m: Mode) =
-        (m == Mode.FULL && s.info?.fullAccessUnavailable == true) ||
-            (m == Mode.AUTO &&
-                io.github.lewin671.remoteagent.core.autoUnavailable(
-                    modelList,
-                    s.info?.model.orEmpty(),
-                ))
+    fun unavailable(m: Mode): String? {
+        if (s.info?.modeLocked == true) return "本会话以完全放行启动，不能切换审批模式"
+        if (m == Mode.FULL && s.info?.fullAccessUnavailable == true) return "本会话启动时未启用；需要时新建会话选择"
+        if (m == Mode.AUTO) {
+            if (io.github.lewin671.remoteagent.core.allAutoUnavailable(modelList)) return "当前账户不支持自动模式"
+            if (io.github.lewin671.remoteagent.core.autoUnavailable(modelList, s.info?.model.orEmpty())) return "当前模型不支持"
+        }
+        return null
+    }
     fun set(m: Mode) =
         act.run(
             {
@@ -128,20 +130,16 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         Mode.entries.forEachIndexed { i, m ->
-            val off = unavailable(m)
+            val reason = unavailable(m)
             ListItem(
                 m.text,
-                when {
-                    off && m == Mode.FULL -> "本会话启动时未启用；需要时新建会话选择"
-                    off -> "当前模型不支持"
-                    else -> modeHelp.getValue(m).replace("CLI", agentName(s.agent()))
-                },
+                reason ?: modeHelp.getValue(m).replace("CLI", agentName(s.agent())),
                 checked = m == cur,
-                enabled = !off,
-                danger = m == Mode.FULL && !off,
+                enabled = reason == null,
+                danger = m == Mode.FULL && reason == null,
                 last = i == Mode.entries.size - 1,
                 onClick =
-                    if (act.running || off) null
+                    if (act.running || reason != null) null
                     else
                         ({
                             if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m)
@@ -149,9 +147,13 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             )
         }
         Hint(
-            if (outside != null)
-                "照实显示终端中的模式；不提供切到 ${if (outside == "acceptEdits") "accept edits" else outside} 的按钮。"
-            else "只改当前会话",
+            when {
+                s.info?.modeLocked == true ->
+                    "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"
+                outside != null ->
+                    "照实显示终端中的模式；不提供切到 ${if (outside == "acceptEdits") "accept edits" else outside} 的按钮。"
+                else -> "只改当前会话"
+            },
         )
         if (act.running) Hint("正在切换…")
         if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
@@ -394,9 +396,39 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             )
             if (compact.error.isNotEmpty()) Hint("没能压缩：${compact.error}", color = p.red)
         }
+        val canSwitch = agentInfo(s.agent()).switchesModelInSession
         FieldLabel("模型", Modifier.padding(top = 2.dp))
         val ms = models
         when {
+            !canSwitch -> {
+                val current =
+                    ms?.let {
+                        io.github.lewin671.remoteagent.core.findModel(
+                            it.modelsList,
+                            s.info?.model.orEmpty(),
+                        ) { m -> m.slug }
+                    }
+                val modelDisplay = current?.displayName?.ifEmpty { current.slug }
+                    ?: io.github.lewin671.remoteagent.core.modelLabel(ms?.modelsList, s.info?.model.orEmpty(), s.agent())
+                    ?: s.info?.model?.ifEmpty { null }
+                    ?: "默认模型"
+                ListItem(
+                    modelDisplay,
+                    small = "运行中不能换模型，新建会话时可选",
+                    enabled = false,
+                    onClick = null,
+                )
+                FieldLabel("推理强度")
+                val effortDisplay = s.info?.effort?.ifEmpty { null }
+                    ?: current?.defaultEffort?.ifEmpty { null }
+                    ?: "默认"
+                ListItem(
+                    effortDisplay,
+                    small = "运行中不能换推理强度",
+                    enabled = false,
+                    onClick = null,
+                )
+            }
             loadError.isNotEmpty() ->
                 Banner(
                     "没能读取模型列表：$loadError",
@@ -462,7 +494,9 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 }
             }
         }
-        Hint(if (running) "只在空闲时能切换；这一轮结束后再选" else "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
+        if (canSwitch) {
+            Hint(if (running) "只在空闲时能切换；这一轮结束后再选" else "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
+        }
         if (act.running) Hint("正在切换…")
         if (act.error.isNotEmpty()) Hint("没能切换：${act.error}", color = p.red)
     }
