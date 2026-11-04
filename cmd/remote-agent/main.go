@@ -16,7 +16,11 @@ func usage() string {
 	ids := strings.Join(daemon.AgentIDs(), "|")
 	var agentLines strings.Builder
 	for _, a := range daemon.RegisteredAgents {
-		fmt.Fprintf(&agentLines, "  remote-agent %-24s start a %s session here and attach to it\n", a.ID+" ["+a.ID+" args]", a.Name)
+		article := "a"
+		if strings.ContainsAny(strings.ToLower(a.Name[:1]), "aeiou") {
+			article = "an"
+		}
+		fmt.Fprintf(&agentLines, "  remote-agent %-24s start %s %s session here and attach to it\n", a.ID+" ["+a.ID+" args]", article, a.Name)
 	}
 	return fmt.Sprintf(`remote-agent: operate native AI coding CLIs running in tmux
 

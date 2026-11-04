@@ -133,7 +133,7 @@ func (u *uploads) sessionDir(id string) string {
 	return filepath.Join(u.dir, id)
 }
 
-// usable reports whether image files can live under dir: both CLIs only
+// usable reports whether image files can live under dir: the CLIs only
 // turn a pasted path into an image when it has no spaces.
 func (u *uploads) usable() bool {
 	return !strings.ContainsFunc(u.dir, unicode.IsSpace)
