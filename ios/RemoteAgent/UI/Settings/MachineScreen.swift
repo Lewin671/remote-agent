@@ -127,11 +127,11 @@ struct MachineScreen: View {
                     if let idx = line.range(of: sep) {
                         let usedPart = String(line[..<idx.lowerBound])
                         let winPart = "· " + String(line[idx.upperBound...])
-                        GRow(title, value: winPart, chevron: true) {
+                        GRow(title, value: winPart, chevron: true, valueLines: 1) {
                             nav.open(.quota(machine: id))
                         }
                         .valueLead {
-                            Text(usedPart).type(T.sm, Theme.fg)
+                            Text(usedPart).type(T.sm, quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? Theme.orangeInk : Theme.muted).lineLimit(1)
                         }
                     } else {
                         GRow(title, value: line, chevron: true) {
@@ -217,21 +217,18 @@ struct MachineScreen: View {
             let busy = settings.saving || !shown
             let agents = machineAgents(m)
             if !agents.isEmpty {
-                let activeAgent: PBAgent
+                let activeAgent = (selectedAgent != nil && agents.contains(selectedAgent!)) ? selectedAgent! : agents[0]
                 if agents.count > 1 {
                     GroupLabel("新项目默认设置")
-                    let current = (selectedAgent != nil && agents.contains(selectedAgent!)) ? selectedAgent! : agents[0]
-                    activeAgent = current
                     SegPick(
                         agents.map(agentName),
                         selected: Binding(
-                            get: { agents.firstIndex(of: current) ?? 0 },
+                            get: { agents.firstIndex(of: activeAgent) ?? 0 },
                             set: { selectedAgent = agents[$0] }
                         )
                     )
                     .padding(.horizontal, Theme.Space.page)
                 } else {
-                    activeAgent = agents[0]
                     GroupLabel("新项目默认设置 · \(agentName(activeAgent))")
                 }
 
@@ -330,24 +327,8 @@ struct MachineScreen: View {
                     save(s.with(model: model, effort: effort, for: agent))
                 }
             case .mode(let agent):
-                let effective = defaultModeOf(state.machines[id], agent: agent)
-                let current = modeOf(s.defaults(for: agent).mode)
-                SheetHead("\(agentName(agent)) · 审批模式")
-                ForEach(Array(defaultModeChoices.enumerated()), id: \.offset) { i, mode in
-                    ListItem(
-                        mode?.text ?? "默认",
-                        desc: mode.map {
-                            modeHelp($0).replacingOccurrences(of: "CLI", with: agentName(agent))
-                        }
-                            ?? (effective.known
-                                ? "不指定时实际用："
-                                    + modeLabel(chosen: nil, default: effective, agent: agent)
-                                    .removingPrefix("默认：")
-                                : unknownModeText),
-                        checked: mode == current
-                            || (mode == nil && !defaultModeChoices.contains(current)),
-                        last: i == defaultModeChoices.count - 1
-                    ) { save(s.with(mode: mode, for: agent)) }
+                DefaultModeSheet(machine: id, agent: agent, settings: s, effective: defaultModeOf(state.machines[id], agent: agent)) {
+                    save(s.with(mode: $0, for: agent))
                 }
             case .timeout:
                 SheetHead("审批超时")
@@ -390,12 +371,6 @@ struct MachineScreen: View {
             }
         }
     #endif
-}
-
-extension String {
-    fileprivate func removingPrefix(_ prefix: String) -> String {
-        hasPrefix(prefix) ? String(dropFirst(prefix.count)) : self
-    }
 }
 
 /// A CLI's default model and effort for new sessions on a computer, from the models it offers.

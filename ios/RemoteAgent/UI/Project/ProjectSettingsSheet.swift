@@ -169,8 +169,8 @@ struct ProjectSettingsSheet: View {
         if agents.count > 1 {
             // The machine is shared; each CLI has its own set, seen under its tab.
             SetCard([AnyView(machineRow)])
-            ViewTabs(
-                agents.map(agentName), selected: Binding(get: { agents.firstIndex(of: cur) ?? 0 }, set: { draft.tab = agents[$0] }), inset: 0
+            SegPick(
+                agents.map(agentName), selected: Binding(get: { agents.firstIndex(of: cur) ?? 0 }, set: { draft.tab = agents[$0] })
             )
             .padding(.top, 6)
             SetCard(own)
