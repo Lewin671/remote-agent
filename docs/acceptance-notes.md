@@ -1825,3 +1825,14 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 验收中发现并修复：macOS 的 /tmp 别名在 CLI 内成为 /private/tmp，私有启动 settings 同时列入原路径及规范路径后，网页创建无需全局信任确认。模型目录接管、目录符号链接、原生审批与计划身份围栏、图片提交认领、退出源定时权限等有回归和 race 检查；四端的完整自动检查结果见任务报告。协议常量四处均为 13，四端生成代码重新生成后没有差异。
 
 未覆盖：Android/iOS 真机直接操作、网页的真实图片上传、源会话退出后的真实 MCP 定时派发，以及真机通知/锁屏。此前 synthetic client 的完整真实 agy 验收见上一节；不能把它或本次自动测试当成这些界面流程已经验证。
+
+
+## Antigravity 审计修复复验（2026-11-04）
+
+v0.53.0 源码基础上的本地修复，协议仍为 13，未推送、发布或部署。环境为 macOS、真实 agy 1.5.0、Gemini 3.8 Flash / low；`scripts/acceptance-agy.sh` 从任务 checkout 构建本地 server/daemon，使用临时账户、独立状态目录和 tmux socket。模型请求前核对 statusLine 的 Gemini 五小时剩余额度至少 20%。
+
+- 合成加密客户端经 server、daemon 到真实 CLI，再读回加密事件：文字、双图上传与正文提交、命令和文件创建的允许/拒绝、单选提问、计划自然批准/拒绝及单独反馈、本地先答后撤回旧动作、工件修订失效、多待审工件终端处理、中断、daemon 重启重接、进程退出后恢复、原生 `/fork` 与 `/resume`、压缩 CHECKPOINT、配额元数据全部通过。计划的远程批准/拒绝没有预先由脚本打开 Ctrl-R，由 daemon 自行打开并验证面板；本地先答及本地清理实验明确使用终端诊断键。
+- 首轮双图实际送达并回复 RED，但图片关联与提交确认失败，暴露 1.5.0 的 `.user_uploaded` 绝对路径格式；补修后重新跑完整脚本，两个 upload ID 都绑定到对应 UserMessage，最终输出 `all checks passed`。没有把首轮失败记作通过。
+- 单独的无模型请求原生实验核对附件折叠/展开和 Escape 清理；采集的屏幕与 transcript 样本脱敏后进入 testdata，并通过公开内容扫描。未知 `/mcp` 菜单和后台任务中断采用独立审计的真实脱敏画面做 parser/daemon 回放。
+- Web 94 个测试文件、1407 项测试及类型检查/生产构建通过；Android core 473、terminal 7、app 453 项单元测试通过；iOS Core 的 `swift test` 638 项、96 suites 通过。`go vet ./...`、`go test ./...` 和 `go test -count=5 ./internal/antigravity` 通过。
+- 以上远程操作由合成客户端驱动，未做 Chrome、Android 或 iOS 直接界面点击，也没有真机验收。Codex/Claude 的原生行为依靠自动回归，本次没有重复真实会话端到端。API key 登录及计费来源未实测，缺口见 [plan.md](plan.md)。用户 agy/Claude settings 哈希不变；没有发送 `/model` 或直接编辑原生 CLI 状态目录。测试 server、daemon、tmux 和原生探针均已停止，临时环境已清理。
