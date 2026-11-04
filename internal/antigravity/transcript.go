@@ -2,7 +2,9 @@ package antigravity
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -50,13 +52,21 @@ type pendingCall struct {
 	id, name, title, input, digest string
 	kind                           pb.ToolKind
 	isPlan                         bool
+	plan                           *agent.PlanFacts
 }
 
 // Parser reads append-only transcript records. Tool results occupy their own
 // step indices; stepIdx in PreToolUse is that result's index, also used as the
 // synthetic call ID so early hook events deduplicate with transcript events.
 type Parser struct {
+	plans          map[string]*agent.PlanFacts
+	answeredPlans  map[string]bool
+	lastPlanID     string
+	planMessages   map[string]bool
+	fullOffset     int64
+	fullLine       int
 	transcriptPath string
+	conversation   string
 	lineIndex      int
 	inTurn         bool
 	turnID         string
@@ -72,10 +82,17 @@ type Parser struct {
 var _ agent.Parser = (*Parser)(nil)
 
 func NewParser() *Parser {
-	return &Parser{pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
+	return &Parser{planMessages: map[string]bool{}, plans: map[string]*agent.PlanFacts{}, answeredPlans: map[string]bool{}, pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
 }
-func (p *Parser) SetTranscriptPath(path string) { p.transcriptPath = path }
-func (p *Parser) Images() []agent.FoundImage    { out := p.found; p.found = nil; return out }
+func (p *Parser) SetTranscriptPath(path string) {
+	p.transcriptPath = path
+	if filepath.Base(filepath.Dir(path)) == "logs" && filepath.Base(filepath.Dir(filepath.Dir(path))) == ".system_generated" {
+		p.conversation = filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+	}
+}
+func (p *Parser) SetConversation(id string) { p.conversation = id }
+
+func (p *Parser) Images() []agent.FoundImage { out := p.found; p.found = nil; return out }
 func (p *Parser) Replay(e *pb.Event) {
 	switch k := e.Kind.(type) {
 	case *pb.Event_TurnStarted:
@@ -97,6 +114,15 @@ func (p *Parser) Replay(e *pb.Event) {
 		delete(p.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_PlanProposed:
 		p.report(k.PlanProposed.CallId)
+		p.lastPlanID = k.PlanProposed.CallId
+	case *pb.Event_PlanAnswered:
+		if p.lastPlanID != "" {
+			p.answeredPlans[p.lastPlanID] = true
+		}
+		for _, plan := range p.plans {
+			p.answeredPlans[plan.CallID] = true
+		}
+		clear(p.plans)
 	}
 }
 
@@ -104,13 +130,26 @@ func (p *Parser) Replay(e *pb.Event) {
 // line number, which events alone cannot recover. Token totals, inferred ends
 // and hook-only questions are then retained from the durable event replay.
 func (p *Parser) Restore(path string, end int64) error {
+	if end == 0 {
+		p.SetTranscriptPath(path)
+		p.lineIndex = 0
+		clear(p.pendingCalls)
+		clear(p.questions)
+		clear(p.plans)
+		clear(p.planMessages)
+		p.lastPlanID = ""
+		p.fullOffset = 0
+		p.fullLine = 0
+		return nil
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
 	rebuilt := NewParser()
-	rebuilt.transcriptPath, rebuilt.restoring = path, true
+	rebuilt.SetTranscriptPath(path)
+	rebuilt.conversation, rebuilt.restoring = p.conversation, true
 	rd := bufio.NewReader(io.LimitReader(f, end))
 	for {
 		line, err := rd.ReadBytes('\n')
@@ -127,6 +166,14 @@ func (p *Parser) Restore(path string, end int64) error {
 		}
 	}
 	p.transcriptPath, p.lineIndex = path, rebuilt.lineIndex
+	p.fullOffset, p.fullLine = rebuilt.fullOffset, rebuilt.fullLine
+	p.plans = rebuilt.plans
+	p.planMessages = rebuilt.planMessages
+	for path, plan := range p.plans {
+		if p.answeredPlans[plan.CallID] {
+			delete(p.plans, path)
+		}
+	}
 	if p.inTurn {
 		p.pendingCalls = rebuilt.pendingCalls
 	} else {
@@ -202,7 +249,7 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	}
 	start := func() {
 		p.inTurn = true
-		p.turnID = fmt.Sprintf("step_%d", r.StepIndex)
+		p.turnID = nativeCallID(p.conversation, r.StepIndex)
 		emit(&pb.TurnStarted{})
 		if p.ctx != nil {
 			emit(proto.CloneOf(p.ctx))
@@ -214,6 +261,22 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		if strings.HasPrefix(text, "/") {
 			break
 		} // slash command, not a model turn
+		generated := p.planMessages[strings.TrimSpace(text)]
+		if generated {
+			delete(p.planMessages, strings.TrimSpace(text))
+		}
+		if generated && len(p.plans) > 0 {
+			choice := pb.PlanChoice_PLAN_CHOICE_IMPLEMENT
+			if strings.HasPrefix(text, "[Rejected] ") {
+				choice = pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING
+			}
+			e := &pb.Event{Origin: &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_LOCAL}, Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}
+			evs = append(evs, e)
+			for _, plan := range p.plans {
+				p.answeredPlans[plan.CallID] = true
+			}
+			clear(p.plans)
+		}
 		if p.inTurn {
 			emit(&pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: "new input after unfinished turn"})
 		}
@@ -221,6 +284,9 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		clear(p.questions)
 		start()
 		emit(&pb.UserMessage{Text: text, Images: p.readMedia(r.Media, pb.ImageSource_IMAGE_SOURCE_USER)})
+		if generated {
+			evs[len(evs)-1].Origin = &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM}
+		}
 	case "PLANNER_RESPONSE":
 		if !p.inTurn {
 			start()
@@ -233,11 +299,8 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		}
 		for i, tc := range r.ToolCalls {
 			step := r.StepIndex + int64(i) + 1
-			id := tc.ID
-			if id == "" {
-				id = fmt.Sprintf("step_%d", step)
-			}
-			args := normalizeArgs(tc.Args)
+			id := nativeCallID(p.conversation, step)
+			args := normalizeTranscriptArgs(tc.Args)
 			call := pendingCall{id: id, name: tc.Name, title: describeTool(tc.Name, args).title, input: string(args), digest: agent.InputDigest(tc.Name, args), kind: toolKindFor(tc.Name)}
 			switch {
 			case tc.Name == "ask_question":
@@ -250,10 +313,15 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 				}
 			case tc.Name == "write_file" && isPlanWrite(args):
 				call.isPlan = true
-				if !p.reported[id] {
-					emit(&pb.PlanProposed{Text: extractPlanContent(args), CallId: id})
-					p.report(id)
+				emit(&pb.ToolStarted{CallId: id, Kind: call.kind, ItemType: tc.Name, Title: call.title, Input: call.input, InputDigest: call.digest})
+				var fields struct {
+					Path string `json:"Path"`
 				}
+				_ = json.Unmarshal(args, &fields)
+				text := extractPlanContent(args)
+				sum := sha256.Sum256([]byte(text))
+				call.plan = &agent.PlanFacts{Path: fields.Path, Revision: hex.EncodeToString(sum[:]), Text: text, CallID: id}
+
 			default:
 				emit(&pb.ToolStarted{CallId: id, Kind: call.kind, ItemType: tc.Name, Title: call.title, Input: call.input, InputDigest: call.digest})
 			}
@@ -294,6 +362,22 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 				delete(p.questions, call.id)
 			}
 		case call.isPlan:
+			status := "completed"
+			if r.Status == "ERROR" {
+				status = "failed"
+			}
+			emit(&pb.ToolCall{CallId: call.id, Kind: call.kind, ItemType: call.name, Title: call.title, Input: call.input, InputDigest: call.digest, Output: r.Content, Status: status})
+			if r.Status != "ERROR" && call.plan != nil {
+				p.plans[call.plan.Path] = call.plan
+				p.lastPlanID = call.id
+				name := filepath.Base(call.plan.Path)
+				p.planMessages["[Approved] "+name] = true
+				p.planMessages["[Rejected] "+name] = true
+				if !p.reported[call.id] {
+					emit(&pb.PlanProposed{Text: call.plan.Text, CallId: call.id})
+					p.report(call.id)
+				}
+			}
 		default:
 			status := "completed"
 			if r.Status == "ERROR" {
@@ -308,7 +392,11 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 				}
 				output = strings.Clone(output[:cut])
 			}
-			emit(&pb.ToolCall{CallId: call.id, Kind: call.kind, ItemType: call.name, Title: call.title, Input: call.input, InputDigest: call.digest, Output: output, OutputTruncated: truncated, Status: status, Images: p.readMedia(r.Media, pb.ImageSource_IMAGE_SOURCE_TOOL)})
+			background := pb.ToolBackground_TOOL_BACKGROUND_UNSPECIFIED
+			if strings.Contains(r.Content, "Tool is running as a background task") || call.name == "invoke_subagent" {
+				background = pb.ToolBackground_TOOL_BACKGROUND_TIMED_OUT
+			}
+			emit(&pb.ToolCall{Background: background, CallId: call.id, Kind: call.kind, ItemType: call.name, Title: call.title, Input: call.input, InputDigest: call.digest, Output: output, OutputTruncated: truncated, Status: status, Images: p.readMedia(r.Media, pb.ImageSource_IMAGE_SOURCE_TOOL)})
 		}
 	case "CHECKPOINT":
 		emit(&pb.SettingsChanged{Compacted: true})
@@ -322,26 +410,47 @@ func (p *Parser) resolveTruncated(r *transcriptRecord, line int) error {
 	}
 	f, err := os.Open(filepath.Join(filepath.Dir(p.transcriptPath), "transcript_full.jsonl"))
 	if err != nil {
-		return fmt.Errorf("%w: read full transcript", agent.ErrSourcePending)
+		return agent.ErrSourcePending
 	}
 	defer f.Close()
+	offset, index := p.fullOffset, p.fullLine
+	if line < index {
+		offset, index = 0, 0
+	}
+	if _, err = f.Seek(offset, io.SeekStart); err != nil {
+		return err
+	}
 	rd := bufio.NewReader(f)
-	for i := 0; i <= line; i++ {
+	for index <= line {
 		b, err := rd.ReadBytes('\n')
 		if err != nil && len(b) == 0 {
 			return agent.ErrSourcePending
 		}
-		if i == line {
-			if len(b) == 0 || b[len(b)-1] != '\n' {
-				return agent.ErrSourcePending
-			}
+		if len(b) == 0 || b[len(b)-1] != '\n' {
+			return agent.ErrSourcePending
+		}
+		offset += int64(len(b))
+		if index == line {
 			var full transcriptRecord
 			if json.Unmarshal(b, &full) != nil || full.StepIndex != r.StepIndex || full.Type != r.Type {
 				return errors.New("full transcript line does not match")
 			}
 			*r = full
+			p.fullOffset, p.fullLine = offset, index+1
 			return nil
 		}
+		index++
+	}
+	return nil
+}
+
+func (p *Parser) Plan() *agent.PlanFacts {
+	if len(p.plans) != 1 {
+		return nil
+	}
+	for _, plan := range p.plans {
+		copy := *plan
+		return &copy
 	}
 	return nil
 }
@@ -616,7 +725,7 @@ func (a *Adapter) Submitted(line []byte, match func(string) bool, id string) boo
 	if json.Unmarshal(line, &in) != nil || in.Type == "slash_command" {
 		return false
 	}
-	if id != "" && in.Conversation != "" && in.Conversation != id {
+	if id == "" || in.Conversation == "" || in.Conversation != id {
 		return false
 	}
 	return match(in.Text)
@@ -626,13 +735,11 @@ func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
 	switch h.HookEventName {
 	case "PreToolUse":
 		if h.ToolName == "ask_question" {
-			if q, err := parseQuestionsFromRaw(h.ToolUseID, normalizeArgs(h.ToolInput)); err == nil {
+			if q, err := parseQuestionsFromRaw(h.ToolUseID, h.ToolInput); err == nil {
 				return []*pb.Event{{Kind: &pb.Event_QuestionAsked{QuestionAsked: q}}}
 			}
 		}
-		if h.ToolName == "write_file" && isPlanWrite(h.ToolInput) {
-			return []*pb.Event{{Kind: &pb.Event_PlanProposed{PlanProposed: &pb.PlanProposed{Text: extractPlanContent(h.ToolInput), CallId: h.ToolUseID}}}}
-		}
+
 	case "Stop":
 		outcome := pb.TurnOutcome_TURN_OUTCOME_COMPLETED
 		switch h.TerminationReason {
@@ -647,5 +754,30 @@ func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
 	return nil
 }
 func (a *Adapter) ModeLocked(ctx *pb.TurnContext) bool {
-	return ctx != nil && ctx.PermissionMode == "always-proceed"
+	return ctx != nil && ctx.ApprovalPolicy == "always-proceed"
+}
+
+func (a *Adapter) EventConversation(e *pb.Event) string {
+	conversation, _, ok := strings.Cut(e.TurnId, "/")
+	if !ok {
+		return ""
+	}
+	return conversation
+}
+
+// Transcript args encode values as JSON strings, while hooks carry native
+// values. Normalize both before computing digests or parsing questions.
+func normalizeTranscriptArgs(raw json.RawMessage) json.RawMessage {
+	var values map[string]json.RawMessage
+	if json.Unmarshal(raw, &values) != nil {
+		return raw
+	}
+	for key, v := range values {
+		var s string
+		if json.Unmarshal(v, &s) == nil && json.Valid([]byte(s)) {
+			values[key] = json.RawMessage(s)
+		}
+	}
+	out, _ := json.Marshal(values)
+	return out
 }

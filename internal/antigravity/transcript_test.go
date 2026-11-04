@@ -118,8 +118,8 @@ func TestSubmitLogAndSubmitted(t *testing.T) {
 
 	// Prompt without conversationId (first message)
 	line1 := []byte(`{"display":"hello world","timestamp":1730650000000,"workspace":"/workspace"}`)
-	if !a.Submitted(line1, func(s string) bool { return s == "hello world" }, "conv-123") {
-		t.Errorf("expected match for prompt without conversationId")
+	if a.Submitted(line1, func(s string) bool { return s == "hello world" }, "conv-123") {
+		t.Errorf("CID-less global history must not confirm the first prompt")
 	}
 
 	// Prompt with matching conversationId
@@ -191,7 +191,7 @@ func TestAnswerApproval(t *testing.T) {
 	term := &fakeTerm{screen: readScreenFixture(t, "permission-prompt.txt")}
 	h := &agent.Hook{ToolName: "run_command", ToolInput: []byte(`{"CommandLine":"echo hello_perm_test"}`)}
 
-	if err := a.AnswerApproval(term, h, true); err != nil {
+	if err := a.AnswerApproval(term, h, true, func() bool { return true }); err != nil {
 		t.Fatalf("AnswerApproval allow error: %v", err)
 	}
 	if string(term.written) != "1" {
@@ -199,7 +199,7 @@ func TestAnswerApproval(t *testing.T) {
 	}
 
 	term.written = nil
-	if err := a.AnswerApproval(term, h, false); err != nil {
+	if err := a.AnswerApproval(term, h, false, func() bool { return true }); err != nil {
 		t.Fatalf("AnswerApproval deny error: %v", err)
 	}
 	if string(term.written) != "4" {

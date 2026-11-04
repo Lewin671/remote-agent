@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -58,7 +59,9 @@ func TestModeConfirmationAndImmutableCapabilities(t *testing.T) {
 			mode = cycle[mode]
 		}
 	}
-	facts := agent.ModeFacts{CurrentMode: func() string { return mode }}
+	facts := agent.ModeFacts{Observation: func() agent.ModeObservation {
+		return agent.ModeObservation{ToolPermission: "request-review", Mode: mode, At: time.Now(), IdleKnown: true}
+	}}
 	if err := a.SetMode(term, pb.ApprovalMode_APPROVAL_MODE_PLAN, false, facts); err != nil || mode != "plan" {
 		t.Fatal(err, mode)
 	}
@@ -115,7 +118,7 @@ func TestFilePermissionDenyUsesObservedMenuNumber(t *testing.T) {
 	a := New("agy", t.TempDir())
 	h := &agent.Hook{ToolName: "write_file", ToolInput: []byte(`{"Path":"/workspace/example.txt"}`)}
 	term := &fakeTerm{screen: "Requesting permission for:\n   /workspace/example.txt\n\nAllow creation of this file?\n> 1. Yes, allow creation\n  2. No, deny creation\n"}
-	if err := a.AnswerApproval(term, h, false); err != nil || string(term.written) != "2" {
+	if err := a.AnswerApproval(term, h, false, func() bool { return true }); err != nil || string(term.written) != "2" {
 		t.Fatalf("deny file %q %v", term.written, err)
 	}
 }

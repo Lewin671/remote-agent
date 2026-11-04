@@ -98,6 +98,7 @@ func TestTruncatedLineUsesFullRecordAndChecksIdentity(t *testing.T) {
 func TestHookAndTranscriptQuestionDeduplicate(t *testing.T) {
 	a := New("agy", t.TempDir())
 	p := NewParser()
+	p.SetConversation("id")
 	_, err := p.Parse([]byte(`{"step_index":3,"type":"USER_INPUT","content":"<USER_REQUEST>question</USER_REQUEST>"}`))
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +120,7 @@ func TestHookAndTranscriptQuestionDeduplicate(t *testing.T) {
 		}
 	}
 	evs, err = p.Parse([]byte(`{"step_index":5,"type":"GENERIC","content":"A1: B"}`))
-	if err != nil || len(evs) != 1 || evs[0].GetQuestionAnswered().QuestionId != "step_5" {
+	if err != nil || len(evs) != 1 || evs[0].GetQuestionAnswered().QuestionId != "id/step_5" {
 		t.Fatalf("result %v %v", evs, err)
 	}
 }
@@ -168,7 +169,7 @@ func TestNativeApprovalRejectsHistoryPrefixesAndChangedPrompt(t *testing.T) {
 		}
 	}
 	term := &fakeTerm{screen: strings.ReplaceAll(screen, "echo hello_perm_test", "echo changed")}
-	if err := a.AnswerApproval(term, hook, true); err == nil || len(term.written) > 0 {
+	if err := a.AnswerApproval(term, hook, true, nil); err == nil || len(term.written) > 0 {
 		t.Fatal("answered changed native prompt")
 	}
 }
