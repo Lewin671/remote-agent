@@ -9,7 +9,7 @@ import { agentInfo, normalizePlanName } from "./agents";
 
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
-  windowName: string; // 5 小时, 7 天 (duration / short name for summary line)
+  windowName?: string; // 5 小时, 7 天 (duration / short name for summary line)
   used: string; // 已用 62%, 已用尽, 未获取
   percent?: number;
   reset: string; // 4 小时 29 分后重置 · 今天 14:10
