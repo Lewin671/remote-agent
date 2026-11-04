@@ -15,6 +15,7 @@ import (
 )
 
 func TestEventPagesBoundBytesAndPreserveCursor(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	_, mid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
 	cp, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "")

@@ -39,6 +39,7 @@ func slowBody(t *testing.T, base string, length int) net.Conn {
 }
 
 func TestRPCDecoderConcurrencyIsBoundedBeforeBodyRead(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	var conns []net.Conn
 	defer func() {
@@ -130,6 +131,7 @@ func TestSmallRPCRequestsAreBoundedToo(t *testing.T) {
 }
 
 func TestSlowRPCBodyDeadlineReleasesDecoderSlot(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	// Exercise the same middleware using a short deadline rather than making
 	// the regression wait for the production 15-second deadline.

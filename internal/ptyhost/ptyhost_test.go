@@ -517,6 +517,7 @@ func shellQuote(s string) string {
 }
 
 func TestRunDrainsOutputAfterStdoutFails(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"failed-stdout", "failed-stdout-hup"} {
 		t.Run(mode, func(t *testing.T) {
 			h := startRunHelper(t, mode)
@@ -548,6 +549,7 @@ func TestRunDrainsOutputAfterStdoutFails(t *testing.T) {
 }
 
 func TestRunSignalEscalatesToWholeProcessGroup(t *testing.T) {
+	t.Parallel()
 	h := startRunHelper(t, "ignore-signals")
 	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
 		t.Fatal(err)
@@ -582,6 +584,7 @@ func TestRunSignalEscalatesToWholeProcessGroup(t *testing.T) {
 }
 
 func TestRunDoesNotEscalatePromptSIGHUPExit(t *testing.T) {
+	t.Parallel()
 	h := startRunHelper(t, "prompt-hup")
 	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
 		t.Fatal(err)
@@ -644,6 +647,7 @@ func waitForProcessExit(pid int, d time.Duration) error {
 // A non-reading CLI must not lock state or retain a timed-out paste. Once
 // it reads again, buffered local keys precede subsequent remote input.
 func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
+	t.Parallel()
 	h := startRunHelper(t, "blocked-input")
 	if err := waitForFile(h.grandchild, 5*time.Second); err != nil {
 		t.Fatal(err)
@@ -780,6 +784,7 @@ func TestBlockedPTYWriteExpiresAndRestoresLocalInput(t *testing.T) {
 // Cleanup follows the process group lifetime, even when its leader exits
 // promptly on HUP, during TERM escalation, or before a stop signal arrives.
 func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
+	t.Parallel()
 	for _, mode := range []string{"hangup", "termination", "natural"} {
 		t.Run(mode, func(t *testing.T) {
 			dir := shortTempDir(t)
@@ -832,6 +837,7 @@ func TestExitedLeaderStillCleansProcessGroup(t *testing.T) {
 // A write lasting longer than daemon holdFor/2 must not reject its owner's
 // renewal or let buffered keys through at the original lease's expiry.
 func TestHolderRenewsDuringOwnBlockedWrite(t *testing.T) {
+	t.Parallel()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -881,6 +887,7 @@ func TestHolderRenewsDuringOwnBlockedWrite(t *testing.T) {
 // Brief local backpressure should delay new remote operations, not fail
 // them. Both operations must remain responsive to status while waiting.
 func TestRemoteOperationsWaitForLocalFlush(t *testing.T) {
+	t.Parallel()
 	for _, op := range []string{"hold", "write"} {
 		t.Run(op, func(t *testing.T) {
 			r, w, err := os.Pipe()
@@ -945,6 +952,7 @@ func TestRemoteOperationsWaitForLocalFlush(t *testing.T) {
 // Contention must not grant a fresh I/O budget after the prior local
 // writer drains; the remote caller has one deadline for the whole call.
 func TestRemoteWriteSharesDeadlineWithWriterWait(t *testing.T) {
+	t.Parallel()
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)

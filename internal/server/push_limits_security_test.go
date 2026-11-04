@@ -16,6 +16,7 @@ import (
 )
 
 func TestNotificationDedupeStateIsBounded(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	p := ts.srv.push
 	st := ts.srv.store.tenant

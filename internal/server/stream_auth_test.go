@@ -68,6 +68,7 @@ func TestRevocationClosesClientAndTerminalStreams(t *testing.T) {
 }
 
 func TestStreamEndsAtTokenExpiry(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	cp, cid, _ := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_CLIENT, "setup")
 	token := ts.login(t, cp, cid)

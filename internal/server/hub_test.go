@@ -46,6 +46,7 @@ func TestReadyPrecedesConcurrentBroadcasts(t *testing.T) {
 // A PutMachine that read the machine as online must not broadcast that
 // after the disconnect was broadcast: clients take the flag as it comes.
 func TestOnlineStateIsBroadcastInOrder(t *testing.T) {
+	t.Parallel()
 	ts := newTestServer(t)
 	_, mid, err := ts.register(t, ts.keys, pb.DeviceKind_DEVICE_KIND_MACHINE, "setup")
 	if err != nil {
