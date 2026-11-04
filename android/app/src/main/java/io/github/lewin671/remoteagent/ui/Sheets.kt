@@ -135,15 +135,12 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                 m.text,
                 reason ?: modeHelp.getValue(m).replace("CLI", agentName(s.agent())),
                 checked = m == cur,
-                enabled = reason == null,
+                enabled = reason == null && !act.running,
                 danger = m == Mode.FULL && reason == null,
                 last = i == Mode.entries.size - 1,
-                onClick =
-                    if (act.running || reason != null) null
-                    else
-                        ({
-                            if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m)
-                        }),
+                onClick = {
+                    if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m)
+                },
             )
         }
         Hint(

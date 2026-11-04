@@ -100,17 +100,24 @@ class V8Gallery {
     private fun ts(ms: Long) = Timestamp.newBuilder().setSeconds(ms / 1000).build()
     private fun at(h: Int, m: Int): Long = java.time.LocalDate.now().atTime(h, m).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
 
-    private fun machine(id: String, name: String, online: Boolean = true, claude: Boolean = false) = id to MachineView(
+    private fun machine(id: String, name: String, online: Boolean = true, claude: Boolean = false, antigravity: Boolean = false) = id to MachineView(
         id, online, if (online) now else now - 2 * 3600_000,
         MachineMeta.newBuilder().setHostname(name).setHome(home).setCapabilities(MachineCapabilities.newBuilder().setApprovalAlways(true))
             .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG))
             .also { if (claude) it.addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)) }
+            .also { if (antigravity) it.addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setDefaultMode(ApprovalMode.APPROVAL_MODE_ASK).setDefaultModeSource(DefaultModeSource.DEFAULT_MODE_SOURCE_CLI_CONFIG)) }
             .build(),
     )
 
-    private val machines = mapOf(machine("mac", "MacBook", claude = true), machine("vps", "VPS-dev"), machine("imac", "iMac"))
+    private val machines = mapOf(machine("mac", "MacBook", claude = true, antigravity = true), machine("vps", "VPS-dev"), machine("imac", "iMac"))
     private val codexModels = ListModelsResponse.newBuilder().setDefaultModel("gpt-6-astra")
         .addModels(ModelInfo.newBuilder().setSlug("gpt-6-astra").setDisplayName("GPT-6-Astra").setDefaultEffort("medium")).build()
+    private val claudeModels = ListModelsResponse.newBuilder().setDefaultModel("claude-sonnet-5-5")
+        .addModels(ModelInfo.newBuilder().setSlug("claude-sonnet-5-5").setDisplayName("Claude 3.5 Sonnet").setDefaultEffort("high")).build()
+    private val agyModels = ListModelsResponse.newBuilder().setDefaultModel("gemini-2.5-pro")
+        .addModels(ModelInfo.newBuilder().setSlug("gemini-2.5-pro").setDisplayName("Gemini 2.5 Pro"))
+        .addModels(ModelInfo.newBuilder().setSlug("gemini-2.5-flash").setDisplayName("Gemini 2.5 Flash"))
+        .build()
 
     private fun session(
         id: String, machine: String, cwd: String, title: String, status: SessionStatus = SessionStatus.SESSION_STATUS_IDLE,
@@ -121,7 +128,11 @@ class V8Gallery {
         id, machine,
         Session.newBuilder().setId(id).setCwd(cwd).setTitle(title).setStatus(status).setAgent(agent).setPendingApprovals(approvals)
             .setPendingQuestions(questions).setPlanOpen(plan).setPreview(preview).setCreatedAt(ts(created)).setMode(mode).setStatusDetail(detail)
-            .setModel(if (agent == Agent.AGENT_CLAUDE) "claude-sonnet-5-5" else "gpt-6-astra").setEffort(if (agent == Agent.AGENT_CLAUDE) "high" else "medium")
+            .setModel(when (agent) {
+                Agent.AGENT_CLAUDE -> "claude-sonnet-5-5"
+                Agent.AGENT_ANTIGRAVITY -> "gemini-2.5-pro"
+                else -> "gpt-6-astra"
+            }).setEffort(if (agent == Agent.AGENT_CLAUDE) "high" else "medium")
             .setContextTokens(context).setContextWindow(if (context > 0) 760_000 else 0)
             .also { if (status == SessionStatus.SESSION_STATUS_EXITED) it.setEndedAt(ts(updated)) }.build(),
         updatedMs = updated,
@@ -149,6 +160,8 @@ class V8Gallery {
         val shown = if (state.conn == ConnState.ONLINE) state.copy(link = io.github.lewin671.remoteagent.core.Link.ONLINE, synced = true) else state
         remote.showForTest(shown, history, mapOf(
             ("mac" to Agent.AGENT_CODEX) to codexModels,
+            ("mac" to Agent.AGENT_CLAUDE) to claudeModels,
+            ("mac" to Agent.AGENT_ANTIGRAVITY) to agyModels,
             ("vps" to Agent.AGENT_CODEX) to codexModels,
             ("imac" to Agent.AGENT_CODEX) to codexModels,
         ), history.mapValues { (sid, list) -> liveOf(state.sessions[sid], list) })
@@ -196,6 +209,7 @@ class V8Gallery {
         sessions = mapOf(
             session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING, preview = "正在执行 go test ./auth/...", created = now - 60_000, updated = now - 20_000),
             session("doc", "mac", foo, "补充接口文档", agent = Agent.AGENT_CLAUDE, preview = "已补充 12 个接口的说明，要生成 OpenAPI 吗？", created = at(8, 12), updated = at(8, 12)),
+            session("agy", "mac", foo, "重构网络层", agent = Agent.AGENT_ANTIGRAVITY, preview = "分析完成，准备修改 NetClient.kt", created = at(8, 45), updated = at(8, 45)),
             session("bill", "imac", "$home/Code/billing", "", created = at(11, 25), updated = at(11, 25)),
             session("blog1", "mac", "$home/Code/blog", "发布秋季文章", SessionStatus.SESSION_STATUS_EXITED, updated = now - 2 * 3600_000),
             session("blog2", "vps", "$home/work/blog", "修复 RSS", SessionStatus.SESSION_STATUS_EXITED, updated = now - 26 * 3600_000),
@@ -429,7 +443,7 @@ class V8Gallery {
     }
 
     private fun quotaMachine(): Pair<String, MachineView> {
-        val (id, m) = machine("mac", "MacBook", claude = true)
+        val (id, m) = machine("mac", "MacBook", claude = true, antigravity = true)
         val q = m.meta!!.toBuilder()
             .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CODEX).setState(QuotaState.QUOTA_STATE_OK).setPlan("Pro Lite").setObservedMs(now - 60_000)
                 .addWindows(QuotaWindow.newBuilder().setName("primary").setWindowMinutes(300).setUsedPercent(62.0).setResetsAtMs(now + 3 * 3600_000))
@@ -437,6 +451,10 @@ class V8Gallery {
             .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now - 120_000)
                 .addWindows(QuotaWindow.newBuilder().setName("five_hour").setUsedPercent(92.0).setResetsAtMs(now + 2 * 3600_000))
                 .addWindows(QuotaWindow.newBuilder().setName("seven_day")))
+            .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(QuotaState.QUOTA_STATE_OK).setPlan("Google AI Pro").setObservedMs(now - 30_000)
+                .addWindows(QuotaWindow.newBuilder().setName("gemini-5h").setWindowMinutes(300).setUsedPercent(24.0).setResetsAtMs(now + 4 * 3600_000))
+                .addWindows(QuotaWindow.newBuilder().setName("gemini-weekly").setWindowMinutes(10080).setUsedPercent(12.0).setResetsAtMs(now + 6 * 86400_000))
+                .addWindows(QuotaWindow.newBuilder().setName("3p-5h").setWindowMinutes(300).setUsedPercent(50.0).setResetsAtMs(now + 2 * 3600_000)))
             .build()
         return id to m.copy(meta = q)
     }

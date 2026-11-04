@@ -738,6 +738,15 @@ fun startable(text: String, images: List<PendingImage>, machineId: String): Bool
 @Composable
 fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean) = NewSessionBox(state, initial, name, focus)
 
+fun machineSubtitle(installed: List<Agent>, missing: Agent? = null, fallback: Agent? = null): String {
+    val names = installed.joinToString("、") { agentName(it) }
+    return if (missing != null && fallback != null) {
+        "已装 $names；这台机器没有 ${agentName(missing)}，会改用 ${agentName(fallback)}"
+    } else {
+        "已装 $names"
+    }
+}
+
 /**
  * The machine went offline while a draft was written: nothing moves by
  * itself. The user picks another machine the project used, told what that
@@ -753,8 +762,8 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
         for (id in others) {
             val agents = machineAgents(state.machines[id])
             val cliNote = when {
-                c.agent in agents -> "已装 ${agents.joinToString("、") { agentName(it) }}"
-                else -> "已装 ${agents.joinToString("、") { agentName(it) }}；这台机器没有 ${agentName(c.agent)}，会改用 ${agentName(switchMachine(c, id, agents).agent)}"
+                c.agent in agents -> machineSubtitle(agents)
+                else -> machineSubtitle(agents, missing = c.agent, fallback = switchMachine(c, id, agents).agent)
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChoose(switchMachine(c, id, agents)) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -928,8 +937,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     val fallback = if (has) null else switchMachine(c, id, agents).agent
                     val sub = when {
                         !online -> "不在线，现在不能新建"
-                        !has -> "已装 ${agents.joinToString("、") { agentName(it) }}；这台机器没有 ${agentName(agent)}，会改用 ${agentName(fallback)}"
-                        else -> "已装 ${agents.joinToString("、") { agentName(it) }}"
+                        !has -> machineSubtitle(agents, missing = agent, fallback = fallback)
+                        else -> machineSubtitle(agents)
                     }
                     ListItem(
                         machineLabel(state, id),

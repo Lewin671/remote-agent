@@ -566,4 +566,24 @@ class SwitchTest {
         org.junit.Assert.assertTrue(a.endsWith("自动"))
         org.junit.Assert.assertEquals("gpt-6-astra · medium", b)
     }
+
+    @org.junit.Test
+    fun machinePickerSubtitleListsInstalledClisAndExplainsFallback() {
+        val codexOnly = listOf(Agent.AGENT_CODEX)
+        val codexClaude = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE)
+        val allThree = listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE, Agent.AGENT_ANTIGRAVITY)
+
+        assertEquals("已装 Codex", machineSubtitle(codexOnly))
+        assertEquals("已装 Codex、Claude Code", machineSubtitle(codexClaude))
+        assertEquals("已装 Codex、Claude Code、Antigravity", machineSubtitle(allThree))
+
+        assertEquals(
+            "已装 Codex；这台机器没有 Claude Code，会改用 Codex",
+            machineSubtitle(codexOnly, missing = Agent.AGENT_CLAUDE, fallback = Agent.AGENT_CODEX),
+        )
+        assertEquals(
+            "已装 Codex、Claude Code；这台机器没有 Antigravity，会改用 Codex",
+            machineSubtitle(codexClaude, missing = Agent.AGENT_ANTIGRAVITY, fallback = Agent.AGENT_CODEX),
+        )
+    }
 }
