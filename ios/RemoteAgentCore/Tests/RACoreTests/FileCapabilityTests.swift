@@ -35,7 +35,7 @@ private func showFileSupport(_ remote: Remote, machine: String, supported: Bool?
 }
 
 extension ServerTests {
-    @Suite struct FileCapabilityForwardTests {
+    @Suite(.serialized) struct FileCapabilityForwardTests {
         /// The machine advertises file support through its signed meta, as the daemon
         /// does, and `remote` has taken it in. A running Remote republishes from what
         /// it holds, so the change must reach it this way, not be set on its snapshot.

@@ -5,6 +5,10 @@ import Testing
 @testable import RACore
 
 extension ServerTests {
+    @Suite(.serialized) struct NewestHistoryTests {}
+}
+
+extension ServerTests.NewestHistoryTests {
     @Test func aWarmCachePublishesTheNewestWindowBeforeBackfillingThePrefix() async throws {
         let count = DeviceSecurityClient.historyBatchSize + 3
         try await World.run(setUp: { w in
@@ -68,7 +72,7 @@ private final class HistoryReadGate: DeviceSecurity.Storage, @unchecked Sendable
 }
 
 /// Mirrors the other clients' newest-page/gap tests against a real relay.
-extension ServerTests {
+extension ServerTests.NewestHistoryTests {
     private func newestWorld(_ body: (World) async throws -> Void) async throws {
         try await World.run(setUp: { w in
             try await w.daemon.putMachine("history-test-machine")

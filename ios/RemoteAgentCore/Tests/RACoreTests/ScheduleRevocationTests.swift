@@ -4,7 +4,7 @@ import Testing
 @testable import RACore
 
 extension ServerTests {
-    @Suite struct ScheduleRevocationTests {
+    @Suite(.serialized) struct ScheduleRevocationTests {
         func snapshot(_ w: World) throws -> Data {
             var h=PBHeader();h.kind = .commandResult;h.machineID=w.daemon.id;h.sender=w.daemon.id;h.requestID="00112233445566778899aabbccddeeff"
             var result=PBCommandResult()

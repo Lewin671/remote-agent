@@ -116,7 +116,7 @@ private extension Remote {
 }
 
 extension ServerTests {
-    @Suite struct ResumedLivePollingTests {
+    @Suite(.serialized) struct ResumedLivePollingTests {
         @Test func snapshotReturningAfterExitIsClearedAndResumeStillPolls() async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("test-machine")

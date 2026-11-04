@@ -4,9 +4,9 @@ import Testing
 
 @testable import RACore
 
-/// The tests that run against the real Go server. One at a time: each starts
-/// a server of its own and several wait on real time.
-@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
+/// Each group owns isolated servers and runs its cases in order. Independent
+/// groups may overlap, including their real network and deadline waits.
+@Suite(.enabled(if: GoServer.available, GoServer.missing))
 struct ServerTests {}
 
 /// A server, a fake daemon with one machine, and what a test opened and must close.
@@ -123,7 +123,7 @@ private final class Frames: TermListener, Sendable {
 
 extension ServerTests {
     /// The sync engine against the real Go server and a fake daemon.
-    @Suite struct RemoteTests {
+    @Suite(.serialized) struct RemoteTests {
         private func world(_ body: (World) async throws -> Void) async throws {
             try await World.run(
                 setUp: { w in

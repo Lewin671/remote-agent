@@ -10,7 +10,7 @@ private extension Remote {
 }
 
 extension ServerTests {
-    @Suite struct DirectoryRefreshTests {
+    @Suite(.serialized) struct DirectoryRefreshTests {
         private func world(_ body: (World) async throws -> Void) async throws {
             try await World.run(setUp: { w in
                 try await w.daemon.putMachine("test-machine")

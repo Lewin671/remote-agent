@@ -76,7 +76,7 @@ extension ServerTests {
     /// The session listing a page at a time (architecture §8 「会话列表分页」),
     /// against the real Go server: 120 ended sessions and two that have not
     /// ended, so the first page and two more.
-    @Suite struct SessionPagingTests {
+    @Suite(.serialized) struct SessionPagingTests {
         private func world(_ body: (World) async throws -> Void) async throws {
             try await World.run(
                 setUp: { w in
