@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
@@ -17,7 +18,21 @@ func (s *session) scheduleObservationStale() bool {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.statusLineAt.IsZero() || time.Since(s.statusLineAt) > 5*time.Second
+	return !s.meta.Exited && (s.statusLineAt.IsZero() || time.Since(s.statusLineAt) > 5*time.Second)
+}
+
+// An exited native process cannot change permissions or report live status.
+// Resume uses its durable launch policy and final context, so compare those
+// exact facts with the frozen delegation instead of the UI's stale label.
+func (s *session) scheduleInfo() *pb.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	info := s.infoLocked()
+	if s.ag.Capabilities().ConversationIdentity && s.meta.Exited && !s.identityPending && !s.identityFailed && s.meta.CodexSessionID != "" && s.meta.ExpectedConversation == "" && s.context != nil {
+		info.Mode = s.ag.Mode(s.context)
+		info.PermissionMode = s.context.PermissionMode
+	}
+	return info
 }
 
 // Call only outside scheduleMu/readMu: refreshing owns terminal control and

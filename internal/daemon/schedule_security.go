@@ -41,7 +41,7 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 	if source.scheduleObservationStale() {
 		return connect.NewError(connect.CodeUnavailable, errMCPModeObservation)
 	}
-	info := source.info()
+	info := source.scheduleInfo()
 	mode := exactScheduleMode(info)
 	if mode == "" {
 		return mcpScheduleDenied()

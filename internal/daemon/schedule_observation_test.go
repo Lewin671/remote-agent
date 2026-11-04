@@ -104,3 +104,44 @@ func TestNativeManualRequestWaitsForFreshEvidence(t *testing.T) {
 		t.Fatal("the retained manual request did not dispatch after refresh")
 	}
 }
+
+func TestExitedNativeSourceUsesExactDurableSchedulePermissions(t *testing.T) {
+	for _, target := range []string{"new_session", "resume_session"} {
+		for _, state := range []string{"unchanged", "changed", "unverified"} {
+			t.Run(target+"/"+state, func(t *testing.T) {
+				h := agyHarness(t)
+				now := time.Now().UTC()
+				report := &agent.StatusLine{CycleMode: "default", IdleKnown: true, Context: &pb.TurnContext{ApprovalPolicy: "request-review", PermissionMode: "default", Sandbox: "disabled"}}
+				h.s.recordStatusLine(report, now)
+				task := &schedule.Task{ID: "exited-native-source", Status: "scheduled", ScopedSession: h.s.meta.ID, SourceSession: h.s.meta.ID, NextRunAt: &now, Spec: schedule.Spec{Trigger: schedule.Trigger{Type: "interval", IntervalSeconds: 300}, Target: schedule.Target{Type: target, Session: "current"}}}
+				if err := h.d.restrictMCPTask(task, true); err != nil {
+					t.Fatal(err)
+				}
+				if state == "changed" {
+					report.Context.PermissionMode, report.CycleMode = "auto", "auto"
+					h.s.recordStatusLine(report, now.Add(time.Second))
+				}
+				meta := h.s.meta
+				meta.Exited = true
+				if state == "unverified" {
+					meta.ExpectedConversation = "conv"
+				}
+				if err := h.s.log.Close(); err != nil {
+					t.Fatal(err)
+				}
+				h.open(meta)
+				h.d.sessions[meta.ID] = h.s
+				h.d.tasks = map[string]*schedule.Task{task.ID: task}
+				h.s.term = scheduleStatusTerm{h.term, func(context.Context) error { t.Fatal("exited source requested live status"); return nil }}
+				jobs := h.d.prepareScheduledDispatches(now)
+				if state == "unchanged" {
+					if len(jobs) != 1 || task.Status != "dispatching" {
+						t.Fatalf("valid exited delegation was not dispatched: %+v", task)
+					}
+				} else if len(jobs) != 0 || task.Status != "paused" || task.Reason != "agent_schedule_permissions_changed" {
+					t.Fatalf("changed or unverified exited permissions were authorized: %+v", task)
+				}
+			})
+		}
+	}
+}
