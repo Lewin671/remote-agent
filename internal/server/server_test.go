@@ -447,7 +447,7 @@ func TestUploadRules(t *testing.T) {
 	ctx := context.Background()
 	skey := e2e.NewKey()
 	ev := func(machine string, seq uint64) *pb.StoredEvent {
-		env, _ := e2e.Seal(skey, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
+		env, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, MachineId: machine, SessionId: "s", Seq: seq}, []byte("x"))
 		return &pb.StoredEvent{Seq: seq, Envelope: env}
 	}
 	upload := func(c remoteagentv1connect.MachineServiceClient, evs ...*pb.StoredEvent) (uint64, error) {
@@ -460,7 +460,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m, ev(mid, 1)); connect.CodeOf(err) != connect.CodeNotFound {
 		t.Fatalf("unknown session: %v", err)
 	}
-	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s"})); connect.CodeOf(err) != connect.CodeFailedPrecondition {
 		t.Fatalf("session without key: %v", err)
 	}
@@ -487,7 +487,7 @@ func TestUploadRules(t *testing.T) {
 	if _, err := upload(m2, ev(mid2, 4)); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine: %v", err)
 	}
-	keyEnv2, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
+	keyEnv2, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid2, SessionId: "s"}, skey)
 	if _, err := m2.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv2})); connect.CodeOf(err) != connect.CodePermissionDenied {
 		t.Fatalf("other machine put: %v", err)
 	}
@@ -574,7 +574,7 @@ func TestPushAndRemoveDevice(t *testing.T) {
 	c := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, ts.url, withToken(ts.login(t, cpriv, cid)))
 
 	skey := e2e.NewKey()
-	keyEnv, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
+	keyEnv, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: "s"}, skey)
 	if _, err := m.PutSession(ctx, connect.NewRequest(&pb.PutSessionRequest{SessionId: "s", Key: keyEnv})); err != nil {
 		t.Fatal(err)
 	}

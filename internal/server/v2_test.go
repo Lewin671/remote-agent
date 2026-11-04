@@ -95,7 +95,7 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 	ts, mid, cid, _, client, ms := newV2Env(t)
 	ctx := context.Background()
 	seal := func(sender string) *pb.Envelope {
-		env, err := e2e.Seal(ts.keys.Command, &pb.Header{Version: deviceauth.Version,
+		env, err := opaqueEnvelope(&pb.Header{Version: deviceauth.Version,
 			Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: mid, RequestId: "0123456789abcdef0123456789abcdef",
 			DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: sender,
 		}, []byte("cmd"))
@@ -125,7 +125,7 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 		!e2e.VerifyRegistration(ts.keys.AccountPublicKey(), call.SenderRegistration, call.SenderRegistrationSignature) {
 		t.Fatalf("registration does not check out: %v", err)
 	}
-	res, _ := e2e.Seal(ts.keys.Command, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: mid}, []byte("ok"))
+	res, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: mid}, []byte("ok"))
 	ms.write(t, &pb.PeerFrame{Kind: &pb.PeerFrame_ForwardReply{ForwardReply: &pb.ForwardReply{CallId: call.CallId, Result: res}}})
 	if err := <-done; err != nil {
 		t.Fatal(err)
@@ -134,7 +134,7 @@ func TestForwardChecksSenderAndPassesRegistration(t *testing.T) {
 
 func putTestSession(t *testing.T, ts *testServer, machine remoteagentv1connect.MachineServiceClient, mid, sid string) {
 	t.Helper()
-	key, _ := e2e.Seal(ts.keys.Wrap, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: sid}, e2e.NewKey())
+	key, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_SESSION_KEY, MachineId: mid, SessionId: sid}, e2e.NewKey())
 	if _, err := machine.PutSession(context.Background(), connect.NewRequest(&pb.PutSessionRequest{SessionId: sid, Key: key})); err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func putTestSession(t *testing.T, ts *testServer, machine remoteagentv1connect.M
 
 func sealImage(t *testing.T, mid, sid, id string, n int) *pb.Envelope {
 	t.Helper()
-	env, err := e2e.SealMessage(e2e.NewKey(), &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: mid, SessionId: sid, RequestId: id, Sender: mid},
+	env, err := opaqueMessage(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_IMAGE, MachineId: mid, SessionId: sid, RequestId: id, Sender: mid},
 		&pb.ImagePayload{Format: pb.ImageFormat_IMAGE_FORMAT_PNG, Data: make([]byte, n)})
 	if err != nil {
 		t.Fatal(err)
@@ -254,7 +254,7 @@ func TestAccountPrefs(t *testing.T) {
 	cs := ts.stream(t, ts.login(t, cpriv2, cid2))
 
 	seal := func(sender string, rev uint64, text string) *pb.Envelope {
-		env, _ := e2e.Seal(ts.keys.Prefs, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: rev, Sender: sender}, []byte(text))
+		env, _ := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_ACCOUNT_PREFS, RequestId: "project-prefs", Seq: rev, Sender: sender}, []byte(text))
 		return env
 	}
 	put := func(c remoteagentv1connect.ClientServiceClient, expected uint64, env *pb.Envelope) (*pb.PutAccountPrefsResponse, error) {
@@ -330,7 +330,7 @@ func TestDeviceDirectory(t *testing.T) {
 		}
 	}
 	seal := func(sender, target string, rev uint64) *pb.Envelope {
-		env, _ := e2e.SealMessage(ts.keys.DeviceMeta, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: target, Seq: rev, Sender: sender},
+		env, _ := opaqueMessage(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_DEVICE_META, RequestId: target, Seq: rev, Sender: sender},
 			&pb.DeviceMeta{Name: "Pixel", Platform: "android"})
 		return env
 	}

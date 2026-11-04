@@ -1,6 +1,7 @@
 package eventview
 
 import (
+	"crypto/ed25519"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,7 +10,7 @@ import (
 	"testing"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/e2e"
+	"github.com/Lewin671/remote-agent/internal/deviceauth"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -137,7 +138,20 @@ func TestSkeletonSizePropertyForEveryKind(t *testing.T) {
 					if !proto.Equal(e, before) {
 						t.Fatal("local log event changed")
 					}
-					env, err := e2e.SealMessage(make([]byte, 32), &pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_EVENT, SessionId: "session", Seq: 17}, got)
+					writer := ed25519.NewKeyFromSeed(make([]byte, 32))
+					id := deviceauth.ID(writer.Public().(ed25519.PublicKey))
+					plain, err := proto.Marshal(got)
+					if err != nil {
+						t.Fatal(err)
+					}
+					cipher, err := deviceauth.Seal(make([]byte, 32), make([]byte, 32), deviceauth.Header{
+						Account: id, Domain: deviceauth.Hash{1}, Epoch: 1, State: deviceauth.Hash{2}, ContentEpoch: 1,
+						Sender: id, Machine: id, Kind: 1, Purpose: deviceauth.Event, Session: "session", Seq: 17,
+					}, plain, writer)
+					if err != nil {
+						t.Fatal(err)
+					}
+					env, err := (deviceauth.Wire{Header: cipher.Header, Nonce: cipher.Nonce, Cipher: cipher.Cipher, Origin: cipher.Origin}).Envelope()
 					if err != nil || proto.Size(env) > 1<<20 {
 						t.Fatalf("envelope bound: %v", err)
 					}

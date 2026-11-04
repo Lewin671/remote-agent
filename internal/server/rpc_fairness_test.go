@@ -98,7 +98,7 @@ func TestWaitingForwardsHaveSeparateAdmission(t *testing.T) {
 	defer cancel()
 	done := make(chan error, maxAccountForwardRequests)
 	forward := func(a *testAccount) error {
-		env, err := e2e.Seal(a.keys.Command, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
+		env, err := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
 			MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: a.cid}, []byte("cmd"))
 		if err != nil {
 			return err
@@ -183,7 +183,7 @@ func TestCompressedForwardRetainsLargeDecoderAdmission(t *testing.T) {
 	client := remoteagentv1connect.NewClientServiceClient(http.DefaultClient, hs.URL, withToken(a.ctok), connect.WithSendGzip())
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	env, err := e2e.Seal(a.keys.Command, &pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
+	env, err := opaqueEnvelope(&pb.Header{Version: deviceauth.Version, Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND,
 		MachineId: a.mid, RequestId: "0123456789abcdef0123456789abcdef", DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: a.cid}, []byte("cmd"))
 	if err != nil {
 		t.Fatal(err)

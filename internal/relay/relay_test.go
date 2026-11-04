@@ -842,12 +842,13 @@ func TestCommandsRejected(t *testing.T) {
 	if _, err := e.client.Forward(ctx, s.MachineID, good); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("tampered: %v", err)
 	}
-	// A command sealed with another account's key does not open.
-	stranger, _ := e2e.Derive(e2e.NewKey())
-	forged, _ := e2e.SealMessage(stranger.Command, &pb.Header{Version: deviceauth.Version,
-		Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND, MachineId: s.MachineID, SessionId: s.ID,
-		RequestId: remoteclient.NewRequestID(), DeadlineMs: time.Now().Add(time.Minute).UnixMilli(), Sender: e.client.DeviceID,
-	}, send)
+	// A valid command carrying another device's origin signature does not open.
+	forged, err := e.client.Seal(s.MachineID, s.ID, remoteclient.NewRequestID(), time.Now().Add(time.Minute), send)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stranger := ed25519.NewKeyFromSeed(e2e.NewKey())
+	forged.Signature = ed25519.Sign(stranger, []byte("forged origin"))
 	if _, err := e.client.Forward(ctx, s.MachineID, forged); connect.CodeOf(err) != connect.CodeUnknown {
 		t.Fatalf("forged: %v", err)
 	}
