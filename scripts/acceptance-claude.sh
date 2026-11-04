@@ -15,6 +15,7 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+. "$ROOT/scripts/acceptance-common.sh"
 WORK=${1:-/tmp/ra-cc-acceptance-work}
 STATE=$(mktemp -d /tmp/ra-cc-acc.XXXXXX)
 # The daemon refuses a state directory with unmarked files, so its log lives
@@ -49,17 +50,6 @@ start_daemon() {
 
 pass() { printf 'PASS  %s\n' "$1"; }
 fail() { printf 'FAIL  %s\n' "$1"; FAILS=$((FAILS + 1)); }
-
-# wait_for <seconds> <command...>: retry until the command succeeds.
-wait_for() {
-	n=$1; shift
-	i=0
-	while [ $i -lt "$n" ]; do
-		if "$@" >/dev/null 2>&1; then return 0; fi
-		sleep 1; i=$((i + 1))
-	done
-	return 1
-}
 
 events() { "$BIN" events "$1" --json; }
 after_events() { "$BIN" events "$1" --after "$2" --json; }
