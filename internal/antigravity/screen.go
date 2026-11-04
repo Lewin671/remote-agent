@@ -1,7 +1,9 @@
 package antigravity
 
 import (
+	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -139,7 +141,7 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 		}
 		s.ComposerReady = true
 		text, ok := a.ComposerText(styled, "")
-		s.DraftEmpty = ok && text == ""
+		s.DraftEmpty = ok && text == "" && attachedMedia(lines, top) == 0
 		// Historical spinners and user status bars must not make an idle CLI busy.
 		start := top - 5
 		if start < 0 {
@@ -206,4 +208,79 @@ func (a *Adapter) Interrupted(styled string) bool {
 		return strings.Contains(l, "Interrupted · What should Antigravity CLI do instead?")
 	}
 	return false
+}
+
+var mediaAttachedRE = regexp.MustCompile(`^(?:▸ 📎 ([1-9][0-9]*) media attached(?: |$)|▾ 📎 ([1-9][0-9]*) Media\(s\) attached$)`)
+
+// Attached media is outside the text box, immediately above its top rule.
+// Expanded media has a header, one row per attachment and a collapse hint.
+func attachedMedia(lines []string, top int) int {
+	if top == 0 {
+		return 0
+	}
+	end := top - 1
+	row := strings.TrimSpace(StripANSI(lines[end]))
+	if row == "(ctrl+o to collapse)" {
+		for end--; end >= 0; end-- {
+			row = strings.TrimSpace(StripANSI(lines[end]))
+			if strings.HasPrefix(row, "▾ 📎") {
+				break
+			}
+			if end < top-102 {
+				return -1
+			}
+		}
+		if end < 0 {
+			return -1
+		}
+	}
+	match := mediaAttachedRE.FindStringSubmatch(row)
+	if match == nil {
+		if strings.Contains(row, "📎") {
+			return -1
+		}
+		return 0
+	}
+	digits := match[1]
+	if digits == "" {
+		digits = match[2]
+	}
+	n, err := strconv.Atoi(digits)
+	if err != nil || n > 100 {
+		return -1
+	}
+	if match[2] != "" && top-end != n+2 {
+		return -1
+	}
+	return n
+}
+func (a *Adapter) ImageInput(styled, footer string) (string, []int32, bool) {
+	text, ok := a.ComposerText(styled, footer)
+	lines, top, _, box := composerRegion(styled)
+	if !ok || !box {
+		return "", nil, false
+	}
+	count := attachedMedia(lines, top)
+	if count < 0 {
+		return "", nil, false
+	}
+	var indexes []int32
+	var tokens strings.Builder
+	for i := 1; i <= count; i++ {
+		indexes = append(indexes, int32(i))
+		fmt.Fprintf(&tokens, "[Image #%d]", i)
+	}
+	return tokens.String() + text, indexes, true
+}
+
+// Escape clears attached media in agy 1.5.0; Ctrl-U and Backspace leave it.
+// Escape also interrupts a foreground turn, so it is only safe while idle.
+func (a *Adapter) ClearImageInput(count int, running bool) []byte {
+	if count == 0 {
+		return a.ClearInput()
+	}
+	if running {
+		return nil
+	}
+	return append(a.ClearInput(), []byte(agent.KeyEsc)...)
 }

@@ -785,3 +785,9 @@ func (a *Adapter) Capabilities() agent.Capabilities {
 }
 
 func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.DecodeStandardHook(raw) }
+
+func (a *Adapter) ImageInput(styled, footer string) (string, []int32, bool) {
+	text, ok := a.ComposerText(styled, footer)
+	return text, agent.ImagePlaceholders(text), ok
+}
+func (a *Adapter) ClearImageInput(_ int, _ bool) []byte { return a.ClearInput() }

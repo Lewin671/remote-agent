@@ -475,11 +475,10 @@ func (s *session) waitPlaceholder(before []int32, path, footer string) (int32, s
 	for {
 		styled, err := s.term.Capture()
 		if err == nil {
-			text, ok := s.ag.ComposerText(styled, footer)
+			text, nums, ok := s.ag.ImageInput(styled, footer)
 			// Only what was pasted is there, with no line breaks of its
 			// own: lines are a narrow terminal wrapping it.
 			text = strings.ReplaceAll(text, "\n", "")
-			nums := agent.ImagePlaceholders(text)
 			rest, _ := agent.StripPlaceholders(text, nums)
 			rest = strings.TrimSpace(rest)
 			switch {
@@ -538,7 +537,7 @@ func (s *session) clearPasted(c control, l *lease, in input, got []int32, footer
 	if err != nil {
 		return false
 	}
-	text, ok := s.ag.ComposerText(styled, footer)
+	text, _, ok := s.ag.ImageInput(styled, footer)
 	if !ok {
 		return false
 	}
@@ -570,14 +569,21 @@ func (s *session) clearPasted(c control, l *lease, in input, got []int32, footer
 	if !l.holding() {
 		return false
 	}
-	if err := c.Write(s.ag.ClearInput()); err != nil {
+	s.mu.Lock()
+	running := s.running
+	s.mu.Unlock()
+	keys := s.ag.ClearImageInput(len(agent.ImagePlaceholders(text)), running)
+	if len(keys) == 0 {
+		return false
+	}
+	if err := c.Write(keys); err != nil {
 		return false
 	}
 	deadline := time.Now().Add(clearWait)
 	for time.Now().Before(deadline) {
 		time.Sleep(50 * time.Millisecond)
 		if styled, err := s.term.Capture(); err == nil {
-			if text, ok := s.ag.ComposerText(styled, footer); ok && text == "" {
+			if text, _, ok := s.ag.ImageInput(styled, footer); ok && text == "" {
 				return !timedOut
 			}
 		}
@@ -613,7 +619,7 @@ func (s *session) recoverPaste(in input) (inputOutcome, error) {
 		var text string
 		ok := false
 		if err == nil {
-			text, ok = s.ag.ComposerText(styled, "")
+			text, _, ok = s.ag.ImageInput(styled, "")
 		}
 		if !ok || text != "" {
 			status = pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
@@ -1018,7 +1024,7 @@ func (s *session) boxHolds(got []int32, footer string) bool {
 	if err != nil {
 		return false
 	}
-	text, ok := s.ag.ComposerText(styled, footer)
+	text, _, ok := s.ag.ImageInput(styled, footer)
 	if !ok {
 		return false
 	}

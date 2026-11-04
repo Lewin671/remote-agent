@@ -1,6 +1,8 @@
 package antigravity
 
 import (
+	"fmt"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"os"
 	"path/filepath"
 	"strings"
@@ -195,5 +197,33 @@ func TestEveryScreenSampleClassifiesPanels(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAttachedMediaIsPartOfDraft(t *testing.T) {
+	a := New("", "")
+	screen := readScreenFixture(t, "image-terminal.txt")
+	for _, n := range []int{1, 2} {
+		s := strings.Replace(screen, "1 media attached", fmt.Sprintf("%d media attached", n), 1)
+		scr := a.Analyze(s)
+		text, indexes, ok := a.ImageInput(s, "")
+		if !scr.ComposerReady || scr.DraftEmpty || !ok || len(indexes) != n || len(agent.ImagePlaceholders(text)) != n {
+			t.Fatalf("attached media ignored: %+v %q %v", scr, text, indexes)
+		}
+	}
+	expanded := strings.Replace(screen, "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", "▾ 📎 1 Media(s) attached\n    1. file · 663 B · image/jpeg\n  (ctrl+o to collapse)", 1)
+	if text, indexes, ok := a.ImageInput(expanded, ""); !ok || text != "[Image #1]" || len(indexes) != 1 || a.Analyze(expanded).DraftEmpty {
+		t.Fatal("expanded attachments ignored")
+	}
+	for _, s := range []string{readScreenFixture(t, "image-cleared-1.5.0.txt"), strings.Replace(screen, "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", "", 1)} {
+		if text, indexes, ok := a.ImageInput(s, ""); !ok || text != "" || len(indexes) != 0 || !a.Analyze(s).DraftEmpty {
+			t.Fatal("empty box not verified")
+		}
+	}
+	if keys := a.ClearImageInput(1, true); len(keys) != 0 {
+		t.Fatal("clearing media would interrupt foreground turn")
+	}
+	if keys := a.ClearImageInput(1, false); string(keys) != "\x05\x15\x1b" {
+		t.Fatalf("wrong native media clear %q", keys)
 	}
 }

@@ -271,6 +271,11 @@ type Controller interface {
 	// cannot be read whole: callers must then not act on its content.
 	// Placeholders such as "[Image #1]" are part of it.
 	ComposerText(styled, footer string) (text string, ok bool)
+	// ImageInput reads the entire composer, including attached media. Text uses
+	// canonical [Image #N] tokens so daemon ownership checks are CLI-independent.
+	ImageInput(styled, footer string) (text string, indexes []int32, ok bool)
+	// ClearImageInput clears one owned line and its count attached images.
+	ClearImageInput(count int, running bool) []byte
 	// ClearInput is what to write to empty an input box that holds one
 	// line. It must be harmless in an empty box and never interrupt a
 	// running turn or quit the CLI (Ctrl-C and Esc do).

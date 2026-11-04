@@ -1,0 +1,48 @@
+
+      ▄▀▀▄        Antigravity CLI 1.5.0
+     ▀▀▀▀▀▀       tester@example.com (Google AI Pro)
+    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (Low)
+   ▄▀▀    ▀▀▄     /workspace/project
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────
+> Reply exactly K-WEB-ACK. Do not use tools.
+
+  K-WEB-ACK
+
+────────────────────────────────────────────────────────────
+> Run exactly this harmless shell command once: printf K-COMMAND-ALLOW. Use the run_command tool and wait for my approval.
+
+● Ran (printf K-COMMAND-ALLOW) (ctrl+o to expand)
+
+  The command printf K-COMMAND-ALLOW has completed successfully with output:
+
+    K-COMMAND-ALLOW
+
+────────────────────────────────────────────────────────────
+> Run exactly this harmless command once: printf K-DENY. Use run_command and wait for my approval.
+
+● Ran (printf K-DENY) failed (ctrl+o to expand)
+
+Command
+  ⎿  User declined the tool call
+
+────────────────────────────────────────────────────────────
+> Audit denial: do not retry this command.
+
+  Understood. I will not retry the command. Let me know what you would like to proceed with next.
+
+  ▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Gemini 3.8 Flash · low  │  sample-project  │  idle 0s · hit 0%
+ctx ▎░░░░░░░░░░░░░░░░░░░   1%
+5h  █▉░░░░░░░░░░░░░░░░░░   9%  ↻ 1h 20m (08:54)
+7d  █████████████▊░░░░░░  69%  ↻ 6d 0h (Tue 08:00)
+
+
+
+
+

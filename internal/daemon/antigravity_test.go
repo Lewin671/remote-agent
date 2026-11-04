@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,5 +182,75 @@ func TestAgyStopHookClosesRunningTurn(t *testing.T) {
 	}
 	if ends != 1 || count != 1 {
 		t.Fatal("Stop duplicate or missing")
+	}
+}
+
+func TestAgyImagesRecognizedBeforeSubmittingText(t *testing.T) {
+	h := agyHarness(t)
+	h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+	h.term.setScreen(agyScreen(t, "image-cleared-1.5.0.txt"))
+	imgs := imagesFor(t, h.dir, "one.png", "two.png")
+	n := 0
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		if strings.HasSuffix(b, "\x1b[201~") {
+			n++
+			f.screen = strings.Replace(agyScreen(t, "image-terminal.txt"), "1 media attached", fmt.Sprintf("%d media attached", n), 1)
+		}
+	}
+	if _, err := h.s.enqueue("describe both", "images", imgs, originLocal); err != nil {
+		t.Fatal(err)
+	}
+	result, err := h.s.inject(h.s.queue.Queue[0])
+	if err != nil || result != written {
+		t.Fatalf("inject: %v %v", result, err)
+	}
+	writes := h.term.written()
+	if len(writes) != 3 || !strings.HasSuffix(writes[2], "describe both\x1b[201~\r") {
+		t.Fatalf("images/text order: %q", writes)
+	}
+}
+
+func TestAgyImageCleanupVerifiesMediaDisappears(t *testing.T) {
+	for _, disappears := range []bool{true, false} {
+		t.Run(fmt.Sprint(disappears), func(t *testing.T) {
+			h := agyHarness(t)
+			h.term.setScreen(agyScreen(t, "image-terminal.txt"))
+			h.term.onWrite = func(f *fakeTerm, b string) {
+				if b == "\x05\x15\x1b" && disappears {
+					f.screen = agyScreen(t, "image-cleared-1.5.0.txt")
+				}
+			}
+			c, err := h.term.Control()
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer c.Close()
+			l, err := holdLease(c, injectBase)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer l.end()
+			in := input{Images: imagesFor(t, h.dir, "one.png")}
+			if got := h.s.clearPasted(c, l, in, []int32{1}, "", false, false); got != disappears {
+				t.Fatalf("cleanup=%v want %v", got, disappears)
+			}
+		})
+	}
+}
+
+func TestAgyExistingMediaAndMenusBlockInjection(t *testing.T) {
+	for _, name := range []string{"image-terminal.txt", "mcp-terminal.txt"} {
+		t.Run(name, func(t *testing.T) {
+			h := agyHarness(t)
+			h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+			h.term.setScreen(agyScreen(t, name))
+			if _, err := h.s.enqueue("do not send", "blocked", nil, originLocal); err != nil {
+				t.Fatal(err)
+			}
+			result, err := h.s.inject(h.s.queue.Queue[0])
+			if err != nil || result != notWritten || len(h.term.written()) != 0 {
+				t.Fatalf("foreign input changed: %v %v", result, err)
+			}
+		})
 	}
 }
