@@ -56,7 +56,7 @@ var (
 // Code is not installed). home is its settings directory, ~/.claude.
 func New(bin, home string) *Adapter { return &Adapter{bin: bin, home: home} }
 
-func (a *Adapter) ID() string   { return "claude" }
+func (a *Adapter) ID() string     { return "claude" }
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CLAUDE }
 func (a *Adapter) Name() string   { return "Claude Code" }
 
@@ -770,4 +770,16 @@ func (a *Adapter) Account() (fingerprint, plan string, subscription bool) {
 	}
 	sum := sha256.Sum256([]byte("remote-agent/quota-account\x00" + st.OAuth.AccountUUID + "\x00" + st.OAuth.OrganizationUUID))
 	return hex.EncodeToString(sum[:6]), st.OAuth.OrganizationType, true
+}
+
+func (a *Adapter) ModeLocked(_ *pb.TurnContext) bool { return false }
+func (a *Adapter) MatchApproval(_ string, _ *agent.Hook) (*pb.ApprovalRequested, bool) {
+	return nil, false
+}
+func (a *Adapter) AnswerApproval(_ agent.Term, _ *agent.Hook, _ bool) error {
+	return agent.ErrUnsupported
+}
+
+func (a *Adapter) Capabilities() agent.Capabilities {
+	return agent.Capabilities{ModelSwitch: true, Fork: true}
 }

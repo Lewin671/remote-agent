@@ -42,13 +42,13 @@ func New(bin, home, history string) *Adapter {
 	return &Adapter{bin: bin, home: home, history: history}
 }
 
-func (a *Adapter) ID() string   { return "codex" }
+func (a *Adapter) ID() string     { return "codex" }
 func (a *Adapter) Kind() pb.Agent { return pb.Agent_AGENT_CODEX }
 func (a *Adapter) Name() string   { return "Codex" }
 
-func (a *Adapter) StandardWindow() int64                       { return 0 }
+func (a *Adapter) StandardWindow() int64                      { return 0 }
 func (a *Adapter) Env(standardContext bool) map[string]string { return nil }
-func (a *Adapter) FileRef(path string) string                  { return "File: " + path }
+func (a *Adapter) FileRef(path string) string                 { return "File: " + path }
 
 func (a *Adapter) ParseFileRef(line string) (string, bool) {
 	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
@@ -447,4 +447,16 @@ func (a *Adapter) StartupKeys(popup string) []string {
 		return []string{"Escape"}
 	}
 	return nil
+}
+
+func (a *Adapter) ModeLocked(_ *pb.TurnContext) bool { return false }
+func (a *Adapter) MatchApproval(_ string, _ *agent.Hook) (*pb.ApprovalRequested, bool) {
+	return nil, false
+}
+func (a *Adapter) AnswerApproval(_ agent.Term, _ *agent.Hook, _ bool) error {
+	return agent.ErrUnsupported
+}
+
+func (a *Adapter) Capabilities() agent.Capabilities {
+	return agent.Capabilities{ModelSwitch: true, Fork: true}
 }

@@ -39,12 +39,18 @@ var ErrNotAnswering = errors.New("the question is not showing in the terminal")
 // definition, which makes Codex ask to trust it again.
 const HookTimeoutSeconds = 3600
 
+// ErrSourcePending means a complete transcript line references data its CLI
+// has not finished appending yet. The parser leaves its state unchanged so the
+// daemon can retry this same line without recording a malformed-record skip.
+var ErrSourcePending = errors.New("CLI source data is not ready")
+
 // StatusLineFile holds the user's custom statusline configuration in the session dir.
 const StatusLineFile = "statusline.json"
 
 // Adapter is one CLI: how to start it, where its output comes from, and how
 // to operate its terminal.
 type Adapter interface {
+	Capabilities() Capabilities
 	Launcher
 	Source
 	Controller
@@ -61,13 +67,51 @@ type Adapter interface {
 	// ExactScheduleMode returns the exact standard mode ("ask", "auto", "full")
 	// for a session's settings, or "" if custom or nonstandard.
 	ExactScheduleMode(info *pb.Session) string
+	// ModeLocked reports whether approval mode cannot be changed mid-session.
+	ModeLocked(ctx *pb.TurnContext) bool
+	// MatchApproval checks if the terminal screen matches a tool call reported by a hook.
+	MatchApproval(styled string, h *Hook) (*pb.ApprovalRequested, bool)
+	// AnswerApproval answers a native permission prompt showing in the terminal.
+	AnswerApproval(t Term, h *Hook, allow bool) error
 }
+
+// Capabilities are actions a CLI can perform without changing global settings
+// or moving the original native conversation to another process.
+type Capabilities struct{ ModelSwitch, Fork bool }
 
 // StatusLineAccount is optionally implemented by adapters whose account quota
 // is reported through a status line.
 type StatusLineAccount interface {
 	Account() (account, plan string, subscription bool)
 	ManagedStatusLine(dir string) bool
+}
+
+// HookDecoder normalizes a CLI's native hook payload at the local RPC boundary.
+// Status line envelopes already use Hook and bypass this decoder.
+type HookDecoder interface {
+	DecodeHook(raw []byte) (*Hook, error)
+}
+
+// StatusLineSource reads CLI-specific status line metadata without exposing
+// the original account identifiers outside the local adapter.
+type StatusLineSource interface {
+	ParseStatusLine(raw []byte, sessionDir string) (*StatusLine, error)
+}
+
+type StatusLine struct {
+	Context       *pb.TurnContext
+	ContextWindow int64
+	Quota         *pb.AgentQuota
+}
+
+// NativeApprovalSource restores a report-only approval candidate from a
+// persisted tool event when the daemon reattaches to the same native process.
+type NativeApprovalSource interface{ ApprovalHook(e *pb.Event) *Hook }
+
+// InterruptedScreen recognizes a canceled turn whose CLI writes no end record.
+// The daemon requires stable captures and a successful transcript recheck.
+type InterruptedScreen interface {
+	Interrupted(styled string) bool
 }
 
 // Launcher starts and resumes the CLI.
@@ -250,6 +294,9 @@ type Controller interface {
 // ModeFacts is what the daemon knows about a session that tells which
 // modes its CLI offers.
 type ModeFacts struct {
+	// CurrentMode reads the latest mode reported by the CLI status line.
+	// Empty means no authoritative observation yet.
+	CurrentMode func() string
 	// FullAccess: the session could switch to full access at launch.
 	FullAccess bool
 	// Model is the session's model as last recorded.
@@ -290,18 +337,19 @@ type Screen struct {
 // Hook is a hook call's payload. Codex and Claude Code use the same field
 // names for what remote-agent reads.
 type Hook struct {
-	SessionID      string          `json:"session_id"`
-	TurnID         string          `json:"turn_id"`
-	PromptID       string          `json:"prompt_id"` // Claude Code's turn
-	TranscriptPath string          `json:"transcript_path"`
-	Cwd            string          `json:"cwd"`
-	HookEventName  string          `json:"hook_event_name"`
-	Model          string          `json:"model"`
-	PermissionMode string          `json:"permission_mode"`
-	Source         string          `json:"source"`
-	ToolName       string          `json:"tool_name"`
-	ToolInput      json.RawMessage `json:"tool_input"`
-	ToolUseID      string          `json:"tool_use_id"`
+	SessionID         string          `json:"session_id"`
+	TurnID            string          `json:"turn_id"`
+	PromptID          string          `json:"prompt_id"` // Claude Code's turn
+	TranscriptPath    string          `json:"transcript_path"`
+	Cwd               string          `json:"cwd"`
+	HookEventName     string          `json:"hook_event_name"`
+	Model             string          `json:"model"`
+	PermissionMode    string          `json:"permission_mode"`
+	Source            string          `json:"source"`
+	ToolName          string          `json:"tool_name"`
+	ToolInput         json.RawMessage `json:"tool_input"`
+	ToolUseID         string          `json:"tool_use_id"`
+	TerminationReason string          `json:"termination_reason,omitempty"`
 	// Status is the status line input remote-agent's status line command
 	// passes on (Claude Code), with HookEventName "StatusLine".
 	Status json.RawMessage `json:"status"`
