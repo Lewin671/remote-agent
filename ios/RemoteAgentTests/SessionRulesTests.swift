@@ -101,9 +101,9 @@ extension Ref<LiveAnnouncer> {
         _ = tracker.floor(700)
         _ = tracker.count(10)
         _ = tracker.content(height: 2_000, endY: 700)
-        tracker.dragging = true
+        _ = tracker.interaction(true)
         _ = tracker.content(height: 2_000, endY: 1_500)
-        tracker.dragging = false
+        _ = tracker.interaction(false)
         return tracker
     }
 
@@ -134,6 +134,30 @@ extension Ref<LiveAnnouncer> {
         #expect(tracker.content(height: 9_000, endY: 1_500))
     }
 
+    @MainActor @Test func aNewDragTakesOverFromHistoryRestoration() {
+        let tracker = readingBack()
+        tracker.keep()
+        _ = tracker.interaction(true)
+        #expect(!tracker.keeping, "a pending history correction must give the reader control")
+        #expect(!tracker.content(height: 9_000, endY: 1_800))
+        #expect(!tracker.scroll.following)
+    }
+
+    @MainActor @Test func growthAtTheBottomDoesNotIssueScrollCommandsUnderAFinger() {
+        let tracker = ChatScrollTracker()
+        _ = tracker.floor(700)
+        _ = tracker.count(10)
+        _ = tracker.content(height: 2_000, endY: 700)
+        _ = tracker.interaction(true)
+        #expect(!tracker.count(11), "new rows must not interrupt a drag starting at the bottom")
+        #expect(!tracker.content(height: 2_001, endY: 701))
+        #expect(!tracker.floor(699))
+        // Release follows even if no further event or layout arrives.
+        #expect(tracker.interaction(false))
+        #expect(!tracker.interaction(false), "an idle phase does not repeatedly scroll")
+        #expect(tracker.content(height: 2_200, endY: 900))
+    }
+
     @MainActor @Test func theTrackerFollowsGrowthAndTheKeyboardOnlyAtTheEnd() {
         let tracker = ChatScrollTracker()
         _ = tracker.floor(700)
@@ -149,9 +173,9 @@ extension Ref<LiveAnnouncer> {
         #expect(tracker.fresh == 0 && !tracker.away)
 
         // The user drags back by a screen.
-        tracker.dragging = true
+        _ = tracker.interaction(true)
         #expect(!tracker.content(height: 2_300, endY: 1_200))
-        tracker.dragging = false
+        _ = tracker.interaction(false)
         #expect(tracker.away)
         #expect(!tracker.content(height: 2_600, endY: 1_500), "a growing reply moves nothing for someone reading back")
         #expect(!tracker.floor(700), "nor does the keyboard going away")

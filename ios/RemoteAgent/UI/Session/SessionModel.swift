@@ -202,6 +202,8 @@ final class SessionModel {
     @ObservationIgnored private var applied = 0
     /// The seq the rows shown begin at.
     @ObservationIgnored private var shownFrom: UInt64 = 1
+    @ObservationIgnored private var interacting = false
+    @ObservationIgnored private var deferredHistory = false
     #if DEBUG
         /// How long the last pass took off the main actor, and how long applying it took on it, in ms.
         @ObservationIgnored private(set) var lastBuildMs = 0.0
@@ -211,6 +213,14 @@ final class SessionModel {
 
     init(builder: ChatBuilder = ChatBuilder()) {
         self.builder = builder
+    }
+
+    /// Installing a prefix changes every row's position. Let the finger and
+    /// its glide finish before installing it; live domain state still updates.
+    func interaction(_ active: Bool) {
+        guard interacting != active else { return }
+        interacting = active
+        if !active && deferredHistory { Task { await rebuild() } }
     }
 
     /// Follows the session until the task is cancelled, which lets its
@@ -263,15 +273,20 @@ final class SessionModel {
         #if DEBUG
             let built = ContinuousClock.now
         #endif
-        if newestSegment && !tailFirst { tailFirst = true }
-        // Earlier history came in front: not a gap filled after the rows, nor the end of the history said to be further.
-        if from < shownFrom && !rows.isEmpty {
-            joined = rowsInFront(before: rows, after: snapshot.rows)
-            joins += 1
+        if interacting && from < shownFrom && !rows.isEmpty {
+            deferredHistory = true
+        } else {
+            deferredHistory = false
+            if newestSegment && !tailFirst { tailFirst = true }
+            // Earlier history came in front: not a gap filled after the rows, nor the end of the history said to be further.
+            if from < shownFrom && !rows.isEmpty {
+                joined = rowsInFront(before: rows, after: snapshot.rows)
+                joins += 1
+            }
+            shownFrom = from
+            if historyPartial != partial { historyPartial = partial }
+            if snapshot.rows != rows { rows = snapshot.rows }
         }
-        shownFrom = from
-        if historyPartial != partial { historyPartial = partial }
-        if snapshot.rows != rows { rows = snapshot.rows }
         if snapshot.derived != derived { derived = snapshot.derived }
         if snapshot.startPrompt != startPrompt { startPrompt = snapshot.startPrompt }
         if snapshot.spoke != spoke { spoke = snapshot.spoke }

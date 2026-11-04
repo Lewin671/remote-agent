@@ -36,7 +36,7 @@ final class ChatScrollTracker {
     private(set) var away = false
 
     @ObservationIgnored private(set) var scroll = ChatScroll()
-    @ObservationIgnored var dragging = false
+    @ObservationIgnored private(set) var dragging = false
     /// The list's scroll view, from iOS 18 (`ListFinder`).
     @ObservationIgnored weak var list: UIScrollView?
     @ObservationIgnored private var contentHeight: CGFloat = 0
@@ -73,6 +73,15 @@ final class ChatScrollTracker {
         publish()
     }
 
+    /// A new gesture owns the position, including any correction still pending
+    /// from an earlier history join. Follow again after release if still at the end.
+    func interaction(_ active: Bool) -> Bool {
+        let ended = dragging && !active
+        dragging = active
+        if active { kept() }
+        return ended && !keeping && scroll.following
+    }
+
     /// The content was laid out or scrolled: its height, and where its end is on the screen.
     /// True when the list should go to its end.
     func content(height: CGFloat, endY: CGFloat) -> Bool {
@@ -107,7 +116,9 @@ final class ChatScrollTracker {
         }
         let go = changed && scroll.contentChanged(rows: rows)
         publish()
-        return go
+        // Even at the end, a programmatic scroll competes with the finger
+        // (or its glide). Keep observing it, and follow after release instead.
+        return go && !dragging
     }
 
     /// Reads back as a finger would: away from the end, and no longer following. For driving the page from a script.
@@ -172,8 +183,8 @@ private struct DragWatch: ViewModifier {
 /// measured their layout is only an estimate, so the row is gone to, by an
 /// anchor that puts it where it was, and then set to the point while it does
 /// not hold. Asking for the end ends it. A list in motion as the rows join,
-/// under a finger or gliding, takes no move until it stops, so it is stopped
-/// first (a finger has to take it again). A list that follows its end stays
+/// under a finger or gliding, joins its prefix only after that motion ends
+/// (`SessionModel.interaction`). A list that follows its end stays
 /// there. Before iOS 18 the list keeps its end in place on a change of size
 /// by itself.
 private struct KeepsPlace: ViewModifier {
@@ -252,7 +263,7 @@ private struct KeepsPlace: ViewModifier {
             guard joins != place.joins else { return }
             let first = place.joins == nil
             place.joins = joins
-            // Also under a finger or in a glide: left alone, the list would show the earlier history instead.
+            // Left alone, the list would show the earlier history instead.
             guard !first, !tracker.scroll.following else { return }
             let ids = Set(rows.lazy.map(\.id))
             // Rows keep their IDs across the join unless they are tool calls whose start was not read yet.
@@ -278,8 +289,9 @@ private struct KeepsPlace: ViewModifier {
         /// The first move back, after the joined rows came: from the list's first layout of them, or when it was told.
         private func begin() {
             guard let target = place.target, !place.started else { return }
+            guard tracker.keeping else { return finish() }
             place.started = true
-            // Under a finger or in a glide the row would not be gone to: the list is stopped first.
+            // End any remaining motion before applying the correction.
             tracker.stop()
             go(to: target)
             // A list that stops moving before the row is back is not held any longer.
@@ -671,7 +683,10 @@ struct ChatPane: View {
             }
             .modifier(EndAnchored(tailFirst: chat.tailFirst))
             .scrollDismissesKeyboard(.interactively)
-            .modifier(DragWatch { tracker.dragging = $0 })
+            .modifier(DragWatch {
+                chat.interaction($0)
+                if tracker.interaction($0) { toEnd(proxy) }
+            })
             .modifier(KeepsPlace(joins: chat.joins, rows: rows, tracker: tracker))
             // The earlier history is not new to someone reading back.
             // Counted as the tracker counts the rows: as shown.
@@ -725,7 +740,10 @@ struct ChatPane: View {
                 }
             }
         }
-        .onDisappear { context.sessionStore.clearScheduledJump(sid) }
+        .onDisappear {
+            chat.interaction(false)
+            context.sessionStore.clearScheduledJump(sid)
+        }
         .background { KeyboardProbe(track: keyboard).frame(width: 0, height: 0) }
         .onGeometryChange(for: CGFloat.self) {
             $0.safeAreaInsets.bottom

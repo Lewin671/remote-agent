@@ -237,6 +237,40 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(model.joined == model.rows.count - partial - 2)
     }
 
+    @MainActor @Test func historyWaitsForTheGestureAndAppliesTheLatestSnapshotOnRelease() async throws {
+        let (all, newest) = joinedHistory(more: 2)
+        let model = SessionModel()
+        await model.show(SessionEvents(events: newest, stateEvents: [], historyPartial: true))
+        let partial = model.rows
+        model.interaction(true)
+        await model.show(SessionEvents(events: Array(all.dropLast()), loaded: false))
+        await model.show(SessionEvents(events: all, loaded: true))
+        #expect(model.rows == partial && model.joins == 0 && model.historyPartial)
+        // Domain state is current even while row insertion waits.
+        #expect(model.derived == derive(all))
+        model.interaction(false)
+        // Another drag can begin before the off-main rebuild returns.
+        model.interaction(true)
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.rows == partial && model.joins == 0)
+        model.interaction(false)
+        for _ in 0..<100 where model.joins == 0 { try await Task.sleep(for: .milliseconds(10)) }
+        let expected = SessionModel()
+        await expected.show(SessionEvents(events: all, loaded: true))
+        #expect(model.rows == expected.rows && model.joins == 1 && !model.historyPartial)
+        #expect(model.joined == model.rows.count - partial.count - 2)
+    }
+
+    @MainActor @Test func aGrowingTailStillUpdatesDuringADrag() async {
+        let all = events([user("hello"), reply("first"), reply("second")])
+        let model = SessionModel()
+        await model.show(SessionEvents(events: Array(all.prefix(2)), loaded: true))
+        let before = model.rows
+        model.interaction(true)
+        await model.show(SessionEvents(events: all, loaded: true))
+        #expect(model.rows != before && model.joins == 0)
+    }
+
     @Test func rowsInFrontAreCountedFromTheLastRowBothHave() {
         #expect(rowsInFront(before: [], after: []) == 0)
         func rows(_ ids: [String]) -> [ChatRow] { ids.map { ChatRow(item: .note(.init(key: $0, text: "")), blocks: []) } }
