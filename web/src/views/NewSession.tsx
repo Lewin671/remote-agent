@@ -742,11 +742,12 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               {!m.online ? (
                 <div className="md">{m.lastSeenMs ? ago(m.lastSeenMs) + "在线，" : ""}现在不能新建</div>
               ) : (
-                m.id !== cfg.machineId && (
-                  <div className="md">
-                    {machineAgents(m).includes(ns.cfg.agent) ? `有 ${agentName(ns.cfg.agent)}` : `只有 ${agentsOf(m).map(agentName).join("、")}`}；模型和模式会按这台机器重新选择
-                  </div>
-                )
+                <div className="md">
+                  {`已装 ${machineAgents(m).map(agentName).join("、")}`}
+                  {m.id !== cfg.machineId && !machineAgents(m).includes(ns.cfg.agent) && (
+                    `；这台机器没有 ${agentName(ns.cfg.agent)}，会改用 ${agentName(switchMachine(cfg, m).agent)}`
+                  )}
+                </div>
               )}
             </div>
             {m.id === cfg.machineId && <span className="ck"><Check /></span>}

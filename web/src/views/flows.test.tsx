@@ -2341,6 +2341,21 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   expect(host.querySelector(".cli-tabs")).toBeNull();
 });
 
+it("lists installed CLIs in machine picker subtitles and explains fallback when CLI is missing", async () => {
+  const r = demo();
+  const { ProjectPage } = await import("./Project");
+  mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+  await click(button("Antigravity"));
+  await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
+  await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
+  await click(button(/^机器/, document));
+  const items = [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
+  const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
+  expect(macBtn?.querySelector(".md")?.textContent).toBe("已装 Codex、Claude Code、Antigravity");
+  const vpsBtn = items.find((b) => b.textContent?.includes("VPS-dev"));
+  expect(vpsBtn?.querySelector(".md")?.textContent).toBe("已装 Codex；这台机器没有 Antigravity，会改用 Codex");
+});
+
 it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
   const r = demo();
   const sent: { id: string; model?: string }[] = [];
