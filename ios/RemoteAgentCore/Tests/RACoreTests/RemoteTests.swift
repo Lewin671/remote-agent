@@ -4,10 +4,14 @@ import Testing
 
 @testable import RACore
 
-/// Each group owns isolated servers and runs its cases in order. Independent
-/// groups may overlap, including their real network and deadline waits.
-@Suite(.enabled(if: GoServer.available, GoServer.missing))
+/// Directory, history and enrollment workflows share one serial lane. The
+/// sync engine has another: overlap network waits without a startup burst of
+/// one server for every group while the pure crypto suites are also starting.
+@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
 struct ServerTests {}
+
+@Suite(.enabled(if: GoServer.available, GoServer.missing))
+struct SyncServerTests {}
 
 /// A server, a fake daemon with one machine, and what a test opened and must close.
 final class World: @unchecked Sendable {
@@ -121,7 +125,7 @@ private final class Frames: TermListener, Sendable {
     func onClose(_ reason: String) { closes.put(reason) }
 }
 
-extension ServerTests {
+extension SyncServerTests {
     /// The sync engine against the real Go server and a fake daemon.
     @Suite(.serialized) struct RemoteTests {
         private func world(_ body: (World) async throws -> Void) async throws {
