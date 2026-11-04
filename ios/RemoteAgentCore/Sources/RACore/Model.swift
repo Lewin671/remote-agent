@@ -9,14 +9,7 @@ import RAProto
 
 /// The CLI a session runs; sessions from before Claude Code support are Codex.
 public func effectiveAgent(_ a: PBAgent) -> PBAgent {
-    switch a {
-    case .unspecified, .UNRECOGNIZED: return .codex
-    default: return a
-    }
-}
-
-public func agentName(_ a: PBAgent) -> String {
-    effectiveAgent(a) == .claude ? "Claude Code" : "Codex"
+    agentInfo(a).agent
 }
 
 extension SessionView {
