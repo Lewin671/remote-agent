@@ -14,7 +14,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/contextio"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // Read-only RPCs read atomic file snapshots. They do not run GC, mutate image
@@ -54,7 +53,7 @@ func (d *Daemon) imageStorageSnapshotUsing(ctx context.Context, readDir func(str
 	// Capture in-memory protection facts before entering the filesystem worker.
 	pins := d.protectedImageSessions()
 	uploadsDir := d.uploads.dir
-	sessionsDir := paths.SessionsDir()
+	sessionsDir := d.sessionsDir()
 	return contextio.Read(ctx, func() (*pb.ImageStorageUsage, error) {
 		usage := &pb.ImageStorageUsage{}
 		sessions := map[string]*pb.ImageSessionStorage{}

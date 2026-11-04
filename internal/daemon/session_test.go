@@ -140,8 +140,6 @@ func testEchoCodexConfig() map[pb.Agent]AgentConfig {
 }
 
 func newHarness(t *testing.T, cfg Config) *harness {
-	// Keep settings and other state out of the real ~/.remote-agent.
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	t.Helper()
 	dir := t.TempDir()
 	if cfg.Agents == nil {
@@ -164,7 +162,7 @@ func newHarness(t *testing.T, cfg Config) *harness {
 	if cfg.SubmitTimeout == 0 {
 		cfg.SubmitTimeout = time.Second
 	}
-	d := New(cfg)
+	d := New(t.TempDir(), cfg)
 	d.ctx = context.Background()
 	term := &fakeTerm{screen: idleScreen, alive: true, history: cx.HistoryPath}
 	h := &harness{t: t, d: d, term: term, dir: dir}

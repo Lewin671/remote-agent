@@ -11,7 +11,6 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -146,7 +145,7 @@ func TestTitleOnlyUpdateValidatesAndPersists(t *testing.T) {
 			case "stale-revision":
 				before.Revision--
 			case "write":
-				file := filepath.Join(paths.Dir(), "schedules.json")
+				file := filepath.Join(h.d.dir, "schedules.json")
 				if err := os.Remove(file); err != nil {
 					t.Fatal(err)
 				}

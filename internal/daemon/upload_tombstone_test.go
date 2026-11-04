@@ -34,8 +34,8 @@ func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
 					name += "/restart"
 				}
 				t.Run(name, func(t *testing.T) {
-					t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-					u := newUploads()
+					root := t.TempDir()
+					u := newUploads(root)
 					data := []byte("original bytes")
 					sum := sha256.Sum256(data)
 					if _, err := u.begin(&pb.BeginImageUploadRequest{TransferId: tid, FileName: "race.bin", TotalBytes: int64(len(data)), Sha256: sum[:]}, "phone"); err != nil {
@@ -111,7 +111,7 @@ func TestHashReloadRejectsDeletionTombstone(t *testing.T) {
 					if !after.Deleting || after.FileID != tombstone.FileID || after.CompletedMs != tombstone.CompletedMs {
 						t.Fatal("hash completion changed deletion tombstone")
 					}
-					recovered := newUploads()
+					recovered := newUploads(root)
 					if gc {
 						recovered.gc(time.Now())
 					} else {
@@ -192,7 +192,7 @@ func TestRestoreRefsReloadsSnapshotBeforeWriting(t *testing.T) {
 				if changed == "returning" && (!got.Returning || len(got.Refs) != 0) {
 					t.Fatal("stale snapshot changed return intent")
 				}
-				recovered := newUploads()
+				recovered := newUploads(h.d.dir)
 				recovered.reconcile()
 				if changed == "deleting" {
 					if _, err := os.Stat(u.partial(old.ID) + ".json"); !os.IsNotExist(err) {

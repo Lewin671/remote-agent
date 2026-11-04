@@ -22,19 +22,11 @@ func TestUntakePersistsReturnIntentAndRecoversIOFailures(t *testing.T) {
 						kind += "/release"
 					}
 					t.Run(kind+"/"+fault+"/"+recovery, func(t *testing.T) {
-						t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-						u := newUploads()
-						var images, files []string
-						var tr *transfer
-						if image {
-							id := storageUpload(t, u)
-							images = []string{id}
-							tr = u.byImage(id)
-						} else {
-							id := uploadFile(t, u, "rejected.bin", []byte("rejected upload"))
-							files = []string{id}
-							tr = u.byFile(id)
-						}
+						parallelStorageTest(t)
+						root := t.TempDir()
+						u := newUploads(root)
+						fixture := completedUpload(t, u, image, "rejected.bin", []byte("rejected upload"))
+						images, files, tr := fixture.images, fixture.files, fixture.record
 						all, err := u.takeUploads(images, files, "phone", "s", "rejected")
 						if err != nil {
 							t.Fatal(err)
@@ -112,7 +104,7 @@ func TestUntakePersistsReturnIntentAndRecoversIOFailures(t *testing.T) {
 							t.Fatalf("bytes lost during rejected return: %v", err)
 						}
 						clearFault()
-						restarted := &uploads{dir: u.dir, quota: maxUploadStorage}
+						restarted := newUploads(u.root)
 						if recovery == "restart" {
 							restarted.reconcile()
 						} else {

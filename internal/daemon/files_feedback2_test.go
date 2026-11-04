@@ -26,8 +26,8 @@ func TestFailedReverseMoveRetainsOwnerUntilRestartRecovery(t *testing.T) {
 				name += "/before-rename"
 			}
 			t.Run(name, func(t *testing.T) {
-				t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-				u := newUploads()
+				root := t.TempDir()
+				u := newUploads(root)
 				var imageIDs, fileIDs []string
 				id := ""
 				if image {
@@ -95,7 +95,7 @@ func TestFailedReverseMoveRetainsOwnerUntilRestartRecovery(t *testing.T) {
 				if _, err := os.Stat(where); err != nil {
 					t.Fatal("GC deleted an unresolved return", err)
 				}
-				restarted := &uploads{dir: u.dir, quota: maxUploadStorage}
+				restarted := newUploads(u.root)
 				restarted.reconcile()
 				restored, err := restarted.load(tr.ID)
 				if err != nil {
@@ -116,8 +116,8 @@ func TestFailedReverseMoveRetainsOwnerUntilRestartRecovery(t *testing.T) {
 }
 
 func TestGCResyncsCompletionRecordBeforeDeletingRetainedPart(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := []byte("durable")
 	sum := sha256.Sum256(data)
 	_, err := u.begin(&pb.BeginImageUploadRequest{TransferId: tid, FileName: "durable.bin", TotalBytes: int64(len(data)), Sha256: sum[:]}, "phone")
@@ -169,8 +169,8 @@ func TestGCResyncsCompletionRecordBeforeDeletingRetainedPart(t *testing.T) {
 func TestReleaseVanishedFileDoesNotLeavePermanentSessionOwnership(t *testing.T) {
 	for _, returning := range []bool{false, true} {
 		t.Run(map[bool]string{false: "claimed", true: "returning"}[returning], func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			id := uploadFile(t, u, "vanished.bin", []byte("gone"))
 			all, err := u.takeUploads(nil, []string{id}, "phone", "unfinished", "first")
 			if err != nil {
@@ -200,8 +200,8 @@ func TestReleaseVanishedFileDoesNotLeavePermanentSessionOwnership(t *testing.T) 
 }
 func TestPendingReturnKeepsExactFilename(t *testing.T) {
 	// Exercise the directory path form as well as the image filename form.
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := uploadFile(t, u, "报告+数据.csv", []byte("a,b"))
 	all, err := u.takeUploads(nil, []string{id}, "phone", "s", "r")
 	if err != nil {
@@ -224,8 +224,8 @@ func TestPendingReturnKeepsExactFilename(t *testing.T) {
 }
 
 func TestRetryCannotAcceptWhileRejectedClaimIsStillReturning(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := uploadFile(t, u, "retry.bin", []byte("retry"))
 	old, err := u.takeUploads(nil, []string{id}, "phone", "first", "rejected")
 	if err != nil {

@@ -15,7 +15,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -111,7 +110,7 @@ func TestSettingsCommitSerializesDiskAndCache(t *testing.T) {
 	if err := <-bDone; err != nil {
 		t.Fatal(err)
 	}
-	raw, err := os.ReadFile(settingsPath())
+	raw, err := os.ReadFile(h.d.settingsPath())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +183,7 @@ func TestStorageSnapshotToleratesConcurrentRemoval(t *testing.T) {
 				h := newHarness(t, Config{})
 				path := filepath.Join(h.d.uploads.dir, "partial", "gone.part")
 				if cache {
-					path = filepath.Join(paths.SessionsDir(), "synthetic", "images", "gone.display")
+					path = filepath.Join(h.d.sessionsDir(), "synthetic", "images", "gone.display")
 				}
 				if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 					t.Fatal(err)

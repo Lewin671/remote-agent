@@ -33,7 +33,7 @@ func TestScheduledClientEnvironmentSurvivesDaemonRestart(t *testing.T) {
 					cancel()
 					h.d.ctx = ctx // Fake tmux: do not start background CLI readers.
 					if source != "" {
-						dir := paths.SessionDir(source)
+						dir := h.d.sessionDir(source)
 						if err := paths.EnsureDir(dir); err != nil {
 							t.Fatal(err)
 						}
@@ -89,7 +89,7 @@ func TestScheduledClientEnvironmentSurvivesDaemonRestart(t *testing.T) {
 						t.Fatal(err)
 					}
 					// Use a new daemon and the real metadata restore path, not its old map.
-					fresh := New(h.d.cfg)
+					fresh := New(h.d.dir, h.d.cfg)
 					fresh.ctx = ctx
 					if err := fresh.restoreWithSessionList(func() ([]tmux.SessionInfo, error) { return nil, nil }); err != nil {
 						t.Fatal(err)

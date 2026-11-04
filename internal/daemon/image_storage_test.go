@@ -13,7 +13,6 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 func storageUpload(t *testing.T, u *uploads) string {
@@ -35,8 +34,8 @@ func storageUpload(t *testing.T, u *uploads) string {
 }
 
 func TestCancelReleasesOnlyTheLastImageReference(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := storageUpload(t, u)
 	first, err := u.take([]string{id}, "phone", "s", "first")
 	if err != nil {
@@ -57,8 +56,8 @@ func TestCancelReleasesOnlyTheLastImageReference(t *testing.T) {
 }
 
 func TestOriginalLRUProtectsExecutionAndUnconfirmedImages(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	var images [][]queuedImage
 	for _, session := range []string{"oldest", "newer", "running", "unconfirmed", "queued"} {
 		id := storageUpload(t, u)
@@ -120,14 +119,14 @@ func TestOriginalLRUProtectsExecutionAndUnconfirmedImages(t *testing.T) {
 }
 
 func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := storageUpload(t, u)
 	imgs, err := u.take([]string{id}, "phone", "s", "cancelled")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := paths.SessionDir("s")
+	dir := u.sessionStateDir("s")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -169,9 +168,8 @@ func TestRestartReconcilesCancelledAndEmbeddedImageRecords(t *testing.T) {
 }
 
 func TestImageCacheLRUAndPreviewRegeneration(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	d := New(Config{})
-	dir := paths.SessionDir("s")
+	d := New(t.TempDir(), Config{})
+	dir := d.sessionDir("s")
 	st := openImageStore(dir)
 	d.sessions["s"] = &session{images: st}
 	found := imageFound(t, 100, 80)
@@ -216,7 +214,7 @@ func TestImageQuotaSurvivesRestart(t *testing.T) {
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{ImageUploadQuotaBytes: chosen}); err != nil {
 		t.Fatal(err)
 	}
-	if n := New(Config{}).settings().ImageUploadQuotaBytes; n != chosen {
+	if n := New(h.d.dir, Config{}).settings().ImageUploadQuotaBytes; n != chosen {
 		t.Fatalf("restart lost quota: %d", n)
 	}
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{ImageUploadQuotaBytes: -1}); err == nil {
@@ -234,16 +232,16 @@ func restoreImageRefs(t *testing.T, u *uploads, s *session) {
 }
 
 func TestRestoreRefsSkipsHistoryWithoutImageRecords(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	// A nil log makes any unnecessary witness scan fail immediately.
 	u.restoreRefs(&session{meta: meta{ID: "text-only"}}, nil)
 	u.restoreRefs(&session{meta: meta{ID: "incomplete"}, queue: &queueState{}}, []*transfer{{ID: "partial", Session: "incomplete"}})
 }
 
 func TestRestoreRefsIndexesSessionsWithoutRecreatingRemovedRecords(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	for _, sessionID := range []string{"first", "second"} {
 		id := storageUpload(t, u)
 		imgs, err := u.take([]string{id}, "phone", sessionID, "request")

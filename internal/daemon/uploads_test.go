@@ -12,7 +12,6 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 const tid = "0123456789abcdef0123456789abcdef"
@@ -28,8 +27,8 @@ func beginUpload(t *testing.T, u *uploads, data []byte, device string) *pb.Image
 }
 
 func TestUploads(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := testPNG(t, 300, 200, color.RGBA{0, 200, 0, 255})
 	st := beginUpload(t, u, data, "phone")
 	if st.State != pb.ImageUploadState_IMAGE_UPLOAD_STATE_RECEIVING || st.MaxChunkBytes != maxUploadChunk {
@@ -95,8 +94,8 @@ func TestUploads(t *testing.T) {
 }
 
 func TestUploadChecks(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	// Not what the hash says.
 	data := []byte("\x89PNG\r\n\x1a\nnot really")
 	beginUpload(t, u, data, "d")
@@ -164,8 +163,8 @@ func completeUpload(t *testing.T, u *uploads, device string) *pb.ImageUploadStat
 // move cut short by a crash is finished on start; if the ownership cannot
 // be saved, nothing moves and the call fails.
 func TestImageMovesAreRecoverable(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	st := completeUpload(t, u, "d")
 	name := st.ImageId + ".png"
 
@@ -195,8 +194,8 @@ func TestImageMovesAreRecoverable(t *testing.T) {
 }
 
 func TestUploadExpiryWithoutGC(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
 	beginUpload(t, u, data, "d")
 	tr, err := u.load(tid)
@@ -228,14 +227,14 @@ func TestUploadExpiryWithoutGC(t *testing.T) {
 }
 
 func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	st := completeUpload(t, u, "d")
 	imgs, err := u.take([]string{st.ImageId}, "d", "s1", "r1")
 	if err != nil {
 		t.Fatal(err)
 	}
-	dir := paths.SessionDir("s1")
+	dir := u.sessionStateDir("s1")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +254,7 @@ func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
 	if err := m.save(dir); err != nil {
 		t.Fatal(err)
 	}
-	u = newUploads()
+	u = newUploads(root)
 	u.gc(time.Now())
 	for _, path := range []string{imgs[0].Path, u.partial(tid) + ".json"} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -265,8 +264,8 @@ func TestUsedUploadsSurviveGCAndExitedCleanupRetries(t *testing.T) {
 }
 
 func TestUploadGCSweepsOrphans(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	st := completeUpload(t, u, "d")
 	stale := time.Now().Add(-25 * time.Hour)
 	orphans := []string{u.pending("orphan.png"), u.pending("orphan.png.tmp"), u.partial("orphan.part"), u.partial("orphan.json.tmp"), u.partial("broken.json")}
@@ -300,8 +299,8 @@ func TestUploadGCSweepsOrphans(t *testing.T) {
 }
 
 func TestCompleteSaveFailureLeavesNoOrphan(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
 	beginUpload(t, u, data, "d")
 	if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "d"); err != nil {
@@ -330,8 +329,8 @@ func TestCompleteSaveFailureLeavesNoOrphan(t *testing.T) {
 
 func TestUploadCreatesMissingFoldersAndRetriesDoNotExtendExpiry(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "missing", "home")
-	t.Setenv("REMOTE_AGENT_HOME", home)
-	u := newUploads()
+	root := home
+	u := newUploads(root)
 	u.reconcile()
 	u.gc(time.Now()) // first run: none of the folders exists yet
 	data := testPNG(t, 10, 10, color.RGBA{1, 2, 3, 255})
@@ -364,8 +363,8 @@ func TestUploadCreatesMissingFoldersAndRetriesDoNotExtendExpiry(t *testing.T) {
 }
 
 func TestUploadQuotaReservesIncomingBytesAndRecovers(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	u.quota = 1 << 20
 	req := &pb.BeginImageUploadRequest{TransferId: tid, Format: pb.ImageFormat_IMAGE_FORMAT_PNG, TotalBytes: 768 << 10, Sha256: make([]byte, 32)}
 	if _, err := u.begin(req, "d"); err != nil {
@@ -403,13 +402,13 @@ func TestUploadQuotaReservesIncomingBytesAndRecovers(t *testing.T) {
 }
 
 func TestExitedUploadRecordCleanedWithoutImageFolder(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	st := completeUpload(t, u, "d")
 	if _, err := u.take([]string{st.ImageId}, "d", "s1", "r1"); err != nil {
 		t.Fatal(err)
 	}
-	dir := paths.SessionDir("s1")
+	dir := u.sessionStateDir("s1")
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}

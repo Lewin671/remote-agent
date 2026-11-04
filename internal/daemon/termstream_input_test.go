@@ -40,7 +40,7 @@ func TestTerminalInputUsesPrivateControlPipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForTmuxSignal(t, tc, "ready")
-	d := New(Config{Tmux: tc})
+	d := New(t.TempDir(), Config{Tmux: tc})
 	d.sessions["input"] = &session{meta: meta{Tmux: "input"}}
 	stream, err := d.OpenTerminal("input")
 	if err != nil {

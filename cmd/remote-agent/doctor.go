@@ -80,7 +80,7 @@ func runDoctor(args []string) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
-	d := daemon.New(cfg)
+	d := daemon.New(paths.Dir(), cfg)
 	errc := make(chan error, 1)
 	go func() { errc <- d.Run(ctx) }()
 	for i := 0; ; i++ {

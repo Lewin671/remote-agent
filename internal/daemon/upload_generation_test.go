@@ -22,8 +22,8 @@ func TestFileHashCannotCompleteAnotherBeginGeneration(t *testing.T) {
 			name = "already-complete"
 		}
 		t.Run(name, func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			original, replacement := []byte("old!"), []byte("new!")
 			sum := sha256.Sum256(original)
 			req := &pb.BeginImageUploadRequest{TransferId: tid, FileName: "race.bin", TotalBytes: int64(len(original)), Sha256: sum[:]}
@@ -137,8 +137,8 @@ func TestFileHashCannotCompleteAnotherBeginGeneration(t *testing.T) {
 }
 
 func TestRepeatedBeginKeepsActiveHashAndDescriptorThroughCompletion(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := []byte("same")
 	sum := sha256.Sum256(data)
 	req := &pb.BeginImageUploadRequest{TransferId: tid, FileName: "retry.bin", TotalBytes: int64(len(data)), Sha256: sum[:]}

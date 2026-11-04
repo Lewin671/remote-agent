@@ -11,7 +11,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -49,12 +48,12 @@ type quotaReport struct {
 	windows []*pb.QuotaWindow
 }
 
-func quotaPath() string { return filepath.Join(paths.Dir(), "quota.json") }
+func (d *Daemon) quotaPath() string { return filepath.Join(d.dir, "quota.json") }
 
 // loadQuotas reads the saved CLI limits, keeping only the logged
 // in account's.
 func (d *Daemon) loadQuotas() {
-	b, err := os.ReadFile(quotaPath())
+	b, err := os.ReadFile(d.quotaPath())
 	if err != nil {
 		return
 	}
@@ -98,7 +97,7 @@ func (d *Daemon) saveQuotasLocked() {
 		}
 	}
 	b, _ := json.Marshal(out)
-	if err := writeFileSync(quotaPath(), b); err != nil {
+	if err := writeFileSync(d.quotaPath(), b); err != nil {
 		slog.Warn("save account limits", "err", errClass(err))
 	}
 }

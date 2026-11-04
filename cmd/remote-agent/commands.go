@@ -82,7 +82,7 @@ func runDaemon(args []string) error {
 	defer stop()
 	var d *daemon.Daemon
 	cfg.Started = func(ctx context.Context) { relay.New(backend{d}).Run(ctx) }
-	d = daemon.New(cfg)
+	d = daemon.New(paths.Dir(), cfg)
 	logArgs := make([]any, 0, len(daemon.RegisteredAgents)*2+2)
 	for _, spec := range daemon.RegisteredAgents {
 		logArgs = append(logArgs, spec.ID, cfg.Agents[spec.Kind].Bin)

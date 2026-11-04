@@ -156,7 +156,7 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 	if a := h.d.MachineMeta().Agents; len(a) != 1 || a[0].Agent != pb.Agent_AGENT_CODEX {
 		t.Fatalf("agents %v", a)
 	}
-	d := New(Config{Agents: map[pb.Agent]AgentConfig{
+	d := New(h.d.dir, Config{Agents: map[pb.Agent]AgentConfig{
 		pb.Agent_AGENT_CODEX:  {Bin: "/nonexistent/codex"},
 		pb.Agent_AGENT_CLAUDE: {Bin: "/nonexistent/claude", Home: t.TempDir()},
 	}})

@@ -15,7 +15,6 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -115,7 +114,7 @@ func listDirectories(ctx context.Context, path string, openDir func(string) (dir
 
 // --- settings ---
 
-func settingsPath() string { return filepath.Join(paths.Dir(), "settings.json") }
+func (d *Daemon) settingsPath() string { return filepath.Join(d.dir, "settings.json") }
 
 // settings returns the daemon settings, defaults filled in.
 func (d *Daemon) settings() *pb.DaemonSettings {
@@ -134,7 +133,7 @@ func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error
 	st := proto.CloneOf(d.cached)
 	d.settingsMu.Unlock()
 	if st == nil {
-		b, err := contextio.ReadFile(ctx, settingsPath())
+		b, err := contextio.ReadFile(ctx, d.settingsPath())
 		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
 			return nil, err
 		}
@@ -197,7 +196,7 @@ func (d *Daemon) saveSettings(st *pb.DaemonSettings, write func(string, []byte) 
 	if err != nil {
 		return nil, err
 	}
-	if err := write(settingsPath(), b); err != nil {
+	if err := write(d.settingsPath(), b); err != nil {
 		return nil, err
 	}
 	d.settingsMu.Lock()

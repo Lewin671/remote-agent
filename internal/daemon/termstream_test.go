@@ -35,7 +35,7 @@ func TestTerminalSnapshotKeepsInitialHistorySmall(t *testing.T) {
 		t.Fatal(err)
 	}
 	waitForTmuxSignal(t, tc, "history-ready")
-	d := New(Config{Tmux: tc})
+	d := New(t.TempDir(), Config{Tmux: tc})
 	d.sessions["history"] = &session{meta: meta{Tmux: "history"}}
 	stream, err := d.OpenTerminal("history")
 	if err != nil {
@@ -116,7 +116,7 @@ func TestTerminalHistoryThroughRelay(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	d := New(Config{Tmux: tc})
+	d := New(t.TempDir(), Config{Tmux: tc})
 	d.sessions["history"] = &session{d: d, ag: codex.New("", "", ""), dir: dir, log: log,
 		queue: &queueState{}, status: pb.SessionStatus_SESSION_STATUS_IDLE,
 		meta: meta{ID: "history", Tmux: "history", CreatedAt: time.Now()}}

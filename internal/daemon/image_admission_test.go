@@ -69,9 +69,9 @@ func TestTranscriptImageAdmissionBeforeMaterialization(t *testing.T) {
 func TestUploadAdmissionBeforeReadAndThroughValidation(t *testing.T) {
 	for _, phase := range []string{"before-read", "after-decode"} {
 		t.Run(phase, func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
+			root := t.TempDir()
 			synctest.Test(t, func(t *testing.T) {
-				u := newUploads()
+				u := newUploads(root)
 				data := testPNG(t, 20, 10, color.RGBA{G: 255, A: 255})
 				beginUpload(t, u, data, "phone")
 				if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {

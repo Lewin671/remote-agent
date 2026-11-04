@@ -21,7 +21,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // Images sent from clients (architecture §17 "从客户端发图片"). A client
@@ -111,7 +110,8 @@ func (t *transfer) status() *pb.ImageUploadStatus {
 // uploads keeps the transfers. One lock covers them all: chunks are small
 // and clients send one image at a time.
 type uploads struct {
-	dir string
+	root string // state root, including session metadata consulted by recovery
+	dir  string
 
 	mu               sync.Mutex
 	quota            int64
@@ -123,8 +123,8 @@ type uploads struct {
 	afterUploadStep  func(string)
 }
 
-func newUploads() *uploads {
-	return &uploads{dir: filepath.Join(paths.Dir(), "uploads"), quota: maxUploadStorage}
+func newUploads(root string) *uploads {
+	return &uploads{root: root, dir: filepath.Join(root, "uploads"), quota: maxUploadStorage}
 }
 
 func (u *uploads) partial(id string) string   { return filepath.Join(u.dir, "partial", id) }
@@ -642,7 +642,7 @@ func (u *uploads) gcLocked(now time.Time) {
 		// before forward recovery so missing bytes/directories cannot prevent
 		// an exited record's cleanup. Explicit returns/deletions take priority.
 		if !t.Returning && !t.Deleting && t.Session != "" {
-			if m, err := loadMeta(paths.SessionDir(t.Session)); err == nil && m.Exited {
+			if m, err := loadMeta(u.sessionStateDir(t.Session)); err == nil && m.Exited {
 				u.dropSessionLocked(t.Session)
 				continue
 			}
@@ -687,7 +687,7 @@ func (u *uploads) gcLocked(now time.Time) {
 		if !e.IsDir() || e.Name() == "partial" || e.Name() == "pending" {
 			continue
 		}
-		m, err := loadMeta(paths.SessionDir(e.Name()))
+		m, err := loadMeta(u.sessionStateDir(e.Name()))
 		if err == nil && m.Exited {
 			u.dropSessionLocked(e.Name())
 		} else if os.IsNotExist(err) {
@@ -785,3 +785,5 @@ func errClass(err error) string {
 	}
 	return err.Error()
 }
+
+func (u *uploads) sessionStateDir(id string) string { return filepath.Join(u.root, "sessions", id) }

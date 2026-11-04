@@ -12,7 +12,6 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // Every operation uses real temporary files. Fail before each I/O boundary,
@@ -55,8 +54,9 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 							recovery = "gc"
 						}
 						t.Run(strings.Join([]string{kind, tc.name, stage, mode, recovery}, "/"), func(t *testing.T) {
-							t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-							u := newUploads()
+							parallelStorageTest(t)
+							root := t.TempDir()
+							u := newUploads(root)
 							data := []byte("exact original file bytes")
 							if image {
 								data = testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
@@ -106,7 +106,7 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 								}
 							}
 							if claimed || tc.name == "take" || tc.name == "reconcile" {
-								dir := paths.SessionDir("s")
+								dir := u.sessionStateDir("s")
 								if err := os.MkdirAll(dir, 0700); err != nil {
 									t.Fatal(err)
 								}
@@ -244,7 +244,7 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 							}
 							// Replace the entire uploads object; a failed pre-intent write is retried
 							// by its caller (Starting metadata for release, or the client's request).
-							u = newUploads()
+							u = newUploads(root)
 							if gc {
 								u.gc(time.Now())
 							} else {
@@ -321,13 +321,13 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 func TestUnstartedKeepsMetadataUntilReturnsFinish(t *testing.T) {
 	for _, stage := range []string{"move-intent", "move-destination", "move-source", "move-clear"} {
 		t.Run(stage, func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			id := uploadFile(t, u, "return.bin", []byte("keep"))
 			if _, err := u.takeUploads(nil, []string{id}, "phone", "s", "r"); err != nil {
 				t.Fatal(err)
 			}
-			dir := paths.SessionDir("s")
+			dir := u.sessionStateDir("s")
 			if err := os.MkdirAll(dir, 0700); err != nil {
 				t.Fatal(err)
 			}
@@ -341,14 +341,14 @@ func TestUnstartedKeepsMetadataUntilReturnsFinish(t *testing.T) {
 				}
 				return nil
 			}
-			d := &Daemon{uploads: u}
+			d := &Daemon{dir: root, uploads: u}
 			if !d.unstarted(m, dir, false) {
 				t.Fatal("unfinished session restored as accepted")
 			}
 			if _, err := loadMeta(dir); err != nil {
 				t.Fatal("lost retry metadata", err)
 			}
-			d.uploads = newUploads()
+			d.uploads = newUploads(root)
 			d.uploads.gc(time.Now())
 			if !d.unstarted(m, dir, false) {
 				t.Fatal("unfinished session not retried")
@@ -366,8 +366,8 @@ func TestUnstartedKeepsMetadataUntilReturnsFinish(t *testing.T) {
 func TestSessionCleanupDoesNotDeleteUnresolvedReturns(t *testing.T) {
 	for _, image := range []bool{false, true} {
 		t.Run(map[bool]string{false: "file", true: "image"}[image], func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			var ims, files []string
 			if image {
 				ims = []string{storageUpload(t, u)}
@@ -395,7 +395,7 @@ func TestSessionCleanupDoesNotDeleteUnresolvedReturns(t *testing.T) {
 			if _, err := os.Stat(tr.sessionPath(u)); err != nil {
 				t.Fatal("cleanup deleted a rejected upload", err)
 			}
-			u = newUploads()
+			u = newUploads(root)
 			u.gc(time.Now())
 			if err := u.checkUploads(ims, files, "phone"); err != nil {
 				t.Fatal("return not recovered", err)
@@ -413,8 +413,8 @@ func firstID(ids []string) string {
 func TestImageCompletionRetainsOriginalAfterRecordSyncFailure(t *testing.T) {
 	for _, gc := range []bool{false, true} {
 		t.Run(map[bool]string{false: "restart", true: "gc"}[gc], func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			data := testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
 			beginUpload(t, u, data, "phone")
 			if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {
@@ -438,7 +438,7 @@ func TestImageCompletionRetainsOriginalAfterRecordSyncFailure(t *testing.T) {
 					t.Fatal("lost recovery copy", err)
 				}
 			}
-			u = newUploads()
+			u = newUploads(root)
 			if gc {
 				u.gc(time.Now())
 			} else {

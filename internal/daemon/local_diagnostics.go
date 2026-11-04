@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // Storage diagnostics are a local-only snapshot of runtime state. Keep them
@@ -25,7 +23,7 @@ func storageDiagnosticPath(stateDir, id string) string {
 }
 
 func (s *session) saveStorageDiagnostic() error {
-	path := storageDiagnosticPath(paths.Dir(), s.meta.ID)
+	path := storageDiagnosticPath(s.d.dir, s.meta.ID)
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		return err
 	}
@@ -37,7 +35,7 @@ func (s *session) saveStorageDiagnostic() error {
 }
 
 func (s *session) clearStorageDiagnostic() {
-	if err := os.Remove(storageDiagnosticPath(paths.Dir(), s.meta.ID)); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(storageDiagnosticPath(s.d.dir, s.meta.ID)); err != nil && !os.IsNotExist(err) {
 		if s.storageWarnAt.IsZero() || time.Since(s.storageWarnAt) >= time.Minute {
 			slog.Error("cannot clear local storage diagnostic", "session", s.meta.ID, "err", errClass(err))
 			s.storageWarnAt = time.Now()

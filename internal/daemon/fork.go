@@ -98,7 +98,7 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	nm := meta{ID: nid, Agent: m.Agent, Cwd: m.Cwd, Tmux: "ra-" + nid[:8], Args: m.Args, CreatedAt: time.Now().UTC(),
 		Title: m.Title, NoFullAccess: m.NoFullAccess, StandardContext: m.StandardContext, Starting: true,
 		ForkedFrom: m.ID, Shell: m.Shell}
-	dir := paths.SessionDir(nid)
+	dir := d.sessionDir(nid)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}

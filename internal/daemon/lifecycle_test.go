@@ -10,7 +10,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 )
@@ -107,7 +106,7 @@ func TestExitEndsMissingTurnForBothAgents(t *testing.T) {
 func TestRestoreExitedCheckpointReadsFinalTranscript(t *testing.T) {
 	r := newRestoreHarness(t)
 	id := "00000000000000aa"
-	rollout := filepath.Join(paths.SessionDir(id), "rollout.jsonl")
+	rollout := filepath.Join(r.d.sessionDir(id), "rollout.jsonl")
 	dir := r.save(meta{ID: id, RolloutPath: rollout, Exited: true}, false)
 	before := taskStarted + "\n"
 	final := `{"type":"event_msg","payload":{"type":"item_completed","turn_id":"t1","item":{"type":"AgentMessage","id":"m1","content":[{"text":"last reply"}]}}}` + "\n"

@@ -13,7 +13,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/imageproc"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 const defaultImageCacheQuota = int64(150 << 20)
@@ -264,7 +263,7 @@ func (d *Daemon) trimImageCache(limit int64) (int64, error) {
 	d.mu.Unlock()
 	var files []imageCacheFile
 	var total int64
-	entries, err := os.ReadDir(paths.SessionsDir())
+	entries, err := os.ReadDir(d.sessionsDir())
 	if os.IsNotExist(err) {
 		return 0, nil
 	}
@@ -277,7 +276,7 @@ func (d *Daemon) trimImageCache(limit int64) (int64, error) {
 		}
 		st := stores[e.Name()]
 		if st == nil {
-			st = openImageStore(paths.SessionDir(e.Name()))
+			st = openImageStore(d.sessionDir(e.Name()))
 		}
 		st.mu.Lock()
 		es, err := os.ReadDir(st.dir)

@@ -87,9 +87,9 @@ func noSessionStarted(t *testing.T, calls string) {
 
 // noSessionDir checks that a session that failed to start left nothing
 // behind under the daemon's sessions directory.
-func noSessionDir(t *testing.T) {
+func noSessionDir(t *testing.T, d *Daemon) {
 	t.Helper()
-	entries, err := os.ReadDir(paths.SessionsDir())
+	entries, err := os.ReadDir(d.sessionsDir())
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestTerminalSessionFailsWithoutTheCLIInItsPATH(t *testing.T) {
 				t.Fatalf("create returns %v, want InvalidArgument", code)
 			}
 			noSessionStarted(t, calls)
-			noSessionDir(t)
+			noSessionDir(t, h.d)
 		})
 	}
 }
@@ -275,7 +275,7 @@ func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
 				}
 				missingCLI(t, err, "the session's saved PATH")
 				noSessionStarted(t, calls)
-				noSessionDir(t)
+				noSessionDir(t, h.d)
 			})
 		}
 	}
@@ -294,7 +294,7 @@ func TestScheduledSessionFromATerminalFindsTheCLIInItsPATH(t *testing.T) {
 		t.Fatal(err)
 	}
 	src := "fedcba9876543210"
-	dir := paths.SessionDir(src)
+	dir := h.d.sessionDir(src)
 	if err := paths.EnsureDir(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestScheduledSessionFromATerminalFailsWithoutTheCLIInItsPATH(t *testing.T) 
 				t.Fatal(err)
 			}
 			src := "fedcba9876543210"
-			dir := paths.SessionDir(src)
+			dir := h.d.sessionDir(src)
 			if err := paths.EnsureDir(dir); err != nil {
 				t.Fatal(err)
 			}
@@ -372,7 +372,7 @@ func TestScheduledSessionFromATerminalFailsWithoutTheCLIInItsPATH(t *testing.T) 
 				t.Fatalf("the task is %q (%q) next at %v, want failed with %q and no next run", task.Status, task.Reason, task.NextRunAt, want)
 			}
 			noSessionStarted(t, calls)
-			if entries, err := os.ReadDir(paths.SessionsDir()); err != nil || len(entries) != 1 || entries[0].Name() != src {
+			if entries, err := os.ReadDir(h.d.sessionsDir()); err != nil || len(entries) != 1 || entries[0].Name() != src {
 				t.Fatalf("the failed run left session directories: %v (%v)", entries, err)
 			}
 		})

@@ -27,7 +27,6 @@ type restoreHarness struct {
 
 func newRestoreHarness(t *testing.T) *restoreHarness {
 	t.Helper()
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	bin := t.TempDir()
 	alive := filepath.Join(bin, "sessions")
 	script := "#!/bin/sh\nshift 2\ncase \"$1\" in\n" +
@@ -39,7 +38,7 @@ func newRestoreHarness(t *testing.T) *restoreHarness {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	d := New(Config{Tmux: &tmux.Client{Bin: filepath.Join(bin, "tmux"), Socket: "ra-test"},
+	d := New(t.TempDir(), Config{Tmux: &tmux.Client{Bin: filepath.Join(bin, "tmux"), Socket: "ra-test"},
 		Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {HistoryPath: filepath.Join(t.TempDir(), "history.jsonl")}}, PollInterval: time.Millisecond, ScreenInterval: time.Hour})
 	d.ctx = ctx
 	t.Cleanup(func() {
@@ -73,7 +72,7 @@ func (r *restoreHarness) restore() error {
 // directory; alive says whether its tmux session still runs.
 func (r *restoreHarness) save(m meta, alive bool) string {
 	r.t.Helper()
-	dir := paths.SessionDir(m.ID)
+	dir := r.d.sessionDir(m.ID)
 	if err := paths.EnsureDir(dir); err != nil {
 		r.t.Fatal(err)
 	}
@@ -122,7 +121,7 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 	image := `{"type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c%d","output":[{"type":"input_image","image_url":"data:image/png;base64,AAAA"}]}}`
 	for i := range 64 {
 		id := fmt.Sprintf("%08x00000000", i+1)
-		dir := paths.SessionDir(id)
+		dir := r.d.sessionDir(id)
 		rollout := filepath.Join(dir, "rollout.jsonl")
 		r.save(meta{ID: id, RolloutPath: rollout}, true)
 		var lines []string
@@ -184,7 +183,7 @@ func TestRestoreRegistersSessionsUnderTheLock(t *testing.T) {
 func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
 	r := newRestoreHarness(t)
 	id := "00000000000000aa"
-	rollout := filepath.Join(paths.SessionDir(id), "rollout.jsonl")
+	rollout := filepath.Join(r.d.sessionDir(id), "rollout.jsonl")
 	r.save(meta{ID: id, RolloutPath: rollout}, false)
 	lines := []string{
 		taskStarted,

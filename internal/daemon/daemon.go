@@ -98,6 +98,8 @@ func (c *Config) defaults() {
 
 // Daemon owns all sessions.
 type Daemon struct {
+	dir string // immutable state root for this daemon and its sessions
+
 	updateMu        sync.Mutex
 	updateIdleSince time.Time
 	cfg             Config
@@ -147,16 +149,18 @@ type Daemon struct {
 	cacheMu sync.Mutex
 }
 
-// New returns a daemon; call Run to start it.
-func New(cfg Config) *Daemon {
+// New returns a daemon rooted at dir; call Run to start it. The caller resolves
+// environment-based paths once, before constructing the daemon.
+func New(dir string, cfg Config) *Daemon {
 	cfg.defaults()
 	d := &Daemon{
+		dir:      dir,
 		cfg:      cfg,
 		sessions: map[string]*session{},
 		starting: map[string]chan struct{}{},
 		agents:   map[pb.Agent]agent.Adapter{},
 		byIDMap:  map[string]agent.Adapter{},
-		uploads:  newUploads(),
+		uploads:  newUploads(dir),
 	}
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
 	d.uploads.pins = d.protectedImageSessions
@@ -230,10 +234,10 @@ func (d *Daemon) agentID(k pb.Agent) string {
 // Run takes the daemon lock, restores sessions, and serves the local API on
 // the unix socket until ctx is done.
 func (d *Daemon) Run(ctx context.Context) error {
-	if err := paths.EnsureDir(paths.Dir()); err != nil {
+	if err := paths.EnsureDir(d.dir); err != nil {
 		return err
 	}
-	lock, err := os.OpenFile(paths.Lock(), os.O_CREATE|os.O_RDWR, 0o600)
+	lock, err := os.OpenFile(filepath.Join(d.dir, "daemon.lock"), os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return err
 	}
@@ -242,7 +246,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return errors.New("another remote-agent daemon is already running")
 	}
 
-	if err := updater.EnsureState(paths.Dir()); err != nil {
+	if err := updater.EnsureState(d.dir); err != nil {
 		return err
 	}
 	d.ctx = ctx
@@ -274,7 +278,7 @@ func (d *Daemon) Run(ctx context.Context) error {
 		go d.cfg.Started(ctx)
 	}
 
-	sock := paths.Socket()
+	sock := filepath.Join(d.dir, "daemon.sock")
 	_ = os.Remove(sock)
 	ln, err := net.Listen("unix", sock)
 	if err != nil {
@@ -311,10 +315,10 @@ func (d *Daemon) restore() error {
 }
 
 func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error)) error {
-	if err := paths.EnsureDir(paths.SessionsDir()); err != nil {
+	if err := paths.EnsureDir(d.sessionsDir()); err != nil {
 		return err
 	}
-	entries, err := os.ReadDir(paths.SessionsDir())
+	entries, err := os.ReadDir(d.sessionsDir())
 	if err != nil {
 		return err
 	}
@@ -337,7 +341,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 		if !e.IsDir() {
 			continue
 		}
-		dir := filepath.Join(paths.SessionsDir(), e.Name())
+		dir := filepath.Join(d.sessionsDir(), e.Name())
 		m, err := loadMeta(dir)
 		if err != nil {
 			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
@@ -422,7 +426,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 }
 
 func (d *Daemon) terminal(m *meta) terminal {
-	return &tmuxTerminal{tmux: d.cfg.Tmux, name: m.Tmux, socket: paths.PTYSocket(m.ID)}
+	return &tmuxTerminal{tmux: d.cfg.Tmux, name: m.Tmux, socket: d.ptySocket(m.ID)}
 }
 
 // cancelStaleApprovals resolves approvals that were pending when a previous
@@ -591,7 +595,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 		}
 	}
 	d.cliEnv(env, &m)
-	dir := paths.SessionDir(id)
+	dir := d.sessionDir(id)
 	if err := paths.EnsureDir(dir); err != nil {
 		return nil, err
 	}
@@ -838,7 +842,7 @@ func (d *Daemon) list(includeExited bool) []*pb.Session {
 func (d *Daemon) ownEnv(env map[string]string, id string) {
 	env["RA_SESSION"] = id
 	env["RA_EXE"] = d.cfg.Exe
-	env["REMOTE_AGENT_HOME"] = paths.Dir()
+	env["REMOTE_AGENT_HOME"] = d.dir
 }
 
 // cliEnv sets the variables a session's CLI needs: which session it is,
@@ -880,7 +884,7 @@ func (d *Daemon) shellCmd(kind pb.Agent) string {
 // ptyHostArgv is the command that runs a session's CLI in its tmux pane:
 // pty-host wrapping either the CLI itself (bin) or the user's login shell.
 func (d *Daemon) ptyHostArgv(dir string, m *meta, bin string, args []string, envFile string) []string {
-	argv := []string{d.cfg.Exe, "pty-host", "--socket", paths.PTYSocket(m.ID), "--env-file", envFile}
+	argv := []string{d.cfg.Exe, "pty-host", "--socket", d.ptySocket(m.ID), "--env-file", envFile}
 	if !m.Shell {
 		argv = append(argv, "--", bin)
 		return append(argv, args...)
@@ -1237,4 +1241,10 @@ func (d *Daemon) releaseLogsLoop(stop <-chan struct{}) {
 			s.log.Release(logIdle)
 		}
 	}
+}
+
+func (d *Daemon) sessionsDir() string         { return filepath.Join(d.dir, "sessions") }
+func (d *Daemon) sessionDir(id string) string { return filepath.Join(d.sessionsDir(), id) }
+func (d *Daemon) ptySocket(id string) string {
+	return filepath.Join(d.dir, "run", id[:min(len(id), 12)]+".sock")
 }

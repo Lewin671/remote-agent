@@ -8,7 +8,6 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tail"
 )
 
@@ -53,7 +52,7 @@ func TestScheduleSaveReleasesTranscriptLock(t *testing.T) {
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	h.d.syncStateDir = func(dir string) error {
-		if dir == paths.Dir() {
+		if dir == h.d.dir {
 			once.Do(func() { close(entered) })
 			<-release
 		}

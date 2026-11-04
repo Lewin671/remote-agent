@@ -82,7 +82,7 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 		t.Fatalf("after a reset: %v", w)
 	}
 	// A restart keeps the record of the same account...
-	d2 := New(Config{})
+	d2 := New(h.d.dir, Config{})
 	d2.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
 	d2.loadQuotas()
 	if q := claudeQuota(d2); len(q) != 1 || q[0].GetWindows()[0].GetUsedPercent() != 1 {
@@ -90,7 +90,7 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	}
 	// ...but not another account's.
 	writeAccount(t, home, "acct-2")
-	d3 := New(Config{})
+	d3 := New(h.d.dir, Config{})
 	d3.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", home)
 	d3.loadQuotas()
 	if q := claudeQuota(d3); len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_WAITING {

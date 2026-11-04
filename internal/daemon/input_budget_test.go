@@ -68,7 +68,7 @@ func TestPendingInputCountAdmissionForAllProducers(t *testing.T) {
 }
 
 func TestPendingInputTextAndGlobalReservationBoundaries(t *testing.T) {
-	d := New(Config{})
+	d := New(t.TempDir(), Config{})
 	text := strings.Repeat("x", maxSessionInputBytes)
 	q := &queueState{Queue: []input{{Text: text[:len(text)-1]}}}
 	reservation, err := d.reserveInput("session", q, "x")
@@ -80,7 +80,7 @@ func TestPendingInputTextAndGlobalReservationBoundaries(t *testing.T) {
 	}
 	reservation.release()
 	// Use actual pending text for the per-session boundary, including held input.
-	d = New(Config{})
+	d = New(t.TempDir(), Config{})
 	q = &queueState{Held: []input{{Text: text}}}
 	if _, err := d.reserveInput("session", q, "x"); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("session text limit: %v", err)
@@ -88,7 +88,7 @@ func TestPendingInputTextAndGlobalReservationBoundaries(t *testing.T) {
 	if _, err := d.reserveInput("", nil, text+"x"); connect.CodeOf(err) != connect.CodeResourceExhausted {
 		t.Fatalf("oversized first prompt: %v", err)
 	}
-	d = New(Config{})
+	d = New(t.TempDir(), Config{})
 	var reservations []*inputReservation
 	for i := 0; i < maxDaemonInputBytes/maxSessionInputBytes; i++ {
 		r, err := d.reserveInput("", nil, text)
@@ -205,7 +205,7 @@ func TestPendingInputBudgetReleasedOnSettlementAndRestore(t *testing.T) {
 }
 
 func TestConcurrentInputReservationsRespectGlobalLimit(t *testing.T) {
-	d := New(Config{})
+	d := New(t.TempDir(), Config{})
 	// Exercise the admission race at the last byte without creating large files.
 	d.inputBytes = maxDaemonInputBytes - 1
 	start := make(chan struct{})

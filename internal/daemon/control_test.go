@@ -221,7 +221,7 @@ func TestListModelsAndDirectories(t *testing.T) {
 		{"slug":"hidden","display_name":"H","visibility":"hide","priority":1},
 		{"slug":"a","display_name":"A","visibility":"list","priority":2,"supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}`), 0o600)
 	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model = \"a\"\n[profiles.x]\nmodel = \"b\"\n"), 0o600)
-	d := New(Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Home: home}}})
+	d := New(t.TempDir(), Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Home: home}}})
 	res, err := d.listModels(pb.Agent_AGENT_UNSPECIFIED)
 	if err != nil {
 		t.Fatal(err)

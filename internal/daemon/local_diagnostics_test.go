@@ -13,7 +13,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -42,7 +41,7 @@ func TestLocalStorageDiagnosticLifecycle(t *testing.T) {
 	if err := h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Detail: "stopped"}}}); err == nil {
 		t.Fatal("append succeeded")
 	}
-	detail, err := ReadSessionDiagnostics(paths.Dir(), h.s.meta.ID)
+	detail, err := ReadSessionDiagnostics(h.d.dir, h.s.meta.ID)
 	if err != nil || !strings.Contains(detail, "storage failure") {
 		t.Fatalf("local storage failure invisible: %q %v", detail, err)
 	}
@@ -50,7 +49,7 @@ func TestLocalStorageDiagnosticLifecycle(t *testing.T) {
 		t.Fatal("failed state or diagnostic projected")
 	}
 	h.s.noteStorageLocked(nil)
-	detail, err = ReadSessionDiagnostics(paths.Dir(), h.s.meta.ID)
+	detail, err = ReadSessionDiagnostics(h.d.dir, h.s.meta.ID)
 	if err != nil || detail != "" {
 		t.Fatalf("resolved diagnostic not cleared: %q %v", detail, err)
 	}
@@ -75,7 +74,7 @@ func (h *diagnosticLogs) count() int                         { h.mu.Lock(); defe
 func TestUnknownRecordsAreQuietLocalDiagnostics(t *testing.T) {
 	h := newHarness(t, Config{})
 	// Use the production layout so the local command's reader sees the file.
-	h.s.dir = paths.SessionDir(h.s.meta.ID)
+	h.s.dir = h.d.sessionDir(h.s.meta.ID)
 	if err := os.MkdirAll(h.s.dir, 0700); err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +97,7 @@ func TestUnknownRecordsAreQuietLocalDiagnostics(t *testing.T) {
 		t.Fatal("diagnostic poked client synchronization")
 	default:
 	}
-	detail, err := ReadSessionDiagnostics(paths.Dir(), h.s.meta.ID)
+	detail, err := ReadSessionDiagnostics(h.d.dir, h.s.meta.ID)
 	if err != nil || !strings.Contains(detail, "unknown records=1") || strings.Contains(detail, "failure") {
 		t.Fatalf("diagnostic %q %v", detail, err)
 	}
@@ -106,7 +105,7 @@ func TestUnknownRecordsAreQuietLocalDiagnostics(t *testing.T) {
 
 func TestLocalParseFailuresAndLogsAreBounded(t *testing.T) {
 	h := newHarness(t, Config{})
-	h.s.dir = paths.SessionDir(h.s.meta.ID)
+	h.s.dir = h.d.sessionDir(h.s.meta.ID)
 	os.MkdirAll(h.s.dir, 0700)
 	sink := &diagnosticLogs{}
 	old := slog.Default()
@@ -117,7 +116,7 @@ func TestLocalParseFailuresAndLogsAreBounded(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	detail, err := ReadSessionDiagnostics(paths.Dir(), h.s.meta.ID)
+	detail, err := ReadSessionDiagnostics(h.d.dir, h.s.meta.ID)
 	if err != nil || !strings.Contains(detail, "parse failures=3") || strings.Contains(detail, "PRIVATE_BODY") || sink.count() != 1 {
 		t.Fatalf("diagnostic=%q logs=%d err=%v", detail, sink.count(), err)
 	}
@@ -125,7 +124,7 @@ func TestLocalParseFailuresAndLogsAreBounded(t *testing.T) {
 
 func TestStorageDiagnosticWriteFailureKeepsRateLimitedLog(t *testing.T) {
 	h := newHarness(t, Config{})
-	os.WriteFile(filepath.Join(paths.Dir(), "diagnostics"), []byte("blocked"), 0600)
+	os.WriteFile(filepath.Join(h.d.dir, "diagnostics"), []byte("blocked"), 0600)
 	sink := &diagnosticLogs{}
 	old := slog.Default()
 	slog.SetDefault(slog.New(sink))
@@ -153,7 +152,7 @@ func TestNewSessionClearsPreviousRuntimeStorageFault(t *testing.T) {
 	m := h.s.meta
 	h.s.log.Close()
 	h.open(m)
-	detail, err := ReadSessionDiagnostics(paths.Dir(), m.ID)
+	detail, err := ReadSessionDiagnostics(h.d.dir, m.ID)
 	if err != nil || detail != "" {
 		t.Fatalf("previous runtime fault survives healthy restore: %q %v", detail, err)
 	}

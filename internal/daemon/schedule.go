@@ -20,7 +20,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/contextio"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/proto"
 )
@@ -32,7 +31,7 @@ func (d *Daemon) loadSchedules() error {
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
 	d.tasks = map[string]*schedule.Task{}
-	b, err := os.ReadFile(filepath.Join(paths.Dir(), "schedules.json"))
+	b, err := os.ReadFile(filepath.Join(d.dir, "schedules.json"))
 	if os.IsNotExist(err) {
 		return nil
 	}
@@ -82,7 +81,7 @@ func (d *Daemon) saveSchedulesLocked() error {
 	if err != nil {
 		return err
 	}
-	err = d.writeStateFile(filepath.Join(paths.Dir(), "schedules.json"), b)
+	err = d.writeStateFile(filepath.Join(d.dir, "schedules.json"), b)
 	if err == nil || fileReplaced(err) {
 		d.scheduleRevision, d.scheduleVisible = revision, visible
 	}
@@ -1028,10 +1027,10 @@ func (d *Daemon) launchScheduledSession(ctx context.Context, t *schedule.Task) (
 		var env map[string]string
 		shell := t.SourceSession == ""
 		if t.SourceSession != "" {
-			if m, err := loadMeta(paths.SessionDir(t.SourceSession)); err == nil {
+			if m, err := loadMeta(d.sessionDir(t.SourceSession)); err == nil {
 				shell = m.Shell
 			}
-			env, _ = readEnvFile(filepath.Join(paths.SessionDir(t.SourceSession), "env.json"))
+			env, _ = readEnvFile(filepath.Join(d.sessionDir(t.SourceSession), "env.json"))
 		}
 		terminal := t.SourceSession != "" && !shell
 		// No prompt here: the scheduled input uses its own stable request ID.

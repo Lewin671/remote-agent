@@ -2,7 +2,6 @@ package daemon
 
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,7 +44,7 @@ func TestScheduleRevisionIgnoresProgressCursors(t *testing.T) {
 func TestScheduleVisibleRevisionRejectsInvalidRecords(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
-	if err := os.WriteFile(filepath.Join(paths.Dir(), "schedules.json"), []byte(`{"version":1,"tasks":{"broken":null}}`), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(h.d.dir, "schedules.json"), []byte(`{"version":1,"tasks":{"broken":null}}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := h.d.loadSchedules(); err == nil {

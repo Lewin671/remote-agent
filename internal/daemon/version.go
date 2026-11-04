@@ -8,7 +8,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 // verifiedPath lists the versions of a CLI that `remote-agent doctor`
@@ -44,7 +43,7 @@ func MarkVerified(dir string, k pb.Agent, version string) error {
 // work: the code was tested against it, or doctor passed with it here.
 func (d *Daemon) verified(a agent.Adapter) bool {
 	v := a.Version()
-	return v != "" && (a.Tested(v) || slices.Contains(verifiedVersions(paths.Dir(), a.Kind()), v))
+	return v != "" && (a.Tested(v) || slices.Contains(verifiedVersions(d.dir, a.Kind()), v))
 }
 
 // Version is the installed version of a CLI.

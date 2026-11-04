@@ -11,7 +11,6 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -458,7 +457,7 @@ func TestSchedulePersistenceIsPrivateAndCorruptionStopsLoad(t *testing.T) {
 	h := scheduleHarness(t)
 	defer h.s.log.Close()
 	createTask(t, h, taskSpec(schedule.Trigger{Type: "after_turn", DelaySeconds: 10}), "")
-	path := filepath.Join(paths.Dir(), "schedules.json")
+	path := filepath.Join(h.d.dir, "schedules.json")
 	st, err := os.Stat(path)
 	if err != nil || st.Mode().Perm() != 0o600 {
 		t.Fatalf("permissions: %v %v", st, err)

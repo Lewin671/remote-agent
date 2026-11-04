@@ -68,8 +68,8 @@ func uploadFile(t *testing.T, u *uploads, name string, data []byte) string {
 	return st.FileId
 }
 func TestFileTransferValidationAndOwnership(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	sum := sha256.Sum256([]byte("raw"))
 	base := pb.BeginImageUploadRequest{TransferId: tid, FileName: "raw.txt", TotalBytes: 3, Sha256: sum[:]}
 	for _, tt := range []struct {
@@ -328,8 +328,8 @@ func TestInjectTextWithFilesAndImage(t *testing.T) {
 	}
 }
 func TestFileReconcileInterruptedMove(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := uploadFile(t, u, "a.zip", []byte("ZIP"))
 	tr := u.byFile(id)
 	tr.Session = "s"
@@ -361,8 +361,8 @@ func TestFileCapabilityWhitespace(t *testing.T) {
 }
 
 func TestFileExpiryAndMixedAcceptanceRollback(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	fileID := uploadFile(t, u, "unused.csv", []byte("hello"))
 	tr := u.byFile(fileID)
 	tr.CompletedMs = time.Now().Add(-unusedTTL - time.Second).UnixMilli()

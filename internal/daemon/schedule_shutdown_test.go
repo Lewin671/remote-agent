@@ -12,7 +12,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -32,7 +31,7 @@ func assertAbortedScheduledDispatch(t *testing.T, h *harness, id string) {
 	if before.Status != "dispatching" || before.Active == nil || before.Active.Status != "dispatching" || len(before.Runs) != 0 || before.Dispatches != 1 {
 		t.Fatalf("shutdown finalized an aborted dispatch: %+v", before)
 	}
-	data, err := os.ReadFile(filepath.Join(paths.Dir(), "schedules.json"))
+	data, err := os.ReadFile(filepath.Join(h.d.dir, "schedules.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +144,7 @@ func TestScheduleCancellationAtPersistenceBoundaries(t *testing.T) {
 			jobs := h.d.prepareScheduledDispatches(now)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			target := paths.Dir()
+			target := h.d.dir
 			if boundary == "enqueue" {
 				target = h.dir
 			}

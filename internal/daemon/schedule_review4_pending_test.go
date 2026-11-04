@@ -7,7 +7,6 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
@@ -119,7 +118,7 @@ func TestLateConfirmationRollbackKeepsOriginalRunID(t *testing.T) {
 	if err := h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: run.RequestID, Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}}); err != nil {
 		t.Fatal(err)
 	}
-	file := filepath.Join(paths.Dir(), "schedules.json")
+	file := filepath.Join(h.d.dir, "schedules.json")
 	if err := os.Remove(file); err != nil {
 		t.Fatal(err)
 	}

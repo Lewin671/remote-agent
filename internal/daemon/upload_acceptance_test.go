@@ -13,7 +13,6 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/codex"
-	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 )
 
@@ -42,23 +41,13 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 						where = "after"
 					}
 					t.Run(strings.Join([]string{kind, path, stage, where}, "/"), func(t *testing.T) {
+						parallelStorageTest(t)
 						r := newRestoreHarness(t)
 						r.d.cfg.PollInterval = time.Hour
 						r.d.agents[pb.Agent_AGENT_CODEX] = codex.New("unused", "", "")
 						u := r.d.uploads
-						var ims, files []string
-						var tr *transfer
-						if image {
-							ims = []string{storageUpload(t, u)}
-							tr = u.byImage(ims[0])
-						} else {
-							files = []string{uploadFile(t, u, "claim.bin", []byte("original"))}
-							tr = u.byFile(files[0])
-						}
-						want, err := os.ReadFile(u.pending(tr.relativeName()))
-						if err != nil {
-							t.Fatal(err)
-						}
+						fixture := completedUpload(t, u, image, "claim.bin", []byte("original"))
+						ims, files, tr, want := fixture.images, fixture.files, fixture.record, fixture.bytes
 						var s *session
 						if !create {
 							sid := "00000000000000aa"
@@ -122,7 +111,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 						}
 						// The create API's local origin owns these fixtures too. No real tmux
 						// process runs; registration reproduces which CLI startup can recognize.
-						entries, err := os.ReadDir(paths.SessionsDir())
+						entries, err := os.ReadDir(r.d.sessionsDir())
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -136,7 +125,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 							t.Fatal("session metadata missing")
 						}
 						if create && registered {
-							m, err := loadMeta(paths.SessionDir(sid))
+							m, err := loadMeta(r.d.sessionDir(sid))
 							if err != nil {
 								t.Fatal(err)
 							}
@@ -151,7 +140,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 						r.d.sessions = map[string]*session{}
 						// Rebuild upload state, finish moves, then restore queue/history using
 						// the production startup order and actual session restoration routine.
-						recovered := newUploads()
+						recovered := newUploads(r.d.dir)
 						r.d.uploads = recovered
 						recovered.reconcile()
 						if err := r.restore(); err != nil {
@@ -254,7 +243,7 @@ func TestAcceptanceWitnessSurvivesMarkerFailureAndCancellation(t *testing.T) {
 			if err := writeFileSync(u.partial(tr.ID)+".json", beforeMarker); err != nil {
 				t.Fatal(err)
 			}
-			fresh := newUploads()
+			fresh := newUploads(h.d.dir)
 			fresh.reconcile()
 			records, err := fresh.referenceRecords()
 			if err != nil {
@@ -335,7 +324,7 @@ func TestUncertainQueueRenameDoesNotPromoteUploadAcceptance(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			fresh := newUploads()
+			fresh := newUploads(h.d.dir)
 			fresh.reconcile()
 			records, err := fresh.referenceRecords()
 			if err != nil {
@@ -445,7 +434,7 @@ func TestAcceptanceWitnessSurvivesUnreadableUploadRecord(t *testing.T) {
 	if err := writeFileSync(u.partial(tr.ID)+".json", claim); err != nil {
 		t.Fatal(err)
 	}
-	fresh := newUploads()
+	fresh := newUploads(h.d.dir)
 	records, err := fresh.referenceRecords()
 	if err != nil {
 		t.Fatal(err)

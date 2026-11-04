@@ -14,7 +14,6 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
 func TestFilePasteAlwaysHasTextPrefix(t *testing.T) {
@@ -80,10 +79,10 @@ func TestFailedReuseDoesNotReturnAcceptedFileToPending(t *testing.T) {
 	if _, err := os.Stat(old.Files[0].Path); err != nil {
 		t.Fatal("accepted path gone", err)
 	}
-	if err := os.MkdirAll(paths.SessionDir(h.s.meta.ID), 0700); err != nil {
+	if err := os.MkdirAll(h.d.sessionDir(h.s.meta.ID), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.s.meta.save(paths.SessionDir(h.s.meta.ID)); err != nil {
+	if err := h.s.meta.save(h.d.sessionDir(h.s.meta.ID)); err != nil {
 		t.Fatal(err)
 	}
 	u.gc(time.Now().Add(48 * time.Hour))
@@ -92,8 +91,8 @@ func TestFailedReuseDoesNotReturnAcceptedFileToPending(t *testing.T) {
 	}
 }
 func TestTakeRollbackRemovesRefsFromPreviouslyOwnedTransfers(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	a := uploadFile(t, u, "old.txt", []byte("old"))
 	b := uploadFile(t, u, "new.txt", []byte("new"))
 	if _, err := u.takeUploads(nil, []string{a}, "phone", "s", "accepted"); err != nil {
@@ -126,8 +125,8 @@ func TestTakeRollbackRemovesRefsFromPreviouslyOwnedTransfers(t *testing.T) {
 func TestFileCompletionSyncsDirectoryAncestryAndKeepsPartialOnSyncFailure(t *testing.T) {
 	for _, failAt := range []string{"", "pending", "uploads"} {
 		t.Run(failAt, func(t *testing.T) {
-			t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-			u := newUploads()
+			root := t.TempDir()
+			u := newUploads(root)
 			data := []byte("durable")
 			sum := sha256.Sum256(data)
 			_, err := u.begin(&pb.BeginImageUploadRequest{TransferId: tid, FileName: "durable.bin", TotalBytes: int64(len(data)), Sha256: sum[:]}, "phone")
@@ -172,8 +171,8 @@ func TestFileCompletionSyncsDirectoryAncestryAndKeepsPartialOnSyncFailure(t *tes
 	}
 }
 func TestFileMoveSyncFailureRollsBackBeforeAcceptance(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := uploadFile(t, u, "a.bin", []byte("a"))
 	count := 0
 	failure := errors.New("new file entry not durable")
@@ -198,8 +197,8 @@ func TestFileMoveSyncFailureRollsBackBeforeAcceptance(t *testing.T) {
 	}
 }
 func TestFileHashDoesNotHoldUploadsLockAndCannotCompleteReplacedPartial(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := []byte("same")
 	sum := sha256.Sum256(data)
 	req := &pb.BeginImageUploadRequest{TransferId: tid, FileName: "a.bin", TotalBytes: 4, Sha256: sum[:]}
@@ -246,8 +245,8 @@ func TestFileHashDoesNotHoldUploadsLockAndCannotCompleteReplacedPartial(t *testi
 	}
 }
 func TestRemoveAndReleaseCleanNestedEmptyFileDirectories(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := uploadFile(t, u, "a.bin", []byte("a"))
 	tr := u.byFile(id)
 	if err := u.abort(tr.ID, "phone"); err != nil {
@@ -327,8 +326,8 @@ func TestImageAndFileOnlyQueueSeparatesFileLinesFromPlaceholder(t *testing.T) {
 	}
 }
 func TestUntakeReusedUnexposedImageKeepsAcceptedPath(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	id := storageUpload(t, u)
 	first, err := u.take([]string{id}, "phone", "s", "first")
 	if err != nil {
@@ -351,8 +350,8 @@ func TestUntakeReusedUnexposedImageKeepsAcceptedPath(t *testing.T) {
 }
 
 func TestFileCompletionRecordSyncFailureKeepsBothDurableCopies(t *testing.T) {
-	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
-	u := newUploads()
+	root := t.TempDir()
+	u := newUploads(root)
 	data := []byte("durable")
 	sum := sha256.Sum256(data)
 	_, err := u.begin(&pb.BeginImageUploadRequest{TransferId: tid, FileName: "a.bin", TotalBytes: int64(len(data)), Sha256: sum[:]}, "phone")
