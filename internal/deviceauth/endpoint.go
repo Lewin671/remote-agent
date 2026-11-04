@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1476,7 +1477,7 @@ func (e *Endpoint) Accept(w Wire, sessionSeed []byte, now uint64, fn func(Header
 // absent: after a key change a retry with the same request ID is the same
 // action and must not run twice.
 func acceptedKey(h Header) string {
-	return h.Sender + "/" + itoa(uint64(h.Purpose)) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + itoa(h.Seq)
+	return h.Sender + "/" + strconv.FormatUint(uint64(h.Purpose), 10) + "/" + h.Machine + "/" + h.Session + "/" + h.Request + "/" + strconv.FormatUint(h.Seq, 10)
 }
 
 // lookupAccepted must be called with e.mu held.
@@ -1492,20 +1493,6 @@ func (e *Endpoint) lookupAccepted(key string) ([]byte, bool, error) {
 		return nil, false, ErrBackend
 	}
 	return bytes.Clone(a.Result), true, nil
-}
-
-func itoa(n uint64) string {
-	if n == 0 {
-		return "0"
-	}
-	var b [20]byte
-	i := len(b)
-	for n > 0 {
-		i--
-		b[i] = byte('0' + n%10)
-		n /= 10
-	}
-	return string(b[i:])
 }
 
 // CheckExtension preserves the complete local chain when a computer re-pairs.
