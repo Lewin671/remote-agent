@@ -19,7 +19,7 @@ import (
 )
 
 // TestedVersions lists the Antigravity CLI versions verified against this adapter.
-var TestedVersions = []string{"1.4.12"}
+var TestedVersions = []string{"1.4.12", "1.5.0"}
 
 // Adapter is Antigravity's agent.Adapter implementation.
 type Adapter struct {
