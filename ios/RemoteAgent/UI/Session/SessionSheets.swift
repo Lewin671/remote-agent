@@ -20,24 +20,11 @@ struct SessionModeSheet: View {
     @State private var modelList: [PBModelInfo]?
 
     private func unavailableReason(_ m: Mode) -> String? {
-        if session.info?.modeLocked == true {
-            return "本会话以完全放行启动，不能切换审批模式"
-        }
-        if m == .full && session.info?.fullAccessUnavailable == true {
-            return "本会话启动时未启用；需要时新建会话选择"
-        }
-        if m == .auto {
-            if allAutoUnavailable(modelList) {
-                return "当前账户不支持自动模式"
-            }
-            if autoUnavailable(modelList, model: session.info?.model ?? "") {
-                return "当前模型不支持"
-            }
-        }
-        return nil
+        sessionModeUnavailableReason(m, session: session, models: modelList)
     }
 
     private func set(_ m: Mode) {
+        guard unavailableReason(m) == nil else { return }
         let (remote, sid) = (context.remote, session.id)
         act.run({
             var cmd = PBCommand()
@@ -79,7 +66,7 @@ struct SessionModeSheet: View {
             isPresented: $confirmFull, title: "切到完全放行？", text: "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
             confirm: "切换", danger: true
         ) { set(.full) }
-        .task { if startConfirm { confirmFull = true } }
+        .task { if startConfirm && unavailableReason(.full) == nil { confirmFull = true } }
         .task {
             let (remote, machine) = (context.remote, session.machineId)
             modelList = try? await remote.listModels(machine, agent: session.agent).models
@@ -109,6 +96,7 @@ struct SessionModelSheet: View {
     @State private var picked = ""
 
     private func setModel(_ slug: String, _ effort: String) {
+        guard agentInfo(session.agent).switchesModelInSession, !running else { return }
         let (remote, sid) = (context.remote, session.id)
         act.run({
             var cmd = PBCommand()
@@ -139,11 +127,11 @@ struct SessionModelSheet: View {
             if !compact.error.isEmpty { Hint("没能压缩：\(compact.error)", color: Theme.red) }
         }
         if !agentInfo(session.agent).switchesModelInSession {
-            let cur = findModel(models?.models, id: session.info?.model ?? "") { $0.slug }
+            let cur = findModel(models?.models ?? [], id: session.info?.model ?? "") { $0.slug }
             let modelTitle = (cur?.displayName).flatMap { $0.isEmpty ? nil : $0 }
-                ?? session.info?.model.flatMap { $0.isEmpty ? nil : $0 }
+                ?? (session.info?.model).flatMap { $0.isEmpty ? nil : $0 }
                 ?? "默认模型"
-            let effortTitle = session.info?.effort.flatMap { $0.isEmpty ? nil : $0 }
+            let effortTitle = (session.info?.effort).flatMap { $0.isEmpty ? nil : $0 }
                 ?? (cur?.defaultEffort).flatMap { $0.isEmpty ? nil : $0 }
                 ?? "默认"
             FieldLabel("模型")

@@ -372,6 +372,25 @@ import Testing
         #expect("a\u{2028}b\u{85}c".jvmLines() == ["a\u{2028}b\u{85}c"])
     }
 
+    @Test func sessionModeRestrictionsComeFromSessionAndModelData() {
+        let unavailable = PBModelInfo.with { $0.slug = "model"; $0.autoUnavailable = true }
+        let available = PBModelInfo.with { $0.slug = "other" }
+        // These are protocol capabilities, regardless of which CLI owns the session.
+        for entry in AGENTS {
+            let locked = s { $0.agent = entry.agent; $0.mode = .fullAccess; $0.modeLocked = true }
+            for mode in Mode.allCases {
+                #expect(sessionModeUnavailableReason(mode, session: locked, models: [unavailable]) == "本会话以完全放行启动，不能切换审批模式")
+            }
+            let regular = s { $0.agent = entry.agent; $0.model = "model"; $0.fullAccessUnavailable = true }
+            #expect(sessionModeUnavailableReason(.full, session: regular, models: nil) == "本会话启动时未启用；需要时新建会话选择")
+            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable]) == "当前账户不支持自动模式")
+            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable, available]) == "当前模型不支持")
+            #expect(sessionModeUnavailableReason(.auto, session: regular, models: nil) == nil)
+            #expect(sessionModeUnavailableReason(.ask, session: regular, models: [unavailable]) == nil)
+            #expect(sessionModeUnavailableReason(.plan, session: regular, models: [unavailable]) == nil)
+        }
+    }
+
     @Test func contextWindowsAreWrittenShort() {
         #expect(contextText(tokens: 0) == nil)
         #expect(contextText(tokens: 200_000) == "200k 上下文")

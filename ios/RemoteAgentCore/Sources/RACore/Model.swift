@@ -515,3 +515,14 @@ public func contextText(tokens: Int64) -> String? {
 
 /// The standard context window, which a Claude Code session can be held to.
 public let standardWindow: Int64 = 200_000
+
+/// Capability restrictions reported for this session take precedence over model restrictions.
+public func sessionModeUnavailableReason(_ mode: Mode, session: SessionView, models: [PBModelInfo]?) -> String? {
+    if session.info?.modeLocked == true { return "本会话以完全放行启动，不能切换审批模式" }
+    if mode == .full && session.info?.fullAccessUnavailable == true { return "本会话启动时未启用；需要时新建会话选择" }
+    if mode == .auto {
+        if allAutoUnavailable(models) { return "当前账户不支持自动模式" }
+        if autoUnavailable(models, model: session.info?.model ?? "") { return "当前模型不支持" }
+    }
+    return nil
+}

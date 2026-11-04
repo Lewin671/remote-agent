@@ -663,9 +663,6 @@ struct PlanDock: View {
                 .padding(.top, 4).padding(.bottom, 4)
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
-            if let note = agentInfo(session.agent).planNote {
-                Text(note).type(T.meta, Theme.muted).padding(.top, 7)
-            }
         }
     }
 }
@@ -705,10 +702,12 @@ struct PlanButtons: View {
 
     @ViewBuilder private var choices: some View {
         Btns {
-            Btn("继续规划…", enabled: !act.running) { answer(.keepPlanning) }
-            Btn(act.running ? "提交中…" : "批准执行", kind: .primary, enabled: !act.running) { answer(.implement) }
+            Btn(agentInfo(session.agent).planKeepLabel, enabled: !act.running) { answer(.keepPlanning) }
+            Btn(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
         }
-        // Claude Code has no such choice.
+        if let note = agentInfo(session.agent).planNote {
+            Text(note).type(T.meta, Theme.muted).padding(.top, 7)
+        }
         if full && agentInfo(session.agent).planClearContext {
             DockFoot("", link: "清空上下文后执行") { answer(.clearAndImplement) }
                 .disabled(act.running)
