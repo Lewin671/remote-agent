@@ -2073,7 +2073,8 @@ func (s *session) checkNativeApproval(styled string) bool {
 // resolveNativeBy holds local keys and revalidates the exact request immediately
 // before writing. The RPC returns the actual key-delivery result.
 func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, message string, origin *pb.Origin, timeout bool) error {
-	return s.drive(ctx, func(t agent.Term, _ bool) error {
+	applied := false
+	err := s.drive(ctx, func(t agent.Term, _ bool) error {
 		s.mu.Lock()
 		if a.claimed || s.approvals[a.id] != a {
 			s.mu.Unlock()
@@ -2139,15 +2140,22 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 		}
 		err = s.emit(withOrigin(&pb.Event{TurnId: a.turnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: a.id, Decision: kind, Message: message}}}, origin))
 		a.decision <- decision{recorded: true}
-		if !allow && message != "" && !timeout {
-			_, queueErr := s.enqueueInputContext(ctx, message, newID(8), nil, nil, origin, pb.SendMode_SEND_MODE_UNSPECIFIED, nil, nil)
-			err = errors.Join(err, queueErr)
-		}
-		if err != nil {
-			return fmt.Errorf("approval applied but could not be recorded or its message queued: %w", err)
-		}
-		return nil
+		applied = true
+		return err
 	})
+	if !applied {
+		return err
+	}
+	// Queueing acquires lifecycleMu. Release terminal ownership first to keep
+	// the same lifecycle-before-control lock order as stopping a session.
+	if !allow && message != "" && !timeout {
+		_, queueErr := s.enqueueInputContext(ctx, message, newID(8), nil, nil, origin, pb.SendMode_SEND_MODE_UNSPECIFIED, nil, nil)
+		err = errors.Join(err, queueErr)
+	}
+	if err != nil {
+		return fmt.Errorf("approval applied but could not be recorded or its message queued: %w", err)
+	}
+	return nil
 }
 func (s *session) waitNativeApproval(a *approval, done <-chan struct{}) {
 	timer := time.NewTimer(time.Until(a.deadline))
