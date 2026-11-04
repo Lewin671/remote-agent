@@ -309,3 +309,25 @@ func TestAgyModeDisplayRetainsConfirmedModeWhenStale(t *testing.T) {
 		}
 	}
 }
+
+func TestAgyBackgroundTaskDoesNotDelayAbortedForegroundTurn(t *testing.T) {
+	h := agyHarness(t)
+	if err := h.s.emit(&pb.Event{TurnId: "foreground", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
+		t.Fatal(err)
+	}
+	h.term.setScreen(agyScreen(t, "interrupt-background-terminal.txt"))
+	h.s.restoredPromptSince = time.Now().Add(-2 * time.Second)
+	h.s.settleRestoredPrompt(agyScreen(t, "interrupt-background-terminal.txt"))
+	if h.s.isRunning() {
+		t.Fatal("background task kept interrupted foreground turn running")
+	}
+	found := false
+	for _, e := range h.events() {
+		if e.GetTurnEnded().GetOutcome() == pb.TurnOutcome_TURN_OUTCOME_ABORTED {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("no ABORTED turn end")
+	}
+}
