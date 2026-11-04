@@ -129,6 +129,9 @@ extension ServerTests {
             }
             #expect(stopped.events.map(\.seq) == Array(1...899).map(UInt64.init))
             #expect(!stopped.loaded && stopped.historyPartial)
+            // The prefix is published before fetchEvents starts its final
+            // request at the unreadable boundary; observe that request too.
+            try await eventually("history request reaches the unreadable boundary") { requests.after == [600, 0, 500, 899] }
             #expect(requests.after == [600, 0, 500, 899])
         }
     }
