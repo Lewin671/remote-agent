@@ -839,6 +839,14 @@ import UIKit
                 control.selectedSegmentIndex = 0; control.sendActions(for: .valueChanged)
                 for _ in 0..<20 where draft.config?.agent != .codex { try await Task.sleep(for: .milliseconds(10)) }
                 #expect(draft.config?.agent == .codex && draft.config?.model == "")
+                if agents.count == 2 {
+                    // Changing projects can replace one installed CLI without changing the segment count.
+                    state.machines["m"]?.meta?.agents = [PBAgent.codex, .antigravity].map { agent in .with { $0.agent = agent } }
+                    host.rootView = ScheduleAgentRow(state: state, config: Bindable(draft).config)
+                    await eventually("updated installed CLI names") { control.titleForSegment(at: 1) == "Antigravity" }
+                    control.selectedSegmentIndex = 1; control.sendActions(for: .valueChanged)
+                    await eventually("selects the replacement CLI") { draft.config?.agent == .antigravity }
+                }
             }
             window.isHidden = true
         }

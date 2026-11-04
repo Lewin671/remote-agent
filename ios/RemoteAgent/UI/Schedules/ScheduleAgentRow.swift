@@ -21,6 +21,8 @@ struct ScheduleAgentRow: View {
                     })).frame(width: agents.count > 2 ? 260 : 208, height: 32)
                     .accessibilityIdentifier("schedule-cli-picker")
                 }
+            } else if let agent = agents.first {
+                GRow("CLI", value: agentName(agent))
             }
         }
     }
@@ -41,7 +43,7 @@ private struct ScheduleAgentPicker: UIViewRepresentable {
     func updateUIView(_ control: UISegmentedControl, context: Context) {
         context.coordinator.selection = $selection
         context.coordinator.agents = agents
-        if control.numberOfSegments != agents.count {
+        if control.numberOfSegments != agents.count || agents.enumerated().contains(where: { control.titleForSegment(at: $0.offset) != agentName($0.element) }) {
             control.removeAllSegments()
             for (index, agent) in agents.enumerated() { control.insertSegment(withTitle: agentName(agent), at: index, animated: false) }
         }
