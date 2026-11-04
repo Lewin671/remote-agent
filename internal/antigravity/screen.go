@@ -56,6 +56,18 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 
 	var s agent.Screen
 	lines, top, bottom, composer := composerRegion(styled)
+	for i, raw := range lines {
+		line := StripANSI(raw)
+		if strings.HasPrefix(strings.TrimSpace(line), "warning: conversation ") {
+			warning := line
+			if i+1 < len(lines) {
+				warning += " " + lines[i+1]
+			}
+			if strings.Contains(strings.Join(strings.Fields(warning), " "), "not found") {
+				s.IdentityError = "requested conversation not found"
+			}
+		}
+	}
 	tail := plain
 	if composer {
 		tail = strings.Join(strings.Split(plain, "\n")[bottom+1:], "\n")
@@ -69,7 +81,7 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 		s.Popup = "model picker"
 		return s
 	}
-	if _, _, ok := permissionBody(plain); ok && (!composer || strings.LastIndex(plain, "Requesting permission for:") > len(strings.Join(strings.Split(plain, "\n")[:bottom+1], "\n"))) {
+	if _, _, ok := permissionBody(plain); ok && (!composer || permissionPosition(plain) > len(strings.Join(strings.Split(plain, "\n")[:bottom+1], "\n"))) {
 		s.PermissionOpen = true
 		s.Popup = "permission"
 		return s
@@ -77,6 +89,11 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 	if questionHeaderRE.MatchString(tail) && strings.Contains(tail, "Navigate") && (strings.Contains(tail, "Select") || strings.Contains(tail, "Toggle")) {
 		s.QuestionOpen = true
 		s.Popup = "question"
+		return s
+	}
+	if strings.Contains(tail, "Action required (") && strings.Contains(tail, "y/n Approve/reject") && strings.Contains(tail, "esc Done") {
+		s.Popup = "plan"
+		s.PlanOpen = true
 		return s
 	}
 	if strings.Contains(tail, "Artifacts") && (strings.Contains(tail, "esc Dismiss") || strings.Contains(tail, "esc Done")) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -42,11 +43,7 @@ func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) {
 		in.Event = event
 	}
 	h := &agent.Hook{SessionID: in.Conversation, TranscriptPath: in.Transcript, Model: in.Model, HookEventName: in.Event, TerminationReason: in.Termination, StepIndex: in.Step, FullyIdle: in.FullyIdle}
-	// Hooks report transcript_full; incremental reads deliberately use the compact
-	// log and resolve only truncated fields from its full, line-aligned sibling.
-	if filepath.Base(h.TranscriptPath) == "transcript_full.jsonl" {
-		h.TranscriptPath = filepath.Join(filepath.Dir(h.TranscriptPath), "transcript.jsonl")
-	}
+	h.TranscriptPath = a.transcriptFor(in.Conversation, in.Transcript)
 	switch in.Event {
 	case "PreToolUse":
 		if in.Tool == nil || in.Step == nil {
@@ -78,4 +75,32 @@ func nativeCallID(conversation string, step int64) string {
 		return conversation + "/" + id
 	}
 	return id
+}
+
+// transcriptFor resolves the actual native state file. agy 1.5.0 can report
+// antigravity/brain from statusLine while writing antigravity-cli/brain. The
+// configured CLI state directory and existing file win over that stale alias.
+func (a *Adapter) transcriptFor(conversation, reported string) string {
+	if filepath.Base(reported) == "transcript_full.jsonl" {
+		reported = filepath.Join(filepath.Dir(reported), "transcript.jsonl")
+	}
+	actual := ""
+	if conversation != "" && filepath.Base(conversation) == conversation && conversation != ".." {
+		actual = filepath.Join(a.home, "brain", conversation, ".system_generated", "logs", "transcript.jsonl")
+	}
+	for _, path := range []string{actual, reported} {
+		if path == "" {
+			continue
+		}
+		if st, err := os.Stat(path); err == nil && st.Mode().IsRegular() {
+			if canonical, err := filepath.EvalSymlinks(path); err == nil {
+				return canonical
+			}
+			return path
+		}
+	}
+	if actual != "" {
+		return actual
+	}
+	return reported
 }

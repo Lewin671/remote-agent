@@ -3,6 +3,8 @@ package antigravity
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -11,33 +13,68 @@ import (
 
 // permissionBody isolates the active request, excluding history and the menu's
 // permanent-grant command prefixes. Only complete, recognized menus are used.
-func permissionBody(plain string) (body string, deny string, ok bool) {
-	i := strings.LastIndex(plain, "Requesting permission for:")
-	if i < 0 {
+var fileDiffHeaderRE = regexp.MustCompile(`^(/.+?)\s+[+-][0-9]+(?:\s+[+-][0-9]+)?$`)
+
+func permissionPosition(plain string) int {
+	pos := strings.LastIndex(plain, "Requesting permission for:")
+	for _, title := range []string{"Allow creation of this file?", "Allow access to this file?"} {
+		if at := strings.LastIndex(plain, title); at > pos {
+			pos = at
+		}
+	}
+	return pos
+}
+func permissionBody(plain string) (body, deny string, ok bool) {
+	pos := permissionPosition(plain)
+	if pos < 0 {
 		return "", "", false
 	}
-	area := plain[i+len("Requesting permission for:"):]
-	for _, kind := range []struct{ title, allow, deny, key string }{
-		{"Run this command?", "1. Yes, run command", "4. No, cancel", "4"},
-		{"Allow creation of this file?", "1. Yes, allow creation", "2. No, deny creation", "2"},
-		{"Allow access to this file?", "1. Yes, allow access", "2. No, deny access", "2"},
-	} {
-		j := strings.Index(area, kind.title)
-		if j < 0 || !strings.Contains(area[j:], kind.allow) || !strings.Contains(area[j:], kind.deny) {
-			continue
-		}
-		rows := questionRows(area[j:])
-		if kind.key == "4" {
-			if len(rows) != 4 || rows[1].label != "Yes, run command" || rows[4].label != "No, cancel" || !strings.HasPrefix(rows[2].label, "Yes, and always allow in this conversation for commands that start with ") || !strings.Contains(rows[3].label, "Persist to settings.json") {
-				continue
+	area := plain[pos:]
+	if strings.HasPrefix(area, "Requesting permission for:") {
+		area = strings.TrimPrefix(area, "Requesting permission for:")
+		if j := strings.Index(area, "Run this command?"); j >= 0 {
+			rows := questionRows(area[j:])
+			if len(rows) == 4 && rows[1].label == "Yes, run command" && rows[4].label == "No, cancel" && strings.HasPrefix(rows[2].label, "Yes, and always allow in this conversation for commands that start with ") && strings.HasPrefix(rows[3].label, "Yes, and always allow for commands that start with ") && strings.Contains(rows[3].label, "Persist to settings.json") {
+				return strings.TrimSpace(area[:j]), "4", true
 			}
-		} else if len(rows) != 2 || !strings.HasPrefix(rows[1].label, "Yes, allow ") || !strings.HasPrefix(rows[2].label, "No, deny ") {
+		}
+		for _, title := range []string{"Allow creation of this file?", "Allow access to this file?"} {
+			if j := strings.Index(area, title); j >= 0 && validFileMenu(area[j:]) {
+				return strings.TrimSpace(area[:j]), "2", true
+			}
+		}
+		return "", "", false
+	}
+	if !validFileMenu(area) {
+		return "", "", false
+	}
+	// Native file prompts put the full path above the diff, without the
+	// command prompt's Requesting-permission heading. Bind only that active
+	// header between the last rule and this question, never history text.
+	before := strings.Split(plain[:pos], "\n")
+	start := 0
+	for i, line := range before {
+		if dividerRE.MatchString(strings.TrimSpace(line)) {
+			start = i + 1
+		}
+	}
+	for _, line := range before[start:] {
+		line = strings.TrimSpace(line)
+		if line == "" {
 			continue
 		}
-		return strings.TrimSpace(area[:j]), kind.key, true
+		if match := fileDiffHeaderRE.FindStringSubmatch(line); match != nil {
+			return match[1], "2", true
+		}
+		// A read-access prompt may show the path alone, with no diff count.
+		if strings.HasPrefix(area, "Allow access") && strings.HasPrefix(line, "/") {
+			return line, "2", true
+		}
+		break
 	}
 	return "", "", false
 }
+
 func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalRequested, bool) {
 	if h == nil {
 		return nil, false
@@ -59,7 +96,15 @@ func (a *Adapter) MatchApproval(styled string, h *agent.Hook) (*pb.ApprovalReque
 	_ = json.Unmarshal(args["toolSummary"], &summary)
 	// Whitespace inside a command/path is meaningful. Reject multiline
 	// requests and any wrapping that cannot be reconstructed exactly.
-	if value == "" || strings.ContainsAny(value, "\r\n") || unwrapRequest(body) != value {
+	if value == "" || strings.ContainsAny(value, "\r\n") {
+		return nil, false
+	}
+	shown := unwrapRequest(body)
+	if h.ToolName == "run_command" {
+		if shown != value {
+			return nil, false
+		}
+	} else if !sameNativeFile(shown, value) {
 		return nil, false
 	}
 	switch h.ToolName {
@@ -133,4 +178,43 @@ func unwrapRequest(body string) string {
 		}
 	}
 	return strings.Join(lines, "")
+}
+
+func validFileMenu(area string) bool {
+	rows := questionRows(area)
+	if len(rows) != 2 {
+		return false
+	}
+	if strings.HasPrefix(area, "Allow creation of this file?") {
+		return rows[1].label == "Yes, allow creation" && rows[2].label == "No, deny creation"
+	}
+	if strings.HasPrefix(area, "Allow access to this file?") {
+		return rows[1].label == "Yes, allow access" && rows[2].label == "No, deny access"
+	}
+	return false
+}
+
+func sameNativeFile(shown, requested string) bool {
+	if shown == requested {
+		return true
+	}
+	canonical := func(path string) (string, error) {
+		if !filepath.IsAbs(path) {
+			return "", fmt.Errorf("relative native file path")
+		}
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			return resolved, nil
+		}
+		parent, err := filepath.EvalSymlinks(filepath.Dir(path))
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(parent, filepath.Base(path)), nil
+	}
+	a, err := canonical(shown)
+	if err != nil {
+		return false
+	}
+	b, err := canonical(requested)
+	return err == nil && a == b
 }

@@ -1,0 +1,4 @@
+[1m[39mAction required (1 left)[0m
+[94m› [90m□ new[39m [94macceptance_approve_plan.md[39m  [7m[34m open [0m [1m[32mapprove[0m [1m[31mreject[0m
+
+[1mKeyboard: [0m[94m↑/↓[39m [90mNavigate[39m  [94my/n[39m [90mApprove/reject[39m  [94mshift+a[39m [90mApprove all[39m  [94mp[39m [90mPreview[39m  [94mctrl+g[39m [90mopen in editor[39m  [94mesc[39m [90mDone[39m

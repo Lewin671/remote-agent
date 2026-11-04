@@ -2,6 +2,8 @@ package antigravity
 
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -30,5 +32,24 @@ func TestHookContract(t *testing.T) {
 	}
 	if a.ForwardPermission(nil, nil) {
 		t.Fatal("PreToolUse must never block on a decision")
+	}
+}
+
+func TestStatusLineTranscriptAliasResolvesToActualCLIState(t *testing.T) {
+	home := t.TempDir()
+	path := filepath.Join(home, "brain", "conversation", ".system_generated", "logs", "transcript.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	mustWrite(t, path, []byte("{}\n"))
+	a := New("agy", home)
+	reported := filepath.Join(t.TempDir(), "antigravity", "brain", "conversation", ".system_generated", "logs", "transcript.jsonl")
+	r, err := a.ParseStatusLine([]byte(`{"product":"antigravity","agent_state":"idle","conversation_id":"conversation","transcript_path":"`+reported+`"}`), "")
+	if err != nil || r.TranscriptPath != path {
+		t.Fatalf("bad native path alias: %v %v", r, err)
+	}
+	h, err := a.DecodeHook([]byte(`{"hook_event_name":"SessionStart","conversationId":"conversation","transcriptPath":"` + filepath.Join(filepath.Dir(path), "transcript_full.jsonl") + `"}`))
+	if err != nil || h.TranscriptPath != path {
+		t.Fatalf("hook and status line disagree: %v %v", h, err)
 	}
 }

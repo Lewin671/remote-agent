@@ -1,7 +1,11 @@
 package antigravity
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -117,7 +121,7 @@ func TestAllRemainingScreenSamples(t *testing.T) {
 func TestFilePermissionDenyUsesObservedMenuNumber(t *testing.T) {
 	a := New("agy", t.TempDir())
 	h := &agent.Hook{ToolName: "write_file", ToolInput: []byte(`{"Path":"/workspace/example.txt"}`)}
-	term := &fakeTerm{screen: "Requesting permission for:\n   /workspace/example.txt\n\nAllow creation of this file?\n> 1. Yes, allow creation\n  2. No, deny creation\n"}
+	term := &fakeTerm{screen: "────────────────────\n/workspace/example.txt  +1\n 1 + hello\nAllow creation of this file?\n> 1. Yes, allow creation\n  2. No, deny creation\n"}
 	if err := a.AnswerApproval(term, h, false, func() bool { return true }); err != nil || string(term.written) != "2" {
 		t.Fatalf("deny file %q %v", term.written, err)
 	}
@@ -141,5 +145,58 @@ func TestRealMultilineDraft(t *testing.T) {
 	text, ok := a.ComposerText(styled, "")
 	if !ok || text != "line one\nline two" || a.Analyze(styled).DraftEmpty {
 		t.Fatalf("draft %q %v", text, ok)
+	}
+}
+
+func TestRealNativeFileCreationMenu(t *testing.T) {
+	a := New("agy", t.TempDir())
+	screen := readScreenFixture(t, "file-create-1.5.0.txt")
+	h := &agent.Hook{ToolName: "write_file", ToolInput: []byte(`{"Path":"/workspace/project/create-allow.txt","Content":"hello"}`)}
+	if !a.Analyze(screen).PermissionOpen {
+		t.Fatal("native file menu was not recognised")
+	}
+	if _, ok := a.MatchApproval(screen, h); !ok {
+		t.Fatal("native file path was not matched")
+	}
+	term := &fakeTerm{screen: screen}
+	if err := a.AnswerApproval(term, h, false, func() bool { return true }); err != nil || string(term.written) != "2" {
+		t.Fatalf("file deny %q %v", term.written, err)
+	}
+}
+
+func TestNativeFilePromptCanonicalAlias(t *testing.T) {
+	real := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "alias")
+	if err := os.Symlink(real, alias); err != nil {
+		t.Skip(err)
+	}
+	if !sameNativeFile(filepath.Join(real, "new.txt"), filepath.Join(alias, "new.txt")) {
+		t.Fatal("native canonical path alias was rejected")
+	}
+	if sameNativeFile(filepath.Join(real, "one.txt"), filepath.Join(alias, "two.txt")) {
+		t.Fatal("different paths were matched")
+	}
+}
+
+func TestRealNativePlanReviewPanel(t *testing.T) {
+	a := New("agy", t.TempDir())
+	root := t.TempDir()
+	path := filepath.Join(root, "acceptance_approve_plan.md")
+	text := "# Plan\nhello\n"
+	mustWrite(t, path, []byte(text))
+	sum := sha256.Sum256([]byte(text))
+	facts := &agent.PlanFacts{Path: path, Root: root, Revision: hex.EncodeToString(sum[:]), Text: text}
+	screen := readScreenFixture(t, "plan-review-1.5.0-pending.txt")
+	if !a.Analyze(screen).PlanOpen || !a.PlanScreen(screen, facts) {
+		t.Fatal("real action-required panel was not bound")
+	}
+	term := &fakeTerm{screen: screen}
+	term.onWrite = func(b []byte) {
+		if string(b) == "y" {
+			term.screen = readScreenFixture(t, "idle-empty-box.txt")
+		}
+	}
+	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, facts, nil); err != nil || string(term.written) != "y" {
+		t.Fatalf("native plan approval %q %v", term.written, err)
 	}
 }

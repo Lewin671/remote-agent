@@ -700,7 +700,7 @@ func (s *session) settle(ctx context.Context, in input) bool {
 			cliID = in.CLIConversation
 		}
 		s.mu.Unlock()
-		if hist.submitted(in.matches, cliID) || s.loggedUserMessage(in) {
+		if hist.submitted(func(recorded string) bool { return s.inputMatchesText(in, recorded) }, cliID) || s.loggedUserMessage(in) {
 			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
 			break
 		}
@@ -1045,5 +1045,21 @@ func (s *session) inputMatchesEvent(in input, e *pb.Event) bool {
 			return false
 		}
 	}
+	if normalizer, ok := s.ag.(agent.InputNormalizer); ok {
+		in.Text = normalizer.NormalizeInput(in.Text)
+		if in.Composed != "" {
+			in.Composed = normalizer.NormalizeInput(in.Composed)
+		}
+	}
 	return in.matchesMessage(e.GetUserMessage())
+}
+func (s *session) inputMatchesText(in input, recorded string) bool {
+	if normalizer, ok := s.ag.(agent.InputNormalizer); ok {
+		in.Text = normalizer.NormalizeInput(in.Text)
+		if in.Composed != "" {
+			in.Composed = normalizer.NormalizeInput(in.Composed)
+		}
+		recorded = normalizer.NormalizeInput(recorded)
+	}
+	return in.matches(recorded)
 }

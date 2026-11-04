@@ -44,18 +44,39 @@ func planRevisionMatches(facts *agent.PlanFacts) bool {
 
 // PlanScreen accepts only the named artifact with an explicit review action.
 // A generic artifact count, an empty list, or a different revision is not a plan.
+func planPanel(styled string) string {
+	plain := StripANSI(styled)
+	start := -1
+	for _, header := range []string{"Action required (", "Artifacts"} {
+		if at := strings.LastIndex(plain, "\n"+header); at >= 0 && at+1 > start {
+			start = at + 1
+		}
+		if strings.HasPrefix(plain, header) {
+			start = 0
+		}
+	}
+	if start < 0 {
+		return ""
+	}
+	return plain[start:]
+}
 func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
 	if !planRevisionMatches(facts) {
 		return false
 	}
-	plain := StripANSI(styled)
-	if !strings.Contains(plain, "Artifacts") || !strings.Contains(plain, filepath.Base(facts.Path)) {
+	panel := planPanel(styled)
+	if !strings.HasPrefix(panel, "Action required (") || !strings.Contains(panel, "y/n Approve/reject") || !strings.Contains(panel, "esc Done") {
 		return false
 	}
-	lower := strings.ToLower(plain)
-	return strings.Contains(lower, "approve") && strings.Contains(lower, "reject")
+	for _, line := range strings.Split(panel, "\n") {
+		trim := strings.TrimSpace(line)
+		if strings.HasPrefix(trim, "› ") || strings.HasPrefix(trim, "> ") {
+			return strings.Contains(trim, filepath.Base(facts.Path)) && strings.Contains(trim, "approve reject")
+		}
+	}
+	return false
 }
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.PlanFacts) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.PlanFacts, observed func() bool) error {
 	if choice != pb.PlanChoice_PLAN_CHOICE_IMPLEMENT && choice != pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
 		return agent.ErrUnsupported
 	}
@@ -79,24 +100,9 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.Pl
 			return err
 		}
 	}
-	// The selected row must name this artifact, not merely another entry on a
-	// multiple-artifact screen. No navigation or guessed selection is attempted.
-	selected := false
-	plain := StripANSI(styled)
-	if i := strings.LastIndex(plain, "Artifacts"); i >= 0 {
-		plain = plain[i:]
-	}
-	for _, line := range strings.Split(plain, "\n") {
-		trim := strings.TrimSpace(line)
-		if strings.HasPrefix(trim, "› ") || strings.HasPrefix(trim, "> ") {
-			if strings.Contains(trim, filepath.Base(facts.Path)) {
-				selected = true
-			} else {
-				return agent.ErrNoPlan
-			}
-		}
-	}
-	if !selected {
+	// PlanScreen binds the selected action-required row, not a similarly
+	// named artifact elsewhere in the list or chat history.
+	if !a.PlanScreen(styled, facts) {
 		return agent.ErrNoPlan
 	}
 	if !planRevisionMatches(facts) {
@@ -109,7 +115,7 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.Pl
 	if err := t.Write([]byte(key)); err != nil {
 		return agent.ErrDeliveryUnconfirmed
 	}
-	_, err = agent.WaitFor(t, "plan review consumption", func(screen string) bool { return !a.PlanScreen(screen, facts) })
+	_, err = agent.WaitFor(t, "plan review consumption", func(screen string) bool { return observed != nil && observed() || !a.PlanScreen(screen, facts) })
 	if err != nil {
 		return agent.ErrDeliveryUnconfirmed
 	}

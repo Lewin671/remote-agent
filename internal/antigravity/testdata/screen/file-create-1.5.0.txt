@@ -1,0 +1,10 @@
+[90m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+[1m[37m/workspace/project/create-allow.txt[0m  [32m+1[39m
+[37m  [90m1 [39m[48;5;65m [32m+  [39mhello
+
+[1m[49mAllow creation of this file?[0m
+[94m> 1. Yes, allow creation[39m
+  2. No, deny creation
+
+  [1m[94m↑/↓[0m[90m Navigate · [1m[94mtab[0m[90m Amend · [1m[94mf[0m[90m full diff

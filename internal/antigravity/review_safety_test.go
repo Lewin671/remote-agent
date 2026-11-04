@@ -149,13 +149,13 @@ func TestAmbiguousPlansAndEditsNeverSendKeys(t *testing.T) {
 	}
 	a := New("agy", t.TempDir())
 	term := &fakeTerm{screen: readScreenFixture(t, "artifact-review-screen.txt")}
-	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil); err == nil || len(term.written) > 0 {
+	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil, nil); err == nil || len(term.written) > 0 {
 		t.Fatal("empty list answered as a plan")
 	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "plan.md")
 	_ = os.WriteFile(path, []byte("new revision"), 0600)
-	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, &agent.PlanFacts{Path: path, Revision: "old"}); err == nil || len(term.written) > 0 {
+	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, &agent.PlanFacts{Path: path, Revision: "old"}, nil); err == nil || len(term.written) > 0 {
 		t.Fatal("changed artifact received a key")
 	}
 }
@@ -212,5 +212,52 @@ func TestNoToolResponseWaitsForStopOrIdleProof(t *testing.T) {
 	p.Replay(end[0])
 	if p.IdleCompletion() != nil || p.inTurn {
 		t.Fatal("Stop did not consume completion candidate")
+	}
+}
+
+func TestRemotePlanAcknowledgementIsNotDuplicatedAsLocal(t *testing.T) {
+	for _, success := range []bool{true, false} {
+		p := NewParser()
+		facts := &agent.PlanFacts{Path: "/workspace/plan.md", CallID: "conv/step_2"}
+		p.plans[facts.Path] = facts
+		p.planMessages["[Approved] plan.md"] = true
+		p.BeginPlanAnswer(facts, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT)
+		events, err := p.Parse([]byte(`{"step_index":3,"type":"USER_INPUT","content":"<USER_REQUEST>[Approved] plan.md</USER_REQUEST>"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, e := range events {
+			if e.GetPlanAnswered() != nil {
+				t.Fatal("remote confirmation also emitted a local answer")
+			}
+		}
+		if !p.PlanAnswerObserved() {
+			t.Fatal("native consumption was not visible to the controller")
+		}
+		deferred := p.EndPlanAnswer(success)
+		if success && len(deferred) != 0 || !success && len(deferred) != 1 {
+			t.Fatal("wrong deferred answer outcome", success, deferred)
+		}
+	}
+}
+
+func TestNativePlanInputEnvelopeIsHumanPrompt(t *testing.T) {
+	p := NewParser()
+	events, err := p.Parse([]byte(`{"step_index":0,"type":"USER_INPUT","content":"<USER_REQUEST>/plan Create a plan</USER_REQUEST>"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, e := range events {
+		if m := e.GetUserMessage(); m != nil {
+			found = m.Text == "Create a plan"
+		}
+	}
+	if !found {
+		t.Fatal("plan-mode prompt disappeared as a slash command")
+	}
+	a := New("agy", t.TempDir())
+	if !a.Submitted([]byte(`{"display":"/plan Create a plan","conversationId":"conv","type":"slash_command"}`), func(s string) bool { return s == "Create a plan" }, "conv") {
+		t.Fatal("bound plan prompt was not confirmed")
 	}
 }

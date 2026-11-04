@@ -60,6 +60,9 @@ type pendingCall struct {
 // step indices; stepIdx in PreToolUse is that result's index, also used as the
 // synthetic call ID so early hook events deduplicate with transcript events.
 type Parser struct {
+	answeringPlan         string
+	answeringChoice       pb.PlanChoice
+	planAcknowledgement   *pb.Event
 	artifactRoot          string
 	artifacts             map[string]bool
 	artifactIndexComplete bool
@@ -281,7 +284,11 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 	switch r.Type {
 	case "USER_INPUT":
 		text := stripUserEnvelopes(r.Content)
-		if strings.HasPrefix(text, "/") {
+		planWrapped := strings.HasPrefix(text, "/plan ") && strings.TrimSpace(strings.TrimPrefix(text, "/plan ")) != ""
+		if planWrapped {
+			text = strings.TrimPrefix(text, "/plan ")
+		}
+		if !planWrapped && strings.HasPrefix(text, "/") {
 			break
 		} // slash command, not a model turn
 		generated := p.planMessages[strings.TrimSpace(text)]
@@ -294,7 +301,17 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 				choice = pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING
 			}
 			e := &pb.Event{Origin: &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_LOCAL}, Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}
-			evs = append(evs, e)
+			remote := false
+			for _, plan := range p.plans {
+				if plan.CallID == p.answeringPlan && int32(p.answeringChoice) == e.GetPlanAnswered().Choice {
+					remote = true
+				}
+			}
+			if remote {
+				p.planAcknowledgement = e
+			} else {
+				evs = append(evs, e)
+			}
 			for _, plan := range p.plans {
 				p.answeredPlans[plan.CallID] = true
 			}
@@ -793,13 +810,13 @@ func (a *Adapter) Submitted(line []byte, match func(string) bool, id string) boo
 		Conversation string `json:"conversationId"`
 		Type         string `json:"type"`
 	}
-	if json.Unmarshal(line, &in) != nil || in.Type == "slash_command" {
+	if json.Unmarshal(line, &in) != nil || in.Type == "slash_command" && !strings.HasPrefix(in.Text, "/plan ") {
 		return false
 	}
 	if id == "" || in.Conversation == "" || in.Conversation != id {
 		return false
 	}
-	return match(in.Text)
+	return match(a.NormalizeInput(in.Text))
 }
 func (a *Adapter) Copied(_ string) func([]byte) bool { return nil }
 func (a *Adapter) HookEvents(h *agent.Hook) []*pb.Event {
@@ -896,4 +913,33 @@ func (p *Parser) CaptureAttachSnapshot(path string) error {
 	}
 	p.attachLines = count
 	return nil
+}
+
+func (p *Parser) BeginPlanAnswer(facts *agent.PlanFacts, choice pb.PlanChoice) {
+	p.answeringPlan = ""
+	p.planAcknowledgement = nil
+	p.answeringChoice = choice
+	if facts != nil {
+		p.answeringPlan = facts.CallID
+	}
+}
+func (p *Parser) PlanAnswerObserved() bool { return p.planAcknowledgement != nil }
+func (p *Parser) EndPlanAnswer(success bool) []*pb.Event {
+	var events []*pb.Event
+	if !success && p.planAcknowledgement != nil {
+		events = append(events, p.planAcknowledgement)
+	}
+	p.answeringPlan = ""
+	p.planAcknowledgement = nil
+	return events
+}
+
+// Plan-mode input is recorded by agy as /plan followed by the actual prompt.
+// This is a native control envelope, not a second human message or a slash-only
+// command; normalize both recorded input and a caller's explicit /plan prompt.
+func (a *Adapter) NormalizeInput(text string) string {
+	if strings.HasPrefix(text, "/plan ") {
+		return strings.TrimPrefix(text, "/plan ")
+	}
+	return text
 }
