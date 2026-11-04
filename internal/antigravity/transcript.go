@@ -585,24 +585,36 @@ func (p *Parser) readMedia(media []transcriptMedia, source pb.ImageSource) []*pb
 		return nil
 	}
 	var refs []*pb.ImageRef
-	base, err := filepath.EvalSymlinks(filepath.Join(filepath.Dir(p.transcriptPath), "media"))
-	if err != nil {
-		return nil
+	bases := []string{filepath.Join(filepath.Dir(p.transcriptPath), "media")}
+	if source == pb.ImageSource_IMAGE_SOURCE_USER {
+		conversation := filepath.Dir(filepath.Dir(filepath.Dir(p.transcriptPath)))
+		bases = append(bases, filepath.Join(conversation, ".user_uploaded"))
 	}
 	for i, m := range media {
 		if !strings.HasPrefix(m.MimeType, "image/") {
 			continue
 		}
 		u, err := url.Parse(m.URI)
-		if err != nil || u.Scheme != "file" || u.Host != "" {
+		if err != nil || (u.Scheme != "file" && u.Scheme != "") || u.Host != "" || u.RawQuery != "" || u.Fragment != "" || !filepath.IsAbs(u.Path) {
 			continue
 		}
 		path, err := filepath.EvalSymlinks(u.Path)
 		if err != nil {
 			continue
 		}
-		rel, err := filepath.Rel(base, path)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+		confined := false
+		for _, base := range bases {
+			base, err := filepath.EvalSymlinks(base)
+			if err != nil {
+				continue
+			}
+			rel, err := filepath.Rel(base, path)
+			if err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) && !filepath.IsAbs(rel) {
+				confined = true
+				break
+			}
+		}
+		if !confined {
 			continue
 		}
 		f, err := os.Open(path)
@@ -986,6 +998,20 @@ func (p *Parser) EndPlanAnswer(success bool) []*pb.Event {
 func (a *Adapter) NormalizeInput(text string) string {
 	if strings.HasPrefix(text, "/plan ") {
 		return strings.TrimPrefix(text, "/plan ")
+	}
+	return text
+}
+
+// agy 1.5.0 records uploaded media separately, without [Image #N] in content.
+// Only successfully loaded, conversation-confined image refs supply evidence;
+// plain history text alone can never confirm an image send.
+func (a *Adapter) MessageInputText(message *pb.UserMessage) string {
+	text := message.Text
+	if len(agent.ImagePlaceholders(text)) > 0 {
+		return text
+	}
+	for _, ref := range message.Images {
+		text += fmt.Sprintf(" [Image #%d]", ref.CliIndex)
 	}
 	return text
 }

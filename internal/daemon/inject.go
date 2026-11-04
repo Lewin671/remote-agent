@@ -1057,7 +1057,13 @@ func (s *session) inputMatchesEvent(in input, e *pb.Event) bool {
 			in.Composed = normalizer.NormalizeInput(in.Composed)
 		}
 	}
-	return in.matchesMessage(e.GetUserMessage())
+	message := e.GetUserMessage()
+	if normalizer, ok := s.ag.(agent.MessageInputNormalizer); ok && message != nil {
+		normalized := *message
+		normalized.Text = normalizer.MessageInputText(message)
+		message = &normalized
+	}
+	return in.matchesMessage(message)
 }
 func (s *session) inputMatchesText(in input, recorded string) bool {
 	if normalizer, ok := s.ag.(agent.InputNormalizer); ok {

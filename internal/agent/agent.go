@@ -360,6 +360,12 @@ type PlanAnswerSource interface {
 	EndPlanAnswer(success bool) []*pb.Event
 }
 
+// MessageInputNormalizer supplies canonical submission text when a CLI records
+// media separately from prompt text. It must retain image evidence in the text.
+type MessageInputNormalizer interface {
+	MessageInputText(message *pb.UserMessage) string
+}
+
 type InputNormalizer interface{ NormalizeInput(text string) string }
 
 // Screen is what the daemon needs to know from the terminal.
@@ -633,12 +639,12 @@ func OriginFrom(ctx context.Context) *pb.Origin {
 }
 
 // PastePath is a bracketed paste of a file path alone, without Enter: how
-// both CLIs take an image file into the input box.
+// the CLIs take an image file into the input box.
 func PastePath(path string) []byte {
 	return []byte("\x1b[200~" + path + "\x1b[201~")
 }
 
-// KeyClearLine is Ctrl-U, which both CLIs take as deleting the input box's
+// KeyClearLine is Ctrl-U, which Codex and Claude Code take as deleting the input box's
 // line (codex-notes §10, claude-code-notes §10).
 const KeyClearLine = "\x15"
 
