@@ -36,26 +36,25 @@ dependencies {
     api(libs.serialization.json)
 }
 
-// The integration tests run against the real Go server. Without Go on the
-// PATH they are skipped.
-val testServer = layout.buildDirectory.file("ra-server").get().asFile
+// Build the two immutable Go fixtures together. Each test still owns its
+// server, database and signing process; Gradle reuses only the executables.
 val repoRoot = rootProject.file("..")
-val buildTestServer by tasks.registering(Exec::class) {
+val testFixtures = layout.buildDirectory.dir("test-fixtures")
+val buildTestFixtures by tasks.registering(Exec::class) {
     workingDir = repoRoot
-    commandLine("go", "build", "-o", testServer.absolutePath, "./internal/testutil/relaytestserver")
+    inputs.files(fileTree(repoRoot) {
+        include("go.mod", "go.sum", "internal/**/*.go", "internal/updater/policy.json", "gen/**/*.go")
+        exclude("**/*_test.go")
+    }).withPathSensitivity(PathSensitivity.RELATIVE)
+    outputs.dir(testFixtures)
+    commandLine("go", "build", "-o", testFixtures.get().asFile.absolutePath + "/",
+        "./internal/testutil/relaytestserver", "./internal/testutil/securityfixture")
     onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
-
-val testSecurityFixture=layout.buildDirectory.file("ra-security-fixture").get().asFile
-val buildTestSecurityFixture by tasks.registering(Exec::class){
- workingDir=repoRoot
- commandLine("go","build","-o",testSecurityFixture.absolutePath,"./internal/testutil/securityfixture")
- onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it,"go").canExecute() } }
-}
 tasks.test {
-    dependsOn(buildTestServer,buildTestSecurityFixture)
-    systemProperty("raSecurityFixture",testSecurityFixture.absolutePath)
-    systemProperty("raServer", testServer.absolutePath)
+    dependsOn(buildTestFixtures)
+    systemProperty("raSecurityFixture", testFixtures.get().file("securityfixture").asFile.absolutePath)
+    systemProperty("raServer", testFixtures.get().file("relaytestserver").asFile.absolutePath)
     // The test vectors are shared with Go and TypeScript.
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)

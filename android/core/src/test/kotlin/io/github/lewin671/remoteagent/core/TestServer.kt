@@ -63,41 +63,37 @@ class TestServer(
     fun start() {
         val bin = File(System.getProperty("raServer") ?: "")
         Assume.assumeTrue("the Go server was not built", bin.canExecute())
-        // Another test may take the port between freePort() and the bind.
-        repeat(8) {
-            val log = File(dbDir, "server.log")
-            val pb =
-                ProcessBuilder(
-                    bin.absolutePath,
-                    "-listen",
-                    "127.0.0.1:$port",
-                    "-db",
-                    File(dbDir, "ra.db").absolutePath,
-                    "-signup",
-                    signupMode,
-                    "-signup-bits",
-                    signupBits.toString(),
-                )
-            pb.environment()["RA_SETUP_TOKEN"] = setupToken
-            pb.redirectErrorStream(true).redirectOutput(log)
-            val started = pb.start()
-            proc = started
-            // Only this child's post-bind record establishes readiness. An
-            // HTTP response on a proposed port may belong to another test.
-            val until = System.currentTimeMillis() + 10_000
-            while (System.currentTimeMillis() < until) {
-                if (!started.isAlive) error("test relay exited: " + log.readText().takeLast(500))
-                val ready = log.readLines().firstOrNull { it.startsWith("TEST_SERVER_URL=") }
-                if (ready != null) {
-                    port = java.net.URI(ready.substringAfter('=')).port
-                    check(port > 0)
-                    return
-                }
-                Thread.sleep(10)
+        val log = File(dbDir, "server.log")
+        val pb =
+            ProcessBuilder(
+                bin.absolutePath,
+                "-listen",
+                "127.0.0.1:$port",
+                "-db",
+                File(dbDir, "ra.db").absolutePath,
+                "-signup",
+                signupMode,
+                "-signup-bits",
+                signupBits.toString(),
+            )
+        pb.environment()["RA_SETUP_TOKEN"] = setupToken
+        pb.redirectErrorStream(true).redirectOutput(log)
+        val started = pb.start()
+        proc = started
+        // Only this child's post-bind record establishes readiness. An
+        // HTTP response on a proposed port may belong to another test.
+        val until = System.currentTimeMillis() + 10_000
+        while (System.currentTimeMillis() < until) {
+            if (!started.isAlive) error("test relay exited: " + log.readText().takeLast(500))
+            val ready = log.readLines().firstOrNull { it.startsWith("TEST_SERVER_URL=") }
+            if (ready != null) {
+                port = java.net.URI(ready.substringAfter('=')).port
+                check(port > 0)
+                return
             }
-            error("server did not start")
+            Thread.sleep(10)
         }
-        error("server did not get a free port")
+        error("server did not start")
     }
 
     fun stop() {
