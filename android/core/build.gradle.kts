@@ -52,6 +52,9 @@ val buildTestFixtures by tasks.registering(Exec::class) {
     onlyIf { System.getenv("PATH").orEmpty().split(File.pathSeparator).any { File(it, "go").canExecute() } }
 }
 tasks.test {
+    // Classes own isolated relay processes; keep each class ordered and overlap
+    // two classes so real network/backoff waits do not serialize the whole JVM suite.
+    maxParallelForks = minOf(2, Runtime.getRuntime().availableProcessors())
     dependsOn(buildTestFixtures)
     systemProperty("raSecurityFixture", testFixtures.get().file("securityfixture").asFile.absolutePath)
     systemProperty("raServer", testFixtures.get().file("relaytestserver").asFile.absolutePath)
