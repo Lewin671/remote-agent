@@ -40,6 +40,7 @@ afterEach(async () => {
   host?.remove();
   for (const r of remotes.splice(0)) r.stop();
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   localStorage.clear();
   delete document.documentElement.dataset.theme;
@@ -675,6 +676,8 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   expect(host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!.disabled).toBe(true);
 });
 it("uses shared empty copy and resolves a missing conversation before naming it", async () => {
+  // The zone label is shown only when the task differs from the viewer's zone.
+  vi.stubEnv("TZ", "UTC");
   const r=remote([]);
   await mount(<SchedulesPage remote={r} go={()=>{}} />);
   expect(host.textContent).toContain(scheduleEmpty);
