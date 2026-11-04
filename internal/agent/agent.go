@@ -43,6 +43,7 @@ const HookTimeoutSeconds = 3600
 // has not finished appending yet. The parser leaves its state unchanged so the
 // daemon can retry this same line without recording a malformed-record skip.
 var ErrSourcePending = errors.New("CLI source data is not ready")
+var ErrDeliveryUnconfirmed = errors.New("native key delivery could not be confirmed; handle in terminal")
 
 // StatusLineFile holds the user's custom statusline configuration in the session dir.
 const StatusLineFile = "statusline.json"
@@ -72,24 +73,18 @@ type Adapter interface {
 	// MatchApproval checks if the terminal screen matches a tool call reported by a hook.
 	MatchApproval(styled string, h *Hook) (*pb.ApprovalRequested, bool)
 	// AnswerApproval answers a native permission prompt showing in the terminal.
-	AnswerApproval(t Term, h *Hook, allow bool) error
+	AnswerApproval(t Term, h *Hook, allow bool, consumed func() bool) error
 }
 
 // Capabilities are actions a CLI can perform without changing global settings
 // or moving the original native conversation to another process.
-type Capabilities struct{ ModelSwitch, Fork bool }
+type Capabilities struct{ ModelSwitch, Fork, NativeApproval, ConversationIdentity bool }
 
 // StatusLineAccount is optionally implemented by adapters whose account quota
 // is reported through a status line.
 type StatusLineAccount interface {
 	Account() (account, plan string, subscription bool)
 	ManagedStatusLine(dir string) bool
-}
-
-// HookDecoder normalizes a CLI's native hook payload at the local RPC boundary.
-// Status line envelopes already use Hook and bypass this decoder.
-type HookDecoder interface {
-	DecodeHook(raw []byte) (*Hook, error)
 }
 
 // StatusLineSource reads CLI-specific status line metadata without exposing
@@ -99,9 +94,12 @@ type StatusLineSource interface {
 }
 
 type StatusLine struct {
-	Context       *pb.TurnContext
-	ContextWindow int64
-	Quota         *pb.AgentQuota
+	ConversationID, TranscriptPath string
+	CycleMode                      string
+	IdleKnown, Background          bool
+	Context                        *pb.TurnContext
+	ContextWindow                  int64
+	Quota                          *pb.AgentQuota
 }
 
 // NativeApprovalSource restores a report-only approval candidate from a
@@ -190,6 +188,7 @@ type Launch struct {
 
 // Source reads what the CLI records.
 type Source interface {
+	DecodeHook(raw []byte) (*Hook, error)
 	// NewParser returns a parser for the session's transcript.
 	NewParser() Parser
 	// SubmitLog is the file where the CLI records submitted input, given
@@ -285,7 +284,7 @@ type Controller interface {
 	// CLI has recorded a turn start meanwhile.
 	Compact(t Term, started func() bool) error
 	// AnswerPlan answers the CLI's prompt about a proposed plan.
-	AnswerPlan(t Term, choice pb.PlanChoice) error
+	AnswerPlan(t Term, choice pb.PlanChoice, facts *PlanFacts) error
 	// RestoredPrompt reports whether the terminal screen shows the original
 	// prompt restored after an early cancel without a turn end record.
 	RestoredPrompt(styled, prompt string) bool
@@ -294,9 +293,8 @@ type Controller interface {
 // ModeFacts is what the daemon knows about a session that tells which
 // modes its CLI offers.
 type ModeFacts struct {
-	// CurrentMode reads the latest mode reported by the CLI status line.
-	// Empty means no authoritative observation yet.
-	CurrentMode func() string
+	// Observation reads the latest authoritative status-line mode and idle facts.
+	Observation func() ModeObservation
 	// FullAccess: the session could switch to full access at launch.
 	FullAccess bool
 	// Model is the session's model as last recorded.
@@ -304,6 +302,34 @@ type ModeFacts struct {
 	// Seen are the modes the screen has shown in this session while it
 	// used Model.
 	Seen []string
+}
+
+type ModeObservation struct {
+	ToolPermission        string
+	Mode                  string
+	At                    time.Time
+	IdleKnown, Background bool
+}
+
+// NativeMatch is deliberately ambiguous when more than one pending native
+// request could own the visible menu, even if their commands are identical.
+type NativeMatch struct {
+	Hook      *Hook
+	Request   *pb.ApprovalRequested
+	Ambiguous bool
+}
+type NativeApprover interface {
+	MatchApprovals(styled string, pending []*Hook) NativeMatch
+}
+
+// PlanFacts binds a plan to a particular native artifact and exact contents.
+// These values are local adapter state, never a new wire/protocol contract.
+type PlanFacts struct{ Path, Revision, Text, CallID string }
+type PlanSource interface{ Plan() *PlanFacts }
+type ConversationEvents interface{ EventConversation(e *pb.Event) string }
+
+type PlanInspector interface {
+	PlanScreen(styled string, facts *PlanFacts) bool
 }
 
 // Screen is what the daemon needs to know from the terminal.
@@ -350,9 +376,38 @@ type Hook struct {
 	ToolInput         json.RawMessage `json:"tool_input"`
 	ToolUseID         string          `json:"tool_use_id"`
 	TerminationReason string          `json:"termination_reason,omitempty"`
+	StepIndex         *int64          `json:"step_index,omitempty"`
+	FullyIdle         *bool           `json:"fully_idle,omitempty"`
+	Uncertain         bool            `json:"uncertain,omitempty"`
 	// Status is the status line input remote-agent's status line command
 	// passes on (Claude Code), with HookEventName "StatusLine".
 	Status json.RawMessage `json:"status"`
+}
+
+// HookEnvelope carries the event named by a configured hook command. Native
+// payloads remain opaque to both the local command and hook RPC.
+type HookEnvelope struct {
+	Event   string          `json:"remote_agent_event"`
+	Payload json.RawMessage `json:"remote_agent_payload"`
+}
+
+func UnwrapHook(raw []byte) (event string, payload []byte) {
+	var e HookEnvelope
+	if json.Unmarshal(raw, &e) == nil && e.Event != "" && len(e.Payload) > 0 {
+		return e.Event, e.Payload
+	}
+	return "", raw
+}
+func DecodeStandardHook(raw []byte) (*Hook, error) {
+	event, payload := UnwrapHook(raw)
+	var h Hook
+	if err := json.Unmarshal(payload, &h); err != nil {
+		return nil, err
+	}
+	if event != "" {
+		h.HookEventName = event
+	}
+	return &h, nil
 }
 
 // InputDigest identifies a Claude Code tool call by its complete input:

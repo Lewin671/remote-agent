@@ -16,7 +16,7 @@ func TestHookContract(t *testing.T) {
 		if h.HookEventName != event || h.SessionID != "conversation" || strings.HasSuffix(h.TranscriptPath, "_full.jsonl") {
 			t.Fatalf("hook %v", h)
 		}
-		if event == "PreToolUse" && h.ToolUseID != "step_6" {
+		if event == "PreToolUse" && h.ToolUseID != "conversation/step_6" {
 			t.Fatal("call ID not aligned with result step")
 		}
 		if event == "Stop" {

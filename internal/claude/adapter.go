@@ -776,10 +776,12 @@ func (a *Adapter) ModeLocked(_ *pb.TurnContext) bool { return false }
 func (a *Adapter) MatchApproval(_ string, _ *agent.Hook) (*pb.ApprovalRequested, bool) {
 	return nil, false
 }
-func (a *Adapter) AnswerApproval(_ agent.Term, _ *agent.Hook, _ bool) error {
+func (a *Adapter) AnswerApproval(_ agent.Term, _ *agent.Hook, _ bool, _ func() bool) error {
 	return agent.ErrUnsupported
 }
 
 func (a *Adapter) Capabilities() agent.Capabilities {
 	return agent.Capabilities{ModelSwitch: true, Fork: true}
 }
+
+func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.DecodeStandardHook(raw) }

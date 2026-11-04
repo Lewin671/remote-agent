@@ -491,18 +491,18 @@ func testAnswerAndPlan(t *testing.T) {
 	}
 
 	f = &fakeClaude{}
-	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); !errors.Is(err, agent.ErrNoPlan) {
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil); !errors.Is(err, agent.ErrNoPlan) {
 		t.Fatalf("no plan: %v", err)
 	}
 	f.plan = true
-	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT); !errors.Is(err, agent.ErrUnsupported) {
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_CLEAR_AND_IMPLEMENT, nil); !errors.Is(err, agent.ErrUnsupported) {
 		t.Fatalf("clear: %v", err)
 	}
-	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil || strings.Join(f.writes, "|") != "2" {
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil); err != nil || strings.Join(f.writes, "|") != "2" {
 		t.Fatalf("implement: %v %q", err, f.writes)
 	}
 	f = &fakeClaude{plan: true}
-	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING); err != nil || strings.Join(f.writes, "|") != agent.KeyEsc {
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING, nil); err != nil || strings.Join(f.writes, "|") != agent.KeyEsc {
 		t.Fatalf("keep: %v %q", err, f.writes)
 	}
 }
@@ -602,7 +602,7 @@ func TestAnswerPlanWrapped(t *testing.T) {
 		t.Fatal("title wrapped mid-phrase")
 	}
 	f := &fakeClaude{plan: true, planText: text}
-	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil || strings.Join(f.writes, "|") != "2" {
+	if err := a.AnswerPlan(f, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil); err != nil || strings.Join(f.writes, "|") != "2" {
 		t.Fatalf("implement: %v %q", err, f.writes)
 	}
 }

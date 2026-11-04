@@ -553,22 +553,23 @@ func runHook(args []string) int {
 	if err != nil || sessionID == "" {
 		return 0
 	}
-	if args[0] == "agy" {
-		if len(args) != 2 {
-			return 2
-		}
-		var fields map[string]json.RawMessage
-		if json.Unmarshal(payload, &fields) != nil {
-			return 0
-		}
-		fields["hook_event_name"], _ = json.Marshal(args[1])
-		payload, _ = json.Marshal(fields)
+	if len(args) > 2 {
+		return 2
 	}
-	var head agent.Hook
-	_ = jsonUnmarshal(payload, &head)
+	if len(args) == 2 {
+		payload, _ = json.Marshal(agent.HookEnvelope{Event: args[1], Payload: payload})
+	}
+	event, native := agent.UnwrapHook(payload)
+	var head struct {
+		Event string `json:"hook_event_name"`
+	}
+	_ = json.Unmarshal(native, &head)
+	if event == "" {
+		event = head.Event
+	}
 	wait := 25 * time.Second
 	retryFor := time.Duration(0)
-	if head.HookEventName == "PermissionRequest" {
+	if event == "PermissionRequest" {
 		wait = time.Duration(agent.HookTimeoutSeconds-30) * time.Second
 		// Ride out a daemon restart.
 		retryFor = 30 * time.Second
