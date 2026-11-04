@@ -29,6 +29,7 @@ describe("agents registry", () => {
     expect(codex.quotaWindows).toEqual(["primary", "secondary"]);
     expect(codex.quotaWindow("primary")).toEqual({ label: "5 小时", group: null });
     expect(codex.quotaWindow("secondary")).toEqual({ label: "7 天", group: null });
+    expect(codex.toolLabelFromItemType).toBe(false);
     expect(codex.planClearContext).toBe(true);
     expect(codex.planNote).toBeNull();
     expect(codex.standardContextOption).toBe(false);
@@ -46,6 +47,7 @@ describe("agents registry", () => {
     expect(claude.quotaWindows).toEqual(["five_hour", "seven_day"]);
     expect(claude.quotaWindow("five_hour")).toEqual({ label: "5 小时", group: null });
     expect(claude.quotaWindow("seven_day")).toEqual({ label: "7 天", group: null });
+    expect(claude.toolLabelFromItemType).toBe(true);
     expect(claude.planClearContext).toBe(false);
     expect(claude.planNote).toBe("批准后使用询问模式");
     expect(claude.standardContextOption).toBe(true);
@@ -67,6 +69,7 @@ describe("agents registry", () => {
     expect(agy.quotaWindow("3p-5h")).toEqual({ label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）" });
     expect(agy.quotaWindow("3p-weekly")).toEqual({ label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）" });
     expect(agy.quotaWindow("custom-window")).toEqual({ label: "custom-window", group: "custom-window" });
+    expect(agy.toolLabelFromItemType).toBe(false);
     expect(agy.planClearContext).toBe(false);
     expect(agy.planNote).toBe("批准后回到默认模式（询问）");
     expect(agy.standardContextOption).toBe(false);
@@ -96,6 +99,7 @@ describe("agents registry", () => {
     expect(unknown.id).toBe("");
     expect(unknown.name).toBe("未知 CLI");
     expect(unknown.quotaWindows).toEqual([]);
+    expect(unknown.toolLabelFromItemType).toBe(false);
     expect(unknown.planClearContext).toBe(false);
     expect(unknown.planNote).toBeNull();
     expect(unknown.standardContextOption).toBe(false);

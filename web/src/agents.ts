@@ -183,7 +183,7 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   modelLabel(id: string): string {
     return id;
   },
-  toolLabelFromItemType: true,
+  toolLabelFromItemType: false,
   planClearContext: false,
   planNote: "批准后回到默认模式（询问）",
   standardContextOption: false,
