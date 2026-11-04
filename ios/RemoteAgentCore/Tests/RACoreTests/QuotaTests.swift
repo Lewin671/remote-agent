@@ -145,6 +145,33 @@ import Testing
         #expect(quotaLine(g) == "已用 3% · 5 小时")
     }
 
+    @Test func summariesKeepTheFirstWindowOnTiesAndDoNotWarnOnStaleValues() throws {
+        let report = quota(.claude, .ok, [w("five_hour", 90), w("seven_day", 90)])
+        let live = try claude(machine(true, report))
+        #expect(quotaSummaryRow(live)?.label == "5 小时")
+        #expect(quotaSummaryRow(live)?.tone == .warn)
+        #expect(quotaLine(live) == "已用 90% · 5 小时")
+        let offline = try claude(machine(false, report))
+        #expect(quotaSummaryRow(offline)?.tone == .stale)
+        #expect(quotaLine(offline) == "已用 90% · 5 小时（上次记录）")
+    }
+
+    @Test func groupedQuotaFailuresRetainTheirReasonAndLastSuccessfulWindows() throws {
+        let q = quota(.antigravity, .failed, [w("3p-5h", 90, minutes: 300), w("new-bucket", nil)]) {
+            $0.detail = "额度读取失败"; $0.observedMs = now - 60_000
+        }
+        let m = MachineView(id: "m", online: true, lastSeenMs: 0, meta: .with {
+            $0.agents = [.with { $0.agent = .antigravity }]; $0.quotas = [q]
+        })
+        let g = try #require(quotaGroups(m, now: now).first)
+        #expect(g.status == .failed && g.lastRecord && g.detail == "额度读取失败")
+        #expect(g.subgroups.count == 2 && g.rows.count == 2)
+        #expect(g.subgroups[0].rows[0].tone == .stale)
+        #expect(g.subgroups[1].rows[0].percent == nil)
+        #expect(g.received.hasPrefix("最近成功收到"))
+        #expect(quotaBanner(g).isEmpty)
+    }
+
     @Test func groupsAntigravityQuotaWindowsByModelFamily() throws {
         let q = quota(.antigravity, .ok, [
             w("gemini-5h", 18, minutes: 300),

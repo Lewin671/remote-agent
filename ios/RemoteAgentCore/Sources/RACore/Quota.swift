@@ -124,7 +124,7 @@ public func quotaRow(_ w: PBQuotaWindow, now: Int64, lastRecord: Bool) -> QuotaR
 
 public func quotaRow(_ w: PBQuotaWindow, agent: PBAgent, now: Int64, lastRecord: Bool) -> QuotaRow {
     let desc = agentInfo(agent).quotaWindow(w.name)
-    let known = agentInfo(agent).quotaWindows
+    let known = (agentInfo(agent).expectedQuotaWindows ?? [])
     let useMinutes = desc.group == nil && known.contains(w.name)
     let label = (useMinutes && w.windowMinutes > 0) ? windowLabel(minutes: w.windowMinutes) : desc.label
     let windowName = w.windowMinutes > 0 ? windowLabel(minutes: w.windowMinutes) : label
@@ -166,7 +166,7 @@ public func planName(_ plan: String) -> String {
 /// report is left out: a plan with only a weekly window is not shown a second
 /// 7 天 that never arrives.
 private func completeWindows(agent: PBAgent, _ windows: [PBQuotaWindow]) -> [PBQuotaWindow] {
-    let expected = agentInfo(agent).quotaWindows
+    let expected = (agentInfo(agent).expectedQuotaWindows ?? [])
     var byName = [String: PBQuotaWindow]()
     for w in windows { byName[w.name] = w }
     return expected.compactMap { byName[$0] } + windows.filter { !expected.contains($0.name) }
@@ -241,12 +241,20 @@ public func quotaLine(_ g: QuotaGroup) -> String {
     case .unsupported: return "暂不支持读取额度"
     case .waiting: return "暂未获取额度"
     default:
-        let got = g.rows.filter { $0.used != "未获取" && $0.percent != nil }
-        guard let tightest = got.max(by: { ($0.percent ?? -1) < ($1.percent ?? -1) }) else {
+        guard let tightest = quotaSummaryRow(g) else {
             return "暂未获取额度" + (g.lastRecord ? "（上次记录）" : "")
         }
         let win = tightest.windowName.ifEmpty(tightest.label)
         let staleSuffix = g.lastRecord && !tightest.used.contains("上次") ? "（上次记录）" : ""
         return "\(tightest.used) · \(win)\(staleSuffix)"
+    }
+}
+
+/// The summary uses the first most-used reported window, preserving daemon order on ties.
+public func quotaSummaryRow(_ g: QuotaGroup) -> QuotaRow? {
+    guard g.status == .ok || g.status == .failed else { return nil }
+    return g.rows.filter { $0.used != "未获取" && $0.percent != nil }.reduce(nil) { best, row in
+        guard let best else { return row }
+        return (row.percent ?? -1) > (best.percent ?? -1) ? row : best
     }
 }

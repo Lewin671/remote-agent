@@ -33,8 +33,11 @@ struct QuotaScreen: View {
         if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: Theme.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
             if !g.subgroups.isEmpty {
-                ForEach(Array(g.subgroups.enumerated()), id: \.offset) { _, sub in
-                    GroupLabel(sub.title + (g.lastRecord && !sub.title.contains("上次记录") ? " · 上次记录" : ""))
+                ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in
+                    GroupLabel(sub.title + (g.lastRecord && index == 0 ? " · 上次记录" : ""))
+                    if index == 0 && g.status == .failed {
+                        GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: Theme.red)
+                    }
                     GroupCard {
                         for row in sub.rows { QuotaWindow(row: row) }
                     }
