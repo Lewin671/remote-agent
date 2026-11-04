@@ -17,6 +17,7 @@ import (
 	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
+	"github.com/Lewin671/remote-agent/internal/updater"
 )
 
 // runDoctor checks the installed CLIs against what remote-agent relies
@@ -58,6 +59,10 @@ func runDoctor(args []string) error {
 		return err
 	}
 	defer os.RemoveAll(tmp)
+	// Mark the empty throwaway state before New creates upload/session data.
+	if err := updater.EnsureState(tmp); err != nil {
+		return err
+	}
 	prevHome, hadHome := os.LookupEnv("REMOTE_AGENT_HOME")
 	os.Setenv("REMOTE_AGENT_HOME", tmp) // the private daemon and its hooks
 	restore := func() {

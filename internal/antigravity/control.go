@@ -164,14 +164,11 @@ func (a *Adapter) SetMode(t agent.Term, mode pb.ApprovalMode, running bool, fact
 		return agent.ErrUnsupported
 	}
 
-	styled, err := t.Capture()
+	styled, err := agent.WaitFor(t, "the native composer after redraw", func(s string) bool { screen := a.Analyze(s); return screen.ComposerReady && screen.Popup == "" })
 	if err != nil {
-		return err
-	}
-	scr := a.Analyze(styled)
-	if !scr.ComposerReady || scr.Popup != "" {
 		return agent.ErrNotReady
 	}
+	scr := a.Analyze(styled)
 	if running || scr.Busy {
 		return agent.ErrBusy
 	}
