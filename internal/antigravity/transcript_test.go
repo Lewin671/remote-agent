@@ -3,6 +3,7 @@ package antigravity
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -222,5 +223,58 @@ func TestHookEvents(t *testing.T) {
 	q := evs[0].GetQuestionAsked()
 	if q == nil || len(q.Questions) != 1 || q.Questions[0].Text != "Choose flavor" {
 		t.Errorf("unexpected QuestionAsked event: %+v", evs[0])
+	}
+}
+
+func TestAuditToolInputsPreserveReadAndMCPMeaning(t *testing.T) {
+	b, err := os.ReadFile("testdata/transcript/audit-tool-inputs.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rows []struct {
+		Name string          `json:"name"`
+		Args json.RawMessage `json:"args"`
+	}
+	if err := json.Unmarshal(b, &rows); err != nil {
+		t.Fatal(err)
+	}
+	for i, row := range rows {
+		p := NewParser()
+		planner, _ := json.Marshal(map[string]any{"step_index": i * 2, "type": "PLANNER_RESPONSE", "tool_calls": []any{map[string]any{"name": row.Name, "args": row.Args}}})
+		started, err := p.Parse(planner)
+		if err != nil {
+			t.Fatal(err)
+		}
+		result, _ := json.Marshal(map[string]any{"step_index": i*2 + 1, "type": "GENERIC", "status": "DONE", "content": "OK"})
+		ended, err := p.Parse(result)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var kind pb.ToolKind
+		var title string
+		if row.Name == "read_file" {
+			kind, title = pb.ToolKind_TOOL_KIND_OTHER, "Read /workspace/schema/schedule_create.json"
+		} else {
+			kind, title = pb.ToolKind_TOOL_KIND_MCP, "remote_agent/schedule_list"
+		}
+		foundStart, foundEnd := false, false
+		for _, e := range started {
+			if tool := e.GetToolStarted(); tool != nil {
+				foundStart = tool.Kind == kind && tool.Title == title
+			}
+		}
+		for _, e := range ended {
+			if tool := e.GetToolCall(); tool != nil {
+				foundEnd = tool.Kind == kind && tool.Title == title
+			}
+		}
+		if !foundStart || !foundEnd {
+			t.Fatalf("wrong tool semantics: %v %v", started, ended)
+		}
+	}
+	for _, name := range []string{"read_file", "view_file", "list_directory", "grep_search", "find_by_name", "search_web"} {
+		if toolKindFor(name) == pb.ToolKind_TOOL_KIND_FILE_CHANGE {
+			t.Fatalf("read counted as edit: %s", name)
+		}
 	}
 }

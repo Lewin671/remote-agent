@@ -710,13 +710,16 @@ func describeTool(name string, raw json.RawMessage) toolDesc {
 		}
 	case "write_file", "edit_file", "read_file":
 		if path, ok := m["Path"].(string); ok && path != "" {
+			if name == "read_file" {
+				return toolDesc{title: "Read " + unquoteString(path)}
+			}
 			return toolDesc{title: unquoteString(path)}
 		}
 	case "call_mcp_tool":
-		srv, _ := m["server_name"].(string)
-		tl, _ := m["tool_name"].(string)
+		srv, _ := m["ServerName"].(string)
+		tl, _ := m["ToolName"].(string)
 		if srv != "" || tl != "" {
-			return toolDesc{title: fmt.Sprintf("%s/%s", srv, tl)}
+			return toolDesc{title: fmt.Sprintf("%s/%s", unquoteString(srv), unquoteString(tl))}
 		}
 	}
 	return toolDesc{title: name}
@@ -736,7 +739,7 @@ func toolKindFor(name string) pb.ToolKind {
 	switch name {
 	case "run_command":
 		return pb.ToolKind_TOOL_KIND_COMMAND
-	case "write_file", "edit_file", "read_file":
+	case "write_file", "edit_file":
 		return pb.ToolKind_TOOL_KIND_FILE_CHANGE
 	case "call_mcp_tool":
 		return pb.ToolKind_TOOL_KIND_MCP

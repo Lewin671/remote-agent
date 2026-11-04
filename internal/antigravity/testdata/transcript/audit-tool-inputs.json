@@ -1,0 +1,16 @@
+[
+  {
+    "name": "call_mcp_tool",
+    "args": {
+      "Arguments": {},
+      "ServerName": "remote_agent",
+      "ToolName": "schedule_list"
+    }
+  },
+  {
+    "name": "read_file",
+    "args": {
+      "Path": "/workspace/schema/schedule_create.json"
+    }
+  }
+]
