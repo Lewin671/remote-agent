@@ -1139,6 +1139,48 @@ function fixtures(): Record<string, Fixture> {
         },
       ],
     },
+    "s-agy": {
+      machine: "mac",
+      updated: now - 18 * min,
+      info: {
+        title: "梳理状态栏组件",
+        cwd: "/Users/me/Code/web",
+        status: SessionStatus.IDLE,
+        agent: Agent.ANTIGRAVITY,
+        model: "gemini-3.1-pro-high",
+        effort: "high",
+        mode: ApprovalMode.ASK,
+        fullAccessUnavailable: true,
+        contextTokens: 294_000n,
+        contextWindow: 1_048_000n,
+        preview: "状态栏和抽屉入口已合并。",
+      },
+      events: [
+        { case: "userMessage", value: { text: "梳理状态栏组件" } },
+        { case: "agentMessage", value: { text: "状态栏和抽屉入口已合并。" } },
+      ],
+    },
+    "s-agy-full": {
+      machine: "mac",
+      updated: now - 19 * min,
+      info: {
+        title: "批量格式化配置",
+        cwd: "/Users/me/Code/web",
+        status: SessionStatus.IDLE,
+        agent: Agent.ANTIGRAVITY,
+        model: "gemini-3-flash",
+        effort: "medium",
+        mode: ApprovalMode.FULL_ACCESS,
+        modeLocked: true,
+        contextTokens: 120_000n,
+        contextWindow: 1_048_000n,
+        preview: "已完成所有配置文件的格式化。",
+      },
+      events: [
+        { case: "userMessage", value: { text: "批量格式化配置文件" } },
+        { case: "agentMessage", value: { text: "已完成所有配置文件的格式化。" } },
+      ],
+    },
     "s-hist": {
       machine: "mac",
       updated: now - 3 * 60 * min,
@@ -1295,6 +1337,53 @@ const claudeModels = create(ListModelsResponseSchema, {
       slug: "claude-haiku-4-5-20251001",
       displayName: "Haiku 4.5",
       contextWindow: 200_000n,
+      autoUnavailable: true,
+    },
+  ],
+});
+const agyModels = create(ListModelsResponseSchema, {
+  defaultModel: "gemini-3.1-pro-high",
+  models: [
+    {
+      slug: "gemini-3.1-pro-high",
+      displayName: "Gemini 3.1 Pro (High)",
+      efforts: ["low", "medium", "high"],
+      defaultEffort: "high",
+      autoUnavailable: true,
+    },
+    {
+      slug: "gemini-3.1-pro-low",
+      displayName: "Gemini 3.1 Pro (Low)",
+      efforts: ["low", "medium", "high"],
+      defaultEffort: "low",
+      autoUnavailable: true,
+    },
+    {
+      slug: "gemini-3-flash",
+      displayName: "Gemini 3 Flash",
+      efforts: ["low", "medium", "high"],
+      defaultEffort: "high",
+      autoUnavailable: true,
+    },
+    {
+      slug: "claude-sonnet-4-6",
+      displayName: "Claude Sonnet 4.6",
+      efforts: ["low", "medium", "high"],
+      defaultEffort: "high",
+      autoUnavailable: true,
+    },
+    {
+      slug: "claude-opus-4-6-thinking",
+      displayName: "Claude Opus 4.6 (Thinking)",
+      efforts: ["low", "medium", "high"],
+      defaultEffort: "high",
+      autoUnavailable: true,
+    },
+    {
+      slug: "gpt-oss-120b-medium",
+      displayName: "GPT-OSS 120B (Medium)",
+      efforts: ["medium"],
+      defaultEffort: "medium",
       autoUnavailable: true,
     },
   ],
@@ -1615,6 +1704,44 @@ export class DemoRemote extends Remote {
               },
             ],
           },
+          {
+            agent: Agent.ANTIGRAVITY,
+            state: QuotaState.OK,
+            plan: "Google AI Pro",
+            observedMs: BigInt(now - min),
+            windows: [
+              {
+                name: "gemini-5h",
+                usedPercent: 18,
+                windowMinutes: 300n,
+                resetsAtMs: BigInt(now + 222 * min),
+              },
+              {
+                name: "gemini-weekly",
+                usedPercent: 12,
+                windowMinutes: 10080n,
+                resetsAtMs: BigInt(now + 5 * 24 * 60 * min),
+              },
+              {
+                name: "gemini-argon-wtu-weekly",
+                usedPercent: 35,
+                windowMinutes: 10080n,
+                resetsAtMs: BigInt(now + 4 * 24 * 60 * min),
+              },
+              {
+                name: "3p-5h",
+                usedPercent: 40,
+                windowMinutes: 300n,
+                resetsAtMs: BigInt(now + 135 * min),
+              },
+              {
+                name: "3p-weekly",
+                usedPercent: 26,
+                windowMinutes: 10080n,
+                resetsAtMs: BigInt(now + 6 * 24 * 60 * min),
+              },
+            ],
+          },
         ],
         agents: [
           {
@@ -1631,6 +1758,13 @@ export class DemoRemote extends Remote {
             defaultMode: ApprovalMode.ASK,
             defaultModeSource: DefaultModeSource.DAEMON_SETTINGS,
             defaultModeVaries: true,
+          },
+          {
+            agent: Agent.ANTIGRAVITY,
+            version: "0.2.3",
+            verified: true,
+            defaultMode: ApprovalMode.ASK,
+            defaultModeSource: DefaultModeSource.DAEMON_SETTINGS,
           },
         ],
         capabilities: {
@@ -2254,7 +2388,12 @@ export class DemoRemote extends Remote {
         return create(CommandResultSchema, {
           kind: {
             case: "listModels",
-            value: cmd.value.agent === Agent.CLAUDE ? claudeModels : models,
+            value:
+              cmd.value.agent === Agent.CLAUDE
+                ? claudeModels
+                : cmd.value.agent === Agent.ANTIGRAVITY
+                  ? agyModels
+                  : models,
           },
         });
       case "getSettings":
@@ -2374,6 +2513,11 @@ export class DemoRemote extends Remote {
       defaultMode: ApprovalMode.AUTO,
       claude: {
         model: "claude-sonnet-5-5",
+        effort: "high",
+        mode: ApprovalMode.ASK,
+      },
+      antigravity: {
+        model: "gemini-3.1-pro-high",
         effort: "high",
         mode: ApprovalMode.ASK,
       },

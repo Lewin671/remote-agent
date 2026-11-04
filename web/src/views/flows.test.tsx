@@ -2255,6 +2255,7 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   m.meta!.quotas = [
     create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.WAITING }),
     create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "five_hour", usedPercent: 28, resetsAtMs: BigInt(now + 3_600_000), windowMinutes: 300n }] }),
+    create(AgentQuotaSchema, { agent: Agent.ANTIGRAVITY, state: QuotaState.WAITING }),
   ];
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);

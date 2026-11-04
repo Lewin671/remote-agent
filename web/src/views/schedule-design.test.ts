@@ -2,7 +2,7 @@
 import { expect, it } from "vitest";
 const fs = "node:fs";
 const { readFileSync } = (await import(/* @vite-ignore */ fs)) as { readFileSync(path: string, enc: string): string };
-function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v55.html", "utf8"), "text/html"); }
+function design() { return new DOMParser().parseFromString(readFileSync("../docs/design/client-v56.html", "utf8"), "text/html"); }
 it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the wide empty state", () => {
   const doc = design(), chapter = doc.querySelector("#schedules")!;
   expect(chapter.textContent).toContain("最近");
