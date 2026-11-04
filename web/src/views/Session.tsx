@@ -1,4 +1,5 @@
 import { Sheet } from "../ui";
+import { agentInfo } from "../agents";
 import { FileChips, withoutFileLines } from "./Files";
 import { ChevronDown, ChevronLeft } from "../icons";
 import { ScheduleText } from "./ScheduleText";
@@ -659,7 +660,7 @@ export function SessionPage({
               ...(machine?.online && remote.conn === "online"
                 ? [{ label: "重命名", onClick: () => setRenaming(true) }]
                 : []),
-              ...(machine?.online && remote.conn === "online"
+              ...(agentInfo(agent).forks && machine?.online && remote.conn === "online"
                 ? [
                     forking
                       ? {

@@ -852,6 +852,8 @@ describe("switching a new session's machine (v2)", () => {
     expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO, models)).toBe("");
     expect(newConfigIssue(Agent.CODEX, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("");
     expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.ASK, models)).toBe("");
+    const agyModels = [create(ModelInfoSchema, { slug: "gemini-3.1-pro-high", autoUnavailable: true }), create(ModelInfoSchema, { slug: "gemini-3-flash", autoUnavailable: true })];
+    expect(newConfigIssue(Agent.ANTIGRAVITY, "", ApprovalMode.AUTO, agyModels)).toBe("当前账户不支持自动模式，换一种审批模式再开始");
   });
 });
 

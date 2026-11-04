@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { agentInfo } from "./agents";
-import { agentName, agentOf, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modeOf } from "./model";
+import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Sheet, useEscape } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
@@ -99,8 +99,12 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
 
 /** Why a session cannot switch to mode, or "" if it can. */
 export function unavailable(s: SessionView, mode: ApprovalMode, models?: ModelInfo[]): string {
+  if (s.info?.modeLocked) return "本会话以完全放行启动，不能切换审批模式";
   if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "本会话启动时未启用；需要时新建会话选择";
-  if (mode === ApprovalMode.AUTO && autoUnavailable(models, s.info?.model ?? "")) return "当前模型不支持";
+  if (mode === ApprovalMode.AUTO) {
+    if (allAutoUnavailable(models)) return "当前账户不支持自动模式";
+    if (autoUnavailable(models, s.info?.model ?? "")) return "当前模型不支持";
+  }
   return "";
 }
 
@@ -166,7 +170,13 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
           没能切换：{error}
         </Banner>
       )}
-      <div className="hint">{busy ? "正在切换…" : "只改当前会话"}</div>
+      <div className="hint">
+        {busy
+          ? "正在切换…"
+          : s.info?.modeLocked
+            ? "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"
+            : "只改当前会话"}
+      </div>
     </Sheet>
   );
 }
@@ -226,6 +236,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   // Some models have no effort levels at all (Claude Code's haiku).
   const noEffort = !!cur && cur.efforts.length === 0;
   const offered = cur?.efforts.length ? cur.efforts : efforts;
+  const canSwitch = agentInfo(agent).switchesModelInSession;
   return (
     <Sheet onClose={onClose}>
       <h4>会话设置</h4>
@@ -242,50 +253,75 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           </button>
         </div>
       )}
-      <div className="fl">模型</div>
-      {error && (
-        <Banner kind="err" action="重试" onAction={() => setAttempt((a) => a + 1)}>
-          没能读取模型列表
-        </Banner>
-      )}
-      {!models && !error && <div className="hint">读取模型列表…</div>}
-      <div className="list">
-        {shown.map((m) => (
-          <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
-            <div className="mt">
-              {m.displayName || m.slug}
-              {m.efforts.length === 0 ? <small>无推理强度</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
+      {canSwitch ? (
+        <>
+          <div className="fl">模型</div>
+          {error && (
+            <Banner kind="err" action="重试" onAction={() => setAttempt((a) => a + 1)}>
+              没能读取模型列表
+            </Banner>
+          )}
+          {!models && !error && <div className="hint">读取模型列表…</div>}
+          <div className="list">
+            {shown.map((m) => (
+              <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
+                <div className="mt">
+                  {m.displayName || m.slug}
+                  {m.efforts.length === 0 ? <small>无推理强度</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
+                </div>
+                {m === cur && <span className="ck"><Check /></span>}
+              </button>
+            ))}
+            {models && !all && !few && (
+              <button className="mi link-row" onClick={() => setAll(true)}>
+                全部模型<ChevronRight />
+              </button>
+            )}
+          </div>
+          <div className="fl">推理强度</div>
+          {noEffort ? (
+            <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
+          ) : (
+            <div className={"effort-grid" + (locked || !cur ? " dis" : "")}>
+              {offered.map((e) => (
+                <button key={e} className={e === effort ? "on" : ""} aria-pressed={e === effort} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)}>
+                  {e}
+                </button>
+              ))}
             </div>
-            {m === cur && <span className="ck"><Check /></span>}
-          </button>
-        ))}
-        {models && !all && !few && (
-          <button className="mi link-row" onClick={() => setAll(true)}>
-            全部模型<ChevronRight />
-          </button>
-        )}
-      </div>
-      <div className="fl">推理强度</div>
-      {noEffort ? (
-        <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
+          )}
+          {switching && <Banner>正在切换到 {switching}…</Banner>}
+        </>
       ) : (
         <>
-      <div className={"effort-grid" + (locked || !cur ? " dis" : "")}>
-        {offered.map((e) => (
-          <button key={e} className={e === effort ? "on" : ""} aria-pressed={e === effort} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)}>
-            {e}
-          </button>
-        ))}
-      </div>
+          <div className="fl">模型</div>
+          <div className="list">
+            <div className="mi dis" aria-disabled="true">
+              <div className="mt">
+                <b>{cur?.displayName || modelLabel(models?.models, model, agent) || "默认模型"}</b>
+                <div className="md">运行中不能换模型，新建会话时可选</div>
+              </div>
+            </div>
+          </div>
+          <div className="fl">推理强度</div>
+          <div className="list">
+            <div className="mi dis" aria-disabled="true">
+              <div className="mt">
+                <b>{effort || cur?.defaultEffort || "默认"}</b>
+                <div className="md">运行中不能换推理强度</div>
+              </div>
+            </div>
+          </div>
         </>
       )}
-      {switching && <Banner>正在切换到 {switching}…</Banner>}
       {failed && (
         <Banner kind="err" action="知道了" onAction={() => setFailed("")}>
           {failed}
         </Banner>
       )}
-      <div className="hint">{running ? "这一轮在运行，结束后才能切换模型和推理强度" : offline ? "和服务器断线了，连上后才能切换" : "只在空闲时能切换，只改当前会话"}</div>
+      {canSwitch && (
+        <div className="hint">{running ? "这一轮在运行，结束后才能切换模型和推理强度" : offline ? "和服务器断线了，连上后才能切换" : "只在空闲时能切换，只改当前会话"}</div>
+      )}
     </Sheet>
   );
 }

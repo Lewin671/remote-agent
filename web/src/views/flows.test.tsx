@@ -344,6 +344,83 @@ it("offers no clear-and-implement on a Claude Code plan", () => {
   expect(button("清空上下文后执行")).toBeTruthy();
 });
 
+it("shows Antigravity session settings as read-only, locks full-access modes, and hides fork", async () => {
+  const r = demo();
+  const s = r.sessions.get("s-idle")!;
+  s.info = {
+    ...s.info!,
+    agent: Agent.ANTIGRAVITY,
+    model: "gemini-3.1-pro-high",
+    effort: "high",
+    mode: ApprovalMode.ASK,
+    fullAccessUnavailable: true,
+    contextTokens: 294_000n,
+    contextWindow: 1_048_000n,
+  };
+  r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+    if (cmd?.case === "listModels" && cmd.value.agent === Agent.ANTIGRAVITY) {
+      return create(CommandResultSchema, {
+        kind: {
+          case: "listModels",
+          value: {
+            defaultModel: "gemini-3.1-pro-high",
+            models: [
+              { slug: "gemini-3.1-pro-high", displayName: "Gemini 3.1 Pro (High)", efforts: ["low", "medium", "high"], defaultEffort: "high", autoUnavailable: true },
+              { slug: "gemini-3-flash", displayName: "Gemini 3 Flash", efforts: ["low", "medium", "high"], defaultEffort: "high", autoUnavailable: true },
+            ],
+          },
+        },
+      });
+    }
+    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+  };
+  mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
+  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(true), { timeout: 3000 });
+  expect(host.textContent).toContain("当前账户不支持自动模式");
+  expect(button(/^完全放行/)?.disabled).toBe(true);
+  expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
+  expect(button(/^询问/)?.disabled).toBe(false);
+
+  // When started in full access, all four modes are locked.
+  s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS, modeLocked: true, fullAccessUnavailable: false };
+  act(() => root!.render(<ModeSheet remote={r} s={s} onClose={() => undefined} />));
+  for (const label of [/^询问/, /^自动/, /^计划/, /^完全放行/]) {
+    expect(button(label)?.disabled).toBe(true);
+  }
+  expect(host.textContent).toContain("本会话以完全放行启动，不能切换审批模式");
+
+  // Session settings show context & compact, with read-only model and effort.
+  act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
+  await vi.waitFor(() => expect(host.textContent).toContain("Gemini 3.1 Pro (High)"), { timeout: 3000 });
+  expect(host.textContent).toContain("28%");
+  expect(button("压缩")).toBeTruthy();
+  expect(host.textContent).toContain("运行中不能换模型，新建会话时可选");
+  expect(host.textContent).toContain("运行中不能换推理强度");
+  expect(host.querySelector(".effort-grid")).toBeNull();
+
+  // Session ⋯ menu omits 分叉会话 for Antigravity, and plan dock shows Antigravity's note.
+  act(() => root!.render(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />));
+  await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
+  expect([...host.querySelectorAll(".menu .mi")].some((b) => /分叉/.test(b.textContent ?? ""))).toBe(false);
+  const plan = create(PlanProposedSchema, { text: "1. do it" });
+  act(() =>
+    root!.render(
+      <Dock
+        remote={r}
+        sid={s.id}
+        items={[{ kind: "plan", id: "plan", plan }]}
+        agent={Agent.ANTIGRAVITY}
+        drafting={false}
+        onExpand={() => undefined}
+        onDetail={() => undefined}
+        onPlan={() => undefined}
+        onTerminal={() => undefined}
+      />,
+    ),
+  );
+  expect(host.textContent).toContain("批准后回到默认模式（询问）");
+});
+
 it("never sends one project's unknown start from another project's box", async () => {
   const r = demo();
   const sent: { cwd?: string; prompt?: string; requestId?: string }[] = [];

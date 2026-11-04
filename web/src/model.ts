@@ -681,14 +681,20 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
     : undefined;
 }
 
+/** Whether every model in the list lacks auto approval mode (e.g. Antigravity). */
+export function allAutoUnavailable(models: ModelInfo[] | undefined): boolean {
+  return !!models && models.length > 0 && models.every((m) => m.autoUnavailable);
+}
+
 /** Whether the auto approval mode is not offered with a model: the CLI's
- * own list says so (Claude Code's Haiku 4.5 and older take none). A model
- * the list does not know, or a list not read yet, gives no answer. */
+ * own list says so (Claude Code's Haiku 4.5 and older, or all Antigravity
+ * models). A model the list does not know, or a list not read yet, gives
+ * no answer. */
 export function autoUnavailable(
   models: ModelInfo[] | undefined,
   model: string,
 ): boolean {
-  return !!findModel(models, model)?.autoUnavailable;
+  return allAutoUnavailable(models) || !!findModel(models, model)?.autoUnavailable;
 }
 
 export function contextPercent(s: SessionLike): number | undefined {
@@ -839,7 +845,9 @@ export function newConfigIssue(
     mode === ApprovalMode.AUTO &&
     autoUnavailable(models, model)
   )
-    return "这个模型没有自动模式，换一种审批模式再开始";
+    return allAutoUnavailable(models)
+      ? "当前账户不支持自动模式，换一种审批模式再开始"
+      : "这个模型没有自动模式，换一种审批模式再开始";
   return "";
 }
 
