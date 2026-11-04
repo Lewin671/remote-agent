@@ -19,7 +19,7 @@ extension SessionView {
 /// The CLIs a machine can start; Codex while it lists none.
 public func machineAgents(_ m: MachineView?) -> [PBAgent] {
     let listed = (m?.meta?.agents ?? []).map { effectiveAgent($0.agent) }.distinct()
-    return listed.isEmpty ? [.codex] : listed
+    return listed.isEmpty ? [defaultAgent] : listed
 }
 
 // --- sessions ---
@@ -88,8 +88,7 @@ public func statusOf(_ s: SessionView, machine: MachineView?) -> Status {
 /// cursor on "No, exit", so Enter alone ends the session
 /// (claude-code-notes.md §1); Codex's needs none. Same text as the web.
 public func popupHint(agent: PBAgent, detail: String) -> String {
-    effectiveAgent(agent) == .claude && detail == "trust folder"
-        ? "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎" : ""
+    detail == "trust folder" ? (agentInfo(agent).trustFolderHint ?? "") : ""
 }
 
 public func needsAttention(_ s: SessionView, machine: MachineView?) -> Bool { statusOf(s, machine: machine).tone == .wait }
@@ -341,7 +340,7 @@ public func modelIs(_ id: String, _ slug: String) -> Bool {
 /// default for that CLI (architecture §13), or nil when the daemon has none
 /// and the CLI's own configuration decides.
 public func defaultMode(_ settings: PBDaemonSettings, agent: PBAgent) -> Mode? {
-    modeOf(effectiveAgent(agent) == .claude ? settings.claude.mode : settings.defaultMode)
+    modeOf(defaultsFor(settings, agent: agent).mode)
 }
 
 /// Context window use in percent, or nil when unknown.

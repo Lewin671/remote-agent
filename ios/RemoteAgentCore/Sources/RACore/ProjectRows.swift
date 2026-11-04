@@ -306,7 +306,7 @@ public func createSessionCommand(_ c: NewConfig, prompt: String, mode: PBApprova
         $0.model = c.model
         $0.effort = c.effort
         $0.mode = mode
-        $0.standardContext = c.agent == .claude && c.standardContext
+        $0.standardContext = agentInfo(c.agent).standardContextOption && c.standardContext
         $0.imageIds = imageIds
         $0.fileIds = fileIds
     }
@@ -397,7 +397,7 @@ public func settingsModeRed(_ c: NewConfig, default d: DefaultMode) -> Bool {
 
 /// The model 默认 stands for: the daemon's default for that CLI, else the list's.
 public func defaultModelName(_ c: NewConfig, models: PBListModelsResponse, settings: PBDaemonSettings?) -> String {
-    ((c.agent == .claude ? settings?.claude.model : settings?.defaultModel) ?? "").ifEmpty(models.defaultModel)
+    defaultsFor(settings, agent: c.agent).model.ifEmpty(models.defaultModel)
 }
 
 /// `c` with the model `m` chosen: its default effort, and auto given up where the model has none.
@@ -412,7 +412,7 @@ public func pickModel(_ c: NewConfig, _ m: PBModelInfo) -> NewConfig {
 /// The efforts to choose from and the one that is in force, or nil when the model shown has none.
 public func effortChoices(_ c: NewConfig, models: PBListModelsResponse, settings: PBDaemonSettings?) -> (efforts: [String], selected: String)? {
     guard let m = projectModel(c, models: models, settings: settings), !m.efforts.isEmpty else { return nil }
-    let own = c.model.isEmpty ? ((c.agent == .claude ? settings?.claude.effort : settings?.defaultEffort) ?? "").ifEmpty(m.defaultEffort) : m.defaultEffort
+    let own = c.model.isEmpty ? defaultsFor(settings, agent: c.agent).effort.ifEmpty(m.defaultEffort) : m.defaultEffort
     return (m.efforts, c.effort.ifEmpty(own))
 }
 

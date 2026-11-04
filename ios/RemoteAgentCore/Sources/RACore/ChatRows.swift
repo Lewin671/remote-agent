@@ -658,7 +658,7 @@ public struct ChatProjection: Sendable {
         machine: String,
         cwd: String = "",
         home: String = "",
-        agent: PBAgent = .codex,
+        agent: PBAgent = defaultAgent,
         now: Int64 = nowMs(),
         zone: TimeZone = .current,
         textOf: (String) -> String? = { _ in nil },

@@ -135,33 +135,16 @@ public func quotaGroups(_ m: MachineView, now: Int64) -> [QuotaGroup] {
     return out
 }
 
-private let claudePrefix = Rx("\\Aclaude_", ignoreCase: true)
-private let planWordBreak = Rx("[_\(Jre.s)]+")
-
 /// A plan as people call it: Pro Lite for prolite, Max for claude_max.
 public func planName(_ plan: String) -> String {
-    switch plan.lowercased() {
-    case "prolite": return "Pro Lite"
-    case "claude_max": return "Max"
-    case "claude_pro": return "Pro"
-    case "claude_team": return "Team"
-    case "claude_enterprise": return "Enterprise"
-    default:
-        return planWordBreak.split(claudePrefix.replace(plan, with: "")).filter { !$0.isEmpty }.map(capitalized).joined(separator: " ")
-    }
-}
-
-/// Kotlin's replaceFirstChar(Char::uppercase): the first UTF-16 unit in upper case, an astral character left as it is.
-private func capitalized(_ word: String) -> String {
-    guard let first = word.unicodeScalars.first, first.value <= 0xFFFF else { return word }
-    return first.properties.uppercaseMapping + String(word.unicodeScalars.dropFirst())
+    normalizePlanName(plan)
 }
 
 /// The windows the account has, the CLI's usual ones first. One it does not
 /// report is left out: a plan with only a weekly window is not shown a second
 /// 7 天 that never arrives.
 private func completeWindows(agent: PBAgent, _ windows: [PBQuotaWindow]) -> [PBQuotaWindow] {
-    let expected = agent == .claude ? ["five_hour", "seven_day"] : ["primary", "secondary"]
+    let expected = agentInfo(agent).quotaWindows
     var byName = [String: PBQuotaWindow]()
     for w in windows { byName[w.name] = w }
     return expected.compactMap { byName[$0] } + windows.filter { !expected.contains($0.name) }
@@ -186,7 +169,7 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
     } else {
         which = ""
     }
-    let title = agentName(agent) + (q.plan.isEmpty ? "" : " · \(planName(q.plan))") + which
+    let title = agentName(agent) + (q.plan.isEmpty ? "" : " · \(agentInfo(agent).planName(q.plan))") + which
     let rows = status == .unsupported || status == .waiting || q.windows.isEmpty
         ? [] : completeWindows(agent: agent, q.windows).map { quotaRow($0, now: now, lastRecord: lastRecord) }
     let received = q.observedMs > 0 ? (status == .failed ? "最近成功收到 " : "最近收到 ") + clockText(q.observedMs, now: now) : ""

@@ -33,7 +33,7 @@ public struct ScheduledFold: Sendable {
     private var previous = PagedList<PBEvent>()
     private var zone: TimeZone?
     private var cal = Calendar(identifier: .gregorian)
-    private var reducer = EventReducer(agent: .codex)
+    private var reducer = EventReducer(agent: defaultAgent)
     /// Runs a notification or an end other than a silent completion names, in what was read.
     private var unsafeRuns = Set<String>()
     /// Runs of rounds that joined a streak: one becoming unsafe changes what came before.

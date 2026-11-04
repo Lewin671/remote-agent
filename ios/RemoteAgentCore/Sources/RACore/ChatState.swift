@@ -167,7 +167,7 @@ public struct Derived: Equatable, Sendable {
 }
 
 /// Pending approvals and questions, input states and the running turn.
-public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = .codex) -> Derived {
+public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = defaultAgent) -> Derived {
     var r = EventReducer(agent: agent)
     r.append(events)
     return r.snapshot()
@@ -191,12 +191,12 @@ struct EventReducer: Sendable {
     // A plan was proposed since entering plan mode: leaving it is the plan's
     // answer, however given, not a mode switch made in the terminal.
     private var planned = false
-    private let claude: Bool
+    private let reconcilesUnclaimedInput: Bool
     // Starts a turn ended without a result, by call ID, for a result that comes later.
     private var unfinishedById = [String: RunningTool]()
 
     init(agent: PBAgent) {
-        claude = effectiveAgent(agent) == .claude
+        reconcilesUnclaimedInput = agentInfo(agent).reconcilesUnclaimedInput
     }
 
     mutating func append(_ events: some Sequence<PBEvent>) {
@@ -266,7 +266,7 @@ struct EventReducer: Sendable {
                 // follows, claiming only a message after its enqueue. A
                 // message confirmed after it was reported unconfirmed is
                 // the one recorded right after this state.
-                if !late, claude, let u = unclaimed, e.seq >= u, e.seq - u <= 3,
+                if !late, reconcilesUnclaimedInput, let u = unclaimed, e.seq >= u, e.seq - u <= 3,
                     queuedAt[st.requestID].map({ u > $0 }) ?? true {
                     d.typedLocally.remove(u)
                     unclaimed = nil
@@ -394,12 +394,12 @@ struct EventReducer: Sendable {
 public struct EventProjection: Sendable {
     private var previous = [PBEvent]()
     private var agent: PBAgent?
-    private var reducer = EventReducer(agent: .codex)
+    private var reducer = EventReducer(agent: defaultAgent)
     private var result = Derived()
 
     public init() {}
 
-    public mutating func update(_ events: some RandomAccessCollection<PBEvent>, agent: PBAgent = .codex) -> Derived {
+    public mutating func update(_ events: some RandomAccessCollection<PBEvent>, agent: PBAgent = defaultAgent) -> Derived {
         // An event is a handle on shared storage, so comparing one with the
         // copy held from last time is a pointer comparison.
         let append = self.agent == agent && events.count >= previous.count && zip(events, previous).allSatisfy { $0 == $1 }
@@ -444,7 +444,7 @@ public func clock(_ ms: Int64) -> String {
 
 /// A tool's short name: Claude Code's own tool name (Bash, Read), else what kind of tool it is.
 public func toolLabel(kind: PBToolKind, itemType: String, agent: PBAgent) -> String {
-    if effectiveAgent(agent) == .claude && !itemType.isEmpty { return itemType }
+    if agentInfo(agent).toolLabelFromItemType && !itemType.isEmpty { return itemType }
     switch kind {
     case .command: return "命令"
     case .fileChange: return "编辑"

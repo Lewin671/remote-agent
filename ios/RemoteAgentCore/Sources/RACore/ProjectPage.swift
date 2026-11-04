@@ -20,7 +20,7 @@ public struct NewConfig: Equatable, Sendable {
     public var standardContext: Bool
 
     public init(
-        machineId: String, cwd: String, agent: PBAgent = .codex, model: String = "", effort: String = "", mode: Mode? = nil,
+        machineId: String, cwd: String, agent: PBAgent = defaultAgent, model: String = "", effort: String = "", mode: Mode? = nil,
         standardContext: Bool = false
     ) {
         self.machineId = machineId
@@ -39,7 +39,7 @@ public struct NewConfig: Equatable, Sendable {
         s.model = model
         s.effort = effort
         s.mode = mode?.proto ?? .unspecified
-        s.standardContext = agent == .claude && standardContext
+        s.standardContext = agentInfo(agent).standardContextOption && standardContext
         return s
     }
 }
@@ -394,7 +394,7 @@ public func switchMachine(_ c: NewConfig, machineId: String, agents: [PBAgent]) 
     out.model = ""
     out.effort = ""
     out.mode = nil
-    out.agent = agents.contains(c.agent) ? c.agent : agents.first ?? .codex
+    out.agent = agents.contains(c.agent) ? c.agent : agents.first ?? defaultAgent
     return out
 }
 
@@ -408,7 +408,7 @@ public func configLines(_ state: RemoteState, _ c: NewConfig, default d: Default
 
 /// The model a new session would run: the one chosen, else the daemon's default for that CLI, else the list's.
 public func projectModel(_ c: NewConfig, models: PBListModelsResponse, settings: PBDaemonSettings? = nil) -> PBModelInfo? {
-    let defaultModel = (c.agent == .claude ? settings?.claude.model : settings?.defaultModel) ?? ""
+    let defaultModel = defaultsFor(settings, agent: c.agent).model
     let id = c.model.ifEmpty(defaultModel.ifEmpty(models.defaultModel))
     return findModel(models.models, id: id) { $0.slug }
 }

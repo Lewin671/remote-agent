@@ -72,7 +72,7 @@ public enum PrefsOp: Equatable, Sendable {
 }
 
 /// The CLIs a project keeps a set of settings for.
-public let settingsAgents: [PBAgent] = [.codex, .claude]
+public let settingsAgents: [PBAgent] = AGENTS.map(\.agent)
 
 /// `op` applied to a project's stored settings, or to none.
 public func applySettings(stored: PBProjectSettings?, op: PrefsOp.SetSettings, now: Int64) -> PBProjectSettings {
