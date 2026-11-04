@@ -2,7 +2,7 @@
 
 # remote-agent
 
-**在手机上用 Claude Code 和 Codex：原生 CLI，跑在你自己电脑的 tmux 里。**
+**在手机上用 Claude Code、Codex 和 Antigravity：原生 CLI，跑在你自己电脑的 tmux 里。**
 
 开源的 AI 编程 agent 远程控制工具。在网页、Android 或 iOS 上聊天、审批权限、看实时终端、发文件、设定时任务。端到端加密，可以自己部署。
 
@@ -22,24 +22,24 @@
 
 ## remote-agent 是什么？
 
-remote-agent 让你在手机或浏览器上操作自己 Mac 或 Linux 电脑上的 [Claude Code](https://github.com/anthropics/claude-code) 和 [OpenAI Codex CLI](https://github.com/openai/codex)。电脑上的一个小 daemon 在 tmux 里启动 agent，和你在终端里手动启动完全一样；网页、Android 和 iOS 客户端经一台只转发密文的中继连到它。电脑终端和手机操作的是同一个会话：在工位上开个任务，路上在手机上批准它的下一条命令，回到电脑前接着用键盘干。
+remote-agent 让你在手机或浏览器上操作自己 Mac 或 Linux 电脑上的 [Claude Code](https://github.com/anthropics/claude-code)、[OpenAI Codex CLI](https://github.com/openai/codex) 和 Antigravity（`agy`）。电脑上的一个小 daemon 在 tmux 里启动 agent，和你在终端里手动启动完全一样；网页、Android 和 iOS 客户端经一台只转发密文的中继连到它。电脑终端和手机操作的是同一个会话：在工位上开个任务，路上在手机上批准它的下一条命令，回到电脑前接着用键盘干。
 
 ## 在手机上能做什么
 
 | 功能 | 说明 |
 |---|---|
-| **跟进和指挥** | 实时看回复、推理摘要、工具调用和结果；追问、打断、切换模型和推理强度、压缩上下文。 |
+| **跟进和指挥** | 实时看回复、推理摘要、工具调用和结果；追问、打断、在支持的 CLI 中切换模型和推理强度、压缩上下文。 |
 | **审批** | 权限请求和 agent 的提问以卡片出现：点允许或拒绝，或者选一个答案。Android 上可以直接在通知里审批。 |
 | **实时终端** | 就是 tmux 里那块屏幕，自动适配手机宽度，带特殊按键栏。 |
 | **图片和文件** | 发截图、照片和任意文件（单个最大 100 MiB，每条消息最多 6 个）；agent 粘贴、查看或生成的图片也能看到。 |
-| **新建会话** | 在任意一台电脑的任意项目里开 Claude Code 或 Codex；会话按项目分组。 |
+| **新建会话** | 在任意一台电脑的任意项目里开 Claude Code、Codex 或 Antigravity；会话按项目分组。 |
 | **定时运行** | 指定时间、固定间隔或按日历时间运行一段提示词，新开对话或接着某个对话；跑完收到结果摘要。 |
 | **通知** | 一轮结束、有审批在等、定时运行完成时提醒：网页推送和 Android 推送。 |
 | **给 agent 的工具** | 托管会话里的 agent 能用 MCP 工具通知你、管理自己建的定时任务。 |
 
 ## 工作原理
 
-1. **你的电脑**：`remote-agent` 是一个 Go 单二进制，在 tmux 里运行 Claude Code 或 Codex，读取它们的 transcript 和 hook，所有内容离开电脑前先加密。它主动连到中继，不用开端口，也不用 VPN 或公网 IP。
+1. **你的电脑**：`remote-agent` 是一个 Go 单二进制，在 tmux 里运行 Claude Code、Codex 或 Antigravity，读取它们的 transcript 和 hook，所有内容离开电脑前先加密。它主动连到中继，不用开端口，也不用 VPN 或公网 IP。
 2. **中继**：`remote-agent-server` 负责设备鉴权，存储和转发密文，从不持有密钥。可以自己部署，也可以先用公共中继试试。
 3. **客户端**：网页（可安装的 PWA）、Android App 和 iOS App（预览）在本机解密。新设备扫二维码或输入配对码加入，双方先核对四个图案。
 
@@ -65,7 +65,7 @@ remote-agent codex                                               # 或：remote-
 
 这个会话现在手机上也有了。中继 `ra.remote-agent.top` 和网页 `remote-agent.top` 由维护者提供，用于试用：同样端到端加密，但你要信任维护者提供的这份网页。每个账户最多 8 台设备、2 台电脑、200 个会话，不保证可用性。
 
-**也可以让编程 agent 替你做第 2、3 步**，把下面这段贴进 Claude Code 或 Codex：
+**也可以让编程 agent 替你做第 2、3 步**，把下面这段贴进 Claude Code、Codex 或 Antigravity：
 
 ```text
 按 https://github.com/Lewin671/remote-agent/blob/main/README.zh-CN.md#在公共中继上试用
@@ -110,7 +110,7 @@ remote-agent codex                                          # 或：remote-agent
 
 | | remote-agent | 手机 SSH + tmux | Claude Code Remote Control |
 |---|---|---|---|
-| 支持的 agent | Claude Code 和 Codex | 任意 CLI | 只有 Claude Code |
+| 支持的 agent | Claude Code、Codex 和 Antigravity | 任意 CLI | 只有 Claude Code |
 | 手机上的形态 | 聊天、审批卡片、推送通知，外加实时终端 | 原始终端 | 在 Claude App 或 claude.ai 上聊天 |
 | 网络配置 | 不用：各端都主动连中继 | 电脑要能被 SSH 连到 | 不用：主动连 Anthropic |
 | 会话经过哪里 | 你自己的或公共中继，中继只看到密文 | 直连 | Anthropic 的服务器 |
@@ -119,7 +119,7 @@ remote-agent codex                                          # 或：remote-agent
 
 ## 常见问题
 
-**能在 iPhone 或 Android 手机上用 Claude Code、Codex 吗？**
+**能在 iPhone 或 Android 手机上用 Claude Code、Codex 或 Antigravity 吗？**
 能。Android 装[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 里的 APK，之后它会自己更新。iPhone 上把网页添加到主屏幕（这样能收网页推送），或者从源码构建 iOS 预览版。
 
 **中继能看到我的代码和提示词吗？**
@@ -143,6 +143,7 @@ agent 在 tmux 里继续运行，客户端重连后补上进度。电脑睡眠�
 ## 现状与限制
 
 - **尚未到 1.0。** 各组件一起升级，升级前先读发布说明；存储的数据可能需要重建。
+- **Antigravity 在新建时选择模型和推理强度。** 当前会话操作差异见[项目边界](docs/scope.md#mvp-之后要做)。
 - **客户端界面是简体中文。**
 - **iOS 是预览版：** 用 Xcode 从源码构建；还没有 App Store 或 TestFlight 版本，也没有推送，只在模拟器上测过。
 - **自部署中继上 Android 没有推送：** 发布的 App 只能经维护者的中继收推送；请改用网页的 Web Push。

@@ -2,7 +2,7 @@
 
 # remote-agent
 
-**Use Claude Code and Codex from your phone: the real CLI, running in tmux on your own computer.**
+**Use Claude Code, Codex and Antigravity from your phone: the real CLI, running in tmux on your own computer.**
 
 Open-source remote control for AI coding agents. Chat, approve permissions, watch the live terminal, send files and schedule runs from the web, Android or iOS. End-to-end encrypted and self-hostable.
 
@@ -22,24 +22,24 @@ Open-source remote control for AI coding agents. Chat, approve permissions, watc
 
 ## What is remote-agent?
 
-remote-agent lets you drive [Claude Code](https://github.com/anthropics/claude-code) and [OpenAI Codex CLI](https://github.com/openai/codex) on your Mac or Linux computer from a phone or a browser. A small daemon starts each agent in tmux, exactly as you would in a terminal; the web, Android and iOS clients reach it through a relay that only forwards ciphertext. Your terminal and your phone drive the same session: start a task at your desk, approve its next command from the train, and pick it up again at the keyboard.
+remote-agent lets you drive [Claude Code](https://github.com/anthropics/claude-code), [OpenAI Codex CLI](https://github.com/openai/codex) and Antigravity (`agy`) on your Mac or Linux computer from a phone or a browser. A small daemon starts each agent in tmux, exactly as you would in a terminal; the web, Android and iOS clients reach it through a relay that only forwards ciphertext. Your terminal and your phone drive the same session: start a task at your desk, approve its next command from the train, and pick it up again at the keyboard.
 
 ## What you can do from your phone
 
 | Feature | What you get |
 |---|---|
-| **Follow and steer** | Replies, reasoning summaries, tool calls and their results as they stream. Send follow-ups, interrupt, switch model and reasoning effort, compact the context. |
+| **Follow and steer** | Replies, reasoning summaries, tool calls and their results as they stream. Send follow-ups, interrupt, switch model and reasoning effort where supported, compact the context. |
 | **Approve** | Permission requests and the agent's questions arrive as cards: tap Allow or Deny, or pick an answer. On Android, approve straight from the notification. |
 | **Live terminal** | The actual tmux screen, fitted to your phone, with a bar of special keys. |
 | **Images and files** | Send screenshots, photos and any file (up to 100 MiB, six per message); see the images the agent pastes, views or generates. |
-| **Start sessions** | Open Claude Code or Codex in any project on any of your computers; sessions are grouped by project. |
+| **Start sessions** | Open Claude Code, Codex or Antigravity in any project on any of your computers; sessions are grouped by project. |
 | **Schedule runs** | Run a prompt at a set time, on an interval or on a calendar schedule, in a new conversation or by resuming one; get a summary when it finishes. |
 | **Get notified** | When a turn ends, an approval is waiting or a scheduled run finishes: Web Push and Android push. |
 | **Give the agent tools** | Agents in managed sessions get MCP tools to notify you and to manage their own scheduled tasks. |
 
 ## How it works
 
-1. **Your computer**: `remote-agent`, a single Go binary, runs Claude Code or Codex in tmux, follows their transcripts and hooks, and encrypts everything before it leaves the machine. It connects out to the relay, so there are no ports to open and no VPN or public IP to set up.
+1. **Your computer**: `remote-agent`, a single Go binary, runs Claude Code, Codex or Antigravity in tmux, follows their transcripts and hooks, and encrypts everything before it leaves the machine. It connects out to the relay, so there are no ports to open and no VPN or public IP to set up.
 2. **The relay**: `remote-agent-server` authenticates devices and stores and forwards ciphertext. It never holds a key. Host your own, or try the public one.
 3. **Your clients**: the web client (an installable PWA), the Android app and the iOS app (preview) decrypt locally. A device joins by scanning a QR code or entering a pairing code, after both sides compare four symbols.
 
@@ -65,7 +65,7 @@ remote-agent codex                                               # or: remote-ag
 
 The session is now on your phone too. The relay `ra.remote-agent.top` and the page `remote-agent.top` are run by the maintainer for trying it out: still end-to-end encrypted, but you trust the maintainer's copy of the web page. Up to 8 devices, 2 computers and 200 sessions per account, no uptime promise.
 
-**Or let your coding agent do steps 2 and 3.** Paste this into Claude Code or Codex:
+**Or let your coding agent do steps 2 and 3.** Paste this into Claude Code, Codex or Antigravity:
 
 ```text
 Install remote-agent on this computer by following
@@ -111,7 +111,7 @@ Create the account in a client (Web, Android or iOS preview; it asks for the rel
 
 | | remote-agent | SSH + tmux from a phone | Claude Code Remote Control |
 |---|---|---|---|
-| Agents | Claude Code and Codex | Any CLI | Claude Code only |
+| Agents | Claude Code, Codex and Antigravity | Any CLI | Claude Code only |
 | On the phone | Chat, approval cards, push notifications, plus the live terminal | A raw terminal | Chat in the Claude app or on claude.ai |
 | Network setup | None: everything connects out to the relay | Your computer must be reachable over SSH | None: connects out to Anthropic |
 | What carries the session | Your relay or the public one, which sees only ciphertext | A direct connection | Anthropic's servers |
@@ -120,7 +120,7 @@ Create the account in a client (Web, Android or iOS preview; it asks for the rel
 
 ## FAQ
 
-**Can I use Claude Code or Codex on an iPhone or an Android phone?**
+**Can I use Claude Code, Codex or Antigravity on an iPhone or an Android phone?**
 Yes. On Android, install the APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest); it updates itself. On iPhone, add the web client to the home screen (Web Push works there), or build the iOS preview from source.
 
 **Can the relay read my code or prompts?**
@@ -133,7 +133,7 @@ It drives the CLI you are already signed in to, so usage counts against that CLI
 No. The daemon and the clients all connect out to the relay over HTTPS and WebSocket.
 
 **Can I keep using the terminal on my computer?**
-Yes. The session you start with `remote-agent claude` or `remote-agent codex`, or attach to with `remote-agent attach <id>`, is the same tmux session the phone sees. Input from every device goes in, in order of arrival.
+Yes. The session you start with `remote-agent claude`, `remote-agent codex` or `remote-agent agy`, or attach to with `remote-agent attach <id>`, is the same tmux session the phone sees. Input from every device goes in, in order of arrival.
 
 **What happens when I close the app or lose signal?**
 The agent keeps running in tmux, and the client catches up when it reconnects. If the computer sleeps, the agent pauses with it; if the daemon restarts, it reattaches to the sessions still running.
@@ -144,6 +144,7 @@ No. The daemon runs on macOS and Linux.
 ## Status and limitations
 
 - **Pre-1.0.** Upgrade all components together and read the release notes first; stored data may have to be recreated.
+- **Antigravity chooses its model and effort at launch.** See [CLI differences](docs/scope.md#mvp-之后要做) for its current session controls.
 - **The client UI is in Simplified Chinese.**
 - **iOS is a preview:** build it from source with Xcode; no App Store or TestFlight build and no push yet, tested only in the simulator.
 - **No Android push on a self-hosted relay:** the published app gets pushes only through the maintainer's relay; use the web client's Web Push instead.

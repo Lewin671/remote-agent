@@ -12,7 +12,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 |---|---|---|---|
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误返回调用方，存储故障与持久解析诊断仅本机可查询 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 自己的模型目录，模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
-| daemon（Antigravity） | adapter 与协议 13 的 daemon 接入完成，真实 agy 1.5.0 加密端到端与 doctor 通过；三端界面仍按 [client-v56](design/client-v56.html#cli) 独立推进（[architecture §19](architecture.md#19-接入-antigravity)） | [真实验收](acceptance-notes.md#antigravity-daemon-与原生-cli2026-11-04)、[CLI 实测](antigravity-notes.md)；任务分支本地提交，未推送/合入 `main` | 三端界面及产品 UI 验收 |
+| Antigravity（agy） | daemon 与协议 13、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；真实图片上传和源会话退出后的 MCP 定时派发仍需补验收 |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩；一台中继上的多个账户、开放注册和账户管理（[architecture](architecture.md#一台中继上的多个账户)） | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)）；多账户：自动测试，加一次旧库迁移的本地演练 | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收；多账户在公共中继上由别人走一遍「试用」流程 |
 | 网页 | 当前界面稿 [client-v56](design/client-v56.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；定时任务见下行，其余 v9 以后的改动主要过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
@@ -23,14 +23,14 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon 更新 | 本机手动更新、显式开启的 macOS/Linux 定时更新、兼容性门槛、独立恢复副本、失败回滚 | 自动测试、真实子进程替换与恢复、macOS 隔离 LaunchAgent 触发（[记录](acceptance-notes.md#daemon-更新)） | Linux user timer 的实际触发；生产机器首次安装与开启 |
 | 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令；网页、Android、iOS 的独立入口、新建/编辑、运行历史、对话定时条与静默轮折叠、加密离线快照和修订订阅；任务级完成通知与接管说明已实现；网页按运行显示未读，打开详情或对应对话已读，界面按 client-v54 | 三端本地真实 Claude Code 链路：网页与 Android 为界面操作，iOS 为 DEBUG 动作；自动检查与各端证据边界见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)和 v52 改版记录 | 真机界面及推送送达、iPad、多台真实电脑、实际睡眠/DST 和客户端 Codex 路线，见「待确认 › 定时任务」 |
 
-当前 worktree 协议为 12，定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)；尚未发布。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
+当前协议为 13，daemon、server、网页和 App 需要一起升级；不同协议版本互相拒绝。定时任务的升级搭配见 [architecture §18](architecture.md#协议版本与升级)。v0.44.0 已包含管理端签名链、独立租约、持久安全操作、当前 checkpoint、到期暂停上传及移除保留档案。任一 Client（网页、Android、iOS）可成为唯一管理端，Machine 不能。任意客户端管理的 core、生命周期和网页界面已在独立工作树实现，三端完整有向交接矩阵、真实 CLI 产品链路和真机通知仍待联合验收，不能视为全能力发布完成。已有协议 10 账户不需重建；旧协议 9→10 的 Android 重建/离线固定路线独立保留。设计见 [architecture §9](architecture.md#9-账户设备和密钥)，边界见 [scope](scope.md#设备加入与移除)，已安装版本以 Release 为准。
 
 ## 下一步
 
 按顺序做；第一项是当前的主要工作。
 
 1. **文件附件的三端联合验收**。按 [session-files.md](session-files.md) 和「待确认 › 文件附件」，在独立测试环境补真机、云文件提供器、大文件内存峰值及断连恢复。验收标准：逐项记录环境、直接界面操作与调试触发的区别、真实 CLI 结果及资源占用；修复确认的问题，未覆盖的流程继续明确标为未验证。
-2. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。通过后再统一发布任意客户端管理功能，协议仍为 10。
+2. **任意客户端管理的联合验收**。按 [architecture §9](architecture.md#9-账户设备和密钥) 和 [AGENTS.md](../AGENTS.md)，在独立 `RA_DEV_DIR` 从无账户环境开始，用网页新建账户、加入真实电脑并经 server → daemon → tmux 操作真实 CLI。验收三端六条有向交接、设备移除/档案重接/删除、创建及恢复断点、72 小时租约与 48 小时否决；网页手机宽/宽屏及亮暗主题、iOS/iPad 与通知/锁屏分别核实，未验证部分保留限制。
 3. **真机验收**。在自己的 Android 手机和 iPhone（PWA）上走一遍，清单在「待确认 › 真机」。验收标准：清单里每一项有结论，问题修掉或记进本文
 4. **Codex 0.159.2 的命令结果**。按新格式解析退出码或失败，再把 0.159.2 列为已验证版本。验收标准：失败的命令在客户端显示 ✕ 和退出码，`remote-agent doctor` 通过
 5. **定时任务的联合验收**。三端功能已在整合分支实现；按「待确认 › 定时任务」补真机、跨电脑、睡眠/DST 与 Codex 路线。验收标准：各项有环境、操作方式和结果，修复已确认问题；尚未覆盖的项目继续明确标为未验证。设计见 [architecture §18](architecture.md#18-定时任务)，现有证据见[整合记录](acceptance-notes.md#定时任务三端整合2026-10-24)
@@ -142,6 +142,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | C 接入 Claude Code | daemon 抽出每个 CLI 的接口，Claude Code 和 Codex 同等支持 | 2026-09-29 |
 | W 网页改版 | 网页按 v1 界面稿重做，手机和宽屏 | 2026-09-29 |
 | 客户端 v2 | 统一输入区、steer 和 queue、项目设置、设备目录和来源、账户额度、会话里的图片 | 2026-09-30 起陆续完成，之后的界面改动随产品版本发布 |
-| 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令及网页/Android/iOS 客户端 | 2026-10-24 整合分支已实现，尚未发布；验收范围见当前状态 |
+| 定时任务 | daemon 调度、本地 CLI/MCP、加密机器指令及网页/Android/iOS 客户端 | 2026-10-24 三端整合；验收范围见当前状态 |
+| 接入 Antigravity | daemon、协议 13 与三端多 CLI 界面整合，网页直接操作真实 agy 通过 | 2026-11-04；剩余验证见当前状态 |
 
 网页少见的未知审批结果重试仍有限制：如果原提示已从电脑的新鲜快照消失，重试会显示不可操作，不能重新取得缓存答案；不会重新发起该操作。后续补齐与原请求绑定的缓存结果查询。

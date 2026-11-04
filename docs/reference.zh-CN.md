@@ -22,12 +22,12 @@
 
 | 命令 | 用途 |
 |---|---|
-| `remote-agent codex` / `remote-agent claude` | 在当前目录启动会话并进入 |
+| `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | 在当前目录启动会话并进入 |
 | `remote-agent ls` | 列出会话；ID 可以只写能区分的前几位 |
 | `remote-agent attach <id>` | 进入一个正在运行的会话 |
 | `remote-agent send <id> <内容>` | 不进入会话，直接发消息 |
 | `remote-agent events <id> -f` | 持续查看会话事件 |
-| `remote-agent doctor` | 检查已安装的 CLI 是否符合 remote-agent 的预期；升级 Codex 或 Claude Code 后运行一次 |
+| `remote-agent doctor` | 检查已安装的 CLI 是否符合 remote-agent 的预期；升级 Codex、Claude Code 或 Antigravity 后运行一次 |
 | `remote-agent account join --server URL --code CODE` | 用当前管理端显示的配对码加入账户 |
 | `remote-agent account secret` | 打印旧格式历史的离线解密材料；不能授权新设备，也不能恢复管理权 |
 
@@ -87,7 +87,7 @@ Android App 始终用同一把密钥签名，证书的 SHA-256 指纹是：
 | 路径 | 内容 |
 |---|---|
 | `cmd/remote-agent`、`cmd/remote-agent-server` | daemon／命令行和中继的入口（Go） |
-| `internal/` | Go 代码：daemon、中继服务、加密、Codex 和 Claude Code 的接入、更新器 |
+| `internal/` | Go 代码：daemon、中继服务、加密、Codex、Claude Code 和 Antigravity 的接入、更新器 |
 | `proto/`、`gen/` | 协议定义（Protocol Buffers、Connect）和生成的代码 |
 | `web/` | 网页客户端（TypeScript、React、Vite） |
 | `android/`、`ios/` | 原生客户端（Kotlin + Jetpack Compose；Swift + SwiftUI） |

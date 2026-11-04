@@ -22,12 +22,12 @@ Sessions started from a client and sessions started in a terminal are the same k
 
 | Command | Purpose |
 |---|---|
-| `remote-agent codex` / `remote-agent claude` | Start a session in the current directory and attach to it |
+| `remote-agent codex` / `remote-agent claude` / `remote-agent agy` | Start a session in the current directory and attach to it |
 | `remote-agent ls` | List sessions; IDs may be shortened to any unique prefix |
 | `remote-agent attach <id>` | Attach to a running session |
 | `remote-agent send <id> <text>` | Send a message without attaching |
 | `remote-agent events <id> -f` | Follow a session's events |
-| `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex or Claude Code |
+| `remote-agent doctor` | Check that the installed CLIs behave as remote-agent expects; run it after upgrading Codex, Claude Code or Antigravity |
 | `remote-agent account join --server URL --code CODE` | Join an account with the code shown by the current authority |
 | `remote-agent account secret` | Print offline decryption material for legacy history; it cannot enroll a device or recover management |
 
@@ -87,7 +87,7 @@ The Android app is always signed with the same key. Its certificate's SHA-256 fi
 | Path | Contents |
 |---|---|
 | `cmd/remote-agent`, `cmd/remote-agent-server` | Entry points of the daemon/CLI and the relay (Go) |
-| `internal/` | Go packages: daemon, relay server, encryption, Codex and Claude Code integration, updater |
+| `internal/` | Go packages: daemon, relay server, encryption, Codex, Claude Code and Antigravity integration, updater |
 | `proto/`, `gen/` | Protocol definitions (Protocol Buffers, Connect) and generated code |
 | `web/` | Web client (TypeScript, React, Vite) |
 | `android/`, `ios/` | Native clients (Kotlin with Jetpack Compose; Swift with SwiftUI) |
