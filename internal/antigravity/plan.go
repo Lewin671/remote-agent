@@ -71,29 +71,37 @@ func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
 	for _, line := range strings.Split(panel, "\n") {
 		trim := strings.TrimSpace(line)
 		if strings.HasPrefix(trim, "› ") || strings.HasPrefix(trim, "> ") {
-			return strings.Contains(trim, filepath.Base(facts.Path)) && strings.Contains(trim, "approve reject")
+			name, _ := reviewRow(trim)
+			return name == filepath.Base(facts.Path) && strings.Contains(trim, "approve reject")
 		}
 	}
 	return false
 }
+
+func reviewRow(line string) (name, status string) {
+	line = strings.TrimSpace(line)
+	line = strings.TrimPrefix(strings.TrimPrefix(line, "› "), "> ")
+	status = "open"
+	for _, prefix := range []struct{ mark, state string }{{"□ new ", "new"}, {"✓ approved ", "approved"}, {"✗ rejected ", "rejected"}} {
+		if strings.HasPrefix(line, prefix.mark) {
+			line = strings.TrimPrefix(line, prefix.mark)
+			status = prefix.state
+			break
+		}
+	}
+	name, _, _ = strings.Cut(line, "   ")
+	name = strings.TrimSpace(name)
+	if strings.HasSuffix(name, ".md") {
+		return name, status
+	}
+	return "", ""
+}
+
 func reviewRows(styled string) map[string]string {
 	panel := planPanel(styled)
 	rows := map[string]string{}
 	for _, line := range strings.Split(panel, "\n") {
-		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "› "))
-		if strings.HasPrefix(line, "Keyboard:") || strings.HasPrefix(line, "Submit") || line == "" {
-			continue
-		}
-		status := "open"
-		for _, prefix := range []struct{ mark, state string }{{"□ new ", "new"}, {"✓ approved ", "approved"}, {"✗ rejected ", "rejected"}} {
-			if strings.HasPrefix(line, prefix.mark) {
-				status = prefix.state
-				line = strings.TrimPrefix(line, prefix.mark)
-				break
-			}
-		}
-		name := strings.TrimSpace(strings.Split(line, "   ")[0])
-		if strings.HasSuffix(name, ".md") {
+		if name, status := reviewRow(line); name != "" {
 			rows[name] = status
 		}
 	}

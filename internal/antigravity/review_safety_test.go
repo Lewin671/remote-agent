@@ -56,6 +56,28 @@ func TestApprovalRequiresConsumptionProof(t *testing.T) {
 		t.Fatalf("delivery without consumption %q %v", term.written, err)
 	}
 }
+
+func TestPlanAnswerRequiresExactSelectedArtifactName(t *testing.T) {
+	for _, selected := range []string{"old-plan.md", "nested/plan.md", "plan.md.bak"} {
+		t.Run(selected, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "plan.md")
+			content := []byte("Current plan")
+			mustWrite(t, path, content)
+			sum := sha256.Sum256(content)
+			facts := &agent.PlanFacts{Path: path, Root: root, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{"plan.md": "new", selected: "approved"}}
+			screen := "Action required (1 left)\n› ✓ approved " + selected + "   open approve reject\n  □ new plan.md\nKeyboard: y/n Approve/reject esc Done\n"
+			term := &fakeTerm{screen: screen}
+			a := New("agy", root)
+			if a.PlanScreen(screen, facts) {
+				t.Fatal("another selected artifact matched the pending plan")
+			}
+			if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING, facts, nil); err == nil || len(term.written) != 0 {
+				t.Fatalf("sent %q to another artifact: %v", term.written, err)
+			}
+		})
+	}
+}
 func TestModeUsesBothPolicyAndCycle(t *testing.T) {
 	a := New("agy", t.TempDir())
 	for _, tc := range []struct {
