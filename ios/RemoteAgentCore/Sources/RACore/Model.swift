@@ -308,15 +308,14 @@ public func modeLabel(_ s: SessionView) -> ModeLabel? {
         .map { ModeLabel(text: $0.text, mode: $0) }
 }
 
-/// Whether every model in the list lacks auto approval mode (e.g. Antigravity).
+/// Whether the daemon marks every reported model as lacking auto approval mode.
 public func allAutoUnavailable(_ models: [PBModelInfo]?) -> Bool {
     guard let models, !models.isEmpty else { return false }
     return models.allSatisfy { $0.autoUnavailable }
 }
 
-/// Whether a session's model comes without the auto mode: the CLI's own list
-/// says so (Claude Code's Haiku 4.5 and older, or all Antigravity models).
-/// A model the list does not know, or a list not read, gives no answer.
+/// Whether the daemon reports auto approval as unavailable for a model.
+/// An unknown model or a list not read yet gives no answer.
 public func autoUnavailable(_ models: [PBModelInfo]?, model: String) -> Bool {
     if allAutoUnavailable(models) { return true }
     guard let models, !model.isEmpty else { return false }

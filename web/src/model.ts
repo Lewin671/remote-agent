@@ -681,15 +681,13 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
     : undefined;
 }
 
-/** Whether every model in the list lacks auto approval mode (e.g. Antigravity). */
+/** Whether the daemon marks every reported model as lacking auto approval mode. */
 export function allAutoUnavailable(models: ModelInfo[] | undefined): boolean {
   return !!models && models.length > 0 && models.every((m) => m.autoUnavailable);
 }
 
-/** Whether the auto approval mode is not offered with a model: the CLI's
- * own list says so (Claude Code's Haiku 4.5 and older, or all Antigravity
- * models). A model the list does not know, or a list not read yet, gives
- * no answer. */
+/** Whether the daemon reports auto approval as unavailable for a model.
+ * An unknown model or a list not read yet gives no answer. */
 export function autoUnavailable(
   models: ModelInfo[] | undefined,
   model: string,
