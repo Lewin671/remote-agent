@@ -826,30 +826,33 @@ Antigravity CLI（`agy`）走和 Codex、Claude Code 同一条路：原生 TUI �
 - **daemon**：按固定顺序持有各 CLI 的 adapter，按 kind 或 ID 查找。`AGENT_UNSPECIFIED` 只在一处当作 Codex（Claude Code 接入前的会话），其余认不出的值一律报错，不回退到任何 CLI。CLI 之间的行为差异（文件引用写法、审批摘要、轮次结束时撤回审批、提前取消后恢复输入、会话环境变量、标准上下文窗口等）都写在各自的 adapter 里，daemon 的通用代码不判断是哪个 CLI。daemon 设置里各 CLI 的默认值（Codex 在顶层、Claude Code 在 `claude`、Antigravity 在 `antigravity`）只经一组读写函数访问
 - **客户端**：每端一个 CLI 描述表（网页 `web/src/agents.ts`、Android `core/Agents.kt`、iOS `RACore/Agents.swift`），写名称、ID、额度窗口和它们的叫法、模型名写法、工具标签写法、各项能力和默认值的读写，其余代码只问描述表。认不出的值显示为「未知 CLI」，不提供任何 CLI 专属操作，也不当作 Codex
 - **能力差异的画法**（[design-system](design-system.md)）：CLI 根本没有的功能不显示；某个会话或模型暂时用不了的保留、置灰，并用一行说明原因
-- **加一种 CLI 要做的事**：一个 adapter 包、daemon 注册一行、每端描述表一行、协议里的 `Agent` 枚举加一个值（协议版本随之加一）
+- **加一种 CLI 要做的事**：增加 adapter 包、daemon 注册项、各客户端描述表项、协议 `Agent` 枚举、该 CLI 的 `DaemonSettings` 字段及默认值读写入口，更新命令与服务脚本里的 CLI 列表并补齐校验、升级和验收。涉及协议字段时提升协议版本；「注册一行」只描述注册表本身，不代表全部接入工作
 
 ### Antigravity 这一侧
 
 - **启动**：`agy --add-dir <会话目录>/agy --settings <会话目录>/agy-settings.json [--conversation <id>] [--model <模型> --effort <档位>] [--mode <模式>]`，由 PTY 代理启动，来源判定和起点环境同第 6 节。`--add-dir` 指向的目录只放 remote-agent 自己的 `.agents/hooks.json` 和 `.agents/mcp_config.json`，和用户自己的 hook、MCP 一起生效，不改用户项目和 `~/.gemini` 下的任何文件（notes §1、§3）。settings 文件只对这次启动生效、agy 不保存，里面写：`trustedWorkspaces`（会话目录和附加目录，免得信任框挡住启动，也不往用户的信任列表里加）、`statusLine`（见下文「额度」）、`toolPermission`（见「审批模式」）
-- **会话 ID**：agy 不能事先指定 ID。第一条消息提交后 `SessionStart` hook 带来 `conversationId` 和 transcript 路径，记作会话的 CLI 会话 ID；在此之前会话没有 transcript，也就没有要读的内容。恢复用 `--conversation <id>`，追加写同一份 transcript
-- **解析 transcript**：读 `brain/<id>/.system_generated/logs/transcript.jsonl`，逐步追加、已写的行不改；某一行带 `truncated_fields` 时按行号读 `transcript_full.jsonl` 的同一行取全文。`USER_INPUT` 是用户消息（去掉 `<USER_REQUEST>`、`<ADDITIONAL_METADATA>` 外壳），`PLANNER_RESPONSE` 的 `thinking` 记为推理、正文记为回复、`tool_calls` 记为工具开始，随后的结果步骤配成工具调用；`CHECKPOINT` 记为「上下文已压缩」；图片按 `media` 里的本地路径读取。用量取每步的 token 字段，上下文窗口取状态栏输入的 `context_window`
+- **会话 ID**：agy 不能事先指定 ID。第一条消息提交后 `SessionStart` hook 带来 `conversationId` 和 transcript 路径，记作会话的 CLI 会话 ID；在此之前没有可读 transcript。重启 CLI 时使用 `--conversation <id>`，必须先从 SessionStart 或状态栏核对实际 ID，才能派发等待的消息；不匹配就显示失败并暂停输入，不能把 CLI 回退的新会话当作恢复成功。daemon 重新连接仍在运行的 CLI 与重启 CLI 分开处理：前者先重新观察实际 ID，发现用户在终端 `/fork` 或 `/resume` 切换了对话时，撤回旧审批和提问、暂停未发送消息、记录切换，再改读新对话。每个对话分别保存已读位置，切回时不重复导入历史
+- **解析 transcript**：读 `brain/<id>/.system_generated/logs/transcript.jsonl`，逐步追加、已写的行不改；某一行带 `truncated_fields` 时由 adapter 用自己的 full-log 文件位置和行号读 `transcript_full.jsonl` 的对应全文；全文还没追加完就保留该行重试，不跳过或提前结算。`USER_INPUT` 是用户消息（去掉 `<USER_REQUEST>`、`<ADDITIONAL_METADATA>` 外壳），`PLANNER_RESPONSE` 的 `thinking` 记为推理、正文记为回复、`tool_calls` 记为工具开始，随后的结果步骤配成工具调用；`CHECKPOINT` 记为「上下文已压缩」；图片按 `media` 里的本地路径读取。用量取每步的 token 字段，上下文窗口取状态栏输入的 `context_window`
 - **轮次边界**：`Stop` hook 的 `terminationReason` 和 transcript 共同确定一轮结束；中断按屏幕回到空闲输入框补记（具体判据按 notes 实测写在 adapter 里，和 Claude Code 的提前中断一样要求稳定画面和 transcript 复查）
-- **输入**：排队、暂存本地按键、bracketed paste 同其他 CLI。清空输入框用 Ctrl-E 再 Ctrl-U（notes §5）。运行中提交的消息 agy 自己排队到下一轮。提交确认以 `history.jsonl` 里出现这段文本为准（第一条消息那行没有 `conversationId`）
-- **审批**：`PreToolUse` hook 只上报、立即返回不表态（notes §3：在 `request-review` 下 hook 的 `allow` 也跳不过原生框，`deny` 才生效；阻塞 hook 会让终端看不到审批框，违背「电脑和手机操作同一个会话」）。原生审批框出现时，daemon 用最近一次上报的、和框里命令或路径对得上的调用生成审批卡；对不上就只提示「终端里有弹窗」，不猜。客户端「允许」= 按 `1`（只允许这一次），「不允许」= 按 `4`（No, cancel，模型会收到拒绝），附带的说明作为下一条消息发出。超时按 `4`。终端里先答了（框消失、这次调用有了结果或这一轮结束）就把卡片记为「已在终端处理」。框里「以后不再问」的两项只能在终端里选，和第 7 节的规定一致
+- **输入**：排队、暂存本地按键、bracketed paste 同其他 CLI。单行清理用 Ctrl-E 再 Ctrl-U，多行逐行清理并复核为空（notes §12）。运行中提交的消息 agy 自己排队到下一轮。首条消息不能凭全局 history 的同文匹配确认：先由本会话 SessionStart 绑定 ID，再以该对话 transcript 的 USER_INPUT 为准；后续 history 记录也必须带正确的 conversationId。输入写入前保存其对话归属和不确定状态，daemon 重启后不能凭另一对话的同文记录确认，更不能自动重发
+- **审批**：`PreToolUse` hook 只上报、立即返回不表态（notes §3：在 `request-review` 下 hook 的 `allow` 也跳不过原生框，`deny` 才生效；阻塞 hook 会让终端看不到审批框，违背「电脑和手机操作同一个会话」）。原生审批框出现时，daemon 按会话保存 conversationId、step index、工具名和完整参数组成的待处理调用；只有当前完整菜单与其中一个调用唯一对应时才生成可操作审批卡。重复命令、同路径编辑、用户 hook 改参或恢复证据不足时不猜：新弹窗提示去终端处理，已有卡片撤回远程操作并说明原因。每次回答（含超时拒绝）都先持有终端控制权、刷新 transcript 和画面，再核对全部候选和菜单；按键后确认弹窗已被消费才报告交付，结果不明就撤回操作，不能补发按键。客户端「允许」= 按 `1`（只允许这一次），「不允许」= 按当前原生菜单明确标出的拒绝项（命令为 `4. No, cancel`，文件创建或访问为 `2. No, deny`，模型会收到拒绝），附带的说明作为下一条消息发出。超时同样按当前菜单的拒绝项。终端里先答了（框消失、这次调用有了结果或这一轮结束）就把卡片记为「已在终端处理」。框里「以后不再问」的两项只能在终端里选，和第 7 节的规定一致
 - **审批模式**：
-  - 询问、自动、计划对应 agy 的 Default、Auto、Plan 三种循环模式（Shift+Tab），新建时用 `--mode`，运行中用 Shift+Tab 一格一格走并核对；当前模式以状态栏输入的 `cycle_mode` 为准（缺省即 Default），终端里切的照实记一条。accept edits 这类没有对应的照实显示
-  - 询问模式下启动时把 `toolPermission` 设为 `request-review`，让需要审批的操作弹框；完全放行对应启动时的 `toolPermission: always-proceed`。这两者只能在启动时定，所以普通会话不能切到完全放行（`full_access_unavailable`），完全放行的会话也切不回其他三种（`mode_locked`，见「协议」）；客户端置灰并写明原因。不用 `--dangerously-skip-permissions`
-  - 自动模式在部分账户上不可用（agy 启动时警告 `--mode auto is not available for this account`）；daemon 看到这个警告就把这台电脑上 Antigravity 的模型都标为 `auto_unavailable`
-  - 跟随 CLI 设置时，daemon 读 `~/.gemini/antigravity-cli/settings.json` 的 `toolPermission` 报告默认模式：`always-proceed` 为完全放行，`request-review`、`strict` 为询问，其他为未知
+  - 模式由持久化的 `toolPermission` 和最新 `cycle_mode` 共同决定：`request-review + Default/Auto/Plan` 分别为询问、自动、计划；`always-proceed + Default` 为完全放行。其余组合（包括 `always-proceed + Plan`）、自定义值和未知值显示 UNSPECIFIED，保留原始说明。定时任务同样比较完整组合，未知不能授权更宽的目标。
+  - 托管启动显式传入并保存权限：询问、自动、计划选 `request-review`，完全放行选 `always-proceed`；终端启动没有 remote-agent 默认设置时先读取 CLI 的有效配置并固定到这次会话。配置缺失的新托管会话采用明确的 request-review，恢复时不能重新套用后来变化的全局默认值。
+  - remote-agent 不在运行中改写 `toolPermission`：普通会话不能远程切到完全放行（`full_access_unavailable`），以 always-proceed 启动的会话锁住远程模式切换（`mode_locked`）。这是 remote-agent 的策略，不是声称 agy 不能改变该值；`/settings`、`/permissions` 是否会改写全局设置仍按 notes 的证据等级，不自动尝试，也不用 `--dangerously-skip-permissions`。
+  - Shift+Tab 每一格都由新鲜的状态栏 `cycle_mode` 确认；缺失、过期或后台工作状态不明时拒绝。按第 16 节的安全规则，经过更宽模式的路径只能在当前轮、后台任务和子 agent 都不能继续执行时操作；当前实现对全部路径采取这一空闲限制。request-review 的实际循环顺序见 notes §12。
+  - 启动时 Auto 警告不能证明运行中 Auto 不可用，不据此标记模型 `auto_unavailable`。启动请求 Auto 而 CLI 实际落在 Default 时，按实际回报显示询问。
 - **模型和推理强度**：模型列表来自 `agy models`（ID 带 `-low`/`-medium`/`-high` 后缀，按基础 ID 合并成一行、档位列为可选推理强度），新建时传 `--model <基础 ID> --effort <档位>`。**会话中不换模型和推理强度**：agy 的 `/model` 会改写用户的全局设置（notes §6），daemon 对 Antigravity 会话的切换请求返回不支持，客户端在会话设置里置灰并说明「运行中不能换模型，新建会话时可选」
 - **模型提问**：`ask_question` 由 `PreToolUse` hook 上报为提问卡片；回答按屏幕上的编号：单选按数字即提交，多选按数字切换勾选再回车。自由输入（Other）不远程代答，提示去终端
-- **计划**：Plan 模式下 agy 写出待审阅的计划文件并提示审阅，记为 `PlanProposed`。批准按审阅界面的 `y`，批准后 agy 自己回到 Default 模式（客户端注明）；继续规划按 `n`，附带的意见作为下一条消息发出；没有「清空上下文后执行」
+- **计划**：成功写出带 RequestFeedback 的工件后，PlanProposed 绑定该工件的具体路径、调用身份和内容修订摘要；回答前核对当前文件修订、选中的工件和原生 approve/reject 菜单。空列表、多份无法唯一定位的待审计划、展示后修改或本地已答都不能复用旧审批。批准按 `y`，继续规划按 `n`，确认原生界面消费后才持久记录 PlanAnswered；拒绝的反馈是其后单独提交的普通 Send，不能先发或与拒绝键混为一次操作。CLI 自动生成的 `[Approved]`、`[Rejected]` USER_INPUT 保持 system 来源，不算解除定时上下文的人类输入；明确排队的同文人类消息仍按自己的来源处理。没有「清空上下文后执行」
 - **压缩**：空闲时 `/compact`，以 transcript 出现 `CHECKPOINT` 为完成
 - **分叉**：agy 的分叉是会话里的 `/fork`，它把当前进程切到新对话，而同一个对话只能有一个进程打开，做不到「原会话不动、另开一个」，所以 Antigravity 会话暂不提供分叉（返回不支持，客户端不显示）
 - **定时任务**：托管会话专用的 MCP 写在附加目录的 `.agents/mcp_config.json`，环境变量里带会话标识，和第 18 节其他 CLI 的做法一致
-- **额度**：状态栏和 Claude Code 一样包一层：settings 里的 `statusLine` 设成 `"$RA_EXE" statusline agy`，把输入转给 daemon，再用同样的输入运行用户原来的状态栏命令，输出原样交回，终端里看到的不变；用户没有状态栏就只输出 agy 默认的内容。输入里的 `quota` 按桶给出 5 小时和 7 天窗口（`gemini-5h`、`gemini-weekly`、`gemini-argon-wtu-weekly`、`3p-5h`、`3p-weekly`，以实际收到的为准），原名放进 `QuotaWindow.name`，客户端描述表负责叫法（Gemini、Gemini 4 Argon、第三方模型）。账户按 `email` 算短指纹区分，邮箱本身不离开电脑。第一条回复之前没有 `quota`，显示「暂未获取额度」；用 API key 登录时没有订阅额度
+- **额度**：daemon 只把状态栏输入交给报告会话自己的 adapter，由它规范化额度、上下文和模式；缓存按 CLI 加账户指纹分开，一个 CLI 换账户不能删除另一个 CLI 的记录。状态栏和 Claude Code 一样包一层：settings 里的 `statusLine` 设成 `"$RA_EXE" statusline agy`，把输入转给 daemon，再用同样的输入运行用户原来的状态栏命令，输出原样交回，终端里看到的不变；用户没有状态栏就只输出 agy 默认的内容。输入里的 `quota` 按桶给出 5 小时和 7 天窗口（`gemini-5h`、`gemini-weekly`、`gemini-argon-wtu-weekly`、`3p-5h`、`3p-weekly`，以实际收到的为准），原名放进 `QuotaWindow.name`，客户端描述表负责叫法（Gemini、Gemini 4 Argon、第三方模型）。账户按 `email` 算短指纹区分，邮箱本身不离开电脑。没有 `quota` 时显示「暂未获取额度」（1.5.0 可能在首条 prompt 前就报来，见 notes §12）；用 API key 登录时没有订阅额度
 - **环境**：代理等变量和其他 CLI 一样来自 `~/.remote-agent/agent.env`；客户端开的会话经过用户的登录 shell，能用到用户自己包装过的 `agy`
 
 ### 协议
+
+原生 hook payload、状态栏格式、transcript 与全文读取游标、原生菜单和按键确认都留在 adapter；本地 hook RPC 传入原始 payload，daemon 负责仲裁、持久化、交付和加密，不按某个 CLI 的字段先行解码。
 
 协议版本加一：`Agent` 枚举加 `AGENT_ANTIGRAVITY`；`DaemonSettings` 加 `antigravity` 一组默认值；会话信息加 `mode_locked`（这个会话的审批模式不能再切换，客户端把四种都置灰）。其余沿用已有字段：`full_access_unavailable`、`ModelInfo.auto_unavailable`、`MachineMeta.agents` 和 `quotas`。

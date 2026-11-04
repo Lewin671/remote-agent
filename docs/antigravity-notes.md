@@ -1,6 +1,6 @@
 # Antigravity CLI 实测记录
 
-本文记录 remote-agent 接入 Antigravity CLI（`agy`）所依据的实测结果。写法与 [claude-code-notes.md](claude-code-notes.md) 和 [codex-notes.md](codex-notes.md) 一致：只写 Antigravity CLI 实际怎么表现；remote-agent 据此的设计见 [architecture.md](architecture.md) 第 7、16 节，还没测的见 [plan.md](plan.md) 的「待确认」。
+本文记录 remote-agent 接入 Antigravity CLI（`agy`）所依据的实测结果。写法与 [claude-code-notes.md](claude-code-notes.md) 和 [codex-notes.md](codex-notes.md) 一致：只写 Antigravity CLI 实际怎么表现；remote-agent 据此的设计见 [architecture.md](architecture.md) 第 19 节，还没测的见 [plan.md](plan.md) 的「待确认」。
 
 没有特别标注的条目都是实测结果，推断或没测过的会在句中标「推测」「未验证」。升级 Antigravity CLI 后，涉及的条目要重新验证。所有事实均有对应的原始实测证据记录文件保存在证据目录 `evidence-A/` 中。
 
@@ -325,8 +325,8 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 | 原生文件审批 | 实测捕捉 | 包含 `Allow creation of this file?`，选项为 `1. Yes, allow creation`、`2. No, deny creation` |
 | 提问（单选） | `ask-question-single.txt` | 横线上方显示 `? <问题文本>`，下方为数字选项列表（如 `1. Apple`、`2. Banana`） |
 | 提问（多选） | `ask-question-multi.txt` | 包含复选框 `[ ]` 或 `[x]`，底部显示 `Select: Space/Number · Submit: Enter · Cancel: Esc` |
-| 工件就绪通知 | `artifact-review-notice.txt` | 底部显示 `1 artifact · /artifact to review` 及快捷键 `Ctrl-R` |
-| 工件全屏审查 | `artifact-review-screen.txt` | 全屏工件审查界面，底部显示操作栏 `Artifacts › ... open / approve / reject` |
+| 生成工件中的画面 | `artifact-review-notice.txt` | 样本实际仍为 `Loading...`，不是就绪通知；通知的文字证据见 §4.2 |
+| 工件列表 | `artifact-review-screen.txt` | 样本实际显示 `Artifacts / No artifacts` 和 `esc Dismiss`，是空工件列表，不能作为计划待批准的证据 |
 | 运行打断状态 | `interrupted.txt` | 包含横线提示行：`Interrupted · What should Antigravity CLI do instead?` |
 | 消息排队指示 | `queued-message.txt` | 输入框上方显示 `1 queued message`，提示在忙碌时有待处理输入 |
 | 工作区信任弹窗 | `trust-dialog.txt` | 居中显示 `Quick safety check: Is this a project you created or one you trust?`，光标停在 `> Yes, I trust this folder` |
@@ -447,7 +447,7 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
   3. **`gemini-argon-wtu-weekly`**：Gemini 4 Argon 专用的周 Workload Token Unit (WTU) 预算；
   4. **`3p-5h`**：第三方模型（Claude Opus 5.5、Claude Sonnet 5.5、GPT-OSS 120b）的 5 小时滑动配额；
   5. **`3p-weekly`**：第三方模型的自然周累计配额。
-  每个桶均提供 `remaining_fraction`（剩余比例浮点数）、`reset_time`（UTC 重置时间戳）与 `reset_in_seconds`（剩余秒数）。
+  每个桶提供 `remaining_fraction`（剩余比例浮点数）、`reset_time`（RFC3339 格式的 UTC 字符串，如 `2026-11-03T21:00:07Z`）与 `reset_in_seconds`（剩余秒数）。`reset_time` 不是整数秒时间戳。
 
 ## 7. 配额与状态栏（StatusLine）
 
@@ -471,7 +471,7 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 
 - **StatusLine 输入 JSON 全量规格（实测字段列表）**：
   - `agent_state`: 当前状态（如 `"idle"`）。
-  - `context_window`: 包含 `current_tokens`、`max_tokens`（如 1048576）、`used_fraction`。
+  - `context_window`: 原始 JSON 的字段为 `context_window_size`、`total_input_tokens`、`total_output_tokens`、`used_percentage`、`remaining_percentage`、`current_usage`；`current_usage` 在还没调用模型时为 `null`。
   - `conversation_id`: 会话 UUID。
   - `cwd` / `workspace`: 当前工作区路径。
   - `cycle_mode`: 当前 Shift+Tab 轮转模式（`null`、`"accept-edits"`、`"auto"`、`"plan"`）。
@@ -545,3 +545,16 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 | **可用模型范围** | `agy models` 严格限定 13 个模型（4 个家族各 low/medium/high，以及 gpt-oss-120b-medium） |
 | **运行时改模副作用** | TUI 中执行 `/model` 会永久改写全局 `settings.json` 的 `"model"`；需由启动参数 `--model` 显式控制 |
 | **上下文压缩处理** | `/compact` 在 transcript 尾部追加 `CHECKPOINT` 记录，保留完整 Markdown 摘要，历史记录不删除 |
+
+
+## 12. 1.5.0 启动与输入补测（2026-11-04）
+
+以下是 macOS、tmux 独立 socket、临时工作区中的直接 TUI 观察；本节启动、模式和草稿实验没有提交模型请求，未据此宣称完整工具交互验收通过。
+
+- `agy --version` 在 1.5.0 只输出 `1.5.0`，没有 `Antigravity CLI` 前缀。
+- 首条 prompt 之前，状态栏在登录信息拉取完成后已经能带 `quota`，`conversation_id` 仍为空。因此没有额度不等于 API key 登录，也不能保证额度一定要等第一条回复才出现。各桶的 `reset_time` 是 RFC3339 字符串，和前述原始 1.4.12 状态栏快照一致。
+- `--mode plan` 的空输入框占位文字实测为 `Plan mode: research & plan only (shift+tab to cycle)`；Accept-edits 为 `Accept-edits mode: file edits auto-approved (shift+tab to cycle)`。占位文字使用 SGR 90（灰色），并非 SGR dim。去掉颜色时，相同的文字和用户手写的草稿无法仅凭截屏区分。最小原始样本见 `testdata/screen/mode-1.5.0-*.txt`。
+- 真正的 bracketed paste（tmux `paste-buffer -p`）将 `line one\nline two` 留在同一个未提交的多行输入框，续行缩进两个空格；样本见 `testdata/screen/multiline-1.5.0-draft.txt`。旧的 `multiline-draft.txt` 含字面量 `^[[200~` 和已提交的第一行，只能证明那次粘贴转义失败，不能作为正确 bracketed paste 的证据。
+- Ctrl-E Ctrl-U 只清除光标所在的行。多行草稿要逐行清除，用 Backspace 合并上一行后再重复；每次都可以捕获输入框确认，不能把一次按键成功当作整框已空。
+- 在显式 `toolPermission: request-review` 的 1.5.0 隔离会话中，连续 Shift+Tab 的状态栏事件按 `Default → Accept-edits → Auto → Plan → Default` 出现；每格都读到了对应回报。启动时的 Auto 警告与交互循环能到达 Auto 并不矛盾，不能由警告推断运行中不可选。
+- 原始 Hook 证据中的 `transcriptPath` 指向 `transcript_full.jsonl`。PreToolUse 的 `stepIdx` 对应工具结果 `GENERIC` 的 `step_index`，不是前一个 `PLANNER_RESPONSE` 的索引；transcript 的参数值可能是编码后的 JSON 字符串，hook 对应值则是原生字符串、数字或对象。按索引和规范化后的参数可以核对同一个调用。
