@@ -16,8 +16,11 @@ class QuotaTest {
         "m", online, 0,
         MachineMeta.newBuilder().addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).addAllQuotas(q.toList()).build(),
     )
-    private fun w(name: String, pct: Double?, resetIn: Long = 3_600_000) =
-        QuotaWindow.newBuilder().setName(name).setResetsAtMs(now + resetIn).apply { if (pct != null) usedPercent = pct }.build()
+    private fun w(name: String, pct: Double?, resetIn: Long = 3_600_000, minutes: Long = 0L, baseNow: Long = now) =
+        QuotaWindow.newBuilder().setName(name).setResetsAtMs(baseNow + resetIn).apply {
+            if (pct != null) setUsedPercent(pct)
+            if (minutes > 0) setWindowMinutes(minutes)
+        }.build()
 
     @Test
     fun timesUseBeijingWhereverTheClientIs() {
@@ -82,7 +85,7 @@ class QuotaTest {
         assertTrue(g.lastRecord)
         assertEquals("已用 28%", g.rows[0].used)
         assertEquals(QuotaTone.STALE, g.rows[0].tone)
-        assertEquals("5 小时 已用 28%（上次记录）", quotaLine(g))
+        assertEquals("已用 28% · 5 小时（上次记录）", quotaLine(g))
         assertTrue(g.received.startsWith("最近成功收到"))
         val ok = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 28.0)).build()
         assertEquals(QuotaTone.STALE, quotaGroups(machine(false, ok), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0].tone)
@@ -121,4 +124,42 @@ class QuotaTest {
         assertEquals("Team Plus", planName("Team Plus"))
     }
 
+    @Test
+    fun groupsAntigravityQuotaWindowsByModelFamily() {
+        val observedMs = java.time.Instant.parse("2026-10-02T01:41:00Z").toEpochMilli()
+        val now = observedMs + 10_000
+        val windows = listOf(
+            w("gemini-5h", 20.0, 3600_000, 300, baseNow = now),
+            w("gemini-weekly", 10.0, 86400_000, 10080, baseNow = now),
+            w("gemini-argon-wtu-weekly", 15.0, 86400_000, 10080, baseNow = now),
+            w("3p-5h", 40.0, 7200_000, 300, baseNow = now),
+            w("3p-weekly", 30.0, 86400_000, 10080, baseNow = now),
+            w("custom-bucket", 5.0, 86400_000, 60, baseNow = now),
+        )
+        val q = AgentQuota.newBuilder()
+            .setAgent(Agent.AGENT_ANTIGRAVITY)
+            .setState(QuotaState.QUOTA_STATE_OK)
+            .setPlan("Google AI Pro")
+            .setObservedMs(observedMs)
+            .addAllWindows(windows)
+            .build()
+        val m = MachineView(
+            "m", true, 0,
+            MachineMeta.newBuilder()
+                .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY))
+                .addQuotas(q)
+                .build(),
+        )
+        val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_ANTIGRAVITY }
+        assertEquals("Antigravity · Google AI Pro", g.title)
+        assertEquals("最近收到 9:41", g.received)
+        assertEquals(3, g.sections.size)
+        assertEquals("Antigravity · Google AI Pro · Gemini", g.sections[0].title)
+        assertEquals(listOf("Gemini · 5 小时", "Gemini · 7 天", "Gemini 4 Argon · 7 天"), g.sections[0].rows.map { it.label })
+        assertEquals("第三方模型（Claude、GPT-OSS）", g.sections[1].title)
+        assertEquals(listOf("第三方模型 · 5 小时", "第三方模型 · 7 天"), g.sections[1].rows.map { it.label })
+        assertEquals("custom-bucket", g.sections[2].title)
+        assertEquals(listOf("custom-bucket"), g.sections[2].rows.map { it.label })
+        assertEquals("已用 40% · 5 小时", quotaLine(g))
+    }
 }

@@ -593,14 +593,20 @@ fun modeLabel(s: SessionView): ModeLabel? {
     }
 }
 
+/** Whether every model in the list lacks auto approval mode (e.g. Antigravity). */
+fun allAutoUnavailable(models: List<io.github.lewin671.remoteagent.proto.ModelInfo>?): Boolean {
+    return !models.isNullOrEmpty() && models.all { it.autoUnavailable }
+}
+
 /**
  * Whether a session's model comes without the auto mode: the CLI's own list says so (Claude Code's
- * Haiku 4.5 and older). A model the list does not know, or a list not read, gives no answer.
+ * Haiku 4.5 and older, or all Antigravity models). A model the list does not know, or a list not read, gives no answer.
  */
 fun autoUnavailable(
     models: List<io.github.lewin671.remoteagent.proto.ModelInfo>?,
     model: String,
 ): Boolean {
+    if (allAutoUnavailable(models)) return true
     if (models == null || model.isEmpty()) return false
     return findModel(models, model) { it.slug }?.autoUnavailable == true
 }
@@ -628,6 +634,22 @@ fun modelIs(id: String, slug: String): Boolean =
     id.isNotEmpty() &&
         slug.isNotEmpty() &&
         (id == slug || slug.lowercase() in id.lowercase().split(Regex("[-_.\\s]")))
+
+/**
+ * A model's title as shown: the name the list gives it, or, when the list is not there (before it was read, or
+ * from /model), the name Codex gives such slugs: gpt-6.1-sol is GPT-6.1-Sol.
+ */
+fun modelLabel(
+    models: List<io.github.lewin671.remoteagent.proto.ModelInfo>?,
+    id: String,
+    agent: Agent = DEFAULT_AGENT,
+): String {
+    if (id.isEmpty()) return ""
+    val m = if (models != null) findModel(models, id) { it.slug } else null
+    if (m != null && m.displayName.isNotEmpty()) return m.displayName
+    if (models == null) return id
+    return agentInfo(agent).modelLabel(id)
+}
 
 /**
  * The approval mode a new session gets when none is chosen: the daemon's default for that CLI

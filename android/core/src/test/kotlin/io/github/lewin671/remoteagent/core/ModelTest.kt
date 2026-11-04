@@ -293,6 +293,21 @@ class ModelTest {
         assertFalse(autoUnavailable(list, "claude-sonnet-5-5"))
         assertFalse(autoUnavailable(list, "haiku"))
         assertFalse(autoUnavailable(null, "claude-haiku-4-5-20251001"))
+
+        val allNoAutoList = listOf(
+            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("gemini-3.1-pro-high").setAutoUnavailable(true).build(),
+            io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("gemini-3.8-flash").setAutoUnavailable(true).build(),
+        )
+        assertTrue(allAutoUnavailable(allNoAutoList))
+        assertTrue(autoUnavailable(allNoAutoList, "gemini-3.1-pro-high"))
+        assertTrue(autoUnavailable(allNoAutoList, "other-model"))
+        assertFalse(allAutoUnavailable(list))
+        assertFalse(allAutoUnavailable(emptyList()))
+        assertFalse(allAutoUnavailable(null))
+
+        assertEquals("GPT-6-Sol", modelLabel(emptyList(), "gpt-6-sol", Agent.AGENT_CODEX))
+        assertEquals("gpt-6-sol", modelLabel(null, "gpt-6-sol", Agent.AGENT_CODEX))
+        assertEquals("claude-sonnet-5-5", modelLabel(list, "claude-sonnet-5-5", Agent.AGENT_CLAUDE))
         val models = listOf("opus", "sonnet", "haiku")
         assertEquals("haiku", findModel(models, "claude-haiku-4-5-20251001") { it })
         assertEquals("sonnet", findModel(models, "sonnet") { it })

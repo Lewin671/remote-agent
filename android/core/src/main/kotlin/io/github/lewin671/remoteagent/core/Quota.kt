@@ -13,10 +13,23 @@ import java.time.ZoneId
 enum class QuotaTone { NORMAL, WARN, FULL, STALE }
 
 /** One window as shown: 5 小时 · 已用 62% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted. */
-data class QuotaRow(val label: String, val used: String, val percent: Double?, val reset: String, val tone: QuotaTone, val note: String)
+data class QuotaRow(
+    val label: String,
+    val used: String,
+    val percent: Double?,
+    val reset: String,
+    val tone: QuotaTone,
+    val note: String,
+    val windowName: String = label,
+)
 
 /** What a CLI's quota group shows instead of, or besides, its windows. */
 enum class QuotaStatus { OK, WAITING, FAILED, UNSUPPORTED }
+
+data class QuotaSection(
+    val title: String,
+    val rows: List<QuotaRow>,
+)
 
 data class QuotaGroup(
     val agent: Agent,
@@ -30,6 +43,7 @@ data class QuotaGroup(
     val detail: String,
     /** The numbers are a last record: the machine is offline, or reading failed. */
     val lastRecord: Boolean,
+    val sections: List<QuotaSection> = emptyList(),
 )
 
 private val weekdays = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
@@ -80,16 +94,23 @@ fun resetText(resetMs: Long, now: Long): String {
 }
 
 /** One window: used share, reset time, and whether the reading can still be trusted. */
-fun quotaRow(w: QuotaWindow, now: Long, lastRecord: Boolean): QuotaRow {
-    val label = nameLabel(w)
-    if (!w.hasUsedPercent()) return QuotaRow(label, "未获取", null, "", QuotaTone.NORMAL, "没有收到这项额度数据")
+fun quotaRow(
+    w: QuotaWindow,
+    now: Long,
+    lastRecord: Boolean,
+    fallbackLabel: String = nameLabel(w),
+    useWindowMinutes: Boolean = true,
+): QuotaRow {
+    val windowName = if (w.windowMinutes > 0) windowLabel(w.windowMinutes) else fallbackLabel
+    val label = if (useWindowMinutes && w.windowMinutes > 0) windowName else fallbackLabel
+    if (!w.hasUsedPercent()) return QuotaRow(label, "未获取", null, "", QuotaTone.NORMAL, "没有收到这项额度数据", windowName)
     val pct = w.usedPercent
     val used = if (pct >= 100) "已用尽" else "已用 ${kotlin.math.floor(pct).toInt()}%"
     val passed = w.resetsAtMs in 1..now
     val reset = if (w.resetsAtMs > 0 && !passed) resetText(w.resetsAtMs, now) else ""
-    if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复")
-    if (lastRecord) return QuotaRow(label, used, pct, reset, QuotaTone.STALE, "")
-    return QuotaRow(label, used, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "")
+    if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复", windowName)
+    if (lastRecord) return QuotaRow(label, used, pct, reset, QuotaTone.STALE, "", windowName)
+    return QuotaRow(label, used, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "", windowName)
 }
 
 /**
@@ -138,10 +159,39 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         q.sourceSessionId.isNotEmpty() -> " · 会话 ${q.sourceSessionId.takeLast(4)}"
         else -> ""
     }
-    val title = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${agentInfo(agent).planName(q.plan)}" else "") + which
-    val rows = if (status == QuotaStatus.UNSUPPORTED || status == QuotaStatus.WAITING || q.windowsCount == 0) emptyList() else completeWindows(agent, q.windowsList).map { quotaRow(it, now, lastRecord) }
+    val prefix = agentName(agent) + (if (q.plan.isNotEmpty()) " · ${agentInfo(agent).planName(q.plan)}" else "") + which
+    val staleSuffix = if (lastRecord) " · 上次记录" else ""
+    val title = prefix + staleSuffix
+
+    val rows = mutableListOf<QuotaRow>()
+    val groupMap = LinkedHashMap<String, MutableList<QuotaRow>>()
+    if (status != QuotaStatus.UNSUPPORTED && status != QuotaStatus.WAITING && q.windowsCount > 0) {
+        val expected = agentInfo(agent).quotaWindows
+        val ordered = completeWindows(agent, q.windowsList)
+        for (w in ordered) {
+            val desc = agentInfo(agent).quotaWindow(w.name)
+            val useMinutes = desc.group == null && w.name in expected
+            val row = quotaRow(w, now, lastRecord, desc.label, useMinutes)
+            rows += row
+            if (desc.group != null) {
+                groupMap.getOrPut(desc.group) { mutableListOf() } += row
+            }
+        }
+    }
+    val sections = if (groupMap.isNotEmpty()) {
+        groupMap.entries.mapIndexed { idx, (g, grows) ->
+            QuotaSection(
+                title = if (idx == 0) "$prefix · $g$staleSuffix" else g,
+                rows = grows,
+            )
+        }
+    } else if (rows.isNotEmpty()) {
+        listOf(QuotaSection(title = title, rows = rows))
+    } else {
+        emptyList()
+    }
     val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now) else ""
-    return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty())
+    return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty(), sections)
 }
 
 /** The warning above a group: a window used up, or close to it; nothing switches by itself. */
@@ -152,9 +202,19 @@ fun quotaBanner(g: QuotaGroup): String {
     return ""
 }
 
-/** The device page's line for a CLI: its windows in short, or its state. */
+/** The device page's line for a CLI: its most-used window, or its state. */
 fun quotaLine(g: QuotaGroup): String = when (g.status) {
     QuotaStatus.UNSUPPORTED -> "暂不支持读取额度"
     QuotaStatus.WAITING -> "暂未获取额度"
-    else -> g.rows.filter { it.used != "未获取" }.joinToString(" · ") { "${it.label} ${it.used}" }.ifEmpty { "暂未获取额度" } + if (g.lastRecord) "（上次记录）" else ""
+    else -> {
+        val got = g.rows.filter { it.used != "未获取" && it.percent != null }
+        if (got.isEmpty()) {
+            "暂未获取额度" + if (g.lastRecord) "（上次记录）" else ""
+        } else {
+            val tightest = got.maxByOrNull { it.percent ?: -1.0 } ?: got.first()
+            val win = tightest.windowName.ifEmpty { tightest.label }
+            val staleSuffix = if (g.lastRecord && !tightest.used.contains("上次")) "（上次记录）" else ""
+            "${tightest.used} · $win$staleSuffix"
+        }
+    }
 }
