@@ -19,17 +19,17 @@ declare module "vitest" {
 export default function setup(project: TestProject) {
   const directory = mkdtempSync(join(tmpdir(), "ra-web-security-"));
   try {
-    for (const [key, source] of [
-      ["securityFixtureBinary", "./internal/testutil/securityfixture"],
-      ["authorityServerBinary", "./internal/testutil/authorityserver"],
-      ["authorityOracleBinary", "./testdata/authority-oracle"],
-    ] as const) {
-      const binary = join(directory, key);
-      execFileSync("go", ["build", "-o", binary, source], {
-        cwd: resolve(fileURLToPath(new URL("../../..", import.meta.url))),
-        stdio: "pipe",
-      });
-      project.provide(key, binary);
+    const fixtures = {
+      securityFixtureBinary: "./internal/testutil/securityfixture",
+      authorityServerBinary: "./internal/testutil/authorityserver",
+      authorityOracleBinary: "./testdata/authority-oracle",
+    } as const;
+    execFileSync("go", ["build", "-o", directory + "/", ...Object.values(fixtures)], {
+      cwd: resolve(fileURLToPath(new URL("../../..", import.meta.url))),
+      stdio: "pipe",
+    });
+    for (const [key, source] of Object.entries(fixtures)) {
+      project.provide(key as keyof typeof fixtures, join(directory, source.split("/").at(-1)!));
     }
   } catch (error) {
     rmSync(directory, { recursive: true, force: true });

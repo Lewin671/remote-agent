@@ -1,5 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Tray, type Prepared } from "./attach";
+
+// These uploads and decoders are local promises. Advance their timers instead
+// of waiting 50 ms at every vi.waitFor poll. Real network suites keep real time.
+beforeEach(() => { vi.useFakeTimers(); });
+afterEach(() => { vi.useRealTimers(); });
 
 const png = (n = 10): Prepared => ({ bytes: new Uint8Array(n), format: "png", width: 2, height: 1 });
 const file = (name: string) => new Blob([name], { type: "image/png" });
