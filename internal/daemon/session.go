@@ -796,7 +796,11 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	scr := s.ag.Analyze(styled)
 	s.mu.Lock()
 	if inspector, ok := s.ag.(agent.PlanInspector); ok {
-		scr.PlanOpen = inspector.PlanScreen(styled, s.planFacts)
+		scr.PlanOpen = !s.running && inspector.PlanScreen(styled, s.planFacts)
+		if s.planFacts != nil && !s.running && !scr.PlanOpen && scr.ComposerReady && !scr.Busy {
+			scr.ComposerReady, scr.DraftEmpty = false, false
+			scr.Popup = "去终端处理：计划审阅内容已变化"
+		}
 	}
 	if s.identityPending && s.identityResume && scr.IdentityError != "" {
 		s.identityFailed = true

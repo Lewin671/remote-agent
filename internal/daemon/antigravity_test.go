@@ -2,6 +2,8 @@ package daemon
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -252,5 +254,37 @@ func TestAgyExistingMediaAndMenusBlockInjection(t *testing.T) {
 				t.Fatalf("foreign input changed: %v %v", result, err)
 			}
 		})
+	}
+}
+
+func TestAgyPlanIsActionableOnlyAfterForegroundTurnEnds(t *testing.T) {
+	h := agyHarness(t)
+	text := []byte("# Plan\nDo one thing.")
+	path := filepath.Join(h.dir, "implementation_plan.md")
+	if err := os.WriteFile(path, text, 0600); err != nil {
+		t.Fatal(err)
+	}
+	sum := sha256.Sum256(text)
+	h.s.planFacts = &agent.PlanFacts{Path: path, Root: h.dir, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{"implementation_plan.md": "new"}}
+	h.term.setScreen(agyScreen(t, "plan-terminal-before.txt"))
+	h.s.running = true
+	h.s.checkScreen()
+	h.s.checkScreen()
+	if h.s.info().PlanOpen {
+		t.Fatal("running turn exposed answer")
+	}
+	h.s.running = false
+	h.s.checkScreen()
+	h.s.checkScreen()
+	if !h.s.info().PlanOpen {
+		t.Fatal("idle bound plan missing actions")
+	}
+	if err := os.WriteFile(path, []byte("revised"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	h.s.checkScreen()
+	h.s.checkScreen()
+	if info := h.s.info(); info.PlanOpen || !strings.Contains(h.s.detail, "终端") {
+		t.Fatalf("revision mismatch not withdrawn: %v", info)
 	}
 }

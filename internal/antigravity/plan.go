@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -42,8 +43,7 @@ func planRevisionMatches(facts *agent.PlanFacts) bool {
 	return hex.EncodeToString(sum[:]) == facts.Revision
 }
 
-// PlanScreen accepts only the named artifact with an explicit review action.
-// A generic artifact count, an empty list, or a different revision is not a plan.
+// planPanel isolates the active native artifact review from chat history.
 func planPanel(styled string) string {
 	plain := StripANSI(styled)
 	start := -1
@@ -60,7 +60,7 @@ func planPanel(styled string) string {
 	}
 	return plain[start:]
 }
-func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
+func (a *Adapter) selectedPlan(styled string, facts *agent.PlanFacts) bool {
 	if !planRevisionMatches(facts) {
 		return false
 	}
@@ -76,6 +76,25 @@ func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
 		}
 	}
 	return false
+}
+
+var pendingArtifactRE = regexp.MustCompile(`^[1-9][0-9]* artifacts? · /artifact to review$`)
+
+// PlanScreen exposes a single transcript-bound feedback request while idle,
+// before the user has opened Ctrl-R. The panel is still verified before y/n.
+func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
+	if !planRevisionMatches(facts) {
+		return false
+	}
+	if a.selectedPlan(styled, facts) {
+		return reviewMatches(styled, facts, "new")
+	}
+	scr := a.Analyze(styled)
+	if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || scr.Popup != "" {
+		return false
+	}
+	lines, top, _, ok := composerRegion(styled)
+	return ok && top > 0 && pendingArtifactRE.MatchString(strings.TrimSpace(StripANSI(lines[top-1])))
 }
 
 func reviewRow(line string) (name, status string) {
@@ -153,15 +172,14 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.Pl
 	if err != nil {
 		return err
 	}
-	if !a.PlanScreen(styled, facts) {
-		scr := a.Analyze(styled)
-		if !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || scr.Popup != "" || !strings.Contains(StripANSI(styled), "/artifact to review") {
+	if !a.selectedPlan(styled, facts) {
+		if !a.PlanScreen(styled, facts) {
 			return agent.ErrNoPlan
 		}
 		if err := t.Write([]byte("\x12")); err != nil {
 			return err
 		}
-		styled, err = agent.WaitFor(t, "specific artifact review", func(s string) bool { return a.PlanScreen(s, facts) })
+		styled, err = agent.WaitFor(t, "specific artifact review", func(s string) bool { return a.selectedPlan(s, facts) })
 		if err != nil {
 			return err
 		}

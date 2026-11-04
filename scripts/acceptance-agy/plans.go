@@ -217,9 +217,6 @@ func (r *planAcceptance) run() error {
 	if _, err := r.propose("acceptance_approve_plan.md"); err != nil {
 		return err
 	}
-	if err := r.openReview(); err != nil {
-		return err
-	}
 	if err := r.captureFixture("plan-approve-pending.txt"); err != nil {
 		return err
 	}
@@ -241,12 +238,9 @@ func (r *planAcceptance) run() error {
 	if err != nil || strings.TrimSpace(string(data)) != "hello" {
 		return fmt.Errorf("approved plan did not create the expected isolated file")
 	}
-	fmt.Println("PASS specific plan artifact approved through encrypted Forward; native screen hash observed by debug capture")
+	fmt.Println("PASS plan approved through encrypted Forward; daemon opens and verifies native review panel")
 
 	if _, err := r.propose("acceptance_reject_plan.md"); err != nil {
-		return err
-	}
-	if err := r.openReview(); err != nil {
 		return err
 	}
 	_ = r.captureFixture("plan-reject-pending.txt")
@@ -309,9 +303,6 @@ func (r *planAcceptance) run() error {
 	if _, err := r.propose("acceptance_edit_plan.md"); err != nil {
 		return err
 	}
-	if err := r.openReview(); err != nil {
-		return err
-	}
 	_ = r.captureFixture("plan-before-native-edit.txt")
 	_ = r.closeReview()
 	// Revise one presented artifact through the real CLI, without requesting
@@ -324,9 +315,6 @@ func (r *planAcceptance) run() error {
 		return err
 	}
 	if _, err := r.waitEvent(editSeq, "artifact edit completed", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }); err != nil {
-		return err
-	}
-	if err := r.openReview(); err != nil {
 		return err
 	}
 	_ = r.captureFixture("plan-edited-after-presentation.txt")
@@ -373,9 +361,6 @@ func (r *planAcceptance) run() error {
 		return err
 	}
 	if _, err := r.waitEvent(seq, "multiple-plan turn completed", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }); err != nil {
-		return err
-	}
-	if err := r.openReview(); err != nil {
 		return err
 	}
 	_ = r.captureFixture("plan-multiple-artifacts.txt")

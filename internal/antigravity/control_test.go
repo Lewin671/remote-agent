@@ -211,7 +211,10 @@ func TestRealReviewFixtureVariants(t *testing.T) {
 	} {
 		path := filepath.Join(root, tc.name)
 		mustWrite(t, path, []byte(text))
-		facts := &agent.PlanFacts{Root: root, Path: path, Revision: hex.EncodeToString(sum[:])}
+		facts := &agent.PlanFacts{Root: root, Path: path, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{tc.name: "new"}}
+		if tc.name == "acceptance_reject_plan.md" {
+			facts.Decisions["acceptance_approve_plan.md"] = "approved"
+		}
 		if !a.PlanScreen(readScreenFixture(t, tc.screen), facts) {
 			t.Fatalf("real panel %s not bound", tc.screen)
 		}

@@ -1,0 +1,48 @@
+
+      ▄▀▀▄        Antigravity CLI 1.5.0
+     ▀▀▀▀▀▀       tester@example.com (Google AI Pro)
+    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (Low)
+   ▄▀▀    ▀▀▄     /workspace/project
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────
+> Reply exactly K-IOS-ACK. Do not use tools.
+
+  K-IOS-ACK
+
+────────────────────────────────────────────────────────────
+> /plan Write a tiny implementation_plan.md artifact in your conversation artifact directory with two steps for creating a harmless test file. Set
+  RequestFeedback true. Do not implement until I approve.
+
+● Edited 1 file (implementation_plan.md) (ctrl+o to expand)
+
+  I have created the implementation plan artifact with the two proposed steps: implementation_plan.md.
+
+  Please review the plan and let me know when you approve proceeding with the implementation.
+                                                                                                                                1 artifact · /artifact to review
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+Action required (1 left)
+› □ new implementation_plan.md   open  approve reject
+
+Keyboard: ↑/↓ Navigate  y/n Approve/reject  shift+a Approve all  p Preview  ctrl+g open in editor  esc Done
+
+
+Gemini 3.8 Flash · low  │  sample-project  │  idle 1m · hit 0%
+ctx ▎░░░░░░░░░░░░░░░░░░░   1%
+5h  ██░░░░░░░░░░░░░░░░░░  10%  ↻ 1h 13m (08:54)
+7d  █████████████▊░░░░░░  69%  ↻ 6d 0h (Tue 08:00)
+
+
+
+
+
+
+
+
+
+
+
+
+

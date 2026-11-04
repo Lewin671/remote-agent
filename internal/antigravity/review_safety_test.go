@@ -306,3 +306,65 @@ func TestCompositeNativeReviewInputIsNotHuman(t *testing.T) {
 		t.Fatal("reviewed artifacts stayed pending")
 	}
 }
+
+func TestIdlePlanOpensBoundReviewBeforeAnswer(t *testing.T) {
+	for _, scenario := range []string{"approve", "reject", "wrong artifact", "changed revision", "local first", "draft"} {
+		t.Run(scenario, func(t *testing.T) {
+			root := t.TempDir()
+			path := filepath.Join(root, "implementation_plan.md")
+			content := []byte("# Plan\nCreate a file.\n")
+			mustWrite(t, path, content)
+			sum := sha256.Sum256(content)
+			facts := &agent.PlanFacts{Path: path, Root: root, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{"implementation_plan.md": "new"}}
+			a := New("agy", root)
+			closed := readScreenFixture(t, "plan-terminal-before.txt")
+			opened := readScreenFixture(t, "plan-terminal-after.txt")
+			if !a.PlanScreen(closed, facts) {
+				t.Fatal("idle feedback request is not actionable")
+			}
+			term := &fakeTerm{screen: closed}
+			choice := pb.PlanChoice_PLAN_CHOICE_IMPLEMENT
+			key := "y"
+			if scenario == "reject" {
+				choice, key = pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING, "n"
+			}
+			switch scenario {
+			case "local first":
+				term.screen = readScreenFixture(t, "idle-empty-box.txt")
+			case "draft":
+				term.screen = strings.Replace(closed, "\n>\n", "\n> local draft\n", 1)
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 120*time.Millisecond)
+			defer cancel()
+			term.onWrite = func(b []byte) {
+				switch string(b) {
+				case "\x12":
+					term.screen = opened
+					if scenario == "wrong artifact" {
+						term.screen = strings.ReplaceAll(opened, "implementation_plan.md", "other.md")
+					}
+					if scenario == "changed revision" {
+						mustWrite(t, path, []byte("edited"))
+					}
+				case key:
+					term.screen = readScreenFixture(t, "idle-empty-box.txt")
+				}
+			}
+			err := a.AnswerPlan(contextTerm{term, ctx}, choice, facts, nil)
+			if scenario == "approve" || scenario == "reject" {
+				if err != nil || string(term.written) != "\x12"+key {
+					t.Fatalf("natural answer %q: %v", term.written, err)
+				}
+			} else {
+				if err == nil || strings.ContainsAny(string(term.written), "yn") {
+					t.Fatalf("unsafe answer %q: %v", term.written, err)
+				}
+				if scenario == "local first" || scenario == "draft" {
+					if len(term.written) != 0 {
+						t.Fatal("changed composer received Ctrl-R")
+					}
+				}
+			}
+		})
+	}
+}
