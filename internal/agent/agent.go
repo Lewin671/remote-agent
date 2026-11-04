@@ -324,13 +324,17 @@ type NativeApprover interface {
 
 // PlanFacts binds a plan to a particular native artifact and exact contents.
 // These values are local adapter state, never a new wire/protocol contract.
-type PlanFacts struct{ Path, Revision, Text, CallID string }
+type PlanFacts struct{ Path, Revision, Text, CallID, Root string }
 type PlanSource interface{ Plan() *PlanFacts }
 type ConversationEvents interface{ EventConversation(e *pb.Event) string }
 
 type PlanInspector interface {
 	PlanScreen(styled string, facts *PlanFacts) bool
 }
+
+type IdleCompletionSource interface{ IdleCompletion() *pb.Event }
+
+type AttachSnapshotSource interface{ CaptureAttachSnapshot(path string) error }
 
 // Screen is what the daemon needs to know from the terminal.
 type Screen struct {

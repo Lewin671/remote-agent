@@ -53,41 +53,50 @@ type pendingCall struct {
 	kind                           pb.ToolKind
 	isPlan                         bool
 	plan                           *agent.PlanFacts
+	artifact                       string
 }
 
 // Parser reads append-only transcript records. Tool results occupy their own
 // step indices; stepIdx in PreToolUse is that result's index, also used as the
 // synthetic call ID so early hook events deduplicate with transcript events.
 type Parser struct {
-	plans          map[string]*agent.PlanFacts
-	answeredPlans  map[string]bool
-	lastPlanID     string
-	planMessages   map[string]bool
-	fullOffset     int64
-	fullLine       int
-	transcriptPath string
-	conversation   string
-	lineIndex      int
-	inTurn         bool
-	turnID         string
-	pendingCalls   map[int64]pendingCall
-	questions      map[string]*pb.QuestionAsked
-	reported       map[string]bool
-	ctx            *pb.TurnContext
-	usage          *pb.TokenUsage
-	found          []agent.FoundImage
-	restoring      bool
+	artifactRoot          string
+	artifacts             map[string]bool
+	artifactIndexComplete bool
+	pendingOutcome        *pb.TurnEnded
+	pendingLine           int
+	attachLines           int
+	pendingTime           string
+	plans                 map[string]*agent.PlanFacts
+	answeredPlans         map[string]bool
+	lastPlanID            string
+	planMessages          map[string]bool
+	fullOffset            int64
+	fullLine              int
+	transcriptPath        string
+	conversation          string
+	lineIndex             int
+	inTurn                bool
+	turnID                string
+	pendingCalls          map[int64]pendingCall
+	questions             map[string]*pb.QuestionAsked
+	reported              map[string]bool
+	ctx                   *pb.TurnContext
+	usage                 *pb.TokenUsage
+	found                 []agent.FoundImage
+	restoring             bool
 }
 
 var _ agent.Parser = (*Parser)(nil)
 
 func NewParser() *Parser {
-	return &Parser{planMessages: map[string]bool{}, plans: map[string]*agent.PlanFacts{}, answeredPlans: map[string]bool{}, pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
+	return &Parser{artifacts: map[string]bool{}, artifactIndexComplete: true, planMessages: map[string]bool{}, plans: map[string]*agent.PlanFacts{}, answeredPlans: map[string]bool{}, pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
 }
 func (p *Parser) SetTranscriptPath(path string) {
 	p.transcriptPath = path
 	if filepath.Base(filepath.Dir(path)) == "logs" && filepath.Base(filepath.Dir(filepath.Dir(path))) == ".system_generated" {
-		p.conversation = filepath.Base(filepath.Dir(filepath.Dir(filepath.Dir(path))))
+		p.artifactRoot = filepath.Dir(filepath.Dir(filepath.Dir(path)))
+		p.conversation = filepath.Base(p.artifactRoot)
 	}
 }
 func (p *Parser) SetConversation(id string) { p.conversation = id }
@@ -99,6 +108,8 @@ func (p *Parser) Replay(e *pb.Event) {
 		p.inTurn, p.turnID = true, e.TurnId
 	case *pb.Event_TurnEnded:
 		p.inTurn = false
+		p.pendingOutcome = nil
+		p.pendingTime = ""
 		clear(p.pendingCalls)
 		clear(p.questions)
 	case *pb.Event_TurnContext:
@@ -138,6 +149,10 @@ func (p *Parser) Restore(path string, end int64) error {
 		clear(p.plans)
 		clear(p.planMessages)
 		p.lastPlanID = ""
+		p.pendingOutcome = nil
+		p.pendingTime = ""
+		clear(p.artifacts)
+		p.artifactIndexComplete = true
 		p.fullOffset = 0
 		p.fullLine = 0
 		return nil
@@ -168,6 +183,8 @@ func (p *Parser) Restore(path string, end int64) error {
 	p.transcriptPath, p.lineIndex = path, rebuilt.lineIndex
 	p.fullOffset, p.fullLine = rebuilt.fullOffset, rebuilt.fullLine
 	p.plans = rebuilt.plans
+	p.artifacts = rebuilt.artifacts
+	p.artifactIndexComplete = rebuilt.artifactIndexComplete
 	p.planMessages = rebuilt.planMessages
 	for path, plan := range p.plans {
 		if p.answeredPlans[plan.CallID] {
@@ -175,8 +192,11 @@ func (p *Parser) Restore(path string, end int64) error {
 		}
 	}
 	if p.inTurn {
+		p.pendingOutcome, p.pendingTime, p.pendingLine = rebuilt.pendingOutcome, rebuilt.pendingTime, rebuilt.pendingLine
 		p.pendingCalls = rebuilt.pendingCalls
 	} else {
+		p.pendingOutcome = nil
+		p.pendingTime = ""
 		clear(p.pendingCalls)
 	}
 	return nil
@@ -209,6 +229,9 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			}
 			return nil, err
 		}
+	}
+	if line == 0 && r.StepIndex > 1 {
+		p.artifactIndexComplete = false
 	}
 	p.found = nil
 	var evs []*pb.Event
@@ -278,8 +301,18 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			clear(p.plans)
 		}
 		if p.inTurn {
-			emit(&pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: "new input after unfinished turn"})
+			if p.pendingOutcome != nil {
+				emit(proto.CloneOf(p.pendingOutcome))
+				if at, err := time.Parse(time.RFC3339Nano, p.pendingTime); err == nil {
+					evs[len(evs)-1].Time = timestamppb.New(at)
+				}
+			} else {
+				emit(&pb.TurnEnded{Outcome: pb.TurnOutcome_TURN_OUTCOME_ABORTED, Reason: "new input after unfinished turn"})
+			}
 		}
+		p.pendingOutcome = nil
+		p.pendingTime = ""
+
 		clear(p.pendingCalls)
 		clear(p.questions)
 		start()
@@ -288,6 +321,8 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			evs[len(evs)-1].Origin = &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_SYSTEM}
 		}
 	case "PLANNER_RESPONSE":
+		p.pendingOutcome = nil
+		p.pendingTime = ""
 		if !p.inTurn {
 			start()
 		} // background continuation after an earlier Stop
@@ -302,6 +337,9 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			id := nativeCallID(p.conversation, step)
 			args := normalizeTranscriptArgs(tc.Args)
 			call := pendingCall{id: id, name: tc.Name, title: describeTool(tc.Name, args).title, input: string(args), digest: agent.InputDigest(tc.Name, args), kind: toolKindFor(tc.Name)}
+			if tc.Name == "write_file" {
+				call.artifact = userFacingArtifactPath(args)
+			}
 			switch {
 			case tc.Name == "ask_question":
 				if q, err := parseQuestionsFromRaw(id, args); err == nil {
@@ -320,7 +358,7 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 				_ = json.Unmarshal(args, &fields)
 				text := extractPlanContent(args)
 				sum := sha256.Sum256([]byte(text))
-				call.plan = &agent.PlanFacts{Path: fields.Path, Revision: hex.EncodeToString(sum[:]), Text: text, CallID: id}
+				call.plan = &agent.PlanFacts{Path: fields.Path, Revision: hex.EncodeToString(sum[:]), Text: text, CallID: id, Root: p.artifactRoot}
 
 			default:
 				emit(&pb.ToolStarted{CallId: id, Kind: call.kind, ItemType: tc.Name, Title: call.title, Input: call.input, InputDigest: call.digest})
@@ -345,16 +383,20 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 			if r.Status == "ERROR" {
 				outcome = pb.TurnOutcome_TURN_OUTCOME_ABORTED
 			}
-			emit(&pb.TurnEnded{Outcome: outcome})
-			p.inTurn = false
-			clear(p.pendingCalls)
+			p.pendingOutcome = &pb.TurnEnded{Outcome: outcome}
+			p.pendingTime = r.CreatedAt
+			p.pendingLine = line
 		}
+
 	case "GENERIC":
 		call, ok := p.pendingCalls[r.StepIndex]
 		if !ok {
 			break
 		}
 		delete(p.pendingCalls, r.StepIndex)
+		if r.Status != "ERROR" && call.artifact != "" {
+			p.artifacts[call.artifact] = true
+		}
 		switch {
 		case call.name == "ask_question":
 			if q := p.questions[call.id]; q != nil {
@@ -445,14 +487,43 @@ func (p *Parser) resolveTruncated(r *transcriptRecord, line int) error {
 }
 
 func (p *Parser) Plan() *agent.PlanFacts {
-	if len(p.plans) != 1 {
+	if len(p.plans) != 1 || !p.artifactIndexComplete || p.artifactRoot == "" {
 		return nil
 	}
 	for _, plan := range p.plans {
+		count := 0
+		for path := range p.artifacts {
+			if filepath.Base(path) == filepath.Base(plan.Path) {
+				count++
+			}
+		}
+		if count != 1 {
+			return nil
+		}
 		copy := *plan
 		return &copy
 	}
 	return nil
+}
+
+func userFacingArtifactPath(raw []byte) string {
+	var fields struct {
+		Path string          `json:"Path"`
+		Meta json.RawMessage `json:"ArtifactMetadata"`
+	}
+	if json.Unmarshal(raw, &fields) != nil || len(fields.Meta) == 0 {
+		return ""
+	}
+	var meta struct {
+		Facing *bool `json:"UserFacing"`
+	}
+	if json.Unmarshal(fields.Meta, &meta) != nil {
+		return ""
+	}
+	if meta.Facing != nil && !*meta.Facing {
+		return ""
+	}
+	return fields.Path
 }
 
 func (p *Parser) readMedia(media []transcriptMedia, source pb.ImageSource) []*pb.ImageRef {
@@ -780,4 +851,49 @@ func normalizeTranscriptArgs(raw json.RawMessage) json.RawMessage {
 	}
 	out, _ := json.Marshal(values)
 	return out
+}
+
+// A no-tool response is a completion candidate, not a boundary: PostInvocation
+// hooks may still force continuation or fail. Stop is authoritative; a stable
+// idle native screen can recover a Stop missed while the daemon was offline.
+func (p *Parser) IdleCompletion() *pb.Event {
+	if !p.inTurn || p.pendingOutcome == nil || len(p.pendingCalls) > 0 || p.pendingLine >= p.attachLines {
+		return nil
+	}
+	e := &pb.Event{TurnId: p.turnID, Kind: &pb.Event_TurnEnded{TurnEnded: proto.CloneOf(p.pendingOutcome)}}
+	if at, err := time.Parse(time.RFC3339Nano, p.pendingTime); err == nil {
+		e.Time = timestamppb.New(at)
+	}
+	return e
+}
+
+// CaptureAttachSnapshot records complete physical lines already present when
+// the daemon attaches. CreatedAt can precede writing by an entire inference,
+// so timestamps cannot establish that a Stop was missed while offline.
+func (p *Parser) CaptureAttachSnapshot(path string) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	st, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	rd := bufio.NewReader(io.LimitReader(f, st.Size()))
+	count := 0
+	for {
+		line, err := rd.ReadBytes('\n')
+		if len(line) > 0 && line[len(line)-1] == '\n' {
+			count++
+		}
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+	}
+	p.attachLines = count
+	return nil
 }

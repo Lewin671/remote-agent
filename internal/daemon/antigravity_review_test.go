@@ -217,3 +217,46 @@ func TestAgyConsumptionDoesNotRaceTerminalResolution(t *testing.T) {
 		t.Fatalf("approval has %d outcomes", resolutions)
 	}
 }
+
+func TestAgyStableIdleRecoversMissedStop(t *testing.T) {
+	h := agyHarness(t)
+	p := h.s.parser.(interface {
+		SetConversation(string)
+		Parse([]byte) ([]*pb.Event, error)
+	})
+	p.SetConversation("conv")
+	for _, line := range []string{`{"step_index":0,"type":"USER_INPUT","content":"<USER_REQUEST>hello</USER_REQUEST>"}`, `{"step_index":1,"type":"PLANNER_RESPONSE","status":"DONE","content":"reply","created_at":"2000-01-01T00:00:00Z"}`} {
+		evs, err := p.Parse([]byte(line))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := h.s.emit(evs...); err != nil {
+			t.Fatal(err)
+		}
+	}
+	snapshot := filepath.Join(t.TempDir(), "transcript.jsonl")
+	_ = os.WriteFile(snapshot, []byte("{}\n{}\n"), 0600)
+	if err := h.s.parser.(agent.AttachSnapshotSource).CaptureAttachSnapshot(snapshot); err != nil {
+		t.Fatal(err)
+	}
+	h.s.statusLineAt = time.Now()
+	h.s.statusLineIdle = true
+	busy := agyScreen(t, "busy-spinner.txt")
+	h.term.setScreen(busy)
+	h.s.idleCompleteSince = time.Now().Add(-2 * time.Second)
+	h.s.settleIdleCompletion(busy)
+	if !h.s.isRunning() {
+		t.Fatal("busy screen inferred completion")
+	}
+	idle := agyScreen(t, "idle-empty-box.txt")
+	h.term.setScreen(idle)
+	h.s.settleIdleCompletion(idle)
+	if !h.s.isRunning() {
+		t.Fatal("one idle frame ended the turn")
+	}
+	h.s.idleCompleteSince = time.Now().Add(-2 * time.Second)
+	h.s.settleIdleCompletion(idle)
+	if h.s.isRunning() {
+		t.Fatal("stable idle did not recover the missing Stop")
+	}
+}

@@ -9,5 +9,6 @@ var (
 	_ agent.NativeApprovalSource = (*Adapter)(nil)
 	_ agent.ConversationEvents   = (*Adapter)(nil)
 	_ agent.PlanInspector        = (*Adapter)(nil)
+	_ agent.IdleCompletionSource = (*Parser)(nil)
 	_ agent.PlanSource           = (*Parser)(nil)
 )

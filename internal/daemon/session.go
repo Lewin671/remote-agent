@@ -55,11 +55,12 @@ const (
 
 // session is one CLI session managed by the daemon.
 type session struct {
-	d    *Daemon
-	ag   agent.Adapter
-	dir  string
-	term terminal
-	log  *eventlog.Log
+	idleCompleteSince time.Time
+	d                 *Daemon
+	ag                agent.Adapter
+	dir               string
+	term              terminal
+	log               *eventlog.Log
 	// images are the session's images and their display copies.
 	images *imageStore
 
@@ -253,6 +254,13 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 	if m.ForkedFrom != "" {
 		s.copied = ag.Copied(dir)
 	}
+	if m.RolloutPath != "" {
+		if snapshot, ok := s.parser.(agent.AttachSnapshotSource); ok {
+			if err := snapshot.CaptureAttachSnapshot(m.RolloutPath); err != nil {
+				slog.Warn("capture source attach boundary", "session", m.ID, "err", errClass(err))
+			}
+		}
+	}
 	// Rebuild derived state from the events already logged.
 	recentIDs, err := recentWrittenIDs(log)
 	if err != nil {
@@ -337,6 +345,7 @@ func (s *session) observe(e *pb.Event) {
 		s.running = true
 		s.turnID = e.TurnId
 		s.turnPrompt, s.turnOutput = "", false
+		s.idleCompleteSince = time.Time{}
 		s.restoredPromptSince = time.Time{}
 	case *pb.Event_TurnEnded:
 		s.running = false
@@ -855,6 +864,7 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 		_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: next, Detail: nextDetail, PlanOpen: scr.PlanOpen}}})
 	}
 	s.settleRestoredPrompt(styled)
+	s.settleIdleCompletion(styled)
 	return true
 }
 
@@ -1616,6 +1626,11 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	p := s.ag.NewParser()
 	if located, ok := p.(interface{ SetTranscriptPath(string) }); ok {
 		located.SetTranscriptPath(path)
+	}
+	if snapshot, ok := p.(agent.AttachSnapshotSource); ok {
+		if err := snapshot.CaptureAttachSnapshot(path); err != nil {
+			slog.Warn("capture rebound source boundary", "session", s.meta.ID, "err", errClass(err))
+		}
 	}
 	// It needs what is known so far, such as a model switched to before
 	// the transcript was found.

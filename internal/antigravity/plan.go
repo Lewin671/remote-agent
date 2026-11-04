@@ -14,10 +14,18 @@ import (
 )
 
 func planRevisionMatches(facts *agent.PlanFacts) bool {
-	if facts == nil || facts.Path == "" || facts.Revision == "" || !filepath.IsAbs(facts.Path) {
+	if facts == nil || facts.Path == "" || facts.Revision == "" || facts.Root == "" || !filepath.IsAbs(facts.Path) {
 		return false
 	}
-	file, err := os.Open(facts.Path)
+	root, err := filepath.EvalSymlinks(facts.Root)
+	if err != nil {
+		return false
+	}
+	path, err := filepath.EvalSymlinks(facts.Path)
+	if err != nil || filepath.Dir(path) != root {
+		return false
+	}
+	file, err := os.Open(path)
 	if err != nil {
 		return false
 	}

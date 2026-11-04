@@ -104,6 +104,7 @@ func TestPlanIdentityRevisionAndLocalCompletion(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{"Path": path, "Content": text, "ArtifactMetadata": map[string]bool{"RequestFeedback": true}})
 	planner, _ := json.Marshal(map[string]any{"step_index": 1, "type": "PLANNER_RESPONSE", "tool_calls": []any{map[string]any{"name": "write_file", "args": json.RawMessage(args)}}})
 	p := NewParser()
+	p.SetTranscriptPath(filepath.Join(dir, ".system_generated", "logs", "transcript.jsonl"))
 	p.SetConversation("conv")
 	if evs, err := p.Parse(planner); err != nil || len(evs) != 2 || evs[0].GetPlanProposed() != nil {
 		t.Fatalf("plan presented before successful write %v %v", evs, err)
@@ -168,5 +169,48 @@ func TestHookLiteralStringsAreNotDecodedAsJSONValues(t *testing.T) {
 	normalized := normalizeTranscriptArgs([]byte(`{"CommandLine":"\"true\"","WaitMsBeforeAsync":"5000"}`))
 	if agent.InputDigest("run_command", h.ToolInput) != agent.InputDigest("run_command", normalized) {
 		t.Fatalf("native literal string was changed: %s / %s", h.ToolInput, normalized)
+	}
+}
+
+func TestNoToolResponseWaitsForStopOrIdleProof(t *testing.T) {
+	p := NewParser()
+	p.SetConversation("conv")
+	_, _ = p.Parse([]byte(`{"step_index":0,"type":"USER_INPUT","content":"<USER_REQUEST>hello</USER_REQUEST>"}`))
+	evs, err := p.Parse([]byte(`{"step_index":1,"type":"PLANNER_RESPONSE","status":"DONE","content":"reply"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range evs {
+		if e.GetTurnEnded() != nil {
+			t.Fatal("no-tool response ended before Stop")
+		}
+	}
+	if p.IdleCompletion() != nil {
+		t.Fatal("live response became an offline recovery candidate")
+	}
+	if p.pendingOutcome == nil {
+		t.Fatal("missing deferred completion")
+	}
+	turn := p.turnID
+	evs, err = p.Parse([]byte(`{"step_index":2,"type":"PLANNER_RESPONSE","tool_calls":[{"name":"run_command","args":{"CommandLine":"echo continue"}}]}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.IdleCompletion() != nil || p.turnID != turn {
+		t.Fatal("forced continuation split the native turn")
+	}
+	for _, e := range evs {
+		if e.GetTurnStarted() != nil || e.GetTurnEnded() != nil {
+			t.Fatal("forced continuation created a false boundary")
+		}
+	}
+	a := New("agy", t.TempDir())
+	end := a.HookEvents(&agent.Hook{HookEventName: "Stop", TerminationReason: "ERROR"})
+	if len(end) != 1 || end[0].GetTurnEnded().Outcome != pb.TurnOutcome_TURN_OUTCOME_ABORTED {
+		t.Fatal("Stop error was lost")
+	}
+	p.Replay(end[0])
+	if p.IdleCompletion() != nil || p.inTurn {
+		t.Fatal("Stop did not consume completion candidate")
 	}
 }
