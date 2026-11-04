@@ -309,6 +309,13 @@ func buildSettingsJSON(cwd, addonDir, toolPerm string, userSL *statusLineSetting
 	}
 
 	trusted := []string{cwd, addonDir}
+	// The native process may canonicalize symlinks in its working directory
+	// (notably /tmp on macOS). Trust both names only for this private launch.
+	for _, path := range []string{cwd, addonDir} {
+		if resolved, err := filepath.EvalSymlinks(path); err == nil && !slices.Contains(trusted, resolved) {
+			trusted = append(trusted, resolved)
+		}
+	}
 	st := map[string]any{
 		"trustedWorkspaces": trusted,
 		"statusLine":        sl,

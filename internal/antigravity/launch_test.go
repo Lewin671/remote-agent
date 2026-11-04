@@ -142,3 +142,34 @@ func launchTestAdapter(t *testing.T, home string) *Adapter {
 	a.models.cached, a.models.bin, a.models.fetchedAt = &pb.ListModelsResponse{Models: models}, a.Bin(), time.Now()
 	return a
 }
+
+func TestLaunchTrustIncludesCanonicalWorkspaceAndAddon(t *testing.T) {
+	root := t.TempDir()
+	real := filepath.Join(root, "real")
+	if err := os.MkdirAll(filepath.Join(real, "addon"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	alias := filepath.Join(root, "alias")
+	if err := os.Symlink(real, alias); err != nil {
+		t.Fatal(err)
+	}
+	var settings struct {
+		Trusted []string `json:"trustedWorkspaces"`
+	}
+	if err := json.Unmarshal(buildSettingsJSON(alias, filepath.Join(alias, "addon"), "request-review", nil), &settings); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{alias, filepath.Join(alias, "addon")} {
+		canonical, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !slices.Contains(settings.Trusted, path) || !slices.Contains(settings.Trusted, canonical) {
+			t.Fatalf("missing trust for %q: %v", path, settings.Trusted)
+		}
+	}
+	canonical, _ := filepath.EvalSymlinks(real)
+	if !slices.Contains(settings.Trusted, canonical) {
+		t.Fatal("canonical workspace missing")
+	}
+}
