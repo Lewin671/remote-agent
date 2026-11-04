@@ -49,7 +49,7 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - 账户和配对可在网页、Android 或 iOS 客户端里操作：用户先建账户成为唯一管理端，电脑只执行 `account join`。本地端到端产品验收从 `ios/scripts/dev-env.sh start --no-account` 开始，用真实客户端建账户和批准配对；测试夹具或 `internal/remoteclient` 只用于自动回归，不能代替产品链路验收；`account init`、`account pair` 不再是用户入口
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](architecture.md) 第 1 节
 - 本地调试网页用 `pnpm build && pnpm preview`，在 http://localhost:4173 打开
-- 会话内容由内容密钥解开；账户根密钥只用于旧历史和账户签名，同样只留在自己的设备上
+- 会话内容由内容密钥解开；账户根密钥用于账户签名，不再用于解密旧历史，同样只留在自己的设备上
 - daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
 - 网页能登录但一直「未连接」时，多半是浏览器的拦截扩展挡住了 WebSocket，见 [docs/browser-notes.md](browser-notes.md)
 
