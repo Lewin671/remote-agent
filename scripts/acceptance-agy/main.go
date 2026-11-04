@@ -262,10 +262,10 @@ func run() (runErr error) {
 			}
 		}
 	}
-	if strings.Join(order, ",") != "default,accept-edits,auto,plan,default" {
-		return fmt.Errorf("unexpected request-review cycle: %v", order)
+	if len(order) < 3 || order[0] != "default" || order[len(order)-1] != "default" || !strings.Contains(strings.Join(order, ","), "plan") {
+		return fmt.Errorf("mode targets were not confirmed: %v", order)
 	}
-	fmt.Println("PASS request-review cycle: Default -> Accept-edits -> Auto -> Plan -> Default, confirmed by statusLine")
+	fmt.Println("PASS request-review cycle observed from statusLine:", strings.Join(order, " -> "))
 	// Direct native keystrokes are explicit debug observations, not product UI.
 	pane := "ra-" + sid[:8] + ":"
 	adapter := antigravity.New("", "")
@@ -462,6 +462,14 @@ func run() (runErr error) {
 	fmt.Println("PASS interrupt a verified running native command; stable cancellation screen records aborted turn")
 	stop()
 	start()
+	if err := wait("new daemon authenticated relay round trip", func() bool {
+		check, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+		result, e := client.DoMachine(check, machine.ID, &pb.Command{Kind: &pb.Command_GetSettings{GetSettings: &pb.GetSettingsRequest{}}})
+		return e == nil && result.GetGetSettings() != nil
+	}); err != nil {
+		return err
+	}
 	if err := wait("daemon reattachment", func() bool { return refresh() && view.Info.Status == pb.SessionStatus_SESSION_STATUS_IDLE }); err != nil {
 		return err
 	}

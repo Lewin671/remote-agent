@@ -141,7 +141,14 @@ func (r *planAcceptance) openReview() error {
 			return err
 		}
 	}
-	if err := r.wait("native artifact list", func() bool { s, e := r.screen(); return e == nil && strings.Contains(agent.StripANSI(s), "Artifacts") }); err != nil {
+	if err := r.wait("native artifact list", func() bool {
+		s, e := r.screen()
+		if e != nil {
+			return false
+		}
+		popup := r.nativeScreen(s).Popup
+		return popup == "artifacts" || popup == "plan"
+	}); err != nil {
 		return err
 	}
 	if r.currentName == "" {
@@ -153,7 +160,9 @@ func (r *planAcceptance) openReview() error {
 			return e
 		}
 		plain := agent.StripANSI(s)
-		if at := strings.LastIndex(plain, "Artifacts"); at >= 0 {
+		if at := strings.LastIndex(plain, "Action required ("); at >= 0 {
+			plain = plain[at:]
+		} else if at := strings.LastIndex(plain, "Artifacts"); at >= 0 {
 			plain = plain[at:]
 		}
 		for _, line := range strings.Split(plain, "\n") {
@@ -221,6 +230,9 @@ func (r *planAcceptance) run() error {
 		return err
 	}
 	_ = r.closeReview()
+	if err := r.waitGeneratedTurn(seq, "[Approved] acceptance_approve_plan.md"); err != nil {
+		return err
+	}
 	if err := r.idle(); err != nil {
 		return err
 	}
@@ -250,7 +262,11 @@ func (r *planAcceptance) run() error {
 	if err := r.send("Feedback on the rejected plan: make no further changes and reply exactly REJECT-FEEDBACK-ACK without tools."); err != nil {
 		return err
 	}
-	if _, err := r.waitEvent(seq, "post-rejection feedback reply", func(e *pb.Event) bool { return strings.Contains(e.GetAgentMessage().GetText(), "REJECT-FEEDBACK-ACK") }); err != nil {
+	feedback, err := r.waitEvent(seq, "post-rejection feedback reply", func(e *pb.Event) bool { return strings.Contains(e.GetAgentMessage().GetText(), "REJECT-FEEDBACK-ACK") })
+	if err != nil {
+		return err
+	}
+	if _, err := r.waitEvent(seq, "feedback turn completed", func(e *pb.Event) bool { return e.GetTurnEnded() != nil && e.TurnId == feedback.TurnId }); err != nil {
 		return err
 	}
 	if err := r.idle(); err != nil {
@@ -270,6 +286,9 @@ func (r *planAcceptance) run() error {
 	if err := r.keys("y"); err != nil {
 		return err
 	}
+	if err := r.submitLocalReview(); err != nil {
+		return err
+	}
 	if _, err := r.waitEvent(seq, "local plan completion", func(e *pb.Event) bool { return e.GetPlanAnswered() != nil }); err != nil {
 		return err
 	}
@@ -279,6 +298,9 @@ func (r *planAcceptance) run() error {
 	}
 	_ = r.closeReview()
 	if err := r.idle(); err != nil {
+		return err
+	}
+	if err := r.waitGeneratedTurn(seq, "[Approved] acceptance_local_first_plan.md"); err != nil {
 		return err
 	}
 	fmt.Println("PASS locally answered plan withdraws the old remote action")
@@ -318,6 +340,9 @@ func (r *planAcceptance) run() error {
 		return err
 	}
 	if err := r.keys("n"); err != nil {
+		return err
+	}
+	if err := r.submitLocalReview(); err != nil {
 		return err
 	}
 	_ = r.closeReview()
@@ -395,4 +420,64 @@ func (r *planAcceptance) allowedFixtureOperation(a *pb.ApprovalRequested) bool {
 	root := filepath.Dir(filepath.Dir(filepath.Dir(r.view.Info.RolloutPath)))
 	root, err = filepath.EvalSymlinks(root)
 	return err == nil && parent == root && filepath.Ext(path) == ".md"
+}
+
+func (r *planAcceptance) waitGeneratedTurn(after uint64, text string) error {
+	var turn string
+	return r.wait("native generated plan turn completed", func() bool {
+		r.handleApprovals()
+		events := r.events(after)
+		for _, e := range events {
+			if m := e.GetUserMessage(); m != nil && strings.HasPrefix(m.Text, text) {
+				turn = e.TurnId
+			}
+		}
+		if turn == "" {
+			return false
+		}
+		for _, e := range events {
+			if e.TurnId == turn && e.GetTurnEnded() != nil {
+				return true
+			}
+		}
+		return false
+	})
+}
+
+func localSubmitFocused(styled string) bool {
+	for _, line := range strings.Split(styled, "\n") {
+		if !strings.Contains(agent.StripANSI(line), "Submit") || !strings.Contains(agent.StripANSI(line), "Dismiss") {
+			continue
+		}
+		for _, run := range agent.Runs(line) {
+			if run.Reverse && strings.TrimSpace(run.Text) == "Submit" {
+				return true
+			}
+		}
+	}
+	return false
+}
+func (r *planAcceptance) submitLocalReview() error {
+	time.Sleep(150 * time.Millisecond)
+	screen, e := r.screen()
+	if e != nil {
+		return e
+	}
+	if !strings.Contains(agent.StripANSI(screen), "Submit") || !strings.Contains(agent.StripANSI(screen), "Dismiss") {
+		return nil
+	}
+	if !localSubmitFocused(screen) {
+		if e := r.keys("Escape"); e != nil {
+			return e
+		}
+		time.Sleep(150 * time.Millisecond)
+		screen, e = r.screen()
+		if e != nil {
+			return e
+		}
+	}
+	if !localSubmitFocused(screen) {
+		return fmt.Errorf("native Submit button is not focused")
+	}
+	return r.keys("Enter")
 }
