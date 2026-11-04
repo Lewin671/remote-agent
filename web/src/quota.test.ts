@@ -98,7 +98,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
       true,
     );
     expect(views.map((v) => v.title)).toEqual(["Codex", "Claude Code · 账户 a1b2", "Claude Code · 会话 fc84"]);
-    expect(quotaSummary(views.filter((v) => v.agent === Agent.CODEX))).toBe("5 小时 已用 20%");
+    expect(quotaSummary(views.filter((v) => v.agent === Agent.CODEX))).toBe("已用 20% · 5 小时");
   });
 
   it("groups Antigravity quota windows by model family and keeps unknown buckets in their own group", () => {
@@ -143,7 +143,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
       ["custom-bucket", [["custom-bucket", "已用 5%"]]],
     ]);
     expect(v.seen).toBe("最近收到 9:41");
-    expect(quotaSummary([v])).toBe("第三方模型 · 5 小时 已用 40%");
+    expect(quotaSummary([v])).toBe("已用 40% · 5 小时");
   });
 });
 

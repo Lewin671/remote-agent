@@ -2271,7 +2271,9 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
   const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
   const m = r.machines.get("mac")!;
   const now = Date.now();
-  m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  if (!m.meta!.agents.some((a) => a.agent === Agent.ANTIGRAVITY)) {
+    m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  }
   m.meta!.quotas = [
     create(AgentQuotaSchema, {
       agent: Agent.ANTIGRAVITY,
@@ -2302,7 +2304,9 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
 it("switches new-project defaults by CLI tab on multi-CLI machines and omits tabs on single-CLI machines", async () => {
   const r = demo();
   const m = r.machines.get("mac")!;
-  m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  if (!m.meta!.agents.some((a) => a.agent === Agent.ANTIGRAVITY)) {
+    m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  }
   r.machineCommand = async (id: string, cmd: CommandKind): Promise<CommandResult> => {
     if (cmd?.case === "listModels" && cmd.value.agent === Agent.ANTIGRAVITY) {
       return create(CommandResultSchema, {
@@ -2322,6 +2326,8 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   };
   const { MachinePage } = await import("./Settings");
   mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  expect(host.querySelector(".quota-line .muted")?.textContent).toBe("· 5 小时");
+  expect(host.textContent).toContain("Antigravity已用 40% · 5 小时");
   await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
   expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
   await click(button("Antigravity", host.querySelector(".cli-tabs")!));

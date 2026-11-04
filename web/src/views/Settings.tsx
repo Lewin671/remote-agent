@@ -234,7 +234,19 @@ function UpdateRow() {
   );
 }
 
-/** The tightest Codex window of a machine, for its row: "Codex · 7 天已用 34%". */
+function renderQuotaSummary(text: string) {
+  const idx = text.indexOf(" · ");
+  if (idx !== -1) {
+    return (
+      <>
+        {text.slice(0, idx)} <span className="muted">· {text.slice(idx + 3)}</span>
+      </>
+    );
+  }
+  return text;
+}
+
+/** The tightest window of a machine, for its row: "Codex · 已用 62% · 5 小时". */
 function quotaLine(m: MachineView): string {
   const views = machineQuotaViews(
     m.meta,
@@ -244,8 +256,8 @@ function quotaLine(m: MachineView): string {
   ).filter((v) => v.rows.some((r) => r.percent !== undefined));
   const v = views[0];
   if (!v) return "";
-  const r = [...v.rows].reverse().find((x) => x.percent !== undefined)!;
-  return `${agentName(v.agent)} · ${r.label}${r.used}${v.stale ? "（上次记录）" : ""}`;
+  const s = quotaSummary([v]);
+  return s ? `${agentName(v.agent)} · ${s}` : "";
 }
 
 /** On a machine's page: a line for each CLI's quota, leading to all of it. */
@@ -273,7 +285,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
             >
               <span className="nw">{agentName(a)}</span>
               <span className="v">
-                {quotaSummary(mine)}
+                {renderQuotaSummary(quotaSummary(mine))}
                 <ChevronRight />
               </span>
             </button>

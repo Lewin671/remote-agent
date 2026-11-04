@@ -9,6 +9,7 @@ import { agentInfo, normalizePlanName } from "./agents";
 
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
+  windowName: string; // 5 小时, 7 天 (duration / short name for summary line)
   used: string; // 已用 62%, 已用尽, 未获取
   percent?: number;
   reset: string; // 4 小时 29 分后重置 · 今天 14:10
@@ -108,18 +109,20 @@ function windowRow(
   useWindowMinutes = true,
 ): QuotaRow & { key: string } {
   const key = w.name;
-  if (useWindowMinutes && w.windowMinutes > 0n) label = windowLabel(Number(w.windowMinutes));
-  if (w.usedPercent === undefined) return { key, label, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
+  const windowName = w.windowMinutes > 0n ? windowLabel(Number(w.windowMinutes)) : label;
+  if (useWindowMinutes && w.windowMinutes > 0n) label = windowName;
+  if (w.usedPercent === undefined) return { key, label, windowName, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
   const pct = w.usedPercent;
   const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
   const resetMs = Number(w.resetsAtMs);
   if (resetMs > 0 && resetMs <= now)
-    return { key, label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
+    return { key, label, windowName, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
   let reset = "";
   if (resetMs > 0) reset = resetTime(resetMs, now);
   return {
     key,
     label,
+    windowName,
     used: stale ? `上次${used}` : used,
     percent: pct,
     reset,
@@ -215,19 +218,17 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
   return out;
 }
 
-/** One line for a CLI on the machine page: its windows, or its state. */
+/** One line for a CLI on the machine page: its most-used window, or its state. */
 export function quotaSummary(views: QuotaView[]): string {
   return views
     .map((v) => {
       if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || "暂未获取额度";
-      const got = v.rows.filter((r) => r.used !== "未获取");
+      const got = v.rows.filter((r) => r.used !== "未获取" && r.percent !== undefined);
       if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
-      if (v.groups.length > 1) {
-        const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
-        return `${tightest.label} ${tightest.used}${v.stale ? "（上次记录）" : ""}`;
-      }
-      const line = got.map((r) => `${r.label} ${r.used}`).join(" · ");
-      return line + (v.stale ? "（上次记录）" : "");
+      const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
+      const win = tightest.windowName || tightest.label;
+      const staleSuffix = v.stale && !tightest.used.includes("上次") ? "（上次记录）" : "";
+      return `${tightest.used} · ${win}${staleSuffix}`;
     })
     .join("；");
 }
