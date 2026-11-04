@@ -21,6 +21,7 @@ func agyHarness(t *testing.T) *harness {
 	h.s.ag = a
 	h.s.parser = a.NewParser()
 	h.s.meta.Agent = a.Kind()
+	h.s.meta.CodexSessionID = "conv"
 	h.s.meta.NoFullAccess = true
 	h.d.sessions[h.s.meta.ID] = h.s
 	t.Cleanup(func() { h.s.retractApprovals() })
@@ -36,7 +37,9 @@ func agyScreen(t *testing.T, name string) string {
 }
 func nativeCard(t *testing.T, h *harness) *pb.Event {
 	t.Helper()
-	_, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: "PreToolUse", ToolName: "run_command", ToolUseID: "step_2", ToolInput: []byte(`{"CommandLine":"echo hello_perm_test"}`)})
+	_ = h.s.emit(&pb.Event{Kind: &pb.Event_ToolStarted{ToolStarted: &pb.ToolStarted{CallId: "conv/step_2", ItemType: "run_command", Input: `{"CommandLine":"echo hello_perm_test"}`}}})
+	step := int64(2)
+	_, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: "PreToolUse", SessionID: "conv", StepIndex: &step, ToolName: "run_command", ToolUseID: "conv/step_2", ToolInput: []byte(`{"CommandLine":"echo hello_perm_test"}`)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,6 +95,11 @@ func TestAgyNativeApprovalDoesNotAnswerChangedScreen(t *testing.T) {
 }
 func TestAgyNativeApprovalTimeoutDenies(t *testing.T) {
 	h := agyHarness(t)
+	h.term.onWrite = func(f *fakeTerm, b string) {
+		if b == "4" {
+			f.screen = agyScreen(t, "idle-empty-box.txt")
+		}
+	}
 	_ = nativeCard(t, h)
 	eventually(t, "native timeout denial", func() bool {
 		for _, e := range h.events() {
@@ -109,7 +117,7 @@ func TestAgyNativeToolResultRetractsCard(t *testing.T) {
 	h := agyHarness(t)
 	card := nativeCard(t, h)
 	req := card.GetApprovalRequested()
-	h.s.retractFor(&pb.ToolCall{ItemType: req.ToolName, InputDigest: req.InputDigest})
+	h.s.retractFor(&pb.ToolCall{CallId: "conv/step_2", ItemType: req.ToolName, InputDigest: req.InputDigest})
 	eventually(t, "terminal resolution", func() bool {
 		for _, e := range h.events() {
 			if e.GetApprovalResolved().GetDecision() == pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL {
@@ -130,14 +138,15 @@ func TestAgyLockedModeAndUnsupportedActions(t *testing.T) {
 	if _, err := h.d.fork(h.s.meta.ID, originLocal); !errors.Is(err, agent.ErrUnsupported) {
 		t.Fatal(err)
 	}
-	h.s.context = &pb.TurnContext{PermissionMode: "always-proceed"}
+	h.s.context = &pb.TurnContext{ApprovalPolicy: "always-proceed", PermissionMode: "default"}
 	h.s.meta.NoFullAccess = false
+	h.s.statusLineAt = time.Now()
 	info := h.s.info()
 	if !info.ModeLocked || info.FullAccessUnavailable || info.Mode != pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS {
 		t.Fatal(info)
 	}
 	h.s.meta.NoFullAccess = true
-	h.s.context = &pb.TurnContext{PermissionMode: "default"}
+	h.s.context = &pb.TurnContext{ApprovalPolicy: "request-review", PermissionMode: "default"}
 	info = h.s.info()
 	if info.ModeLocked || !info.FullAccessUnavailable {
 		t.Fatal(info)
@@ -148,7 +157,7 @@ func TestAgyStopHookClosesRunningTurn(t *testing.T) {
 	if err := h.s.emit(&pb.Event{TurnId: "step_0", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: "Stop", TerminationReason: "ERROR"}); err != nil {
+	if _, err := h.s.hook(context.Background(), &agent.Hook{HookEventName: "Stop", SessionID: "conv", TerminationReason: "ERROR"}); err != nil {
 		t.Fatal(err)
 	}
 	if h.s.isRunning() {
@@ -163,7 +172,7 @@ func TestAgyStopHookClosesRunningTurn(t *testing.T) {
 			}
 		}
 	}
-	_, _ = h.s.hook(context.Background(), &agent.Hook{HookEventName: "Stop", TerminationReason: "ERROR"})
+	_, _ = h.s.hook(context.Background(), &agent.Hook{HookEventName: "Stop", SessionID: "conv", TerminationReason: "ERROR"})
 	count := 0
 	for _, e := range h.events() {
 		if e.GetTurnEnded() != nil {

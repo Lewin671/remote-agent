@@ -13,8 +13,9 @@ const maxSeen = 1000
 
 // input is one message waiting to be submitted.
 type input struct {
-	Text      string `json:"text"`
-	RequestID string `json:"request_id,omitempty"`
+	CLIConversation string `json:"cli_conversation,omitempty"`
+	Text            string `json:"text"`
+	RequestID       string `json:"request_id,omitempty"`
 	// Images are pasted before the text, in order.
 	Images []queuedImage `json:"images,omitempty"`
 	Files  []queuedFile  `json:"files,omitempty"`

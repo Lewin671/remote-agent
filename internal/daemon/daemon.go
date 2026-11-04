@@ -37,7 +37,7 @@ import (
 // Config configures a Daemon.
 type Config struct {
 	// Exe is the remote-agent binary, used as pty-host and hook command.
-	Exe string
+	Exe  string
 	Tmux *tmux.Client
 	// Agents holds per-CLI configuration keyed by agent kind.
 	Agents map[pb.Agent]AgentConfig
@@ -117,7 +117,7 @@ type Daemon struct {
 	starting map[string]chan struct{}
 	limits   *pb.TokenUsage // latest usage limits seen in any session
 	limitsAt time.Time      // when Codex reported them
-	quotas   claudeQuotas   // Claude Code's account limits
+	quotas   quotaStore     // CLI account limits
 	// reported is each session's last Claude Code status line.
 	reported map[string]quotaReport
 
@@ -557,6 +557,10 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
 		ScheduledRunID: origin.GetScheduledRunId(), ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
 		StandardContext: ag.StandardWindow() > 0 && req.StandardContext, Shell: viaShell}
+	if ag.Capabilities().ConversationIdentity {
+		idle := false
+		m.BackgroundPossible = &idle
+	}
 	// The environment the CLI starts with: a client-created session's
 	// login shell gets what a new terminal gives it and builds the rest
 	// from the user's configuration; any other session gets the caller's
@@ -1142,6 +1146,15 @@ drain:
 	if err != nil {
 		return nil, err
 	}
+	if s.ag.Capabilities().ConversationIdentity {
+		s.mu.Lock()
+		s.meta.ExpectedConversation = s.meta.CodexSessionID
+		err = s.meta.save(s.dir)
+		s.mu.Unlock()
+		if err != nil {
+			return nil, err
+		}
+	}
 	argv := d.ptyHostArgv(s.dir, &m, bin, cliArgs, envFile)
 	if err := d.cfg.Tmux.NewSession(tmux.NewSessionOptions{
 		Name: m.Tmux, Dir: m.Cwd, Width: d.cfg.Width, Height: d.cfg.Height, Argv: argv,
@@ -1157,6 +1170,9 @@ drain:
 
 	s.mu.Lock()
 	s.meta.Exited = false
+	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
+	s.identityResume = s.identityPending
+	s.identityFailed = false
 	s.meta.ScheduledClosed = false
 	// Explicit/scheduled resume is independent of the old creation. An
 	// implicit resume remains owned until canonical input admission takes over.

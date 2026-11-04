@@ -372,6 +372,9 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	if err != nil {
 		return notWritten, err
 	}
+	if !s.nativeIdentityReady() {
+		return notWritten, nil
+	}
 	scr := s.ag.Analyze(styled)
 	if !scr.ComposerReady || !scr.DraftEmpty {
 		s.noteWait(scr)
@@ -687,6 +690,15 @@ func (s *session) settle(ctx context.Context, in input) bool {
 		s.readRollout()
 		s.mu.Lock()
 		cliID := s.meta.CodexSessionID
+		if s.ag.Capabilities().ConversationIdentity {
+			for _, current := range s.queue.Queue {
+				if current.RequestID == in.RequestID {
+					in.CLIConversation = current.CLIConversation
+					break
+				}
+			}
+			cliID = in.CLIConversation
+		}
 		s.mu.Unlock()
 		if hist.submitted(in.matches, cliID) || s.loggedUserMessage(in) {
 			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
@@ -773,7 +785,7 @@ func (in input) pairImages(m *pb.UserMessage) map[int]*pb.ImageRef {
 func (s *session) loggedUserMessage(in input) bool {
 	found := false
 	if err := scanEventsSince(s.log, in.InflightSeq, func(e *pb.Event) bool {
-		if m := e.GetUserMessage(); m != nil && in.matchesMessage(m) {
+		if m := e.GetUserMessage(); m != nil && s.inputMatchesEvent(in, e) {
 			found = true
 			return false
 		}
@@ -791,6 +803,19 @@ func (s *session) loggedUserMessage(in input) bool {
 // nothing was written for came from the local terminal. It returns what
 // uses the match up, run once the event is logged. Callers hold s.mu.
 func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) func() {
+	if e.Origin.GetKind() == pb.OriginKind_ORIGIN_KIND_SYSTEM {
+		// Explicitly queued human text wins over a CLI-generated-looking label.
+		human := false
+		for _, in := range append(append([]input{}, s.queue.Queue...), s.recent...) {
+			if s.inputMatchesEvent(in, e) && humanOrigin(in.Origin.pb()) {
+				human = true
+				break
+			}
+		}
+		if !human {
+			return nil
+		}
+	}
 	m.Files = s.d.uploads.recognizeFiles(s.meta.ID, m.Text)
 	type cand struct {
 		in   input
@@ -801,12 +826,12 @@ func (s *session) annotateUserMessage(e *pb.Event, m *pb.UserMessage) func() {
 	inflight := false
 	if len(s.queue.Queue) > 0 && s.queue.Queue[0].Inflight != nil {
 		inflight = true
-		if in := s.queue.Queue[0]; !in.matched && in.matchesMessage(m) {
+		if in := s.queue.Queue[0]; !in.matched && s.inputMatchesEvent(in, e) {
 			cands = append(cands, cand{in: in, head: true})
 		}
 	}
 	for i, in := range s.recent {
-		if in.matchesMessage(m) {
+		if s.inputMatchesEvent(in, e) {
 			cands = append(cands, cand{in: in, i: i})
 		}
 	}
@@ -950,6 +975,17 @@ func (s *session) markInflight(offset int64, requestID string) error {
 		return errHeadChanged
 	}
 	prev := s.queue.Queue[0]
+	if s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != "" {
+		if s.meta.InputConversations == nil {
+			s.meta.InputConversations = map[string]string{}
+		}
+		s.meta.InputConversations[requestID] = s.meta.CodexSessionID
+		s.pruneInputConversationsLocked()
+		if err := s.meta.save(s.dir); err != nil {
+			return err
+		}
+		s.queue.Queue[0].CLIConversation = s.meta.CodexSessionID
+	}
 	s.queue.Queue[0].Inflight = &offset
 	s.queue.Queue[0].InflightSeq = s.log.LastSeq()
 	s.queue.Queue[0].Stage = pb.InputStage_INPUT_STAGE_SUBMITTING
@@ -1001,4 +1037,13 @@ func (s *session) unmarkInflight(requestID string, stage pb.InputStage) {
 	}
 	s.queue.Queue[0].Inflight, s.queue.Queue[0].InflightSeq, s.queue.Queue[0].Stage = nil, 0, stage
 	_, _ = s.saveQueueLocked()
+}
+
+func (s *session) inputMatchesEvent(in input, e *pb.Event) bool {
+	if source, ok := s.ag.(agent.ConversationEvents); ok {
+		if in.CLIConversation == "" || source.EventConversation(e) != in.CLIConversation {
+			return false
+		}
+	}
+	return in.matchesMessage(e.GetUserMessage())
 }

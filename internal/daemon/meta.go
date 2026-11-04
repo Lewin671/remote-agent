@@ -11,7 +11,12 @@ import (
 
 // meta is the persisted description of a session, session.json.
 type meta struct {
-	TaskCLIClosed bool `json:"task_cli_closed,omitempty"`
+	InputConversations   map[string]string `json:"input_conversations,omitempty"`
+	ExpectedConversation string            `json:"expected_conversation,omitempty"`
+	BackgroundIdleSeq    uint64            `json:"background_idle_seq,omitempty"`
+	BackgroundPossible   *bool             `json:"background_possible,omitempty"`
+	ConversationOffsets  map[string]int64  `json:"conversation_offsets,omitempty"`
+	TaskCLIClosed        bool              `json:"task_cli_closed,omitempty"`
 	// Cause of the latest exit; TaskCLIClosed also fences resumed CLI lifetimes.
 	ScheduledClosed bool `json:"scheduled_closed,omitempty"`
 	// Creation provenance, set once by createByContext for a new task session.

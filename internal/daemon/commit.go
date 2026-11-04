@@ -7,6 +7,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -116,6 +117,11 @@ func (s *session) retryTranscript(path string) {
 }
 
 func (s *session) afterTranscript(evs []*pb.Event) {
+	if source, ok := s.parser.(agent.PlanSource); ok {
+		s.mu.Lock()
+		s.planFacts = source.Plan()
+		s.mu.Unlock()
+	}
 	if len(evs) > 0 {
 		// A previous failure may have left a held outcome owing.
 		s.settleReceived()

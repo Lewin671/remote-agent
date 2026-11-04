@@ -192,6 +192,9 @@ func (s *session) setApprovalMode(mode pb.ApprovalMode) error {
 
 // setApprovalModeBy is setApprovalMode on behalf of origin.
 func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, origin *pb.Origin) error {
+	if !s.nativeIdentityReady() {
+		return agent.ErrNotReady
+	}
 	// The facts too are read with the terminal held: a model switch that
 	// held it until then changes them.
 	return s.drive(ctx, func(t agent.Term, busy bool) error {
@@ -210,6 +213,9 @@ func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, o
 func (s *session) compact() error { return s.compactContext(context.Background()) }
 
 func (s *session) compactContext(ctx context.Context) error {
+	if !s.nativeIdentityReady() {
+		return agent.ErrNotReady
+	}
 	if s.isRunning() {
 		return errBusy
 	}
@@ -232,6 +238,9 @@ func (s *session) answerPlanBy(ctx context.Context, choice pb.PlanChoice, origin
 }
 
 func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, origin *pb.Origin, record func(*pb.Event) error) error {
+	if !s.nativeIdentityReady() {
+		return agent.ErrNotReady
+	}
 	// The adapter checks on the held screen that the plan prompt shows.
 	return s.drive(ctx, func(t agent.Term, _ bool) error {
 		s.mu.Lock()
@@ -250,7 +259,13 @@ func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, ori
 				return errRemoteAnswerStale
 			}
 		}
-		if err := s.ag.AnswerPlan(t, choice); err != nil {
+		s.readMu.Lock()
+		var facts *agent.PlanFacts
+		if source, ok := s.parser.(agent.PlanSource); ok {
+			facts = source.Plan()
+		}
+		s.readMu.Unlock()
+		if err := s.ag.AnswerPlan(t, choice, facts); err != nil {
 			return err
 		}
 		// Successful keys consume this prompt even if recording fails or a
@@ -261,6 +276,15 @@ func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, ori
 		if err := record(withOrigin(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}, origin)); err != nil {
 			return fmt.Errorf("plan answer already applied on the computer but could not be recorded: %w", err)
 		}
+		s.readMu.Lock()
+		s.parser.Replay(&pb.Event{Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}})
+		if source, ok := s.parser.(agent.PlanSource); ok {
+			s.mu.Lock()
+			s.planFacts = source.Plan()
+			s.mu.Unlock()
+		}
+		s.readMu.Unlock()
+
 		return nil
 	})
 }
