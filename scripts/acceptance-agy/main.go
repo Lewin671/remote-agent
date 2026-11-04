@@ -335,6 +335,37 @@ func run() (runErr error) {
 		fmt.Println("all preflight checks passed")
 		return nil
 	}
+	// Never spend model quota until the current status-line sample proves the
+	// Gemini five-hour bucket has at least 20% remaining. Missing is not API.
+	var quotaReady, quotaLow bool
+	if err := wait("status-line Gemini quota before model requests", func() bool {
+		machines, err := client.Machines(ctx)
+		if err != nil {
+			return false
+		}
+		for _, m := range machines {
+			if m.ID == machine.ID {
+				for _, q := range m.Meta.GetQuotas() {
+					if q.Agent == pb.Agent_AGENT_ANTIGRAVITY {
+						for _, w := range q.Windows {
+							if w.Name == "gemini-5h" && w.UsedPercent != nil {
+								quotaReady, quotaLow = true, *w.UsedPercent > 80
+								return true
+							}
+						}
+					}
+				}
+			}
+		}
+		return false
+	}); err != nil {
+		return err
+	}
+	if !quotaReady || quotaLow {
+		fmt.Println("SKIP real model acceptance: Gemini five-hour remaining quota below 20%")
+		return nil
+	}
+	fmt.Println("PASS status-line Gemini five-hour quota at least 20% before requests")
 	seq := sequence()
 	if err := send("Reply with exactly PONG and nothing else. Do not call tools."); err != nil {
 		return err
@@ -346,6 +377,36 @@ func run() (runErr error) {
 		return err
 	}
 	fmt.Println("PASS send and read model reply as encrypted events")
+	// Two distinct uploads prove agy's count grows after each path, then the
+	// native CLI receives both media and the text in one submitted message.
+	imageIDs := make([]string, 0, 2)
+	for i := 0; i < 2; i++ {
+		id, err := uploadRedImage(ctx, client, machine.ID)
+		if err != nil {
+			return err
+		}
+		imageIDs = append(imageIDs, id)
+	}
+	seq = sequence()
+	if err := do(&pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), Text: "What is the dominant color in both attached images? Reply with RED only, without tools.", ImageIds: imageIDs}}}); err != nil {
+		return err
+	}
+	if _, err := event(seq, "native image recognition reply", func(e *pb.Event) bool { return strings.Contains(strings.ToUpper(e.GetAgentMessage().GetText()), "RED") }); err != nil {
+		return err
+	}
+	if _, err := event(seq, "image turn completed", func(e *pb.Event) bool { return e.GetTurnEnded() != nil }); err != nil {
+		return err
+	}
+	if _, err := event(seq, "both uploaded images bound to user message", func(e *pb.Event) bool {
+		m := e.GetUserMessage()
+		if m == nil || len(m.Images) != 2 {
+			return false
+		}
+		return m.Images[0].UploadId == imageIDs[0] && m.Images[1].UploadId == imageIDs[1]
+	}); err != nil {
+		return err
+	}
+	fmt.Println("PASS two-image upload, native attachment recognition, text submission and model reply over encrypted relay")
 	resolve := func(e *pb.Event, allow bool) error {
 		return do(&pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: sid, ApprovalId: e.GetApprovalRequested().ApprovalId, Allow: allow, ObservedEventSeq: e.Seq}}})
 	}
