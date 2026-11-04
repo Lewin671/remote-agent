@@ -1792,3 +1792,23 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 - Android：`:core:test` 和 `:app:testDebugUnitTest` 通过，覆盖同样的状态与文案。
 - 演示页（本机 Chrome，390 宽，暗色）：`conn=reconnecting` 显示「正在重连：同步设备状态，已 N 秒。」，「立即重连」和「再测一次」并排；`conn=noserver` 显示「实时推送未连接，会话变化可能延迟。最近一次失败：连接超时」，点「立即重连」后变为「正在重连：同步设备状态，已 2 秒。上一次失败：连接超时」。
 - 没覆盖：演示页的步骤是固定值，没有在真实 server/daemon 上看切回前台的整个过程；Android 只跑了单元测试，没有在模拟器或真机上看；亮色、宽屏和 200% 字号没看。
+
+
+## Antigravity daemon 与原生 CLI（2026-11-04）
+
+环境：macOS、真实 agy 1.5.0、Gemini 3.8 Flash low、协议 13；`scripts/acceptance-agy.sh` 从当前 checkout 构建本地 server 和 daemon，使用临时账户、独立数据库/状态目录与 tmux socket。操作经加密 synthetic client 的 Forward 到 daemon 和真实 CLI，再经加密事件返回。不是网页、Android 或 iOS 产品 UI 验收；打开/选择原生工件面板、观察屏幕哈希和“本地先答”是明确的终端调试操作。
+
+最终完整运行输出 `all checks passed`，覆盖：
+
+- CLI 新建、空输入框和多行草稿、逐行清理；request-review 下的实际模式循环逐格由状态栏确认。
+- 发消息并读回真实模型回复；命令与文件创建审批各自允许/拒绝，使用其原生单次菜单项，并确认消费。
+- 模型提问远程作答；计划批准、拒绝之后的独立反馈、本地先答、展示后修改、多工件只交终端处理。真实脱敏画面在 `internal/antigravity/testdata/screen/plan-1.5.0-*.txt`；原生 Submit 阶段单独验证，不把暂存选择当成提交成功。
+- 确认测试 shell 命令已经实际开始后中断；稳定取消画面与 transcript 复查记为 aborted。
+- 重启 daemon 后经一次已认证只读往返确认连接，再接续消息；退出 CLI 后用 `--conversation` 恢复同一对话；终端 `/fork`、`/resume` 切换后核对 ID、重绑 transcript，再发消息。
+- `/compact` 追加 CHECKPOINT；设备元数据中出现 agy 额度；运行前后用户 agy 和 Claude 设置哈希一致。
+
+`TMPDIR=/tmp REMOTE_AGENT_HOME=<临时目录> remote-agent doctor agy` 真实运行全部通过，临时目录中的 `verified-agy.json` 记录 1.5.0；没有改日常 daemon 的校验记录、安装或运行版本。临时中继、daemon 与 tmux 测试进程结束后清理；原生 agy 自己保存的测试会话仍按 CLI 的正常存储行为保留，没有手工修改其配置或凭据。
+
+检查：`go test ./...`、`go vet ./...`、`go test ./internal/antigravity -count=5` 和新增 native/额度用例的 `-race` 检查通过。没有将中间失败重试成“flaky 通过”：真实验收先后暴露了状态栏假路径、文件菜单布局及路径别名、Action-required 标题、Submit 阶段，以及测试脚本的重启就绪屏障；修正后重新完成整条链路。所有失败轮次与最终轮次的私人诊断只留在仓库外，未提交原始日志或额度画面。
+
+未覆盖：产品客户端直接点击、真实多选问题、API-key 登录的额度行为，以及真实周期任务派发；多选/异常 hook/恢复边界和定时来源由自动测试覆盖，MCP 配置与权限准入已接入。无颜色的精确模式占位文字无法与同文草稿区分，仍保守交给终端处理；继承工件索引不完整、嵌套或无法唯一定位的计划也不远程猜测。

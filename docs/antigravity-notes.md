@@ -558,3 +558,19 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 - Ctrl-E Ctrl-U 只清除光标所在的行。多行草稿要逐行清除，用 Backspace 合并上一行后再重复；每次都可以捕获输入框确认，不能把一次按键成功当作整框已空。
 - 在显式 `toolPermission: request-review` 的 1.5.0 隔离会话中，连续 Shift+Tab 的状态栏事件按 `Default → Accept-edits → Auto → Plan → Default` 出现；每格都读到了对应回报。启动时的 Auto 警告与交互循环能到达 Auto 并不矛盾，不能由警告推断运行中不可选。
 - 原始 Hook 证据中的 `transcriptPath` 指向 `transcript_full.jsonl`。PreToolUse 的 `stepIdx` 对应工具结果 `GENERIC` 的 `step_index`，不是前一个 `PLANNER_RESPONSE` 的索引；transcript 的参数值可能是编码后的 JSON 字符串，hook 对应值则是原生字符串、数字或对象。按索引和规范化后的参数可以核对同一个调用。
+
+- 同一天的原生状态栏补测还观察到：`gemini-5h.remaining_fraction` 在 `reset_time` 不变、尚未到该时间时从 0 回升到一个小的正值。因此该桶在同一个窗口中的已用比例并不保证单调递增；这里只记录变化，不推断服务端回补算法或可支撑多少轮请求。
+
+- 空闲画面的状态栏命令不会保证反复执行。1.5.0 的独立会话中，把视口缩窄一列、再恢复原宽，均触发了新的状态栏命令输入，`terminal_width` 分别等于新宽和原宽；该操作没有输入 prompt 或切换模式。
+
+- 1.5.0 的真实加密链路测试中，SessionStart 指向 `antigravity-cli/brain/<id>/...` 的实际日志，状态栏却给出 `antigravity/brain/<id>/...`；后者在该环境不存在，并非符号链接。两处 conversation_id 相同，前者已有 USER_INPUT 与实际模型回复。不能仅因为这两个路径字符串不同就认为切换了对话，读取时须核对实际 CLI 状态文件。
+
+- 另一轮 1.5.0 新会话的 request-review 模式切换事件为 `Default → Accept-edits → Plan → Default`，没有收到 Auto 的确认帧；不能把某次完整循环固定当作所有会话都具备的模式列表。远程操作按每格实际回报确认，缺少目标就报告不可达，不由这一观察给整台电脑的模型打禁用标记。
+
+- 1.5.0 的文件创建审批把绝对路径及 `+N` 行数放在 diff 标题上，随后是 1/2 两项菜单，没有命令审批的 `Requesting permission for` 标题。macOS 实测 hook/transcript 记录 `/tmp/...` 原文，原生 diff 标题显示规范化的 `/private/tmp/...`，两者完整参数一致且文件系统解析到同一个目标。命令文本仍须逐字核对，不能用这条文件路径规则替代命令匹配。
+
+- 1.5.0 真实待审计划按 Ctrl-R 后是 `Action required (1 left)` 面板，不是普通 `Artifacts` 列表。选中行显示 `› □ new <文件名> open approve reject`，页脚明确提供 `y/n Approve/reject` 和 `esc Done`；已脱敏的真实样本见 `plan-review-1.5.0-pending.txt`。不能等待 `Artifacts` 这个标题来判断待审计划已打开。
+
+- 1.5.0 的 Plan 模式实测把普通输入记录为 `/plan <原 prompt>`，屏幕和 USER_INPUT 中都带这个前缀；这不是只有 `/plan` 的模式命令。整行按 slash command 丢弃会漏掉真实用户消息及其提交确认。
+
+- 1.5.0 的多工件审阅中，`y/n` 可能只把行标成 `approved/rejected`，并出现 `Submit / Dismiss` 按钮；此时还没有生成对应 USER_INPUT。把焦点移到原生 Submit 并回车后，才观察到 `[Approved]`/`[Rejected]` 和后续模型轮次。仅因选中行改变或不再显示 `new` 不能声称已交付审批；不能顺带提交其他工件尚未确认的选择。
