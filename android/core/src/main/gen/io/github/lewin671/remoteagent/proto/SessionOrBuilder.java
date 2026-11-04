@@ -514,4 +514,15 @@ public interface SessionOrBuilder extends
    * @return The taskOwned.
    */
   boolean getTaskOwned();
+
+  /**
+   * <pre>
+   * The approval mode cannot be changed in this session (an Antigravity
+   * session started with full access); clients grey out all four modes.
+   * </pre>
+   *
+   * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+   * @return The modeLocked.
+   */
+  boolean getModeLocked();
 }

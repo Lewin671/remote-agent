@@ -200,7 +200,10 @@ type Session struct {
 	// Creating task remains known after a user takes over this conversation.
 	ScheduledTaskId string `protobuf:"bytes,35,opt,name=scheduled_task_id,json=scheduledTaskId,proto3" json:"scheduled_task_id,omitempty"`
 	// Omit from default session/project listings until user takeover.
-	TaskOwned     bool `protobuf:"varint,36,opt,name=task_owned,json=taskOwned,proto3" json:"task_owned,omitempty"`
+	TaskOwned bool `protobuf:"varint,36,opt,name=task_owned,json=taskOwned,proto3" json:"task_owned,omitempty"`
+	// The approval mode cannot be changed in this session (an Antigravity
+	// session started with full access); clients grey out all four modes.
+	ModeLocked    bool `protobuf:"varint,37,opt,name=mode_locked,json=modeLocked,proto3" json:"mode_locked,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -483,6 +486,13 @@ func (x *Session) GetScheduledTaskId() string {
 func (x *Session) GetTaskOwned() bool {
 	if x != nil {
 		return x.TaskOwned
+	}
+	return false
+}
+
+func (x *Session) GetModeLocked() bool {
+	if x != nil {
+		return x.ModeLocked
 	}
 	return false
 }
@@ -2624,8 +2634,10 @@ type DaemonSettings struct {
 	Claude *AgentDefaults `protobuf:"bytes,5,opt,name=claude,proto3" json:"claude,omitempty"`
 	// Zero retains the daemon's default. Limits cover files, not CLI history.
 	ImageUploadQuotaBytes int64 `protobuf:"varint,6,opt,name=image_upload_quota_bytes,json=imageUploadQuotaBytes,proto3" json:"image_upload_quota_bytes,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// Defaults for new Antigravity sessions.
+	Antigravity   *AgentDefaults `protobuf:"bytes,7,opt,name=antigravity,proto3" json:"antigravity,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DaemonSettings) Reset() {
@@ -2698,6 +2710,13 @@ func (x *DaemonSettings) GetImageUploadQuotaBytes() int64 {
 		return x.ImageUploadQuotaBytes
 	}
 	return 0
+}
+
+func (x *DaemonSettings) GetAntigravity() *AgentDefaults {
+	if x != nil {
+		return x.Antigravity
+	}
+	return nil
 }
 
 type AgentDefaults struct {
@@ -4046,7 +4065,7 @@ var File_remoteagent_v1_local_proto protoreflect.FileDescriptor
 
 const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
-	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xa7\v\n" +
+	"\x1aremoteagent/v1/local.proto\x12\x0eremoteagent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1aremoteagent/v1/event.proto\"\xc8\v\n" +
 	"\aSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x10\n" +
 	"\x03cwd\x18\x02 \x01(\tR\x03cwd\x12!\n" +
@@ -4089,7 +4108,9 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x14machine_replacements\x18\" \x03(\v2'.remoteagent.v1.MachineReplacementProofR\x13machineReplacements\x12*\n" +
 	"\x11scheduled_task_id\x18# \x01(\tR\x0fscheduledTaskId\x12\x1d\n" +
 	"\n" +
-	"task_owned\x18$ \x01(\bR\ttaskOwned\"S\n" +
+	"task_owned\x18$ \x01(\bR\ttaskOwned\x12\x1f\n" +
+	"\vmode_locked\x18% \x01(\bR\n" +
+	"modeLocked\"S\n" +
 	"\x17MachineReplacementProof\x12\x1a\n" +
 	"\bapproval\x18\x01 \x01(\fR\bapproval\x12\x1c\n" +
 	"\tsignature\x18\x02 \x01(\fR\tsignature\"\xc3\x03\n" +
@@ -4232,14 +4253,15 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x12\n" +
 	"\x04home\x18\x03 \x01(\tR\x04home\x12\x12\n" +
-	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\xc7\x02\n" +
+	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\x88\x03\n" +
 	"\x0eDaemonSettings\x128\n" +
 	"\x18approval_timeout_seconds\x18\x01 \x01(\x05R\x16approvalTimeoutSeconds\x12#\n" +
 	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\x12%\n" +
 	"\x0edefault_effort\x18\x03 \x01(\tR\rdefaultEffort\x12?\n" +
 	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\x125\n" +
 	"\x06claude\x18\x05 \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\x06claude\x127\n" +
-	"\x18image_upload_quota_bytes\x18\x06 \x01(\x03R\x15imageUploadQuotaBytes\"o\n" +
+	"\x18image_upload_quota_bytes\x18\x06 \x01(\x03R\x15imageUploadQuotaBytes\x12?\n" +
+	"\vantigravity\x18\a \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\vantigravity\"o\n" +
 	"\rAgentDefaults\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +
@@ -4496,84 +4518,85 @@ var file_remoteagent_v1_local_proto_depIdxs = []int32{
 	0,  // 18: remoteagent.v1.AnswerPlanRequest.choice:type_name -> remoteagent.v1.PlanChoice
 	72, // 19: remoteagent.v1.DaemonSettings.default_mode:type_name -> remoteagent.v1.ApprovalMode
 	44, // 20: remoteagent.v1.DaemonSettings.claude:type_name -> remoteagent.v1.AgentDefaults
-	72, // 21: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
-	43, // 22: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	64, // 23: remoteagent.v1.GetSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
-	43, // 24: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
-	43, // 25: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
-	64, // 26: remoteagent.v1.UpdateSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
-	2,  // 27: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
-	2,  // 28: remoteagent.v1.ForkSessionResponse.session:type_name -> remoteagent.v1.Session
-	1,  // 29: remoteagent.v1.ImageUploadStatus.state:type_name -> remoteagent.v1.ImageUploadState
-	75, // 30: remoteagent.v1.BeginImageUploadRequest.format:type_name -> remoteagent.v1.ImageFormat
-	53, // 31: remoteagent.v1.BeginImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	53, // 32: remoteagent.v1.PutImageChunkResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	53, // 33: remoteagent.v1.GetImageUploadStatusResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	53, // 34: remoteagent.v1.CompleteImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
-	65, // 35: remoteagent.v1.ImageStorageUsage.sessions:type_name -> remoteagent.v1.ImageSessionStorage
-	66, // 36: remoteagent.v1.LocalService.Schedule:input_type -> remoteagent.v1.ScheduleRequest
-	4,  // 37: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
-	6,  // 38: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
-	8,  // 39: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
-	10, // 40: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
-	12, // 41: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
-	14, // 42: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
-	49, // 43: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
-	51, // 44: remoteagent.v1.LocalService.ForkSession:input_type -> remoteagent.v1.ForkSessionRequest
-	16, // 45: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
-	18, // 46: remoteagent.v1.LocalService.ResumeInput:input_type -> remoteagent.v1.ResumeInputRequest
-	28, // 47: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
-	30, // 48: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
-	33, // 49: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
-	35, // 50: remoteagent.v1.LocalService.RenameSession:input_type -> remoteagent.v1.RenameSessionRequest
-	37, // 51: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
-	39, // 52: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
-	41, // 53: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
-	45, // 54: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
-	47, // 55: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
-	54, // 56: remoteagent.v1.LocalService.BeginImageUpload:input_type -> remoteagent.v1.BeginImageUploadRequest
-	56, // 57: remoteagent.v1.LocalService.PutImageChunk:input_type -> remoteagent.v1.PutImageChunkRequest
-	58, // 58: remoteagent.v1.LocalService.GetImageUploadStatus:input_type -> remoteagent.v1.GetImageUploadStatusRequest
-	60, // 59: remoteagent.v1.LocalService.CompleteImageUpload:input_type -> remoteagent.v1.CompleteImageUploadRequest
-	62, // 60: remoteagent.v1.LocalService.AbortImageUpload:input_type -> remoteagent.v1.AbortImageUploadRequest
-	20, // 61: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
-	22, // 62: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
-	24, // 63: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
-	26, // 64: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
-	67, // 65: remoteagent.v1.LocalService.Schedule:output_type -> remoteagent.v1.ScheduleResponse
-	5,  // 66: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
-	7,  // 67: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
-	9,  // 68: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
-	11, // 69: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
-	13, // 70: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
-	15, // 71: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
-	50, // 72: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
-	52, // 73: remoteagent.v1.LocalService.ForkSession:output_type -> remoteagent.v1.ForkSessionResponse
-	17, // 74: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
-	19, // 75: remoteagent.v1.LocalService.ResumeInput:output_type -> remoteagent.v1.ResumeInputResponse
-	29, // 76: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
-	32, // 77: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
-	34, // 78: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
-	36, // 79: remoteagent.v1.LocalService.RenameSession:output_type -> remoteagent.v1.RenameSessionResponse
-	38, // 80: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
-	40, // 81: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
-	42, // 82: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
-	46, // 83: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
-	48, // 84: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
-	55, // 85: remoteagent.v1.LocalService.BeginImageUpload:output_type -> remoteagent.v1.BeginImageUploadResponse
-	57, // 86: remoteagent.v1.LocalService.PutImageChunk:output_type -> remoteagent.v1.PutImageChunkResponse
-	59, // 87: remoteagent.v1.LocalService.GetImageUploadStatus:output_type -> remoteagent.v1.GetImageUploadStatusResponse
-	61, // 88: remoteagent.v1.LocalService.CompleteImageUpload:output_type -> remoteagent.v1.CompleteImageUploadResponse
-	63, // 89: remoteagent.v1.LocalService.AbortImageUpload:output_type -> remoteagent.v1.AbortImageUploadResponse
-	21, // 90: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
-	23, // 91: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
-	25, // 92: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
-	27, // 93: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
-	65, // [65:94] is the sub-list for method output_type
-	36, // [36:65] is the sub-list for method input_type
-	36, // [36:36] is the sub-list for extension type_name
-	36, // [36:36] is the sub-list for extension extendee
-	0,  // [0:36] is the sub-list for field type_name
+	44, // 21: remoteagent.v1.DaemonSettings.antigravity:type_name -> remoteagent.v1.AgentDefaults
+	72, // 22: remoteagent.v1.AgentDefaults.mode:type_name -> remoteagent.v1.ApprovalMode
+	43, // 23: remoteagent.v1.GetSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	64, // 24: remoteagent.v1.GetSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
+	43, // 25: remoteagent.v1.UpdateSettingsRequest.settings:type_name -> remoteagent.v1.DaemonSettings
+	43, // 26: remoteagent.v1.UpdateSettingsResponse.settings:type_name -> remoteagent.v1.DaemonSettings
+	64, // 27: remoteagent.v1.UpdateSettingsResponse.image_storage:type_name -> remoteagent.v1.ImageStorageUsage
+	2,  // 28: remoteagent.v1.ResumeSessionResponse.session:type_name -> remoteagent.v1.Session
+	2,  // 29: remoteagent.v1.ForkSessionResponse.session:type_name -> remoteagent.v1.Session
+	1,  // 30: remoteagent.v1.ImageUploadStatus.state:type_name -> remoteagent.v1.ImageUploadState
+	75, // 31: remoteagent.v1.BeginImageUploadRequest.format:type_name -> remoteagent.v1.ImageFormat
+	53, // 32: remoteagent.v1.BeginImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	53, // 33: remoteagent.v1.PutImageChunkResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	53, // 34: remoteagent.v1.GetImageUploadStatusResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	53, // 35: remoteagent.v1.CompleteImageUploadResponse.status:type_name -> remoteagent.v1.ImageUploadStatus
+	65, // 36: remoteagent.v1.ImageStorageUsage.sessions:type_name -> remoteagent.v1.ImageSessionStorage
+	66, // 37: remoteagent.v1.LocalService.Schedule:input_type -> remoteagent.v1.ScheduleRequest
+	4,  // 38: remoteagent.v1.LocalService.CreateSession:input_type -> remoteagent.v1.CreateSessionRequest
+	6,  // 39: remoteagent.v1.LocalService.ListSessions:input_type -> remoteagent.v1.ListSessionsRequest
+	8,  // 40: remoteagent.v1.LocalService.GetSession:input_type -> remoteagent.v1.GetSessionRequest
+	10, // 41: remoteagent.v1.LocalService.Send:input_type -> remoteagent.v1.SendRequest
+	12, // 42: remoteagent.v1.LocalService.Interrupt:input_type -> remoteagent.v1.InterruptRequest
+	14, // 43: remoteagent.v1.LocalService.StopSession:input_type -> remoteagent.v1.StopSessionRequest
+	49, // 44: remoteagent.v1.LocalService.ResumeSession:input_type -> remoteagent.v1.ResumeSessionRequest
+	51, // 45: remoteagent.v1.LocalService.ForkSession:input_type -> remoteagent.v1.ForkSessionRequest
+	16, // 46: remoteagent.v1.LocalService.CancelInput:input_type -> remoteagent.v1.CancelInputRequest
+	18, // 47: remoteagent.v1.LocalService.ResumeInput:input_type -> remoteagent.v1.ResumeInputRequest
+	28, // 48: remoteagent.v1.LocalService.SetModel:input_type -> remoteagent.v1.SetModelRequest
+	30, // 49: remoteagent.v1.LocalService.ListModels:input_type -> remoteagent.v1.ListModelsRequest
+	33, // 50: remoteagent.v1.LocalService.SetApprovalMode:input_type -> remoteagent.v1.SetApprovalModeRequest
+	35, // 51: remoteagent.v1.LocalService.RenameSession:input_type -> remoteagent.v1.RenameSessionRequest
+	37, // 52: remoteagent.v1.LocalService.Compact:input_type -> remoteagent.v1.CompactRequest
+	39, // 53: remoteagent.v1.LocalService.AnswerPlan:input_type -> remoteagent.v1.AnswerPlanRequest
+	41, // 54: remoteagent.v1.LocalService.ListDirectories:input_type -> remoteagent.v1.ListDirectoriesRequest
+	45, // 55: remoteagent.v1.LocalService.GetSettings:input_type -> remoteagent.v1.GetSettingsRequest
+	47, // 56: remoteagent.v1.LocalService.UpdateSettings:input_type -> remoteagent.v1.UpdateSettingsRequest
+	54, // 57: remoteagent.v1.LocalService.BeginImageUpload:input_type -> remoteagent.v1.BeginImageUploadRequest
+	56, // 58: remoteagent.v1.LocalService.PutImageChunk:input_type -> remoteagent.v1.PutImageChunkRequest
+	58, // 59: remoteagent.v1.LocalService.GetImageUploadStatus:input_type -> remoteagent.v1.GetImageUploadStatusRequest
+	60, // 60: remoteagent.v1.LocalService.CompleteImageUpload:input_type -> remoteagent.v1.CompleteImageUploadRequest
+	62, // 61: remoteagent.v1.LocalService.AbortImageUpload:input_type -> remoteagent.v1.AbortImageUploadRequest
+	20, // 62: remoteagent.v1.LocalService.ResolveApproval:input_type -> remoteagent.v1.ResolveApprovalRequest
+	22, // 63: remoteagent.v1.LocalService.AnswerQuestion:input_type -> remoteagent.v1.AnswerQuestionRequest
+	24, // 64: remoteagent.v1.LocalService.WatchEvents:input_type -> remoteagent.v1.WatchEventsRequest
+	26, // 65: remoteagent.v1.LocalService.Hook:input_type -> remoteagent.v1.HookRequest
+	67, // 66: remoteagent.v1.LocalService.Schedule:output_type -> remoteagent.v1.ScheduleResponse
+	5,  // 67: remoteagent.v1.LocalService.CreateSession:output_type -> remoteagent.v1.CreateSessionResponse
+	7,  // 68: remoteagent.v1.LocalService.ListSessions:output_type -> remoteagent.v1.ListSessionsResponse
+	9,  // 69: remoteagent.v1.LocalService.GetSession:output_type -> remoteagent.v1.GetSessionResponse
+	11, // 70: remoteagent.v1.LocalService.Send:output_type -> remoteagent.v1.SendResponse
+	13, // 71: remoteagent.v1.LocalService.Interrupt:output_type -> remoteagent.v1.InterruptResponse
+	15, // 72: remoteagent.v1.LocalService.StopSession:output_type -> remoteagent.v1.StopSessionResponse
+	50, // 73: remoteagent.v1.LocalService.ResumeSession:output_type -> remoteagent.v1.ResumeSessionResponse
+	52, // 74: remoteagent.v1.LocalService.ForkSession:output_type -> remoteagent.v1.ForkSessionResponse
+	17, // 75: remoteagent.v1.LocalService.CancelInput:output_type -> remoteagent.v1.CancelInputResponse
+	19, // 76: remoteagent.v1.LocalService.ResumeInput:output_type -> remoteagent.v1.ResumeInputResponse
+	29, // 77: remoteagent.v1.LocalService.SetModel:output_type -> remoteagent.v1.SetModelResponse
+	32, // 78: remoteagent.v1.LocalService.ListModels:output_type -> remoteagent.v1.ListModelsResponse
+	34, // 79: remoteagent.v1.LocalService.SetApprovalMode:output_type -> remoteagent.v1.SetApprovalModeResponse
+	36, // 80: remoteagent.v1.LocalService.RenameSession:output_type -> remoteagent.v1.RenameSessionResponse
+	38, // 81: remoteagent.v1.LocalService.Compact:output_type -> remoteagent.v1.CompactResponse
+	40, // 82: remoteagent.v1.LocalService.AnswerPlan:output_type -> remoteagent.v1.AnswerPlanResponse
+	42, // 83: remoteagent.v1.LocalService.ListDirectories:output_type -> remoteagent.v1.ListDirectoriesResponse
+	46, // 84: remoteagent.v1.LocalService.GetSettings:output_type -> remoteagent.v1.GetSettingsResponse
+	48, // 85: remoteagent.v1.LocalService.UpdateSettings:output_type -> remoteagent.v1.UpdateSettingsResponse
+	55, // 86: remoteagent.v1.LocalService.BeginImageUpload:output_type -> remoteagent.v1.BeginImageUploadResponse
+	57, // 87: remoteagent.v1.LocalService.PutImageChunk:output_type -> remoteagent.v1.PutImageChunkResponse
+	59, // 88: remoteagent.v1.LocalService.GetImageUploadStatus:output_type -> remoteagent.v1.GetImageUploadStatusResponse
+	61, // 89: remoteagent.v1.LocalService.CompleteImageUpload:output_type -> remoteagent.v1.CompleteImageUploadResponse
+	63, // 90: remoteagent.v1.LocalService.AbortImageUpload:output_type -> remoteagent.v1.AbortImageUploadResponse
+	21, // 91: remoteagent.v1.LocalService.ResolveApproval:output_type -> remoteagent.v1.ResolveApprovalResponse
+	23, // 92: remoteagent.v1.LocalService.AnswerQuestion:output_type -> remoteagent.v1.AnswerQuestionResponse
+	25, // 93: remoteagent.v1.LocalService.WatchEvents:output_type -> remoteagent.v1.WatchEventsResponse
+	27, // 94: remoteagent.v1.LocalService.Hook:output_type -> remoteagent.v1.HookResponse
+	66, // [66:95] is the sub-list for method output_type
+	37, // [37:66] is the sub-list for method input_type
+	37, // [37:37] is the sub-list for extension type_name
+	37, // [37:37] is the sub-list for extension extendee
+	0,  // [0:37] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_local_proto_init() }

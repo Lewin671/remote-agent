@@ -1944,6 +1944,47 @@ public  final class Session extends
     taskOwned_ = false;
   }
 
+  public static final int MODE_LOCKED_FIELD_NUMBER = 37;
+  private boolean modeLocked_;
+  /**
+   * <pre>
+   * The approval mode cannot be changed in this session (an Antigravity
+   * session started with full access); clients grey out all four modes.
+   * </pre>
+   *
+   * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+   * @return The modeLocked.
+   */
+  @java.lang.Override
+  public boolean getModeLocked() {
+    return modeLocked_;
+  }
+  /**
+   * <pre>
+   * The approval mode cannot be changed in this session (an Antigravity
+   * session started with full access); clients grey out all four modes.
+   * </pre>
+   *
+   * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+   * @param value The modeLocked to set.
+   */
+  private void setModeLocked(boolean value) {
+    
+    modeLocked_ = value;
+  }
+  /**
+   * <pre>
+   * The approval mode cannot be changed in this session (an Antigravity
+   * session started with full access); clients grey out all four modes.
+   * </pre>
+   *
+   * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+   */
+  private void clearModeLocked() {
+
+    modeLocked_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.Session parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -4014,6 +4055,49 @@ public  final class Session extends
       return this;
     }
 
+    /**
+     * <pre>
+     * The approval mode cannot be changed in this session (an Antigravity
+     * session started with full access); clients grey out all four modes.
+     * </pre>
+     *
+     * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+     * @return The modeLocked.
+     */
+    @java.lang.Override
+    public boolean getModeLocked() {
+      return instance.getModeLocked();
+    }
+    /**
+     * <pre>
+     * The approval mode cannot be changed in this session (an Antigravity
+     * session started with full access); clients grey out all four modes.
+     * </pre>
+     *
+     * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+     * @param value The modeLocked to set.
+     * @return This builder for chaining.
+     */
+    public Builder setModeLocked(boolean value) {
+      copyOnWrite();
+      instance.setModeLocked(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * The approval mode cannot be changed in this session (an Antigravity
+     * session started with full access); clients grey out all four modes.
+     * </pre>
+     *
+     * <code>bool mode_locked = 37 [json_name = "modeLocked"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearModeLocked() {
+      copyOnWrite();
+      instance.clearModeLocked();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.Session)
   }
   @java.lang.Override
@@ -4068,14 +4152,15 @@ public  final class Session extends
             io.github.lewin671.remoteagent.proto.MachineReplacementProof.class,
             "scheduledTaskId_",
             "taskOwned_",
+            "modeLocked_",
           };
           java.lang.String info =
-              "\u0000$\u0000\u0001\u0001$$\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
+              "\u0000%\u0000\u0001\u0001%%\u0000\u0001\u0000\u0001\u0208\u0002\u0208\u0003\u0208" +
               "\u0004\f\u0005\u0208\u0006\u0208\u0007\u0208\b\u1009\u0000\t\u0003\n\u0208\u000b" +
               "\u0208\f\u0004\r\u0004\u000e\u0004\u000f\u0208\u0010\u0208\u0011\u0208\u0012\u0208" +
               "\u0013\u0208\u0014\u0208\u0015\u0002\u0016\u0002\u0017\u0007\u0018\u0208\u0019\f" +
               "\u001a\f\u001b\u0208\u001c\u0007\u001d\u1009\u0001\u001e\u1009\u0002\u001f\u0208" +
-              " \u0003!\n\"\u001b#\u0208$\u0007";
+              " \u0003!\n\"\u001b#\u0208$\u0007%\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -129,6 +129,9 @@ message Session {
   string scheduled_task_id = 35;
   // Omit from default session/project listings until user takeover.
   bool task_owned = 36;
+  // The approval mode cannot be changed in this session (an Antigravity
+  // session started with full access); clients grey out all four modes.
+  bool mode_locked = 37;
 }
 
 message MachineReplacementProof {
@@ -404,6 +407,8 @@ message DaemonSettings {
   AgentDefaults claude = 5;
   // Zero retains the daemon's default. Limits cover files, not CLI history.
   int64 image_upload_quota_bytes = 6;
+  // Defaults for new Antigravity sessions.
+  AgentDefaults antigravity = 7;
 }
 
 message AgentDefaults {

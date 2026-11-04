@@ -203,6 +203,8 @@ enum Agent {
   AGENT_UNSPECIFIED = 0;
   AGENT_CODEX = 1;
   AGENT_CLAUDE = 2;
+  // The Antigravity CLI, `agy`.
+  AGENT_ANTIGRAVITY = 3;
 }
 
 message UserMessage {

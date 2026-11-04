@@ -231,6 +231,9 @@ public enum PBAgent: SwiftProtobuf.Enum, Swift.CaseIterable {
   case unspecified // = 0
   case codex // = 1
   case claude // = 2
+
+  /// The Antigravity CLI, `agy`.
+  case antigravity // = 3
   case UNRECOGNIZED(Int)
 
   public init() {
@@ -242,6 +245,7 @@ public enum PBAgent: SwiftProtobuf.Enum, Swift.CaseIterable {
     case 0: self = .unspecified
     case 1: self = .codex
     case 2: self = .claude
+    case 3: self = .antigravity
     default: self = .UNRECOGNIZED(rawValue)
     }
   }
@@ -251,6 +255,7 @@ public enum PBAgent: SwiftProtobuf.Enum, Swift.CaseIterable {
     case .unspecified: return 0
     case .codex: return 1
     case .claude: return 2
+    case .antigravity: return 3
     case .UNRECOGNIZED(let i): return i
     }
   }
@@ -260,6 +265,7 @@ public enum PBAgent: SwiftProtobuf.Enum, Swift.CaseIterable {
     .unspecified,
     .codex,
     .claude,
+    .antigravity,
   ]
 
 }
@@ -1795,7 +1801,7 @@ extension PBImageSync: SwiftProtobuf._ProtoNameProviding {
 }
 
 extension PBAgent: SwiftProtobuf._ProtoNameProviding {
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0AGENT_UNSPECIFIED\0\u{1}AGENT_CODEX\0\u{1}AGENT_CLAUDE\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{2}\0AGENT_UNSPECIFIED\0\u{1}AGENT_CODEX\0\u{1}AGENT_CLAUDE\0\u{1}AGENT_ANTIGRAVITY\0")
 }
 
 extension PBToolKind: SwiftProtobuf._ProtoNameProviding {

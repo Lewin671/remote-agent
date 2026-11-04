@@ -325,6 +325,74 @@ public  final class DaemonSettings extends
     imageUploadQuotaBytes_ = 0L;
   }
 
+  public static final int ANTIGRAVITY_FIELD_NUMBER = 7;
+  private io.github.lewin671.remoteagent.proto.AgentDefaults antigravity_;
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   */
+  @java.lang.Override
+  public boolean hasAntigravity() {
+    return ((bitField0_ & 0x00000002) != 0);
+  }
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.AgentDefaults getAntigravity() {
+    return antigravity_ == null ? io.github.lewin671.remoteagent.proto.AgentDefaults.getDefaultInstance() : antigravity_;
+  }
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setAntigravity(io.github.lewin671.remoteagent.proto.AgentDefaults value) {
+    value.getClass();  // minimal bytecode null check
+    antigravity_ = value;
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   */
+  @java.lang.SuppressWarnings({"ReferenceEquality", "ReturnValueIgnored"})
+  private void mergeAntigravity(io.github.lewin671.remoteagent.proto.AgentDefaults value) {
+    value.getClass();  // minimal bytecode null check
+    if (antigravity_ != null &&
+        antigravity_ != io.github.lewin671.remoteagent.proto.AgentDefaults.getDefaultInstance()) {
+      antigravity_ =
+        io.github.lewin671.remoteagent.proto.AgentDefaults.newBuilder(antigravity_).mergeFrom(value).buildPartial();
+    } else {
+      antigravity_ = value;
+    }
+    bitField0_ |= 0x00000002;
+  }
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   */
+  private void clearAntigravity() {
+    antigravity_ = null;
+    bitField0_ = (bitField0_ & ~0x00000002);
+  }
+
   public static io.github.lewin671.remoteagent.proto.DaemonSettings parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -741,6 +809,77 @@ public  final class DaemonSettings extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    @java.lang.Override
+    public boolean hasAntigravity() {
+      return instance.hasAntigravity();
+    }
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.AgentDefaults getAntigravity() {
+      return instance.getAntigravity();
+    }
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    public Builder setAntigravity(io.github.lewin671.remoteagent.proto.AgentDefaults value) {
+      copyOnWrite();
+      instance.setAntigravity(value);
+      return this;
+      }
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    public Builder setAntigravity(
+        io.github.lewin671.remoteagent.proto.AgentDefaults.Builder builderForValue) {
+      copyOnWrite();
+      instance.setAntigravity(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    public Builder mergeAntigravity(io.github.lewin671.remoteagent.proto.AgentDefaults value) {
+      copyOnWrite();
+      instance.mergeAntigravity(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Defaults for new Antigravity sessions.
+     * </pre>
+     *
+     * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+     */
+    public Builder clearAntigravity() {  copyOnWrite();
+      instance.clearAntigravity();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.DaemonSettings)
   }
   @java.lang.Override
@@ -764,10 +903,11 @@ public  final class DaemonSettings extends
             "defaultMode_",
             "claude_",
             "imageUploadQuotaBytes_",
+            "antigravity_",
           };
           java.lang.String info =
-              "\u0000\u0006\u0000\u0001\u0001\u0006\u0006\u0000\u0000\u0000\u0001\u0004\u0002\u0208" +
-              "\u0003\u0208\u0004\f\u0005\u1009\u0000\u0006\u0002";
+              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0004\u0002\u0208" +
+              "\u0003\u0208\u0004\f\u0005\u1009\u0000\u0006\u0002\u0007\u1009\u0001";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

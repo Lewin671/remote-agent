@@ -263,6 +263,8 @@ const (
 	Agent_AGENT_UNSPECIFIED Agent = 0
 	Agent_AGENT_CODEX       Agent = 1
 	Agent_AGENT_CLAUDE      Agent = 2
+	// The Antigravity CLI, `agy`.
+	Agent_AGENT_ANTIGRAVITY Agent = 3
 )
 
 // Enum value maps for Agent.
@@ -271,11 +273,13 @@ var (
 		0: "AGENT_UNSPECIFIED",
 		1: "AGENT_CODEX",
 		2: "AGENT_CLAUDE",
+		3: "AGENT_ANTIGRAVITY",
 	}
 	Agent_value = map[string]int32{
 		"AGENT_UNSPECIFIED": 0,
 		"AGENT_CODEX":       1,
 		"AGENT_CLAUDE":      2,
+		"AGENT_ANTIGRAVITY": 3,
 	}
 )
 
@@ -3750,11 +3754,12 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x16IMAGE_SYNC_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11IMAGE_SYNC_SYNCED\x10\x01\x12\x1b\n" +
 	"\x17IMAGE_SYNC_PREVIEW_ONLY\x10\x02\x12\x18\n" +
-	"\x14IMAGE_SYNC_NAME_ONLY\x10\x03*A\n" +
+	"\x14IMAGE_SYNC_NAME_ONLY\x10\x03*X\n" +
 	"\x05Agent\x12\x15\n" +
 	"\x11AGENT_UNSPECIFIED\x10\x00\x12\x0f\n" +
 	"\vAGENT_CODEX\x10\x01\x12\x10\n" +
-	"\fAGENT_CLAUDE\x10\x02*\x99\x01\n" +
+	"\fAGENT_CLAUDE\x10\x02\x12\x15\n" +
+	"\x11AGENT_ANTIGRAVITY\x10\x03*\x99\x01\n" +
 	"\bToolKind\x12\x19\n" +
 	"\x15TOOL_KIND_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11TOOL_KIND_COMMAND\x10\x01\x12\x19\n" +

@@ -91,4 +91,23 @@ public interface DaemonSettingsOrBuilder extends
    * @return The imageUploadQuotaBytes.
    */
   long getImageUploadQuotaBytes();
+
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   * @return Whether the antigravity field is set.
+   */
+  boolean hasAntigravity();
+  /**
+   * <pre>
+   * Defaults for new Antigravity sessions.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.AgentDefaults antigravity = 7 [json_name = "antigravity"];</code>
+   * @return The antigravity.
+   */
+  io.github.lewin671.remoteagent.proto.AgentDefaults getAntigravity();
 }

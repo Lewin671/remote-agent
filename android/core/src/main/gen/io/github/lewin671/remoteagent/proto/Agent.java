@@ -28,6 +28,14 @@ public enum Agent
    * <code>AGENT_CLAUDE = 2;</code>
    */
   AGENT_CLAUDE(2),
+  /**
+   * <pre>
+   * The Antigravity CLI, `agy`.
+   * </pre>
+   *
+   * <code>AGENT_ANTIGRAVITY = 3;</code>
+   */
+  AGENT_ANTIGRAVITY(3),
   UNRECOGNIZED(-1),
   ;
 
@@ -43,6 +51,14 @@ public enum Agent
    * <code>AGENT_CLAUDE = 2;</code>
    */
   public static final int AGENT_CLAUDE_VALUE = 2;
+  /**
+   * <pre>
+   * The Antigravity CLI, `agy`.
+   * </pre>
+   *
+   * <code>AGENT_ANTIGRAVITY = 3;</code>
+   */
+  public static final int AGENT_ANTIGRAVITY_VALUE = 3;
 
 
   @java.lang.Override
@@ -69,6 +85,7 @@ public enum Agent
       case 0: return AGENT_UNSPECIFIED;
       case 1: return AGENT_CODEX;
       case 2: return AGENT_CLAUDE;
+      case 3: return AGENT_ANTIGRAVITY;
       default: return null;
     }
   }
