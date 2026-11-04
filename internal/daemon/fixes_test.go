@@ -415,11 +415,20 @@ func TestMarkInflightFailureKeepsMessageQueued(t *testing.T) {
 	if _, err := h.s.send("x", "r1"); err != nil {
 		t.Fatal(err)
 	}
-	os.Chmod(h.dir, 0o500)
+	// Reach the pre-write commit rather than returning at the initial screen gate.
+	h.s.checkScreen()
+	h.s.checkScreen()
+	path := filepath.Join(h.dir, "queue.json")
+	if err := os.Rename(path, path+".saved"); err != nil {
+		t.Fatal(err)
+	}
+	// A directory cannot be atomically replaced by queue bytes, even as root.
+	if err := os.Mkdir(path, 0700); err != nil {
+		t.Fatal(err)
+	}
 	written, err := h.s.inject(input{Text: "x", RequestID: "r1"})
-	os.Chmod(h.dir, 0o700)
 	if err == nil {
-		t.Skip("directory is writable despite chmod")
+		t.Fatal("inflight queue replacement unexpectedly succeeded")
 	}
 	if written != notWritten || len(h.term.written()) != 0 {
 		t.Fatal("wrote although the mark was not saved")
