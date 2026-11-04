@@ -246,7 +246,9 @@ func run() (runErr error) {
 		return do(&pb.Command{Kind: &pb.Command_Send{Send: &pb.SendRequest{SessionId: sid, RequestId: remoteclient.NewRequestID(), Text: text}}})
 	}
 	mode := func(m pb.ApprovalMode) error {
-		return do(&pb.Command{Kind: &pb.Command_SetApprovalMode{SetApprovalMode: &pb.SetApprovalModeRequest{SessionId: sid, Mode: m}}})
+		return waitModeObservation(wait, func() error {
+			return do(&pb.Command{Kind: &pb.Command_SetApprovalMode{SetApprovalMode: &pb.SetApprovalModeRequest{SessionId: sid, Mode: m}}})
+		})
 	}
 	if err := mode(pb.ApprovalMode_APPROVAL_MODE_PLAN); err != nil {
 		return fmt.Errorf("enter plan: %w", err)

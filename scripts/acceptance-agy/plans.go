@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -99,36 +98,38 @@ func (r *planAcceptance) nativeScreen(s string) agent.Screen {
 	// UI observation only; no test fixture or synthetic model response is used.
 	return analyzeNative(s)
 }
-func (r *planAcceptance) planSequence() uint64 {
-	var seq uint64
-	pending := false
-	for _, e := range r.events(0) {
-		if e.GetPlanProposed() != nil {
-			seq = e.Seq
-			pending = false
-		}
-		if state := e.GetSessionState(); state != nil {
-			if !state.PlanOpen {
-				seq = 0
-				pending = false
-			} else if seq == 0 && !pending {
-				seq = e.Seq
-			}
-		}
-		if e.GetPlanAnswered() != nil {
-			seq = 0
-			pending = true
-		}
-	}
-	return seq
-}
+
+// answer uses the same authenticated current-owner evidence as product clients.
+// Local tmux captures are debug observations, not remote action credentials.
 func (r *planAcceptance) answer(choice pb.PlanChoice) error {
-	screen, err := r.screen()
-	if err != nil {
-		return err
+	return r.answerSnapshot(choice, false)
+}
+func (r *planAcceptance) answerWhenReady(choice pb.PlanChoice) error {
+	return r.answerSnapshot(choice, true)
+}
+func (r *planAcceptance) answerSnapshot(choice pb.PlanChoice, waitReady bool) error {
+	var snapshot *pb.LiveSnapshot
+	var snapshotErr error
+	read := func() bool {
+		result, err := r.client.Do(r.ctx, *r.view, &pb.Command{Kind: &pb.Command_GetLiveSnapshot{GetLiveSnapshot: &pb.GetLiveSnapshotRequest{SessionId: r.sid}}})
+		if err != nil {
+			snapshotErr = err
+			return true
+		}
+		snapshot = result.GetLiveSnapshot()
+		return snapshot != nil && snapshot.PlanEventSeq != 0 && len(snapshot.PlanScreenHash) == 32
 	}
-	hash := sha256.Sum256(append([]byte("ra2/plan-screen\x00"), []byte(agent.StripANSI(screen))...))
-	_, err = r.client.Do(r.ctx, *r.view, &pb.Command{Kind: &pb.Command_AnswerPlan{AnswerPlan: &pb.AnswerPlanRequest{SessionId: r.sid, Choice: choice, ObservedEventSeq: r.planSequence(), ObservedScreenHash: hash[:]}}})
+	if waitReady {
+		if err := r.wait("owner observes actionable native plan", read); err != nil {
+			return err
+		}
+	} else if !read() {
+		return fmt.Errorf("owner reports no actionable plan")
+	}
+	if snapshotErr != nil {
+		return snapshotErr
+	}
+	_, err := r.client.Do(r.ctx, *r.view, &pb.Command{Kind: &pb.Command_AnswerPlan{AnswerPlan: &pb.AnswerPlanRequest{SessionId: r.sid, Choice: choice, ObservedEventSeq: snapshot.PlanEventSeq, ObservedScreenHash: snapshot.PlanScreenHash}}})
 	return err
 }
 func (r *planAcceptance) openReview() error {
@@ -223,7 +224,7 @@ func (r *planAcceptance) run() error {
 		return err
 	}
 	seq := r.sequence()
-	if err := r.answer(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil {
+	if err := r.answerWhenReady(pb.PlanChoice_PLAN_CHOICE_IMPLEMENT); err != nil {
 		return fmt.Errorf("encrypted plan approval: %w", err)
 	}
 	if _, err := r.waitEvent(seq, "approved plan event", func(e *pb.Event) bool { return e.GetPlanAnswered() != nil }); err != nil {
@@ -250,7 +251,7 @@ func (r *planAcceptance) run() error {
 	}
 	_ = r.captureFixture("plan-reject-pending.txt")
 	seq = r.sequence()
-	if err := r.answer(pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING); err != nil {
+	if err := r.answerWhenReady(pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING); err != nil {
 		return fmt.Errorf("encrypted plan rejection: %w", err)
 	}
 	if _, err := r.waitEvent(seq, "rejected plan event", func(e *pb.Event) bool { return e.GetPlanAnswered() != nil }); err != nil {
