@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
 	"os"
@@ -18,7 +19,7 @@ import (
 // Account usage limits (architecture "账户额度"). Codex reports them in its
 // rollouts; Claude Code only in the input of its status line, which
 // remote-agent's status line command passes on. Nothing here asks the
-// model or any service for them. Claude Code's limits are kept per login
+// model or any service for them. Provider limits are kept per login
 // account (a fingerprint, never the account's IDs), in quota.json, so a
 // restart shows the last record; a record of another account than the
 // one logged in now is dropped. Limits never reach the log.
@@ -27,9 +28,19 @@ import (
 // which would otherwise change the machine metadata every few seconds.
 const quotaRefresh = time.Minute
 
-// claudeQuotas are the Claude Code limits by account (or "session:<id>"
-// when the account is unknown).
-type claudeQuotas map[string]*pb.AgentQuota
+// quotaStore separates providers even when account fingerprints collide.
+type quotaStore map[string]*pb.AgentQuota
+
+func quotaKey(q *pb.AgentQuota) string {
+	id := "unknown"
+	if spec, ok := FindAgentByKind(q.Agent); ok {
+		id = spec.ID
+	}
+	if q.Account != "" {
+		return id + ":account:" + q.Account
+	}
+	return id + ":session:" + q.SourceSessionId
+}
 
 // quotaReport is the last status line of a session: the windows it showed
 // and the account logged in then.
@@ -51,10 +62,10 @@ func (d *Daemon) loadQuotas() {
 	if json.Unmarshal(b, &saved) != nil {
 		return
 	}
-	q := claudeQuotas{}
+	q := quotaStore{}
 	for key, raw := range saved {
 		e := &pb.AgentQuota{}
-		if protojson.Unmarshal(raw, e) != nil || e.Account == "" {
+		if protojson.Unmarshal(raw, e) != nil || e.Account == "" || key != quotaKey(e) {
 			continue // an unknown account's record is not reused
 		}
 		a, ok := d.byKind(e.Agent)
@@ -95,83 +106,39 @@ func (d *Daemon) saveQuotasLocked() {
 // statusLine dispatches by the session's adapter, never by fields that happen
 // to occur in multiple CLIs' JSON contracts.
 func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time) {
-	if session, err := d.session(sessionID); err == nil {
-		if source, ok := session.ag.(agent.StatusLineSource); ok {
-			report, err := source.ParseStatusLine(raw, session.dir)
-			if err != nil {
-				return
-			}
-			session.recordStatusLine(report)
-			if report.Quota != nil {
-				d.recordQuota(sessionID, report.Quota, now)
-			}
-			return
-		}
-	}
-	var in struct {
-		RateLimits map[string]*struct {
-			UsedPercentage *float64 `json:"used_percentage"`
-			ResetsAt       int64    `json:"resets_at"`
-		} `json:"rate_limits"`
-	}
-	if json.Unmarshal(raw, &in) != nil || len(in.RateLimits) == 0 {
-		return // no limits yet: before the first reply, or none for this login
-	}
-	var clAdapter agent.StatusLineAccount
-	var clAgent agent.Adapter
-	for _, a := range d.adapterList() {
-		if a.Kind() == pb.Agent_AGENT_CLAUDE {
-			if cl, ok := a.(agent.StatusLineAccount); ok {
-				clAdapter = cl
-				clAgent = a
-				break
-			}
-		}
-	}
-	if clAdapter == nil {
+	d.statusLineContext(context.Background(), sessionID, raw, now)
+}
+func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw json.RawMessage, now time.Time) {
+	session, err := d.session(sessionID)
+	if err != nil {
 		return
 	}
-	e := &pb.AgentQuota{Agent: clAgent.Kind(), State: pb.QuotaState_QUOTA_STATE_OK, ObservedMs: now.UnixMilli()}
-	names := make([]string, 0, len(in.RateLimits))
-	for name := range in.RateLimits {
-		names = append(names, name)
+	source, ok := session.ag.(agent.StatusLineSource)
+	if !ok {
+		return
 	}
-	sort.Strings(names)
-	for _, name := range names {
-		w := in.RateLimits[name]
-		if w == nil {
-			continue
-		}
-		qw := &pb.QuotaWindow{Name: name, UsedPercent: w.UsedPercentage}
-		if w.ResetsAt > 0 {
-			qw.ResetsAtMs = w.ResetsAt * 1000
-		}
-		switch name {
-		case "five_hour":
-			qw.WindowMinutes = 300
-		case "seven_day":
-			qw.WindowMinutes = 7 * 24 * 60
-		}
-		e.Windows = append(e.Windows, qw)
+	report, err := source.ParseStatusLine(raw, session.dir)
+	if err != nil {
+		return
 	}
-	var sub bool
-	e.Account, e.Plan, sub = clAdapter.Account()
-	if sub {
-		e.Login = pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION
+	if session.observeConversation(ctx, report.ConversationID, report.TranscriptPath, now) {
+		session.recordStatusLine(report, now)
 	}
-	d.recordQuota(sessionID, e, now)
+	if report.Quota != nil {
+		d.recordQuota(sessionID, report.Quota, now)
+	}
 }
 
 func (d *Daemon) recordQuota(sessionID string, e *pb.AgentQuota, now time.Time) {
 	e.ObservedMs = now.UnixMilli()
-	key := "account:" + e.Account
 	if e.Account == "" {
-		key, e.SourceSessionId = "session:"+sessionID, sessionID
+		e.SourceSessionId = sessionID
 	}
+	key := quotaKey(e)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.quotas == nil {
-		d.quotas = claudeQuotas{}
+		d.quotas = quotaStore{}
 	}
 	dropped := false
 	if e.Account != "" {
