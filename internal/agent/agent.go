@@ -93,6 +93,10 @@ type StatusLineSource interface {
 	ParseStatusLine(raw []byte, sessionDir string) (*StatusLine, error)
 }
 
+// ReattachPreparer restores adapter metadata needed to interpret observations
+// from a still-running CLI before its session loops or local RPC server start.
+type ReattachPreparer interface{ PrepareReattach(context.Context) error }
+
 type StatusLine struct {
 	QuotaMonotonic                 bool
 	ConversationID, TranscriptPath string

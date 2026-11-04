@@ -100,6 +100,13 @@ func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 	return a.models.Get(ctx, a.Bin(), defaultModel, a.execEnv())
 }
 
+func (a *Adapter) PrepareReattach(parent context.Context) error {
+	ctx, cancel := context.WithTimeout(parent, 15*time.Second)
+	defer cancel()
+	_, err := a.models.Get(ctx, a.Bin(), a.readDefaultModel(), a.execEnv())
+	return err
+}
+
 func (a *Adapter) CheckEffort(effort string) error {
 	return CheckEffort(effort)
 }

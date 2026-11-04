@@ -332,6 +332,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 	if err != nil {
 		slog.Error("list image references", "err", errClass(err))
 	}
+	prepared := map[pb.Agent]bool{}
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -403,6 +404,15 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			continue
 		}
 		slog.Info("reattached session", "session", m.ID, "tmux", m.Tmux)
+		if bin, _, ok := shellReport(dir); ok && bin != "" {
+			d.learnCLI(s.ag.Kind(), bin)
+		}
+		if init, ok := s.ag.(agent.ReattachPreparer); ok && !prepared[s.ag.Kind()] {
+			prepared[s.ag.Kind()] = true
+			if err := init.PrepareReattach(d.ctx); err != nil {
+				slog.Warn("prepare reattached CLI metadata", "agent", s.ag.Name(), "err", errClass(err))
+			}
+		}
 		// A launch through the login shell that has not started its CLI
 		// gets a fresh watchdog window after the restart.
 		s.noteShellLaunch()

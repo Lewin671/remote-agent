@@ -2292,6 +2292,14 @@ func (s *session) recordStatusLine(report *agent.StatusLine, now time.Time) {
 		s.statusLineAt = now
 		s.statusLineIdle = report.IdleKnown
 		next := proto.CloneOf(c)
+		// An incomplete metadata observation must not erase a model already
+		// confirmed by the CLI (e.g. while catalog discovery is unavailable).
+		if next.Model == "" && s.context != nil {
+			next.Model = s.context.Model
+			if next.Effort == "" {
+				next.Effort = s.context.Effort
+			}
+		}
 		if !proto.Equal(next, s.context) {
 			evs = append(evs, &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: next}})
 		}
