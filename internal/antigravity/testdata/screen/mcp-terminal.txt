@@ -1,0 +1,48 @@
+
+      ▄▀▀▄        Antigravity CLI 1.5.0
+     ▀▀▀▀▀▀       tester@example.com (Google AI Pro)
+    ▀▀▀▀▀▀▀▀      Gemini 3.8 Flash (Low)
+   ▄▀▀    ▀▀▄     /workspace/project
+  ▄▀▀      ▀▀▄
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+>
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+MCP Servers
+
+Plugins (~/.gemini/config/plugins)
+>  ✓ remote_agent  Tools: notify_user, schedule_cancel, schedule_create, schedule_get, schedule_list, +4 more
+
+Keyboard: ↑/↓ Navigate  enter Actions  esc Exit
+
+
+Gemini 3.8 Flash · low  │  sample-project
+ctx ░░░░░░░░░░░░░░░░░░░░   0%
+5h  █▋░░░░░░░░░░░░░░░░░░   8%  ↻ 1h 11m (08:54)
+7d  █████████████▋░░░░░░  68%  ↻ 6d 0h (Tue 08:00)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

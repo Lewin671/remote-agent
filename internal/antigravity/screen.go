@@ -22,34 +22,61 @@ func normalize(s string) string {
 	}, s)
 }
 
-// composerRegion uses the last pair of full-width rules, and only accepts an
-// input box whose first row begins with the live prompt. Menus and transcript
-// separators also use rules, so a pair alone proves nothing.
+// composerRegion finds the last actual input box, allowing the native
+// background-task bar to add another rule below it.
 func composerRegion(styled string) (lines []string, top, bottom int, ok bool) {
 	lines = strings.Split(styled, "\n")
-	var rules []int
+	previous := -1
 	for i, l := range lines {
-		if dividerRE.MatchString(strings.TrimSpace(StripANSI(l))) {
-			rules = append(rules, i)
+		if !dividerRE.MatchString(strings.TrimSpace(StripANSI(l))) {
+			continue
+		}
+		if previous >= 0 && i-previous >= 2 && i-previous <= 40 && strings.HasPrefix(strings.TrimSpace(StripANSI(lines[previous+1])), ">") {
+			valid := true
+			for _, row := range lines[previous+1 : i] {
+				if spinnerRE.MatchString(strings.TrimSpace(StripANSI(row))) {
+					valid = false
+				}
+			}
+			if valid {
+				top, bottom, ok = previous, i, true
+			}
+		}
+		previous = i
+	}
+	return
+}
+
+var backgroundRowRE = regexp.MustCompile(`^● \[\d{2}:\d{2}:\d{2}\] .+ running$`)
+
+// A panel may leave the composer visible. Its immediate trailing section is
+// interactive until proved otherwise; the native background bar is passive.
+func trailingPanel(lines []string, bottom int) string {
+	tail := lines[bottom+1:]
+	for len(tail) > 0 && backgroundRowRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
+		tail = tail[1:]
+		if len(tail) == 0 || !dividerRE.MatchString(strings.TrimSpace(StripANSI(tail[0]))) {
+			return "unknown panel"
+		}
+		tail = tail[1:]
+	}
+	if len(tail) > 0 && strings.TrimSpace(StripANSI(tail[0])) != "" {
+		return strings.TrimSpace(StripANSI(tail[0]))
+	}
+	// Menus can be separated from the composer by a blank row, too. Footer
+	// output may be user-defined; native navigation/selection affordances prove
+	// an interaction rather than assuming arbitrary status text is a panel.
+	for i, line := range tail {
+		text := strings.TrimSpace(StripANSI(line))
+		if strings.Contains(text, "Keyboard:") || strings.Contains(text, "Navigate") || strings.HasPrefix(text, "> ") || strings.HasPrefix(text, "› ") {
+			for _, title := range tail[:i+1] {
+				if title = strings.TrimSpace(StripANSI(title)); title != "" {
+					return title
+				}
+			}
 		}
 	}
-	if len(rules) < 2 {
-		return lines, 0, 0, false
-	}
-	top, bottom = rules[len(rules)-2], rules[len(rules)-1]
-	if bottom-top < 2 || bottom-top > 40 {
-		return lines, top, bottom, false
-	}
-	first := strings.TrimSpace(StripANSI(lines[top+1]))
-	if !strings.HasPrefix(first, ">") {
-		return lines, top, bottom, false
-	}
-	for _, l := range lines[top+1 : bottom] {
-		if spinnerRE.MatchString(strings.TrimSpace(StripANSI(l))) {
-			return lines, top, bottom, false
-		}
-	}
-	return lines, top, bottom, true
+	return ""
 }
 func (a *Adapter) Analyze(styled string) agent.Screen {
 	plain := StripANSI(styled)
@@ -106,6 +133,10 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 		return s
 	}
 	if composer {
+		if title := trailingPanel(lines, bottom); title != "" {
+			s.Popup = title
+			return s
+		}
 		s.ComposerReady = true
 		text, ok := a.ComposerText(styled, "")
 		s.DraftEmpty = ok && text == ""
@@ -124,7 +155,7 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 }
 func (a *Adapter) ComposerText(styled, _ string) (string, bool) {
 	lines, top, bottom, ok := composerRegion(styled)
-	if !ok {
+	if !ok || trailingPanel(lines, bottom) != "" {
 		return "", false
 	}
 	var out []string

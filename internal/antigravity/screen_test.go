@@ -149,3 +149,51 @@ func TestAnalyzeScreens(t *testing.T) {
 		}
 	})
 }
+
+func TestAuditMenusAndBackgroundInterrupt(t *testing.T) {
+	a := New("", "")
+	screen := readScreenFixture(t, "mcp-terminal.txt")
+	for _, title := range []string{"MCP Servers", "Settings", "Unknown picker"} {
+		s := strings.ReplaceAll(screen, "MCP Servers", title)
+		scr := a.Analyze(s)
+		if scr.ComposerReady || scr.DraftEmpty || scr.Popup != title {
+			t.Fatalf("%s accepted: %+v", title, scr)
+		}
+		if _, ok := a.ComposerText(s, ""); ok {
+			t.Fatal("menu exposed composer")
+		}
+	}
+	screen = readScreenFixture(t, "interrupt-background-terminal.txt")
+	if scr := a.Analyze(screen); !scr.ComposerReady || !scr.DraftEmpty || scr.Busy || !a.Interrupted(screen) {
+		t.Fatalf("foreground cancellation lost: %+v", scr)
+	}
+	screen = strings.ReplaceAll(screen, "Interrupted · What should Antigravity CLI do instead?", "A later reply")
+	if a.Interrupted(screen) {
+		t.Fatal("non-cancellation ended turn")
+	}
+}
+
+func TestEveryScreenSampleClassifiesPanels(t *testing.T) {
+	files, err := filepath.Glob("testdata/screen/*.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := New("", "")
+	for _, path := range files {
+		t.Run(filepath.Base(path), func(t *testing.T) {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			s := a.Analyze(string(b))
+			if s.Popup != "" && (s.ComposerReady || s.DraftEmpty) {
+				t.Fatalf("panel permits input: %+v", s)
+			}
+			if s.ComposerReady {
+				if _, ok := a.ComposerText(string(b), ""); !ok {
+					t.Fatal("ready composer unreadable")
+				}
+			}
+		})
+	}
+}
