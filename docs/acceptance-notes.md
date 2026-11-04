@@ -1845,3 +1845,27 @@ v0.53.0 源码基础上的本地修复，协议仍为 13，未推送、发布或
 `./scripts/acceptance-agy.sh` 用当前 checkout 构建隔离本地 relay/daemon，真实 agy 1.5.0、Gemini 3.8 Flash / low；首请求前核对 statusLine 的 Gemini 五小时剩余额度至少 20%。双图提交与归属、命令/文件双向审批、单选问题、无需人工 Ctrl-R 的计划批准/拒绝、修订失效和多待审保护、中断、重启重接、恢复与原生分叉、压缩及额度全部通过，最终输出 `all checks passed`。这是合成加密客户端到真实 CLI 的链路验收，未重复三端直接界面点击；用户 agy/Claude settings 哈希不变，临时环境已清理。
 
 fetch/rebase 后宿主正常目录的 `go vet ./...`、`go test ./...`、Antigravity 五遍、网页 1407 项测试/类型检查/生产构建、Android 933 项单元测试、iOS Core 638 项测试全部通过。独立审查中的 ptyhost 信号和 scratch Unix socket 路径长度失败没有在宿主复核中重现，不记作审查全量通过的证据。API 计费来源仍未实测，缺口继续见 [plan.md](plan.md)。
+## 测试提速（2026-11-04）
+
+基线为 `c58bfa6a`，测试改动至 `4416cbd2`。没有改变产品功能、协议、存储格式或加密逻辑，没有发布。以下是自动测试与夹具验收，不是产品界面或真实 CLI 的端到端验收。
+
+Go、网页、Python、Android core 在同一 Intel macOS 12.6 主机上串行测量，编译和依赖缓存已预热；Go 1.26.10、Node 22.23.3、Python 3.13.16、JDK 17。iOS 按平台例外在 Apple Silicon Mac 上运行 Swift 6.4 的包测试。网页前后均用 UTC 环境。单次前后样本用于定位瓶颈，不代表稳定的百分比收益。
+
+| 全套命令或范围 | 前（秒） | 后（秒） | 用例 |
+|---|---:|---:|---|
+| `go test -json -count=1 ./...` | 146.15 | 174.03 | 2842 个命名测试及子测试记录不变，含父测试；原有 9 个跳过不变 |
+| `pnpm test`，全部 Vitest projects | 23.21 | 21.81 | 1407 → 1407 |
+| `pnpm typecheck` | 1.24 | 1.22 | 增量类型检查通过 |
+| Android `:core:cleanTest :core:test`，禁用测试构建缓存 | 52.83 | 46.35 | 473 → 473，无跳过 |
+| `swift test --package-path ios/RemoteAgentCore` | 96.69 | 51.68 | RACore 638 + RAMarkdown 17，不变 |
+| Python scripts 全部 unittest | 2.02 | 1.84 | 40 → 44 |
+
+Go 的结果缓存命令前后约 2.60 秒；Android core 普通增量前后 8.39 / 8.25 秒。Swift 后测再重复一次完整命令为 41.87 秒；RACore 测试执行本身从 83.88 秒降到 39.98 秒，随后一次为 37.56 秒。
+
+**Go 全套没有提速结论**：未改的 daemon 包从 143.86 秒波动到 171.78 秒，仍决定总时长；其中上传故障矩阵和接受/恢复矩阵在基线分别为 38.80 秒和 16.06 秒。另用预编译测试二进制按基线、候选、候选、基线交替单包执行：server 基线 9.75 / 8.33 秒、候选 7.07 / 6.16 秒；PTY 基线 13.30 / 13.03 秒、候选 4.80 / 4.49 秒。单包改善不能替代全套结果。
+
+最终代码在 CPU 负载下各复跑五轮：Go 改动包 `internal/ptyhost`、`internal/server`，网页全部 projects，Python scripts 全套，以及 Android core 均为 5/5 通过（16 个并行 CPU 负载进程）；iOS 包为 5/5 通过（10 个负载进程）。没有删除原用例、参数矩阵或放宽断言。压力测试发现的历史前缀/重试请求竞态已改为等待实际请求，再保留原精确序列断言；iOS 服务测试限制为两个并行组，保留原两秒取消断言。这里没有采集行或分支覆盖率百分比。
+
+Android 完整单元测试在有 SDK 的本机通过：core 473、terminal 7、app 453，共 933 个，无失败或跳过。测量主机缺 SDK 36，因此没有 Android 全端的正式前后时间或全端压力结果。真实 Codex/Claude acceptance 脚本没有在本轮重跑模型链路；共用的 shell 等待函数保留原行为，由新增的四个无真实等待测试验证预算、重试、参数与零预算。Go 原有 opt-in、向量生成和环境相关跳过均保持原样；其中 `TestMarkInflightFailureKeepsMessageQueued` 在前后都未能用 chmod 制造预期失败。
+
+剩余范围见[下一步的测试提速项](plan.md#下一步)。
