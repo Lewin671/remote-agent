@@ -327,38 +327,47 @@ export function QuotaPage({
                 <Banner kind="err">{v.error}</Banner>
               </div>
             )}
-            <div className="glabel">{v.title}</div>
-            <div className="grp">
-              {v.kind === "waiting" ||
-              v.kind === "unsupported" ||
-              !v.rows.length ? (
-                <div className="row col">
-                  <b>{v.head}</b>
-                  <div className="hint">
-                    {v.detail ||
-                      (v.kind === "unsupported"
-                        ? `可在本机 ${agentName(v.agent)} 中查看 /usage`
-                        : "")}
+            {v.kind === "waiting" ||
+            v.kind === "unsupported" ||
+            !v.rows.length ? (
+              <>
+                <div className="glabel">{v.title}</div>
+                <div className="grp">
+                  <div className="row col">
+                    <b>{v.head}</b>
+                    <div className="hint">
+                      {v.detail ||
+                        (v.kind === "unsupported"
+                          ? (agentInfo(v.agent).usageHint ?? "可在本机 CLI 中查看用量")
+                          : "")}
+                    </div>
                   </div>
                 </div>
-              ) : (
-                v.rows.map((r) => (
-                  <div className={"row col quota " + r.tone} key={r.key}>
-                    <div className="line">
-                      <span>{r.label}</span>
-                      <span className="v">{r.used}</span>
-                    </div>
-                    {r.percent !== undefined && (
-                      <div className="bar">
-                        <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+              </>
+            ) : (
+              (v.groups.length ? v.groups : [{ title: v.title, rows: v.rows }]).map((g) => (
+                <div key={g.title}>
+                  <div className="glabel">{g.title}</div>
+                  <div className="grp">
+                    {g.rows.map((r) => (
+                      <div className={"row col quota " + r.tone} key={r.key}>
+                        <div className="line">
+                          <span>{r.label}</span>
+                          <span className="v">{r.used}</span>
+                        </div>
+                        {r.percent !== undefined && (
+                          <div className="bar">
+                            <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+                          </div>
+                        )}
+                        {r.reset && <div className="hint">{r.reset}</div>}
+                        {r.note && <div className="hint">{r.note}</div>}
                       </div>
-                    )}
-                    {r.reset && <div className="hint">{r.reset}</div>}
-                    {r.note && <div className="hint">{r.note}</div>}
+                    ))}
                   </div>
-                ))
-              )}
-            </div>
+                </div>
+              ))
+            )}
             {v.seen && v.rows.length > 0 && (
               <div className="manage-hint">{v.seen}</div>
             )}

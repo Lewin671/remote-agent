@@ -100,6 +100,51 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     expect(views.map((v) => v.title)).toEqual(["Codex", "Claude Code · 账户 a1b2", "Claude Code · 会话 fc84"]);
     expect(quotaSummary(views.filter((v) => v.agent === Agent.CODEX))).toBe("5 小时 已用 20%");
   });
+
+  it("groups Antigravity quota windows by model family and keeps unknown buckets in their own group", () => {
+    const [v] = quotaViews(
+      [
+        q({
+          agent: Agent.ANTIGRAVITY,
+          state: QuotaState.OK,
+          plan: "Google AI Pro",
+          observedMs: BigInt(at(9, 41)),
+          windows: [
+            w("gemini-5h", 18, 14, 300),
+            w("gemini-weekly", 12, 20, 10080),
+            w("gemini-argon-wtu-weekly", 35, 19, 10080),
+            w("3p-5h", 40, 13, 300),
+            w("3p-weekly", 26, 18, 10080),
+            w("custom-bucket", 5, 15, 60),
+          ],
+        }),
+      ],
+      [Agent.ANTIGRAVITY],
+      now,
+      true,
+    );
+    expect(v.title).toBe("Antigravity · Google AI Pro");
+    expect(v.groups.map((g) => [g.title, g.rows.map((r) => [r.label, r.used])])).toEqual([
+      [
+        "Antigravity · Google AI Pro · Gemini",
+        [
+          ["Gemini · 5 小时", "已用 18%"],
+          ["Gemini · 7 天", "已用 12%"],
+          ["Gemini 4 Argon · 7 天", "已用 35%"],
+        ],
+      ],
+      [
+        "第三方模型（Claude、GPT-OSS）",
+        [
+          ["第三方模型 · 5 小时", "已用 40%"],
+          ["第三方模型 · 7 天", "已用 26%"],
+        ],
+      ],
+      ["custom-bucket", [["custom-bucket", "已用 5%"]]],
+    ]);
+    expect(v.seen).toBe("最近收到 9:41");
+    expect(quotaSummary([v])).toBe("第三方模型 · 5 小时 已用 40%");
+  });
 });
 
 it("uses reported durations and raw percentages for warning thresholds", () => {

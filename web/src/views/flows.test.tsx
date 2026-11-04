@@ -2265,6 +2265,39 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   expect(host.textContent).toContain("最近收到");
 });
 
+it("renders Antigravity's quota windows grouped by family on the quota page", async () => {
+  const r = demo();
+  const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
+  const m = r.machines.get("mac")!;
+  const now = Date.now();
+  m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  m.meta!.quotas = [
+    create(AgentQuotaSchema, {
+      agent: Agent.ANTIGRAVITY,
+      state: QuotaState.OK,
+      plan: "Google AI Pro",
+      observedMs: BigInt(now),
+      windows: [
+        { name: "gemini-5h", usedPercent: 18, resetsAtMs: BigInt(now + 3_600_000), windowMinutes: 300n },
+        { name: "gemini-weekly", usedPercent: 12, resetsAtMs: BigInt(now + 86_400_000), windowMinutes: 10080n },
+        { name: "gemini-argon-wtu-weekly", usedPercent: 35, resetsAtMs: BigInt(now + 64_800_000), windowMinutes: 10080n },
+        { name: "3p-5h", usedPercent: 40, resetsAtMs: BigInt(now + 7_200_000), windowMinutes: 300n },
+        { name: "3p-weekly", usedPercent: 26, resetsAtMs: BigInt(now + 90_000_000), windowMinutes: 10080n },
+      ],
+    }),
+  ];
+  const { QuotaPage } = await import("./Settings");
+  mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  const labels = [...host.querySelectorAll(".glabel")].map((el) => el.textContent);
+  expect(labels).toContain("Antigravity · Google AI Pro · Gemini");
+  expect(labels).toContain("第三方模型（Claude、GPT-OSS）");
+  expect(host.textContent).toContain("Gemini · 5 小时");
+  expect(host.textContent).toContain("Gemini 4 Argon · 7 天");
+  expect(host.textContent).toContain("第三方模型 · 5 小时");
+  expect(host.textContent).not.toContain("gemini-argon-wtu-weekly");
+  expect([...host.querySelectorAll(".manage-hint")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
+});
+
 it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
   const r = demo();
   const sent: { id: string; model?: string }[] = [];
