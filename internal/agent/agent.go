@@ -325,7 +325,10 @@ type NativeApprover interface {
 
 // PlanFacts binds a plan to a particular native artifact and exact contents.
 // These values are local adapter state, never a new wire/protocol contract.
-type PlanFacts struct{ Path, Revision, Text, CallID, Root string }
+type PlanFacts struct {
+	Path, Revision, Text, CallID, Root string
+	Decisions                          map[string]string
+}
 type PlanSource interface{ Plan() *PlanFacts }
 type ConversationEvents interface{ EventConversation(e *pb.Event) string }
 

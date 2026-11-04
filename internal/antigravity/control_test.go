@@ -200,3 +200,86 @@ func TestRealNativePlanReviewPanel(t *testing.T) {
 		t.Fatalf("native plan approval %q %v", term.written, err)
 	}
 }
+
+func TestRealReviewFixtureVariants(t *testing.T) {
+	a := New("agy", t.TempDir())
+	root := t.TempDir()
+	text := "# Exact revision\n"
+	sum := sha256.Sum256([]byte(text))
+	for _, tc := range []struct{ screen, name string }{
+		{"plan-1.5.0-approve.txt", "acceptance_approve_plan.md"}, {"plan-1.5.0-reject.txt", "acceptance_reject_plan.md"},
+	} {
+		path := filepath.Join(root, tc.name)
+		mustWrite(t, path, []byte(text))
+		facts := &agent.PlanFacts{Root: root, Path: path, Revision: hex.EncodeToString(sum[:])}
+		if !a.PlanScreen(readScreenFixture(t, tc.screen), facts) {
+			t.Fatalf("real panel %s not bound", tc.screen)
+		}
+	}
+	local := &agent.PlanFacts{Root: root, Path: filepath.Join(root, "acceptance_local_first_plan.md"), Revision: hex.EncodeToString(sum[:])}
+	mustWrite(t, local.Path, []byte(text))
+	if a.PlanScreen(readScreenFixture(t, "plan-1.5.0-local-first.txt"), local) {
+		t.Fatal("locally answered plan remained actionable")
+	}
+	edited := &agent.PlanFacts{Root: root, Path: filepath.Join(root, "acceptance_edit_plan.md"), Revision: hex.EncodeToString(sum[:])}
+	mustWrite(t, edited.Path, []byte(text+"changed"))
+	if a.PlanScreen(readScreenFixture(t, "plan-1.5.0-edited.txt"), edited) {
+		t.Fatal("edited revision remained actionable")
+	}
+	term := &fakeTerm{screen: readScreenFixture(t, "plan-1.5.0-multiple.txt")}
+	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_IMPLEMENT, nil, nil); err == nil || len(term.written) > 0 {
+		t.Fatal("ambiguous real artifact list received a key")
+	}
+}
+
+func TestNativePlanSubmitCommitsOnlyTheRequestedChoice(t *testing.T) {
+	a := New("agy", t.TempDir())
+	root := t.TempDir()
+	path := filepath.Join(root, "acceptance_reject_plan.md")
+	text := "# Reject plan\n"
+	mustWrite(t, path, []byte(text))
+	sum := sha256.Sum256([]byte(text))
+	facts := &agent.PlanFacts{Root: root, Path: path, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{"acceptance_reject_plan.md": "new", "acceptance_approve_plan.md": "approved", "walkthrough.md": "open"}}
+	initial := strings.Replace(readScreenFixture(t, "plan-1.5.0-reject.txt"), "Keyboard:", "  walkthrough.md\n\nKeyboard:", 1)
+	staged := readScreenFixture(t, "plan-1.5.0-submit-staged.txt")
+	for _, focus := range []bool{true, false} {
+		submitted := false
+		term := &fakeTerm{screen: initial}
+		term.onWrite = func(b []byte) {
+			switch string(b) {
+			case "n":
+				term.screen = staged
+				if !focus {
+					term.screen = strings.Replace(term.screen, "\x1b[7m\x1b[32m Submit ", "\x1b[32m Submit ", 1)
+				}
+			case agent.KeyEsc:
+				term.screen = staged
+			case agent.KeyEnter:
+				submitted = true
+				term.screen = readScreenFixture(t, "idle-empty-box.txt")
+			}
+		}
+		if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING, facts, func() bool { return submitted }); err != nil {
+			t.Fatal(err)
+		}
+		want := "n\r"
+		if !focus {
+			want = "n\x1b\r"
+		}
+		if string(term.written) != want || !submitted {
+			t.Fatalf("review was not submitted: %q", term.written)
+		}
+	}
+	lines := strings.Split(initial, "\n")
+	for i, line := range lines {
+		if strings.Contains(StripANSI(line), "acceptance_approve_plan.md") {
+			line = strings.Replace(line, "✓", "✗", 1)
+			lines[i] = strings.Replace(line, "approved", "rejected", 1)
+		}
+	}
+	dirty := strings.Join(lines, "\n")
+	term := &fakeTerm{screen: dirty}
+	if err := a.AnswerPlan(term, pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING, facts, nil); err == nil || len(term.written) > 0 {
+		t.Fatal("another artifact's unsubmitted choice was committed")
+	}
+}

@@ -261,3 +261,26 @@ func TestNativePlanInputEnvelopeIsHumanPrompt(t *testing.T) {
 		t.Fatal("bound plan prompt was not confirmed")
 	}
 }
+
+func TestCompositeNativeReviewInputIsNotHuman(t *testing.T) {
+	p := NewParser()
+	for _, name := range []string{"one.md", "two.md"} {
+		path := "/workspace/" + name
+		p.artifacts[path] = true
+		p.plans[path] = &agent.PlanFacts{Path: path, CallID: name}
+		p.planMessages["[Approved] "+name] = true
+		p.planMessages["[Rejected] "+name] = true
+	}
+	events, err := p.Parse([]byte(`{"step_index":3,"type":"USER_INPUT","content":"<USER_REQUEST>[Approved] one.md\n[Rejected] two.md</USER_REQUEST>"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range events {
+		if e.GetUserMessage() != nil && e.Origin.GetKind() != pb.OriginKind_ORIGIN_KIND_SYSTEM {
+			t.Fatal("native composite review counted as human")
+		}
+	}
+	if len(p.plans) != 0 {
+		t.Fatal("reviewed artifacts stayed pending")
+	}
+}

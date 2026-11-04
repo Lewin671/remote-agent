@@ -76,6 +76,64 @@ func (a *Adapter) PlanScreen(styled string, facts *agent.PlanFacts) bool {
 	}
 	return false
 }
+func reviewRows(styled string) map[string]string {
+	panel := planPanel(styled)
+	rows := map[string]string{}
+	for _, line := range strings.Split(panel, "\n") {
+		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "› "))
+		if strings.HasPrefix(line, "Keyboard:") || strings.HasPrefix(line, "Submit") || line == "" {
+			continue
+		}
+		status := "open"
+		for _, prefix := range []struct{ mark, state string }{{"□ new ", "new"}, {"✓ approved ", "approved"}, {"✗ rejected ", "rejected"}} {
+			if strings.HasPrefix(line, prefix.mark) {
+				status = prefix.state
+				line = strings.TrimPrefix(line, prefix.mark)
+				break
+			}
+		}
+		name := strings.TrimSpace(strings.Split(line, "   ")[0])
+		if strings.HasSuffix(name, ".md") {
+			rows[name] = status
+		}
+	}
+	return rows
+}
+func reviewMatches(styled string, facts *agent.PlanFacts, wanted string) bool {
+	if facts == nil {
+		return false
+	}
+	rows := reviewRows(styled)
+	name := filepath.Base(facts.Path)
+	if rows[name] != wanted {
+		return false
+	}
+	if facts.Decisions == nil {
+		return len(rows) == 1
+	} // isolated controller fixtures
+	if len(rows) != len(facts.Decisions) {
+		return false
+	}
+	for other, status := range facts.Decisions {
+		if other != name && rows[other] != status {
+			return false
+		}
+	}
+	return true
+}
+func submitFocused(styled string) bool {
+	for _, line := range strings.Split(styled, "\n") {
+		if !strings.Contains(StripANSI(line), "Submit") || !strings.Contains(StripANSI(line), "Dismiss") {
+			continue
+		}
+		for _, run := range agent.Runs(line) {
+			if run.Reverse && strings.TrimSpace(run.Text) == "Submit" {
+				return true
+			}
+		}
+	}
+	return false
+}
 func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.PlanFacts, observed func() bool) error {
 	if choice != pb.PlanChoice_PLAN_CHOICE_IMPLEMENT && choice != pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
 		return agent.ErrUnsupported
@@ -100,22 +158,59 @@ func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, facts *agent.Pl
 			return err
 		}
 	}
-	// PlanScreen binds the selected action-required row, not a similarly
-	// named artifact elsewhere in the list or chat history.
-	if !a.PlanScreen(styled, facts) {
+	if !reviewMatches(styled, facts, "new") || !planRevisionMatches(facts) {
 		return agent.ErrNoPlan
 	}
-	if !planRevisionMatches(facts) {
-		return agent.ErrNoPlan
-	}
-	key := "y"
+	key, wanted := "y", "approved"
 	if choice == pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
-		key = "n"
+		key, wanted = "n", "rejected"
 	}
 	if err := t.Write([]byte(key)); err != nil {
 		return agent.ErrDeliveryUnconfirmed
 	}
-	_, err = agent.WaitFor(t, "plan review consumption", func(screen string) bool { return observed != nil && observed() || !a.PlanScreen(screen, facts) })
+	complete := func(screen string) bool {
+		if observed != nil {
+			return observed()
+		}
+		scr := a.Analyze(screen)
+		return scr.ComposerReady && scr.Popup == "" && !scr.Busy
+	}
+	// A single artifact may submit immediately. With a list, y/n stages a
+	// choice and exposes Submit/Dismiss; no other row may change with ours.
+	styled, err = agent.WaitFor(t, "native plan choice or completion", func(s string) bool {
+		return complete(s) || reviewMatches(s, facts, wanted) && strings.Contains(planPanel(s), "Submit") && strings.Contains(planPanel(s), "Dismiss")
+	})
+	if err != nil {
+		return agent.ErrDeliveryUnconfirmed
+	}
+	if complete(styled) {
+		return nil
+	}
+	if !reviewMatches(styled, facts, wanted) || !planRevisionMatches(facts) {
+		return agent.ErrDeliveryUnconfirmed
+	}
+	if !submitFocused(styled) {
+		if !strings.Contains(planPanel(styled), "esc Done") {
+			return agent.ErrDeliveryUnconfirmed
+		}
+		if err := t.Write([]byte(agent.KeyEsc)); err != nil {
+			return agent.ErrDeliveryUnconfirmed
+		}
+		styled, err = agent.WaitFor(t, "native review Submit focus", func(s string) bool { return complete(s) || submitFocused(s) })
+		if err != nil {
+			return agent.ErrDeliveryUnconfirmed
+		}
+		if complete(styled) {
+			return nil
+		}
+	}
+	if !reviewMatches(styled, facts, wanted) || !planRevisionMatches(facts) || !submitFocused(styled) {
+		return agent.ErrDeliveryUnconfirmed
+	}
+	if err := t.Write([]byte(agent.KeyEnter)); err != nil {
+		return agent.ErrDeliveryUnconfirmed
+	}
+	_, err = agent.WaitFor(t, "native plan submission", complete)
 	if err != nil {
 		return agent.ErrDeliveryUnconfirmed
 	}

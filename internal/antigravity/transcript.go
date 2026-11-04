@@ -60,6 +60,7 @@ type pendingCall struct {
 // step indices; stepIdx in PreToolUse is that result's index, also used as the
 // synthetic call ID so early hook events deduplicate with transcript events.
 type Parser struct {
+	artifactDecisions     map[string]string
 	answeringPlan         string
 	answeringChoice       pb.PlanChoice
 	planAcknowledgement   *pb.Event
@@ -93,7 +94,7 @@ type Parser struct {
 var _ agent.Parser = (*Parser)(nil)
 
 func NewParser() *Parser {
-	return &Parser{artifacts: map[string]bool{}, artifactIndexComplete: true, planMessages: map[string]bool{}, plans: map[string]*agent.PlanFacts{}, answeredPlans: map[string]bool{}, pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
+	return &Parser{artifactDecisions: map[string]string{}, artifacts: map[string]bool{}, artifactIndexComplete: true, planMessages: map[string]bool{}, plans: map[string]*agent.PlanFacts{}, answeredPlans: map[string]bool{}, pendingCalls: map[int64]pendingCall{}, questions: map[string]*pb.QuestionAsked{}, reported: map[string]bool{}}
 }
 func (p *Parser) SetTranscriptPath(path string) {
 	p.transcriptPath = path
@@ -187,6 +188,7 @@ func (p *Parser) Restore(path string, end int64) error {
 	p.fullOffset, p.fullLine = rebuilt.fullOffset, rebuilt.fullLine
 	p.plans = rebuilt.plans
 	p.artifacts = rebuilt.artifacts
+	p.artifactDecisions = rebuilt.artifactDecisions
 	p.artifactIndexComplete = rebuilt.artifactIndexComplete
 	p.planMessages = rebuilt.planMessages
 	for path, plan := range p.plans {
@@ -291,32 +293,53 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		if !planWrapped && strings.HasPrefix(text, "/") {
 			break
 		} // slash command, not a model turn
-		generated := p.planMessages[strings.TrimSpace(text)]
-		if generated {
-			delete(p.planMessages, strings.TrimSpace(text))
-		}
-		if generated && len(p.plans) > 0 {
-			choice := pb.PlanChoice_PLAN_CHOICE_IMPLEMENT
-			if strings.HasPrefix(text, "[Rejected] ") {
-				choice = pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING
+		var reviews []string
+		for _, line := range strings.Split(text, "\n") {
+			line = strings.TrimSpace(line)
+			if p.planMessages[line] {
+				reviews = append(reviews, line)
 			}
-			e := &pb.Event{Origin: &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_LOCAL}, Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}
-			remote := false
-			for _, plan := range p.plans {
-				if plan.CallID == p.answeringPlan && int32(p.answeringChoice) == e.GetPlanAnswered().Choice {
-					remote = true
+		}
+		generated := len(reviews) > 0 && strings.HasPrefix(strings.TrimSpace(text), reviews[0])
+		if generated {
+			for _, review := range reviews {
+				delete(p.planMessages, review)
+				name := strings.TrimPrefix(strings.TrimPrefix(review, "[Approved] "), "[Rejected] ")
+				status := "approved"
+				choice := pb.PlanChoice_PLAN_CHOICE_IMPLEMENT
+				if strings.HasPrefix(review, "[Rejected]") {
+					status = "rejected"
+					choice = pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING
+				}
+				pending := false
+				remote := false
+				for path := range p.artifacts {
+					if filepath.Base(path) == name {
+						p.artifactDecisions[path] = status
+					}
+				}
+				for path, plan := range p.plans {
+					if filepath.Base(path) != name {
+						continue
+					}
+					pending = true
+					if plan.CallID == p.answeringPlan && choice == p.answeringChoice {
+						remote = true
+					}
+					p.answeredPlans[plan.CallID] = true
+					delete(p.plans, path)
+				}
+				if pending && len(reviews) == 1 {
+					event := &pb.Event{Origin: &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_LOCAL}, Kind: &pb.Event_PlanAnswered{PlanAnswered: &pb.PlanAnswered{Choice: int32(choice)}}}
+					if remote {
+						p.planAcknowledgement = event
+					} else {
+						evs = append(evs, event)
+					}
 				}
 			}
-			if remote {
-				p.planAcknowledgement = e
-			} else {
-				evs = append(evs, e)
-			}
-			for _, plan := range p.plans {
-				p.answeredPlans[plan.CallID] = true
-			}
-			clear(p.plans)
 		}
+
 		if p.inTurn {
 			if p.pendingOutcome != nil {
 				emit(proto.CloneOf(p.pendingOutcome))
@@ -413,6 +436,11 @@ func (p *Parser) Parse(raw []byte) ([]*pb.Event, error) {
 		delete(p.pendingCalls, r.StepIndex)
 		if r.Status != "ERROR" && call.artifact != "" {
 			p.artifacts[call.artifact] = true
+			if call.isPlan {
+				p.artifactDecisions[call.artifact] = "new"
+			} else if p.artifactDecisions[call.artifact] == "" {
+				p.artifactDecisions[call.artifact] = "open"
+			}
 		}
 		switch {
 		case call.name == "ask_question":
@@ -518,6 +546,10 @@ func (p *Parser) Plan() *agent.PlanFacts {
 			return nil
 		}
 		copy := *plan
+		copy.Decisions = map[string]string{}
+		for path := range p.artifacts {
+			copy.Decisions[filepath.Base(path)] = p.artifactDecisions[path]
+		}
 		return &copy
 	}
 	return nil
