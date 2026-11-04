@@ -10,7 +10,7 @@ import SwiftUI
 
 /// A sheet's title names the CLI only when it is not Codex, as the mockup does.
 private func sheetTitle(_ s: SessionView, _ what: String) -> String {
-    s.agent == .codex ? what : "\(agentName(s.agent)) · \(what)"
+    agentInfo(s.agent).sheetTitle(what)
 }
 
 /// 审批模式: the four modes; full access is confirmed first; only this session changes.

@@ -236,7 +236,7 @@ private struct SessionPage: View {
         .task(id: sid) { await chat.follow(context.remote, sid) }
         .onChange(of: params, initial: true) { _, p in chat.use(p) }
         .task(id: s.machineId) {
-            if s.agent == .claude { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
+            if agentInfo(s.agent).sessionNeedsModelList { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
         }
         .task {
             #if DEBUG

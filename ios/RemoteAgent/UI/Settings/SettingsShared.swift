@@ -253,14 +253,17 @@ extension View {
         }()
 
         static var daemonSettings: PBDaemonSettings {
-            .with {
+            var s = PBDaemonSettings.with {
                 $0.approvalTimeoutSeconds = 600
-                $0.defaultModel = "gpt-6-astra"
-                $0.defaultEffort = "medium"
-                $0.defaultMode = .ask
-                $0.claude = .with { $0.model = "claude-opus-5-5-preview-20261001-extended" }
                 $0.imageUploadQuotaBytes = 1 << 30
             }
+            if let first = AGENTS.first {
+                s = withDefaults(s, agent: first.agent, model: "gpt-6-astra", effort: "medium", mode: Mode.ask)
+            }
+            if AGENTS.count > 1 {
+                s = withDefaults(s, agent: AGENTS[1].agent, model: "claude-opus-5-5-preview-20261001-extended")
+            }
+            return s
         }
 
         static var imageStorage: PBImageStorageUsage {

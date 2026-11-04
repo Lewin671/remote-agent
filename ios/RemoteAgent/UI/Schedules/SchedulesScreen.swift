@@ -150,7 +150,7 @@ func scheduleListMetadata(_ entry: MachineSchedule, entries: [MachineSchedule], 
             guard let sid = target.session, let session = state.sessions[sid], let info = session.info else { return ("", "") }
             return (info.cwd, agentName(session.agent))
         }
-        return (target.cwd ?? "", target.agent == "claude" ? "Claude Code" : "Codex")
+        return (target.cwd ?? "", agentById(target.agent).name)
     }
     let task = entry.task, place = location(entry)
     let places = entries.map(location)
@@ -175,7 +175,7 @@ func scheduleLocation(_ task: ScheduleTask, state: RemoteState, machine: String,
         if let sid = target.session, let session = state.sessions[sid], session.info != nil {
             place = "在「" + titleOf(session) + "」里" + (frequency ? " · " + agentName(session.agent) : "")
         } else { place = "在对话里" }
-    } else { place = projectName(target.cwd ?? "") + " · " + (target.agent == "claude" ? "Claude Code" : "Codex") }
+    } else { place = projectName(target.cwd ?? "") + " · " + agentById(target.agent).name }
     return (frequency ? scheduleFrequency(task.spec.trigger, includeZone: true) + " · " : "") + place + (state.machines.count > 1 ? " · " + machineLabel(state, id: machine) : "")
 }
 

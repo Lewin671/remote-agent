@@ -192,7 +192,7 @@ struct ProjectSettingsSheet: View {
         let shown = models.flatMap { projectModel(c, models: $0, settings: settings) }
         let d = defaultModeOf(state.machines[c.machineId], agent: c.agent)
         var out = [AnyView(SetRow("模型", settingsModelValue(c, shown: shown)) { page = .model })]
-        if c.agent == .claude {
+        if agentInfo(c.agent).standardContextOption {
             // A model without a larger window has nothing to choose.
             let window = settingsContext(c, shown: shown)
             out.append(AnyView(SetRow("上下文", window.text, action: window.fixed ? nil : { page = .context })))

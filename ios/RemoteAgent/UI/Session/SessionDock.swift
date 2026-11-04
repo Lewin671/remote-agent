@@ -664,7 +664,7 @@ struct PlanDock: View {
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
             // Claude Code leaves plan mode for manual approval of edits.
-            if session.agent == .claude {
+            if agentInfo(session.agent).planApprovalReturnsToAsk {
                 Text("批准后使用询问模式").type(T.meta, Theme.muted).padding(.top, 7)
             }
         }
@@ -710,7 +710,7 @@ struct PlanButtons: View {
             Btn(act.running ? "提交中…" : "批准执行", kind: .primary, enabled: !act.running) { answer(.implement) }
         }
         // Claude Code has no such choice.
-        if full && session.agent != .claude {
+        if full && agentInfo(session.agent).planClearContext {
             DockFoot("", link: "清空上下文后执行") { answer(.clearAndImplement) }
                 .disabled(act.running)
         }

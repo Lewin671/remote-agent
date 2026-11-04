@@ -33,7 +33,7 @@ final class ScheduleDraft {
         if let session {
             target = ScheduleTarget(type: "resume_session"); target.session = session.id
         } else if let c = config {
-            target = ScheduleTarget(type: "new_session"); target.cwd = c.cwd; target.agent = c.agent == .claude ? "claude" : "codex"
+            target = ScheduleTarget(type: "new_session"); target.cwd = c.cwd; target.agent = agentInfo(c.agent).id
             target.model = c.model.isEmpty ? nil : c.model
             target.effort = c.effort.isEmpty ? nil : c.effort
             let mode = c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode
@@ -122,7 +122,7 @@ struct NewScheduleScreen: View {
             #if DEBUG
             if URL(string: context.account.server)?.host == "127.0.0.1", let cwd = HomeLaunch.value("-scheduleCwd"), let machine = state.machines.keys.sorted().first {
                 draft.config = projectStart(state, key: cwd, machine: machine)?.config ?? NewConfig(machineId: machine, cwd: cwd)
-                if let agent = HomeLaunch.value("-scheduleAgent") { draft.config?.agent = agent == "claude" ? .claude : .codex }
+                if let agent = HomeLaunch.value("-scheduleAgent") { draft.config?.agent = agentById(agent).agent }
                 if let model = HomeLaunch.value("-scheduleModel") { draft.config?.model = model }
                 if let mode = HomeLaunch.value("-scheduleMode") { draft.config?.mode = mode == "full" ? .full : mode == "auto" ? .auto : .ask }
             }

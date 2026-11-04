@@ -51,9 +51,9 @@ enum HomeLaunch {
                     $0.settings.append(.with {
                         $0.path = Demo.foo
                         $0.machineID = "mac"
-                        $0.agent = .codex
+                        $0.agent = defaultAgent
                         $0.agents = [.with {
-                            $0.agent = .codex
+                            $0.agent = defaultAgent
                             $0.mode = .fullAccess
                         }]
                     })
@@ -100,9 +100,9 @@ enum HomeLaunch {
             meta.hostname = "MacBook"
             meta.home = Demo.home
             meta.protocolVersion = protocolVersion
-            meta.agents = [PBAgent.codex, .claude].map { agent in
+            meta.agents = AGENTS.map { entry in
                 .with {
-                    $0.agent = agent
+                    $0.agent = entry.agent
                     $0.defaultMode = .ask
                     $0.defaultModeSource = .cliConfig
                 }

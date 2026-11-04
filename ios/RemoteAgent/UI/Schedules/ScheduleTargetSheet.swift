@@ -13,7 +13,7 @@ struct ScheduleTargetSheet: View {
     init(machine: String, target: ScheduleTarget, onSave: @escaping (ScheduleTarget) -> Void, onClose: @escaping () -> Void) {
         self.machine = machine; self.target = target; self.onSave = onSave; self.onClose = onClose
         let mode: Mode? = ["ask": .ask, "auto": .auto, "full": .full][target.mode ?? ""]
-        _config = State(initialValue: NewConfig(machineId: machine, cwd: target.cwd ?? "", agent: target.agent == "claude" ? .claude : .codex, model: target.model ?? "", effort: target.effort ?? "", mode: mode))
+        _config = State(initialValue: NewConfig(machineId: machine, cwd: target.cwd ?? "", agent: agentById(target.agent).agent, model: target.model ?? "", effort: target.effort ?? "", mode: mode))
     }
     var body: some View {
         VStack(spacing: 0) {
@@ -33,7 +33,7 @@ struct ScheduleTargetSheet: View {
     private func save() {
         guard let c = config, c.machineId == machine else { return }
         var next = target
-        next.cwd = c.cwd; next.agent = c.agent == .claude ? "claude" : "codex"
+        next.cwd = c.cwd; next.agent = agentInfo(c.agent).id
         next.model = c.model.isEmpty ? nil : c.model; next.effort = c.effort.isEmpty ? nil : c.effort
         next.mode = c.mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
         onSave(next); onClose()

@@ -43,7 +43,7 @@ struct QuotaScreen: View {
                         QuotaState(
                             "暂不支持读取额度",
                             g.detail.or("这台电脑上的 remote-agent 读不到 \(agentName(g.agent)) 的额度。")
-                                + (g.agent == .claude ? " 可在本机 Claude Code 中查看 /usage。" : ""))
+                                + (agentInfo(g.agent).usageHint ?? ""))
                     } else if g.status == .waiting {
                         QuotaState("暂未获取额度", "等待 \(agentName(g.agent)) 返回额度数据")
                     }

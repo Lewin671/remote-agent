@@ -93,7 +93,7 @@ struct ScheduleDetailScreen: View {
         .kitSheet(isPresented: $permissions) {
             if let task = editor.task {
                 ScheduleConfigSheet(page: .mode, config: Binding(get: {
-                    NewConfig(machineId: machine, cwd: task.spec.target.cwd ?? "", agent: task.spec.target.agent == "claude" ? .claude : .codex,
+                    NewConfig(machineId: machine, cwd: task.spec.target.cwd ?? "", agent: agentById(task.spec.target.agent).agent,
                               model: task.spec.target.model ?? "", effort: task.spec.target.effort ?? "", mode: ["ask": Mode.ask, "auto": .auto, "full": .full][task.spec.target.mode ?? ""])
                 }, set: { selected in
                     var spec = task.spec

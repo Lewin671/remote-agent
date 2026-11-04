@@ -36,7 +36,7 @@ struct ChatRow: Identifiable, Equatable, Sendable {
 /// What the rows depend on besides the events: how the session's computer
 /// and CLI are named, who is who, and what this client sent.
 struct ChatParams: Equatable, Sendable {
-    var agent = PBAgent.codex
+    var agent = defaultAgent
     var machine = ""
     var cwd = ""
     var home = ""
@@ -405,7 +405,7 @@ private struct SessionFollow: ViewModifier {
             }
             .onChange(of: session?.agent, initial: true) { _, agent in
                 // Which CLI it is decides how its events are read.
-                chat.use(ChatParams(agent: agent ?? .codex, me: context.me))
+                chat.use(ChatParams(agent: agent ?? defaultAgent, me: context.me))
             }
             .sessionLookup(sid, into: finder)
             .sessionSamples(sid)

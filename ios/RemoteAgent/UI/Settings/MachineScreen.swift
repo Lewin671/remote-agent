@@ -171,14 +171,7 @@ struct MachineScreen: View {
 
     /// The CLIs the computer reports; one that reports none is an older Codex-only daemon's.
     private func shownAgents(_ meta: PBMachineMeta) -> [PBAgentInfo] {
-        if !meta.agents.isEmpty { return meta.agents }
-        return [
-            .with {
-                $0.agent = .codex
-                $0.version = meta.codexVersion
-                $0.verified = meta.codexVerified
-            }
-        ]
+        machineVersions(meta)
     }
 
     /// The CLI's name; with several accounts of one CLI, which one, so two rows are not named alike.
@@ -234,7 +227,7 @@ struct MachineScreen: View {
                             ? Theme.red : nil
                     ) { picking = .mode(agent) }
                     // The timeout is the daemon's, not a CLI's: it is listed once, with Codex or the only CLI there is.
-                    if agent == .codex || agents.count == 1 {
+                    if agent == defaultAgent || agents.count == 1 {
                         GRow(
                             "审批超时", value: timeoutText(seconds: s.approvalTimeoutSeconds),
                             chevron: true, enabled: !busy

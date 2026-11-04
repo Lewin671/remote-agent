@@ -137,7 +137,7 @@ struct ImageViewerScreen: View {
         let details = [viewerSize(ref), s.map { titleOf($0) }].compactMap { $0 }.joined(separator: " · ")
         let large = typeSize.isAccessibilitySize
         return VStack(alignment: .leading, spacing: 2) {
-            Text(viewerSource(ref, agent: s?.agent ?? .codex)).type(T.smB, ViewerInk.text)
+            Text(viewerSource(ref, agent: s?.agent ?? defaultAgent)).type(T.smB, ViewerInk.text)
             if !ref.path.isEmpty {
                 Text(ref.path).type(T.mono, ViewerInk.path).lineLimit(large ? 4 : 2).truncationMode(.middle)
             }

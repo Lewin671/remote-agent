@@ -171,35 +171,6 @@ let imageQuotaChoices: [Int64] = [256 << 20, 1 << 30, 5 << 30]
 let defaultModeChoices: [Mode?] = [nil, .ask, .auto]
 
 extension PBDaemonSettings {
-    /// A CLI's defaults for new projects: Claude Code's are apart, the plain fields are Codex's.
-    func defaults(for agent: PBAgent) -> PBAgentDefaults {
-        if effectiveAgent(agent) == .claude { return claude }
-        return .with {
-            $0.model = defaultModel
-            $0.effort = defaultEffort
-            $0.mode = defaultMode
-        }
-    }
-
-    func with(model: String, effort: String, for agent: PBAgent) -> PBDaemonSettings {
-        var s = self
-        if effectiveAgent(agent) == .claude {
-            s.claude.model = model
-            s.claude.effort = effort
-        } else {
-            s.defaultModel = model
-            s.defaultEffort = effort
-        }
-        return s
-    }
-
-    func with(mode: Mode?, for agent: PBAgent) -> PBDaemonSettings {
-        var s = self
-        let proto = mode?.proto ?? .unspecified
-        if effectiveAgent(agent) == .claude { s.claude.mode = proto } else { s.defaultMode = proto }
-        return s
-    }
-
     func with(timeoutMinutes: Int) -> PBDaemonSettings {
         var s = self
         s.approvalTimeoutSeconds = Int32(timeoutMinutes * 60)

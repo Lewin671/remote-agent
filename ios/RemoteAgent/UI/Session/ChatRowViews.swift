@@ -18,7 +18,7 @@ import UIKit
 /// What every row needs besides itself. Small and `Equatable`, so that a
 /// row is drawn again only when something it shows changed.
 struct ChatEnv: Equatable, Sendable {
-    var agent = PBAgent.codex
+    var agent = defaultAgent
     var cwd = ""
     var home = ""
     /// When the connection dropped, 0 while online: timers stop there.
