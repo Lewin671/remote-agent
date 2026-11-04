@@ -159,6 +159,9 @@ func (s *session) setModel(model, effort string) error {
 
 // setModelBy is setModel on behalf of origin.
 func (s *session) setModelBy(ctx context.Context, model, effort string, origin *pb.Origin) error {
+	if !s.ag.Capabilities().ModelSwitch {
+		return agent.ErrUnsupported
+	}
 	if err := s.ag.CheckEffort(effort); err != nil {
 		return err
 	}

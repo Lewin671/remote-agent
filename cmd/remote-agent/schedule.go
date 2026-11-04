@@ -48,7 +48,7 @@ Triggers:
   Recurring triggers accept RFC3339 "until"; "max_runs" optionally limits dispatches. Interrupted turns pause continuation.
 Targets:
   resume_session: "session" ID or "current". Automatically resumes an exited CLI.
-  new_session: "cwd", "agent" (codex/claude), "model", "effort", "mode"
+  new_session: "cwd", "agent" (codex/claude/agy), "model", "effort", "mode"
     (ask/auto/full). Missing fields inherit the creating session where possible.
     New sessions cannot start in Plan mode; choose an explicit start mode then.
 "notify":"finish" (default when omitted) requests a completion notification if

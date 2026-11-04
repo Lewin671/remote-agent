@@ -154,9 +154,11 @@ type session struct {
 	recent []input
 	// unproven are the remembered messages that were reported
 	// UNCONFIRMED: a record of one, coming late, still confirms it.
-	unproven      map[string]bool
-	wake          chan struct{} // pokes the injector
-	*sessionLoops               // replaced only after the previous loops have stopped
+	unproven        map[string]bool
+	wake            chan struct{} // pokes the injector
+	lastPreToolHook *agent.Hook
+	statusLineMode  string
+	*sessionLoops   // replaced only after the previous loops have stopped
 }
 
 // Each generation owns its cancellation and completion handles. Workers keep
@@ -183,6 +185,7 @@ type approval struct {
 	// tool and digest (agent.InputDigest) identify the tool call the
 	// request is for.
 	tool, digest string
+	native       *agent.Hook
 }
 
 type decision struct {
@@ -270,6 +273,9 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		s.status = pb.SessionStatus_SESSION_STATUS_EXITED
 	}
 	if m.RolloutPath != "" {
+		if located, ok := s.parser.(interface{ SetTranscriptPath(string) }); ok {
+			located.SetTranscriptPath(m.RolloutPath)
+		}
 		path, off := log.Checkpoint()
 		if path != m.RolloutPath {
 			off = 0
@@ -278,6 +284,8 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		if off > 0 {
 			if err := s.parser.Restore(m.RolloutPath, off); err != nil {
 				slog.Warn("restore the parser from the rollout", "session", m.ID, "err", errClass(err))
+				s.parserReplayPending = true
+				s.parserReplayPath, s.parserReplayOffset = m.RolloutPath, off
 			}
 		}
 		s.reader = tail.NewReader(m.RolloutPath, off)
@@ -289,6 +297,11 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // observe updates derived state from an event. Callers hold s.mu or are
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
+	if source, ok := s.ag.(agent.NativeApprovalSource); ok {
+		if h := source.ApprovalHook(e); h != nil {
+			s.lastPreToolHook = h
+		}
+	}
 	s.observeScheduled(e)
 	s.ordering.observe(e)
 	s.answerSafety.observe(e)
@@ -406,7 +419,11 @@ func (s *session) emitLocked(settings bool, evs ...*pb.Event) error {
 func (s *session) modeFacts() agent.ModeFacts {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	f := agent.ModeFacts{FullAccess: !s.meta.NoFullAccess}
+	f := agent.ModeFacts{FullAccess: !s.meta.NoFullAccess, CurrentMode: func() string {
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.statusLineMode
+	}}
 	if s.context != nil {
 		f.Model = s.context.Model
 	}
@@ -574,6 +591,9 @@ func (s *session) readBatch() (more, ok bool) {
 	s.mu.Unlock()
 	if pending {
 		p := s.ag.NewParser()
+		if located, ok := p.(interface{ SetTranscriptPath(string) }); ok {
+			located.SetTranscriptPath(replayPath)
+		}
 		if err := s.log.Each(p.Replay); err != nil {
 			slog.Error("replay session events after append failure", "session", s.meta.ID, "err", errClass(err))
 			return false, false
@@ -639,6 +659,15 @@ func (s *session) readBatch() (more, ok bool) {
 			evs = nil
 		} else {
 			evs, err = s.parser.Parse(l.Data)
+		}
+		if errors.Is(err, agent.ErrSourcePending) {
+			if !flush() {
+				return false, false
+			}
+			s.mu.Lock()
+			s.reader = tail.NewReader(r.Path, l.Start)
+			s.mu.Unlock()
+			return false, false
 		}
 		if err != nil {
 			// A diagnostic failure retries only this line, preserving parser
@@ -758,8 +787,14 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	case scr.PlanOpen:
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
 	case scr.PermissionOpen && len(s.approvals) > 0:
-		// Claude Code's own prompt for a request a client is asked about.
+		// Prompt for a request a client is asked about.
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
+	case scr.PermissionOpen && len(s.approvals) == 0:
+		if s.checkNativeApproval(styled) {
+			next, nextDetail = pb.SessionStatus_SESSION_STATUS_IDLE, ""
+		} else {
+			next, nextDetail = pb.SessionStatus_SESSION_STATUS_BLOCKED, "permission"
+		}
 	case scr.Popup != "" && scr.Popup != "question":
 		next, nextDetail = pb.SessionStatus_SESSION_STATUS_BLOCKED, scr.Popup
 	case scr.ComposerReady || scr.QuestionOpen || s.sawComposer:
@@ -789,7 +824,12 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 func (s *session) settleRestoredPrompt(styled string) {
 	s.mu.Lock()
 	prompt, turnID := s.turnPrompt, s.turnID
-	if !s.running || s.turnOutput || s.driving || s.meta.Exited || !s.ag.RestoredPrompt(styled, prompt) {
+	interrupted := func(styled string) bool {
+		detector, ok := s.ag.(agent.InterruptedScreen)
+		return ok && detector.Interrupted(styled)
+	}
+	evidence := interrupted(styled)
+	if !s.running || (!evidence && s.turnOutput) || s.driving || s.meta.Exited || (!evidence && !s.ag.RestoredPrompt(styled, prompt)) {
 		s.restoredPromptSince = time.Time{}
 		s.mu.Unlock()
 		return
@@ -810,11 +850,11 @@ func (s *session) settleRestoredPrompt(styled string) {
 	// Reading a backlog may have taken time or ended the turn. Recheck
 	// both the screen and the turn before appending an inferred end.
 	styled, err := s.term.Capture()
-	if err != nil || !s.ag.RestoredPrompt(styled, prompt) {
+	if err != nil || (!interrupted(styled) && !s.ag.RestoredPrompt(styled, prompt)) {
 		return
 	}
 	s.mu.Lock()
-	ended := s.running && s.turnID == turnID && !s.turnOutput && !s.driving && !s.meta.Exited && s.abortTurnLocked("input restored by CLI")
+	ended := s.running && s.turnID == turnID && (interrupted(styled) || !s.turnOutput) && !s.driving && !s.meta.Exited && s.abortTurnLocked("input restored by CLI")
 	s.mu.Unlock()
 	if ended {
 		s.retractApprovals()
@@ -1010,6 +1050,7 @@ func (s *session) infoLocked() *pb.Session {
 	}
 	out.Mode = s.ag.Mode(s.context)
 	out.FullAccessUnavailable = s.meta.NoFullAccess
+	out.ModeLocked = s.ag.ModeLocked(s.context)
 	if u := s.usage; u != nil {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
 		stdWin := s.ag.StandardWindow()
@@ -1505,6 +1546,9 @@ func (s *session) bindRollout(cliSessionID, path string) {
 	}
 	s.mu.Unlock()
 	p := s.ag.NewParser()
+	if located, ok := p.(interface{ SetTranscriptPath(string) }); ok {
+		located.SetTranscriptPath(path)
+	}
 	// It needs what is known so far, such as a model switched to before
 	// the transcript was found.
 	if err := s.log.Each(p.Replay); err != nil {
@@ -1542,6 +1586,11 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 	case "StatusLine":
 		s.d.statusLine(s.meta.ID, p.Status, time.Now())
 		return nil, nil
+	case "PreToolUse":
+		s.bindRollout(p.SessionID, p.TranscriptPath)
+		s.mu.Lock()
+		s.lastPreToolHook = p
+		s.mu.Unlock()
 	}
 	if evs := s.ag.HookEvents(p); len(evs) > 0 {
 		s.bindRollout(p.SessionID, p.TranscriptPath)
@@ -1550,8 +1599,17 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 			if turn == "" {
 				turn = p.PromptID
 			}
+			s.mu.Lock()
+			if turn == "" {
+				turn = s.turnID
+			}
+			running := s.running
+			s.mu.Unlock()
 			var fresh []*pb.Event
 			for _, e := range evs {
+				if e.GetTurnEnded() != nil && !running {
+					continue
+				}
 				// The transcript may have had it first.
 				if s.parser.Reported(e) {
 					continue
@@ -1566,6 +1624,7 @@ func (s *session) hook(ctx context.Context, p *agent.Hook) ([]byte, error) {
 				for _, e := range fresh {
 					s.parser.Replay(e)
 				}
+				s.afterTranscript(fresh)
 			}
 			return nil
 		})
@@ -1742,6 +1801,10 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 		s.mu.Unlock()
 		return fmt.Errorf("approval %s: %w", id, errExpired)
 	}
+	if a.native != nil {
+		s.mu.Unlock()
+		return s.resolveNativeBy(context.Background(), a, allow, message, origin, false)
+	}
 	kind := pb.ApprovalDecision_APPROVAL_DECISION_DENY
 	if allow {
 		kind = pb.ApprovalDecision_APPROVAL_DECISION_ALLOW
@@ -1780,6 +1843,10 @@ func (s *session) watchApprovals(scr agent.Screen, styled string) []*approval {
 			continue
 		}
 		shown := scr.PermissionOpen && (a.key == "" || strings.Contains(plain, a.key))
+		if a.native != nil {
+			_, shown = s.ag.MatchApproval(styled, a.native)
+			shown = shown && scr.PermissionOpen
+		}
 		switch {
 		case shown:
 			a.seen = true
@@ -1837,6 +1904,113 @@ func (s *session) retractFor(c *pb.ToolCall) {
 	delete(s.approvals, match.id)
 	s.mu.Unlock()
 	match.decision <- decision{terminal: true}
+}
+
+// checkNativeApproval runs under mu, once a native prompt is stable. Consuming
+// the report prevents a just-answered screen from creating a second card.
+func (s *session) checkNativeApproval(styled string) bool {
+	h := s.lastPreToolHook
+	req, ok := s.ag.MatchApproval(styled, h)
+	if !ok || req == nil {
+		return false
+	}
+	a := &approval{turnID: s.turnID, id: newID(4), decision: make(chan decision, 1), deadline: time.Now().Add(s.d.approvalTimeout()), tool: req.ToolName, digest: req.InputDigest, native: h, seen: true}
+	req.ApprovalId = a.id
+	req.Deadline = timestamppb.New(a.deadline)
+	if err := s.appendLocked([]*pb.Event{{TurnId: a.turnID, Time: timestamppb.Now(), Kind: &pb.Event_ApprovalRequested{ApprovalRequested: req}}}, "", 0); err != nil {
+		return false
+	}
+	s.approvals[a.id] = a
+	s.lastPreToolHook = nil
+	var done <-chan struct{}
+	if s.sessionLoops != nil {
+		done = s.sessionLoops.done
+	}
+	go s.waitNativeApproval(a, done)
+	return true
+}
+
+// resolveNativeBy holds local keys and revalidates the exact request immediately
+// before writing. The RPC returns the actual key-delivery result.
+func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, message string, origin *pb.Origin, timeout bool) error {
+	return s.drive(ctx, func(t agent.Term, _ bool) error {
+		s.mu.Lock()
+		if a.claimed || s.approvals[a.id] != a {
+			s.mu.Unlock()
+			return errRemoteAnswerStale
+		}
+		if !timeout && !time.Now().Before(a.deadline) {
+			s.mu.Unlock()
+			return errExpired
+		}
+		s.mu.Unlock()
+		if err := s.ag.AnswerApproval(t, a.native, allow); err != nil {
+			return err
+		}
+		s.mu.Lock()
+		a.claimed = true
+		delete(s.approvals, a.id)
+		s.mu.Unlock()
+		kind := pb.ApprovalDecision_APPROVAL_DECISION_DENY
+		if allow {
+			kind = pb.ApprovalDecision_APPROVAL_DECISION_ALLOW
+		}
+		if timeout {
+			kind = pb.ApprovalDecision_APPROVAL_DECISION_TIMEOUT
+		}
+		err := s.emit(withOrigin(&pb.Event{TurnId: a.turnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: a.id, Decision: kind, Message: message}}}, origin))
+		a.decision <- decision{recorded: true}
+		if !allow && message != "" && !timeout {
+			_, queueErr := s.enqueueInputContext(ctx, message, newID(8), nil, nil, origin, pb.SendMode_SEND_MODE_UNSPECIFIED, nil, nil)
+			err = errors.Join(err, queueErr)
+		}
+		if err != nil {
+			return fmt.Errorf("approval applied but could not be recorded or its message queued: %w", err)
+		}
+		return nil
+	})
+}
+func (s *session) waitNativeApproval(a *approval, done <-chan struct{}) {
+	timer := time.NewTimer(time.Until(a.deadline))
+	defer timer.Stop()
+	for {
+		var d decision
+		select {
+		case d = <-a.decision:
+		case <-timer.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			err := s.resolveNativeBy(ctx, a, false, "remote-agent: approval timed out", originSystem, true)
+			cancel()
+			if err == nil {
+				return
+			}
+			if errors.Is(err, agent.ErrNotAnswering) {
+				if !s.claim(a) {
+					return
+				}
+				d.terminal = true
+			} else {
+				s.mu.Lock()
+				claimed := a.claimed
+				s.mu.Unlock()
+				if claimed {
+					return
+				}
+				timer.Reset(time.Second)
+				continue // delivery failed; keep trying to deny
+			}
+		case <-done:
+			if !s.claim(a) {
+				return
+			}
+			_ = s.emit(&pb.Event{TurnId: a.turnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: a.id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_CANCELED}}})
+			return
+		}
+		if d.terminal {
+			_ = s.emit(withOrigin(&pb.Event{TurnId: a.turnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: a.id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_TERMINAL}}}, originLocal))
+		}
+		return
+	}
 }
 
 // promptKey is text a permission prompt shows for a tool call: the start
@@ -1897,4 +2071,42 @@ func newID(n int) string {
 		panic(err)
 	}
 	return hex.EncodeToString(b)
+}
+
+// recordStatusLine commits settings and window observations with parser reads.
+// cycle_mode is kept separately so a locked full-access session can still
+// confirm native cycle changes without misreporting its underlying policy.
+func (s *session) recordStatusLine(report *agent.StatusLine) {
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
+	s.mu.Lock()
+	var evs []*pb.Event
+	if c := report.Context; c != nil {
+		s.statusLineMode = c.PermissionMode
+		next := proto.CloneOf(c)
+		if !s.meta.NoFullAccess {
+			next.PermissionMode = "always-proceed"
+		}
+		if !proto.Equal(next, s.context) {
+			evs = append(evs, &pb.Event{Kind: &pb.Event_TurnContext{TurnContext: next}})
+		}
+	}
+	if report.ContextWindow > 0 && s.usage.GetContextWindow() != report.ContextWindow {
+		u := &pb.TokenUsage{}
+		if s.usage != nil {
+			u = proto.CloneOf(s.usage)
+		}
+		u.ContextWindow = report.ContextWindow
+		evs = append(evs, &pb.Event{Kind: &pb.Event_TokenUsage{TokenUsage: u}})
+	}
+	s.mu.Unlock()
+	if len(evs) > 0 {
+		if s.emitLocked(true, evs...) == nil {
+			for _, e := range evs {
+				if e.GetTokenUsage() != nil {
+					s.parser.Replay(e)
+				}
+			}
+		}
+	}
 }

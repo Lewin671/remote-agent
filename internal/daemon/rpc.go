@@ -201,6 +201,13 @@ func (h *handler) Hook(ctx context.Context, req *connect.Request[pb.HookRequest]
 	if err := json.Unmarshal(req.Msg.Payload, &p); err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
+	if decoder, ok := s.ag.(agent.HookDecoder); ok && p.HookEventName != "StatusLine" {
+		native, err := decoder.DecodeHook(req.Msg.Payload)
+		if err != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		p = *native
+	}
 	out, err := s.hook(ctx, &p)
 	if err != nil {
 		return nil, rpcErr(err)

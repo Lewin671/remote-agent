@@ -14,6 +14,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
@@ -37,7 +38,11 @@ func runStatusLine(args []string) int {
 		defer cancel()
 		_, _ = dial().Hook(ctx, connect.NewRequest(&pb.HookRequest{SessionId: sessionID, Payload: payload}))
 	}()
-	code := runUserStatusLine(sessionID, input)
+	id := "claude"
+	if len(args) > 0 {
+		id = args[0]
+	}
+	code := runUserStatusLineFor(sessionID, input, id)
 	<-done
 	return code
 }
@@ -46,18 +51,30 @@ func runStatusLine(args []string) int {
 // session, as Claude Code would have: through the shell, in the current
 // folder, with the input on stdin.
 func runUserStatusLine(sessionID string, input []byte) int {
+	return runUserStatusLineFor(sessionID, input, "claude")
+}
+
+func runUserStatusLineFor(sessionID string, input []byte, id string) int {
+	fallback := func() int {
+		if spec, ok := daemon.FindAgent(id); ok {
+			if native, ok := spec.New(daemon.AgentConfig{}).(interface{ DefaultStatusLine([]byte) []byte }); ok {
+				_, _ = os.Stdout.Write(native.DefaultStatusLine(input))
+			}
+		}
+		return 0
+	}
 	if sessionID == "" {
 		return 0
 	}
 	b, err := os.ReadFile(filepath.Join(paths.SessionDir(sessionID), agent.StatusLineFile))
 	if err != nil {
-		return 0
+		return fallback()
 	}
 	var sl struct {
 		Command string `json:"command"`
 	}
 	if json.Unmarshal(b, &sl) != nil || sl.Command == "" {
-		return 0
+		return fallback()
 	}
 	cmd := exec.Command("/bin/sh", "-c", sl.Command)
 	cmd.Stdin = bytes.NewReader(input)

@@ -201,13 +201,22 @@ func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.W
 		return until("the input box after the turn", 20*time.Second, func(scr agent.Screen) bool { return scr.ComposerReady && scr.DraftEmpty })
 	})
 
-	step("switch model and effort", func() error {
-		if err := s.setModel(other, otherEffort); err != nil {
-			return err
-		}
-		return s.setModel(model, effort)
-	})
+	if !ag.Capabilities().ModelSwitch {
+		step("reject live model switching", func() error {
+			if !errors.Is(s.setModel(model, effort), agent.ErrUnsupported) {
+				return errors.New("live model switch was not rejected")
+			}
+			return nil
+		})
+	} else {
+		step("switch model and effort", func() error {
+			if err := s.setModel(other, otherEffort); err != nil {
+				return err
+			}
+			return s.setModel(model, effort)
+		})
 
+	}
 	step("switch approval mode and Plan mode", func() error {
 		for _, m := range chk.DoctorModes() {
 			if err := s.setApprovalMode(m); err != nil {

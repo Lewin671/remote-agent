@@ -1,12 +1,14 @@
 package daemon
 
 import (
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/antigravity"
 	"github.com/Lewin671/remote-agent/internal/claude"
 )
 
@@ -14,6 +16,16 @@ func claudeQuota(d *Daemon) []*pb.AgentQuota {
 	var out []*pb.AgentQuota
 	for _, q := range d.MachineMeta().Quotas {
 		if q.Agent == pb.Agent_AGENT_CLAUDE {
+			out = append(out, q)
+		}
+	}
+	return out
+}
+
+func agyQuota(d *Daemon) []*pb.AgentQuota {
+	var out []*pb.AgentQuota
+	for _, q := range d.MachineMeta().Quotas {
+		if q.Agent == pb.Agent_AGENT_ANTIGRAVITY {
 			out = append(out, q)
 		}
 	}
@@ -131,5 +143,50 @@ func TestClaudeQuotaOfAnEarlierLoginIsNotTheNewAccounts(t *testing.T) {
 	h.d.statusLine("old", []byte(`{"rate_limits":{"five_hour":{"used_percentage":9,"resets_at":1790774400}}}`), now.Add(4*time.Minute))
 	if q := claudeQuota(h.d); q[0].Windows[0].GetUsedPercent() != 9 {
 		t.Fatalf("a new reply's limits ignored: %v", q)
+	}
+}
+
+func TestAgyQuotaFromStatusLine(t *testing.T) {
+	h := newHarness(t, Config{})
+	home := t.TempDir()
+	h.d.agents[pb.Agent_AGENT_ANTIGRAVITY] = antigravity.New("/bin/true", home)
+
+	h.s.ag = h.d.agents[pb.Agent_AGENT_ANTIGRAVITY]
+	h.s.meta.NoFullAccess = true
+	os.WriteFile(filepath.Join(h.s.dir, antigravity.SettingsFile), []byte(`{"toolPermission":"request-review"}`), 0600)
+	h.d.sessions[h.s.meta.ID] = h.s
+	if q := agyQuota(h.d); len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_WAITING {
+		t.Fatalf("before any report: %v", q)
+	}
+	now := time.Now()
+	report := []byte(`{
+		"email": "test@example.com",
+		"plan_tier": "Pro",
+		"product":"antigravity",
+        "cycle_mode": "auto",
+		"quota": {
+			"gemini-5h": {"remaining_fraction": 0.85, "reset_time": "2026-09-30T13:20:00Z"},
+			"gemini-weekly": {"remaining_fraction": 0.40, "reset_time": "2026-10-02T17:00:00Z"}
+		}
+	}`)
+	h.d.statusLine(h.s.meta.ID, report, now)
+	q := agyQuota(h.d)
+	if len(q) != 1 || q[0].State != pb.QuotaState_QUOTA_STATE_OK || q[0].Plan != "Pro" || q[0].Login != pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION || q[0].Account == "" || q[0].ObservedMs != now.UnixMilli() {
+		t.Fatalf("quota unexpected: %v", q)
+	}
+	// Check email fingerprint
+	expectedFP := antigravity.EmailFingerprint("test@example.com")
+	if q[0].Account != expectedFP {
+		t.Fatalf("expected account %s, got %s", expectedFP, q[0].Account)
+	}
+	w := q[0].Windows
+	if len(w) != 2 {
+		t.Fatalf("expected 2 windows, got %v", w)
+	}
+	if w[0].Name != "gemini-5h" || math.Abs(w[0].GetUsedPercent()-15) > 0.0001 || w[0].ResetsAtMs != 1790774400000 {
+		t.Fatalf("window 0 mismatch: %v", w[0])
+	}
+	if w[1].Name != "gemini-weekly" || w[1].GetUsedPercent() != 60 || w[1].ResetsAtMs != 1790960400000 {
+		t.Fatalf("window 1 mismatch: %v", w[1])
 	}
 }

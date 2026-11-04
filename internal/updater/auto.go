@@ -57,7 +57,7 @@ func (u *Updater) autoFiles(osName, home, at string) (map[string]string, error) 
 	hour, _ := strconv.Atoi(parts[0])
 	minute, _ := strconv.Atoi(parts[1])
 	env := map[string]string{"REMOTE_AGENT_HOME": u.state, "PATH": os.Getenv("PATH")}
-	for _, key := range []string{"REMOTE_AGENT_TMUX_SOCKET", "REMOTE_AGENT_CODEX", "CODEX_HOME", "REMOTE_AGENT_CLAUDE", "CLAUDE_CONFIG_DIR"} {
+	for _, key := range []string{"REMOTE_AGENT_TMUX_SOCKET", "REMOTE_AGENT_CODEX", "CODEX_HOME", "REMOTE_AGENT_CLAUDE", "CLAUDE_CONFIG_DIR", "REMOTE_AGENT_AGY"} {
 		if val := os.Getenv(key); val != "" {
 			env[key] = val
 		}

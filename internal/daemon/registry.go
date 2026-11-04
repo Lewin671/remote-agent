@@ -3,6 +3,7 @@ package daemon
 import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/antigravity"
 	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
 )
@@ -22,6 +23,7 @@ type AgentSpec struct {
 	Name     string
 	Required bool
 	HomeEnv  string
+	HomePath string
 	New      func(ac AgentConfig) agent.Adapter
 }
 
@@ -33,6 +35,7 @@ var RegisteredAgents = []AgentSpec{
 		Name:     "Codex",
 		Required: true,
 		HomeEnv:  "CODEX_HOME",
+		HomePath: ".codex",
 		New: func(ac AgentConfig) agent.Adapter {
 			return codex.New(ac.Bin, ac.Home, ac.HistoryPath)
 		},
@@ -43,8 +46,19 @@ var RegisteredAgents = []AgentSpec{
 		Name:     "Claude Code",
 		Required: false,
 		HomeEnv:  "CLAUDE_CONFIG_DIR",
+		HomePath: ".claude",
 		New: func(ac AgentConfig) agent.Adapter {
 			return claude.New(ac.Bin, ac.Home)
+		},
+	},
+	{
+		ID:       "agy",
+		Kind:     pb.Agent_AGENT_ANTIGRAVITY,
+		Name:     "Antigravity",
+		Required: false,
+		HomePath: ".gemini/antigravity-cli",
+		New: func(ac AgentConfig) agent.Adapter {
+			return antigravity.New(ac.Bin, ac.Home)
 		},
 	},
 }
@@ -87,7 +101,11 @@ func Adapters(cfg Config) []agent.Adapter {
 		if cfg.Agents != nil {
 			ac = cfg.Agents[spec.Kind]
 		}
-		adapters = append(adapters, spec.New(ac))
+		adapter := spec.New(ac)
+		if configurable, ok := adapter.(interface{ SetCommandEnv(map[string]string) }); ok {
+			configurable.SetCommandEnv(cfg.Env)
+		}
+		adapters = append(adapters, adapter)
 	}
 	return adapters
 }
@@ -131,6 +149,11 @@ func defaultsFor(st *pb.DaemonSettings, k pb.Agent) *pb.AgentDefaults {
 			return c
 		}
 		return &pb.AgentDefaults{}
+	case pb.Agent_AGENT_ANTIGRAVITY:
+		if a := st.GetAntigravity(); a != nil {
+			return a
+		}
+		return &pb.AgentDefaults{}
 	default:
 		return &pb.AgentDefaults{}
 	}
@@ -152,5 +175,7 @@ func setDefaultsFor(st *pb.DaemonSettings, k pb.Agent, d *pb.AgentDefaults) {
 		st.DefaultMode = d.Mode
 	case pb.Agent_AGENT_CLAUDE:
 		st.Claude = d
+	case pb.Agent_AGENT_ANTIGRAVITY:
+		st.Antigravity = d
 	}
 }

@@ -103,7 +103,7 @@ install_daemon() {
 		say "  In the phone app: create the account on https://ra.example.com with the setup token,"
 		say "  then run: remote-agent account join --server https://ra.example.com --code CODE"
 		say "                                      (see the self-hosting guide)"
-		say "  remote-agent codex | claude         start a session here"
+		say "  remote-agent codex | claude | agy   start a session here"
 	fi
 	case ":$PATH:" in
 	*":$dir:"*) ;;

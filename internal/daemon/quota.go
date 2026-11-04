@@ -40,7 +40,7 @@ type quotaReport struct {
 
 func quotaPath() string { return filepath.Join(paths.Dir(), "quota.json") }
 
-// loadQuotas reads the saved Claude Code limits, keeping only the logged
+// loadQuotas reads the saved CLI limits, keeping only the logged
 // in account's.
 func (d *Daemon) loadQuotas() {
 	b, err := os.ReadFile(quotaPath())
@@ -51,12 +51,22 @@ func (d *Daemon) loadQuotas() {
 	if json.Unmarshal(b, &saved) != nil {
 		return
 	}
-	account := d.claudeAccount()
 	q := claudeQuotas{}
 	for key, raw := range saved {
 		e := &pb.AgentQuota{}
-		if protojson.Unmarshal(raw, e) != nil || e.Account == "" || e.Account != account {
-			continue // an unknown or another account's record is not reused
+		if protojson.Unmarshal(raw, e) != nil || e.Account == "" {
+			continue // an unknown account's record is not reused
+		}
+		a, ok := d.byKind(e.Agent)
+		if !ok {
+			continue
+		}
+		if cl, ok := a.(agent.StatusLineAccount); ok {
+			if fp, _, _ := cl.Account(); fp == "" || fp != e.Account {
+				continue
+			}
+		} else {
+			continue
 		}
 		q[key] = e
 	}
@@ -82,18 +92,22 @@ func (d *Daemon) saveQuotasLocked() {
 	}
 }
 
-func (d *Daemon) claudeAccount() string {
-	for _, a := range d.adapterList() {
-		if cl, ok := a.(agent.StatusLineAccount); ok {
-			fp, _, _ := cl.Account()
-			return fp
+// statusLine dispatches by the session's adapter, never by fields that happen
+// to occur in multiple CLIs' JSON contracts.
+func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time) {
+	if session, err := d.session(sessionID); err == nil {
+		if source, ok := session.ag.(agent.StatusLineSource); ok {
+			report, err := source.ParseStatusLine(raw, session.dir)
+			if err != nil {
+				return
+			}
+			session.recordStatusLine(report)
+			if report.Quota != nil {
+				d.recordQuota(sessionID, report.Quota, now)
+			}
+			return
 		}
 	}
-	return ""
-}
-
-// statusLine records the limits in a Claude Code status line input.
-func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time) {
 	var in struct {
 		RateLimits map[string]*struct {
 			UsedPercentage *float64 `json:"used_percentage"`
@@ -106,10 +120,12 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 	var clAdapter agent.StatusLineAccount
 	var clAgent agent.Adapter
 	for _, a := range d.adapterList() {
-		if cl, ok := a.(agent.StatusLineAccount); ok {
-			clAdapter = cl
-			clAgent = a
-			break
+		if a.Kind() == pb.Agent_AGENT_CLAUDE {
+			if cl, ok := a.(agent.StatusLineAccount); ok {
+				clAdapter = cl
+				clAgent = a
+				break
+			}
 		}
 	}
 	if clAdapter == nil {
@@ -143,6 +159,11 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 	if sub {
 		e.Login = pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION
 	}
+	d.recordQuota(sessionID, e, now)
+}
+
+func (d *Daemon) recordQuota(sessionID string, e *pb.AgentQuota, now time.Time) {
+	e.ObservedMs = now.UnixMilli()
 	key := "account:" + e.Account
 	if e.Account == "" {
 		key, e.SourceSessionId = "session:"+sessionID, sessionID
@@ -156,7 +177,7 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 	if e.Account != "" {
 		// Another account logged in: the old one's record goes.
 		for k, old := range d.quotas {
-			if old.Account != "" && old.Account != e.Account {
+			if old.Agent == e.Agent && old.Account != "" && old.Account != e.Account {
 				delete(d.quotas, k)
 				dropped = true
 			}
@@ -229,15 +250,20 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 			continue
 		}
 		if cl, ok := ag.(agent.StatusLineAccount); ok {
+			var agentQuotas []*pb.AgentQuota
 			keys := make([]string, 0, len(d.quotas))
 			for k := range d.quotas {
 				keys = append(keys, k)
 			}
 			sort.Strings(keys)
 			for _, k := range keys {
-				out = append(out, proto.CloneOf(d.quotas[k]))
+				if d.quotas[k].Agent == ag.Kind() {
+					agentQuotas = append(agentQuotas, proto.CloneOf(d.quotas[k]))
+				}
 			}
-			if len(keys) == 0 {
+			if len(agentQuotas) > 0 {
+				out = append(out, agentQuotas...)
+			} else {
 				e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
 				if cl.ManagedStatusLine("") {
 					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_UNSUPPORTED, "the status line is set by managed settings"

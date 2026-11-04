@@ -133,7 +133,7 @@ func daemonConfig(agentBins map[string]string, tc *tmux.Client) (daemon.Config, 
 			agentHome = os.Getenv(spec.HomeEnv)
 		}
 		if agentHome == "" {
-			agentHome = filepath.Join(home, "."+spec.ID)
+			agentHome = filepath.Join(home, spec.HomePath)
 		}
 		ac := daemon.AgentConfig{
 			Bin:  bin,
@@ -552,6 +552,17 @@ func runHook(args []string) int {
 	payload, err := io.ReadAll(io.LimitReader(os.Stdin, 16<<20))
 	if err != nil || sessionID == "" {
 		return 0
+	}
+	if args[0] == "agy" {
+		if len(args) != 2 {
+			return 2
+		}
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(payload, &fields) != nil {
+			return 0
+		}
+		fields["hook_event_name"], _ = json.Marshal(args[1])
+		payload, _ = json.Marshal(fields)
 	}
 	var head agent.Hook
 	_ = jsonUnmarshal(payload, &head)

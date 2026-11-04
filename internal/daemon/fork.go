@@ -42,6 +42,9 @@ func (d *Daemon) forkContext(ctx context.Context, id string, origin *pb.Origin) 
 	if err != nil {
 		return nil, err
 	}
+	if !src.ag.Capabilities().Fork {
+		return nil, agent.ErrUnsupported
+	}
 	// Match resume's lock order: the source lifecycle, then terminal ownership.
 	src.lifecycleMu.Lock()
 	defer src.lifecycleMu.Unlock()
