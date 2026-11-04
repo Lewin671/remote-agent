@@ -143,9 +143,7 @@ func LoadCatalog(home string) (*Catalog, error) {
 // it fetched it, and when it turns stale. The document is null for a
 // surface the account is not served.
 type catalogFile struct {
-	Version   int   `json:"version"`
 	FetchedAt int64 `json:"fetchedAt"`
-	StaleAt   int64 `json:"staleAt"`
 	Catalog   *struct {
 		Surface string         `json:"surface"`
 		Config  *catalogConfig `json:"config"`

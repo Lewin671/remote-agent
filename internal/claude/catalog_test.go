@@ -1,8 +1,10 @@
 package claude
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -210,5 +212,30 @@ func TestParserReadsCatalogLater(t *testing.T) {
 	}
 	if w := p.contextWindow("claude-sonnet-5-5"); w == 0 {
 		t.Fatal("no window after the catalog appeared")
+	}
+}
+
+func TestCatalogIgnoresUnusedExternalMetadata(t *testing.T) {
+	data, err := os.ReadFile(catalogSample)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatal(err)
+	}
+	delete(doc, "version")
+	delete(doc, "staleAt")
+	plain, _ := json.Marshal(doc)
+	want := parseCatalog(plain)
+	if want == nil {
+		t.Fatal("fixture catalog is missing")
+	}
+	for _, metadata := range []string{`42`, `"external metadata"`, `null`, `{"new":"shape"}`} {
+		doc["version"], doc["staleAt"] = json.RawMessage(metadata), json.RawMessage(metadata)
+		data, _ := json.Marshal(doc)
+		if got := parseCatalog(data); !reflect.DeepEqual(got, want) {
+			t.Fatalf("unused metadata %s changed catalog", metadata)
+		}
 	}
 }
