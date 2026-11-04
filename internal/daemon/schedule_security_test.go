@@ -28,7 +28,7 @@ func scopedSchedule(t *testing.T, h *harness, op, id string, spec *schedule.Spec
 func scopedHarness(t *testing.T, mode string) *harness {
 	h := scheduleHarness(t)
 	t.Cleanup(func() { h.s.log.Close() })
-	h.d.agents[pb.Agent_AGENT_CODEX] = codex.New("codex", h.dir, h.d.cfg.HistoryPath)
+	h.d.agents[pb.Agent_AGENT_CODEX] = codex.New("codex", h.dir, h.d.cfg.Agents[pb.Agent_AGENT_CODEX].HistoryPath)
 	setScopedMode(h, mode)
 	return h
 }

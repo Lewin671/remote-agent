@@ -40,7 +40,7 @@ func newRestoreHarness(t *testing.T) *restoreHarness {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	d := New(Config{Tmux: &tmux.Client{Bin: filepath.Join(bin, "tmux"), Socket: "ra-test"},
-		HistoryPath: filepath.Join(t.TempDir(), "history.jsonl"), PollInterval: time.Millisecond, ScreenInterval: time.Hour})
+		Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {HistoryPath: filepath.Join(t.TempDir(), "history.jsonl")}}, PollInterval: time.Millisecond, ScreenInterval: time.Hour})
 	d.ctx = ctx
 	t.Cleanup(func() {
 		cancel()

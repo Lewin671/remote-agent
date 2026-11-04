@@ -121,7 +121,7 @@ func TestResumeAndHeldReleaseReturnAcceptedRecordingFailure(t *testing.T) {
 func TestCreateKeepsSessionAfterFirstPromptAccepted(t *testing.T) {
 	for _, via := range []string{"direct", "rpc"} {
 		t.Run(via, func(t *testing.T) {
-			h := newHarness(t, Config{CodexBin: "unused", PollInterval: time.Hour, ScreenInterval: time.Hour})
+			h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "unused"}}, PollInterval: time.Hour, ScreenInterval: time.Hour})
 			t.Cleanup(func() {
 				for _, s := range h.d.sessions {
 					s.stop()

@@ -17,7 +17,7 @@ import (
 
 func resumableHarness(t *testing.T) *harness {
 	t.Helper()
-	h := newHarness(t, Config{CodexBin: "/bin/echo", Exe: "remote-agent-test", PollInterval: time.Hour, ScreenInterval: time.Hour})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/echo"}}, Exe: "remote-agent-test", PollInterval: time.Hour, ScreenInterval: time.Hour})
 	fakeTmux(t, h)
 	// Lifecycle tests do not need the host's directory service or login shell.
 	if err := writeEnvFile(filepath.Join(h.dir, "env.json"), map[string]string{}); err != nil {
@@ -160,7 +160,7 @@ func (a *blockedLaunchAdapter) Argv(l *agent.Launch) ([]string, error) {
 func TestSessionLaunchDoesNotBlockUnrelatedResume(t *testing.T) {
 	for _, operation := range []string{"resume", "fork"} {
 		t.Run(operation, func(t *testing.T) {
-			h := newHarness(t, Config{CodexBin: "/bin/echo", Exe: "remote-agent-test"})
+			h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/echo"}}, Exe: "remote-agent-test"})
 			// HasSession must answer false without spawning anything. Both
 			// launches return from Argv, before tmux or login-shell startup.
 			h.d.cfg.Tmux = &tmux.Client{Bin: filepath.Join(h.dir, "missing-tmux")}

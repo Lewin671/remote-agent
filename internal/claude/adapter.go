@@ -442,7 +442,7 @@ const statusLineCommand = `"$RA_EXE" statusline claude`
 
 // StatusLineFile holds, in the session's directory, the user's own status
 // line that remote-agent's runs after it.
-const StatusLineFile = "statusline.json"
+const StatusLineFile = agent.StatusLineFile
 
 // statusLine is a statusLine setting.
 type statusLine struct {

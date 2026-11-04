@@ -9,7 +9,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/claude"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -83,12 +83,13 @@ func (d *Daemon) saveQuotasLocked() {
 }
 
 func (d *Daemon) claudeAccount() string {
-	a, ok := d.agents[pb.Agent_AGENT_CLAUDE].(*claude.Adapter)
-	if !ok {
-		return ""
+	for _, a := range d.adapterList() {
+		if cl, ok := a.(agent.StatusLineAccount); ok {
+			fp, _, _ := cl.Account()
+			return fp
+		}
 	}
-	fp, _, _ := a.Account()
-	return fp
+	return ""
 }
 
 // statusLine records the limits in a Claude Code status line input.
@@ -102,7 +103,19 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 	if json.Unmarshal(raw, &in) != nil || len(in.RateLimits) == 0 {
 		return // no limits yet: before the first reply, or none for this login
 	}
-	e := &pb.AgentQuota{Agent: pb.Agent_AGENT_CLAUDE, State: pb.QuotaState_QUOTA_STATE_OK, ObservedMs: now.UnixMilli()}
+	var clAdapter agent.StatusLineAccount
+	var clAgent agent.Adapter
+	for _, a := range d.adapterList() {
+		if cl, ok := a.(agent.StatusLineAccount); ok {
+			clAdapter = cl
+			clAgent = a
+			break
+		}
+	}
+	if clAdapter == nil {
+		return
+	}
+	e := &pb.AgentQuota{Agent: clAgent.Kind(), State: pb.QuotaState_QUOTA_STATE_OK, ObservedMs: now.UnixMilli()}
 	names := make([]string, 0, len(in.RateLimits))
 	for name := range in.RateLimits {
 		names = append(names, name)
@@ -125,12 +138,10 @@ func (d *Daemon) statusLine(sessionID string, raw json.RawMessage, now time.Time
 		}
 		e.Windows = append(e.Windows, qw)
 	}
-	if a, ok := d.agents[pb.Agent_AGENT_CLAUDE].(*claude.Adapter); ok {
-		var sub bool
-		e.Account, e.Plan, sub = a.Account()
-		if sub {
-			e.Login = pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION
-		}
+	var sub bool
+	e.Account, e.Plan, sub = clAdapter.Account()
+	if sub {
+		e.Login = pb.QuotaLogin_QUOTA_LOGIN_SUBSCRIPTION
 	}
 	key := "account:" + e.Account
 	if e.Account == "" {
@@ -213,40 +224,44 @@ func newestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
 // d.mu.
 func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 	var out []*pb.AgentQuota
-	if cx := d.agents[pb.Agent_AGENT_CODEX]; cx != nil && cx.Bin() != "" {
-		e := &pb.AgentQuota{Agent: pb.Agent_AGENT_CODEX, State: pb.QuotaState_QUOTA_STATE_WAITING}
-		if u := d.limits; u != nil {
-			e.State, e.Plan, e.ObservedMs = pb.QuotaState_QUOTA_STATE_OK, u.PlanType, d.limitsAt.UnixMilli()
-			for _, w := range []struct {
-				name string
-				l    *pb.RateLimit
-			}{{"primary", u.PrimaryLimit}, {"secondary", u.SecondaryLimit}} {
-				if w.l == nil {
-					continue
-				}
-				used := w.l.UsedPercent
-				qw := &pb.QuotaWindow{Name: w.name, UsedPercent: &used, WindowMinutes: w.l.WindowMinutes}
-				if w.l.ResetsAt > 0 {
-					qw.ResetsAtMs = w.l.ResetsAt * 1000
-				}
-				e.Windows = append(e.Windows, qw)
+	for _, ag := range d.adapterList() {
+		if ag.Bin() == "" {
+			continue
+		}
+		if cl, ok := ag.(agent.StatusLineAccount); ok {
+			keys := make([]string, 0, len(d.quotas))
+			for k := range d.quotas {
+				keys = append(keys, k)
 			}
-		}
-		out = append(out, e)
-	}
-	if cl, ok := d.agents[pb.Agent_AGENT_CLAUDE].(*claude.Adapter); ok && cl.Bin() != "" {
-		keys := make([]string, 0, len(d.quotas))
-		for k := range d.quotas {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			out = append(out, proto.CloneOf(d.quotas[k]))
-		}
-		if len(keys) == 0 {
-			e := &pb.AgentQuota{Agent: pb.Agent_AGENT_CLAUDE, State: pb.QuotaState_QUOTA_STATE_WAITING}
-			if cl.ManagedStatusLine("") {
-				e.State, e.Detail = pb.QuotaState_QUOTA_STATE_UNSUPPORTED, "the status line is set by managed settings"
+			sort.Strings(keys)
+			for _, k := range keys {
+				out = append(out, proto.CloneOf(d.quotas[k]))
+			}
+			if len(keys) == 0 {
+				e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
+				if cl.ManagedStatusLine("") {
+					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_UNSUPPORTED, "the status line is set by managed settings"
+				}
+				out = append(out, e)
+			}
+		} else {
+			e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
+			if u := d.limits; u != nil {
+				e.State, e.Plan, e.ObservedMs = pb.QuotaState_QUOTA_STATE_OK, u.PlanType, d.limitsAt.UnixMilli()
+				for _, w := range []struct {
+					name string
+					l    *pb.RateLimit
+				}{{"primary", u.PrimaryLimit}, {"secondary", u.SecondaryLimit}} {
+					if w.l == nil {
+						continue
+					}
+					used := w.l.UsedPercent
+					qw := &pb.QuotaWindow{Name: w.name, UsedPercent: &used, WindowMinutes: w.l.WindowMinutes}
+					if w.l.ResetsAt > 0 {
+						qw.ResetsAtMs = w.l.ResetsAt * 1000
+					}
+					e.Windows = append(e.Windows, qw)
+				}
 			}
 			out = append(out, e)
 		}

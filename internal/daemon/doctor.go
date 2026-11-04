@@ -12,6 +12,16 @@ import (
 	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
+// Checkable returns the agent.Checkable for an agent kind, if supported.
+func (d *Daemon) Checkable(k pb.Agent) (agent.Checkable, bool) {
+	ag, err := d.knownAgent(k)
+	if err != nil {
+		return nil, false
+	}
+	chk, ok := ag.(agent.Checkable)
+	return chk, ok
+}
+
 // Doctor checks, against the installed CLI, everything remote-agent relies
 // on in its screen and transcript: it starts a real session in dir and
 // goes through recognizing the input box, drafts, sending, parsing,
@@ -239,9 +249,9 @@ func (d *Daemon) Doctor(ctx context.Context, kind pb.Agent, dir string, out io.W
 		if err != nil {
 			return err
 		}
-		// The snapshot positions text with cursor moves, so only look for
-		// the input box's prompt mark: Codex's › or Claude Code's ❯.
-		if snap.Cols <= 0 || !strings.ContainsAny(agent.StripANSI(string(snap.Data)), "›❯") {
+		// The snapshot positions text with cursor moves, so look for
+		// the input box's prompt mark.
+		if snap.Cols <= 0 || !strings.ContainsAny(agent.StripANSI(string(snap.Data)), chk.PromptMarks()) {
 			return errors.New("the snapshot does not show the input box")
 		}
 		return nil

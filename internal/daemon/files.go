@@ -395,11 +395,12 @@ func composeFiles(text string, files []queuedFile, kind pb.Agent) string {
 	if len(files) == 0 {
 		return text
 	}
+	ag := adapterForKind(kind)
 	lines := make([]string, 0, len(files))
 	for _, f := range files {
 		line := "File: " + f.Path
-		if kind == pb.Agent_AGENT_CLAUDE {
-			line = `File: @"` + f.Path + `" (file)`
+		if ag != nil {
+			line = ag.FileRef(f.Path)
 		}
 		lines = append(lines, line)
 	}
@@ -434,8 +435,10 @@ func (u *uploads) releaseFiles(files []queuedFile, session, request string) {
 
 // Exact forms from native input/history and the current upload composer.
 func fileLinePath(line string) string {
-	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
-		return strings.TrimSuffix(strings.TrimPrefix(line, `File: @"`), `" (file)`)
+	for _, a := range defaultAdapters {
+		if path, ok := a.ParseFileRef(line); ok {
+			return path
+		}
 	}
 	return strings.TrimPrefix(strings.TrimPrefix(line, "File: "), "@")
 }

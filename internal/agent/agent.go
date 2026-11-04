@@ -39,6 +39,9 @@ var ErrNotAnswering = errors.New("the question is not showing in the terminal")
 // definition, which makes Codex ask to trust it again.
 const HookTimeoutSeconds = 3600
 
+// StatusLineFile holds the user's custom statusline configuration in the session dir.
+const StatusLineFile = "statusline.json"
+
 // Adapter is one CLI: how to start it, where its output comes from, and how
 // to operate its terminal.
 type Adapter interface {
@@ -58,6 +61,13 @@ type Adapter interface {
 	// ExactScheduleMode returns the exact standard mode ("ask", "auto", "full")
 	// for a session's settings, or "" if custom or nonstandard.
 	ExactScheduleMode(info *pb.Session) string
+}
+
+// StatusLineAccount is optionally implemented by adapters whose account quota
+// is reported through a status line.
+type StatusLineAccount interface {
+	Account() (account, plan string, subscription bool)
+	ManagedStatusLine(dir string) bool
 }
 
 // Launcher starts and resumes the CLI.

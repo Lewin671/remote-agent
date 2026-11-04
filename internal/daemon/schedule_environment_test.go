@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/schedule"
 	"github.com/Lewin671/remote-agent/internal/tmux"
@@ -18,7 +19,14 @@ func TestScheduledClientEnvironmentSurvivesDaemonRestart(t *testing.T) {
 			for _, saved := range []string{"stale", "missing"} {
 				t.Run(cli+"/"+source+"/"+saved, func(t *testing.T) {
 					t.Setenv("PATH", "/stale/daemon/bin:/usr/bin:/bin")
-					h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex", ClaudeBin: "/bin/echo", ClaudeCmd: "claude", Env: map[string]string{"RA_TEST_EXTRA": "agent-env"}})
+					h := newHarness(t, Config{
+						Exe: "remote-agent-test",
+						Agents: map[pb.Agent]AgentConfig{
+							pb.Agent_AGENT_CODEX:  {Bin: "/bin/echo", Cmd: "codex"},
+							pb.Agent_AGENT_CLAUDE: {Bin: "/bin/echo", Cmd: "claude"},
+						},
+						Env: map[string]string{"RA_TEST_EXTRA": "agent-env"},
+					})
 					defer h.s.log.Close()
 					calls := fakeTmux(t, h)
 					ctx, cancel := context.WithCancel(context.Background())

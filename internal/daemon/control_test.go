@@ -107,7 +107,7 @@ func controlHarness(t *testing.T) (*harness, *string) {
 	os.WriteFile(filepath.Join(home, "models_cache.json"), []byte(`{"models":[
 		{"slug":"gpt-6-sol","display_name":"GPT-6-Sol","visibility":"list","priority":2},
 		{"slug":"gpt-6-luna","display_name":"GPT-6-Luna","visibility":"list","priority":3}]}`), 0o600)
-	h := newHarness(t, Config{CodexHome: home})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Home: home}}})
 	footer := "GPT-6-Sol medium · /tmp/w"
 	h.term.mu.Lock()
 	h.term.screen = composer(footer)
@@ -221,7 +221,7 @@ func TestListModelsAndDirectories(t *testing.T) {
 		{"slug":"hidden","display_name":"H","visibility":"hide","priority":1},
 		{"slug":"a","display_name":"A","visibility":"list","priority":2,"supported_reasoning_levels":[{"effort":"low"},{"effort":"high"}]}]}`), 0o600)
 	os.WriteFile(filepath.Join(home, "config.toml"), []byte("model = \"a\"\n[profiles.x]\nmodel = \"b\"\n"), 0o600)
-	d := New(Config{CodexHome: home})
+	d := New(Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Home: home}}})
 	res, err := d.listModels(pb.Agent_AGENT_UNSPECIFIED)
 	if err != nil {
 		t.Fatal(err)
@@ -260,19 +260,20 @@ func TestSettingsAndSessionArgs(t *testing.T) {
 	if d.approvalTimeout().Seconds() != 300 {
 		t.Fatal("timeout not applied")
 	}
-	args, err := d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{})
+	ag, _ := d.adapter(0)
+	args, err := d.sessionArgs(ag, &pb.CreateSessionRequest{})
 	if err != nil || !strings.Contains(strings.Join(args, " "), `-m gpt-6-sol -c model_reasoning_effort="high" -c approvals_reviewer="auto_review"`) {
 		t.Fatalf("defaults: %q %v", args, err)
 	}
-	args, _ = d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Model: "gpt-6-luna", Mode: pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS})
+	args, _ = d.sessionArgs(ag, &pb.CreateSessionRequest{Model: "gpt-6-luna", Mode: pb.ApprovalMode_APPROVAL_MODE_FULL_ACCESS})
 	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-luna") || !strings.Contains(j, `sandbox_mode="danger-full-access"`) {
 		t.Fatalf("explicit: %q", args)
 	}
-	args, _ = d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Effort: "low"})
+	args, _ = d.sessionArgs(ag, &pb.CreateSessionRequest{Effort: "low"})
 	if j := strings.Join(args, " "); !strings.Contains(j, "-m gpt-6-sol") || !strings.Contains(j, `model_reasoning_effort="low"`) {
 		t.Fatalf("effort only: %q", args)
 	}
-	if _, err := d.sessionArgs(d.adapter(0), &pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
+	if _, err := d.sessionArgs(ag, &pb.CreateSessionRequest{Model: "x; rm -rf /"}); err == nil {
 		t.Fatal("accepted a bad model name")
 	}
 }

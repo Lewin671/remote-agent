@@ -133,12 +133,25 @@ type harness struct {
 	dir  string
 }
 
+func testEchoCodexConfig() map[pb.Agent]AgentConfig {
+	return map[pb.Agent]AgentConfig{
+		pb.Agent_AGENT_CODEX: {Bin: "/bin/echo", Cmd: "codex"},
+	}
+}
+
 func newHarness(t *testing.T, cfg Config) *harness {
 	// Keep settings and other state out of the real ~/.remote-agent.
 	t.Setenv("REMOTE_AGENT_HOME", t.TempDir())
 	t.Helper()
 	dir := t.TempDir()
-	cfg.HistoryPath = filepath.Join(dir, "history.jsonl")
+	if cfg.Agents == nil {
+		cfg.Agents = map[pb.Agent]AgentConfig{}
+	}
+	cx := cfg.Agents[pb.Agent_AGENT_CODEX]
+	if cx.HistoryPath == "" {
+		cx.HistoryPath = filepath.Join(dir, "history.jsonl")
+	}
+	cfg.Agents[pb.Agent_AGENT_CODEX] = cx
 	if cfg.PollInterval == 0 {
 		cfg.PollInterval = 10 * time.Millisecond
 	}
@@ -153,7 +166,7 @@ func newHarness(t *testing.T, cfg Config) *harness {
 	}
 	d := New(cfg)
 	d.ctx = context.Background()
-	term := &fakeTerm{screen: idleScreen, alive: true, history: cfg.HistoryPath}
+	term := &fakeTerm{screen: idleScreen, alive: true, history: cx.HistoryPath}
 	h := &harness{t: t, d: d, term: term, dir: dir}
 	h.open(meta{ID: "0123456789abcdef", Cwd: dir, Tmux: "ra-01234567", CreatedAt: time.Now()})
 	// A started session's loops are done before the test's directories

@@ -45,7 +45,7 @@ type Target struct {
 	Type    string `json:"type" jsonschema:"resume_session to continue a conversation, or new_session to start a fresh one"`
 	Session string `json:"session,omitempty" jsonschema:"Remote Agent session ID or current; required for resume_session"`
 	Cwd     string `json:"cwd,omitempty" jsonschema:"Absolute project directory for new_session; defaults to the creating session directory"`
-	Agent   string `json:"agent,omitempty" jsonschema:"codex or claude for new_session; defaults to the creating session Agent"`
+	Agent   string `json:"agent,omitempty" jsonschema:"CLI for new_session; defaults to the creating session Agent"`
 	Model   string `json:"model,omitempty" jsonschema:"Model for new_session; inherits the creating session model only when using the same Agent"`
 	Effort  string `json:"effort,omitempty" jsonschema:"Reasoning effort for new_session"`
 	Mode    string `json:"mode,omitempty" jsonschema:"ask, auto or full for new_session; defaults to the creating session mode. New sessions cannot start in plan mode"`

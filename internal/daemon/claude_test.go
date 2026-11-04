@@ -152,11 +152,14 @@ func TestClaudeModeFromScreen(t *testing.T) {
 // Machines list the CLIs installed, and Claude Code's settings defaults
 // apply to its sessions.
 func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
-	h := newHarness(t, Config{CodexBin: "/nonexistent/codex"})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/nonexistent/codex"}}})
 	if a := h.d.MachineMeta().Agents; len(a) != 1 || a[0].Agent != pb.Agent_AGENT_CODEX {
 		t.Fatalf("agents %v", a)
 	}
-	d := New(Config{CodexBin: "/nonexistent/codex", ClaudeBin: "/nonexistent/claude", ClaudeHome: t.TempDir()})
+	d := New(Config{Agents: map[pb.Agent]AgentConfig{
+		pb.Agent_AGENT_CODEX:  {Bin: "/nonexistent/codex"},
+		pb.Agent_AGENT_CLAUDE: {Bin: "/nonexistent/claude", Home: t.TempDir()},
+	}})
 	if a := d.MachineMeta().Agents; len(a) != 2 || a[1].Agent != pb.Agent_AGENT_CLAUDE {
 		t.Fatalf("agents %v", a)
 	}
@@ -166,17 +169,19 @@ func TestInstalledAgentsAndClaudeDefaults(t *testing.T) {
 	if _, err := h.d.updateSettings(&pb.DaemonSettings{DefaultModel: "gpt-6-luna", Claude: &pb.AgentDefaults{Model: "haiku", Mode: pb.ApprovalMode_APPROVAL_MODE_ASK}}); err != nil {
 		t.Fatal(err)
 	}
-	args, err := h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CLAUDE), &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE})
+	clAg, _ := h.d.adapter(pb.Agent_AGENT_CLAUDE)
+	cxAg, _ := h.d.adapter(pb.Agent_AGENT_CODEX)
+	args, err := h.d.sessionArgs(clAg, &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE})
 	if err != nil || strings.Join(args, " ") != "--model haiku --permission-mode default" {
 		t.Fatalf("claude defaults %q %v", args, err)
 	}
-	args, _ = h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CODEX), &pb.CreateSessionRequest{})
+	args, _ = h.d.sessionArgs(cxAg, &pb.CreateSessionRequest{})
 	if strings.Join(args, " ") != "-m gpt-6-luna" {
 		t.Fatalf("codex defaults %q", args)
 	}
 	// A model is started under the ID it was chosen by; the standard
 	// window is the session's own environment variable, not its name.
-	args, _ = h.d.sessionArgs(h.d.adapter(pb.Agent_AGENT_CLAUDE), &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE, Model: "claude-opus-5-5"})
+	args, _ = h.d.sessionArgs(clAg, &pb.CreateSessionRequest{Agent: pb.Agent_AGENT_CLAUDE, Model: "claude-opus-5-5"})
 	if strings.Join(args, " ") != "--model claude-opus-5-5 --permission-mode default" {
 		t.Fatalf("model ID %q", args)
 	}

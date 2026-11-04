@@ -28,7 +28,7 @@ var errHeldChanged = errors.New("the CLI's queue is not what remote-agent expect
 // heldByCLI reports whether a submitted message is still in the CLI's own
 // queue: the CLI recorded it, but no user message for it yet.
 func (s *session) heldByCLI(in input) bool {
-	if s.ag.Kind() != pb.Agent_AGENT_CLAUDE {
+	if !s.ag.HoldsInputMidTurn() {
 		return false
 	}
 	s.readRollout()

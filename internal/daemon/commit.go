@@ -130,9 +130,9 @@ func (s *session) afterTranscript(evs []*pb.Event) {
 			}
 		}
 		if e.GetTurnEnded() != nil {
-			// Claude retracts terminal approvals when the turn ends;
-			// Codex may still have an escalated command awaiting its hook.
-			if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+			// Approvals matched by tool input retract when the turn ends;
+			// other CLIs (e.g. Codex) may leave escalated commands awaiting hooks.
+			if s.ag.ApprovalsByInput() {
 				s.retractApprovals()
 			}
 			s.afterTurn()

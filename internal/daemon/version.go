@@ -14,9 +14,9 @@ import (
 // verifiedPath lists the versions of a CLI that `remote-agent doctor`
 // passed on this machine, in the state directory dir.
 func verifiedPath(dir string, k pb.Agent) string {
-	name := "codex"
-	if k == pb.Agent_AGENT_CLAUDE {
-		name = "claude"
+	name := "unknown"
+	if spec, ok := FindAgentByKind(k); ok {
+		name = spec.ID
 	}
 	return filepath.Join(dir, "verified-"+name+".json")
 }
@@ -48,4 +48,10 @@ func (d *Daemon) verified(a agent.Adapter) bool {
 }
 
 // Version is the installed version of a CLI.
-func (d *Daemon) Version(k pb.Agent) string { return d.adapter(k).Version() }
+func (d *Daemon) Version(k pb.Agent) string {
+	a, err := d.adapter(k)
+	if err != nil {
+		return ""
+	}
+	return a.Version()
+}

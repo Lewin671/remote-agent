@@ -14,7 +14,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -173,20 +172,18 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 	if st.ApprovalTimeoutSeconds != 0 && (t < 30*time.Second || t > maxApprovalTimeout) {
 		return nil, fmt.Errorf("approval timeout must be between 30s and %s", maxApprovalTimeout)
 	}
-	if st.DefaultEffort != "" {
-		if err := d.agents[pb.Agent_AGENT_CODEX].CheckEffort(st.DefaultEffort); err != nil {
-			return nil, err
+	for _, a := range d.adapters {
+		def := defaultsFor(st, a.Kind())
+		if def.Mode == pb.ApprovalMode_APPROVAL_MODE_PLAN {
+			return nil, errors.New("new sessions cannot start in Plan mode")
 		}
-	}
-	if st.DefaultMode == pb.ApprovalMode_APPROVAL_MODE_PLAN || st.GetClaude().GetMode() == pb.ApprovalMode_APPROVAL_MODE_PLAN {
-		return nil, errors.New("new sessions cannot start in Plan mode")
-	}
-	if c := st.GetClaude(); c != nil {
-		if err := d.agents[pb.Agent_AGENT_CLAUDE].CheckEffort(c.Effort); err != nil {
-			return nil, err
+		if def.Effort != "" {
+			if err := a.CheckEffort(def.Effort); err != nil {
+				return nil, err
+			}
 		}
-		if c.Model != "" && !codex.SafeValue.MatchString(c.Model) {
-			return nil, fmt.Errorf("invalid model %q", c.Model)
+		if def.Model != "" && !agent.SafeValue.MatchString(def.Model) {
+			return nil, fmt.Errorf("invalid model %q", def.Model)
 		}
 	}
 	return d.saveSettings(st, writeFileAtomic)
@@ -232,10 +229,7 @@ func writeFileAtomic(path string, b []byte) error {
 // one gets: the daemon's default for the CLI, else the CLI's own.
 func (d *Daemon) defaultMode(ag agent.Adapter, cwd string) (pb.ApprovalMode, pb.DefaultModeSource, bool) {
 	st := d.settings()
-	def := st.DefaultMode
-	if ag.Kind() == pb.Agent_AGENT_CLAUDE {
-		def = st.GetClaude().GetMode()
-	}
+	def := defaultsFor(st, ag.Kind()).Mode
 	if def != pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {
 		return def, pb.DefaultModeSource_DEFAULT_MODE_SOURCE_DAEMON_SETTINGS, false
 	}
@@ -264,13 +258,7 @@ func (d *Daemon) sessionArgsContext(ctx context.Context, ag agent.Adapter, req *
 		return nil, err
 	}
 	model, effort, mode := req.Model, req.Effort, req.Mode
-	def := &pb.AgentDefaults{Model: st.DefaultModel, Effort: st.DefaultEffort, Mode: st.DefaultMode}
-	if ag.Kind() == pb.Agent_AGENT_CLAUDE {
-		def = st.GetClaude()
-		if def == nil {
-			def = &pb.AgentDefaults{}
-		}
-	}
+	def := defaultsFor(st, ag.Kind())
 	if model == "" {
 		model = def.Model
 	}

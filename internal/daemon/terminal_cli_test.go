@@ -115,11 +115,15 @@ func startTerminalSession(t *testing.T, cfg Config, env map[string]string) (*har
 // version checks follow it.
 func TestTerminalSessionRunsTheCLIOfItsPATH(t *testing.T) {
 	path, want := terminalPath(t)
-	h, _, got := startTerminalSession(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"}, map[string]string{"PATH": path})
+	h, _, got := startTerminalSession(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()}, map[string]string{"PATH": path})
 	if got != want {
 		t.Fatalf("the session runs %q, want the terminal's %q", got, want)
 	}
-	if bin := h.d.adapter(pb.Agent_AGENT_CODEX).Bin(); bin != want {
+	ag, err := h.d.adapter(pb.Agent_AGENT_CODEX)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bin := ag.Bin(); bin != want {
 		t.Fatalf("version checks use %q, want %q", bin, want)
 	}
 }
@@ -137,7 +141,7 @@ func TestTerminalSessionKeepsAConfiguredCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	path = under + string(os.PathListSeparator) + path
-	_, _, got := startTerminalSession(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo"}, map[string]string{"PATH": path})
+	_, _, got := startTerminalSession(t, Config{Exe: "remote-agent-test", Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CODEX: {Bin: "/bin/echo"}}}, map[string]string{"PATH": path})
 	if got != "/bin/echo" {
 		t.Fatalf("the session runs %q, want the configured /bin/echo", got)
 	}
@@ -156,7 +160,7 @@ func TestTerminalSessionFailsWithoutTheCLIInItsPATH(t *testing.T) {
 		{"no PATH", map[string]string{"HOME": t.TempDir()}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 			calls := fakeTmux(t, h)
 			_, err := (&handler{d: h.d}).CreateSession(agent.WithOrigin(context.Background(), originLocal), connect.NewRequest(&pb.CreateSessionRequest{
 				Cwd: h.dir, Agent: pb.Agent_AGENT_CODEX, Env: tc.env,
@@ -175,7 +179,7 @@ func TestTerminalSessionFailsWithoutTheCLIInItsPATH(t *testing.T) {
 // CLI even when agent.env sets a PATH holding another.
 func TestDoctorSessionRunsTheDaemonsCLI(t *testing.T) {
 	path, _ := terminalPath(t)
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex", Env: map[string]string{"PATH": path}})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig(), Env: map[string]string{"PATH": path}})
 	calls := fakeTmux(t, h)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -196,7 +200,7 @@ func TestResumeAndForkFindTheCLIInTheSavedPATH(t *testing.T) {
 	for _, op := range []string{"resume", "fork"} {
 		t.Run(op, func(t *testing.T) {
 			path, want := terminalPath(t)
-			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 			h.d.sessions[h.s.meta.ID] = h.s
 			calls := fakeTmux(t, h)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -244,7 +248,7 @@ func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
 	} {
 		for _, op := range []string{"resume", "fork"} {
 			t.Run(op+"/"+tc.name, func(t *testing.T) {
-				h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+				h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 				h.d.sessions[h.s.meta.ID] = h.s
 				calls := fakeTmux(t, h)
 				ctx, cancel := context.WithCancel(context.Background())
@@ -281,7 +285,7 @@ func TestResumeAndForkFailWithoutTheCLIInTheSavedPATH(t *testing.T) {
 // the CLI of that session's PATH, as the session itself does.
 func TestScheduledSessionFromATerminalFindsTheCLIInItsPATH(t *testing.T) {
 	path, want := terminalPath(t)
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	calls := fakeTmux(t, h)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -329,7 +333,7 @@ func TestScheduledSessionFromATerminalFailsWithoutTheCLIInItsPATH(t *testing.T) 
 		{"no saved environment", nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 			calls := fakeTmux(t, h)
 			ctx, cancel := context.WithCancel(context.Background())
 			cancel()

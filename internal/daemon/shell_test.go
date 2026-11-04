@@ -184,7 +184,7 @@ func createSession(t *testing.T, h *harness, req *pb.CreateSessionRequest) *sess
 // the user's login shell, with a new terminal's environment.
 func TestClientSessionStartsThroughTheLoginShell(t *testing.T) {
 	t.Setenv("PATH", "/stale/nvm/bin:/usr/bin:/bin")
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex", Env: map[string]string{"HTTPS_PROXY": "http://proxy.example"}})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig(), Env: map[string]string{"HTTPS_PROXY": "http://proxy.example"}})
 	calls := fakeTmux(t, h)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // no real CLI or background work is needed
@@ -220,7 +220,7 @@ func TestClientSessionStartsThroughTheLoginShell(t *testing.T) {
 // A session started from a terminal keeps the caller's environment, as
 // before: the blocking of the new login-shell path must not touch it.
 func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	calls := fakeTmux(t, h)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -255,7 +255,7 @@ func TestTerminalSessionKeepsItsEnvironment(t *testing.T) {
 func TestResumeFollowsTheLaunchStyle(t *testing.T) {
 	for _, shell := range []bool{true, false} {
 		t.Run(map[bool]string{true: "shell", false: "direct"}[shell], func(t *testing.T) {
-			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 			h.d.sessions[h.s.meta.ID] = h.s
 			calls := fakeTmux(t, h)
 			h.d.ctx = context.Background()
@@ -299,7 +299,7 @@ func TestResumeFollowsTheLaunchStyle(t *testing.T) {
 func TestForkFollowsTheSourceLaunchStyle(t *testing.T) {
 	for _, shell := range []bool{true, false} {
 		t.Run(map[bool]string{true: "shell", false: "direct"}[shell], func(t *testing.T) {
-			h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+			h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 			h.d.sessions[h.s.meta.ID] = h.s
 			calls := fakeTmux(t, h)
 			ctx, cancel := context.WithCancel(context.Background())
@@ -404,7 +404,7 @@ func runShellScript(dir string, argv []string) ([]byte, error) {
 // The CLI a shell launch resolved becomes the daemon's, so that version
 // checks and the installed list follow what sessions actually run.
 func TestShellReportIsLearned(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	bin := filepath.Join(h.dir, "codex-from-shell")
 	if err := os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o700); err != nil {
 		t.Fatal(err)
@@ -419,7 +419,11 @@ func TestShellReportIsLearned(t *testing.T) {
 	if !h.s.checkShellStart(context.Background()) {
 		t.Fatal("the session was ended although the shell reported its CLI")
 	}
-	if got := h.d.adapter(pb.Agent_AGENT_CODEX).Bin(); got != bin {
+	ag, err := h.d.adapter(pb.Agent_AGENT_CODEX)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ag.Bin(); got != bin {
 		t.Fatalf("the daemon still uses %q, want the CLI the shell started (%q)", got, bin)
 	}
 	h.s.mu.Lock()
@@ -433,7 +437,7 @@ func TestShellReportIsLearned(t *testing.T) {
 // A shell whose configuration never starts the CLI must not leave the
 // session starting forever.
 func TestStuckLoginShellEndsTheSession(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex", ShellStartTimeout: 20 * time.Millisecond})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig(), ShellStartTimeout: 20 * time.Millisecond})
 	h.s.mu.Lock()
 	h.s.meta.Shell = true
 	h.s.mu.Unlock()
@@ -457,7 +461,7 @@ func TestStuckLoginShellEndsTheSession(t *testing.T) {
 // A shell that fails to find the CLI reports why; the client sees that
 // reason as the session ends, not a session that stays starting.
 func TestShellNotFoundIsReportedWhenTheSessionEnds(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	h.s.mu.Lock()
 	h.s.meta.Shell = true
 	h.s.mu.Unlock()
@@ -480,7 +484,7 @@ func TestShellNotFoundIsReportedWhenTheSessionEnds(t *testing.T) {
 // A login-shell launch that dies before running the shell's script (a
 // configuration that exits) also ends with a reason.
 func TestShellThatNeverRanTheScriptReportsAReason(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	h.s.mu.Lock()
 	h.s.meta.Shell = true
 	h.s.mu.Unlock()
@@ -499,7 +503,7 @@ func TestShellThatNeverRanTheScriptReportsAReason(t *testing.T) {
 // A terminal-created session ending keeps its plain detail: the shell
 // reasoning applies only to sessions started through the login shell.
 func TestDirectSessionExitKeepsItsPlainDetail(t *testing.T) {
-	h := newHarness(t, Config{Exe: "remote-agent-test", CodexBin: "/bin/echo", CodexCmd: "codex"})
+	h := newHarness(t, Config{Exe: "remote-agent-test", Agents: testEchoCodexConfig()})
 	h.term.mu.Lock()
 	h.term.alive = false
 	h.term.mu.Unlock()

@@ -244,7 +244,7 @@ func TestUploadErrorsLogNoPaths(t *testing.T) {
 // The default a session would get is reported, full access included; it
 // needs no confirmation (architecture §7), so creating is not refused.
 func TestClaudeDefaultModeReported(t *testing.T) {
-	h := newHarness(t, Config{ClaudeBin: "/bin/true"})
+	h := newHarness(t, Config{Agents: map[pb.Agent]AgentConfig{pb.Agent_AGENT_CLAUDE: {Bin: "/bin/true"}}})
 	claudeHome := t.TempDir()
 	h.d.agents[pb.Agent_AGENT_CLAUDE] = claude.New("/bin/true", claudeHome)
 	os.WriteFile(filepath.Join(claudeHome, "settings.json"), []byte(`{"permissions":{"defaultMode":"bypassPermissions"}}`), 0o600)

@@ -51,6 +51,9 @@ func (a *Adapter) Env(standardContext bool) map[string]string { return nil }
 func (a *Adapter) FileRef(path string) string                  { return "File: " + path }
 
 func (a *Adapter) ParseFileRef(line string) (string, bool) {
+	if strings.HasPrefix(line, `File: @"`) && strings.HasSuffix(line, `" (file)`) {
+		return "", false
+	}
 	if strings.HasPrefix(line, "File: ") {
 		return strings.TrimPrefix(line, "File: "), true
 	}

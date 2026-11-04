@@ -60,10 +60,7 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 			return mcpScheduleDenied()
 		}
 	case "new_session":
-		agent := "codex"
-		if info.Agent == pb.Agent_AGENT_CLAUDE {
-			agent = "claude"
-		}
+		agent := d.agentID(info.Agent)
 		if freeze {
 			if target.Mode == "" {
 				target.Mode = mode
@@ -92,24 +89,9 @@ func exactScheduleMode(info *pb.Session) string {
 	if info.Mode == pb.ApprovalMode_APPROVAL_MODE_PLAN || info.CollaborationMode == "plan" {
 		return ""
 	}
-	if info.Agent == pb.Agent_AGENT_CLAUDE {
-		switch info.PermissionMode {
-		case "default":
-			return "ask"
-		case "auto":
-			return "auto"
-		case "bypassPermissions":
-			return "full"
-		}
-		return ""
-	}
-	switch {
-	case info.ApprovalsReviewer == "user" && info.ApprovalPolicy == "on-request" && info.Sandbox == "workspace-write":
-		return "ask"
-	case info.ApprovalsReviewer == "auto_review" && info.ApprovalPolicy == "on-request" && info.Sandbox == "workspace-write":
-		return "auto"
-	case info.ApprovalsReviewer == "user" && info.ApprovalPolicy == "never" && info.Sandbox == "danger-full-access":
-		return "full"
+	ag := adapterForKind(info.Agent)
+	if ag != nil {
+		return ag.ExactScheduleMode(info)
 	}
 	return ""
 }

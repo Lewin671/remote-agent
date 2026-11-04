@@ -19,7 +19,6 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/tail"
 	"google.golang.org/protobuf/proto"
@@ -203,7 +202,10 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		slog.Error("load input queue; the session accepts no input until it can be read", "session", m.ID, "err", errClass(err))
 		q = &queueState{}
 	}
-	ag := d.adapter(m.Agent)
+	ag, aerr := d.adapter(m.Agent)
+	if aerr != nil {
+		return nil, fmt.Errorf("session %s agent: %w", m.ID, aerr)
+	}
 	s := &session{
 		d:            d,
 		ag:           ag,
@@ -785,12 +787,9 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 // without any output, in a non-busy composer across successive polls.
 // Replayed user/turn events provide the same evidence after a restart.
 func (s *session) settleRestoredPrompt(styled string) {
-	if s.ag.Kind() != pb.Agent_AGENT_CLAUDE {
-		return
-	}
 	s.mu.Lock()
 	prompt, turnID := s.turnPrompt, s.turnID
-	if !s.running || s.turnOutput || s.driving || s.meta.Exited || !claude.RestoredPrompt(styled, prompt) {
+	if !s.running || s.turnOutput || s.driving || s.meta.Exited || !s.ag.RestoredPrompt(styled, prompt) {
 		s.restoredPromptSince = time.Time{}
 		s.mu.Unlock()
 		return
@@ -811,7 +810,7 @@ func (s *session) settleRestoredPrompt(styled string) {
 	// Reading a backlog may have taken time or ended the turn. Recheck
 	// both the screen and the turn before appending an inferred end.
 	styled, err := s.term.Capture()
-	if err != nil || !claude.RestoredPrompt(styled, prompt) {
+	if err != nil || !s.ag.RestoredPrompt(styled, prompt) {
 		return
 	}
 	s.mu.Lock()
@@ -1013,8 +1012,9 @@ func (s *session) infoLocked() *pb.Session {
 	out.FullAccessUnavailable = s.meta.NoFullAccess
 	if u := s.usage; u != nil {
 		out.ContextTokens, out.ContextWindow = u.LastTotalTokens, u.ContextWindow
-		if s.meta.StandardContext && out.ContextWindow > claude.StandardWindow {
-			out.ContextWindow = claude.StandardWindow
+		stdWin := s.ag.StandardWindow()
+		if s.meta.StandardContext && stdWin > 0 && out.ContextWindow > stdWin {
+			out.ContextWindow = stdWin
 		}
 	}
 	out.Title, out.Preview = s.title, s.preview
@@ -1603,7 +1603,7 @@ func (s *session) permission(ctx context.Context, p *agent.Hook) ([]byte, error)
 		ToolInputJson: string(p.ToolInput),
 		Deadline:      timestamppb.New(a.deadline),
 	}
-	if s.ag.Kind() == pb.Agent_AGENT_CLAUDE {
+	if s.ag.ApprovalsByInput() {
 		// The digest the daemon matches the call with, so clients need
 		// not compute it themselves.
 		req.InputDigest = agent.InputDigest(p.ToolName, p.ToolInput)

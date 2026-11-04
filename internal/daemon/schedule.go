@@ -545,13 +545,10 @@ func recurringTrigger(tr schedule.Trigger) bool {
 }
 
 func scheduleAgent(name string) (pb.Agent, error) {
-	switch name {
-	case "codex":
-		return pb.Agent_AGENT_CODEX, nil
-	case "claude":
-		return pb.Agent_AGENT_CLAUDE, nil
+	if a, ok := FindAgent(name); ok {
+		return a.Kind, nil
 	}
-	return 0, errors.New("agent must be codex or claude")
+	return 0, fmt.Errorf("agent must be %s", strings.Join(AgentIDs(), " or "))
 }
 func scheduleMode(name string) (pb.ApprovalMode, error) {
 	switch name {
@@ -630,18 +627,11 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 			if target.Cwd == "" {
 				target.Cwd = info.Cwd
 			}
+			sourceID := d.agentID(info.Agent)
 			if target.Agent == "" {
-				if info.Agent == pb.Agent_AGENT_CLAUDE {
-					target.Agent = "claude"
-				} else {
-					target.Agent = "codex"
-				}
+				target.Agent = sourceID
 			}
-			sourceAgent := "codex"
-			if info.Agent == pb.Agent_AGENT_CLAUDE {
-				sourceAgent = "claude"
-			}
-			if target.Agent == sourceAgent {
+			if target.Agent == sourceID {
 				if target.Model == "" {
 					target.Model = info.Model
 				}
@@ -670,7 +660,7 @@ func (d *Daemon) prepareSchedule(ctx context.Context, t *schedule.Task, now time
 			return errors.New("new_session cwd is not a directory")
 		}
 		if target.Agent == "" {
-			target.Agent = "codex"
+			target.Agent = d.agentID(pb.Agent_AGENT_UNSPECIFIED)
 		}
 		kind, err := scheduleAgent(target.Agent)
 		if err != nil {

@@ -23,8 +23,6 @@ import (
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
-	"github.com/Lewin671/remote-agent/internal/claude"
-	"github.com/Lewin671/remote-agent/internal/codex"
 	"github.com/Lewin671/remote-agent/internal/contextio"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
@@ -40,23 +38,9 @@ import (
 type Config struct {
 	// Exe is the remote-agent binary, used as pty-host and hook command.
 	Exe string
-	// CodexBin is the real codex executable.
-	CodexBin string
-	// CodexCmd and ClaudeCmd are what a client-created session runs in
-	// the user's login shell: the executable the user configured, or the
-	// command name for the shell to resolve in its own PATH when they
-	// configured none.
-	CodexCmd  string
-	ClaudeCmd string
-	Tmux      *tmux.Client
-	// CodexHome is Codex's state directory, ~/.codex by default.
-	CodexHome string
-	// HistoryPath is Codex's history.jsonl.
-	HistoryPath string
-	// ClaudeBin is the claude executable, empty if Claude Code is not
-	// installed; ClaudeHome is its settings directory, ~/.claude.
-	ClaudeBin  string
-	ClaudeHome string
+	Tmux *tmux.Client
+	// Agents holds per-CLI configuration keyed by agent kind.
+	Agents map[pb.Agent]AgentConfig
 	// Env is added to every session, e.g. proxy variables.
 	Env map[string]string
 
@@ -98,14 +82,17 @@ func (c *Config) defaults() {
 	if c.Width == 0 {
 		c.Width, c.Height = 160, 48
 	}
-	if c.CodexCmd == "" {
-		c.CodexCmd = c.CodexBin
+	if c.Agents == nil {
+		c.Agents = map[pb.Agent]AgentConfig{}
 	}
-	if c.ClaudeCmd == "" {
-		c.ClaudeCmd = c.ClaudeBin
-	}
-	if c.CodexHome == "" && c.HistoryPath != "" {
-		c.CodexHome = filepath.Dir(c.HistoryPath)
+	for k, ac := range c.Agents {
+		if ac.Cmd == "" {
+			ac.Cmd = ac.Bin
+		}
+		if ac.Home == "" && ac.HistoryPath != "" {
+			ac.Home = filepath.Dir(ac.HistoryPath)
+		}
+		c.Agents[k] = ac
 	}
 }
 
@@ -115,7 +102,9 @@ type Daemon struct {
 	updateIdleSince time.Time
 	cfg             Config
 	ctx             context.Context
+	adapters        []agent.Adapter
 	agents          map[pb.Agent]agent.Adapter
+	byIDMap         map[string]agent.Adapter
 
 	// uploads are images clients sent for messages.
 	uploads *uploads
@@ -161,34 +150,81 @@ type Daemon struct {
 // New returns a daemon; call Run to start it.
 func New(cfg Config) *Daemon {
 	cfg.defaults()
-	d := &Daemon{cfg: cfg, sessions: map[string]*session{}, starting: map[string]chan struct{}{}, agents: map[pb.Agent]agent.Adapter{}, uploads: newUploads()}
+	d := &Daemon{
+		cfg:      cfg,
+		sessions: map[string]*session{},
+		starting: map[string]chan struct{}{},
+		agents:   map[pb.Agent]agent.Adapter{},
+		byIDMap:  map[string]agent.Adapter{},
+		uploads:  newUploads(),
+	}
 	d.uploads.limits = func() int64 { return d.settings().ImageUploadQuotaBytes }
 	d.uploads.pins = d.protectedImageSessions
-	d.agents[pb.Agent_AGENT_CODEX] = codex.New(cfg.CodexBin, cfg.CodexHome, cfg.HistoryPath)
-	d.agents[pb.Agent_AGENT_CLAUDE] = claude.New(cfg.ClaudeBin, cfg.ClaudeHome)
+	d.adapters = Adapters(cfg)
+	for _, a := range d.adapters {
+		d.agents[a.Kind()] = a
+		d.byIDMap[a.ID()] = a
+	}
 	return d
 }
 
-// adapter is the adapter for a session's CLI. Sessions from before Claude
-// Code support name none and are Codex sessions.
-func (d *Daemon) adapter(k pb.Agent) agent.Adapter {
-	if a, ok := d.agents[k]; ok {
-		return a
+func (d *Daemon) adapterList() []agent.Adapter {
+	out := make([]agent.Adapter, 0, len(RegisteredAgents))
+	for _, spec := range RegisteredAgents {
+		if a, ok := d.agents[spec.Kind]; ok {
+			out = append(out, a)
+		}
 	}
-	return d.agents[pb.Agent_AGENT_CODEX]
+	return out
+}
+
+func (d *Daemon) byKind(k pb.Agent) (agent.Adapter, bool) {
+	k = resolveKind(k)
+	a, ok := d.agents[k]
+	return a, ok
+}
+
+func (d *Daemon) byID(id string) (agent.Adapter, bool) {
+	for _, a := range d.adapterList() {
+		if a.ID() == id {
+			return a, true
+		}
+	}
+	return nil, false
 }
 
 // knownAgent returns the adapter for a request's CLI, refusing ones this
 // daemon cannot run.
 func (d *Daemon) knownAgent(k pb.Agent) (agent.Adapter, error) {
-	if k == pb.Agent_AGENT_UNSPECIFIED {
-		k = pb.Agent_AGENT_CODEX
-	}
-	a, ok := d.agents[k]
+	k = resolveKind(k)
+	a, ok := d.byKind(k)
 	if !ok {
 		return nil, fmt.Errorf("%v: %w", k, agent.ErrUnsupported)
 	}
 	return a, nil
+}
+
+// adapter returns the adapter for a session's CLI.
+func (d *Daemon) adapter(k pb.Agent) (agent.Adapter, error) {
+	return d.knownAgent(k)
+}
+
+func (d *Daemon) defaultAdapter() agent.Adapter {
+	list := d.adapterList()
+	if len(list) > 0 {
+		return list[0]
+	}
+	return nil
+}
+
+func (d *Daemon) agentID(k pb.Agent) string {
+	if a, ok := d.byKind(resolveKind(k)); ok {
+		return a.ID()
+	}
+	if spec, ok := FindAgentByKind(k); ok {
+		return spec.ID
+	}
+	return "unknown"
 }
 
 // Run takes the daemon lock, restores sessions, and serves the local API on
@@ -520,7 +556,7 @@ func (d *Daemon) createByContext(ctx context.Context, req *pb.CreateSessionReque
 	id := newID(8)
 	m := meta{ID: id, Agent: req.Agent, Cwd: cwd, Tmux: "ra-" + id[:8], Args: args, CreatedAt: time.Now().UTC(), NoFullAccess: !ag.FullAccess(args), Starting: true,
 		ScheduledRunID: origin.GetScheduledRunId(), ScheduledTaskID: origin.GetScheduledTaskId(), TaskOwned: origin.GetScheduledTaskId() != "",
-		StandardContext: req.Agent == pb.Agent_AGENT_CLAUDE && req.StandardContext, Shell: viaShell}
+		StandardContext: ag.StandardWindow() > 0 && req.StandardContext, Shell: viaShell}
 	// The environment the CLI starts with: a client-created session's
 	// login shell gets what a new terminal gives it and builds the rest
 	// from the user's configuration; any other session gets the caller's
@@ -667,8 +703,14 @@ func (d *Daemon) noteLimits(u *pb.TokenUsage, at time.Time) {
 func (d *Daemon) MachineMeta() *pb.MachineMeta {
 	host, _ := os.Hostname()
 	home, _ := os.UserHomeDir()
-	cx := d.agents[pb.Agent_AGENT_CODEX]
-	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cx.Version(), CodexVerified: d.verified(cx)}
+	cx := d.defaultAdapter()
+	var cxVer string
+	var cxVerified bool
+	if cx != nil {
+		cxVer = cx.Version()
+		cxVerified = d.verified(cx)
+	}
+	m := &pb.MachineMeta{Hostname: host, Os: runtime.GOOS, Home: home, CodexVersion: cxVer, CodexVerified: cxVerified}
 	m.Agents = d.installed()
 	m.Capabilities = d.capabilities()
 	m.ProtocolVersion = protocol.Version
@@ -722,12 +764,11 @@ func projectSummaries(sessions []*session) []*pb.ProjectSummary {
 // installed lists the CLIs on this machine and their versions.
 func (d *Daemon) installed() []*pb.AgentInfo {
 	var out []*pb.AgentInfo
-	for _, k := range []pb.Agent{pb.Agent_AGENT_CODEX, pb.Agent_AGENT_CLAUDE} {
-		a := d.agents[k]
+	for _, a := range d.adapterList() {
 		if a == nil || a.Bin() == "" {
 			continue
 		}
-		info := &pb.AgentInfo{Agent: k, Version: a.Version(), Verified: d.verified(a)}
+		info := &pb.AgentInfo{Agent: a.Kind(), Version: a.Version(), Verified: d.verified(a)}
 		info.DefaultMode, info.DefaultModeSource, info.DefaultModeVaries = d.defaultMode(a, "")
 		out = append(out, info)
 	}
@@ -790,10 +831,9 @@ func (d *Daemon) ownEnv(env map[string]string, id string) {
 // the executable the hooks run, and the CLI's own switches.
 func (d *Daemon) cliEnv(env map[string]string, m *meta) {
 	d.ownEnv(env, m.ID)
-	if m.Agent == pb.Agent_AGENT_CLAUDE {
-		env["CLAUDE_CODE_DISABLE_CRON"] = "1"
-		if m.StandardContext {
-			env[claude.StandardContextEnv] = "1"
+	if ag, err := d.adapter(m.Agent); err == nil {
+		for k, v := range ag.Env(m.StandardContext) {
+			env[k] = v
 		}
 	}
 }
@@ -813,10 +853,14 @@ func shellSessionEnv(agentEnv map[string]string) map[string]string {
 // executable the user configured for the CLI, or its name for the shell
 // to resolve — the same command the user would type.
 func (d *Daemon) shellCmd(kind pb.Agent) string {
-	if kind == pb.Agent_AGENT_CLAUDE {
-		return d.cfg.ClaudeCmd
+	kind = resolveKind(kind)
+	if ac, ok := d.cfg.Agents[kind]; ok && ac.Cmd != "" {
+		return ac.Cmd
 	}
-	return d.cfg.CodexCmd
+	if a, ok := d.byKind(kind); ok {
+		return a.ID()
+	}
+	return ""
 }
 
 // ptyHostArgv is the command that runs a session's CLI in its tmux pane:
@@ -830,7 +874,11 @@ func (d *Daemon) ptyHostArgv(dir string, m *meta, bin string, args []string, env
 	// The login shell starts from exactly envFile (--clean-env): the
 	// daemon's own environment, with its outdated PATH, must not leak in.
 	shell := loginShell()
-	slog.Info("starting a session through the login shell", "session", m.ID, "agent", d.adapter(m.Agent).Name(), "shell", shell)
+	agentName := "unknown"
+	if a, err := d.adapter(m.Agent); err == nil {
+		agentName = a.Name()
+	}
+	slog.Info("starting a session through the login shell", "session", m.ID, "agent", agentName, "shell", shell)
 	argv = append(argv, "--clean-env", "--")
 	return append(argv, shellLaunchArgv(shell, dir, d.shellCmd(m.Agent), args)...)
 }
@@ -869,10 +917,7 @@ func (d *Daemon) terminalCLI(ag agent.Adapter, path, where string) (string, erro
 	}
 	bin := findInPath(cmd, path)
 	if bin == "" {
-		variable := "REMOTE_AGENT_CODEX"
-		if ag.Kind() == pb.Agent_AGENT_CLAUDE {
-			variable = "REMOTE_AGENT_CLAUDE"
-		}
+		variable := "REMOTE_AGENT_" + strings.ToUpper(ag.ID())
 		return "", fmt.Errorf("%s was not found in %s; install it there or set %s", cmd, where, variable)
 	}
 	d.learnCLI(ag.Kind(), bin)

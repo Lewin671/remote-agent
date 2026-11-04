@@ -61,7 +61,7 @@ func testInflightIsSettledNotReplayed(t *testing.T) {
 			t.Fatal(err)
 		}
 		if submitted {
-			os.WriteFile(h.d.cfg.HistoryPath, []byte(`{"session_id":"x","text":"one"}`+"\n"), 0o600)
+			os.WriteFile(h.d.cfg.Agents[pb.Agent_AGENT_CODEX].HistoryPath, []byte(`{"session_id":"x","text":"one"}`+"\n"), 0o600)
 		}
 		m := h.s.meta
 		h.s.log.Close()
@@ -226,7 +226,7 @@ func TestAsyncQuestionSurvivesRestart(t *testing.T) {
 // this session's injection.
 func TestHistoryMatchesSession(t *testing.T) {
 	h := newHarness(t, Config{})
-	path := h.d.cfg.HistoryPath
+	path := h.d.cfg.Agents[pb.Agent_AGENT_CODEX].HistoryPath
 	hist := h.s.newHistory(-1)
 	os.WriteFile(path, []byte(`{"session_id":"other","text":"same"}`+"\n"), 0o600)
 	if hist.submitted(input{Text: "same"}.matches, "mine") {
