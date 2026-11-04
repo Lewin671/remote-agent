@@ -1097,23 +1097,27 @@ function TaskTargetEditor({
         <Field
           name="CLI"
           value={
-            <span className="mini-seg">
-              {base.agents.map((agent) => (
-                <button
-                  key={agent}
-                  className={agent === cfg.agent ? "on" : ""}
-                  onClick={() =>
-                    setCfg({
-                      ...base.configFor(agent),
-                      machineId,
-                      cwd: cfg.cwd,
-                    })
-                  }
-                >
-                  {agentName(agent)}
-                </button>
-              ))}
-            </span>
+            base.agents.length > 1 ? (
+              <span className="mini-seg">
+                {base.agents.map((agent) => (
+                  <button
+                    key={agent}
+                    className={agent === cfg.agent ? "on" : ""}
+                    onClick={() =>
+                      setCfg({
+                        ...base.configFor(agent),
+                        machineId,
+                        cwd: cfg.cwd,
+                      })
+                    }
+                  >
+                    {agentName(agent)}
+                  </button>
+                ))}
+              </span>
+            ) : (
+              agentName(cfg.agent)
+            )
           }
         />
         <Field
@@ -1422,18 +1426,22 @@ function ScheduleCreateConfig({
           <Field
             name="CLI"
             value={
-              <span className="mini-seg">
-                {ns.agents.map((a) => (
-                  <button
-                    key={a}
-                    className={ns.cfg.agent === a ? "on" : ""}
-                    disabled={!!pending?.frozen}
-                    onClick={() => ns.setAgent(a)}
-                  >
-                    {agentName(a)}
-                  </button>
-                ))}
-              </span>
+              ns.agents.length > 1 ? (
+                <span className="mini-seg">
+                  {ns.agents.map((a) => (
+                    <button
+                      key={a}
+                      className={ns.cfg.agent === a ? "on" : ""}
+                      disabled={!!pending?.frozen}
+                      onClick={() => ns.setAgent(a)}
+                    >
+                      {agentName(a)}
+                    </button>
+                  ))}
+                </span>
+              ) : (
+                agentName(ns.cfg.agent)
+              )
             }
           />
           <Field

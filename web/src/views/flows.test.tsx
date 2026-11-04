@@ -2298,6 +2298,42 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
   expect([...host.querySelectorAll(".manage-hint")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
 });
 
+it("switches new-project defaults by CLI tab on multi-CLI machines and omits tabs on single-CLI machines", async () => {
+  const r = demo();
+  const m = r.machines.get("mac")!;
+  m.meta!.agents.push({ agent: Agent.ANTIGRAVITY, version: "0.2.3", verified: true, defaultMode: ApprovalMode.ASK, defaultModeSource: 0, defaultModeVaries: false, $typeName: "remoteagent.v1.AgentInfo" });
+  r.machineCommand = async (id: string, cmd: CommandKind): Promise<CommandResult> => {
+    if (cmd?.case === "listModels" && cmd.value.agent === Agent.ANTIGRAVITY) {
+      return create(CommandResultSchema, {
+        kind: {
+          case: "listModels",
+          value: {
+            defaultModel: "gemini-3.1-pro-high",
+            models: [
+              { slug: "gemini-3.1-pro-high", displayName: "Gemini 3.1 Pro (High)", efforts: ["low", "medium", "high"], defaultEffort: "high", autoUnavailable: true },
+              { slug: "gpt-oss-120b-medium", displayName: "GPT-OSS 120B (Medium)", efforts: ["medium"], defaultEffort: "medium", autoUnavailable: true },
+            ],
+          },
+        },
+      });
+    }
+    return DemoRemote.prototype.machineCommand.call(r, id, cmd);
+  };
+  const { MachinePage } = await import("./Settings");
+  mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
+  expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
+  await click(button("Antigravity", host.querySelector(".cli-tabs")!));
+  await click(button(/^审批模式/));
+  await vi.waitFor(() => expect(button(/^自动/, document)?.disabled).toBe(true));
+  expect(document.body.textContent).toContain("当前账户不支持自动模式");
+
+  // Single-CLI machine: no .cli-tabs, header says 新项目默认设置 · Codex.
+  act(() => root!.render(<MachinePage remote={r} id="vps" go={() => undefined} onBack={() => undefined} />));
+  await vi.waitFor(() => expect(host.textContent).toContain("新项目默认设置 · Codex"));
+  expect(host.querySelector(".cli-tabs")).toBeNull();
+});
+
 it("retries a start with a launch override whose reply was lost as the same request (review W1)", async () => {
   const r = demo();
   const sent: { id: string; model?: string }[] = [];

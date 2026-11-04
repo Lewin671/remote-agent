@@ -753,6 +753,19 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
  expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});
 });
 
+it("shows CLI as plain text on a single-CLI computer and a segmented control when multiple CLIs are installed", async () => {
+  const r = remote([task()]);
+  await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
+  expect(host.querySelector(".mini-seg")).not.toBeNull();
+  await act(async () => {
+    r.machines.get("mac")!.meta!.agents = r.machines.get("mac")!.meta!.agents.filter((a) => a.agent === Agent.CODEX);
+    r.touch();
+  });
+  expect(host.querySelector(".mini-seg")).toBeNull();
+  const cliField = [...host.querySelectorAll(".schedule-field")].find((el) => el.firstElementChild?.textContent === "CLI");
+  expect(cliField?.querySelector(".v")?.textContent).toBe("Codex");
+});
+
 it("shows the shared destination placeholder until target metadata is loaded",async()=>{
  const t=task();t.spec.target={type:"resume_session",session:"missing"};const r=remote([t]);
  r.sessions.set("missing",{id:"missing",machineId:"mac",updatedMs:0n,key:{} as CryptoKey,metaRev:0n,lastSeq:0n,endedMs:0n});

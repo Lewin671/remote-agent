@@ -874,6 +874,7 @@ input.field { margin: 0; }
 .start .compose-card, .wpage .compose-card { margin-left: 0; margin-right: 0; }
 .setrows + .cli-tabs { margin-top: 10px; }
 .cli-tabs + .setrows { margin-top: 8px; }
+.glabel + .cli-tabs { margin: 0 16px 8px; }
 .send-wrap { position: relative; grid-column: 3; grid-row: 1; align-self: end; }
 .compose-card:has(.attachments) .send-wrap { grid-row: 2; }
 .send-wrap .go44 { border-color: var(--card); }

@@ -773,7 +773,10 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
           </button>
           {info.models?.models.map((m) => (
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
-              <div className="mt">{m.displayName || m.slug}</div>
+              <div className="mt">
+                {m.displayName || m.slug}
+                {m.efforts.length === 1 && <div className="md">推理强度固定为 {m.efforts[0]}</div>}
+              </div>
               {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck"><Check /></span>}
             </button>
           ))}
@@ -901,7 +904,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "两个 CLI 各存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
+          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "各 CLI 独立保存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
           {!taskEditing && <div className="setrows">
             <button className="sr" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>{pinAction(remote, cfg.cwd).label}</button>
             <button className="sr red" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>移除项目…</button>

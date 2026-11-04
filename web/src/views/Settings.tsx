@@ -9,6 +9,8 @@ import { agentInfo, defaultsFor, machineVersions, withDefaults } from "../agents
 import {
   agentName,
   ago,
+  allAutoUnavailable,
+  autoUnavailable,
   defaultModeOf,
   findModel,
   machineAgents,
@@ -840,6 +842,8 @@ export function MachinePage({
   }>();
   const [attempt, setAttempt] = useState(0);
   const agents = machineAgents(m);
+  const [defaultAgent, setDefaultAgent] = useState<Agent>(agents[0]);
+  const activeAgent = agents.includes(defaultAgent) ? defaultAgent : agents[0];
   useEffect(() => {
     if (!m?.online) return;
     setError("");
@@ -912,9 +916,17 @@ export function MachinePage({
         def.model || list?.defaultModel || "",
       );
       const follow = `跟随 ${agentName(a)} 配置`;
+      const allNoAuto =
+        agentInfo(a).autoMayBeUnavailable && allAutoUnavailable(list?.models);
+      const noAuto =
+        allNoAuto ||
+        (agentInfo(a).autoMayBeUnavailable &&
+          autoUnavailable(list?.models, def.model || list?.defaultModel || ""));
       const opts: {
         key: string;
         label: string;
+        desc?: string;
+        off?: boolean;
         on: boolean;
         next: DaemonSettings;
       }[] =
@@ -958,6 +970,13 @@ export function MachinePage({
               ].map((x) => ({
                 key: String(x),
                 label: modeName(x) || follow,
+                desc:
+                  x === ApprovalMode.AUTO && noAuto
+                    ? allNoAuto
+                      ? "当前账户不支持自动模式"
+                      : "当前模型没有自动模式"
+                    : undefined,
+                off: x === ApprovalMode.AUTO && noAuto,
                 on: x === def.mode,
                 next: withDefaults(st, a, { mode: x }),
               }));
@@ -981,9 +1000,13 @@ export function MachinePage({
               <button
                 key={o.key}
                 className="mi"
+                disabled={o.off}
                 onClick={() => void save(o.next)}
               >
-                <div className="mt">{o.label}</div>
+                <div className="mt">
+                  {o.label}
+                  {o.desc && <div className="md">{o.desc}</div>}
+                </div>
                 {o.on && (
                   <span className="ck">
                     <Check />
@@ -1047,12 +1070,37 @@ export function MachinePage({
           </div>
         )}
         {st &&
-          agents.map((a) => {
+          agents.length > 0 &&
+          (() => {
+            const a = activeAgent;
             const def = defaultsFor(st, a);
             const follow = "跟随配置";
             return (
-              <div key={a}>
-                <div className="glabel">{agentName(a)} · 新项目默认设置</div>
+              <>
+                <div className="glabel">
+                  {agents.length > 1
+                    ? "新项目默认设置"
+                    : `新项目默认设置 · ${agentName(a)}`}
+                </div>
+                {agents.length > 1 && (
+                  <div
+                    className="seg cli-tabs"
+                    role="tablist"
+                    aria-label="按 CLI 的新项目默认设置"
+                  >
+                    {agents.map((x) => (
+                      <button
+                        key={x}
+                        role="tab"
+                        aria-selected={x === a}
+                        className={x === a ? "on" : ""}
+                        onClick={() => setDefaultAgent(x)}
+                      >
+                        {agentName(x)}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <div className="grp">
                   <button
                     className="row"
@@ -1095,9 +1143,9 @@ export function MachinePage({
                     </div>
                   )}
                 </div>
-              </div>
+              </>
             );
-          })}
+          })()}
         {st && (
           <div className="grp">
             <button
