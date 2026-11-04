@@ -571,7 +571,7 @@ func (s *session) clearPasted(c control, l *lease, in input, got []int32, footer
 		return false
 	}
 	s.mu.Lock()
-	running := s.running
+	running := s.running || s.ag.Analyze(styled).Busy
 	s.mu.Unlock()
 	keys := s.ag.ClearImageInput(len(agent.ImagePlaceholders(text)), running)
 	if len(keys) == 0 {

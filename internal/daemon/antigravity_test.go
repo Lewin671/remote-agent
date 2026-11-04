@@ -422,3 +422,25 @@ func TestAgyPendingPlanDoesNotInventPopupOverOrdinaryInput(t *testing.T) {
 	}
 }
 
+func TestAgyImageCleanupRechecksVisibleBusyTurn(t *testing.T) {
+	h := agyHarness(t)
+	screen := strings.Replace(agyScreen(t, "image-terminal.txt"), "  ▸ 📎 1 media attached", "⣟ Generating...\n  ▸ 📎 1 media attached", 1)
+	h.term.setScreen(screen)
+	if !h.s.ag.Analyze(screen).Busy {
+		t.Fatal("fixture lacks a visible busy turn")
+	}
+	c, err := h.term.Control()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close()
+	l, err := holdLease(c, injectBase)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer l.end()
+	in := input{Images: imagesFor(t, h.dir, "one.png")}
+	if h.s.clearPasted(c, l, in, []int32{1}, "", false, false) || len(h.term.written()) != 0 {
+		t.Fatal("cleanup interrupted an unparsed visible turn")
+	}
+}
