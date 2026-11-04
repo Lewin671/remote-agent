@@ -7,7 +7,7 @@ import Testing
 @Suite(.enabled(if: GoServer.available, GoServer.missing))
 struct AuthorityHandoffConcurrencyTests {
     @Test func discardCannotDeleteAnOfferWhileItsPublicationIsInFlight() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let vault = AuthorityTestVault(), gate = AuthorityGate()
         gate.set(active: true, protectedDataAvailable: true)
         let bootstrap = AuthorityBootstrap(storage: vault, gate: gate)

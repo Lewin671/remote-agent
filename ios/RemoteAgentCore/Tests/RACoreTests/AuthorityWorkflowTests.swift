@@ -100,7 +100,7 @@ private func coordinator(_ account: Account, _ vault: AuthorityTestVault, http: 
     return AuthorityCoordinator(account: account, api: api, storage: vault, security: security, gate: gate, clock: clock,
         token: { try await login(api: api, account: account) })
 }
-private func createAuthority(_ server: ManagementRelay, vault: AuthorityTestVault = AuthorityTestVault(), http: HTTP = HTTP()) async throws
+private func createAuthority(_ server: TestServer, vault: AuthorityTestVault = AuthorityTestVault(), http: HTTP = HTTP()) async throws
     -> (Account, AuthorityTestVault, String) {
     let bootstrap = AuthorityBootstrap(storage: vault, gate: enabledGate(), http: http)
     let code = try await bootstrap.prepareCreation(server: server.url)
@@ -113,7 +113,7 @@ private func createAuthority(_ server: ManagementRelay, vault: AuthorityTestVaul
 @Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
 struct AuthorityWorkflowTests {
     @Test func creationRotationVetoHintsAndContextOnlyProfileRepair() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, originalCode) = try await createAuthority(server)
         let coordinator = try coordinator(account, vault)
         #expect(try await coordinator.isAuthority())
@@ -158,7 +158,7 @@ struct AuthorityWorkflowTests {
             // Covers initial draft, confirmation, actual request, pin phase,
             // profile/security/account adoption, certificate receipt/install, clear.
             for crash in 1...13 {
-                let server = try await ManagementRelay(); defer { server.close() }
+                let server = try await TestServer(); defer { server.close() }
                 let vault = AuthorityTestVault(); vault.inject(crash, after: after)
                 let gate = enabledGate()
                 let bootstrap = AuthorityBootstrap(storage: vault, gate: gate)
@@ -194,7 +194,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func ackLostAfterPinAndLeaseRetriesSameRegistrationAndCertificate() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let gate = enabledGate(), vault = AuthorityTestVault()
         let cut = Signal()
         let http = Intercept.http(for: server.url, answered: { req in
@@ -216,7 +216,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test(arguments: [false, true]) func pairingDeliveryRemovalAndPlatformIndependentHandoff(lostOfferAck: Bool) async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         var step = "create"
         do {
         let (account, vault, _) = try await createAuthority(server)
@@ -295,7 +295,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func unrelatedOfferDoesNotBlockDurableLeaseRenewal() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let before = try vault.readSecurity()
         let c = try coordinator(account, vault)
@@ -325,7 +325,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func rePairingRegistersAgainAndRevokesThePreviousLogin() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let authority = try coordinator(account, vault)
         let registrations = Counter()
@@ -369,7 +369,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func pairingRejectsAuthorityIdentityBeforePreparingOrPublishingState() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let c = try coordinator(account, vault)
         let before = try vault.readSecurity()
@@ -389,7 +389,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func expiredDeliveryHasExplicitRemovalExit() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let c = try coordinator(account, vault)
         // An approved member with a deliberately unavailable delivery slot.
@@ -412,7 +412,7 @@ struct AuthorityWorkflowTests {
     }
 
     @Test func actorReentrancyAndLockDuringRpcCannotSignAnotherSuccessor() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let gate = enabledGate(), entered = Signal(), release = Signal()
         let blocked = Intercept.http(for: server.url) { request in
@@ -443,32 +443,8 @@ private final class AuthorityRegistrationReceipt: @unchecked Sendable {
     func load() throws -> RegistrationIntent { try lock.withLock { try receipt.unwrap() } }
 }
 
-/// Per-test relay/database. Advancing the recovery deadline is an explicit test
-/// fixture action; production code still enforces the unmodified 48-hour delay.
-final class ManagementRelay: @unchecked Sendable {
-    let url: String
-    let setupToken = "authority-workflow-test-token"
-    let directory: URL
-    let process: Process
-    init(signup: String = "token") async throws {
-        let port = freePort()
-        url = "http://127.0.0.1:\(port)"
-        directory = FileManager.default.temporaryDirectory.appendingPathComponent("ra-management-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        process = Process(); process.executableURL = try GoServer.binary.get()
-        process.arguments = ["-min-free-bytes", "0", "-listen", "127.0.0.1:\(port)", "-db", directory.appendingPathComponent("ra.db").path, "-signup", signup]
-        var environment = ProcessInfo.processInfo.environment; environment["RA_SETUP_TOKEN"] = setupToken
-        process.environment = environment
-        process.standardOutput = FileHandle.nullDevice; process.standardError = FileHandle.nullDevice
-        try process.run()
-        let session = URLSession(configuration: .ephemeral)
-        defer { session.invalidateAndCancel() }
-        for _ in 0..<400 {
-            if (try? await session.data(from: URL(string: url + "/healthz")!)) != nil { return }
-            try await realSleep(25)
-        }
-        close(); throw TestFailure("management relay did not start")
-    }
+// Advancing this fixture timestamp leaves the production 48-hour rule intact.
+extension TestServer {
     func advanceRecoveryDeadline() throws {
         let sql = Process(); sql.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
         sql.arguments = [directory.appendingPathComponent("ra.db").path, "UPDATE security_recovery SET ready_ms = 1 WHERE completed_ms = 0;"]
@@ -476,19 +452,11 @@ final class ManagementRelay: @unchecked Sendable {
         try sql.run(); sql.waitUntilExit()
         if sql.terminationStatus != 0 { throw TestFailure("could not advance fixture deadline") }
     }
-    func close() {
-        if process.isRunning {
-            process.terminate()
-            for _ in 0..<500 { if !process.isRunning { break }; usleep(10_000) }
-            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
-        }
-        try? FileManager.default.removeItem(at: directory)
-    }
 }
 
 extension AuthorityWorkflowTests {
     @Test func emergencyRecoveryCompletesAfterDebugDeadlineAndRestartsWithoutEitherSeed() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (_, oldVault, code) = try await createAuthority(server)
         let vault = AuthorityTestVault(), gate = enabledGate()
         let workflow = AuthorityBootstrap(storage: vault, gate: gate)
@@ -514,7 +482,7 @@ extension AuthorityWorkflowTests {
 
     @Test func openSignupUsesPowAndCorrectedTokenKeepsExactRegistration() async throws {
         for mode in ["token", "open"] {
-            let server = try await ManagementRelay(signup: mode); defer { server.close() }
+            let server = try await TestServer(signup: mode); defer { server.close() }
             let vault = AuthorityTestVault(), bootstrap = AuthorityBootstrap(storage: vault, gate: enabledGate())
             _ = try await bootstrap.prepareCreation(server: server.url)
             let before = try vault.readOperation().unwrap()
@@ -533,7 +501,7 @@ extension AuthorityWorkflowTests {
     }
 
     @Test func stateAckLossBeyond72HoursRenewsOnlyIndependentLeaseAndClockRollbackUsesFloor() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let vault = AuthorityTestVault(), gate = enabledGate()
         let past = Int64(Date().timeIntervalSince1970 * 1000) - 4 * 24 * 60 * 60 * 1000
         let old = AuthorityBootstrap(storage: vault, gate: gate, clock: { past })
@@ -573,7 +541,7 @@ extension AuthorityWorkflowTests {
     }
 
     @Test func competingVerifiedParentStopsOriginalStateWithoutResigning() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let r = try vault.readSecurity(), signer = try SigningKey(seed: account.deviceSeed)
         let a = try Authority().veto(parent: r.state, newRecoveryEd: randomBytes(32), secret: r.secret!, signer: signer, now: Int64(r.floor))
@@ -597,7 +565,7 @@ extension AuthorityWorkflowTests {
     @Test func recoveryRestartsAtEveryPrivateStorageBoundary() async throws {
         for after in [false, true] {
             for crash in 1...13 {
-                let server = try await ManagementRelay(); defer { server.close() }
+                let server = try await TestServer(); defer { server.close() }
                 let (_, _, code) = try await createAuthority(server)
                 let vault = AuthorityTestVault(), gate = enabledGate()
                 vault.inject(crash, after: after)
@@ -631,7 +599,7 @@ extension AuthorityWorkflowTests {
     @Test func statePublicationRestartsAtEveryStorageBoundaryWithoutNewStateBytes() async throws {
         for after in [false, true] {
             for crash in 1...11 {
-                let server = try await ManagementRelay(); defer { server.close() }
+                let server = try await TestServer(); defer { server.close() }
                 let (account, vault, _) = try await createAuthority(server)
                 let authority = try coordinator(account, vault)
                 let prepared = try await authority.prepareRecovery()
@@ -658,7 +626,7 @@ extension AuthorityWorkflowTests {
 extension AuthorityWorkflowTests {
     @Test(.enabled(if: ProcessInfo.processInfo.environment["RA_TEST_REAL_CODEX"] == "1"))
     func realDaemonCliRoundTripAndRemovedMachineArchiveRejoin() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let remote = try Remote(account: account, http: HTTP(), securityStorage: vault)
         defer { remote.close() }
@@ -796,7 +764,7 @@ extension AuthorityWorkflowTests {
     @Test func everyCreationMutationRpcCanLoseItsRequestOrAckWithoutNewGenesis() async throws {
         for path in ["/RegisterDevice", "/PinSecurityDomain", "/PutSecurityState"] {
             for after in [false, true] {
-                let server = try await ManagementRelay(); defer { server.close() }
+                let server = try await TestServer(); defer { server.close() }
                 let vault = AuthorityTestVault(), gate = enabledGate(), cut = Signal()
                 let http = Intercept.http(for: server.url, answered: { request in
                     if after && request.url?.path.hasSuffix(path) == true && !cut.isSet {
@@ -828,7 +796,7 @@ extension AuthorityWorkflowTests {
     @Test func recoverySubmitAndCompleteAckLossRetryExactSignedBytes() async throws {
         for path in ["/SubmitRecovery", "/CompleteRecovery"] {
             for after in [false, true] {
-                let server = try await ManagementRelay(); defer { server.close() }
+                let server = try await TestServer(); defer { server.close() }
                 let (_, _, code) = try await createAuthority(server)
                 let vault = AuthorityTestVault(), gate = enabledGate(), cut = Signal()
                 let http = Intercept.http(for: server.url, answered: { request in
@@ -866,7 +834,7 @@ extension AuthorityWorkflowTests {
     }
 
     @Test func lostSubmitAckThenVetoRequiresExplicitDefinitiveExit() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, oldVault, code) = try await createAuthority(server)
         let vault = AuthorityTestVault(), gate = enabledGate()
         let http = Intercept.http(for: server.url, answered: { request in
@@ -890,7 +858,7 @@ extension AuthorityWorkflowTests {
 
 extension AuthorityWorkflowTests {
     @Test func sameHeadRenewalAtIdenticalMillisecondReusesTheCommittedCertificate() async throws {
-        let server = try await ManagementRelay(); defer { server.close() }
+        let server = try await TestServer(); defer { server.close() }
         let (account, vault, _) = try await createAuthority(server)
         let committed = try vault.readSecurity().lease.unwrap()
         let authority = try coordinator(account, vault, clock: { Int64(committed.issuedAt) })

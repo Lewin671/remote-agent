@@ -11,27 +11,9 @@ import os
 /// key store is used.
 final class TestSecurity: @unchecked Sendable {
     private static let registry = OSAllocatedUnfairLock<[String: TestSecurity]>(initialState: [:])
-    private static let built: Result<URL, TestFailure> = Result {
-        guard let go = GoServer.go else { throw TestFailure("Go toolchain missing") }
-        let dir = try GoServer.binary.get().deletingLastPathComponent()
-        let path = dir.appendingPathComponent("security-fixture")
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: go)
-        process.arguments = ["build", "-o", path.path, "./internal/testutil/securityfixture"]
-        process.currentDirectoryURL = repoRoot
-        let output = Pipe()
-        process.standardOutput = output
-        process.standardError = output
-        try process.run()
-        let log = output.fileHandleForReading.readDataToEndOfFile()
-        while process.isRunning { usleep(10000) }
-        guard process.terminationStatus == 0 else {
-            throw TestFailure(
-                "synthetic fixture build failed: "
-                    + String(decoding: log.suffix(2000), as: UTF8.self))
-        }
-        return path
-    }.mapError { TestFailure(String(describing: $0)) }
+    private static let built = GoServer.binary.map {
+        $0.deletingLastPathComponent().appendingPathComponent("securityfixture")
+    }
     private let lock = NSLock()
     private let process: Process
     private let input: FileHandle

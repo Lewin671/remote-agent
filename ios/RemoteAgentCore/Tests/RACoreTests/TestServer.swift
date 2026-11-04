@@ -40,10 +40,11 @@ enum GoServer {
                     try? FileManager.default.removeItem(atPath: path)
                 }
             }
-            let out = dir.appendingPathComponent("remote-agent-server")
+            let out = dir.appendingPathComponent("relaytestserver")
             let p = Process()
             p.executableURL = URL(fileURLWithPath: go)
-            p.arguments = ["build", "-o", out.path, "./cmd/remote-agent-server"]
+            p.arguments = ["build", "-o", dir.path + "/",
+                "./internal/testutil/relaytestserver", "./internal/testutil/securityfixture"]
             p.currentDirectoryURL = repoRoot
             let log = Pipe()
             p.standardOutput = log
@@ -92,20 +93,21 @@ func freePort() -> Int {
 
 /// A remote-agent-server process on a free local port.
 final class TestServer: @unchecked Sendable {
-    let port: Int
-    let url: String
+    private(set) var port = 0
+    var url: String { "http://127.0.0.1:\(port)" }
     let setupToken = "setup-token-for-tests"
-    private let dbDir: URL
+    let directory: URL
+    private let signup: String
     private let lock = NSLock()
     private var proc: Process?
 
-    init() async throws {
-        port = freePort()
-        url = "http://127.0.0.1:\(port)"
-        dbDir = FileManager.default.temporaryDirectory.appendingPathComponent(
+    init(signup: String = "token") async throws {
+        self.signup = signup
+        directory = FileManager.default.temporaryDirectory.appendingPathComponent(
             "ra-server-\(UUID().uuidString)")
-        try FileManager.default.createDirectory(at: dbDir, withIntermediateDirectories: true)
-        try await start()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        do { try await start() }
+        catch { close(); throw error }
     }
 
     func start() async throws {
@@ -113,34 +115,33 @@ final class TestServer: @unchecked Sendable {
         let p = Process()
         p.executableURL = bin
         p.arguments = [
-            "-min-free-bytes", "0", "-listen", "127.0.0.1:\(port)", "-db", dbDir.appendingPathComponent("ra.db").path,
+            "-listen", "127.0.0.1:\(port)", "-db", directory.appendingPathComponent("ra.db").path,
+            "-signup", signup,
         ]
         var env = ProcessInfo.processInfo.environment
         env["RA_SETUP_TOKEN"] = setupToken
         p.environment = env
-        let logURL = dbDir.appendingPathComponent("server.log")
-        if !FileManager.default.fileExists(atPath: logURL.path) {
-            FileManager.default.createFile(atPath: logURL.path, contents: nil)
-        }
+        let logURL = directory.appendingPathComponent("server.log")
+        // Truncate on restart: an earlier process's readiness is not this one's.
+        FileManager.default.createFile(atPath: logURL.path, contents: nil)
         let log = try FileHandle(forWritingTo: logURL)
-        log.seekToEndOfFile()
+        defer { try? log.close() }
         p.standardOutput = log
         p.standardError = log
         try p.run()
         lock.withLock { proc = p }
-        // Ready means this process answers HTTP, not only that the port takes a connection.
-        let session = URLSession(configuration: .ephemeral)
-        defer { session.invalidateAndCancel() }
+        // The child reports its bound listener, so there is no free-port race
+        // and no failed HTTP connection before the server is ready.
         let until = Date().addingTimeInterval(10)
         while Date() < until {
-            guard p.isRunning else {
-                let text = (try? String(contentsOf: logURL, encoding: .utf8)) ?? ""
-                throw TestFailure("server exited: " + String(text.prefix(500)))
+            let text = (try? String(contentsOf: logURL, encoding: .utf8)) ?? ""
+            guard p.isRunning else { throw TestFailure("server exited: " + String(text.prefix(500))) }
+            if let ready = text.components(separatedBy: "\n").first(where: { $0.hasPrefix("TEST_SERVER_URL=") }),
+                let bound = URL(string: String(ready.dropFirst("TEST_SERVER_URL=".count)))?.port, bound > 0 {
+                port = bound
+                return
             }
-            var req = URLRequest(url: URL(string: url + "/healthz")!)
-            req.timeoutInterval = 0.5
-            if (try? await session.data(for: req)) != nil { return }
-            try await Task.sleep(nanoseconds: 50_000_000)
+            try await Task.sleep(for: .milliseconds(10))
         }
         throw TestFailure("server did not start")
     }
@@ -163,7 +164,7 @@ final class TestServer: @unchecked Sendable {
     func close() {
         stop()
         TestSecurity.remove(url)
-        try? FileManager.default.removeItem(at: dbDir)
+        try? FileManager.default.removeItem(at: directory)
     }
 }
 
@@ -628,22 +629,15 @@ final class HookedCache: CipherCache, @unchecked Sendable {
 }
 
 /// Something a test waits for, set once.
-final class Signal: @unchecked Sendable {
-    private let lock = NSLock()
-    private var done = false
+final class Signal: Sendable {
+    private let state = Feed(false)
+    func set() { state.set(true) }
+    var isSet: Bool { state.value }
 
-    func set() { lock.withLock { done = true } }
-    var isSet: Bool { lock.withLock { done } }
-
-    /// Waits until it is set; false when `ms` passed first.
+    /// Waits for the notification, with the same bounded wait as the other feeds.
     @discardableResult
     func wait(_ ms: Int = 10_000) async -> Bool {
-        let until = Date().addingTimeInterval(Double(ms) / 1000)
-        while !isSet {
-            if Date() >= until { return false }
-            try? await Task.sleep(nanoseconds: 5_000_000)
-        }
-        return true
+        (try? await state.await("signal", ms: ms) { $0 }) ?? false
     }
 }
 
