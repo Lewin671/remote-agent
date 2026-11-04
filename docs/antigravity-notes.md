@@ -574,3 +574,11 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 - 1.5.0 的 Plan 模式实测把普通输入记录为 `/plan <原 prompt>`，屏幕和 USER_INPUT 中都带这个前缀；这不是只有 `/plan` 的模式命令。整行按 slash command 丢弃会漏掉真实用户消息及其提交确认。
 
 - 1.5.0 的多工件审阅中，`y/n` 可能只把行标成 `approved/rejected`，并出现 `Submit / Dismiss` 按钮；此时还没有生成对应 USER_INPUT。把焦点移到原生 Submit 并回车后，才观察到 `[Approved]`/`[Rejected]` 和后续模型轮次。仅因选中行改变或不再显示 `new` 不能声称已交付审批；不能顺带提交其他工件尚未确认的选择。
+
+
+## 13. 审计修复补测（1.5.0，2026-11-04）
+
+- 独立 tmux socket、临时目录、Gemini 3.8 Flash / low 的直接 TUI 观察（没有发送模型请求）：粘贴 PNG 路径后，附件在输入框上方显示 `▸ 📎 N media attached`；Ctrl-O 展开后为 `▾ 📎 N Media(s) attached`、逐项信息和 collapse 提示。Ctrl-E Ctrl-U、Backspace 均没有移除附件；Escape 移除附件。该键也能中断前台轮次，不能在轮次运行时拿它清理附件。脱敏样本见 `internal/antigravity/testdata/screen/image-terminal.txt`、`image-cleared-1.5.0.txt`。
+- 独立审计捕获的 `/mcp` 在输入框后保留 `MCP Servers` 菜单和 Keyboard 导航；带后台任务的中断画面，在输入框下额外显示任务栏和第三条横线。对应脱敏样本为 `mcp-terminal.txt`、`interrupt-background-terminal.txt`；不能把最后两条横线固定当作输入框。
+- 同一审计的计划呈现后，空闲输入框上方为 `1 artifact · /artifact to review`；Ctrl-R 才出现绑定文件的 `Action required` 面板。`plan-terminal-before.txt`、`plan-terminal-after.txt` 是同一待审工件的前后画面。
+- API 计费信号仅做只读调查：实际 statusLine 字段、当前 settings 的字段名及 `strings` 中的状态栏/认证/内嵌帮助文字。binary 包含 API key 后端和认证类型字样，但未找到它们与当前会话 statusLine 的可靠对应；当前 settings 没有认证来源字段。没有更改登录、注入 API key 或发送 `/model`，也没有实测 API 登录。是否接入仍见 [plan.md](plan.md)。
