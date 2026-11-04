@@ -211,7 +211,7 @@ func TestAttachedMediaIsPartOfDraft(t *testing.T) {
 			t.Fatalf("attached media ignored: %+v %q %v", scr, text, indexes)
 		}
 	}
-	expanded := strings.Replace(screen, "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", "▾ 📎 1 Media(s) attached\n    1. file · 663 B · image/jpeg\n  (ctrl+o to collapse)", 1)
+	expanded := readScreenFixture(t, "image-expanded-1.5.0.txt")
 	if text, indexes, ok := a.ImageInput(expanded, ""); !ok || text != "[Image #1]" || len(indexes) != 1 || a.Analyze(expanded).DraftEmpty {
 		t.Fatal("expanded attachments ignored")
 	}
