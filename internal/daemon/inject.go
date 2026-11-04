@@ -385,6 +385,7 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	// screen.
 	s.mu.Lock()
 	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
+	mediaWaits := len(in.Images) > 0 && s.ag.Capabilities().ImagesNeedIdle && (s.running || scr.Busy)
 	// Just after it starts, Codex has once taken a pasted image path as
 	// plain text; images wait until the input box has been up a moment,
 	// and while Codex shows it is still setting the session up, which
@@ -392,7 +393,7 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	up := time.Since(s.readySince)
 	young := len(in.Images) > 0 && !s.readySince.IsZero() && (up < imageStartDelay || scr.Loading && up < loadingWait)
 	s.mu.Unlock()
-	if starting || young {
+	if starting || young || mediaWaits {
 		return notWritten, nil
 	}
 	s.noteWait(scr)
@@ -1059,9 +1060,9 @@ func (s *session) inputMatchesEvent(in input, e *pb.Event) bool {
 	}
 	message := e.GetUserMessage()
 	if normalizer, ok := s.ag.(agent.MessageInputNormalizer); ok && message != nil {
-		normalized := *message
+		normalized := proto.CloneOf(message)
 		normalized.Text = normalizer.MessageInputText(message)
-		message = &normalized
+		message = normalized
 	}
 	return in.matchesMessage(message)
 }

@@ -139,7 +139,7 @@ func (a *Adapter) HoldsInputMidTurn() bool {
 }
 
 func (a *Adapter) Capabilities() agent.Capabilities {
-	return agent.Capabilities{NativeApproval: true, ConversationIdentity: true}
+	return agent.Capabilities{NativeApproval: true, ConversationIdentity: true, ImagesNeedIdle: true}
 }
 func (a *Adapter) ExactScheduleMode(info *pb.Session) string {
 	if info.Mode == pb.ApprovalMode_APPROVAL_MODE_UNSPECIFIED {

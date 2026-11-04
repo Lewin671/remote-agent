@@ -585,9 +585,12 @@ func (p *Parser) readMedia(media []transcriptMedia, source pb.ImageSource) []*pb
 		return nil
 	}
 	var refs []*pb.ImageRef
+	conversation, err := filepath.EvalSymlinks(filepath.Dir(filepath.Dir(filepath.Dir(p.transcriptPath))))
+	if err != nil {
+		return nil
+	}
 	bases := []string{filepath.Join(filepath.Dir(p.transcriptPath), "media")}
 	if source == pb.ImageSource_IMAGE_SOURCE_USER {
-		conversation := filepath.Dir(filepath.Dir(filepath.Dir(p.transcriptPath)))
 		bases = append(bases, filepath.Join(conversation, ".user_uploaded"))
 	}
 	for i, m := range media {
@@ -606,6 +609,10 @@ func (p *Parser) readMedia(media []transcriptMedia, source pb.ImageSource) []*pb
 		for _, base := range bases {
 			base, err := filepath.EvalSymlinks(base)
 			if err != nil {
+				continue
+			}
+			rootRel, err := filepath.Rel(conversation, base)
+			if err != nil || rootRel == ".." || strings.HasPrefix(rootRel, ".."+string(filepath.Separator)) || filepath.IsAbs(rootRel) {
 				continue
 			}
 			rel, err := filepath.Rel(base, path)

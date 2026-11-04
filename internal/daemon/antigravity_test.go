@@ -358,3 +358,17 @@ func TestAgyBackgroundTaskDoesNotDelayAbortedForegroundTurn(t *testing.T) {
 		t.Fatal("no ABORTED turn end")
 	}
 }
+
+func TestAgyImagesWaitForIdleSoCleanupCannotInterrupt(t *testing.T) {
+	h := agyHarness(t)
+	h.s.status = pb.SessionStatus_SESSION_STATUS_RUNNING
+	h.s.running = true
+	h.term.setScreen(agyScreen(t, "idle-empty-box.txt"))
+	if _, err := h.s.enqueue("describe", "waiting-image", imagesFor(t, h.dir, "one.png"), originLocal); err != nil {
+		t.Fatal(err)
+	}
+	result, err := h.s.inject(h.s.queue.Queue[0])
+	if err != nil || result != notWritten || len(h.term.written()) != 0 {
+		t.Fatalf("image pasted during foreground turn: %v %v", result, err)
+	}
+}

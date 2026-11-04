@@ -173,3 +173,36 @@ func TestNativeApprovalRejectsHistoryPrefixesAndChangedPrompt(t *testing.T) {
 		t.Fatal("answered changed native prompt")
 	}
 }
+
+func TestUploadedUserMediaRejectsPathsOutsideConversation(t *testing.T) {
+	root := t.TempDir()
+	logs := filepath.Join(root, "conv", ".system_generated", "logs")
+	media := filepath.Join(root, "conv", ".user_uploaded")
+	if err := os.MkdirAll(logs, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(media, 0700); err != nil {
+		t.Fatal(err)
+	}
+	secret := filepath.Join(t.TempDir(), "secret.png")
+	mustWrite(t, secret, []byte("private"))
+	if err := os.Symlink(secret, filepath.Join(media, "link.png")); err != nil {
+		t.Fatal(err)
+	}
+	p := NewParser()
+	p.SetTranscriptPath(filepath.Join(logs, "transcript.jsonl"))
+	for _, uri := range []string{secret, "file://" + secret, filepath.Join(media, "link.png"), "relative.png", "https://example.com/image.png"} {
+		if refs := p.readMedia([]transcriptMedia{{MimeType: "image/png", URI: uri}}, pb.ImageSource_IMAGE_SOURCE_USER); len(refs) != 0 {
+			t.Fatalf("outside media accepted: %s", uri)
+		}
+	}
+	if err := os.RemoveAll(media); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Dir(secret), media); err != nil {
+		t.Fatal(err)
+	}
+	if refs := p.readMedia([]transcriptMedia{{MimeType: "image/png", URI: filepath.Join(media, "secret.png")}}, pb.ImageSource_IMAGE_SOURCE_USER); len(refs) != 0 {
+		t.Fatal("symlink media root escaped conversation")
+	}
+}

@@ -78,7 +78,12 @@ type Adapter interface {
 
 // Capabilities are actions a CLI can perform without changing global settings
 // or moving the original native conversation to another process.
-type Capabilities struct{ ModelSwitch, Fork, NativeApproval, ConversationIdentity bool }
+type Capabilities struct {
+	ModelSwitch, Fork, NativeApproval, ConversationIdentity bool
+	// ImagesNeedIdle prevents pasting media whose failure cleanup could
+	// otherwise interrupt a foreground turn.
+	ImagesNeedIdle bool
+}
 
 // StatusLineAccount is optionally implemented by adapters whose account quota
 // is reported through a status line.
