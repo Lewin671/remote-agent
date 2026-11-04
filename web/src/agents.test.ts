@@ -31,6 +31,8 @@ describe("agents registry", () => {
     expect(codex.quotaWindow("secondary")).toEqual({ label: "7 天", group: null });
     expect(codex.toolLabelFromItemType).toBe(false);
     expect(codex.planClearContext).toBe(true);
+    expect(codex.planKeepLabel).toBe("继续规划");
+    expect(codex.planApproveLabel).toBe("批准执行");
     expect(codex.planNote).toBeNull();
     expect(codex.standardContextOption).toBe(false);
     expect(codex.reconcilesUnclaimedInput).toBe(false);
@@ -49,6 +51,8 @@ describe("agents registry", () => {
     expect(claude.quotaWindow("seven_day")).toEqual({ label: "7 天", group: null });
     expect(claude.toolLabelFromItemType).toBe(true);
     expect(claude.planClearContext).toBe(false);
+    expect(claude.planKeepLabel).toBe("修改计划…");
+    expect(claude.planApproveLabel).toBe("批准");
     expect(claude.planNote).toBe("批准后使用询问模式");
     expect(claude.standardContextOption).toBe(true);
     expect(claude.reconcilesUnclaimedInput).toBe(true);
@@ -71,6 +75,8 @@ describe("agents registry", () => {
     expect(agy.quotaWindow("custom-window")).toEqual({ label: "custom-window", group: "custom-window" });
     expect(agy.toolLabelFromItemType).toBe(false);
     expect(agy.planClearContext).toBe(false);
+    expect(agy.planKeepLabel).toBe("修改计划…");
+    expect(agy.planApproveLabel).toBe("批准");
     expect(agy.planNote).toBe("批准后回到默认模式（询问）");
     expect(agy.standardContextOption).toBe(false);
     expect(agy.autoMayBeUnavailable).toBe(true);

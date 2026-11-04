@@ -241,7 +241,7 @@ import Testing
     @Test func followsClaudeCodeModes() {
         #expect(modeLabel(s { $0.mode = .auto })?.mode == .auto)
         let own = modeLabel(s { $0.permissionMode = "acceptEdits" })!
-        #expect(own.text == "acceptEdits")
+        #expect(own.text == "accept edits")
         #expect(own.mode == nil)
         #expect(modeLabel(s { $0.collaborationMode = "plan"; $0.approvalPolicy = "on-request" })?.mode == .plan)
         // The list says which models come without the auto mode; a model it

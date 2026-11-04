@@ -22,6 +22,8 @@ interface AgentEntry {
     fun modelLabel(id: String): String
     val toolLabelFromItemType: Boolean
     val planClearContext: Boolean
+    val planKeepLabel: String
+    val planApproveLabel: String
     val planNote: String?
     val standardContextOption: Boolean
     val autoMayBeUnavailable: Boolean
@@ -87,6 +89,8 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = true
+    override val planKeepLabel = "继续规划…"
+    override val planApproveLabel = "批准执行"
     override val planNote: String? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false
@@ -133,6 +137,8 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = true
     override val planClearContext: Boolean = false
+    override val planKeepLabel = "修改计划…"
+    override val planApproveLabel = "批准"
     override val planNote: String? = "批准后使用询问模式"
     override val standardContextOption: Boolean = true
     override val autoMayBeUnavailable: Boolean = true
@@ -177,6 +183,8 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = false
+    override val planKeepLabel = "修改计划…"
+    override val planApproveLabel = "批准"
     override val planNote: String? = "批准后回到默认模式（询问）"
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = true
@@ -219,6 +227,8 @@ private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
 
     override val toolLabelFromItemType: Boolean = false
     override val planClearContext: Boolean = false
+    override val planKeepLabel = "修改计划…"
+    override val planApproveLabel = "批准"
     override val planNote: String? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false

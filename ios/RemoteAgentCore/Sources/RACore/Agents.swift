@@ -213,6 +213,8 @@ private let CLAUDE_ENTRY = AgentEntry(
     sessionNeedsModelList: true,
     switchesModelInSession: true,
     forks: true,
+    planKeepLabel: "修改计划…",
+    planApproveLabel: "批准",
     planName: { normalizePlanName($0) },
     modelLabel: { $0 },
     defaults: { settings in

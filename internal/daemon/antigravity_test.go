@@ -310,6 +310,33 @@ func TestAgyModeDisplayRetainsConfirmedModeWhenStale(t *testing.T) {
 	}
 }
 
+func TestAgyQuotaOrderSurvivesMergingAndUnknownBuckets(t *testing.T) {
+	h := agyHarness(t)
+	names := []string{"unknown-z", "3p-weekly", "gemini-argon-wtu-weekly", "gemini-weekly", "3p-5h", "gemini-5h", "unknown-a"}
+	var windows []*pb.QuotaWindow
+	for _, name := range names {
+		windows = append(windows, &pb.QuotaWindow{Name: name})
+	}
+	q := &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "example-account", Windows: windows, State: pb.QuotaState_QUOTA_STATE_OK}
+	h.d.recordQuotaWithPolicy("example-session", q, time.Now(), false)
+	h.d.recordQuotaWithPolicy("example-session", &pb.AgentQuota{Agent: q.Agent, Account: q.Account, Windows: []*pb.QuotaWindow{{Name: "gemini-5h"}}}, time.Now().Add(time.Second), false)
+	h.d.mu.Lock()
+	entries := h.d.quotaEntriesLocked()
+	h.d.mu.Unlock()
+	var got []string
+	for _, entry := range entries {
+		if entry.Agent == q.Agent {
+			for _, window := range entry.Windows {
+				got = append(got, window.Name)
+			}
+		}
+	}
+	want := "gemini-5h,gemini-weekly,gemini-argon-wtu-weekly,3p-5h,3p-weekly,unknown-a,unknown-z"
+	if strings.Join(got, ",") != want {
+		t.Fatalf("quota order: %v", got)
+	}
+}
+
 func TestAgyBackgroundTaskDoesNotDelayAbortedForegroundTurn(t *testing.T) {
 	h := agyHarness(t)
 	if err := h.s.emit(&pb.Event{TurnId: "foreground", Kind: &pb.Event_TurnStarted{TurnStarted: &pb.TurnStarted{}}}); err != nil {

@@ -302,7 +302,7 @@ public func modeLabel(_ s: SessionView) -> ModeLabel? {
     if let m = modeOf(i.mode) { return ModeLabel(text: m.text, mode: m) }
     if !i.permissionMode.isEmpty {
         let m = permissionMode(i.permissionMode)
-        return ModeLabel(text: m?.text ?? i.permissionMode, mode: m)
+        return ModeLabel(text: m?.text ?? permissionModeName(i.permissionMode), mode: m)
     }
     return contextMode(reviewer: i.approvalsReviewer, policy: i.approvalPolicy, sandbox: i.sandbox, collaboration: i.collaborationMode)
         .map { ModeLabel(text: $0.text, mode: $0) }

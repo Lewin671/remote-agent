@@ -87,6 +87,11 @@ type StatusLineAccount interface {
 	ManagedStatusLine(dir string) bool
 }
 
+// QuotaWindowOrder orders a provider's merged windows for all clients.
+type QuotaWindowOrder interface {
+	OrderQuotaWindows(windows []*pb.QuotaWindow)
+}
+
 // StatusLineSource reads CLI-specific status line metadata without exposing
 // the original account identifiers outside the local adapter.
 type StatusLineSource interface {

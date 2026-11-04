@@ -131,3 +131,22 @@ func (a *Adapter) DefaultStatusLine(raw []byte) []byte {
 	}
 	return []byte(left + strings.Repeat(" ", gap) + in.Model.Name + "\n")
 }
+
+// OrderQuotaWindows applies the design's provider groups after cache merging.
+// Unknown future buckets follow the known groups in a deterministic order.
+func (a *Adapter) OrderQuotaWindows(windows []*pb.QuotaWindow) {
+	order := map[string]int{"gemini-5h": 1, "gemini-weekly": 2, "gemini-argon-wtu-weekly": 3, "3p-5h": 4, "3p-weekly": 5}
+	rank := func(name string) int {
+		if n := order[name]; n > 0 {
+			return n
+		}
+		return 6
+	}
+	sort.SliceStable(windows, func(i, j int) bool {
+		x, y := rank(windows[i].Name), rank(windows[j].Name)
+		if x != y {
+			return x < y
+		}
+		return windows[i].Name < windows[j].Name
+	})
+}

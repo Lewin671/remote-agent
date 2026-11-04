@@ -427,15 +427,16 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
   const own = usePlan(remote, sid, terminalOnly);
   const plan = shared ?? own;
   const b = plan.busy;
+  const entry = agentInfo(agentOf(remote.sessions.get(sid)));
   if (terminalOnly) return <div className="muted">{skeletonMessage}</div>;
   return (
     <>
       <div className="btns decide">
         <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
-          {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : "继续规划"}
+          {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : entry.planKeepLabel}
         </button>
         <button className="btn pri" disabled={!!b} onClick={() => void plan.answer(PlanChoice.IMPLEMENT)}>
-          {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : "批准执行"}
+          {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : entry.planApproveLabel}
         </button>
       </div>
       {full && agentInfo(agentOf(remote.sessions.get(sid))).planClearContext && (

@@ -17,6 +17,8 @@ export interface AgentEntry {
   modelLabel(id: string): string;
   readonly toolLabelFromItemType: boolean;
   readonly planClearContext: boolean;
+  readonly planKeepLabel: string;
+  readonly planApproveLabel: string;
   readonly planNote: string | null;
   readonly standardContextOption: boolean;
   readonly autoMayBeUnavailable: boolean;
@@ -94,6 +96,8 @@ const CODEX_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: true,
+  planKeepLabel: "继续规划",
+  planApproveLabel: "批准执行",
   planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,
@@ -140,6 +144,8 @@ const CLAUDE_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: true,
   planClearContext: false,
+  planKeepLabel: "修改计划…",
+  planApproveLabel: "批准",
   planNote: "批准后使用询问模式",
   standardContextOption: true,
   autoMayBeUnavailable: true,
@@ -185,6 +191,8 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: false,
+  planKeepLabel: "修改计划…",
+  planApproveLabel: "批准",
   planNote: "批准后回到默认模式（询问）",
   standardContextOption: false,
   autoMayBeUnavailable: true,
@@ -230,6 +238,8 @@ const UNKNOWN_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: false,
+  planKeepLabel: "修改计划…",
+  planApproveLabel: "批准",
   planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,

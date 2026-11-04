@@ -1014,13 +1014,13 @@ fun PlanButtons(
     }
     Btns(Modifier.widthIn(max = ActionRowMax)) {
         Btn(
-            "继续规划…",
+            agentInfo(s.agent()).planKeepLabel,
             { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) },
             Modifier.weight(1f),
             enabled = !act.running,
         )
         Btn(
-            if (act.running) "提交中…" else "批准执行",
+            if (act.running) "提交中…" else agentInfo(s.agent()).planApproveLabel,
             { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) },
             Modifier.weight(1f),
             BtnKind.PRIMARY,

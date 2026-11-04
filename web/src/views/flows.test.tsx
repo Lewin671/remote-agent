@@ -338,7 +338,8 @@ it("offers no clear-and-implement on a Claude Code plan", () => {
   const r = demo();
   const plan = create(PlanProposedSchema, { text: "1. do it" });
   mount(<PlanPage remote={r} sid="s-claude" plan={plan} title="t" onBack={() => undefined} />);
-  expect(button("批准执行")).toBeTruthy();
+  expect(button("批准")).toBeTruthy();
+  expect(button("修改计划…")).toBeTruthy();
   expect(button("清空上下文后执行")).toBeUndefined();
   act(() => root!.render(<PlanPage remote={r} sid="s-plan" plan={plan} title="t" onBack={() => undefined} />));
   expect(button("清空上下文后执行")).toBeTruthy();

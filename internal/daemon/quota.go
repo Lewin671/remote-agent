@@ -275,7 +275,11 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 			sort.Strings(keys)
 			for _, k := range keys {
 				if d.quotas[k].Agent == ag.Kind() {
-					agentQuotas = append(agentQuotas, proto.CloneOf(d.quotas[k]))
+					q := proto.CloneOf(d.quotas[k])
+					if order, ok := ag.(agent.QuotaWindowOrder); ok {
+						order.OrderQuotaWindows(q.Windows)
+					}
+					agentQuotas = append(agentQuotas, q)
 				}
 			}
 			if len(agentQuotas) > 0 {

@@ -42,7 +42,7 @@ import Testing
         #expect(claude.toolLabelFromItemType == true)
         #expect(claude.planClearContext == false)
         #expect(claude.planNote == "批准后使用询问模式")
-        #expect(claude.planKeepLabel == "继续规划…" && claude.planApproveLabel == "批准执行")
+        #expect(claude.planKeepLabel == "修改计划…" && claude.planApproveLabel == "批准")
         #expect(claude.standardContextOption == true)
         #expect(claude.autoMayBeUnavailable == true)
         #expect(claude.reconcilesUnclaimedInput == true)
