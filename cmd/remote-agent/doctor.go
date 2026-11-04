@@ -25,8 +25,11 @@ import (
 // checks every CLI installed.
 func runDoctor(args []string) error {
 	fs := flag.NewFlagSet("doctor", flag.ExitOnError)
-	codexBin := fs.String("codex", os.Getenv("REMOTE_AGENT_CODEX"), "codex executable (default: codex in PATH)")
-	claudeBin := fs.String("claude", os.Getenv("REMOTE_AGENT_CLAUDE"), "claude executable (default: claude in PATH)")
+	agentFlags := make(map[string]*string)
+	for _, spec := range daemon.RegisteredAgents {
+		envVar := "REMOTE_AGENT_" + strings.ToUpper(spec.ID)
+		agentFlags[spec.ID] = fs.String(spec.ID, os.Getenv(envVar), fmt.Sprintf("%s executable (default: %s in PATH)", spec.ID, spec.ID))
+	}
 	var which []string
 	for len(args) > 0 && !strings.HasPrefix(args[0], "-") {
 		which, args = append(which, args[0]), args[1:]
@@ -42,7 +45,11 @@ func runDoctor(args []string) error {
 		return err
 	}
 	tc := &tmux.Client{Socket: fmt.Sprintf("ra-doctor-%d", os.Getpid())}
-	cfg, err := daemonConfig(*codexBin, *claudeBin, tc)
+	agentBins := make(map[string]string)
+	for id, flagVal := range agentFlags {
+		agentBins[id] = *flagVal
+	}
+	cfg, err := daemonConfig(agentBins, tc)
 	if err != nil {
 		return err
 	}
@@ -87,30 +94,30 @@ func runDoctor(args []string) error {
 
 	var kinds []pb.Agent
 	for _, w := range which {
-		switch w {
-		case "codex":
-			kinds = append(kinds, pb.Agent_AGENT_CODEX)
-		case "claude":
-			if cfg.ClaudeBin == "" {
-				return errors.New("claude not found in PATH; pass --claude")
-			}
-			kinds = append(kinds, pb.Agent_AGENT_CLAUDE)
-		default:
-			return fmt.Errorf("unknown CLI %q; use codex or claude", w)
+		spec, ok := daemon.FindAgent(w)
+		if !ok {
+			return fmt.Errorf("unknown CLI %q; use %s", w, strings.Join(daemon.AgentIDs(), " or "))
 		}
+		if cfg.Agents[spec.Kind].Bin == "" {
+			return fmt.Errorf("%s not found in PATH; pass --%s", spec.ID, spec.ID)
+		}
+		kinds = append(kinds, spec.Kind)
 	}
 	if len(kinds) == 0 {
-		kinds = append(kinds, pb.Agent_AGENT_CODEX)
-		if cfg.ClaudeBin != "" {
-			kinds = append(kinds, pb.Agent_AGENT_CLAUDE)
+		for _, spec := range daemon.RegisteredAgents {
+			if spec.Required || cfg.Agents[spec.Kind].Bin != "" {
+				kinds = append(kinds, spec.Kind)
+			}
 		}
 	}
 	failed := false
 	var passed []string
 	for _, k := range kinds {
-		name, how := "Codex", "GPT-6-Luna, low effort"
-		if k == pb.Agent_AGENT_CLAUDE {
-			name, how = "Claude Code", "the catalog's models"
+		spec, _ := daemon.FindAgentByKind(k)
+		name := spec.Name
+		how := ""
+		if chk, ok := d.Checkable(k); ok {
+			how = chk.DoctorDescription()
 		}
 		fmt.Printf("Checking the installed %s with a throwaway session (%s)\n", name, how)
 		fmt.Printf("in %s. Startup prompts there are answered for you.\n\n", work)

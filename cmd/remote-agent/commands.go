@@ -54,15 +54,26 @@ func explain(err error) error {
 func runDaemon(args []string) error {
 	fs := flag.NewFlagSet("daemon", flag.ExitOnError)
 	approvalTimeout := fs.Duration("approval-timeout", 10*time.Minute, "deny a permission request nobody answers within this time")
-	codexBin := fs.String("codex", os.Getenv("REMOTE_AGENT_CODEX"), "codex executable (default: codex in PATH)")
-	claudeBin := fs.String("claude", os.Getenv("REMOTE_AGENT_CLAUDE"), "claude executable (default: claude in PATH, if any)")
+	agentFlags := make(map[string]*string)
+	for _, spec := range daemon.RegisteredAgents {
+		envVar := "REMOTE_AGENT_" + strings.ToUpper(spec.ID)
+		usage := fmt.Sprintf("%s executable (default: %s in PATH)", spec.ID, spec.ID)
+		if !spec.Required {
+			usage = fmt.Sprintf("%s executable (default: %s in PATH, if any)", spec.ID, spec.ID)
+		}
+		agentFlags[spec.ID] = fs.String(spec.ID, os.Getenv(envVar), usage)
+	}
 	fs.Parse(args)
 
 	if max := time.Duration(agent.HookTimeoutSeconds-60) * time.Second; *approvalTimeout > max {
 		return fmt.Errorf("--approval-timeout must be at most %s", max)
 	}
 	ensureUTF8()
-	cfg, err := daemonConfig(*codexBin, *claudeBin, tmuxClient())
+	agentBins := make(map[string]string)
+	for id, flagVal := range agentFlags {
+		agentBins[id] = *flagVal
+	}
+	cfg, err := daemonConfig(agentBins, tmuxClient())
 	if err != nil {
 		return err
 	}
@@ -72,7 +83,12 @@ func runDaemon(args []string) error {
 	var d *daemon.Daemon
 	cfg.Started = func(ctx context.Context) { relay.New(backend{d}).Run(ctx) }
 	d = daemon.New(cfg)
-	slog.Info("starting daemon", "codex", cfg.CodexBin, "claude", cfg.ClaudeBin, "approval_timeout", *approvalTimeout)
+	logArgs := make([]any, 0, len(daemon.RegisteredAgents)*2+2)
+	for _, spec := range daemon.RegisteredAgents {
+		logArgs = append(logArgs, spec.ID, cfg.Agents[spec.Kind].Bin)
+	}
+	logArgs = append(logArgs, "approval_timeout", *approvalTimeout)
+	slog.Info("starting daemon", logArgs...)
 	return d.Run(ctx)
 }
 
@@ -81,17 +97,9 @@ func runDaemon(args []string) error {
 // also named for client-created sessions to find in the user's login
 // shell, so that those sessions follow the shell's configuration rather
 // than this process's PATH.
-func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, error) {
+func daemonConfig(agentBins map[string]string, tc *tmux.Client) (daemon.Config, error) {
 	if _, err := tc.CheckVersion(); err != nil {
 		return daemon.Config{}, err
-	}
-	codexCmd := codexBin
-	if codexBin == "" {
-		p, err := exec.LookPath("codex")
-		if err != nil {
-			return daemon.Config{}, errors.New("codex not found in PATH; pass --codex")
-		}
-		codexBin, codexCmd = p, "codex"
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -105,32 +113,40 @@ func daemonConfig(codexBin, claudeBin string, tc *tmux.Client) (daemon.Config, e
 		return daemon.Config{}, err
 	}
 	home, _ := os.UserHomeDir()
-	codexHome := os.Getenv("CODEX_HOME")
-	if codexHome == "" {
-		codexHome = filepath.Join(home, ".codex")
-	}
-	claudeCmd := claudeBin
-	if claudeBin == "" {
-		claudeCmd = "claude"
-		// The path in PATH, not the versioned file it links to, which
-		// Claude Code's updates replace.
-		claudeBin, _ = exec.LookPath("claude")
-	}
-	claudeHome := os.Getenv("CLAUDE_CONFIG_DIR")
-	if claudeHome == "" {
-		claudeHome = filepath.Join(home, ".claude")
+	agents := make(map[pb.Agent]daemon.AgentConfig)
+	for _, spec := range daemon.RegisteredAgents {
+		bin := agentBins[spec.ID]
+		cmd := bin
+		if bin == "" {
+			cmd = spec.ID
+			p, err := exec.LookPath(spec.ID)
+			if err != nil {
+				if spec.Required {
+					return daemon.Config{}, fmt.Errorf("%s not found in PATH; pass --%s", spec.ID, spec.ID)
+				}
+			} else {
+				bin = p
+			}
+		}
+		agentHome := ""
+		if spec.HomeEnv != "" {
+			agentHome = os.Getenv(spec.HomeEnv)
+		}
+		if agentHome == "" {
+			agentHome = filepath.Join(home, "."+spec.ID)
+		}
+		ac := daemon.AgentConfig{
+			Bin:  bin,
+			Cmd:  cmd,
+			Home: agentHome,
+		}
+		agents[spec.Kind] = ac
 	}
 	return daemon.Config{
-		Exe:         exe,
-		CodexBin:    codexBin,
-		CodexCmd:    codexCmd,
-		CodexHome:   codexHome,
-		ClaudeBin:   claudeBin,
-		ClaudeCmd:   claudeCmd,
-		ClaudeHome:  claudeHome,
-		Tmux:        tc,
-		HistoryPath: filepath.Join(codexHome, "history.jsonl"),
-		Env:         env,
+		Exe:    exe,
+		Agents: agents,
+		Tmux:   tc,
+		Env:    env,
 	}, nil
 }
 
@@ -183,24 +199,22 @@ func environ() map[string]string {
 // runNew starts a session without attaching: Codex, or the CLI named by
 // a leading --agent.
 func runNew(args []string) error {
-	kind := pb.Agent_AGENT_CODEX
+	kind := daemon.RegisteredAgents[0].Kind
 	if len(args) > 0 {
 		name, value, inline := strings.Cut(args[0], "=")
 		if name == "--agent" {
 			rest := args[1:]
 			if !inline {
 				if len(rest) == 0 {
-					return errors.New("usage: remote-agent new [--agent codex|claude] [args]")
+					return fmt.Errorf("usage: remote-agent new [--agent %s] [args]", strings.Join(daemon.AgentIDs(), "|"))
 				}
 				value, rest = rest[0], rest[1:]
 			}
-			switch value {
-			case "codex":
-			case "claude":
-				kind = pb.Agent_AGENT_CLAUDE
-			default:
-				return fmt.Errorf("unknown agent %q; use codex or claude", value)
+			spec, ok := daemon.FindAgent(value)
+			if !ok {
+				return fmt.Errorf("unknown agent %q; use %s", value, strings.Join(daemon.AgentIDs(), " or "))
 			}
+			kind = spec.Kind
 			args = rest
 		}
 	}
@@ -492,10 +506,10 @@ func runAnswer(args []string) error {
 }
 
 func agentName(a pb.Agent) string {
-	if a == pb.Agent_AGENT_CLAUDE {
-		return "claude"
+	if spec, ok := daemon.FindAgentByKind(a); ok {
+		return spec.ID
 	}
-	return "codex"
+	return "unknown"
 }
 
 func runInterrupt(args []string) error {
@@ -526,8 +540,12 @@ func runStop(args []string) error {
 // reached it prints nothing, which leaves the decision to the CLI's own
 // prompt in the terminal.
 func runHook(args []string) int {
-	if len(args) < 1 || (args[0] != "codex" && args[0] != "claude") {
-		fmt.Fprintln(os.Stderr, "usage: remote-agent hook codex|claude")
+	if len(args) < 1 {
+		fmt.Fprintf(os.Stderr, "usage: remote-agent hook %s\n", strings.Join(daemon.AgentIDs(), "|"))
+		return 2
+	}
+	if _, ok := daemon.FindAgent(args[0]); !ok {
+		fmt.Fprintf(os.Stderr, "usage: remote-agent hook %s\n", strings.Join(daemon.AgentIDs(), "|"))
 		return 2
 	}
 	sessionID := os.Getenv("RA_SESSION")

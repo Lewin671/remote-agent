@@ -7,35 +7,42 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/daemon"
 )
 
 func runModel(args []string) error {
-	if len(args) == 0 || (len(args) == 1 && (args[0] == "codex" || args[0] == "claude")) {
-		kind := pb.Agent_AGENT_CODEX
-		if len(args) == 1 && args[0] == "claude" {
-			kind = pb.Agent_AGENT_CLAUDE
+	if len(args) == 0 {
+		return runListModels(pb.Agent_AGENT_UNSPECIFIED)
+	}
+	if len(args) == 1 {
+		if spec, ok := daemon.FindAgent(args[0]); ok {
+			return runListModels(spec.Kind)
 		}
-		res, err := dial().ListModels(context.Background(), connect.NewRequest(&pb.ListModelsRequest{Agent: kind}))
-		if err != nil {
-			return explain(err)
-		}
-		for _, m := range res.Msg.Models {
-			def := ""
-			if m.Slug == res.Msg.DefaultModel {
-				def = " (default)"
-			}
-			fmt.Printf("%-16s %-14s %s%s\n", terminalText(m.Slug, false), terminalText(m.DisplayName, false), terminalText(strings.Join(m.Efforts, ","), false), def)
-		}
-		return nil
 	}
 	if len(args) == 2 {
-		args = append(args, "") // Claude Code models without effort levels
+		args = append(args, "") // models without effort levels
 	}
-	if err := needArgs(args, 3, "model [codex|claude] | model <id> <model> [<effort>]"); err != nil {
+	usage := fmt.Sprintf("model [%s] | model <id> <model> [<effort>]", strings.Join(daemon.AgentIDs(), "|"))
+	if err := needArgs(args, 3, usage); err != nil {
 		return err
 	}
 	_, err := dial().SetModel(context.Background(), connect.NewRequest(&pb.SetModelRequest{SessionId: args[0], Model: args[1], Effort: args[2]}))
 	return explain(err)
+}
+
+func runListModels(kind pb.Agent) error {
+	res, err := dial().ListModels(context.Background(), connect.NewRequest(&pb.ListModelsRequest{Agent: kind}))
+	if err != nil {
+		return explain(err)
+	}
+	for _, m := range res.Msg.Models {
+		def := ""
+		if m.Slug == res.Msg.DefaultModel {
+			def = " (default)"
+		}
+		fmt.Printf("%-16s %-14s %s%s\n", terminalText(m.Slug, false), terminalText(m.DisplayName, false), terminalText(strings.Join(m.Efforts, ","), false), def)
+	}
+	return nil
 }
 
 var modeNames = map[string]pb.ApprovalMode{

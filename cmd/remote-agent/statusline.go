@@ -13,7 +13,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
-	"github.com/Lewin671/remote-agent/internal/claude"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/paths"
 )
 
@@ -49,7 +49,7 @@ func runUserStatusLine(sessionID string, input []byte) int {
 	if sessionID == "" {
 		return 0
 	}
-	b, err := os.ReadFile(filepath.Join(paths.SessionDir(sessionID), claude.StatusLineFile))
+	b, err := os.ReadFile(filepath.Join(paths.SessionDir(sessionID), agent.StatusLineFile))
 	if err != nil {
 		return 0
 	}

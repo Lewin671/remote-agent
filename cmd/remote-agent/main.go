@@ -4,14 +4,21 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
-	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/buildinfo"
+	"github.com/Lewin671/remote-agent/internal/daemon"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/updater"
 )
 
-const usage = `remote-agent: operate native AI coding CLIs running in tmux
+func usage() string {
+	ids := strings.Join(daemon.AgentIDs(), "|")
+	var agentLines strings.Builder
+	for _, a := range daemon.RegisteredAgents {
+		fmt.Fprintf(&agentLines, "  remote-agent %-24s start a %s session here and attach to it\n", a.ID+" ["+a.ID+" args]", a.Name)
+	}
+	return fmt.Sprintf(`remote-agent: operate native AI coding CLIs running in tmux
 
 Usage:
   remote-agent update [check|status|auto]  update the daemon; update help for options
@@ -19,9 +26,7 @@ Usage:
   remote-agent schedule <operation>       manage persistent timed Agent messages (schedule help)
   remote-agent mcp [--session ID]          serve scheduling tools over stdio
   remote-agent daemon [flags]              run the daemon in the foreground
-  remote-agent codex [codex args]          start a Codex session here and attach to it
-  remote-agent claude [claude args]        start a Claude Code session here and attach to it
-  remote-agent new [--agent claude] [args] start a session here without attaching
+%s  remote-agent new [--agent %s] [args] start a session here without attaching
   remote-agent ls [-a]                     list sessions
   remote-agent attach <id>                 attach to a session
   remote-agent send [--queue] <id> <text>  send a message ("-" reads stdin); --queue waits for the turn to end
@@ -35,7 +40,7 @@ Usage:
   remote-agent stop <id>                   end the session
   remote-agent resume <id>                 start an ended session again
   remote-agent fork <id>                   start a new session from a session's conversation
-  remote-agent model [codex|claude]        list a CLI's models
+  remote-agent model [%s]        list a CLI's models
   remote-agent model <id> <model> [<effort>]
                                            switch a session's model
   remote-agent mode <id> ask|auto|full|plan switch the approval mode
@@ -44,12 +49,13 @@ Usage:
   remote-agent compact <id>                compact the session's context
   remote-agent plan <id> implement|clear|keep
                                            answer "Implement this plan?"
-  remote-agent doctor [codex|claude]       check that the installed CLIs work with remote-agent
+  remote-agent doctor [%s]       check that the installed CLIs work with remote-agent
   remote-agent account join|secret|status
                                            connect this machine to a server
 
 Session IDs may be abbreviated to any unique prefix.
-`
+`, agentLines.String(), ids, ids, ids)
+}
 
 func main() {
 	if len(os.Args) == 2 && (os.Args[1] == "--version" || os.Args[1] == "version") {
@@ -57,7 +63,7 @@ func main() {
 		return
 	}
 	if len(os.Args) < 2 {
-		fmt.Fprint(os.Stderr, usage)
+		fmt.Fprint(os.Stderr, usage())
 		os.Exit(2)
 	}
 	cmd, args := os.Args[1], os.Args[2:]
@@ -79,10 +85,6 @@ func main() {
 		err = runMCP(args)
 	case "daemon":
 		err = runDaemon(args)
-	case "codex":
-		err = runAgent(pb.Agent_AGENT_CODEX, args, true)
-	case "claude":
-		err = runAgent(pb.Agent_AGENT_CLAUDE, args, true)
 	case "new":
 		err = runNew(args)
 	case "ls", "list":
@@ -132,10 +134,14 @@ func main() {
 	case "pty-host":
 		os.Exit(runPTYHost(args))
 	case "help", "-h", "--help":
-		fmt.Print(usage)
+		fmt.Print(usage())
 		return
 	default:
-		fmt.Fprintf(os.Stderr, "remote-agent: unknown command %q\n\n%s", cmd, usage)
+		if spec, ok := daemon.FindAgent(cmd); ok {
+			err = runAgent(spec.Kind, args, true)
+			break
+		}
+		fmt.Fprintf(os.Stderr, "remote-agent: unknown command %q\n\n%s", cmd, usage())
 		os.Exit(2)
 	}
 	if err != nil {
