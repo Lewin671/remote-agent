@@ -53,8 +53,8 @@ func (s *session) rememberNative(h *agent.Hook) {
 	if s.nativePending == nil {
 		s.nativePending = map[string]*agent.Hook{}
 	}
-	if old := s.nativePending[h.ToolUseID]; old != nil && !sameNativeCall(old, &copy) {
-		copy.Uncertain = true
+	if old := s.nativePending[h.ToolUseID]; old != nil {
+		copy.Uncertain = copy.Uncertain || old.Uncertain || !sameNativeCall(old, &copy)
 	}
 	if call := s.nativeCalls[h.ToolUseID]; call != nil && !sameNativeCall(call, &copy) {
 		copy.Uncertain = true

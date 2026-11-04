@@ -2121,6 +2121,18 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 				s.mu.Lock()
 				a.claimed = true
 				delete(s.approvals, a.id)
+				// The same screen and report may remain after a lost key-write
+				// acknowledgement. Fence the candidate as well as this card so
+				// neither a poll, duplicate hook nor restart can rearm it.
+				if pending := s.nativePending[a.native.ToolUseID]; pending != nil {
+					pending.Uncertain = true
+				}
+				if call := s.nativeCalls[a.native.ToolUseID]; call != nil {
+					call.Uncertain = true
+				}
+				if saveErr := s.saveNativeLocked(); saveErr != nil {
+					s.noteStorageLocked(saveErr)
+				}
 				s.mu.Unlock()
 				_ = s.emit(&pb.Event{TurnId: a.turnID, Kind: &pb.Event_ApprovalResolved{ApprovalResolved: &pb.ApprovalResolved{ApprovalId: a.id, Decision: pb.ApprovalDecision_APPROVAL_DECISION_CANCELED, Message: "去终端处理：按键已发送，结果未确认"}}})
 				a.decision <- decision{recorded: true}
