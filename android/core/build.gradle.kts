@@ -56,6 +56,8 @@ tasks.test {
     // two classes so real network/backoff waits do not serialize the whole JVM suite.
     maxParallelForks = minOf(2, Runtime.getRuntime().availableProcessors())
     dependsOn(buildTestFixtures)
+    // A changed Go relay must rerun JVM integration tests even if Kotlin did not change.
+    inputs.files(testFixtures).withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("raSecurityFixture", testFixtures.get().file("securityfixture").asFile.absolutePath)
     systemProperty("raServer", testFixtures.get().file("relaytestserver").asFile.absolutePath)
     // The test vectors are shared with Go and TypeScript.
