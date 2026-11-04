@@ -1836,3 +1836,12 @@ v0.53.0 源码基础上的本地修复，协议仍为 13，未推送、发布或
 - 单独的无模型请求原生实验核对附件折叠/展开和 Escape 清理；采集的屏幕与 transcript 样本脱敏后进入 testdata，并通过公开内容扫描。未知 `/mcp` 菜单和后台任务中断采用独立审计的真实脱敏画面做 parser/daemon 回放。
 - Web 94 个测试文件、1407 项测试及类型检查/生产构建通过；Android core 473、terminal 7、app 453 项单元测试通过；iOS Core 的 `swift test` 638 项、96 suites 通过。`go vet ./...`、`go test ./...` 和 `go test -count=5 ./internal/antigravity` 通过。
 - 以上远程操作由合成客户端驱动，未做 Chrome、Android 或 iOS 直接界面点击，也没有真机验收。Codex/Claude 的原生行为依靠自动回归，本次没有重复真实会话端到端。API key 登录及计费来源未实测，缺口见 [plan.md](plan.md)。用户 agy/Claude settings 哈希不变；没有发送 `/model` 或直接编辑原生 CLI 状态目录。测试 server、daemon、tmux 和原生探针均已停止，临时环境已清理。
+
+
+## Antigravity 审查补修复验（2026-11-04）
+
+在前述修复上补测三项边界：忽略计划、草稿或不完整审阅行不会伪造终端弹窗；聊天里的 📎 和缺少原生操作提示的附件文字不算输入附件；清附件前对当前屏幕可见忙碌状态复核，不能仅凭尚未更新的 transcript 判空闲。对应 daemon/adapter 回归测试通过，真实审阅面板的身份或修订不匹配仍不发回答键。
+
+`./scripts/acceptance-agy.sh` 用当前 checkout 构建隔离本地 relay/daemon，真实 agy 1.5.0、Gemini 3.8 Flash / low；首请求前核对 statusLine 的 Gemini 五小时剩余额度至少 20%。双图提交与归属、命令/文件双向审批、单选问题、无需人工 Ctrl-R 的计划批准/拒绝、修订失效和多待审保护、中断、重启重接、恢复与原生分叉、压缩及额度全部通过，最终输出 `all checks passed`。这是合成加密客户端到真实 CLI 的链路验收，未重复三端直接界面点击；用户 agy/Claude settings 哈希不变，临时环境已清理。
+
+fetch/rebase 后宿主正常目录的 `go vet ./...`、`go test ./...`、Antigravity 五遍、网页 1407 项测试/类型检查/生产构建、Android 933 项单元测试、iOS Core 638 项测试全部通过。独立审查中的 ptyhost 信号和 scratch Unix socket 路径长度失败没有在宿主复核中重现，不记作审查全量通过的证据。API 计费来源仍未实测，缺口继续见 [plan.md](plan.md)。
