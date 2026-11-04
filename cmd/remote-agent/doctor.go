@@ -63,16 +63,6 @@ func runDoctor(args []string) error {
 	if err := updater.EnsureState(tmp); err != nil {
 		return err
 	}
-	prevHome, hadHome := os.LookupEnv("REMOTE_AGENT_HOME")
-	os.Setenv("REMOTE_AGENT_HOME", tmp) // the private daemon and its hooks
-	restore := func() {
-		if hadHome {
-			os.Setenv("REMOTE_AGENT_HOME", prevHome)
-		} else {
-			os.Unsetenv("REMOTE_AGENT_HOME")
-		}
-	}
-	defer restore()
 	defer tc.Run("kill-server")
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError})))
@@ -80,11 +70,11 @@ func runDoctor(args []string) error {
 	defer stop()
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
-	d := daemon.New(paths.Dir(), cfg)
+	d := daemon.New(tmp, cfg)
 	errc := make(chan error, 1)
 	go func() { errc <- d.Run(ctx) }()
 	for i := 0; ; i++ {
-		if _, err := os.Stat(paths.Socket()); err == nil {
+		if _, err := os.Stat(filepath.Join(tmp, "daemon.sock")); err == nil {
 			break
 		}
 		select {
