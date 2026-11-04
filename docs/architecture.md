@@ -1,6 +1,6 @@
 # 架构与技术决策
 
-项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex 和 Claude Code，以及技术决策和理由。几个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，iOS 客户端见 [ios-client.md](ios-client.md)，会话里的图片见 [session-images.md](session-images.md)，文件附件见 [session-files.md](session-files.md)。两个 CLI 的实测行为见 [codex-notes.md](codex-notes.md) 和 [claude-code-notes.md](claude-code-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
+项目边界见 [scope.md](scope.md)。本文记录各端怎么划分、彼此怎么通信、怎么接入 Codex、Claude Code 和 Antigravity，以及技术决策和理由。几个主题另有文档：Android 客户端见 [android-client.md](android-client.md)，iOS 客户端见 [ios-client.md](ios-client.md)，会话里的图片见 [session-images.md](session-images.md)，文件附件见 [session-files.md](session-files.md)。各 CLI 的实测行为见 [codex-notes.md](codex-notes.md)、[claude-code-notes.md](claude-code-notes.md) 和 [antigravity-notes.md](antigravity-notes.md)，还没定的问题见 [plan.md](plan.md) 的「待确认」。
 
 章节编号被代码注释引用（如 `architecture §13`），所以不重排、不改号。
 
@@ -290,17 +290,17 @@ daemon 和 server 之间同样分主 WebSocket 和终端 WebSocket 两条连接�
 
 ### 客户端的审批模式
 
-客户端的模式切换只做 Codex 和 Claude Code 都有的 4 种，这样接入 Claude Code 时不用改界面：
+客户端的模式切换只做各 CLI 都有的 4 种，这样接入新的 CLI 时不用改界面：
 
-| 客户端 | Codex | Claude Code |
-|---|---|---|
-| 询问 | `Ask for approval`（`/permissions`） | manual |
-| 自动 | `Approve for me`（`auto_review`） | auto |
-| 计划 | Plan mode（空闲时 `/plan` 进入、Shift+Tab 退出，和权限相互独立） | plan |
-| 完全放行 | `Full Access` | bypass（启动时没允许的会话置灰） |
-| 不提供 | — | accept edits |
+| 客户端 | Codex | Claude Code | Antigravity |
+|---|---|---|---|
+| 询问 | `Ask for approval`（`/permissions`） | manual | Default + `toolPermission: request-review`（启动时定） |
+| 自动 | `Approve for me`（`auto_review`） | auto | Auto（部分账户不可用） |
+| 计划 | Plan mode（空闲时 `/plan` 进入、Shift+Tab 退出，和权限相互独立） | plan | Plan |
+| 完全放行 | `Full Access` | bypass（启动时没允许的会话置灰） | `toolPermission: always-proceed`（只能启动时选，选了不能切回） |
+| 不提供 | — | accept edits | accept edits |
 
-各项的实测情况见 [codex-notes §4](codex-notes.md#4-审批模式) 和 [claude-code-notes.md](claude-code-notes.md)。
+各项的实测情况见 [codex-notes §4](codex-notes.md#4-审批模式)、[claude-code-notes.md](claude-code-notes.md) 和 [antigravity-notes.md](antigravity-notes.md)，Antigravity 的做法见第 19 节。
 
 - **客户端只允许单次审批**：「允许」通过 hook 返回 allow；「不允许」可附说明，通过 hook 返回 deny，不中断整轮。「以后不再问」由用户在原生终端里选择，daemon 不自动按原生审批框的第二项。现有 hook 和屏幕信息不能把这个选项可靠绑定到特定工具请求，同前缀命令、同名文件和留在历史里的文本都可能误匹配。daemon 不声明远程永久审批能力；客户端发来永久审批请求时明确拒绝，保留原审批等待用户处理。
 - **「询问」的语义不抹平**：Codex 在工作区内改文件、跑命令本来就不问，只有联网和越界才问；Claude Code manual 每一步都问。客户端按 CLI 实际发来的请求显示
@@ -649,7 +649,7 @@ Claude Code 和 Codex 走同一条路：原生 TUI 跑在 tmux 的 PTY 代理下
 - **会话属于哪个 CLI**：会话信息、新建会话、列模型都带 `Agent`；以前的会话没有这个字段，按 Codex 处理。机器元数据列出本机装了哪些 CLI 和版本，客户端只提供装了的
 - **daemon 的分层**：会话生命周期、事件序号、持久化队列、控制锁、审批的竞争处理、同步和终端流是共用的；每个 CLI 各自实现三组接口（`internal/agent`）：启动和恢复（参数、版本、模型列表）、事件来源（绑定 transcript、增量解析、确认消息已提交）、终端控制（认输入框、注入、中断、回答提问、计划、切换设置）。屏幕、菜单、参数和 JSON 格式的知识只留在各自的包里（`internal/codex`、`internal/claude`）
 - **环境变量**：和 Codex 共用 `~/.remote-agent/agent.env`（第 6 节），代理这类配置属于电脑，不属于某个 CLI
-- **新建会话的默认值**：daemon 设置里 Codex 和 Claude Code 各有一套默认模型、推理强度和审批模式，作为新项目的初值；项目设置（第 13 节）里每个 CLI 的那一套各从对应的默认值开始
+- **新建会话的默认值**：daemon 设置里每个 CLI 各有一套默认模型、推理强度和审批模式，作为新项目的初值；项目设置（第 13 节）里每个 CLI 的那一套各从对应的默认值开始
 - **工具开始**：Claude Code 会并行调用工具，`ToolStarted` 带上调用 ID 配对，不按先后顺序
 
 下面是 Claude Code 这一侧的具体做法，括号里的「notes §n」指 [claude-code-notes.md](claude-code-notes.md) 的第 n 节。
@@ -813,3 +813,43 @@ MCP 每次操作先确认 daemon 支持受限委托；不支持时拒绝工具�
 dispatching 状态在新建/恢复会话和注入消息之前持锁保存；会话启动和排队在调度锁外使用调度循环的 context 执行，再按 execution ID 持锁接回结果。启动阻塞不阻止任务管理或其他任务派发；期间的暂停和取消状态不会被启动结果覆盖。daemon 关闭时取消调度循环并等待派发 goroutine 退出，再释放 daemon 锁。关闭取消使尚未完成回写的执行保留持久化的 dispatching 记录，不记为执行失败；重启时与在该边界崩溃一样将这次执行记为“无法确认”，不自动重试；自动执行同时停住任务，手动执行不改变自动计划；已持久化的 queued/running 执行则通过原会话的队列、请求 ID 和事件游标继续跟踪，不重复发送。队列已持久受理、排队事件失败时也保留 active 执行及原请求 ID、会话 ID 和事件游标，执行状态为 queued，并通过该执行的 reason 说明「已排队但记录失败」；不记 could_not_queue_message，不禁止执行完成后的下一次调度，活跃期间新受理的手动请求等待它结束，不再生成第二个 Active；已有待发手动请求时拒绝重复请求。自动执行的消息提交无法确认、执行失败或中断时停止自动续跑；interval、calendar 明确恢复时重新计算下一次，只有截止或次数用尽才完成。手动运行仅记录本次结果，不改变自动调度。其中「无法确认」的那次执行，事后被 CLI 的记录确认了（第 6 节「迟到的记录仍然算数」），就按运行 ID 接回并跟到这一轮结束、照常续跑，不依赖最后一条历史记录，也不重发；等不到记录就一直停在不确定。这期间暂停任务不影响接回，任务保持暂停；恢复、替换执行定义或取消则表示放下那次执行，之后不再接回（操作前会先看一眼记录是否已到）。手动请求不触发自动执行的迟到接回，处于 uncertain 时直接拒绝，也不删除迟到游标。daemon 只在内存里记着哪次执行在等，重启后不再接回。
 
 电脑和 daemon 需要运行，客户端无需在线；relay 断线不阻止本地调度，原有审批和消息同步机制仍有效。休眠或停机后默认只补最近一次、期限为 24 小时，可调整期限；超过期限记录跳过，周期任务转到下一次。绝对时间支持十年内的时间，间隔以秒计。当前加密接口提供查询和管理，发现与修订号已提供；客户端离线任务缓存、变更订阅与界面后续实现。
+
+## 19. 接入 Antigravity
+
+Antigravity CLI（`agy`）走和 Codex、Claude Code 同一条路：原生 TUI 跑在 tmux 的 PTY 代理下，输出读 transcript，审批和轮次边界靠 hook 和屏幕状态，屏幕只用来判断状态和按键作答。实测依据见 [antigravity-notes.md](antigravity-notes.md)（下文「notes §n」），界面见 [client-v56 · 多 CLI](design/client-v56.html#cli)。
+
+### 多个 CLI 的通用做法
+
+第 16 节的分层不变，加第三个 CLI 时把原来散在各处的「是不是 Claude Code」收拢到两处：
+
+- **CLI 的短 ID**：等于它的可执行文件名，`codex`、`claude`、`agy`。本地命令（`remote-agent <id>`）、hook 和状态栏转发的参数（`remote-agent hook <id>`、`remote-agent statusline <id>`）、定时任务的目标 CLI、daemon 的 `--<id>` 参数和 `REMOTE_AGENT_<ID>` 变量、校验记录 `verified-<id>.json` 都用它；显示名（Codex、Claude Code、Antigravity）只出现在界面里
+- **daemon**：按固定顺序持有各 CLI 的 adapter，按 kind 或 ID 查找。`AGENT_UNSPECIFIED` 只在一处当作 Codex（Claude Code 接入前的会话），其余认不出的值一律报错，不回退到任何 CLI。CLI 之间的行为差异（文件引用写法、审批摘要、轮次结束时撤回审批、提前取消后恢复输入、会话环境变量、标准上下文窗口等）都写在各自的 adapter 里，daemon 的通用代码不判断是哪个 CLI。daemon 设置里各 CLI 的默认值（Codex 在顶层、Claude Code 在 `claude`、Antigravity 在 `antigravity`）只经一组读写函数访问
+- **客户端**：每端一个 CLI 描述表（网页 `web/src/agents.ts`、Android `core/Agents.kt`、iOS `RACore/Agents.swift`），写名称、ID、额度窗口和它们的叫法、模型名写法、工具标签写法、各项能力和默认值的读写，其余代码只问描述表。认不出的值显示为「未知 CLI」，不提供任何 CLI 专属操作，也不当作 Codex
+- **能力差异的画法**（[design-system](design-system.md)）：CLI 根本没有的功能不显示；某个会话或模型暂时用不了的保留、置灰，并用一行说明原因
+- **加一种 CLI 要做的事**：一个 adapter 包、daemon 注册一行、每端描述表一行、协议里的 `Agent` 枚举加一个值（协议版本随之加一）
+
+### Antigravity 这一侧
+
+- **启动**：`agy --add-dir <会话目录>/agy --settings <会话目录>/agy-settings.json [--conversation <id>] [--model <模型> --effort <档位>] [--mode <模式>]`，由 PTY 代理启动，来源判定和起点环境同第 6 节。`--add-dir` 指向的目录只放 remote-agent 自己的 `.agents/hooks.json` 和 `.agents/mcp_config.json`，和用户自己的 hook、MCP 一起生效，不改用户项目和 `~/.gemini` 下的任何文件（notes §1、§3）。settings 文件只对这次启动生效、agy 不保存，里面写：`trustedWorkspaces`（会话目录和附加目录，免得信任框挡住启动，也不往用户的信任列表里加）、`statusLine`（见下文「额度」）、`toolPermission`（见「审批模式」）
+- **会话 ID**：agy 不能事先指定 ID。第一条消息提交后 `SessionStart` hook 带来 `conversationId` 和 transcript 路径，记作会话的 CLI 会话 ID；在此之前会话没有 transcript，也就没有要读的内容。恢复用 `--conversation <id>`，追加写同一份 transcript
+- **解析 transcript**：读 `brain/<id>/.system_generated/logs/transcript.jsonl`，逐步追加、已写的行不改；某一行带 `truncated_fields` 时按行号读 `transcript_full.jsonl` 的同一行取全文。`USER_INPUT` 是用户消息（去掉 `<USER_REQUEST>`、`<ADDITIONAL_METADATA>` 外壳），`PLANNER_RESPONSE` 的 `thinking` 记为推理、正文记为回复、`tool_calls` 记为工具开始，随后的结果步骤配成工具调用；`CHECKPOINT` 记为「上下文已压缩」；图片按 `media` 里的本地路径读取。用量取每步的 token 字段，上下文窗口取状态栏输入的 `context_window`
+- **轮次边界**：`Stop` hook 的 `terminationReason` 和 transcript 共同确定一轮结束；中断按屏幕回到空闲输入框补记（具体判据按 notes 实测写在 adapter 里，和 Claude Code 的提前中断一样要求稳定画面和 transcript 复查）
+- **输入**：排队、暂存本地按键、bracketed paste 同其他 CLI。清空输入框用 Ctrl-E 再 Ctrl-U（notes §5）。运行中提交的消息 agy 自己排队到下一轮。提交确认以 `history.jsonl` 里出现这段文本为准（第一条消息那行没有 `conversationId`）
+- **审批**：`PreToolUse` hook 只上报、立即返回不表态（notes §3：在 `request-review` 下 hook 的 `allow` 也跳不过原生框，`deny` 才生效；阻塞 hook 会让终端看不到审批框，违背「电脑和手机操作同一个会话」）。原生审批框出现时，daemon 用最近一次上报的、和框里命令或路径对得上的调用生成审批卡；对不上就只提示「终端里有弹窗」，不猜。客户端「允许」= 按 `1`（只允许这一次），「不允许」= 按 `4`（No, cancel，模型会收到拒绝），附带的说明作为下一条消息发出。超时按 `4`。终端里先答了（框消失、这次调用有了结果或这一轮结束）就把卡片记为「已在终端处理」。框里「以后不再问」的两项只能在终端里选，和第 7 节的规定一致
+- **审批模式**：
+  - 询问、自动、计划对应 agy 的 Default、Auto、Plan 三种循环模式（Shift+Tab），新建时用 `--mode`，运行中用 Shift+Tab 一格一格走并核对；当前模式以状态栏输入的 `cycle_mode` 为准（缺省即 Default），终端里切的照实记一条。accept edits 这类没有对应的照实显示
+  - 询问模式下启动时把 `toolPermission` 设为 `request-review`，让需要审批的操作弹框；完全放行对应启动时的 `toolPermission: always-proceed`。这两者只能在启动时定，所以普通会话不能切到完全放行（`full_access_unavailable`），完全放行的会话也切不回其他三种（`mode_locked`，见「协议」）；客户端置灰并写明原因。不用 `--dangerously-skip-permissions`
+  - 自动模式在部分账户上不可用（agy 启动时警告 `--mode auto is not available for this account`）；daemon 看到这个警告就把这台电脑上 Antigravity 的模型都标为 `auto_unavailable`
+  - 跟随 CLI 设置时，daemon 读 `~/.gemini/antigravity-cli/settings.json` 的 `toolPermission` 报告默认模式：`always-proceed` 为完全放行，`request-review`、`strict` 为询问，其他为未知
+- **模型和推理强度**：模型列表来自 `agy models`（ID 带 `-low`/`-medium`/`-high` 后缀，按基础 ID 合并成一行、档位列为可选推理强度），新建时传 `--model <基础 ID> --effort <档位>`。**会话中不换模型和推理强度**：agy 的 `/model` 会改写用户的全局设置（notes §6），daemon 对 Antigravity 会话的切换请求返回不支持，客户端在会话设置里置灰并说明「运行中不能换模型，新建会话时可选」
+- **模型提问**：`ask_question` 由 `PreToolUse` hook 上报为提问卡片；回答按屏幕上的编号：单选按数字即提交，多选按数字切换勾选再回车。自由输入（Other）不远程代答，提示去终端
+- **计划**：Plan 模式下 agy 写出待审阅的计划文件并提示审阅，记为 `PlanProposed`。批准按审阅界面的 `y`，批准后 agy 自己回到 Default 模式（客户端注明）；继续规划按 `n`，附带的意见作为下一条消息发出；没有「清空上下文后执行」
+- **压缩**：空闲时 `/compact`，以 transcript 出现 `CHECKPOINT` 为完成
+- **分叉**：agy 的分叉是会话里的 `/fork`，它把当前进程切到新对话，而同一个对话只能有一个进程打开，做不到「原会话不动、另开一个」，所以 Antigravity 会话暂不提供分叉（返回不支持，客户端不显示）
+- **定时任务**：托管会话专用的 MCP 写在附加目录的 `.agents/mcp_config.json`，环境变量里带会话标识，和第 18 节其他 CLI 的做法一致
+- **额度**：状态栏和 Claude Code 一样包一层：settings 里的 `statusLine` 设成 `"$RA_EXE" statusline agy`，把输入转给 daemon，再用同样的输入运行用户原来的状态栏命令，输出原样交回，终端里看到的不变；用户没有状态栏就只输出 agy 默认的内容。输入里的 `quota` 按桶给出 5 小时和 7 天窗口（`gemini-5h`、`gemini-weekly`、`gemini-argon-wtu-weekly`、`3p-5h`、`3p-weekly`，以实际收到的为准），原名放进 `QuotaWindow.name`，客户端描述表负责叫法（Gemini、Gemini 4 Argon、第三方模型）。账户按 `email` 算短指纹区分，邮箱本身不离开电脑。第一条回复之前没有 `quota`，显示「暂未获取额度」；用 API key 登录时没有订阅额度
+- **环境**：代理等变量和其他 CLI 一样来自 `~/.remote-agent/agent.env`；客户端开的会话经过用户的登录 shell，能用到用户自己包装过的 `agy`
+
+### 协议
+
+协议版本加一：`Agent` 枚举加 `AGENT_ANTIGRAVITY`；`DaemonSettings` 加 `antigravity` 一组默认值；会话信息加 `mode_locked`（这个会话的审批模式不能再切换，客户端把四种都置灰）。其余沿用已有字段：`full_access_unavailable`、`ModelInfo.auto_unavailable`、`MachineMeta.agents` 和 `quotas`。
