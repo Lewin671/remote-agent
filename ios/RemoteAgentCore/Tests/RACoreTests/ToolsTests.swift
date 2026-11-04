@@ -97,6 +97,7 @@ import Testing
     @Test func labelsNameClaudeToolsAndCodexKinds() {
         #expect(toolLabel(kind: .command, itemType: "Bash", agent: .claude) == "Bash")
         #expect(toolLabel(kind: .command, itemType: "CommandExecution", agent: .codex) == "命令")
+        #expect(toolLabel(kind: .command, itemType: "CommandExecution", agent: .antigravity) == "命令")
     }
 }
 

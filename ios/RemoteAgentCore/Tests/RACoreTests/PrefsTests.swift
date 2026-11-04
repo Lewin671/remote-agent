@@ -133,15 +133,15 @@ import Testing
         #expect(next.agent == .claude)
         #expect(next.agents == [set(.codex, "astra"), set(.claude, "sonnet")])
         #expect(next.updatedMs == 2)
-        // Another machine: both CLIs get an empty entry, the remembered CLI stays.
+        // Another machine: all CLIs get an empty entry, the remembered CLI stays.
         let moved = applySettings(stored: next, op: .init(path: "/a", machineId: "vps", moved: true), now: 3)
         #expect(moved.machineID == "vps")
         #expect(moved.agent == .claude)
-        #expect(moved.agents == [set(.codex), set(.claude)])
+        #expect(moved.agents == [set(.codex), set(.claude), set(.antigravity)])
         // A set edited together with the machine is kept.
         let both = applySettings(
             stored: next, op: .init(path: "/a", machineId: "vps", moved: true, sets: [set(.claude, "opus")]), now: 3)
-        #expect(both.agents == [set(.codex), set(.claude, "opus")])
+        #expect(both.agents == [set(.codex), set(.claude, "opus"), set(.antigravity)])
     }
 
     @Test func pinsKeepTheirOrderAndHidingUnpins() {

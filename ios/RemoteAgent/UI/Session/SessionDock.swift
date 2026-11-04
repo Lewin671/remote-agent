@@ -663,9 +663,8 @@ struct PlanDock: View {
                 .padding(.top, 4).padding(.bottom, 4)
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
-            // Claude Code leaves plan mode for manual approval of edits.
-            if agentInfo(session.agent).planApprovalReturnsToAsk {
-                Text("批准后使用询问模式").type(T.meta, Theme.muted).padding(.top, 7)
+            if let note = agentInfo(session.agent).planNote {
+                Text(note).type(T.meta, Theme.muted).padding(.top, 7)
             }
         }
     }

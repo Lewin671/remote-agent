@@ -8,11 +8,6 @@ import RACore
 import RAProto
 import SwiftUI
 
-/// A sheet's title names the CLI only when it is not Codex, as the mockup does.
-private func sheetTitle(_ s: SessionView, _ what: String) -> String {
-    agentInfo(s.agent).sheetTitle(what)
-}
-
 /// 审批模式: the four modes; full access is confirmed first; only this session changes.
 struct SessionModeSheet: View {
     let session: SessionView
@@ -46,7 +41,7 @@ struct SessionModeSheet: View {
         let pm = session.info?.permissionMode ?? ""
         let outside = !pm.isEmpty && permissionMode(pm) == nil ? (pm == "acceptEdits" ? "accept edits" : pm) : nil
         Group {
-            SheetHead(sheetTitle(session, "审批模式"))
+            SheetHead("审批模式")
             if let outside { Text("当前：\(outside)（在终端设置）").type(T.meta, Theme.muted).padding(.bottom, 4) }
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
                 let off = unavailable(m)
@@ -115,7 +110,7 @@ struct SessionModelSheet: View {
 
     var body: some View {
         let (remote, sid) = (context.remote, session.id)
-        SheetHead(sheetTitle(session, "会话设置"))
+        SheetHead("会话设置")
         if let percent = contextPercent(session), let info = session.info {
             ContextBox(
                 percent: percent,

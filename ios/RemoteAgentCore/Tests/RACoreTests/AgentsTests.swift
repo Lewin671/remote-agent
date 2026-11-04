@@ -6,8 +6,8 @@ import Testing
 
 @Suite struct AgentsTests {
     @Test func listsKnownClisInStableOrder() {
-        #expect(AGENTS.map(\.id) == ["codex", "claude"])
-        #expect(AGENTS.map(\.agent) == [.codex, .claude])
+        #expect(AGENTS.map(\.id) == ["codex", "claude", "agy"])
+        #expect(AGENTS.map(\.agent) == [.codex, .claude, .antigravity])
         #expect(DEFAULT_AGENT == .codex)
         #expect(defaultAgent == .codex)
     }
@@ -17,29 +17,63 @@ import Testing
         #expect(codex.id == "codex")
         #expect(codex.name == "Codex")
         #expect(codex.quotaWindows == ["primary", "secondary"])
+        #expect(codex.quotaWindow("primary") == QuotaWindowDescriptor(label: "5 小时", group: nil))
+        #expect(codex.quotaWindow("secondary") == QuotaWindowDescriptor(label: "7 天", group: nil))
+        #expect(codex.toolLabelFromItemType == false)
         #expect(codex.planClearContext == true)
-        #expect(codex.planApprovalReturnsToAsk == false)
+        #expect(codex.planNote == nil)
         #expect(codex.standardContextOption == false)
+        #expect(codex.autoMayBeUnavailable == false)
         #expect(codex.reconcilesUnclaimedInput == false)
         #expect(codex.sessionNeedsModelList == false)
+        #expect(codex.switchesModelInSession == true)
+        #expect(codex.forks == true)
         #expect(codex.modelLabel("gpt-6-sol") == "GPT-6-Sol")
         #expect(codex.planName("claude_max") == "Max")
         #expect(codex.planName("prolite") == "Pro Lite")
-        #expect(codex.sheetTitle("设置") == "设置")
 
         let claude = agentInfo(.claude)
         #expect(claude.id == "claude")
         #expect(claude.name == "Claude Code")
         #expect(claude.quotaWindows == ["five_hour", "seven_day"])
+        #expect(claude.quotaWindow("five_hour") == QuotaWindowDescriptor(label: "5 小时", group: nil))
+        #expect(claude.quotaWindow("seven_day") == QuotaWindowDescriptor(label: "7 天", group: nil))
+        #expect(claude.toolLabelFromItemType == true)
         #expect(claude.planClearContext == false)
-        #expect(claude.planApprovalReturnsToAsk == true)
+        #expect(claude.planNote == "批准后使用询问模式")
         #expect(claude.standardContextOption == true)
+        #expect(claude.autoMayBeUnavailable == true)
         #expect(claude.reconcilesUnclaimedInput == true)
         #expect(claude.sessionNeedsModelList == true)
+        #expect(claude.switchesModelInSession == true)
+        #expect(claude.forks == true)
         #expect(claude.modelLabel("claude-sonnet-5-5") == "claude-sonnet-5-5")
         #expect(claude.planName("claude_max") == "Max")
         #expect(claude.planName("prolite") == "Pro Lite")
-        #expect(claude.sheetTitle("设置") == "Claude Code · 设置")
+
+        let agy = agentInfo(.antigravity)
+        #expect(agy.id == "agy")
+        #expect(agy.name == "Antigravity")
+        #expect(agy.quotaWindows.isEmpty)
+        #expect(agy.quotaWindow("gemini-5h") == QuotaWindowDescriptor(label: "Gemini · 5 小时", group: "Gemini"))
+        #expect(agy.quotaWindow("gemini-weekly") == QuotaWindowDescriptor(label: "Gemini · 7 天", group: "Gemini"))
+        #expect(agy.quotaWindow("gemini-argon-wtu-weekly") == QuotaWindowDescriptor(label: "Gemini 4 Argon · 7 天", group: "Gemini"))
+        #expect(agy.quotaWindow("3p-5h") == QuotaWindowDescriptor(label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）"))
+        #expect(agy.quotaWindow("3p-weekly") == QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）"))
+        #expect(agy.quotaWindow("custom") == QuotaWindowDescriptor(label: "custom", group: "custom"))
+        #expect(agy.toolLabelFromItemType == false)
+        #expect(agy.planClearContext == false)
+        #expect(agy.planNote == "批准后回到默认模式（询问）")
+        #expect(agy.standardContextOption == false)
+        #expect(agy.autoMayBeUnavailable == true)
+        #expect(agy.trustFolderHint == nil)
+        #expect(agy.usageHint == nil)
+        #expect(agy.reconcilesUnclaimedInput == false)
+        #expect(agy.sessionNeedsModelList == true)
+        #expect(agy.switchesModelInSession == false)
+        #expect(agy.forks == false)
+        #expect(agy.modelLabel("gemini-3-flash") == "gemini-3-flash")
+        #expect(agy.planName("Google AI Pro") == "Google AI Pro")
     }
 
     @Test func mapsUnspecifiedAndNilToCodex() {
@@ -55,16 +89,20 @@ import Testing
         #expect(unknown.id == "")
         #expect(unknown.name == "未知 CLI")
         #expect(unknown.quotaWindows.isEmpty)
+        #expect(unknown.quotaWindow("primary") == QuotaWindowDescriptor(label: "primary", group: nil))
+        #expect(unknown.toolLabelFromItemType == false)
         #expect(unknown.planClearContext == false)
-        #expect(unknown.planApprovalReturnsToAsk == false)
+        #expect(unknown.planNote == nil)
         #expect(unknown.standardContextOption == false)
+        #expect(unknown.autoMayBeUnavailable == false)
         #expect(unknown.trustFolderHint == nil)
         #expect(unknown.usageHint == nil)
         #expect(unknown.reconcilesUnclaimedInput == false)
         #expect(unknown.sessionNeedsModelList == false)
+        #expect(unknown.switchesModelInSession == false)
+        #expect(unknown.forks == false)
         #expect(unknown.modelLabel("any-slug") == "any-slug")
         #expect(unknown.planName("any-plan") == "any-plan")
-        #expect(unknown.sheetTitle("设置") == "设置")
         #expect(agentName(.UNRECOGNIZED(99)) == "未知 CLI")
     }
 
@@ -87,6 +125,7 @@ import Testing
     @Test func looksUpAgentsByTargetId() {
         #expect(agentById("codex").agent == .codex)
         #expect(agentById("claude").agent == .claude)
+        #expect(agentById("agy").agent == .antigravity)
         #expect(agentById("").id == "")
         #expect(agentById("unknown").id == "")
         #expect(agentById(nil).id == "")
@@ -96,6 +135,7 @@ import Testing
     @Test func checksWhetherAnAgentEnumIsRecognized() {
         #expect(isKnownAgent(.codex) == true)
         #expect(isKnownAgent(.claude) == true)
+        #expect(isKnownAgent(.antigravity) == true)
         #expect(isKnownAgent(.unspecified) == false)
         #expect(isKnownAgent(.UNRECOGNIZED(99)) == false)
         #expect(isKnownAgent(nil) == false)
@@ -144,6 +184,30 @@ import Testing
         let updatedDefaults = defaultsFor(updated, agent: .claude)
         #expect(updatedDefaults.model == "claude-opus-9")
         #expect(updatedDefaults.effort == "low")
+        #expect(updatedDefaults.mode == .ask)
+    }
+
+    @Test func roundTripsDefaultsAndWithDefaultsForAntigravity() {
+        var base = PBDaemonSettings()
+        base.antigravity = .with {
+            $0.model = "gemini-3-flash"
+            $0.effort = "high"
+            $0.mode = .ask
+        }
+
+        let defaults = defaultsFor(base, agent: .antigravity)
+        #expect(defaults.model == "gemini-3-flash")
+        #expect(defaults.effort == "high")
+        #expect(defaults.mode == .ask)
+
+        let updated = withDefaults(base, agent: .antigravity, model: "gemini-3.1-pro-high")
+        #expect(updated.antigravity.model == "gemini-3.1-pro-high")
+        #expect(updated.antigravity.effort == "high")
+        #expect(updated.antigravity.mode == .ask)
+
+        let updatedDefaults = defaultsFor(updated, agent: .antigravity)
+        #expect(updatedDefaults.model == "gemini-3.1-pro-high")
+        #expect(updatedDefaults.effort == "high")
         #expect(updatedDefaults.mode == .ask)
     }
 

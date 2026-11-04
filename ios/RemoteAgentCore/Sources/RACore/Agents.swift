@@ -36,64 +36,84 @@ private func capitalized(_ word: String) -> String {
     return first.properties.uppercaseMapping + String(word.unicodeScalars.dropFirst())
 }
 
+public struct QuotaWindowDescriptor: Sendable, Equatable {
+    public let label: String
+    public let group: String?
+
+    public init(label: String, group: String?) {
+        self.label = label
+        self.group = group
+    }
+}
+
 public struct AgentEntry: Sendable, Equatable, Identifiable {
     public let agent: PBAgent
     public let id: String
     public let name: String
     public let quotaWindows: [String]
+    private let _quotaWindow: @Sendable (String) -> QuotaWindowDescriptor
     public let toolLabelFromItemType: Bool
     public let planClearContext: Bool
-    public let planApprovalReturnsToAsk: Bool
+    public let planNote: String?
     public let standardContextOption: Bool
+    public let autoMayBeUnavailable: Bool
     public let trustFolderHint: String?
     public let usageHint: String?
     public let reconcilesUnclaimedInput: Bool
     public let sessionNeedsModelList: Bool
+    public let switchesModelInSession: Bool
+    public let forks: Bool
 
     private let _planName: @Sendable (String) -> String
     private let _modelLabel: @Sendable (String) -> String
     private let _defaults: @Sendable (PBDaemonSettings?) -> PBAgentDefaults
     private let _withDefaults: @Sendable (PBDaemonSettings, String?, String?, PBApprovalMode?) -> PBDaemonSettings
-    private let _sheetTitle: @Sendable (String) -> String
 
     public init(
         agent: PBAgent,
         id: String,
         name: String,
         quotaWindows: [String],
+        quotaWindow: @escaping @Sendable (String) -> QuotaWindowDescriptor,
         toolLabelFromItemType: Bool,
         planClearContext: Bool,
-        planApprovalReturnsToAsk: Bool,
+        planNote: String?,
         standardContextOption: Bool,
+        autoMayBeUnavailable: Bool,
         trustFolderHint: String?,
         usageHint: String?,
         reconcilesUnclaimedInput: Bool,
         sessionNeedsModelList: Bool,
+        switchesModelInSession: Bool,
+        forks: Bool,
         planName: @escaping @Sendable (String) -> String,
         modelLabel: @escaping @Sendable (String) -> String,
         defaults: @escaping @Sendable (PBDaemonSettings?) -> PBAgentDefaults,
-        withDefaults: @escaping @Sendable (PBDaemonSettings, String?, String?, PBApprovalMode?) -> PBDaemonSettings,
-        sheetTitle: @escaping @Sendable (String) -> String
+        withDefaults: @escaping @Sendable (PBDaemonSettings, String?, String?, PBApprovalMode?) -> PBDaemonSettings
     ) {
         self.agent = agent
         self.id = id
         self.name = name
         self.quotaWindows = quotaWindows
+        self._quotaWindow = quotaWindow
         self.toolLabelFromItemType = toolLabelFromItemType
         self.planClearContext = planClearContext
-        self.planApprovalReturnsToAsk = planApprovalReturnsToAsk
+        self.planNote = planNote
         self.standardContextOption = standardContextOption
+        self.autoMayBeUnavailable = autoMayBeUnavailable
         self.trustFolderHint = trustFolderHint
         self.usageHint = usageHint
         self.reconcilesUnclaimedInput = reconcilesUnclaimedInput
         self.sessionNeedsModelList = sessionNeedsModelList
+        self.switchesModelInSession = switchesModelInSession
+        self.forks = forks
         self._planName = planName
         self._modelLabel = modelLabel
         self._defaults = defaults
         self._withDefaults = withDefaults
-        self._sheetTitle = sheetTitle
     }
 
+    public func quotaWindow(_ name: String) -> QuotaWindowDescriptor { _quotaWindow(name) }
     public func planName(_ raw: String) -> String { _planName(raw) }
     public func modelLabel(_ id: String) -> String { _modelLabel(id) }
     public func defaults(_ settings: PBDaemonSettings?) -> PBAgentDefaults { _defaults(settings) }
@@ -113,26 +133,43 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
     ) -> PBDaemonSettings {
         _withDefaults(settings, model, effort, mode?.proto ?? .unspecified)
     }
-    public func sheetTitle(_ what: String) -> String { _sheetTitle(what) }
 
     public static func == (lhs: AgentEntry, rhs: AgentEntry) -> Bool {
         lhs.agent == rhs.agent && lhs.id == rhs.id
     }
 }
 
+private func fixedWindowLabel(_ name: String) -> QuotaWindowDescriptor {
+    if name == "primary" || name == "five_hour" { return QuotaWindowDescriptor(label: "5 小时", group: nil) }
+    if name == "secondary" || name == "seven_day" { return QuotaWindowDescriptor(label: "7 天", group: nil) }
+    return QuotaWindowDescriptor(label: name, group: nil)
+}
+
+private let ANTIGRAVITY_QUOTA_WINDOWS: [String: QuotaWindowDescriptor] = [
+    "gemini-5h": QuotaWindowDescriptor(label: "Gemini · 5 小时", group: "Gemini"),
+    "gemini-weekly": QuotaWindowDescriptor(label: "Gemini · 7 天", group: "Gemini"),
+    "gemini-argon-wtu-weekly": QuotaWindowDescriptor(label: "Gemini 4 Argon · 7 天", group: "Gemini"),
+    "3p-5h": QuotaWindowDescriptor(label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）"),
+    "3p-weekly": QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）"),
+]
+
 private let CODEX_ENTRY = AgentEntry(
     agent: .codex,
     id: "codex",
     name: "Codex",
     quotaWindows: ["primary", "secondary"],
+    quotaWindow: { fixedWindowLabel($0) },
     toolLabelFromItemType: false,
     planClearContext: true,
-    planApprovalReturnsToAsk: false,
+    planNote: nil,
     standardContextOption: false,
+    autoMayBeUnavailable: false,
     trustFolderHint: nil,
     usageHint: nil,
     reconcilesUnclaimedInput: false,
     sessionNeedsModelList: false,
+    switchesModelInSession: true,
+    forks: true,
     planName: { normalizePlanName($0) },
     modelLabel: { gptSlugLabel($0) },
     defaults: { settings in
@@ -149,8 +186,7 @@ private let CODEX_ENTRY = AgentEntry(
         if let effort { s.defaultEffort = effort }
         if let mode { s.defaultMode = mode }
         return s
-    },
-    sheetTitle: { $0 }
+    }
 )
 
 private let CLAUDE_ENTRY = AgentEntry(
@@ -158,14 +194,18 @@ private let CLAUDE_ENTRY = AgentEntry(
     id: "claude",
     name: "Claude Code",
     quotaWindows: ["five_hour", "seven_day"],
+    quotaWindow: { fixedWindowLabel($0) },
     toolLabelFromItemType: true,
     planClearContext: false,
-    planApprovalReturnsToAsk: true,
+    planNote: "批准后使用询问模式",
     standardContextOption: true,
+    autoMayBeUnavailable: true,
     trustFolderHint: "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
     usageHint: " 可在本机 Claude Code 中查看 /usage。",
     reconcilesUnclaimedInput: true,
     sessionNeedsModelList: true,
+    switchesModelInSession: true,
+    forks: true,
     planName: { normalizePlanName($0) },
     modelLabel: { $0 },
     defaults: { settings in
@@ -179,8 +219,42 @@ private let CLAUDE_ENTRY = AgentEntry(
         if let mode { c.mode = mode }
         s.claude = c
         return s
+    }
+)
+
+private let ANTIGRAVITY_ENTRY = AgentEntry(
+    agent: .antigravity,
+    id: "agy",
+    name: "Antigravity",
+    quotaWindows: [],
+    quotaWindow: { name in
+        ANTIGRAVITY_QUOTA_WINDOWS[name] ?? QuotaWindowDescriptor(label: name, group: name)
     },
-    sheetTitle: { "Claude Code · \($0)" }
+    toolLabelFromItemType: false,
+    planClearContext: false,
+    planNote: "批准后回到默认模式（询问）",
+    standardContextOption: false,
+    autoMayBeUnavailable: true,
+    trustFolderHint: nil,
+    usageHint: nil,
+    reconcilesUnclaimedInput: false,
+    sessionNeedsModelList: true,
+    switchesModelInSession: false,
+    forks: false,
+    planName: { $0 },
+    modelLabel: { $0 },
+    defaults: { settings in
+        settings?.antigravity ?? PBAgentDefaults()
+    },
+    withDefaults: { settings, model, effort, mode in
+        var s = settings
+        var a = s.antigravity
+        if let model { a.model = model }
+        if let effort { a.effort = effort }
+        if let mode { a.mode = mode }
+        s.antigravity = a
+        return s
+    }
 )
 
 private func unknownEntry(agent: PBAgent) -> AgentEntry {
@@ -189,23 +263,26 @@ private func unknownEntry(agent: PBAgent) -> AgentEntry {
         id: "",
         name: "未知 CLI",
         quotaWindows: [],
+        quotaWindow: { QuotaWindowDescriptor(label: $0, group: nil) },
         toolLabelFromItemType: false,
         planClearContext: false,
-        planApprovalReturnsToAsk: false,
+        planNote: nil,
         standardContextOption: false,
+        autoMayBeUnavailable: false,
         trustFolderHint: nil,
         usageHint: nil,
         reconcilesUnclaimedInput: false,
         sessionNeedsModelList: false,
+        switchesModelInSession: false,
+        forks: false,
         planName: { $0 },
         modelLabel: { $0 },
         defaults: { _ in PBAgentDefaults() },
-        withDefaults: { settings, _, _, _ in settings },
-        sheetTitle: { $0 }
+        withDefaults: { settings, _, _, _ in settings }
     )
 }
 
-public let AGENTS: [AgentEntry] = [CODEX_ENTRY, CLAUDE_ENTRY]
+public let AGENTS: [AgentEntry] = [CODEX_ENTRY, CLAUDE_ENTRY, ANTIGRAVITY_ENTRY]
 
 public let defaultAgent: PBAgent = CODEX_ENTRY.agent
 public let DEFAULT_AGENT: PBAgent = defaultAgent
