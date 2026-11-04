@@ -174,6 +174,11 @@ func (d *Daemon) scheduleCommandScopedContext(ctx context.Context, q *pb.Schedul
 		})
 		return result, err
 	}
+	if scope != "" && requiresScheduleAdmission(q.Operation) {
+		if err := bound.refreshScheduleObservation(ctx); err != nil {
+			return nil, err
+		}
+	}
 	locked := false
 	lockAndCheck := func() error {
 		d.scheduleMu.Lock()
@@ -783,7 +788,7 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			for _, task := range d.prepareScheduledDispatches(now.UTC()) {
+			for _, task := range d.prepareScheduledDispatchesContext(ctx, now.UTC()) {
 				dispatches.Go(func() { d.dispatchScheduled(ctx, task, now.UTC()) })
 			}
 			// Closing a CLI can block; lifecycle work shares dispatch ownership,
@@ -805,6 +810,14 @@ func (d *Daemon) scheduleLoop(ctx context.Context) {
 	}
 }
 func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
+	return d.prepareScheduledDispatchesContext(context.Background(), now)
+}
+
+func (d *Daemon) prepareScheduledDispatchesContext(ctx context.Context, now time.Time) []*schedule.Task {
+	d.refreshDueScheduleObservations(ctx, now)
+	if ctx.Err() != nil {
+		return nil
+	}
 	var dispatches []*schedule.Task
 	d.scheduleMu.Lock()
 	defer d.scheduleMu.Unlock()
@@ -906,9 +919,11 @@ func (d *Daemon) prepareScheduledDispatches(now time.Time) []*schedule.Task {
 				t.Reason = "run_limit_reached"
 			} else {
 				if err := d.restrictMCPTask(t, false); t.ScopedSession != "" && err != nil {
-					t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
-					if errors.Is(err, errMCPMinimumInterval) {
-						t.Reason = "agent_schedule_interval_below_minimum"
+					if !errors.Is(err, errMCPModeObservation) {
+						t.Status, t.Reason = "paused", "agent_schedule_permissions_changed"
+						if errors.Is(err, errMCPMinimumInterval) {
+							t.Reason = "agent_schedule_interval_below_minimum"
+						}
 					}
 				} else {
 					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: t.Spec.Notify != "agent_only", NotificationSessionID: scheduleNotificationSession(t)}
@@ -969,6 +984,10 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 	default:
 		if t.ScopedSession != "" {
 			if err := d.restrictMCPTask(t, false); err != nil {
+				if errors.Is(err, errMCPModeObservation) {
+					t.ManualRequest = request
+					return false, false
+				}
 				run.Status, run.Reason = "failed", "agent_schedule_permissions_changed"
 				if errors.Is(err, errMCPMinimumInterval) {
 					run.Reason = "agent_schedule_interval_below_minimum"

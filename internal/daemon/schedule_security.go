@@ -38,6 +38,9 @@ func (d *Daemon) restrictMCPTask(t *schedule.Task, freeze bool) error {
 			return connect.NewError(connect.CodePermissionDenied, errMCPMinimumInterval)
 		}
 	}
+	if source.scheduleObservationStale() {
+		return connect.NewError(connect.CodeUnavailable, errMCPModeObservation)
+	}
 	info := source.info()
 	mode := exactScheduleMode(info)
 	if mode == "" {
