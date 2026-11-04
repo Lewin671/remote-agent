@@ -284,8 +284,16 @@ func TestAgyPlanIsActionableOnlyAfterForegroundTurnEnds(t *testing.T) {
 	}
 	h.s.checkScreen()
 	h.s.checkScreen()
-	if info := h.s.info(); info.PlanOpen || !strings.Contains(h.s.detail, "终端") {
-		t.Fatalf("revision mismatch not withdrawn: %v", info)
+	if info := h.s.info(); info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED {
+		t.Fatalf("revision mismatch left an action or fabricated a popup: %v", info)
+	}
+	// A real review panel for the invalidated revision still requires the
+	// terminal, without inventing a popup over an ordinary idle composer.
+	h.term.setScreen(agyScreen(t, "plan-terminal-after.txt"))
+	h.s.checkScreen()
+	h.s.checkScreen()
+	if info := h.s.info(); info.PlanOpen || info.Status != pb.SessionStatus_SESSION_STATUS_BLOCKED {
+		t.Fatalf("native mismatch panel not terminal-only: %v", info)
 	}
 }
 
@@ -372,3 +380,45 @@ func TestAgyImagesWaitForIdleSoCleanupCannotInterrupt(t *testing.T) {
 		t.Fatalf("image pasted during foreground turn: %v %v", result, err)
 	}
 }
+
+func TestAgyPendingPlanDoesNotInventPopupOverOrdinaryInput(t *testing.T) {
+	for _, scenario := range []string{"ignored", "draft", "wrapped footer", "changed then ignored"} {
+		t.Run(scenario, func(t *testing.T) {
+			h := agyHarness(t)
+			text := []byte("# Pending plan")
+			path := filepath.Join(h.dir, "implementation_plan.md")
+			if err := os.WriteFile(path, text, 0600); err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(text)
+			h.s.planFacts = &agent.PlanFacts{Path: path, Root: h.dir, Revision: hex.EncodeToString(sum[:]), Decisions: map[string]string{"implementation_plan.md": "new"}}
+			screen := agyScreen(t, "idle-empty-box.txt")
+			switch scenario {
+			case "draft":
+				screen = agyScreen(t, "draft-oneline.txt")
+			case "wrapped footer":
+				screen = strings.Replace(agyScreen(t, "plan-terminal-before.txt"), "1 artifact · /artifact to review", "1 artifact ·\n/artifact to review", 1)
+			case "changed then ignored":
+				if err := os.WriteFile(path, []byte("revised"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			h.term.setScreen(screen)
+			h.s.checkScreen()
+			h.s.checkScreen()
+			if info := h.s.info(); info.PlanOpen || info.Status == pb.SessionStatus_SESSION_STATUS_BLOCKED || info.AttentionSince != nil {
+				t.Fatalf("passive plan fabricated an interactive popup: %v", info)
+			}
+			if scenario != "draft" {
+				if _, err := h.s.enqueue("hello", "followup", nil, originLocal); err != nil {
+					t.Fatal(err)
+				}
+				result, err := h.s.inject(h.s.queue.Queue[0])
+				if err != nil || result != written {
+					t.Fatalf("ordinary composer refused followup: %v %v", result, err)
+				}
+			}
+		})
+	}
+}
+
