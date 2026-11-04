@@ -270,3 +270,13 @@ func (a *Adapter) RestoredPrompt(styled, prompt string) bool {
 	}
 	return prompt != "" && !a.Analyze(styled).Busy && normalize(text) == normalize(prompt)
 }
+
+// A viewport redraw changes terminal_width in agy's status-line input and
+// refreshes its command even while the idle payload would otherwise be cached.
+func (a *Adapter) RefreshStatus(t agent.Term) error {
+	view, ok := t.(agent.ViewRefresher)
+	if !ok {
+		return agent.ErrUnsupported
+	}
+	return view.RefreshView()
+}

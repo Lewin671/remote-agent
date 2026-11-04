@@ -36,6 +36,14 @@ func (h heldTerm) Capture() (string, error) {
 	}
 	return h.term.CaptureContext(h.ctx)
 }
+func (h heldTerm) RefreshView() error {
+	view, ok := h.term.(interface{ RefreshView(context.Context) error })
+	if !ok {
+		return agent.ErrUnsupported
+	}
+	return view.RefreshView(h.ctx)
+}
+
 func (h heldTerm) Write(b []byte) error {
 	if err := h.ctx.Err(); err != nil {
 		return err
@@ -195,6 +203,14 @@ func (s *session) setApprovalModeBy(ctx context.Context, mode pb.ApprovalMode, o
 	if !s.nativeIdentityReady() {
 		return agent.ErrNotReady
 	}
+	if _, ok := s.ag.(agent.StatusRefresher); ok {
+		s.mu.Lock()
+		stale := s.statusLineAt.IsZero() || time.Since(s.statusLineAt) > 5*time.Second
+		s.mu.Unlock()
+		if stale {
+			_ = s.refreshNativeStatus(ctx)
+		}
+	}
 	// The facts too are read with the terminal held: a model switch that
 	// held it until then changes them.
 	return s.drive(ctx, func(t agent.Term, busy bool) error {
@@ -264,8 +280,35 @@ func (s *session) answerPlanUsing(ctx context.Context, choice pb.PlanChoice, ori
 		if source, ok := s.parser.(agent.PlanSource); ok {
 			facts = source.Plan()
 		}
+		if source, ok := s.parser.(agent.PlanAnswerSource); ok {
+			source.BeginPlanAnswer(facts, choice)
+		}
 		s.readMu.Unlock()
-		if err := s.ag.AnswerPlan(t, choice, facts); err != nil {
+		observed := func() bool {
+			if !s.readRollout() {
+				return false
+			}
+			s.readMu.Lock()
+			defer s.readMu.Unlock()
+			if source, ok := s.parser.(agent.PlanAnswerSource); ok {
+				return source.PlanAnswerObserved()
+			}
+			return false
+		}
+		err = s.ag.AnswerPlan(t, choice, facts, observed)
+		s.readMu.Lock()
+		var localAnswers []*pb.Event
+		if source, ok := s.parser.(agent.PlanAnswerSource); ok {
+			localAnswers = source.EndPlanAnswer(err == nil)
+		}
+		if len(localAnswers) > 0 {
+			_ = s.emitLocked(false, localAnswers...)
+			for _, e := range localAnswers {
+				s.parser.Replay(e)
+			}
+		}
+		s.readMu.Unlock()
+		if err != nil {
 			return err
 		}
 		// Successful keys consume this prompt even if recording fails or a

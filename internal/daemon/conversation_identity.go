@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 	"time"
 )
 
@@ -23,8 +24,14 @@ func (s *session) observeConversation(ctx context.Context, id, path string, obse
 	expected, pending, failed := s.meta.CodexSessionID, s.identityPending, s.identityFailed
 	resume := s.identityResume
 	if failed {
-		s.mu.Unlock()
-		return false
+		if id == expected && id != "" {
+			s.identityFailed = false
+			s.identityPending = true
+			s.identityResume = true
+		} else {
+			s.mu.Unlock()
+			return false
+		}
 	}
 	if id == "" {
 		s.mu.Unlock()
@@ -190,5 +197,37 @@ func (s *session) pruneInputConversationsLocked() {
 		if !keep[id] {
 			delete(s.meta.InputConversations, id)
 		}
+	}
+}
+
+func (s *session) refreshNativeStatus(ctx context.Context) error {
+	refresher, ok := s.ag.(agent.StatusRefresher)
+	if !ok {
+		return nil
+	}
+	return s.drive(ctx, func(t agent.Term, _ bool) error { return refresher.RefreshStatus(t) })
+}
+
+func (s *session) observeEmptyIdentity(ctx context.Context, report *agent.StatusLine, now time.Time) {
+	if !s.ag.Capabilities().ConversationIdentity || ctx.Err() != nil {
+		return
+	}
+	s.mu.Lock()
+	if !s.identityPending || !s.identityResume || report.ConversationID != "" || !report.IdleKnown {
+		s.identityEmptySince = time.Time{}
+		s.mu.Unlock()
+		return
+	}
+	if s.identityEmptySince.IsZero() {
+		s.identityEmptySince = now
+	}
+	fail := !s.identityFailed && now.Sub(s.identityEmptySince) > 15*time.Second
+	if fail {
+		s.identityFailed = true
+		s.pauseConversationQueueLocked("CLI did not confirm the requested conversation")
+	}
+	s.mu.Unlock()
+	if fail {
+		_ = s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_BLOCKED, Detail: "CLI 没有确认恢复的对话；待发送消息已暂停，请在终端处理"}}})
 	}
 }

@@ -3,7 +3,10 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -84,3 +87,56 @@ func (p ptyControl) Hold(d time.Duration) error { _, err := p.c.Hold(d); return 
 func (p ptyControl) Release() error             { return p.c.Release() }
 func (p ptyControl) Write(b []byte) error       { return p.c.Write(b) }
 func (p ptyControl) Close() error               { return p.c.Close() }
+
+// RefreshView is a reversible viewport pulse. It sends no terminal input and
+// restores the prior sizing policy. If another client resized meanwhile, its
+// dimensions win rather than being overwritten by our restoration.
+func (t *tmuxTerminal) RefreshView(ctx context.Context) error {
+	target := "=" + t.name + ":"
+	out, err := t.tmux.RunContext(ctx, "display-message", "-p", "-t", target, "#{window_width} #{window_height}")
+	if err != nil {
+		return err
+	}
+	dims := strings.Fields(out)
+	if len(dims) != 2 {
+		return fmt.Errorf("unreadable terminal dimensions")
+	}
+	width, e := strconv.Atoi(dims[0])
+	if e != nil || width < 3 {
+		return fmt.Errorf("unreadable terminal width")
+	}
+	height, e := strconv.Atoi(dims[1])
+	if e != nil || height < 1 {
+		return fmt.Errorf("unreadable terminal height")
+	}
+	policy, err := t.tmux.RunContext(ctx, "show-window-options", "-v", "-t", target, "window-size")
+	if err != nil {
+		return err
+	}
+	smaller := strconv.Itoa(width - 1)
+	if _, err = t.tmux.RunContext(ctx, "resize-window", "-t", target, "-x", smaller, "-y", dims[1]); err != nil {
+		return err
+	}
+	defer func() {
+		restore, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		current, e := t.tmux.RunContext(restore, "display-message", "-p", "-t", target, "#{window_width} #{window_height}")
+		if e != nil || strings.TrimSpace(current) != smaller+" "+dims[1] {
+			return
+		}
+		_, _ = t.tmux.RunContext(restore, "resize-window", "-t", target, "-x", dims[0], "-y", dims[1])
+		if strings.TrimSpace(policy) == "" {
+			_, _ = t.tmux.RunContext(restore, "set-window-option", "-u", "-t", target, "window-size")
+		} else {
+			_, _ = t.tmux.RunContext(restore, "set-window-option", "-t", target, "window-size", strings.TrimSpace(policy))
+		}
+	}()
+	timer := time.NewTimer(300 * time.Millisecond)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}

@@ -94,6 +94,7 @@ type StatusLineSource interface {
 }
 
 type StatusLine struct {
+	QuotaMonotonic                 bool
 	ConversationID, TranscriptPath string
 	CycleMode                      string
 	IdleKnown, Background          bool
@@ -284,7 +285,7 @@ type Controller interface {
 	// CLI has recorded a turn start meanwhile.
 	Compact(t Term, started func() bool) error
 	// AnswerPlan answers the CLI's prompt about a proposed plan.
-	AnswerPlan(t Term, choice pb.PlanChoice, facts *PlanFacts) error
+	AnswerPlan(t Term, choice pb.PlanChoice, facts *PlanFacts, observed func() bool) error
 	// RestoredPrompt reports whether the terminal screen shows the original
 	// prompt restored after an early cancel without a turn end record.
 	RestoredPrompt(styled, prompt string) bool
@@ -336,8 +337,22 @@ type IdleCompletionSource interface{ IdleCompletion() *pb.Event }
 
 type AttachSnapshotSource interface{ CaptureAttachSnapshot(path string) error }
 
+// StatusRefresher can request a fresh native status-line observation without
+// submitting input or changing CLI settings.
+type StatusRefresher interface{ RefreshStatus(t Term) error }
+type ViewRefresher interface{ RefreshView() error }
+
+type PlanAnswerSource interface {
+	BeginPlanAnswer(facts *PlanFacts, choice pb.PlanChoice)
+	PlanAnswerObserved() bool
+	EndPlanAnswer(success bool) []*pb.Event
+}
+
+type InputNormalizer interface{ NormalizeInput(text string) string }
+
 // Screen is what the daemon needs to know from the terminal.
 type Screen struct {
+	IdentityError string
 	// ComposerReady: the input box is showing and no popup covers it.
 	ComposerReady bool
 	// DraftEmpty: the input box holds no unsent text.

@@ -359,7 +359,7 @@ func (a *Adapter) Compact(t agent.Term, started func() bool) error {
 }
 
 // AnswerPlan answers "Implement this plan?"; the choices are its entries.
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) error {
 	if choice < pb.PlanChoice_PLAN_CHOICE_IMPLEMENT || choice > pb.PlanChoice_PLAN_CHOICE_KEEP_PLANNING {
 		return fmt.Errorf("unknown plan choice %v", choice)
 	}

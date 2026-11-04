@@ -616,7 +616,7 @@ func (a *Adapter) Compact(t agent.Term, started func() bool) error {
 // "Yes, manually approve edits", which returns to manual mode; keeping on
 // planning is Esc, which stays in Plan mode and ends the turn. There is no
 // choice to clear the context first.
-func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts) error {
+func (a *Adapter) AnswerPlan(t agent.Term, choice pb.PlanChoice, _ *agent.PlanFacts, _ func() bool) error {
 	scr, plain, err := screenNow(t)
 	if err != nil {
 		return err

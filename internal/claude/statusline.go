@@ -20,7 +20,7 @@ func (a *Adapter) ParseStatusLine(raw []byte, _ string) (*agent.StatusLine, erro
 	if err := json.Unmarshal(raw, &in); err != nil {
 		return nil, err
 	}
-	out := &agent.StatusLine{}
+	out := &agent.StatusLine{QuotaMonotonic: true}
 	if len(in.RateLimits) == 0 {
 		return out, nil
 	}

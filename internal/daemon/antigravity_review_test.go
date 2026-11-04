@@ -260,3 +260,39 @@ func TestAgyStableIdleRecoversMissedStop(t *testing.T) {
 		t.Fatal("stable idle did not recover the missing Stop")
 	}
 }
+
+func TestAgyQuotaCanRecoverWithinSameResetWindow(t *testing.T) {
+	h := agyHarness(t)
+	now := time.Now()
+	used := 100.0
+	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &used, ResetsAtMs: 2000000}}}, now, false)
+	recovered := 99.8
+	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &recovered, ResetsAtMs: 2000000}}}, now.Add(time.Second), false)
+	var q *pb.AgentQuota
+	for _, entry := range h.d.quotas {
+		q = entry
+	}
+	if q.Windows[0].GetUsedPercent() != 99.8 {
+		t.Fatal("credit recovery discarded as decreasing usage")
+	}
+	older := 100.0
+	h.d.recordQuotaWithPolicy("source", &pb.AgentQuota{Agent: pb.Agent_AGENT_ANTIGRAVITY, Account: "account", Windows: []*pb.QuotaWindow{{Name: "gemini-5h", UsedPercent: &older, ResetsAtMs: 1000000}}}, now.Add(2*time.Second), false)
+	for _, entry := range h.d.quotas {
+		q = entry
+	}
+	if q.Windows[0].GetUsedPercent() != 99.8 {
+		t.Fatal("an old reset cycle replaced the new record")
+	}
+}
+
+func TestAgyUnconfirmedFreshResumeBecomesVisibleFailure(t *testing.T) {
+	h := agyHarness(t)
+	h.s.identityPending, h.s.identityResume = true, true
+	now := time.Now()
+	report := &agent.StatusLine{IdleKnown: true}
+	h.s.observeEmptyIdentity(context.Background(), report, now)
+	h.s.observeEmptyIdentity(context.Background(), report, now.Add(16*time.Second))
+	if !h.s.identityFailed || h.s.nativeIdentityReady() {
+		t.Fatal("missing resume proof stayed dispatchable")
+	}
+}

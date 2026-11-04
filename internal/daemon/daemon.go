@@ -1172,6 +1172,8 @@ drain:
 	s.meta.Exited = false
 	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
 	s.identityResume = s.identityPending
+	s.identityObservedAt = time.Now()
+	s.identityEmptySince = time.Time{}
 	s.identityFailed = false
 	s.meta.ScheduledClosed = false
 	// Explicit/scheduled resume is independent of the old creation. An

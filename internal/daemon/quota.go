@@ -121,15 +121,19 @@ func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw js
 	if err != nil {
 		return
 	}
+	session.observeEmptyIdentity(ctx, report, now)
 	if session.observeConversation(ctx, report.ConversationID, report.TranscriptPath, now) {
 		session.recordStatusLine(report, now)
 	}
-	if report.Quota != nil {
-		d.recordQuota(sessionID, report.Quota, now)
+	if report.Quota != nil && ctx.Err() == nil {
+		d.recordQuotaWithPolicy(sessionID, report.Quota, now, report.QuotaMonotonic)
 	}
 }
 
 func (d *Daemon) recordQuota(sessionID string, e *pb.AgentQuota, now time.Time) {
+	d.recordQuotaWithPolicy(sessionID, e, now, true)
+}
+func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now time.Time, monotonic bool) {
 	e.ObservedMs = now.UnixMilli()
 	if e.Account == "" {
 		e.SourceSessionId = sessionID
@@ -165,7 +169,14 @@ func (d *Daemon) recordQuota(sessionID string, e *pb.AgentQuota, now time.Time) 
 	d.reported[sessionID] = quotaReport{account: e.Account, windows: e.Windows}
 	if old := d.quotas[key]; old != nil {
 		reported := e.Windows
-		e.Windows = newestWindows(old.Windows, reported)
+		if now.UnixMilli() < old.ObservedMs {
+			return
+		}
+		if monotonic {
+			e.Windows = newestWindows(old.Windows, reported)
+		} else {
+			e.Windows = latestWindows(old.Windows, reported)
+		}
 		same := proto.Equal(&pb.AgentQuota{Windows: old.Windows, Plan: old.Plan, Login: old.Login}, &pb.AgentQuota{Windows: e.Windows, Plan: e.Plan, Login: e.Login})
 		// A report that is behind the record does not renew its time.
 		current := proto.Equal(&pb.AgentQuota{Windows: reported}, &pb.AgentQuota{Windows: e.Windows})
@@ -202,6 +213,45 @@ func newestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
 	}
 	sort.Strings(names)
 	out := make([]*pb.QuotaWindow, 0, len(names))
+	for _, name := range names {
+		out = append(out, byName[name])
+	}
+	return out
+}
+
+// latestWindows allows a provider's same-window usage to fall (refunds or
+// credit recovery). Older reset cycles cannot overwrite a newer cycle, and
+// omitted windows/fields retain their last valid observation.
+func latestWindows(old, reported []*pb.QuotaWindow) []*pb.QuotaWindow {
+	byName := map[string]*pb.QuotaWindow{}
+	for _, w := range old {
+		byName[w.Name] = w
+	}
+	for _, w := range reported {
+		o := byName[w.Name]
+		if o != nil && w.ResetsAtMs > 0 && o.ResetsAtMs > w.ResetsAtMs {
+			continue
+		}
+		copy := proto.CloneOf(w)
+		if o != nil {
+			if copy.ResetsAtMs == 0 {
+				copy.ResetsAtMs = o.ResetsAtMs
+			}
+			if copy.UsedPercent == nil && copy.ResetsAtMs == o.ResetsAtMs {
+				copy.UsedPercent = o.UsedPercent
+			}
+			if copy.WindowMinutes == 0 {
+				copy.WindowMinutes = o.WindowMinutes
+			}
+		}
+		byName[w.Name] = copy
+	}
+	names := make([]string, 0, len(byName))
+	for name := range byName {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var out []*pb.QuotaWindow
 	for _, name := range names {
 		out = append(out, byName[name])
 	}

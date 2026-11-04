@@ -164,6 +164,8 @@ type session struct {
 	identityTarget     string
 	identityFailed     bool
 	identityObservedAt time.Time
+	identityRefreshAt  time.Time
+	identityEmptySince time.Time
 	statusLineMode     string
 	statusLineAt       time.Time
 	statusLineIdle     bool
@@ -768,6 +770,15 @@ func (s *session) checkScreen() bool {
 }
 
 func (s *session) checkScreenContext(ctx context.Context) bool {
+	s.mu.Lock()
+	refresh := s.identityPending && !s.identityFailed && time.Since(s.identityRefreshAt) > 2*time.Second
+	if refresh {
+		s.identityRefreshAt = time.Now()
+	}
+	s.mu.Unlock()
+	if refresh {
+		_ = s.refreshNativeStatus(ctx)
+	}
 	styled, alive, err := s.term.Poll(ctx)
 	if err != nil {
 		return ctx.Err() == nil
@@ -786,6 +797,10 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	s.mu.Lock()
 	if inspector, ok := s.ag.(agent.PlanInspector); ok {
 		scr.PlanOpen = inspector.PlanScreen(styled, s.planFacts)
+	}
+	if s.identityPending && s.identityResume && scr.IdentityError != "" {
+		s.identityFailed = true
+		s.pauseConversationQueueLocked("requested conversation was not found")
 	}
 	s.screen = scr
 	// Act only on a screen seen twice in a row, so that frames drawn
