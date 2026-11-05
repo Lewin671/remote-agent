@@ -915,6 +915,7 @@ export interface Derived {
   // Who answered an approval or a question, as the daemon says.
   by: Map<string, NonNullable<Event["origin"]>>;
   inputs: Map<string, InputStatus>; // latest state per request ID, in first-seen order
+  inputSeqs: Map<string, bigint>; // last inputState event per request ID
   // What the computer accepted for each message, as its first QUEUED state
   // says: the text and images, and who sent it; so every client shows
   // the same queue.
@@ -935,6 +936,7 @@ export interface Derived {
   // ("exited"). Never sent; not waiting either.
   unsent: Set<string>;
   running: boolean;
+  runningSeq: bigint; // last event that changed running
   scheduledClosed: boolean;
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
@@ -973,12 +975,14 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
     answered: new Map(),
     by: new Map(),
     inputs: new Map(),
+    inputSeqs: new Map(),
     accepted: new Map(),
     paused: new Set(),
     stages: new Map(),
     inputReasons: new Map(),
     unsent: new Set(),
     running: false,
+    runningSeq: 0n,
     scheduledClosed: false,
     tools: [],
     unsettled: [],
@@ -1033,11 +1037,13 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         break;
       case "turnStarted":
         d.running = true;
+        d.runningSeq = e.seq;
         d.unsettled = [];
         d.background = [];
         break;
       case "turnEnded":
         d.running = false;
+        d.runningSeq = e.seq;
         d.questions.clear();
         settle(d, k.value.outcome === TurnOutcome.ABORTED, unfinishedById);
         break;
@@ -1045,6 +1051,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         const late =
           d.inputs.get(k.value.requestId) === InputStatus.UNCONFIRMED;
         d.inputs.set(k.value.requestId, k.value.status);
+        d.inputSeqs.set(k.value.requestId, e.seq);
         if (
           (k.value.status === InputStatus.QUEUED ||
             k.value.status === InputStatus.HELD_BY_CLI) &&
@@ -1210,6 +1217,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         d.scheduledClosed = k.value.status === SessionStatus.EXITED && k.value.scheduledClosed;
         if (k.value.status === SessionStatus.EXITED) {
           d.running = false;
+          d.runningSeq = e.seq;
           d.approvals.clear();
           d.questions.clear();
           settle(d, false, unfinishedById);
@@ -1221,6 +1229,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         // What came before is the source's history: nothing of it runs or
         // waits in this session.
         d.running = false;
+        d.runningSeq = e.seq;
         d.approvals.clear();
         d.questions.clear();
         settle(d, false);

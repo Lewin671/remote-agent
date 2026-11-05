@@ -1899,3 +1899,12 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 最终代码的 Go **整套**、Android **三个模块**、网页全部 projects、Python 全套，各在 16 个 CPU 负载进程下完成五轮；iOS 包在 10 个负载进程下完成五轮，全部通过。Android 输入跟踪修复后另外重跑最终配置的五轮，每轮仍 933 个。Go 五轮的命名记录及八个既有跳过集合完全一致，未新增跳过。
 
 真实 Codex/Claude/agy acceptance 计时按本轮范围明确排除，不是模型链路验收。机制审计的其他候选仅交付评审，未借清理改动旧历史解密、授权或存储格式。临时 SDK、缓存、测试服务和测试目录在结果归档后清理。
+
+### 排队快照与后续事件合并（2026-11-05）
+
+基于 v0.54.0 的修复候选，Web、Android core、iOS RACore 对齐快照水位：逐条输入保留水位后的状态及暂停、阶段、发送方式，运行状态保留水位后的最近一次变更。未改协议和存储格式。
+
+- 自动回归覆盖旧 QUEUED / HELD 快照与新 SUBMITTED、CANCELED、FAILED、NEEDS_TERMINAL，旧空快照与新 QUEUED，新快照在相同水位恢复真实 pending，以及轮次开始、结束与无关后续事件。Web 另覆盖迟到快照响应、乱序 ingest 清空 outbox、排队气泡渲染和 checkpoint 的运行水位；原有 held 附件与来源恢复测试继续通过。新增 Web 回归的前 16 项放回旧实现时 14 项失败，恢复修复后通过。
+- 本地 `go test ./...`、Web 全量测试及类型检查、Android `:core:test`、iOS `swift test` 通过。Android 首轮全量有一项既有 `idleBudgetDoesNotReclaimAnActiveConsumer` 超时，单独重跑及完整复跑均通过，未改该测试或延长超时。
+- 隔离链路使用当前 checkout 构建的本地 server / daemon、临时账户、独立数据库和 tmux socket，以及真实 Codex（gpt-6-luna、low）。合成加密客户端经 server 向 daemon 发送消息；通过测试 tmux 中的本地草稿阻止立即提交，采样空快照与排队快照，再清除草稿，确认已验证事件包含 SUBMITTED 和 turnEnded。将这组真实快照及事件送入 Web 的生产 reducer / currentDerived，旧排队快照未复活气泡，旧空快照未隐藏后续新入队项，完成后的新快照保持无排队项。临时脚本、会话和环境已清理。
+- 上述链路由调试脚本触发，不是产品界面验收。Chrome 访问宿主不可用，未做浏览器直接操作；未覆盖 Android / iOS 界面、真机或线上业务会话，也未借用日常账户。

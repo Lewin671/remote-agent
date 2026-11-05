@@ -81,17 +81,20 @@ public func currentActions(
     result.questions = OrderedMap()
     result.plan = nil
     guard let live else { return result }
+    // A snapshot at N supplies state through N; verified events after N win.
+    let snapshotSeq = live.session.lastSeq
+    func newerInput(_ id: String) -> Bool { (history.inputSeqs[id] ?? 0) > snapshotSeq }
     let observed = derive(live.actions)
     for id in history.inputs.keys {
         if let status = history.inputs[id], status == .queued || status == .heldByCli,
-            observed.inputs[id] == nil
+            observed.inputs[id] == nil, !newerInput(id)
         {
             result.inputs[id] = .unconfirmed
             result.inputDetails[id] = nil
         }
     }
-    for id in observed.inputs.keys { result.inputs[id] = observed.inputs[id] }
-    for (id, detail) in observed.inputDetails.entries {
+    for id in observed.inputs.keys where !newerInput(id) { result.inputs[id] = observed.inputs[id] }
+    for (id, detail) in observed.inputDetails.entries where !newerInput(id) {
         result.inputDetails[id] = retainingInputMetadata(detail, from: history.inputDetails[id])
         if var accepted = result.accepted[id], detail.stage != .unspecified {
             accepted.stage = detail.stage
@@ -100,8 +103,8 @@ public func currentActions(
     }
     // The live snapshot can contain truncated text and need not repeat the
     // original sender. Keep the accepted history; only missing entries recover.
-    for (id, accepted) in observed.accepted where result.accepted[id] == nil { result.accepted[id] = accepted }
-    result.running = live.running
+    for (id, accepted) in observed.accepted where result.accepted[id] == nil && !newerInput(id) { result.accepted[id] = accepted }
+    if history.runningSeq <= snapshotSeq { result.running = live.running }
     for event in live.actions {
         switch event.kind {
         case .approvalRequested(let request)?: result.approvals[request.approvalID] = request

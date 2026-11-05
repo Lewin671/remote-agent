@@ -133,6 +133,8 @@ public struct Derived: Equatable, Sendable {
     public var answered = [String: [String]]()
     /// Latest state per request ID of messages sent with Send.
     public var inputs = OrderedMap<String, PBInputStatus>()
+    /// Last input-state event per request ID, for ordering live snapshots.
+    public var inputSeqs = [String: UInt64]()
     /// Full latest input state: mode and pause are needed for pending bubbles.
     public var inputDetails = OrderedMap<String, PBInputState>()
     /// What the daemon accepted, per request ID: text, images and sender, shared by every client.
@@ -144,6 +146,7 @@ public struct Derived: Equatable, Sendable {
     /// with reason "exited". An exit alone does not invent input outcomes.
     public var unsent = OrderedMap<String, UInt64>()
     public var running = false
+    public var runningSeq: UInt64 = 0
     public var scheduledClosed = false
     public var compactions = [UInt64: Compaction]()
     public var usage: PBTokenUsage?
@@ -203,7 +206,8 @@ struct EventReducer: Sendable {
         for e in events { reduce(e) }
     }
 
-    private mutating func endTools() {
+    private mutating func endTools(_ seq: UInt64) {
+        d.runningSeq = seq
         d.running = false
         d.approvals.removeAll()
         d.questions.removeAll()
@@ -229,9 +233,11 @@ struct EventReducer: Sendable {
             d.answered[a.questionID] = a.answers.flatMap(\.answers)
         case .turnStarted:
             d.running = true
+            d.runningSeq = e.seq
             d.background.removeAll()
         case .turnEnded(let t):
             d.running = false
+            d.runningSeq = e.seq
             d.questions.removeAll()
             // Still running when an interrupted turn ended: whether it
             // ever ends is not known (an interrupt does not stop
@@ -247,6 +253,7 @@ struct EventReducer: Sendable {
         case .inputState(let st):
             let late = d.inputs[st.requestID] == .unconfirmed
             d.inputs[st.requestID] = st.status
+            d.inputSeqs[st.requestID] = e.seq
             d.inputDetails[st.requestID] = retainingInputMetadata(st, from: d.inputDetails[st.requestID])
             if let prev = d.accepted[st.requestID] {
                 if st.stage != .unspecified {
@@ -365,11 +372,11 @@ struct EventReducer: Sendable {
             if !planning && !c.model.isEmpty { model = mm }
         case .sessionState(let s):
             d.scheduledClosed = s.status == .exited && s.scheduledClosed
-            if s.status == .exited { endTools() }
+            if s.status == .exited { endTools(e.seq) }
         case .sessionForked:
             // What came before is a copy of the source's history: nothing
             // of it is pending or running in this session.
-            endTools()
+            endTools(e.seq)
             submitted = 0
             unclaimed = nil
             unfinishedById.removeAll()

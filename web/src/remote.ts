@@ -2702,11 +2702,15 @@ export class Remote {
     } as Derived;
     this.currentDerivations.set(d, { sid, live, checkpoint, agent, events, count, value: out });
     if (!live) {
-      if (checkpoint) out.running = checkpoint.running;
+      if (checkpoint && d.runningSeq <= (checkpoint.session?.lastSeq ?? 0n))
+        out.running = checkpoint.running;
       return out;
     }
     const observed = derive(live.actions, agentOf(this.sessions.get(sid)));
-    out.running = live.running;
+    // A snapshot at N supplies state through N; verified events after N win.
+    const snapshotSeq = live.session?.lastSeq ?? 0n;
+    const newerInput = (id: string) => (d.inputSeqs.get(id) ?? 0n) > snapshotSeq;
+    if (d.runningSeq <= snapshotSeq) out.running = live.running;
     out.inputs = new Map(d.inputs);
     out.paused = new Set(d.paused);
     out.stages = new Map(d.stages);
@@ -2715,21 +2719,24 @@ export class Remote {
     for (const [id, status] of out.inputs)
       if (
         [InputStatus.QUEUED, InputStatus.HELD_BY_CLI].includes(status) &&
-        !observed.inputs.has(id)
+        !observed.inputs.has(id) && !newerInput(id)
       ) {
         out.inputs.set(id, InputStatus.UNCONFIRMED);
         out.paused.delete(id);
         out.stages.delete(id);
       }
     for (const [id, status] of observed.inputs) {
+      if (newerInput(id)) continue;
       out.inputs.set(id, status);
       if (observed.paused.has(id)) out.paused.add(id);
       else out.paused.delete(id);
     }
-    for (const [id, stage] of observed.stages) out.stages.set(id, stage);
+    for (const [id, stage] of observed.stages)
+      if (!newerInput(id)) out.stages.set(id, stage);
     for (const [id, reason] of observed.inputReasons)
-      out.inputReasons.set(id, reason);
+      if (!newerInput(id)) out.inputReasons.set(id, reason);
     for (const [id, accepted] of observed.accepted) {
+      if (newerInput(id)) continue;
       const prior = out.accepted.get(id);
       // Held snapshots fill gaps in history, but their text may be truncated.
       // Keep known accepted content/origin; only its live delivery mode changes.

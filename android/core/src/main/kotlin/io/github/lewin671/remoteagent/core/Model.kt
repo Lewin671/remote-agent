@@ -769,6 +769,8 @@ class Derived(
     val answered: HashMap<String, List<String>> = HashMap(),
     /** Latest state per request ID of messages sent with Send. */
     val inputs: LinkedHashMap<String, InputStatus> = LinkedHashMap(),
+    /** Last input-state event per request ID, for ordering live snapshots. */
+    val inputSeqs: HashMap<String, Long> = HashMap(),
     /** Full latest input state: mode and pause are needed for pending bubbles. */
     val inputDetails: LinkedHashMap<String, InputState> = LinkedHashMap(),
     /**
@@ -784,6 +786,7 @@ class Derived(
      */
     val unsent: LinkedHashMap<String, Long> = LinkedHashMap(),
     var running: Boolean = false,
+    var runningSeq: Long = 0,
     var scheduledClosed: Boolean = false,
     var usage: TokenUsage? = null,
     val compactions: HashMap<Long, Compaction> = HashMap(),
@@ -854,10 +857,12 @@ internal class EventReducer(agent: Agent) {
                 }
                 Event.KindCase.TURN_STARTED -> {
                     d.running = true
+                    d.runningSeq = e.seq
                     d.background.clear()
                 }
                 Event.KindCase.TURN_ENDED -> {
                     d.running = false
+                    d.runningSeq = e.seq
                     d.questions.clear()
                     // Still running when an interrupted turn ended: whether it
                     // ever ends is not known (an interrupt does not stop
@@ -878,6 +883,7 @@ internal class EventReducer(agent: Agent) {
                     val st = e.inputState
                     val late = d.inputs[st.requestId] == InputStatus.INPUT_STATUS_UNCONFIRMED
                     d.inputs[st.requestId] = st.status
+                    d.inputSeqs[st.requestId] = e.seq
                     val before = d.inputDetails[st.requestId]
                     d.inputDetails[st.requestId] = retainInputDetails(st, before)
                     val prev = d.accepted[st.requestId]
@@ -1085,6 +1091,7 @@ internal class EventReducer(agent: Agent) {
                     d.scheduledClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.scheduledClosed
                     if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                         d.running = false
+                        d.runningSeq = e.seq
                         d.approvals.clear()
                         d.questions.clear()
                         for (t in d.tools) {
@@ -1100,6 +1107,7 @@ internal class EventReducer(agent: Agent) {
                 // of it is pending or running in this session.
                 Event.KindCase.SESSION_FORKED -> {
                     d.running = false
+                    d.runningSeq = e.seq
                     d.approvals.clear()
                     d.questions.clear()
                     for (t in d.tools) {
@@ -1126,6 +1134,7 @@ internal class EventReducer(agent: Agent) {
             questions = LinkedHashMap(d.questions),
             answered = HashMap(d.answered),
             inputs = LinkedHashMap(d.inputs),
+            inputSeqs = HashMap(d.inputSeqs),
             inputDetails = LinkedHashMap(d.inputDetails),
             accepted = HashMap(d.accepted),
             failures = HashMap(d.failures),
@@ -1138,6 +1147,7 @@ internal class EventReducer(agent: Agent) {
             typedLocally = HashSet(d.typedLocally),
             terminalChanges = HashMap(d.terminalChanges),
             running = d.running,
+            runningSeq = d.runningSeq,
             scheduledClosed = d.scheduledClosed,
             usage = d.usage,
             plan = d.plan,
@@ -1635,18 +1645,23 @@ fun currentActions(
     val details = LinkedHashMap(d.inputDetails)
     val accepted = HashMap(d.accepted)
     if (live != null) {
+        // A snapshot at N supplies state through N; verified events after N win.
+        val snapshotSeq = live.session.lastSeq
+        fun newerInput(id: String) = (d.inputSeqs[id] ?: 0L) > snapshotSeq
         val observed = derive(live.actionsList)
         for ((id, status) in inputs.toMap()) if (
             status in
                 setOf(InputStatus.INPUT_STATUS_QUEUED, InputStatus.INPUT_STATUS_HELD_BY_CLI) &&
-                id !in observed.inputs
+                id !in observed.inputs && !newerInput(id)
         ) {
             inputs[id] = InputStatus.INPUT_STATUS_UNCONFIRMED
             details.remove(id)
         }
-        inputs.putAll(observed.inputs)
-        for ((id, input) in observed.inputDetails) details[id] = retainInputDetails(input, details[id])
+        for ((id, status) in observed.inputs) if (!newerInput(id)) inputs[id] = status
+        for ((id, input) in observed.inputDetails) if (!newerInput(id))
+            details[id] = retainInputDetails(input, details[id])
         for ((id, input) in observed.accepted) {
+            if (newerInput(id)) continue
             val prior = accepted[id]
             accepted[id] = if (prior != null && observed.inputs[id] == InputStatus.INPUT_STATUS_HELD_BY_CLI) retainAccepted(prior, input) else input
         }
@@ -1658,11 +1673,13 @@ fun currentActions(
         questions = questions,
         answered = d.answered,
         inputs = inputs,
+        inputSeqs = d.inputSeqs,
         inputDetails = details,
         accepted = accepted,
         failures = d.failures,
         unsent = d.unsent,
-        running = live?.running ?: d.running,
+        running = if (live != null && d.runningSeq <= live.session.lastSeq) live.running else d.running,
+        runningSeq = d.runningSeq,
         scheduledClosed = d.scheduledClosed,
         usage = d.usage,
         compactions = d.compactions,
