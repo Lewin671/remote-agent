@@ -36,7 +36,10 @@ func TestHookContract(t *testing.T) {
 }
 
 func TestStatusLineTranscriptAliasResolvesToActualCLIState(t *testing.T) {
-	home := t.TempDir()
+	home, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	path := filepath.Join(home, "brain", "conversation", ".system_generated", "logs", "transcript.jsonl")
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)

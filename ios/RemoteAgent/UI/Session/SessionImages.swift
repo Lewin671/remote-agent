@@ -144,4 +144,18 @@ enum SessionImages {
             OutgoingImageThumbs(center: ImageCenter.of(context.remote), message: message)
         }
     }
+
+    /// Queue events replace the outgoing bubble but its local pictures are
+    /// still held until submission. Keep drawing them beside the queue entry.
+    struct PendingThumbs: View {
+        let session: String
+        let requestId: String
+        @Environment(AccountContext.self) private var context
+
+        var body: some View {
+            if let message = context.sessionStore.find(session, requestId: requestId) {
+                OutgoingImageThumbs(center: ImageCenter.of(context.remote), message: message, showFiles: false)
+            }
+        }
+    }
 }

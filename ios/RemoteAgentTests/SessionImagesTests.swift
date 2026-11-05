@@ -1,7 +1,10 @@
 import Foundation
+import Observation
 import RACore
 import RAProto
+import SwiftUI
 import Testing
+import UIKit
 
 @testable import RemoteAgent
 
@@ -51,6 +54,77 @@ import Testing
         let c = center()
         #expect(await send(c, "只有文字") == nil)
         #expect(store.outgoing(sid).isEmpty && computer.sent.isEmpty)
+    }
+
+    @Test func sendingPreparedBytesMakesAnObservableThumbnailAndKeepsItAfterFailure() async throws {
+        let c = center()
+        defer { ImageCenter.remove(remote) }
+        let key = ImageCenter.sessionKey(sid)
+        let draft = c.draft(key)
+        await c.restoredDraft(key)
+        let img = ready("photo")
+        let png = UIGraphicsImageRenderer(size: CGSize(width: 4, height: 3)).image { ctx in
+            UIColor.red.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 4, height: 3))
+        }.pngData()!
+        img.processed = Processed(bytes: png, format: .png, width: 4, height: 3)
+        draft.append([img])
+        // A prepared image need not have a cached thumbnail yet. The outbox
+        // must make one, and a bubble drawn before it arrives must redraw.
+        final class Heard: @unchecked Sendable { var yes = false }
+        let heard = Heard()
+        withObservationTracking {
+            #expect(c.thumb(img) == nil)
+        } onChange: { heard.yes = true }
+        computer.answer(CommandError(CommandError.unknownOutcome, "不确定电脑有没有执行"))
+        _ = await send(c, "看图")
+        let o = try #require(store.outgoing(sid).first)
+        await eventually("unknown send keeps its picture") { o.state == .unknown && c.thumb(img) != nil }
+        #expect(heard.yes)
+        #expect(draft.images.isEmpty && o.images.first === img && img.processed?.bytes == png)
+        #expect(computer.sent.first?.send.imageIds == ["on-mac-photo"])
+
+        // Both terminal failures and a lost command response leave the same
+        // attachment visible, whether or not its thumbnail decoded.
+        for state in [Outgoing.State.sending, .sent, .unknown, .failed] {
+            o.state = state
+            let rendered = ImageRenderer(content: OutgoingImageThumbs(center: c, message: o).frame(width: 320))
+            #expect(try #require(rendered.uiImage).size.height >= 56)
+        }
+
+        let restoredStore = SessionStore()
+        let restoredCenter = center()
+        restoredCenter.restoreOutgoing(sid, store: restoredStore)
+        await restoredCenter.restoredOutgoing(sid)
+        let restored = try #require(restoredStore.outgoing(sid).first)
+        await eventually("restart rebuilds the thumbnail from sealed bytes") { restoredCenter.thumb(restored.images[0]) != nil }
+        #expect(restored.state == .unknown && restored.images[0].processed?.bytes == png)
+    }
+
+    @Test func picturesWithoutDecodedThumbnailsStillAppearInOutgoingAndPendingBubbles() throws {
+        let c = center()
+        defer { ImageCenter.remove(remote) }
+        // Invalid preview bytes exercise the decode-failure path, as well as
+        // the interval before an asynchronous thumbnail has arrived.
+        let o = Outgoing(requestId: "picture", text: "看图", imageIds: ["on-mac-photo"], images: [ready("photo")])
+        #expect(c.thumb(o.images[0]) == nil)
+        for state in [Outgoing.State.sending, .sent, .unknown, .failed] {
+            o.state = state
+            let rendered = ImageRenderer(content: OutgoingImageThumbs(center: c, message: o).frame(width: 320))
+            #expect(try #require(rendered.uiImage).size.height >= 56)
+        }
+        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let context = AccountContext(account: account, remote: remote)
+        context.sessionStore.add(sid, o)
+        // Once QUEUED or HELD_BY_CLI hides the outgoing bubble, the pending
+        // bubble must draw the still-retained local attachment itself.
+        for status in [PBInputStatus.queued, .heldByCli] {
+            #expect(!outgoingShown(input: status))
+            let rendered = ImageRenderer(content:
+                SessionImages.PendingThumbs(session: sid, requestId: o.requestId)
+                    .environment(context).frame(width: 320))
+            #expect(try #require(rendered.uiImage).size.height >= 56)
+        }
     }
 
     @Test func aMessageWhoseImagesCouldNotBeKeptIsNotSent() async {

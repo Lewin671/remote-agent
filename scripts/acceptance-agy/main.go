@@ -66,6 +66,7 @@ func run() (runErr error) {
 		return errors.New("refusing a non-local dev relay")
 	}
 	preflight := len(os.Args) == 2 && os.Args[1] == "--preflight"
+	imagesOnly := len(os.Args) == 2 && os.Args[1] == "--images-only"
 	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Minute)
 	defer cancel()
 	auth, err := remoteclient.NewAuthority(ctx, server, read(filepath.Join(dir, "setup-token")))
@@ -374,6 +375,9 @@ func run() (runErr error) {
 	fmt.Println("PASS send and read model reply as encrypted events")
 	// Two distinct uploads prove agy's count grows after each path, then the
 	// native CLI receives both media and the text in one submitted message.
+	// A phone-width terminal clips the media summary and expand hint. This
+	// resize is a debug trigger; upload/send still cross the encrypted relay.
+	must(exec.Command("tmux", "-L", socket, "resize-window", "-t", pane, "-x", "32", "-y", "48").Run())
 	imageIDs := make([]string, 0, 2)
 	for i := 0; i < 2; i++ {
 		id, err := uploadRedImage(ctx, client, machine.ID)
@@ -401,7 +405,11 @@ func run() (runErr error) {
 	}); err != nil {
 		return err
 	}
-	fmt.Println("PASS two-image upload, native attachment recognition, text submission and model reply over encrypted relay")
+	fmt.Println("PASS two-image upload in a 32-column terminal, native attachment recognition, text submission and model reply over encrypted relay (debug resize)")
+	must(exec.Command("tmux", "-L", socket, "resize-window", "-t", pane, "-x", "160", "-y", "48").Run())
+	if imagesOnly {
+		return nil
+	}
 	resolve := func(e *pb.Event, allow bool) error {
 		return do(&pb.Command{Kind: &pb.Command_ResolveApproval{ResolveApproval: &pb.ResolveApprovalRequest{SessionId: sid, ApprovalId: e.GetApprovalRequested().ApprovalId, Allow: allow, ObservedEventSeq: e.Seq}}})
 	}

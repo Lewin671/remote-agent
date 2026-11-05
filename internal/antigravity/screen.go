@@ -210,7 +210,11 @@ func (a *Adapter) Interrupted(styled string) bool {
 	return false
 }
 
-var mediaAttachedRE = regexp.MustCompile(`^(?:▸ 📎 ([1-9][0-9]*) media attached(?: \([^()]*\))? +\(ctrl\+o to expand\)|▾ 📎 ([1-9][0-9]*) Media\(s\) attached)$`)
+// agy clips these rows to the terminal width. On a phone even the first
+// summary can be cut off, and the expand hint need not be visible at all.
+// The native header must be intact; parenthesized summaries/hints may end
+// at the right edge. Ordinary prose after "attached" is not a media row.
+var mediaAttachedRE = regexp.MustCompile(`^(?:▸ 📎 ([1-9][0-9]*) media attached(?: +\([^()\r\n]*\)?)*|▾ 📎 ([1-9][0-9]*) Media\(s\) attached)$`)
 
 // Attached media is outside the text box, immediately above its top rule.
 // Expanded media has a header, one row per attachment and a collapse hint.

@@ -212,6 +212,38 @@ func TestAgyImagesRecognizedBeforeSubmittingText(t *testing.T) {
 	}
 }
 
+func TestAgyImagesRecognizedInPhoneWidthTerminal(t *testing.T) {
+	for _, rows := range [][]string{
+		{"▸ 📎 1 media attached (file, 103 B, image/png)", "▸ 📎 2 media attached  (ctrl+o to expand)"},
+		{"▸ 📎 1 media attached (file, 1", "▸ 📎 2 media attached  (ctrl+o"},
+	} {
+		t.Run(rows[0], func(t *testing.T) {
+			h := agyHarness(t)
+			h.s.status = pb.SessionStatus_SESSION_STATUS_IDLE
+			h.term.setScreen(agyScreen(t, "image-cleared-1.5.0.txt"))
+			imgs := imagesFor(t, h.dir, "one.png", "two.png")
+			n := 0
+			h.term.onWrite = func(f *fakeTerm, b string) {
+				if strings.HasSuffix(b, "\x1b[201~") {
+					f.screen = strings.Replace(agyScreen(t, "image-terminal.txt"), "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", rows[n], 1)
+					n++
+				}
+			}
+			if _, err := h.s.enqueue("describe both", "phone-images", imgs, originLocal); err != nil {
+				t.Fatal(err)
+			}
+			result, err := h.s.inject(h.s.queue.Queue[0])
+			if err != nil || result != written {
+				t.Fatalf("inject: %v %v", result, err)
+			}
+			writes := h.term.written()
+			if n != 2 || len(writes) != 3 || !strings.HasSuffix(writes[2], "describe both\x1b[201~\r") {
+				t.Fatalf("images/text order: %q", writes)
+			}
+		})
+	}
+}
+
 func TestAgyImageCleanupVerifiesMediaDisappears(t *testing.T) {
 	for _, disappears := range []bool{true, false} {
 		t.Run(fmt.Sprint(disappears), func(t *testing.T) {

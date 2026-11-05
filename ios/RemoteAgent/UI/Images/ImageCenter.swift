@@ -546,6 +546,9 @@ final class ImageCenter {
             }
             // The immutable request owns these transports before the composer lets them go.
             for img in picked { img.protectUpload(machineId: machineId, transferId: img.transferId, requestId: o.requestId) }
+            // Prepared/restored bytes may reach the outbox before their preview
+            // has been made. Sending must not depend on the draft having drawn it.
+            for img in picked where thumb(img) == nil { makeThumb(img) }
             draft.detach(picked)
             store.add(sid, o)
             hold(sid, o, store)

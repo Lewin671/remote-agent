@@ -315,25 +315,35 @@ private struct ImagePickerHost: ViewModifier {
 struct OutgoingImageThumbs: View {
     let center: ImageCenter
     let message: Outgoing
+    var showFiles = true
 
     var body: some View {
-        let shown = message.images.filter { !$0.isFile }.prefix(4).compactMap { img in center.thumb(img).map { (img.id, $0) } }
+        let photos = message.images.filter { !$0.isFile }
         VStack(alignment: .leading, spacing: 6) {
-            ForEach(message.images.filter(\.isFile)) { item in
-                if let file = item.file { FileChip(name: file.name, size: file.size) }
+            if showFiles {
+                ForEach(message.images.filter(\.isFile)) { item in
+                    if let file = item.file { FileChip(name: file.name, size: file.size) }
+                }
             }
         }
-        if !shown.isEmpty {
+        if !photos.isEmpty {
             HStack(spacing: 4) {
-                ForEach(shown, id: \.0) { _, thumb in
-                    Image(uiImage: thumb).resizable().scaledToFill()
-                        .frame(width: 56, height: 56)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                ForEach(photos.prefix(4)) { img in
+                    ZStack {
+                        Theme.soft
+                        if let thumb = center.thumb(img) {
+                            Image(uiImage: thumb).resizable().scaledToFill()
+                        } else {
+                            Text("图片").type(T.meta, Theme.muted)
+                        }
+                    }
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
                 }
             }
             .padding(.bottom, 4)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(message.images.filter { !$0.isFile }.count) 张图片")
+            .accessibilityLabel("\(photos.count) 张图片")
         }
     }
 }

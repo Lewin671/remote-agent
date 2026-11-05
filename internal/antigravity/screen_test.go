@@ -231,12 +231,43 @@ func TestAttachedMediaIsPartOfDraft(t *testing.T) {
 func TestChatPaperclipIsNotComposerMedia(t *testing.T) {
 	a := New("", "")
 	base := readScreenFixture(t, "image-terminal.txt")
-	for _, line := range []string{"The file is attached 📎", "▸ 📎 2 media attached", "(ctrl+o to collapse)"} {
+	for _, line := range []string{"The file is attached 📎", "There are 2 media attached", "(ctrl+o to collapse)"} {
 		s := strings.Replace(base, "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)", line, 1)
 		scr := a.Analyze(s)
 		text, indexes, ok := a.ImageInput(s, "")
 		if !scr.ComposerReady || !scr.DraftEmpty || !ok || text != "" || len(indexes) != 0 {
 			t.Fatalf("chat line %q became composer media: %+v %q %v", line, scr, text, indexes)
 		}
+	}
+}
+
+func TestClippedMediaHeaders(t *testing.T) {
+	a := New("", "")
+	base := readScreenFixture(t, "image-terminal.txt")
+	full := "▸ 📎 1 media attached (file, 663 B, image/jpeg)  (ctrl+o to expand)"
+	for _, row := range []string{
+		"▸ 📎 1 media attached (file, 103 B, image/png)", // 48 columns, agy 1.5.1
+		"▸ 📎 1 media attached (file, 1",                 // 32 columns
+		"▸ 📎 1 media attached",                          // summary clipped away
+		"▸ 📎 2 media attached  (ctrl+o",                 // 32 columns, two images
+		"\x1b[90m▸ 📎 2 media attached  (ctrl+o\x1b[39m",
+	} {
+		t.Run(row, func(t *testing.T) {
+			screen := strings.Replace(base, full, row, 1)
+			want := 1
+			if strings.Contains(row, "2 media") {
+				want = 2
+			}
+			text, indexes, ok := a.ImageInput(screen, "")
+			if !ok || len(indexes) != want || len(agent.ImagePlaceholders(text)) != want || a.Analyze(screen).DraftEmpty {
+				t.Fatalf("clipped media ignored: %q %v %v", text, indexes, ok)
+			}
+			// The same header in history, separated from the input box,
+			// must never be borrowed as an attachment of a new message.
+			history := row + "\n" + strings.Replace(base, full, "", 1)
+			if text, indexes, ok := a.ImageInput(history, ""); !ok || text != "" || len(indexes) != 0 || !a.Analyze(history).DraftEmpty {
+				t.Fatal("historical media became current attachments")
+			}
+		})
 	}
 }

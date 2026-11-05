@@ -999,7 +999,10 @@ private struct PendingBubble: View {
                     ChatBubble(
                         pending.text.isEmpty ? (pending.files.isEmpty ? "（图片）" : nil) : pending.text, pending: true,
                         lines: expanded ? nil : 4, padded: false
-                    ) { FileChips(files: pending.files) }
+                    ) {
+                        SessionImages.PendingThumbs(session: sid, requestId: id)
+                        FileChips(files: pending.files)
+                    }
                     .padding(.vertical, -8)
                     .opacity(canceling ? 0.5 : 1)
                 }
