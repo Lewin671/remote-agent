@@ -143,6 +143,23 @@ extension Ref<LiveAnnouncer> {
         #expect(!tracker.scroll.following)
     }
 
+    @MainActor @Test func estimatedHeightChangesAtTheEndDoNotFeedAnotherScroll() {
+        let tracker = ChatScrollTracker()
+        _ = tracker.floor(700)
+        _ = tracker.count(100)
+        _ = tracker.content(height: 10_000, endY: 700)
+        // Lazy rows above the viewport replace estimates with measured heights.
+        // The bottom is already correct. Scrolling again here re-enters layout
+        // even though there is no distance left to travel.
+        var commands = 0
+        for i in 0..<100 {
+            if tracker.content(height: i.isMultiple(of: 2) ? 10_010 : 10_000, endY: 700) { commands += 1 }
+        }
+        #expect(commands == 0)
+        // Real growth still needs a correction, even within the follow slack.
+        #expect(tracker.content(height: 10_012, endY: 712))
+    }
+
     @MainActor @Test func growthAtTheBottomDoesNotIssueScrollCommandsUnderAFinger() {
         let tracker = ChatScrollTracker()
         _ = tracker.floor(700)
@@ -162,7 +179,7 @@ extension Ref<LiveAnnouncer> {
         let tracker = ChatScrollTracker()
         _ = tracker.floor(700)
         _ = tracker.count(10)
-        #expect(tracker.content(height: 2_000, endY: 700))
+        #expect(!tracker.content(height: 2_000, endY: 700), "already at the end")
         #expect(!tracker.content(height: 2_000, endY: 700), "nothing changed")
         // A reply grows by 300 pt: its end is now under the bar.
         #expect(tracker.content(height: 2_300, endY: 1_000))

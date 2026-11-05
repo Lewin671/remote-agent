@@ -24,6 +24,36 @@ import UIKit
 
 // MARK: Where the end of the list is
 
+/// Geometry is delivered inside SwiftUI's layout transaction. A scroll there
+/// can synchronously lay out the lazy stack again, which changes its estimates
+/// and delivers more geometry. Coalesce corrections outside that transaction,
+/// at most once per display-sized interval, and let a new gesture cancel them.
+@MainActor
+final class ChatScrollWork {
+    private var task: Task<Void, Never>?
+    private var action: (() -> Void)?
+
+    func schedule(_ action: @escaping () -> Void) {
+        self.action = action
+        guard task == nil else { return }
+        task = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(16)) }
+            catch { return }
+            guard let self else { return }
+            let action = self.action
+            self.action = nil
+            self.task = nil
+            action?()
+        }
+    }
+
+    func cancel() {
+        task?.cancel()
+        task = nil
+        action = nil
+    }
+}
+
 /// The list's measurements and the decision they lead to. Not observed as a
 /// whole: it changes on every frame of a scroll, and only what the screen
 /// draws from it (`fresh`, `away`) is published.
@@ -44,11 +74,24 @@ final class ChatScrollTracker {
     @ObservationIgnored private var floorY: CGFloat = 0
     @ObservationIgnored private var rows = 0
     @ObservationIgnored private var measured = false
+    @ObservationIgnored private var contentMeasured = false
+    @ObservationIgnored private let followWork = ChatScrollWork()
 
     /// The end counts as in sight within this of the bar: a list at rest is rarely there to the point.
     static let slack: CGFloat = 28
 
     private var atBottom: Bool { !measured || endY <= floorY + Self.slack }
+    // Follow slack decides intent, not whether another layout is needed.
+    private var needsScroll: Bool { measured && contentMeasured && endY > floorY + 0.5 }
+
+    func follow(_ action: @escaping () -> Void) {
+        followWork.schedule { [weak self] in
+            guard let self, !self.dragging, !self.keeping, self.scroll.following, self.needsScroll else { return }
+            action()
+        }
+    }
+
+    func cancelFollow() { followWork.cancel() }
 
     private func publish() {
         let f = scroll.fresh(rows: rows)
@@ -64,7 +107,10 @@ final class ChatScrollTracker {
     @ObservationIgnored private(set) var keeping = false
 
     /// The list is put back where the reader was: it is neither judged nor sent to the end meanwhile.
-    func keep() { keeping = true }
+    func keep() {
+        cancelFollow()
+        keeping = true
+    }
 
     /// The list is back, or the reader took it over: judged again from the next change.
     func kept() {
@@ -78,13 +124,17 @@ final class ChatScrollTracker {
     func interaction(_ active: Bool) -> Bool {
         let ended = dragging && !active
         dragging = active
-        if active { kept() }
-        return ended && !keeping && scroll.following
+        if active {
+            cancelFollow()
+            kept()
+        }
+        return ended && !keeping && scroll.following && needsScroll
     }
 
     /// The content was laid out or scrolled: its height, and where its end is on the screen.
     /// True when the list should go to its end.
     func content(height: CGFloat, endY: CGFloat) -> Bool {
+        contentMeasured = true
         let grew = abs(height - contentHeight) > 0.5
         contentHeight = height
         self.endY = endY
@@ -118,11 +168,12 @@ final class ChatScrollTracker {
         publish()
         // Even at the end, a programmatic scroll competes with the finger
         // (or its glide). Keep observing it, and follow after release instead.
-        return go && !dragging
+        return go && !dragging && needsScroll
     }
 
     /// Reads back as a finger would: away from the end, and no longer following. For driving the page from a script.
     func leave() {
+        cancelFollow()
         keeping = false
         scroll.observe(userDragging: true, atBottom: false, rows: rows)
         publish()
@@ -148,6 +199,7 @@ final class ChatScrollTracker {
 
     /// The user asked for the end.
     func jump() {
+        cancelFollow()
         keeping = false
         scroll.jumpToEnd(rows: rows)
         publish()
@@ -225,14 +277,14 @@ private struct KeepsPlace: ViewModifier {
             var height: CGFloat = 0
         }
 
-        final class Place {
+        @MainActor final class Place {
             var joins: Int?
             var sight = Sight()
             /// The row to put back, and where its top was.
             var target: Target?
             var started = false
             var tries = 0
-            var stepping = false
+            let work = ChatScrollWork()
             var rounds = 0
         }
 
@@ -245,17 +297,17 @@ private struct KeepsPlace: ViewModifier {
                     Sight(offset: g.contentOffset.y, content: g.contentSize.height, height: g.containerSize.height)
                 } action: { _, new in
                     place.sight = new
-                    guard place.target != nil else { return }
-                    if !place.started { return begin() }
-                    // The rows tell where they are once laid out, after this.
-                    guard !place.stepping else { return }
-                    place.stepping = true
-                    Task {
-                        place.stepping = false
-                        step()
-                    }
+                    correct()
                 }
-                .onChange(of: joins) { begin() }
+                .onChange(of: joins) { correct() }
+                .onDisappear { finish() }
+        }
+
+        private func correct() {
+            guard place.target != nil else { return }
+            place.work.schedule {
+                if place.started { step() } else { begin() }
+            }
         }
 
         /// Takes the row to put back when the earlier history joins.
@@ -325,6 +377,7 @@ private struct KeepsPlace: ViewModifier {
         }
 
         private func finish() {
+            place.work.cancel()
             place.target = nil
             tracker.kept()
         }
@@ -678,14 +731,14 @@ struct ChatPane: View {
                 .onGeometryChange(for: CGRect.self) {
                     $0.frame(in: .global)
                 } action: { frame in
-                    if tracker.content(height: frame.height, endY: frame.maxY) { toEnd(proxy) }
+                    if tracker.content(height: frame.height, endY: frame.maxY) { tracker.follow { toEnd(proxy) } }
                 }
             }
             .modifier(EndAnchored(tailFirst: chat.tailFirst))
             .scrollDismissesKeyboard(.interactively)
             .modifier(DragWatch {
                 chat.interaction($0)
-                if tracker.interaction($0) { toEnd(proxy) }
+                if tracker.interaction($0) { tracker.follow { toEnd(proxy) } }
             })
             .modifier(KeepsPlace(joins: chat.joins, rows: rows, tracker: tracker))
             // The earlier history is not new to someone reading back.
@@ -699,7 +752,7 @@ struct ChatPane: View {
                     .onGeometryChange(for: CGFloat.self) {
                         $0.frame(in: .global).minY
                     } action: { y in
-                        if tracker.floor(y) { toEnd(proxy) }
+                        if tracker.floor(y) { tracker.follow { toEnd(proxy) } }
                     }
                     .overlay(alignment: .top) {
                         pill {
@@ -711,7 +764,7 @@ struct ChatPane: View {
                     .offset(y: keyboard.lag)
             }
             .onChange(of: rows.count + pending.count + outgoing.count, initial: true) { _, n in
-                if tracker.count(n) { toEnd(proxy) }
+                if tracker.count(n) { tracker.follow { toEnd(proxy) } }
             }
             .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: chat.loaded, jump: jump) {
                 if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
@@ -741,6 +794,7 @@ struct ChatPane: View {
             }
         }
         .onDisappear {
+            tracker.cancelFollow()
             chat.interaction(false)
             context.sessionStore.clearScheduledJump(sid)
         }

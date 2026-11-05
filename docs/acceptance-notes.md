@@ -185,6 +185,18 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 ## 11. iOS
 
+### 聊天滚动的布局反馈（2026-11-05）
+
+基于 v0.54.1 的任务代码，Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器；未发布。只读检查 iPhone 13 / iOS 18.5 的六份系统终止报告：四份来自 v0.53.0，两份来自 v0.54.0。主线程都在 SwiftUI / AttributeGraph 布局路径，其中包含 `LazyStack.collectBackwards`、`resolveIndexAndPosition` 和 `place`。v0.54.0 的两份都是退出时超过 5 秒的 watchdog 终止；这些栈没有显示 App 自己的锁或网络等待，不能仅凭单次栈排除其他卡顿路径。原始报告不入库。
+
+自动回归 `estimatedHeightChangesAtTheEndDoNotFeedAnotherScroll` 在原代码上失败：底部保持对齐，100 次懒加载高度估算变化仍产生 100 次滚动请求。修复后不再产生这些请求。调度测试覆盖布局回调不立即滚动、合并最新请求、取消后重新调度，以及执行前复查手势、历史定位和底部位置。实际 `ChatPane` 的窗口测试从 600 条变高消息的最新 60 条开始，分批补齐前缀，再追加回复，期间设置 80 次滚动位置；它在 iOS 27 的修复前后都通过，**不是永久卡死的复现**。
+
+检查通过：`swift test --package-path ios/RemoteAgentCore --jobs 4`，报告 635 项，其中需专门启用的 `realDaemonCliRoundTripAndRemovedMachineArchiveRejoin` 跳过；`xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`，418 项（含参数化共 462 次）。补上窗口测试的资源清理后重编译，并重跑滚动相关三个测试套件，18 项通过。
+
+隔离的本地 server、daemon、临时账户和 tmux，加真实 Codex 0.166.0：用已有调试入口创建账户、配对，App 的 `session.draft` / `session.send` 经中继发送；daemon 事件确认消息来自客户端，真实 CLI 生成 40 条编号内容，末尾标记完整返回 App。输出期间用调试信号反复回看、回到底部及开合键盘，结束后仍可定位到回复末尾。临时环境和本次启动的模拟器均已清理。
+
+证据边界：确定存在多余滚动的反馈路径，且与真机栈中的布局计算相符；未在相同系统上复现并验证永久卡死消失，不能断言这是全部真机报告的唯一原因。Xcode 无法下载 iOS 18.5 runtime；真机只读取报告，没有安装或启动 App。模拟器窗口控制不可用，程序滚动和调试信号不能替代手指拖动、惯性滚动和交互式收键盘。大规模历史补齐只覆盖自动窗口测试，未在真实 CLI 链路构造大规模历史。
+
 ### 消息文字选择（2026-10-10）
 
 Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器，从当前任务代码构建。聊天长按菜单使用最多四行的预览；「选择文字」打开 large sheet，标题固定，单个只读 `UITextView` 同时负责选区和滚动，不套在 `kitSheet` 的外层 `ScrollView` 里。
