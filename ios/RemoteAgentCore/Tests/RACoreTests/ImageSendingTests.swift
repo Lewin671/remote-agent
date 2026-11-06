@@ -68,12 +68,7 @@ private actor FakeMachines {
     }
 }
 
-private struct FakeChannel: UploadChannel {
-        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-            throw UserError("unexpected file upload in image test")
-        }
-        func abort(transferId: String) async throws {}
-
+private struct FakeChannel: ImageTestChannel {
     let machines: FakeMachines
     let machine: String
 
@@ -106,23 +101,6 @@ private final class FakeSources: @unchecked Sendable {
             if broken.contains(uri) { throw UserError("解不出这张图片") }
             return Processed(bytes: Self.png, format: .png, width: original ? 4000 : 2048, height: 10, note: original ? "原" : "")
         }
-    }
-}
-
-/// Holds whoever waits at it until it is opened.
-private actor Gate {
-    private var open = false
-    private var waiting: [CheckedContinuation<Void, Never>] = []
-
-    func wait() async {
-        if open { return }
-        await withCheckedContinuation { waiting.append($0) }
-    }
-
-    func letThrough() {
-        open = true
-        for w in waiting { w.resume() }
-        waiting = []
     }
 }
 
@@ -307,7 +285,7 @@ private actor Gate {
     }
 
     @Test func expiryRenewsTheTransferAtTheExactDeadlineAndDetachingCancelsTheTimer() async {
-        let gate = Gate()
+        let gate = TestLatch()
         let machines = machines
         var now: Int64 = 1000
         await machines.expires(1100)
@@ -324,7 +302,7 @@ private actor Gate {
         now = 1100
         await machines.expires(1200)
         let timer = img.refreshJob
-        await gate.letThrough()
+        await gate.open()
         await timer?.value
         await img.job?.value
         #expect(img.transferId != transfer && img.expiresMs == 1200)
@@ -336,7 +314,7 @@ private actor Gate {
     }
 
     @Test func anImageStillBeingPreparedAgainIsNotTakenForSaved() async throws {
-        let gate = Gate()
+        let gate = TestLatch()
         let machines = machines
         let u = ImageUploads(
             prepare: { uri, original in
@@ -356,7 +334,7 @@ private actor Gate {
         await settled(added[0])
         #expect(added[1].state == .processing)
         #expect(try kept(added[0]) == "picked:a true")
-        await gate.letThrough()
+        await gate.open()
         await settled(added[1])
         // What a reclaimed process would find is what the draft says it sends.
         #expect(try kept(added[1]) == "picked:b true")

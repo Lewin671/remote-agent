@@ -84,23 +84,6 @@ private struct FileMachineChannel: UploadChannel {
     func complete(transferId: String) async throws -> PBImageUploadStatus { try await server.complete(machine, transferId) }
     func abort(transferId: String) async throws { await server.abort(machine, transferId) }
 }
-private final class WorkerProgress: @unchecked Sendable {
-    let lock = NSLock()
-    var value = 0
-    func tick() { lock.withLock { value += 1 } }
-    var count: Int { lock.withLock { value } }
-}
-
-private actor FileTestGate {
-    var released = false
-    var waiting: [CheckedContinuation<Void, Never>] = []
-    func wait() async {
-        if released { return }
-        await withCheckedContinuation { waiting.append($0) }
-    }
-    func open() { released = true; for w in waiting { w.resume() }; waiting = [] }
-}
-
 @MainActor @Suite struct FileLifecycleTests {
     private func picked() throws -> (URL, PendingImage) {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".txt")
@@ -266,7 +249,7 @@ private actor FileTestGate {
         #expect(!first.isCancelled, "handoff must not cancel the request's transport")
         #expect(img.imageId == nil && img.machineId == nil && img.expiresMs == 0)
         draft.append([img])
-        let gate = FileTestGate()
+        let gate = TestLatch()
         var blocked = false
         u.onFileChanged = { item in
             try await draft.persistFile(item)
@@ -321,20 +304,20 @@ private actor FileTestGate {
     }
 
     @Test func cancelingTheCallerStopsTheDetachedWorker() async throws {
-        let progress = WorkerProgress()
+        let progress = Counter()
         let work = Task {
             try await fileWork {
-                for _ in 0..<2000 { try Task.checkCancellation(); progress.tick(); Thread.sleep(forTimeInterval: 0.001) }
+                for _ in 0..<2000 { try Task.checkCancellation(); progress.increment(); Thread.sleep(forTimeInterval: 0.001) }
                 return 1
             }
         }
-        await until { progress.count > 0 }
+        await until { progress.value > 0 }
         work.cancel()
         do { _ = try await work.value; Issue.record("worker ignored cancellation") } catch { #expect(error is CancellationError) }
-        #expect(progress.count < 2000)
-        let stopped = progress.count
+        #expect(progress.value < 2000)
+        let stopped = progress.value
         try await Task.sleep(for: .milliseconds(20))
-        #expect(progress.count == stopped)
+        #expect(progress.value == stopped)
     }
 
     @Test func staleBookmarkIsRenewedAndPersistedWithTransferState() async throws {

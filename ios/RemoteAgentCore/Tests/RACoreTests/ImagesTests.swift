@@ -357,12 +357,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
     }
 
     /// The daemon's side, as internal/daemon keeps it: bytes on disk, overlap must match.
-    private actor FakeDaemon: UploadChannel {
-        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-            throw UserError("unexpected file upload in image test")
-        }
-        func abort(transferId: String) async throws {}
-
+    private actor FakeDaemon: ImageTestChannel {
         let maxChunk: Int32
         var stored = Data()
         var total: Int64 = 0
@@ -467,12 +462,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         #expect(try await uploadImage(d, transferId: "t", data: png, maxChunk: 40) { done, _ in seen.append(done) } == UploadedImage(imageId: "img1", expiresMs: Int64.max))
         #expect(seen == Array(stride(from: 0, to: Int64(png.count), by: 40)) + [Int64(png.count)])
 
-        struct AlwaysLost: UploadChannel {
-        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-            throw UserError("unexpected file upload in image test")
-        }
-        func abort(transferId: String) async throws {}
-
+        struct AlwaysLost: ImageTestChannel {
             func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
                 throw Refused(code: "network", message: "down")
             }
@@ -484,12 +474,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         // Not an image the CLIs read: nothing is sent.
         await #expect(throws: UserError("不支持的图片格式")) { try await uploadImage(d, transferId: "t", data: Data("hello".utf8)) }
         // A daemon that completes without naming the image.
-        struct NoId: UploadChannel {
-        func beginFile(transferId: String, name: String, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
-            throw UserError("unexpected file upload in image test")
-        }
-        func abort(transferId: String) async throws {}
-
+        struct NoId: ImageTestChannel {
             func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
                 .with { $0.state = .complete
             $0.expiresMs = Int64.max }
