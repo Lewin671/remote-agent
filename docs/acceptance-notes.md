@@ -197,10 +197,10 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 | `Keeping` 的 scroll geometry | offset / content size / viewport → 普通 `Place.sight`；有历史目标时调度修正，再写 `ScrollPosition` | sight 不是 observable；修正 → 滚动 → 新 geometry 的闭环仍在，已有 8 次上限和 1 秒结束逻辑，本轮未新增或改动这些机制 |
 | 整个 lazy stack 的 global frame | height / maxY → tracker 普通字段 → follow 请求 → `scrollTo` | 布局输出确实能再请求滚动；v0.54.2 已把请求排到布局事务外，并在执行时复查，不等于证明 lazy layout 内部会收敛 |
 | 底部 inset 的 minY | → `tracker.floor` → 同一 follow 入口 | 和 content frame 分别送达，未取得真机卡死时两者的时序和值 |
-| `fresh` / `away` | tracker 的几何判断 → observable 值 → jump pill | pill 在 overlay 中，不占聊天高度；只有阈值状态变化才发布，未观察到阈值往返振荡 |
+| `fresh` / `away` | tracker 的几何判断 → observable 值 → jump pill | pill 在 overlay 中，不占聊天高度；只有阈值状态变化才发布。后续真机记录到收敛的 `away` 往返，没有不收敛证据 |
 | `paneHeight` | pane 的 size.height → State → `chatHeight` 环境 → `PendingDock.room` | 行不读取该环境；dock 的高度上限会影响 inset 和 viewport，未证明 pane 自身高度因此反复变化 |
 | dock body 的高度 | 内容高度 → `bodyHeight` → 内层 ScrollView 的 frame.height | 这是测量后再布局；内层内容沿滚动轴测量、宽度由外部给定，未观察到不收敛 |
-| 键盘 | safeAreaInsets → `KeyboardTrack.inset`；UIKit layout guide → overlap / base → lag → 底栏 offset | offset 不占布局空间；交互收键盘仍需与 SwiftUI 安全区、滚动阶段联合验证 |
+| 键盘 | safeAreaInsets → `KeyboardTrack.inset`；UIKit layout guide → overlap / base → lag → 底栏 offset | offset 不占布局空间；真机测到 guide / inset 先后到达时底栏短暂往返，交互式手势仍未覆盖 |
 | 计划行 `CutText` | shown / whole → `cut` binding → `PlanCard` 的展开按钮 → 行高度 | 确有第二次布局；lazy 行离屏回收后测量状态可能重建，尚未证明回收与高度变化构成振荡 |
 | Markdown 表格 | 横向 ScrollView 的 width → viewport → 列宽和行高；横向 geometry → more → mask | width 来自外部视口，不是表格内容宽度；mask 只影响绘制，未观察到宽度振荡 |
 | `EndAnchored` / `scrollPosition` | initialOffset、sizeChanges、alignment 和绑定参与系统的位置计算 | 包含框架自己的估算和锚定，报告无法说明内部依赖是否成环；未把它归罪于某个 App 状态写入 |
@@ -215,9 +215,27 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 临时 XCUITest 的有效手势测试通过：第二次发送后，在屏幕上部的可见聊天区域做 30 次快速往返拖动，五次聚焦输入框后再做慢速下拖，并检查草稿没有被手势改写。初轮使用整个 scroll view 的辅助功能 frame，截图显示部分手势误入键盘，不计作可靠手势覆盖；另一次用输入框 frame 限定范围的驱动因无效坐标断言失败，也不是卡死。最终有效驱动避开这些坐标，截图可见键盘和回看位置上的新消息 pill。另一个临时 XCUITest 直接点按该 pill，确认第二次回复末尾标记可见且可点击；两项分别单独运行通过。临时账户的本机存储已退出清理，隔离 server、daemon、tmux 和本次启动的模拟器均已停止；临时 UI test 工程与结果仅保留为本地证据，不入库。
 
-真机仅作只读设备检查：允许测试的 iPhone 处于需要密码解锁的状态，RA dev 未安装；尝试设备构建时依赖解析失败，未进入安装或运行，没有触及日常 Release App 或另一台设备。`xcrun simctl runtime list` 只有 iOS 27，`xcodebuild -downloadPlatform iOS -buildVersion 18.5` 返回该版本不可下载。
+同日后续在解锁的 iPhone 13 / iOS 18.5 上运行独立 RA dev，设备阶段约 50 分钟。使用独立 DerivedData、自动开发签名，设备 `Debug build-for-testing` / `build` 成功；另构建保留 DEBUG 条件的 `SWIFT_OPTIMIZATION_LEVEL=-O` 包，它不是正式 Release。每轮开始检查解锁状态。日常 Release App 和另一台设备均未安装、启动或控制。iOS 18.5 simulator runtime 仍不可下载。
 
-证据边界：**没有复现永久卡死，没有证明完整的非收敛循环，也没有证据解释间歇性或 iOS 18.5 与 27 的差异**；不能据此宣称修好。模拟器窗口基线覆盖前缀补齐与同一行增长，真实 CLI 链路未构造大规模历史前缀；定时跳转没有新做直接界面验收。Debug / 模拟器结果不能替代 Release / 真机验证。后续仍需同系统、可解锁设备上的连续几何值、状态失效与主线程记录，未决状态见 [plan](plan.md#待确认)。
+临时诊断用 8,192 条环形记录保存所有已列出的几何写入、跟随请求、滚动写入、body / 模型更新和主循环轮次；不记录消息正文或密钥。对聊天所在 hosting view 的 `layoutSubviews` 计数并计时，后台每秒原子写 App 容器文件，另存同一 host 布局内 A→B→A 的窗口及超过两秒的布局快照。这里的「事件」包含 begin/end 和诊断标记，「几何回调」仅指被追踪路径；hosting view 一次布局不等同于 SwiftUI 的每个内部 layout pass。初版诊断后台闭包的 MainActor 断言导致一次 SIGTRAP，修正后才开始下列压力统计；它不是原 watchdog 的复现。
+
+真机使用至多 3,695 条合成事件，含工具调用、表格、附加长计划和同一 ID 的变高回复，从尾段分批补齐前缀，切换 dock 与键盘焦点。两轮程序滚动还触发折叠状态和回到底部；另一轮保持底部跟随，不主动滚动。所有事件都在本地构造，**没有经过 server / daemon / CLI**：
+
+| 场景 | 增量快照输入 | 程序定位 / 跟随执行 | host 布局数 | 单布局最多诊断事件 / 几何回调 | 最长 host 布局 |
+|---|---:|---:|---:|---:|---:|
+| Debug、普通字号，五分钟程序滚动 | 1,600 | 2,645 次定位 | 16,038 | 41 / 未单独统计 | 未单独统计 |
+| Debug `-O`、辅助字号，约五分钟程序滚动 | 1,293 | 3,193 次定位 | 15,938 | 39 / 21 | 295 ms |
+| Debug `-O`、普通字号，保持跟随 | 1,195 | 974 次跟随执行，1,115 次请求 | 3,333 | 91 / 67 | 52 ms |
+
+三轮分别累计 210,782、170,637、45,766 条诊断事件，环形文件仅保留各自末段；后两轮 host 最大嵌套深度均为 1。普通字号程序滚动记录到四次底栏 A→B→A；辅助字号记录到两次底栏和四次 `away` 往返，均收敛。辅助字号保存的一个完整窗口显示：先前 `inset = 336`，guide 报告 `overlap = 0 / base = 34`，旧 inset 使 `lag = 302`；底栏位置从 723 变为 1025，随后安全区回调写入 `inset = 34`，lag 归零，底栏回到 723，body 在其间重算。该次 host 布局约 33 ms 后返回。这证明键盘测量先后到达会产生短暂回写，**没有证明它会持续振荡，更不能据此认定为永久卡死的根因**。未取得两秒布局告警文件，程序任务持续推进，没有永久卡死。空闲等待时 `stallSeconds` 也会增长，不能单独当作挂死；上述耗时仅描述带诊断的场景，插桩可能改变触发时序，不作为 Release 性能基准。
+
+真机 XCUITest 共四次在执行测试函数之前失败：Wi-Fi 两次、USB 两次（含显式指定被测 App 的交叉检查）。runner 都以 code 74 退出，诊断显示 IDE 控制通道被拒绝；因此没有实际执行快速手势、惯性滚动、交互收键盘或 pill 点按。设备 Developer Mode 已启用，但 UI 自动化授权状态没有核实。`xctrace` 成功对 RA dev 录制过 10 秒 Time Profiler；另一次活动期按 PID 附加未找到进程，尽管 devicectl 仍列出该进程。没有卡死现场可供取栈。
+
+手机的 LAN 真实链路未建立：隔离中继仅绑定私有 LAN 地址，客户端最初因 HTTP 地址校验拒绝请求；临时 Debug 私有地址放行后仍报网络不可用，未完成建账户，未启动测试 daemon / CLI。没有确定网络错误的底层原因。此前模拟器的真实 CLI 记录不能替代手机验收。
+
+设备工作结束后，临时账户本机存储已退出清理，RA dev 和 UI-test runner 均已卸载并查询确认不存在，隔离环境已停止并删除。14 个临时修改文件按原始字节还原，新增诊断文件删除；插桩、host hook、压力驱动、HTTP 放行、ATS 变化均未保留在产品中。本地仅保留追踪、profile、失败诊断与可重放补丁。还原后重新执行上述两条完整检查：App 构建和 421 项 / 466 次测试通过；Markdown 17 项、RACore 637 项（含一项 opt-in 跳过）通过。Package 首轮与模拟器检查并行时，`aBadCachedPrefixIsDroppedWhileTheNewerReadIsStillInFlight` 等待 1,100 个事件超时；随后产品代码不变、单独重跑全量通过，未确定该次超时的原因。
+
+证据边界：**没有复现永久卡死，没有证明完整的非收敛循环，也没有证据解释间歇性或 iOS 18.5 与 27 的差异**；不能据此宣称修好。真机程序压力和模拟器窗口基线覆盖前缀补齐与同一行增长，真实 CLI 链路未构造大规模历史前缀；定时跳转没有新做直接界面验收。下一步应先打通真机 XCTest 控制通道，重复真实拖动、惯性及交互收键盘场景，取得卡死时的连续几何值、失效链和主线程栈，再决定共享层改法；不应把已收敛的往返改成另一条猜测性修补。未决状态见 [plan](plan.md#待确认)。
 
 ### 聊天滚动的布局反馈（2026-11-05）
 
