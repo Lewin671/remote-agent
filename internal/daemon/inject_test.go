@@ -3,6 +3,7 @@ package daemon
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -290,34 +291,41 @@ func testSendWithImagesAfterTerminalResize(t *testing.T) {
 	}
 }
 
-// Codex takes a pasted image path as text until it has set the session
-// up, which it shows by putting its status line under the input box.
-// Images wait for that even when the box has been up for a while.
-func TestImagesWaitWhileCodexLoads(t *testing.T) {
-	synctest.Test(t, testImagesWaitWhileCodexLoads)
-}
-
-func testImagesWaitWhileCodexLoads(t *testing.T) {
-	const loading = "\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n  ? for shortcuts\n"
-	h := newHarness(t, Config{})
-	imgs := imagesFor(t, h.dir, "a.png")
-	fakeCodexImages(t, h, map[string]bool{imgs[0].Path: true})
-	h.term.setScreen(loading)
-	h.s.enqueue("look", "r1", imgs, originLocal)
-	runInjector(t, h)
-	h.s.mu.Lock()
-	h.s.readySince = time.Now()
-	h.s.mu.Unlock()
-	time.Sleep(2 * imageStartDelay)
-	synctest.Wait()
-	if w := h.term.written(); len(w) != 0 {
-		t.Fatalf("wrote while Codex was loading: %q", w)
-	}
-	h.term.setScreen(idleScreen)
-	time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
-	synctest.Wait()
-	if st := inputStates(h, "r1"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
-		t.Fatalf("input states %v", st)
+// StartupDraft accepts plain text but cannot attach images. A prompt with
+// no initialized execution settings must not receive any queued input,
+// regardless of how long startup takes or whether a statusline is enabled.
+func TestInputWaitsForCodexStartup(t *testing.T) {
+	for _, withImages := range []bool{false, true} {
+		for _, footer := range []string{"", "  ? for shortcuts\n"} {
+			t.Run(fmt.Sprintf("images=%t/footer=%q", withImages, footer), func(t *testing.T) {
+				synctest.Test(t, func(t *testing.T) {
+					h := newHarness(t, Config{})
+					var imgs []queuedImage
+					accept := map[string]bool{}
+					if withImages {
+						imgs = imagesFor(t, h.dir, "a.png")
+						accept[imgs[0].Path] = true
+					}
+					fakeCodexImages(t, h, accept)
+					h.term.setScreen(">_ \x1b[1mOpenAI Codex\x1b[0m (v0.166.0)\n  /tmp/work\n\n\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n\n" + footer)
+					if _, err := h.s.enqueue("look", "r1", imgs, originLocal); err != nil {
+						t.Fatal(err)
+					}
+					runInjector(t, h)
+					time.Sleep(time.Minute)
+					synctest.Wait()
+					if w := h.term.written(); len(w) != 0 {
+						t.Fatalf("wrote into startup composer: %q", w)
+					}
+					h.term.setScreen(idleScreen)
+					time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+					synctest.Wait()
+					if st := inputStates(h, "r1"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+						t.Fatalf("input states %v", st)
+					}
+				})
+			})
+		}
 	}
 }
 
@@ -347,5 +355,62 @@ func testImageNotTakenWrappedIsCleared(t *testing.T) {
 	}
 	if w := h.term.written(); w[len(w)-1] != "\x15" {
 		t.Fatalf("input box not cleared: %q", w)
+	}
+}
+
+// The native footer replaces Codex's configurable status row when the
+// composer holds a draft during a task, including startup. All image
+// ownership checks (recognition, final check, cleanup) must read it alike.
+func TestImagesWithChangingNativeFooter(t *testing.T) {
+	for _, accepted := range []bool{false, true} {
+		t.Run(map[bool]string{false: "unrecognized", true: "recognized"}[accepted], func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t, Config{})
+				imgs := imagesFor(t, h.dir, "a.jpg")
+				fakeCodexImages(t, h, map[string]bool{imgs[0].Path: accepted})
+				inner := h.term.onWrite
+				h.term.onWrite = func(f *fakeTerm, b string) {
+					inner(f, b)
+					f.screen = strings.ReplaceAll(f.screen, "GPT-6-Sol medium · /w", "\x1b[1mtab\x1b[0m to queue message       100% context left")
+				}
+				if _, err := h.s.enqueue("check this image", "first", imgs, originLocal); err != nil {
+					t.Fatal(err)
+				}
+				runInjector(t, h)
+				time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+				synctest.Wait()
+				states := inputStates(h, "first")
+				last := states[len(states)-1]
+				if accepted {
+					if last.Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+						t.Fatalf("recognized image: %v", states)
+					}
+					return
+				}
+				if last.Status != pb.InputStatus_INPUT_STATUS_FAILED || last.Reason != "image_not_recognized" {
+					t.Fatalf("unrecognized image: %v", states)
+				}
+				writes := h.term.written()
+				for _, b := range writes {
+					if strings.Contains(b, "\r") {
+						t.Fatal("submitted without the image")
+					}
+				}
+				if writes[len(writes)-1] != "\x15" {
+					t.Fatal("left the image path in the composer")
+				}
+				// Explicit resend is a fresh request, after the owned path
+				// was cleared; neither lost text nor a duplicate submission.
+				if _, err := h.s.send("check this image", "resend"); err != nil {
+					t.Fatal(err)
+				}
+				time.Sleep(injectBase + h.d.cfg.SubmitTimeout)
+				synctest.Wait()
+				states = inputStates(h, "resend")
+				if states[len(states)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+					t.Fatalf("resend: %v", states)
+				}
+			})
+		})
 	}
 }

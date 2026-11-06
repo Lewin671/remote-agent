@@ -7,7 +7,7 @@ import (
 
 // Screen is what remote-agent can tell from a capture of the Codex TUI.
 type Screen struct {
-	// ComposerReady: the input box is showing and no menu or popup covers it.
+	// ComposerReady: the initialized CLI input box shows without a popup.
 	ComposerReady bool
 	// DraftEmpty: the input box shows its dim placeholder, so it holds no
 	// unsent text.
@@ -23,16 +23,14 @@ type Screen struct {
 	// Footer is the plain status line under the input box, e.g.
 	// "GPT-6-Sol medium · ~/code/foo".
 	Footer string
-	// Loading: the input box shows only the shortcut hint under it, as
-	// it does before Codex has set the session up. A pasted image path
-	// is then taken as plain text. (So is the input box with the status
-	// line turned off, which this cannot tell apart.)
+	// Loading: the provisional startup composer is showing. Its header
+	// has no effective permissions yet and it cannot attach images.
 	Loading bool
 }
 
-// loadingFooterRE is the line under the input box before the status line
-// shows.
-var loadingFooterRE = regexp.MustCompile(`^\? for shortcuts$`)
+// The provisional startup editor has no configured status value yet;
+// with statusline disabled it shows only its shortcut hint.
+var loadingFooterRE = regexp.MustCompile(`^\? for shortcuts(?:\s+⚠ \d+ warnings? · f2 to view)?$`)
 
 // A current footer may append the cycle shortcut and warning indicators.
 var planModeRE = regexp.MustCompile(`(?:^|\s)Plan mode(?:$|\s+(?:\(|⚠))`)
@@ -80,6 +78,23 @@ func AnalyzeScreen(styled string) Screen {
 	// Drop trailing blank lines, then keep the bottom.
 	for len(lines) > 0 && strings.TrimSpace(StripANSI(lines[len(lines)-1])) == "" {
 		lines = lines[:len(lines)-1]
+	}
+	startupHeader := false
+	for _, l := range lines {
+		plain := StripANSI(l)
+		// StartupDraft uses the ordinary prompt but a header without
+		// effective execution settings. Do not confuse that editor with
+		// the initialized composer, even if startup takes arbitrarily long.
+		header := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(plain), "│"))
+		_, rest := leadingStyle(l, true)
+		if strings.HasPrefix(rest, ">_ ") {
+			st, name := leadingStyle(strings.TrimPrefix(rest, ">_ "), true)
+			if st.bold && !st.dim && !st.reverse && strings.HasPrefix(name, "OpenAI Codex") {
+				startupHeader = true
+			}
+		} else if strings.HasPrefix(header, "permissions:") || strings.HasPrefix(header, "model:") {
+			startupHeader = false
+		}
 	}
 	if len(lines) > bottomLines {
 		lines = lines[len(lines)-bottomLines:]
@@ -131,8 +146,8 @@ func AnalyzeScreen(styled string) Screen {
 		}
 	}
 	if composer >= 0 && s.Popup == "" {
-		s.ComposerReady = true
-		s.Loading = loadingFooterRE.MatchString(s.Footer)
+		s.Loading = startupHeader && (s.Footer == "" || loadingFooterRE.MatchString(s.Footer))
+		s.ComposerReady = !s.Loading
 		// Only the placeholder proves the box is empty. A bare prompt may
 		// head a multi-line draft whose text is on later lines, and those
 		// cannot be told apart from the footer, so it counts as a draft.
@@ -209,10 +224,10 @@ func startsDim(s string) bool {
 
 // ComposerText is the text in the input box, its lines joined with "\n":
 // the prompt line and every line under it down to the status line. footer
-// is the status line as seen while the input box was empty, which is the
-// only safe way to tell where a draft of several lines ends: its lines are
-// indented like the status line, and may be blank. ok is false when no
-// input box shows, a popup covers it, or the status line is not found (allowing resize elision and spacing).
+// is the configurable status line seen while the input box was empty.
+// Native instructional footers are identified by their text and style.
+// Draft lines are indented like the footer and may be blank, so an unknown
+// boundary, missing input box or popup makes ok false.
 func ComposerText(styled, footer string) (string, bool) {
 	lines := strings.Split(strings.TrimRight(styled, "\n"), "\n")
 	for len(lines) > 0 && strings.TrimSpace(StripANSI(lines[len(lines)-1])) == "" {
@@ -229,9 +244,6 @@ func ComposerText(styled, footer string) (string, bool) {
 		return "", true
 	}
 	footer = strings.TrimSpace(footer)
-	if footer == "" {
-		return "", false
-	}
 	composer := -1
 	for i, l := range lines {
 		if st, rest := leadingStyle(l, false); strings.HasPrefix(rest, promptMark) && st.bold && !st.dim && !st.reverse {
@@ -246,7 +258,7 @@ func ComposerText(styled, footer string) (string, bool) {
 	end := -1
 	for i := len(lines) - 1; i > composer; i-- {
 		t := strings.TrimSpace(StripANSI(lines[i]))
-		if sameFooter(t, footer) {
+		if footer != "" && sameFooter(t, footer) || nativeDraftFooter(lines[i]) {
 			end = i
 			break
 		}
@@ -265,6 +277,18 @@ func ComposerText(styled, footer string) (string, bool) {
 		parts = append(parts, strings.TrimSpace(StripANSI(l)))
 	}
 	return strings.TrimSpace(strings.Join(parts, "\n")), true
+}
+
+// Codex replaces its configurable status row with an instructional footer
+// while a task is running and the composer has a draft (also during startup).
+// Read that live UI boundary rather than requiring the old status row to
+// remain visible. The shortcut is bold in the TUI; identical plain text in a
+// user's multiline draft is not a footer. Unknown rows still fail closed.
+var nativeDraftFooterRE = regexp.MustCompile(`^tab to queue(?: message)?(?:\s+\d{1,3}% context left)?$`)
+
+func nativeDraftFooter(line string) bool {
+	st, rest := leadingStyle(line, true)
+	return st.bold && !st.dim && !st.reverse && nativeDraftFooterRE.MatchString(strings.TrimSpace(StripANSI(rest)))
 }
 
 // These are UI chrome, not a second part of the composer. Keep this

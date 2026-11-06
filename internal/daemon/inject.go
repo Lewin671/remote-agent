@@ -37,13 +37,6 @@ const (
 	imageWait      = 6 * time.Second // for one "[Image #N]" to appear
 	unrecognized   = time.Second     // the path showing as text this long
 	clearWait      = 2 * time.Second
-	// imageStartDelay is how long a new session's input box must have
-	// been ready before images are pasted into it.
-	imageStartDelay = 3 * time.Second
-	// loadingWait bounds how long images wait for a CLI still setting up
-	// the session (Screen.Loading) after its input box showed: a Codex
-	// with its status line turned off looks the same for good.
-	loadingWait = 20 * time.Second
 )
 
 // conversionWindow is how long, after a restart, an image pasted before it
@@ -386,14 +379,8 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	s.mu.Lock()
 	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
 	mediaWaits := len(in.Images) > 0 && s.ag.Capabilities().ImagesNeedIdle && (s.running || scr.Busy)
-	// Just after it starts, Codex has once taken a pasted image path as
-	// plain text; images wait until the input box has been up a moment,
-	// and while Codex shows it is still setting the session up, which
-	// can take seconds more.
-	up := time.Since(s.readySince)
-	young := len(in.Images) > 0 && !s.readySince.IsZero() && (up < imageStartDelay || scr.Loading && up < loadingWait)
 	s.mu.Unlock()
-	if starting || young || mediaWaits {
+	if starting || mediaWaits {
 		return notWritten, nil
 	}
 	s.noteWait(scr)

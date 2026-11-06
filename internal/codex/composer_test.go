@@ -93,3 +93,29 @@ func TestComposerTextWrappedPathMovedBadge(t *testing.T) {
 		t.Fatal("accepted a changed effort")
 	}
 }
+
+// Codex's live footer changes with composer state: during a task (also
+// transiently during startup), a draft replaces the configured status row
+// with the native queue shortcut. The boundary is UI, not draft text.
+func TestComposerTextNativeFooter(t *testing.T) {
+	const status = "GPT-6.1-Sol medium · ~/code/demo"
+	for _, hint := range []string{"tab to queue message", "tab to queue message                         100% context left", "tab to queue"} {
+		for _, body := range []string{"[Image #1]", "/tmp/uploads/\nexample.jpg", "my draft\n\n" + hint + "\nmore text"} {
+			screen := "\x1b[1m›\x1b[0m " + body + "\n\n  \x1b[1m" + hint[:3] + "\x1b[0m" + hint[3:] + "\n"
+			for _, footer := range []string{status, ""} {
+				got, ok := ComposerText(screen, footer)
+				if !ok || got != body {
+					t.Errorf("%q (footer %q): got %q %v, want %q", hint, footer, got, ok, body)
+				}
+			}
+			// A plain draft line with the same words proves no boundary.
+			plain := "\x1b[1m›\x1b[0m owned\n\n  " + hint + "\n"
+			if _, ok := ComposerText(plain, status); ok {
+				t.Errorf("accepted unstyled draft as footer: %q", hint)
+			}
+			if _, ok := ComposerText(screen+"  foreign text\n", status); ok {
+				t.Error("silently dropped text below footer")
+			}
+		}
+	}
+}

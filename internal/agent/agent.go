@@ -401,10 +401,6 @@ type Screen struct {
 	// Busy: the screen shows the CLI working (Claude Code's spinner line
 	// or its dimmed prompt), whatever the transcript says yet.
 	Busy bool
-	// Loading: the input box shows before the CLI has set the session up
-	// (Codex), and may take what is pasted differently: an image path as
-	// plain text.
-	Loading bool
 }
 
 // Hook is a hook call's payload. Codex and Claude Code use the same field

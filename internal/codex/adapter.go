@@ -408,7 +408,7 @@ func (a *Adapter) Analyze(styled string) agent.Screen {
 	s := AnalyzeScreen(styled)
 	return agent.Screen{
 		ComposerReady: s.ComposerReady, DraftEmpty: s.DraftEmpty, Popup: s.Popup,
-		QuestionOpen: s.QuestionOpen, PlanOpen: s.PlanOpen, PermissionOpen: s.Popup == "approval", Footer: s.Footer, Loading: s.Loading,
+		QuestionOpen: s.QuestionOpen, PlanOpen: s.PlanOpen, PermissionOpen: s.Popup == "approval", Footer: s.Footer,
 	}
 }
 

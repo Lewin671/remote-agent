@@ -188,6 +188,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 | 对话里之前的用户消息 | `\e[1;2m› `（加粗加淡） |
 | 列表里选中的行（信任目录、hook 确认、审批框、提问） | `\e[1;7m› 1. …`（加粗反色） |
 
+- 输入框的底部不是固定状态行（0.166.0，2026-11-06，隔离真实 CLI 逐帧捕获）：新会话首条图片粘贴后，配置的模型、effort 和目录一行曾短暂换成 `tab to queue message`，右侧为 `100% context left`，随后恢复配置状态行。`tab` 加粗，后面的说明为普通字；95×59 下已识别图片和未识别路径都观察到这一行。[该版 footer 源码](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/tui/src/bottom_pane/footer.rs) 同样区分空输入框、带草稿和任务运行状态，运行中带草稿时优先显示操作提示。因此不能要求粘贴后的输入框仍带粘贴前那条配置状态行。验收边界见 [acceptance-notes](acceptance-notes.md#codex-图片首发与启动提示反馈2026-11-06)。
 - bracketed paste 的正文和回车一次写入，Codex 会正常提交，不需要在中间等待；多行正文的换行会保留
 - 本地终端和远程注入同时打字的实测：远程注入时本地正好连续敲 10 个字符，远程消息原样提交，10 个字符完整出现在新的输入框里
 - 一轮运行中，空输入框同样显示淡色的占位提示
@@ -204,7 +205,7 @@ Codex 的「审批模式」其实是两个互相独立的维度：
 - rollout 里的用户消息分两处：先是 `response_item` 的 `message`（`role: user`），依次是 `<image name=[Image #1] path="…">`、`input_image`（data URL）、`</image>` 和正文；随后的 `event_msg` `item_completed` 里 `UserMessage` 只有 `local_image`（`path`）和正文，正文带 `text_elements`，每个占位的 `byte_range` 和 `placeholder` 都写明了。图片的字节只在前一条里
 - `view_image`：模型先写 `custom_tool_call`（`exec`，脚本里调用 `tools.view_image`），然后是 `item_completed` 的 `ImageView`（只有 `path`），**最后**才是 `custom_tool_call_output`，其中的 `output` 数组带 `input_image`。三者之间没有共同的 ID。0.116.0 的历史记录是 `function_call`（`view_image`）后跟 `function_call_output`，没有 `ImageView`
 - 经 remote-agent 发图的实测（0.159.0，GPT-6-Luna low，2026-09-30）：3000×2000、3.8 MB 的 JPEG 在 rollout 里被缩成 1920×1280、约 850 KB 的 JPEG；5200×3900、11.6 MB 的 JPEG 缩成 1824×1368；1200×1200、4.3 MB 的噪点 PNG 和 1823×1367、9.8 MB 的 PNG 原样内嵌，两张放在一条消息里，rollout 的这一行有 18.9 MB。上传前去掉的 EXIF（含 GPS）在 rollout 里找不到。模型都读出了图里的字
-- 新会话刚进入空闲时，有一次（隔离的 daemon 启动后的第一个 Codex 会话，启动后约 4 秒）粘贴的图片路径没有变成 `[Image #N]` 而是以文字留在输入框里；随后同一会话和新建的三个会话都正常，没能复现。daemon 因此让图片在输入框出现 3 秒后再粘贴
+- 启动预览不是已初始化输入框（0.166.0，2026-11-06，现场只读日志、该版源码及隔离复现）：`StartupDraft` 已显示普通提示符，但使用 `ChatComposerConfig::plain_text()`，明确关闭图片粘贴；这时粘贴的路径按普通文字保留，并在正式会话初始化后作为草稿恢复，不会自动变成图片。其欢迎头还没有有效的 `permissions:` 设置，正式会话才补齐。启用状态行时预览可没有底部文字，关闭状态行时会显示 `? for shortcuts`，所以仅看提示符、底部提示或经过几秒都不能证明已初始化。用正常 JPEG 和仅针对隔离 CLI 的启动网络延迟，旧版稳定留下路径并报 input_changed；修复后等到正式输入框才投递，文字、图片和回复均经加密链路确认。源码见 [StartupDraft](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/tui/src/startup_draft.rs) 和 [composer 配置](https://github.com/openai/codex/blob/rust-v0.166.0/codex-rs/tui/src/bottom_pane/chat_composer.rs)，验收见 [acceptance-notes](acceptance-notes.md#codex-图片首发与启动提示反馈2026-11-06)。
 - 在终端里用 `tmux paste-buffer -p` 粘贴图片路径同样变成 `[Image #N]`；用 `tmux send-keys -H` 发 bracketed paste 的字节时，Codex 跑在 PTY 代理下面收不到这段粘贴（直接在 tmux 里跑 Codex 时可以），所以实测要么用 `paste-buffer -p`，要么经 PTY 代理的控制接口写入
 - 生成图（0.142.5 的历史记录）：同一张图记两次，先是 `item_completed` 的 `Extension`（`kind: image_gen.generation`，`result` 为 PNG 的 base64，另有 `revisedPrompt`、`savedPath`），再是 `response_item` 的 `image_generation_call`，两者 `id` 相同，`status` 都是 `generating`
 

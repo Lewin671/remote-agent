@@ -112,8 +112,6 @@ type session struct {
 	screen       agent.Screen
 	prevScreen   agent.Screen
 	sawComposer  bool
-	// readySince is when the session last left STARTING.
-	readySince time.Time
 	// shellStart is when this daemon started the session through the
 	// user's login shell, while the shell has not yet reported the CLI it
 	// started; zero once it has, and for every other session.
@@ -389,9 +387,6 @@ func (s *session) observe(e *pb.Event) {
 	case *pb.Event_QuestionAnswered:
 		delete(s.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_SessionState:
-		if s.status == pb.SessionStatus_SESSION_STATUS_STARTING && k.SessionState.Status != pb.SessionStatus_SESSION_STATUS_STARTING {
-			s.readySince = time.Now()
-		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
 		s.scheduledClosed = k.SessionState.ScheduledClosed
 		s.planOpen = k.SessionState.PlanOpen
