@@ -29,7 +29,7 @@ final class CipherStore: CipherCache {
     /// Display copies of images are the one thing evicted, the least recently
     /// shown first, once they take more than this (Android's
     /// ImageDiskPolicy.DEFAULT_LIMIT). Events go only with their session or machine.
-    static let defaultImageLimit: Int64 = 150 * 1024 * 1024
+    static let defaultImageLimit = ImageDiskPolicy.defaultLimit
 
     /// This account's directory: the database and the image envelopes.
     let directory: URL

@@ -24,9 +24,6 @@ import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
 
-/// The app's sealed store is what the package keeps drafts and messages in.
-extension PendingStore: RACore.SealedFiles {}
-
 /// Sealed files that are neither sealed nor files: for sample data, where nothing is stored.
 final class VolatileFiles: RACore.SealedFiles, @unchecked Sendable {
     private let lock = NSLock()

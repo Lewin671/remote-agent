@@ -10,20 +10,12 @@ import CryptoKit
 import Foundation
 import RACore
 
-/// Named files in folders, sealed at rest: what image drafts and the outbox are kept in.
-protocol SealedFiles: Sendable {
-    func put(folder: String, name: String, data: Data) throws
-    func get(folder: String, name: String) -> Data?
-    func remove(folder: String, name: String)
-    func clearFolder(_ folder: String)
-}
-
 /// File-only rules of the pending images, as Android's core/ImageDiskPolicy.kt.
 enum PendingPolicy {
     /// Drafts are user work: they are never evicted, and storing more is refused at this size.
-    static let draftLimit: Int64 = 256 * 1024 * 1024
+    static let draftLimit = ImageDiskPolicy.draftLimit
     /// A draft folder nothing touched for this long expires.
-    static let draftTTL: TimeInterval = 7 * 24 * 60 * 60
+    static let draftTTL = TimeInterval(ImageDiskPolicy.draftTTL) / 1000
 }
 
 final class PendingStore: SealedFiles, @unchecked Sendable {
@@ -57,7 +49,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     }
 
     /// Bytes the pending images take on disk.
-    var used: Int64 { lock.withLock { bytes(of: directory) } }
+    var used: Int64 { lock.withLock { ImageDiskPolicy.bytes(directory) } }
 
     /// How many images expired unsent since the count was last cleared, for telling the user once.
     var expired: Int { defaults.integer(forKey: Self.expiredKey) }
@@ -103,7 +95,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
             let dir = try self.folder(folder, create: true)
             let file = dir.appending(path: name)
             let replacing = Int64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-            guard bytes(of: directory) - replacing + Int64(sealed.count) <= limit else {
+            guard ImageDiskPolicy.bytes(directory) - replacing + Int64(sealed.count) <= limit else {
                 throw UserError("手机待发图片空间不足，请发送或移除旧草稿")
             }
             do {
@@ -199,16 +191,6 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         try? FileManager.default.setAttributes([.modificationDate: now()], ofItemAtPath: url.path)
     }
 
-    private func bytes(of dir: URL) -> Int64 {
-        guard let walk = FileManager.default.enumerator(at: dir, includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey]) else { return 0 }
-        var total: Int64 = 0
-        for case let url as URL in walk {
-            let v = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            if v?.isRegularFile == true { total += Int64(v?.fileSize ?? 0) }
-        }
-        return total
-    }
-
     // MARK: Sealing
 
     private func seal(_ plain: Data) throws -> Data {
@@ -244,7 +226,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
 
 /// A `PendingStore` for the account that was in use when it was made
 /// (`PendingStore.scoped`).
-struct PendingScope: SealedFiles, RACore.SealedFiles {
+struct PendingScope: SealedFiles {
     fileprivate let store: PendingStore
     fileprivate let epoch: Int
 
