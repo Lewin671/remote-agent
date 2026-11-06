@@ -4,17 +4,32 @@ import Testing
 
 @testable import RACore
 
-/// Directory, history and enrollment workflows share one serial lane. The
-/// sync engine has another: overlap network waits without a startup burst of
-/// one server for every group while the pure crypto suites are also starting.
-@Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
+@Suite(.enabled(if: GoServer.available, GoServer.missing))
 struct ServerTests {}
 
 @Suite(.enabled(if: GoServer.available, GoServer.missing))
 struct SyncServerTests {}
 
+/// Independent worlds overlap network waits, with at most four pairs of Go
+/// processes starting at once. Each world owns its port, database and keys.
+private actor WorldSlots {
+    var available = 4
+    var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func acquire() async {
+        if available > 0 { available -= 1 }
+        else { await withCheckedContinuation { waiting.append($0) } }
+    }
+
+    func release() {
+        if waiting.isEmpty { available += 1 }
+        else { waiting.removeFirst().resume() }
+    }
+}
+
 /// A server, a fake daemon with one machine, and what a test opened and must close.
 final class World: @unchecked Sendable {
+    private static let slots = WorldSlots()
     let server: TestServer
     let http = HTTP()
     let root = randomBytes(32)
@@ -39,15 +54,22 @@ final class World: @unchecked Sendable {
     static func run(setUp: (World) async throws -> Void, _ body: (World) async throws -> Void)
         async throws
     {
-        let w = try await World()
+        await slots.acquire()
         do {
-            try await setUp(w)
-            try await body(w)
-        } catch {
+            let w = try await World()
+            do {
+                try await setUp(w)
+                try await body(w)
+            } catch {
+                await w.close()
+                throw error
+            }
             await w.close()
+        } catch {
+            await slots.release()
             throw error
         }
-        await w.close()
+        await slots.release()
     }
 
     func onClose(_ f: @escaping @Sendable () -> Void) { lock.withLock { closers.append(f) } }
@@ -127,7 +149,7 @@ private final class Frames: TermListener, Sendable {
 
 extension SyncServerTests {
     /// The sync engine against the real Go server and a fake daemon.
-    @Suite(.serialized) struct RemoteTests {
+    @Suite struct RemoteTests {
         private func world(_ body: (World) async throws -> Void) async throws {
             try await World.run(
                 setUp: { w in

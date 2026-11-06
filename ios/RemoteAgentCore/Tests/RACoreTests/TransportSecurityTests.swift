@@ -31,7 +31,6 @@ import Testing
         var ask = PBGetChallengeRequest()
         ask.deviceID = "test"
         #expect(await api.auth.getChallenge(request: ask).error != nil)
-        await sleepMs(300)
         #expect(requests.value == 1)
     }
 
@@ -42,7 +41,6 @@ import Testing
             for: URLRequest(url: URL(string: "http://127.0.0.1:\(listener.port)/healthz")!))
         // The redirect is the answer.
         #expect(response.statusCode == 307)
-        await sleepMs(300)
         #expect(requests.value == 1)
     }
 
@@ -57,7 +55,6 @@ import Testing
         let end = await socket.ended()
         #expect(end.error != nil)
         await #expect(throws: (any Error).self) { try await socket.receive() }
-        await sleepMs(300)
         #expect(requests.value == 1)
     }
 
