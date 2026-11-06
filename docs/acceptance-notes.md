@@ -1945,3 +1945,16 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 - 现场会话只有一个输入请求，没有第二次入队或已提交记录；网页失败首条提示的重复渲染能独立产生截图中的「已送达电脑」，不能把它当作另一条消息已进 CLI 的证据。启动预览问题由正常 JPEG 复现；不可读图片故障注入只用于验证安全失败和重发，不表示原始文件损坏。
 
 自动检查：`go test ./...` 通过；网页全量 95 个测试文件、1,422 项测试及 `pnpm typecheck` 通过。临时中继、测试 daemon、账户状态及 tmux server 均已清理，日常 daemon 和会话只读，线上服务未改动。
+
+
+### Codex 启动判断复核（2026-11-06）
+
+源码和实测结论修正见 [codex-notes](codex-notes.md#10-屏幕和输入)。当前存在尚未修复的正式会话漏判，见 [plan](plan.md#待确认)。
+
+- 本地 `dev-env.sh start --no-account`，独立账户、daemon、tmux 和每个 CLI 各自的 CODEX_HOME；只从已有配置复制认证供真实 CLI 使用，不复制日常权限和 TUI 配置。登录 shell 会忽略客户端传入的会话环境，测试因此用隔离 CLI 包装器显式指定 CODEX_HOME，并核对实际欢迎头、底部和原生记录。
+- 默认权限且 `tui.status_line=[]`、on-request/workspace-write 且关闭状态行、on-request/read-only 且关闭状态行，以及独立 v2 profile（fixture.config.toml，on-request/workspace-write）加显式 --model 且关闭状态行，均完成首条图片加中文文字、已有会话纯文字消息。加密客户端收到原始文字、图片上传 ID、SUBMITTED、回复和轮次结束；屏幕在没有 permissions:/model: 行时仍为 ComposerReady=true。关闭状态行时的上下文计数使当前 loading 正则不匹配；新增真实 read-only 屏幕夹具和回归测试保留该场景。
+- 确定反例：on-request/read-only、状态行仅配置 git-branch、工作目录没有 Git 分支。先正常完成两条消息，再用隔离终端 F2 查看两条警告，左右切换后 Esc 关闭。底部变空，当前解析器立刻给出 Loading=true、ComposerReady=false；再经加密客户端发送文字，只出现 QUEUED，没有进入 CLI。此时正式会话的既有对话仍在画面中，不能称为启动预览。
+- 额外验证原生命令能力：在受控慢启动的 StartupDraft 中仅粘贴 `/status`，没有命令菜单；正式应用接管后同样的粘贴会打开原生命令菜单。两次都只用 Ctrl-U 清空并核对恢复空输入框，没有按 Enter、提交模型消息或改变 CLI 设置。源码中 StartupDraft 使用 plain_text 配置，关闭 popups_enabled 和 slash_commands_enabled；正常 composer 打开这些能力。这是可验证的能力差异，但产品目前尚未接入该探测。
+- 上述操作由 Go 加密调试客户端及独立 tmux 调试键触发，不是网页/手机直接界面验收。没有操作日常会话、重启日常 daemon 或修改线上服务。测试账户、临时 CODEX_HOME、CLI 和 tmux server 均已清理。
+
+复核分支已无冲突 rebase 到 `33913a1b`。重跑 `go test ./...`、网页 1,422 项测试和类型检查均通过；这些通过不代表空底部反例已经修复。生产逻辑尚未修改，新增的是源码结论、真实屏幕回归和未决项。

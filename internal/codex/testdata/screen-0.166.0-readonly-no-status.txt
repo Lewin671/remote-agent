@@ -1,0 +1,8 @@
+
+  [38;5;75m>_ [1m[39mOpenAI Codex[0;2m (v0.166.0)[0m
+     [2m/tmp/example-work[0m
+
+
+[1m›[0m [2mAsk Codex to do anything[0m
+
+  [1m?[0m for shortcuts                                                                                                 100% context left    ⚠ [38;5;179m1 warning[39m · [1mf2[0m to view

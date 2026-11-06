@@ -209,3 +209,17 @@ func TestQuotedStartupHeaderDoesNotBlockInput(t *testing.T) {
 		t.Fatalf("quoted header: %+v", scr)
 	}
 }
+
+// Real Codex 0.166.0, read-only/on-request, tui.status_line=[]: the
+// initialized header has neither permissions: nor model:. Context usage
+// still distinguishes this footer from the provisional shortcut hint.
+func TestInitializedComposerWithoutPermissionHeader(t *testing.T) {
+	raw, err := os.ReadFile("testdata/screen-0.166.0-readonly-no-status.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	scr := AnalyzeScreen(string(raw))
+	if !scr.ComposerReady || !scr.DraftEmpty || scr.Loading {
+		t.Fatalf("initialized read-only composer: %+v", scr)
+	}
+}
