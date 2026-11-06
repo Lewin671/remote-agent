@@ -1229,6 +1229,7 @@ func (d *Daemon) ptySocket(id string) string {
 // pending human input. Queue persistence remains the ownership boundary.
 // The caller holds mu and persists this state before starting workers.
 func (s *session) resumeStateLocked(pendingInput bool) {
+	s.cliSubmitted, s.loadingSince = false, time.Time{}
 	s.meta.Exited = false
 	s.identityPending = s.ag.Capabilities().ConversationIdentity && s.meta.CodexSessionID != ""
 	s.identityResume = s.identityPending

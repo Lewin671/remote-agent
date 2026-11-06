@@ -1949,12 +1949,25 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 
 ### Codex 启动判断复核（2026-11-06）
 
-源码和实测结论修正见 [codex-notes](codex-notes.md#10-屏幕和输入)。当前存在尚未修复的正式会话漏判，见 [plan](plan.md#待确认)。
+源码和实测结论修正见 [codex-notes](codex-notes.md#10-屏幕和输入)。本节保留正式会话漏判的实证；对应生产判断和后续回归见[有界等待与清理](#codex-loading-有界等待与清理2026-11-06)。
 
 - 本地 `dev-env.sh start --no-account`，独立账户、daemon、tmux 和每个 CLI 各自的 CODEX_HOME；只从已有配置复制认证供真实 CLI 使用，不复制日常权限和 TUI 配置。登录 shell 会忽略客户端传入的会话环境，测试因此用隔离 CLI 包装器显式指定 CODEX_HOME，并核对实际欢迎头、底部和原生记录。
 - 默认权限且 `tui.status_line=[]`、on-request/workspace-write 且关闭状态行、on-request/read-only 且关闭状态行，以及独立 v2 profile（fixture.config.toml，on-request/workspace-write）加显式 --model 且关闭状态行，均完成首条图片加中文文字、已有会话纯文字消息。加密客户端收到原始文字、图片上传 ID、SUBMITTED、回复和轮次结束；屏幕在没有 permissions:/model: 行时仍为 ComposerReady=true。关闭状态行时的上下文计数使当前 loading 正则不匹配；新增真实 read-only 屏幕夹具和回归测试保留该场景。
 - 确定反例：on-request/read-only、状态行仅配置 git-branch、工作目录没有 Git 分支。先正常完成两条消息，再用隔离终端 F2 查看两条警告，左右切换后 Esc 关闭。底部变空，当前解析器立刻给出 Loading=true、ComposerReady=false；再经加密客户端发送文字，只出现 QUEUED，没有进入 CLI。此时正式会话的既有对话仍在画面中，不能称为启动预览。
-- 额外验证原生命令能力：在受控慢启动的 StartupDraft 中仅粘贴 `/status`，没有命令菜单；正式应用接管后同样的粘贴会打开原生命令菜单。两次都只用 Ctrl-U 清空并核对恢复空输入框，没有按 Enter、提交模型消息或改变 CLI 设置。源码中 StartupDraft 使用 plain_text 配置，关闭 popups_enabled 和 slash_commands_enabled；正常 composer 打开这些能力。这是可验证的能力差异，但产品目前尚未接入该探测。
+- 额外验证原生命令能力：在受控慢启动的 StartupDraft 中仅粘贴 `/status`，没有命令菜单；正式应用接管后同样的粘贴会打开原生命令菜单。两次都只用 Ctrl-U 清空并核对恢复空输入框，没有按 Enter、提交模型消息或改变 CLI 设置。源码中 StartupDraft 使用 plain_text 配置，关闭 popups_enabled 和 slash_commands_enabled；正常 composer 打开这些能力。这是可验证的能力差异；该探测不纳入产品方案，生产路径不写入菜单探测字符。
 - 上述操作由 Go 加密调试客户端及独立 tmux 调试键触发，不是网页/手机直接界面验收。没有操作日常会话、重启日常 daemon 或修改线上服务。测试账户、临时 CODEX_HOME、CLI 和 tmux server 均已清理。
 
-复核分支已无冲突 rebase 到 `33913a1b`。重跑 `go test ./...`、网页 1,422 项测试和类型检查均通过；这些通过不代表空底部反例已经修复。生产逻辑尚未修改，新增的是源码结论、真实屏幕回归和未决项。
+复核分支已无冲突 rebase 到 `33913a1b`。重跑 `go test ./...`、网页 1,422 项测试和类型检查均通过；该轮提交只补证据和回归，没有改变生产逻辑；空底部问题的处理见下一节。
+
+
+### Codex Loading 有界等待与清理（2026-11-06）
+
+本次在前述复核分支上修改 daemon 和 Codex 输入解析，没有增加接口、配置项、菜单探测或协议字段。判断规则以 [architecture §6](architecture.md#6-接入-codex) 为准，CLI 自身的生命周期例外见 [codex-notes §10](codex-notes.md#10-屏幕和输入)。
+
+- 单元回归覆盖文字/图片、有/无快捷键底部：首次候选画面等待有上限，正式空状态行首发在上限后能提交；确认后同样画面不再等待；本地终端输入也计入确认，UNCONFIRMED/FAILED/QUEUED 与复制的 fork 历史不计；重新启动 CLI 清除确认，daemon 重启从最近的 resumed 边界恢复确认。额外覆盖已确认进程后来忽略 Enter 时仍报告 UNCONFIRMED、不会自动重发；图片拒收时无论之前是否确认过，都清空所拥有的路径并报告 NEEDS_TERMINAL。无底部时读取完整尾部，未知文字不被截掉；已有外来草稿保护、图片确认及其他 CLI 回归保留。
+- 真实链路使用当前 checkout 构建的 `dev-env.sh start --no-account`，独立 RA_DEV_DIR、账户、daemon、tmux、工作目录和各 CLI 的 CODEX_HOME，真实 Codex CLI 0.166.0 / GPT-6.1-Sol medium。所有消息由加密 Go 客户端经过 server → daemon → CLI，再检查回到客户端的完整文字、图片上传 ID、SUBMITTED、回复和轮次结束。
+- 正常慢启动图片首发：仅对隔离 CLI 的网络连接增加延迟，观察到 StartupDraft；正常初始化后图片、中文正文和回复完整确认。随后普通已有会话发送纯文字及图片，均不重新等待 Loading。
+- read-only + 空状态行反例：先完成一条输入，再通过隔离终端查看并关闭警告，使底部为空、原始屏幕分析仍像 StartupDraft。后续文字和图片均在首次等待上限之前进入提交阶段并成功确认，没有再次卡在 Loading。
+- 空状态行新会话首发正常图片：会话尚无任何确认提交，初始化后清除测试警告，候选画面持续为空。相对首次观察到候选画面约 20.908 秒后进入贴图阶段，文字、图片与回复成功确认；后续文字和图片不再等待。
+- 有界等待后的拒收兜底：同样的新会话与空状态行，调试操作只把隔离环境中已完成上传的图片替换成不可读夹具，强制真实 CLI 把路径当作文字。约 21.05 秒后进入贴图阶段，图片未被识别时只清理本消息拥有的路径，客户端收到 NEEDS_TERMINAL / image_not_recognized；终端恢复空输入框，稍后未出现残留路径，没有正文、Enter、用户消息或 SUBMITTED。重新上传正常图并手动发新请求后成功。这里是文件故障注入，不表示原始 JPEG 损坏，也不声称该次拒收发生在真实 StartupDraft 内。网络延迟及缓存 I/O 阻塞的前两种测试设置均先进入了正式 composer，不能算作 StartupDraft 超过上限的拒收证明，未计入该分支通过结果。
+- 操作属于 Go 调试客户端和独立 tmux 调试键，未做网页或手机直接界面点击；只在测试环境处理启动 hook 信任和查看/关闭警告，没有向日常会话发送按键、重启日常 daemon 或修改线上服务。CLI 内部命令中心新建、原生 /new /resume /fork 切换的整条真实链路没有在本轮重跑；它们仍遵守逐条记录确认，命令中心例外的无意图文本及图片拒收由单元测试验证保守结算。临时 CLI、认证副本、账户和 tmux server 均已清理。

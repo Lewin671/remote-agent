@@ -170,7 +170,7 @@ func TestAnalyzeScreen0159(t *testing.T) {
 // a configured status line is optional.
 func TestScreenLoading(t *testing.T) {
 	for name, want := range map[string]Screen{
-		"loading": {DraftEmpty: true, Footer: "? for shortcuts", Loading: true},
+		"loading": {ComposerReady: true, DraftEmpty: true, Footer: "? for shortcuts", Loading: true},
 		"idle":    {ComposerReady: true, DraftEmpty: true, Footer: "GPT-6.1 Terra high · ~/code/demo"},
 	} {
 		b, err := os.ReadFile("testdata/screen-0.165.0-" + name + ".txt")
@@ -185,12 +185,12 @@ func TestScreenLoading(t *testing.T) {
 
 // StartupDraft deliberately accepts only plain text and has no initialized
 // execution settings. Its ordinary-looking prompt is not an image target.
-func TestStartupComposerIsNotReady(t *testing.T) {
+func TestStartupLikeComposerIsOnlyALoadingHint(t *testing.T) {
 	for _, footer := range []string{"", "  ? for shortcuts\n"} {
 		header := "  >_ \x1b[1mOpenAI Codex\x1b[0m (v0.166.0)\n     /tmp/work\n"
 		prompt := "\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n\n"
 		scr := AnalyzeScreen(header + prompt + footer)
-		if scr.ComposerReady || !scr.Loading || !scr.DraftEmpty {
+		if !scr.ComposerReady || !scr.Loading || !scr.DraftEmpty {
 			t.Fatalf("startup: %+v", scr)
 		}
 		// An initialized session with statusline disabled may have the same

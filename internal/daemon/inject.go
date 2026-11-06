@@ -25,8 +25,9 @@ import (
 // and Enter. Every stage is saved before the write it leads to, so that
 // after a restart the daemon knows what the input box may hold. If an
 // image is not taken, nothing is submitted: the input box is emptied with
-// Ctrl-U if it holds only what was pasted, and the message ends FAILED;
-// if that cannot be verified it ends NEEDS_TERMINAL. Neither is retried.
+// Ctrl-U if it holds only what was pasted. An unrecognized image requires
+// terminal inspection even after verified cleanup; other failures can end
+// FAILED when the box is restored. Neither is retried.
 
 // Holding local keys: the hold is renewed while a message is written, but
 // the whole write is bounded, so that a stuck daemon or CLI never keeps
@@ -37,6 +38,9 @@ const (
 	imageWait      = 6 * time.Second // for one "[Image #N]" to appear
 	unrecognized   = time.Second     // the path showing as text this long
 	clearWait      = 2 * time.Second
+	// An initialized non-YOLO session can look exactly like StartupDraft.
+	// Never let this ambiguous screen hold the first input indefinitely.
+	loadingWait = 20 * time.Second
 )
 
 // conversionWindow is how long, after a restart, an image pasted before it
@@ -378,9 +382,14 @@ func (s *session) inject(in input) (inputOutcome, error) {
 	// screen.
 	s.mu.Lock()
 	starting := s.status == pb.SessionStatus_SESSION_STATUS_STARTING
+	scr.Loading = scr.Loading && !s.cliSubmitted
+	if scr.Loading && s.loadingSince.IsZero() {
+		s.loadingSince = time.Now()
+	}
+	loading := scr.Loading && time.Since(s.loadingSince) < loadingWait
 	mediaWaits := len(in.Images) > 0 && s.ag.Capabilities().ImagesNeedIdle && (s.running || scr.Busy)
 	s.mu.Unlock()
-	if starting || mediaWaits {
+	if starting || loading || mediaWaits {
 		return notWritten, nil
 	}
 	s.noteWait(scr)
@@ -499,12 +508,15 @@ func (s *session) waitPlaceholder(before []int32, path, footer string) (int32, s
 
 // abandon ends a message that failed before its Enter: it empties the
 // input box if it holds only what was pasted for the message, and reports
-// the message FAILED, or NEEDS_TERMINAL when the input box could not be
-// verified to be back to empty. extra allows placeholders that were not
-// yet recorded (after a restart). The caller still holds local input.
+// the message FAILED, or NEEDS_TERMINAL when media was not recognized or
+// the input box could not be verified to be back to empty. extra allows
+// placeholders not yet recorded after a restart. The caller holds local input.
 func (s *session) abandon(c control, l *lease, in input, got []int32, footer string, extra bool, reason string) inputOutcome {
 	status := pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
-	if s.clearPasted(c, l, in, got, footer, extra, reason == "timeout") {
+	// A CLI that left the path literal needs inspection; clearing our
+	// owned input does not establish that it can accept the image.
+	cleared := s.clearPasted(c, l, in, got, footer, extra, reason == "timeout")
+	if cleared && reason != "image_not_recognized" {
 		status = pb.InputStatus_INPUT_STATUS_FAILED
 	}
 	slog.Warn("message not submitted", "session", s.meta.ID, "request", in.RequestID, "reason", reason, "status", status.String())
@@ -696,6 +708,9 @@ func (s *session) settle(ctx context.Context, in input) bool {
 		s.mu.Unlock()
 		if hist.submitted(func(recorded string) bool { return s.inputMatchesText(in, recorded) }, cliID) || s.loggedUserMessage(in) {
 			status = pb.InputStatus_INPUT_STATUS_SUBMITTED
+			s.mu.Lock()
+			s.cliSubmitted = true
+			s.mu.Unlock()
 			break
 		}
 		select {

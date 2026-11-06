@@ -112,6 +112,10 @@ type session struct {
 	screen       agent.Screen
 	prevScreen   agent.Screen
 	sawComposer  bool
+	// These belong to the native CLI lifetime, not a conversation or adapter.
+	// Historical events rebuild the confirmation bit; resume clears it.
+	cliSubmitted bool
+	loadingSince time.Time
 	// shellStart is when this daemon started the session through the
 	// user's login shell, while the shell has not yet reported the CLI it
 	// started; zero once it has, and for every other session.
@@ -364,7 +368,14 @@ func (s *session) observe(e *pb.Event) {
 		s.d.noteLimits(k.TokenUsage, at)
 	case *pb.Event_SettingsChanged:
 		s.context = s.ag.ApplySettings(s.context, k.SettingsChanged)
+	case *pb.Event_InputState:
+		if k.InputState.Status == pb.InputStatus_INPUT_STATUS_SUBMITTED && (s.meta.ForkedSeq == 0 || e.Seq > s.meta.ForkedSeq) {
+			s.cliSubmitted = true
+		}
 	case *pb.Event_UserMessage:
+		if s.meta.ForkedSeq == 0 || e.Seq > s.meta.ForkedSeq {
+			s.cliSubmitted = true
+		}
 		if s.running && e.TurnId == s.turnID && s.turnPrompt == "" {
 			s.turnPrompt = k.UserMessage.Text
 		}
@@ -387,6 +398,9 @@ func (s *session) observe(e *pb.Event) {
 	case *pb.Event_QuestionAnswered:
 		delete(s.questions, k.QuestionAnswered.QuestionId)
 	case *pb.Event_SessionState:
+		if k.SessionState.Status == pb.SessionStatus_SESSION_STATUS_STARTING && k.SessionState.Detail == "resumed" {
+			s.cliSubmitted, s.loadingSince = false, time.Time{}
+		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
 		s.scheduledClosed = k.SessionState.ScheduledClosed
 		s.planOpen = k.SessionState.PlanOpen
@@ -790,6 +804,10 @@ func (s *session) checkScreenContext(ctx context.Context) bool {
 	}
 	scr := s.ag.Analyze(styled)
 	s.mu.Lock()
+	scr.Loading = scr.Loading && !s.cliSubmitted
+	if scr.Loading && s.loadingSince.IsZero() {
+		s.loadingSince = time.Now()
+	}
 	if inspector, ok := s.ag.(agent.PlanInspector); ok {
 		scr.PlanOpen = !s.running && inspector.PlanScreen(styled, s.planFacts)
 	}

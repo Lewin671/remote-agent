@@ -401,6 +401,8 @@ type Screen struct {
 	// Busy: the screen shows the CLI working (Claude Code's spinner line
 	// or its dimmed prompt), whatever the transcript says yet.
 	Busy bool
+	// Loading is an ambiguous startup hint; it does not invalidate the composer.
+	Loading bool
 }
 
 // Hook is a hook call's payload. Codex and Claude Code use the same field

@@ -2,6 +2,7 @@ package codex
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -116,6 +117,19 @@ func TestComposerTextNativeFooter(t *testing.T) {
 			if _, ok := ComposerText(screen+"  foreign text\n", status); ok {
 				t.Error("silently dropped text below footer")
 			}
+			if got, ok := ComposerText(screen+"  foreign text\n", ""); ok && !strings.Contains(got, "foreign text") {
+				t.Error("unanchored input silently dropped trailing text")
+			}
+		}
+	}
+}
+
+func TestComposerTextWithoutFooterKeepsEntireDraft(t *testing.T) {
+	for _, body := range []string{"/tmp/uploads/\nexample.jpg", "[Image #1]", "/tmp/uploads/example.jpg\nforeign text"} {
+		screen := "  >_ \x1b[1mOpenAI Codex\x1b[0m (v0.166.0)\n  /tmp/work\n\n\x1b[1m›\x1b[0m " + body + "\n\n"
+		got, ok := ComposerText(screen, "")
+		if !ok || got != body {
+			t.Fatalf("got %q %v, want %q", got, ok, body)
 		}
 	}
 }

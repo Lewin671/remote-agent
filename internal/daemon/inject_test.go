@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/agent"
 )
 
 // composerScreen is Codex's screen with text in the input box.
@@ -138,7 +139,7 @@ func testSendWithImagesStopsWhenOneIsNotTaken(t *testing.T) {
 	runInjector(t, h)
 	eventually(t, "failed", func() bool {
 		st := inputStates(h, "r1")
-		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_FAILED
+		return len(st) > 0 && st[len(st)-1].Status == pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL
 	})
 	st := inputStates(h, "r1")
 	if r := st[len(st)-1].Reason; r != "image_not_recognized" {
@@ -291,12 +292,12 @@ func testSendWithImagesAfterTerminalResize(t *testing.T) {
 	}
 }
 
-// StartupDraft accepts plain text but cannot attach images. A prompt with
-// no initialized execution settings must not receive any queued input,
-// regardless of how long startup takes or whether a statusline is enabled.
+// A live empty status line can look exactly like StartupDraft. The hint
+// delays first input only up to a bound; confirmation disables it for this
+// CLI lifetime, even if its header and footer never change.
 func TestInputWaitsForCodexStartup(t *testing.T) {
 	for _, withImages := range []bool{false, true} {
-		for _, footer := range []string{"", "  ? for shortcuts\n"} {
+		for _, footer := range []string{"", "? for shortcuts"} {
 			t.Run(fmt.Sprintf("images=%t/footer=%q", withImages, footer), func(t *testing.T) {
 				synctest.Test(t, func(t *testing.T) {
 					h := newHarness(t, Config{})
@@ -307,25 +308,147 @@ func TestInputWaitsForCodexStartup(t *testing.T) {
 						accept[imgs[0].Path] = true
 					}
 					fakeCodexImages(t, h, accept)
-					h.term.setScreen(">_ \x1b[1mOpenAI Codex\x1b[0m (v0.166.0)\n  /tmp/work\n\n\x1b[1m›\x1b[0m \x1b[2mAsk Codex to do anything\x1b[0m\n\n" + footer)
+					inner := h.term.onWrite
+					h.term.onWrite = func(f *fakeTerm, b string) {
+						inner(f, b)
+						f.screen = startupLikeScreen(strings.ReplaceAll(f.screen, "  GPT-6-Sol medium · /w", footer))
+					}
+					h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", footer)))
 					if _, err := h.s.enqueue("look", "r1", imgs, originLocal); err != nil {
 						t.Fatal(err)
 					}
 					runInjector(t, h)
-					time.Sleep(time.Minute)
+					time.Sleep(loadingWait / 2)
 					synctest.Wait()
 					if w := h.term.written(); len(w) != 0 {
-						t.Fatalf("wrote into startup composer: %q", w)
+						t.Fatalf("wrote before loading bound: %q", w)
 					}
-					h.term.setScreen(idleScreen)
-					time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+					time.Sleep(loadingWait + injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
 					synctest.Wait()
-					if st := inputStates(h, "r1"); len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
-						t.Fatalf("input states %v", st)
+					st := inputStates(h, "r1")
+					if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+						t.Fatalf("bounded input: %v", st)
+					}
+					if _, err := h.s.send("again", "r2"); err != nil {
+						t.Fatal(err)
+					}
+					time.Sleep(time.Second)
+					synctest.Wait()
+					st = inputStates(h, "r2")
+					if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+						t.Fatalf("confirmation did not disable Loading: %v", st)
 					}
 				})
 			})
 		}
+	}
+}
+
+func startupLikeScreen(composer string) string {
+	return "  >_ \x1b[1mOpenAI Codex\x1b[0m (v0.166.0)\n  /tmp/work\n\n" + composer
+}
+
+func TestStartupImageFallbackClearsUnrecognizedPath(t *testing.T) {
+	for _, confirmed := range []bool{false, true} {
+		t.Run(fmt.Sprintf("confirmed=%t", confirmed), func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				h := newHarness(t, Config{})
+				h.s.cliSubmitted = confirmed
+				imgs := imagesFor(t, h.dir, "a.jpg")
+				fakeCodexImages(t, h, nil)
+				inner := h.term.onWrite
+				h.term.onWrite = func(f *fakeTerm, b string) {
+					inner(f, b)
+					f.screen = startupLikeScreen(strings.ReplaceAll(f.screen, "  GPT-6-Sol medium · /w", ""))
+				}
+				h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+				if _, err := h.s.enqueue("must not submit without the image", "fallback", imgs, originLocal); err != nil {
+					t.Fatal(err)
+				}
+				runInjector(t, h)
+				time.Sleep(loadingWait + injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
+				synctest.Wait()
+				st := inputStates(h, "fallback")
+				if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL || st[len(st)-1].Reason != "image_not_recognized" {
+					t.Fatalf("fallback: %v", st)
+				}
+				writes := h.term.written()
+				if len(writes) != 2 || writes[0] != string(agent.PastePath(imgs[0].Path)) || writes[1] != agent.KeyClearLine {
+					t.Fatalf("unsafe writes: %q", writes)
+				}
+				screen, _ := h.term.Capture()
+				if !h.s.ag.Analyze(screen).DraftEmpty {
+					t.Fatal("left pasted path in composer")
+				}
+			})
+		})
+	}
+}
+
+func TestLoadingConfirmationIsLimitedToCLILifetime(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t, Config{})
+		fakeCodexImages(t, h, nil)
+		h.s.observe(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "local input"}}})
+		h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+		if _, err := h.s.send("one", "one"); err != nil {
+			t.Fatal(err)
+		}
+		runInjector(t, h)
+		time.Sleep(time.Second)
+		synctest.Wait()
+		st := inputStates(h, "one")
+		if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+			t.Fatalf("local submission not honored: %v", st)
+		}
+		h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+		h.s.checkScreen()
+		h.s.checkScreen()
+		h.s.mu.Lock()
+		if h.s.screen.Loading {
+			h.s.mu.Unlock()
+			t.Fatal("confirmed process still reports Loading")
+		}
+		h.s.resumeStateLocked(false)
+		h.s.mu.Unlock()
+		h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+		before := len(h.term.written())
+		if _, err := h.s.send("two", "two"); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(loadingWait / 2)
+		synctest.Wait()
+		if len(h.term.written()) != before {
+			t.Fatal("old process confirmation bypassed resumed startup")
+		}
+		time.Sleep(loadingWait + injectBase + h.d.cfg.SubmitTimeout)
+		synctest.Wait()
+		st = inputStates(h, "two")
+		if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_SUBMITTED {
+			t.Fatalf("resumed bound: %v", st)
+		}
+	})
+}
+
+func TestUnconfirmedAndCopiedInputDoNotEndLoading(t *testing.T) {
+	for _, status := range []pb.InputStatus{pb.InputStatus_INPUT_STATUS_UNCONFIRMED, pb.InputStatus_INPUT_STATUS_FAILED, pb.InputStatus_INPUT_STATUS_QUEUED} {
+		synctest.Test(t, func(t *testing.T) {
+			h := newHarness(t, Config{})
+			fakeCodexImages(t, h, nil)
+			h.s.observe(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "old", Status: status}}})
+			h.s.meta.ForkedSeq = 10
+			h.s.observe(&pb.Event{Seq: 5, Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "copied parent input"}}})
+			h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+			if _, err := h.s.send("new", "new"); err != nil {
+				t.Fatal(err)
+			}
+			runInjector(t, h)
+			time.Sleep(loadingWait / 2)
+			synctest.Wait()
+			if len(h.term.written()) != 0 {
+				t.Fatalf("unproven or copied input bypassed startup (%v)", status)
+			}
+		})
 	}
 }
 
@@ -350,7 +473,7 @@ func testImageNotTakenWrappedIsCleared(t *testing.T) {
 	time.Sleep(injectBase + injectPerImage + h.d.cfg.SubmitTimeout)
 	synctest.Wait()
 	st := inputStates(h, "r1")
-	if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_FAILED || st[len(st)-1].Reason != "image_not_recognized" {
+	if len(st) == 0 || st[len(st)-1].Status != pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL || st[len(st)-1].Reason != "image_not_recognized" {
 		t.Fatalf("input states %v", st)
 	}
 	if w := h.term.written(); w[len(w)-1] != "\x15" {
@@ -387,7 +510,7 @@ func TestImagesWithChangingNativeFooter(t *testing.T) {
 					}
 					return
 				}
-				if last.Status != pb.InputStatus_INPUT_STATUS_FAILED || last.Reason != "image_not_recognized" {
+				if last.Status != pb.InputStatus_INPUT_STATUS_NEEDS_TERMINAL || last.Reason != "image_not_recognized" {
 					t.Fatalf("unrecognized image: %v", states)
 				}
 				writes := h.term.written()
@@ -413,4 +536,56 @@ func TestImagesWithChangingNativeFooter(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestLoadingConfirmationRebuiltAcrossDaemonRestart(t *testing.T) {
+	h := newHarness(t, Config{})
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "old process"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_STARTING, Detail: "resumed"}}}); err != nil {
+		t.Fatal(err)
+	}
+	restored, err := newSession(h.d, h.dir, h.s.meta, h.term, h.s.log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if restored.cliSubmitted {
+		t.Fatal("replay reused an old CLI lifetime's confirmation")
+	}
+	if err := h.s.emit(&pb.Event{Kind: &pb.Event_InputState{InputState: &pb.InputState{RequestId: "new", Status: pb.InputStatus_INPUT_STATUS_SUBMITTED}}}); err != nil {
+		t.Fatal(err)
+	}
+	restored, err = newSession(h.d, h.dir, h.s.meta, h.term, h.s.log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !restored.cliSubmitted {
+		t.Fatal("replay lost current CLI lifetime confirmation")
+	}
+}
+
+// Command-center StartupDraft does not carry Enter's submission intent.
+// After a previously confirmed input we must still require fresh CLI
+// evidence for every later message and never call an ignored Enter sent.
+func TestConfirmedProcessStillRequiresEachSubmissionProof(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		h := newHarness(t, Config{})
+		h.s.cliSubmitted = true
+		h.term.history = "" // the native CLI does not record this attempted input
+		h.term.setScreen(startupLikeScreen(strings.ReplaceAll(idleScreen, "  GPT-6-Sol medium · /w", "")))
+		if _, err := h.s.send("ignored by a provisional composer", "unproven"); err != nil {
+			t.Fatal(err)
+		}
+		runInjector(t, h)
+		time.Sleep(injectBase + h.d.cfg.SubmitTimeout)
+		synctest.Wait()
+		states := inputStates(h, "unproven")
+		if len(states) == 0 || states[len(states)-1].Status != pb.InputStatus_INPUT_STATUS_UNCONFIRMED {
+			t.Fatalf("missing per-message confirmation: %v", states)
+		}
+		if len(h.term.written()) != 1 {
+			t.Fatalf("automatically retried unconfirmed input: %q", h.term.written())
+		}
+	})
 }
