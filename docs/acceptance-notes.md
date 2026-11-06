@@ -185,6 +185,40 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 ## 11. iOS
 
+### 聊天滚动卡死复查（2026-11-06）
+
+基于 v0.55.0 的任务代码，重新检查包含 v0.54.2 的七份 iPhone 13 / iOS 18.5 watchdog 报告。新增报告的主线程在 `DynamicPreferenceCombiner` → AttributeGraph → `ViewGraph.updateOutputs` → `_UIHostingView.layoutSubviews`，旧报告还包含 lazy stack 的放置与索引解析。报告没有提供连续的几何值、状态写入或视图失效记录；它们支持继续调查布局路径，但**不能证明哪个值反复变化，也不能区分布局反馈、SwiftUI 内部计算不收敛和一次耗时很长的布局**。原始报告不入库。本轮未改产品代码，没有把另一条可疑路径当作已经证明的根因。
+
+对当前实现逐条作了静态核对；下表中的「可能」均不是永久卡死的复现：
+
+| 路径 | 写入和后续读取 | 本轮确认的边界 |
+|---|---|---|
+| 每行 `InSight` | 行相对 scroll view 的 frame → `tracker.inSight`；`Keeping.mark` 在 body 中遇到新的 joins 时读取 | 字典有 `@ObservationIgnored`，写 frame 本身不使 body 失效；不能据此排除 SwiftUI 几何依赖自身的问题 |
+| `Keeping` 的 scroll geometry | offset / content size / viewport → 普通 `Place.sight`；有历史目标时调度修正，再写 `ScrollPosition` | sight 不是 observable；修正 → 滚动 → 新 geometry 的闭环仍在，已有 8 次上限和 1 秒结束逻辑，本轮未新增或改动这些机制 |
+| 整个 lazy stack 的 global frame | height / maxY → tracker 普通字段 → follow 请求 → `scrollTo` | 布局输出确实能再请求滚动；v0.54.2 已把请求排到布局事务外，并在执行时复查，不等于证明 lazy layout 内部会收敛 |
+| 底部 inset 的 minY | → `tracker.floor` → 同一 follow 入口 | 和 content frame 分别送达，未取得真机卡死时两者的时序和值 |
+| `fresh` / `away` | tracker 的几何判断 → observable 值 → jump pill | pill 在 overlay 中，不占聊天高度；只有阈值状态变化才发布，未观察到阈值往返振荡 |
+| `paneHeight` | pane 的 size.height → State → `chatHeight` 环境 → `PendingDock.room` | 行不读取该环境；dock 的高度上限会影响 inset 和 viewport，未证明 pane 自身高度因此反复变化 |
+| dock body 的高度 | 内容高度 → `bodyHeight` → 内层 ScrollView 的 frame.height | 这是测量后再布局；内层内容沿滚动轴测量、宽度由外部给定，未观察到不收敛 |
+| 键盘 | safeAreaInsets → `KeyboardTrack.inset`；UIKit layout guide → overlap / base → lag → 底栏 offset | offset 不占布局空间；交互收键盘仍需与 SwiftUI 安全区、滚动阶段联合验证 |
+| 计划行 `CutText` | shown / whole → `cut` binding → `PlanCard` 的展开按钮 → 行高度 | 确有第二次布局；lazy 行离屏回收后测量状态可能重建，尚未证明回收与高度变化构成振荡 |
+| Markdown 表格 | 横向 ScrollView 的 width → viewport → 列宽和行高；横向 geometry → more → mask | width 来自外部视口，不是表格内容宽度；mask 只影响绘制，未观察到宽度振荡 |
+| `EndAnchored` / `scrollPosition` | initialOffset、sizeChanges、alignment 和绑定参与系统的位置计算 | 包含框架自己的估算和锚定，报告无法说明内部依赖是否成环；未把它归罪于某个 App 状态写入 |
+| 手势、消息和定时跳转 | scroll phase → interaction；rows / joins / pending → tracker；跳转输入 → `scrollTo` / appliedScheduledJump | 手势期间推迟前缀安装；定时跳转由 run ID 防重入。这些入口保留，未用示例数据声称验证真实 CLI |
+| 其他被怀疑的折叠组件 | `ClampedCode` 的自测量；`ScheduleResultBody` 的 block heights | 前者用于首页 attention card，后者用于定时结果卡；两者都不是 `ChatPane` 中的聊天行。`ScheduledChatRow` 自身只随用户展开，无几何回写 |
+
+新增 `mixedRowsSettleAfterHistoryStreamingAndViewportChanges` 基线：480 条计划、表格、回复和工具记录，分批补齐前缀，固定行 ID 的回复增量追加，开启问题 dock，改变视口大小，分别用普通字号和辅助字号。停止外部输入后检查 content size / offset 静止。它直接挂载 `ChatPane`，但以 `setContentOffset` 驱动，**不是手指或惯性滚动，也不是已知失败用例的回归**。初版 fixture 没有提供 live snapshot，未显示问题 dock；修正 fixture 后才计入该项覆盖。
+
+检查环境为 Xcode 27.0、iOS 27.0 的 iPhone 18 Pro 模拟器。`swift test --package-path ios/RemoteAgentCore --jobs 4` 通过：Markdown 17 项，RACore 报告 637 项，其中 opt-in 的 `realDaemonCliRoundTripAndRemovedMachineArchiveRejoin` 跳过。`xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test` 构建与测试通过，421 项，含参数化共 466 次。相关滚动实现与 v0.54.2 相同，因此这是**现有实现的基线通过，没有修复前后对照**。
+
+另从当前 checkout 启动隔离 server、daemon、临时账户和独立 tmux，运行真实 Codex 0.166.0 / GPT-6-Luna。账户创建、配对和第二条草稿由现有 DEBUG 入口准备；第一条草稿由临时 XCUITest 键入，两次发送均由 XCUITest 点按可点击的发送按钮。daemon 的两个用户事件均标为 `ORIGIN_KIND_CLIENT`，两次回复的末尾标记都返回。第一条回复约 10,900 字符，包含 80 个编号段落和表格；第二条请求 100 个编号句子和表格。
+
+临时 XCUITest 的有效手势测试通过：第二次发送后，在屏幕上部的可见聊天区域做 30 次快速往返拖动，五次聚焦输入框后再做慢速下拖，并检查草稿没有被手势改写。初轮使用整个 scroll view 的辅助功能 frame，截图显示部分手势误入键盘，不计作可靠手势覆盖；另一次用输入框 frame 限定范围的驱动因无效坐标断言失败，也不是卡死。最终有效驱动避开这些坐标，截图可见键盘和回看位置上的新消息 pill。另一个临时 XCUITest 直接点按该 pill，确认第二次回复末尾标记可见且可点击；两项分别单独运行通过。临时账户的本机存储已退出清理，隔离 server、daemon、tmux 和本次启动的模拟器均已停止；临时 UI test 工程与结果仅保留为本地证据，不入库。
+
+真机仅作只读设备检查：允许测试的 iPhone 处于需要密码解锁的状态，RA dev 未安装；尝试设备构建时依赖解析失败，未进入安装或运行，没有触及日常 Release App 或另一台设备。`xcrun simctl runtime list` 只有 iOS 27，`xcodebuild -downloadPlatform iOS -buildVersion 18.5` 返回该版本不可下载。
+
+证据边界：**没有复现永久卡死，没有证明完整的非收敛循环，也没有证据解释间歇性或 iOS 18.5 与 27 的差异**；不能据此宣称修好。模拟器窗口基线覆盖前缀补齐与同一行增长，真实 CLI 链路未构造大规模历史前缀；定时跳转没有新做直接界面验收。Debug / 模拟器结果不能替代 Release / 真机验证。后续仍需同系统、可解锁设备上的连续几何值、状态失效与主线程记录，未决状态见 [plan](plan.md#待确认)。
+
 ### 聊天滚动的布局反馈（2026-11-05）
 
 基于 v0.54.1 的任务代码，Xcode 27.0、iOS 27 的 iPhone 18 Pro 模拟器；未发布。只读检查 iPhone 13 / iOS 18.5 的六份系统终止报告：四份来自 v0.53.0，两份来自 v0.54.0。主线程都在 SwiftUI / AttributeGraph 布局路径，其中包含 `LazyStack.collectBackwards`、`resolveIndexAndPosition` 和 `place`。v0.54.0 的两份都是退出时超过 5 秒的 watchdog 终止；这些栈没有显示 App 自己的锁或网络等待，不能仅凭单次栈排除其他卡顿路径。原始报告不入库。
