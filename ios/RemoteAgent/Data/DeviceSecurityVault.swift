@@ -63,7 +63,7 @@ extension Vault: DeviceSecurity.Storage {
             }
         } else { installed = try initializeSecurityUnlocked(record) }
         try refreshNotifyUnlocked(installed)
-        try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
+        try save(account, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
     private func refreshNotifyUnlocked(_ record: DeviceSecurity.Record) throws {
         if let bytes = try read(.notifyKey),
@@ -178,6 +178,6 @@ extension Vault: AuthorityStorage {
                 installed = next
             }
         } else { installed = try initializeSecurityUnlocked(record) }
-        try save(account.stored, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
+        try save(account, notifyKey: DeviceSecurity.NotifyRecord(record: installed).bytes())
     }
 }

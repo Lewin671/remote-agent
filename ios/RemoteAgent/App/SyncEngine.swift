@@ -119,8 +119,8 @@ final class LoginKeeper: @unchecked Sendable {
     /// The login kept by the last run, if any. Blocks: call it off the main actor.
     func load() -> SavedLogin? {
         queue.sync {
-            guard !closed, let kept = try? vault.loginToken(server: server, deviceId: deviceId) else { return nil }
-            return SavedLogin(token: kept.token, expiresMs: Int64(kept.expiresAt.timeIntervalSince1970 * 1000))
+            guard !closed else { return nil }
+            return try? vault.loginToken(server: server, deviceId: deviceId)
         }
     }
 
@@ -130,10 +130,7 @@ final class LoginKeeper: @unchecked Sendable {
             guard !closed else { return }
             // Never the token: only that one was kept or dropped.
             if let login {
-                let kept = LoginToken(
-                    token: login.token, expiresAt: Date(timeIntervalSince1970: Double(login.expiresMs) / 1000), server: server,
-                    deviceId: deviceId)
-                let ok = (try? vault.saveLoginToken(kept)) != nil
+                let ok = (try? vault.saveLoginToken(login, server: server, deviceId: deviceId)) != nil
                 log.info("login \(ok ? "kept" : "not kept: the Keychain refused", privacy: .public)")
             } else {
                 try? vault.deleteLoginToken()
@@ -150,20 +147,10 @@ final class LoginKeeper: @unchecked Sendable {
 }
 
 extension Account {
-    init(_ stored: VaultAccount) {
-        let accountId =
-            stored.accountId.isEmpty && stored.root.count == 32
-            ? (try? Keys.derive(root: stored.root)).map { RACore.deviceId(publicKey: $0.account.publicKey) }
-                ?? ""
-            : stored.accountId
-        self.init(
-            server: stored.server, root: stored.root, deviceSeed: stored.deviceSeed,
-            deviceId: stored.deviceId, accountId: accountId)
-    }
-
-    var stored: VaultAccount {
-        VaultAccount(
-            server: server, root: root, deviceSeed: deviceSeed, deviceId: deviceId,
-            accountId: accountId)
+    /// Resolve retained root material when loading an account without an explicit domain ID.
+    func resolvingAccountId() -> Account {
+        guard accountId.isEmpty, root.count == 32 else { return self }
+        let resolved = (try? Keys.derive(root: root)).map { RACore.deviceId(publicKey: $0.account.publicKey) } ?? ""
+        return Account(server: server, root: root, deviceSeed: deviceSeed, deviceId: deviceId, accountId: resolved)
     }
 }

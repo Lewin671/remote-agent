@@ -14,46 +14,6 @@ import Foundation
 import Security
 import RACore
 
-/// The account as it is kept on this device: where the server is, the root
-/// key everything is derived from, and this device's signing seed and ID.
-struct VaultAccount: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
-    CustomReflectable
-{
-    var server: String
-    /// Empty when this device joined by pairing and has no account root.
-    var root: Data
-    var deviceSeed: Data
-    var deviceId: String
-    /// The security domain's account ID. Older entries derive it from root.
-    var accountId: String = ""
-
-    var description: String { "VaultAccount(server=\(server), device=\(deviceId))" }
-    var debugDescription: String { description }
-    /// What `dump` and string interpolation of a containing value may see: not the keys.
-    var customMirror: Mirror { Mirror(self, children: ["server": server, "deviceId": deviceId]) }
-}
-
-/// The server's bearer token of the last login, kept so a relaunch does
-/// not sign in again before it runs out. It is kept with whose it is, the
-/// server and this device's ID there, and is only ever given back for
-/// exactly those: a token saved for one account is never offered to another.
-struct LoginToken: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible,
-    CustomReflectable
-{
-    var token: String
-    var expiresAt: Date
-    var server: String
-    var deviceId: String
-
-    var description: String {
-        "LoginToken(server=\(server), device=\(deviceId), expiresAt=\(expiresAt))"
-    }
-    var debugDescription: String { description }
-    var customMirror: Mirror {
-        Mirror(self, children: ["server": server, "deviceId": deviceId, "expiresAt": expiresAt])
-    }
-}
-
 /// The Keychain refused, or what it holds cannot be read. `status` is the system's OSStatus, 0 when the data itself is at fault.
 struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
     enum Operation: String, Sendable {
@@ -111,7 +71,7 @@ struct Vault: Sendable {
     func hasAccount() throws -> Bool { try exists(.account) }
 
     /// The stored account, or nil when this device has not joined one.
-    func load() throws -> VaultAccount? {
+    func load() throws -> Account? {
         guard let blob = try read(.account) else { return nil }
         guard
             let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
@@ -121,13 +81,13 @@ struct Vault: Sendable {
             let root = plist["root"] as? Data, let seed = plist["seed"] as? Data
         else { throw VaultError.unreadable }
         let accountId = plist["accountId"] as? String ?? ""
-        return VaultAccount(
+        return Account(
             server: server, root: root, deviceSeed: seed, deviceId: deviceId, accountId: accountId)
     }
 
     /// Stores the account with its notify key, replacing any before. The
     /// notify key goes first: an account is then never stored without it.
-    func save(_ account: VaultAccount, notifyKey: Data) throws {
+    func save(_ account: Account, notifyKey: Data) throws {
         let plist: [String: Any] = [
             "v": 2, "server": account.server, "deviceId": account.deviceId, "root": account.root,
             "seed": account.deviceSeed, "accountId": account.accountId,
@@ -154,7 +114,7 @@ struct Vault: Sendable {
     /// kept, and just the same when the one kept is another account's or
     /// does not say whose it is. Such a token is not an error and not a
     /// login; whoever asks signs in anew, and the next one kept replaces it.
-    func loginToken(server: String, deviceId: String) throws -> LoginToken? {
+    func loginToken(server: String, deviceId: String) throws -> SavedLogin? {
         guard let blob = try read(.loginToken) else { return nil }
         guard
             let plist = try? PropertyListSerialization.propertyList(from: blob, format: nil)
@@ -164,13 +124,13 @@ struct Vault: Sendable {
         guard let owner = plist["server"] as? String, let device = plist["deviceId"] as? String,
             owner == server, device == deviceId, !deviceId.isEmpty
         else { return nil }
-        return LoginToken(token: token, expiresAt: expires, server: owner, deviceId: device)
+        return SavedLogin(token: token, expiresMs: Int64(expires.timeIntervalSince1970 * 1000))
     }
 
-    func saveLoginToken(_ token: LoginToken) throws {
+    func saveLoginToken(_ token: SavedLogin, server: String, deviceId: String) throws {
         let plist: [String: Any] = [
-            "token": token.token, "expiresAt": token.expiresAt, "server": token.server,
-            "deviceId": token.deviceId,
+            "token": token.token, "expiresAt": Date(timeIntervalSince1970: Double(token.expiresMs) / 1000), "server": server,
+            "deviceId": deviceId,
         ]
         guard
             let blob = try? PropertyListSerialization.data(

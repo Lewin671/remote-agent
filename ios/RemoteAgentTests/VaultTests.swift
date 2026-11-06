@@ -8,7 +8,7 @@ import Testing
 /// The Keychain as the vault uses it, on the simulator's real Keychain: each test has a service of its own and removes it.
 @Suite struct VaultTests {
     let vault = Vault(service: "io.github.lewin671.remoteagent.tests.\(UUID().uuidString)")
-    let account = VaultAccount(
+    let account = Account(
         server: "https://ra.example.com", root: Data((0..<32).map { UInt8($0) }),
         deviceSeed: Data((0..<32).map { UInt8(200 - $0) }), deviceId: "00112233445566778899aabbccddeeff")
     let notify = Data((0..<32).map { UInt8($0 &* 7) })
@@ -38,12 +38,47 @@ import Testing
         #expect(try vault.notifyKey() == notify)
     }
 
+    /// Binary plists produced by the pre-consolidation writer, with synthetic material.
+    @Test func currentAccountAndLoginPlistsKeepTheirFields() throws {
+        defer { try? vault.clear() }
+        let accountBytes = Data(base64Encoded: "YnBsaXN0MDDWAQIDBAUGBwgJCgsMVnNlcnZlclF2VHNlZWRYZGV2aWNlSWRUcm9vdFlhY2NvdW50SWRfEBlodHRwczovL3JlbGF5LmV4YW1wbGUuY29tEAJDBAUGXmZpeHR1cmUtZGV2aWNlQwECA18QD2ZpeHR1cmUtYWNjb3VudAgVHB4jLDE7V1ldbHAAAAAAAAABAQAAAAAAAAANAAAAAAAAAAAAAAAAAAAAgg==")!
+        let loginBytes = Data(base64Encoded: "YnBsaXN0MDDUAQIDBAUGBwhZZXhwaXJlc0F0VXRva2VuVnNlcnZlclhkZXZpY2VJZDNByH0EwAAAAF1maXh0dXJlLXRva2VuXxAZaHR0cHM6Ly9yZWxheS5leGFtcGxlLmNvbV5maXh0dXJlLWRldmljZQgRGyEoMTpIZAAAAAAAAAEBAAAAAAAAAAkAAAAAAAAAAAAAAAAAAABz")!
+        try vault.write(.account, accountBytes)
+        try vault.write(.loginToken, loginBytes)
+        let loaded = try #require(try vault.load())
+        #expect(loaded == Account(server: "https://relay.example.com", root: Data([1, 2, 3]),
+            deviceSeed: Data([4, 5, 6]), deviceId: "fixture-device", accountId: "fixture-account"))
+        let login = try #require(try vault.loginToken(server: loaded.server, deviceId: loaded.deviceId))
+        #expect(login == SavedLogin(token: "fixture-token", expiresMs: 1_800_000_000_000))
+        try vault.save(loaded, notifyKey: notify)
+        try vault.saveLoginToken(login, server: loaded.server, deviceId: loaded.deviceId)
+        // Foundation can reorder binary-plist dictionary keys between processes.
+        // Compare every typed value, including raw key bytes and the Date representation.
+        for (item, bytes) in [(Vault.Item.account, accountBytes), (.loginToken, loginBytes)] {
+            let written = try #require(try vault.read(item))
+            let before = try PropertyListSerialization.propertyList(from: bytes, format: nil) as! NSDictionary
+            let after = try PropertyListSerialization.propertyList(from: written, format: nil) as! NSDictionary
+            #expect(before == after)
+        }
+    }
+
+    @Test func storedRootAccountStillResolvesItsDomainIdOnlyForUse() throws {
+        defer { try? vault.clear() }
+        try vault.save(account, notifyKey: notify)
+        let loaded = try #require(try vault.load())
+        #expect(loaded.accountId.isEmpty)
+        let expected = try deviceId(publicKey: Keys.derive(root: account.root).account.publicKey)
+        #expect(loaded.resolvingAccountId().accountId == expected)
+        let named = Account(server: loaded.server, root: loaded.root, deviceSeed: loaded.deviceSeed,
+            deviceId: loaded.deviceId, accountId: "explicit-account")
+        #expect(named.resolvingAccountId() == named)
+    }
+
     @Test func savingAgainReplacesTheAccount() throws {
         defer { try? vault.clear() }
         try vault.save(account, notifyKey: notify)
-        var other = account
-        other.server = "http://localhost:8080"
-        other.root = Data(repeating: 9, count: 32)
+        let other = Account(server: "http://localhost:8080", root: Data(repeating: 9, count: 32),
+            deviceSeed: account.deviceSeed, deviceId: account.deviceId)
         try vault.save(other, notifyKey: Data(repeating: 1, count: 32))
         #expect(try vault.load() == other)
         #expect(try vault.notifyKey() == Data(repeating: 1, count: 32))
@@ -52,8 +87,8 @@ import Testing
     @Test func itemsAreForThisDeviceOnlyWhileUnlockedAndDoNotSync() throws {
         defer { try? vault.clear() }
         try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(LoginToken(
-            token: "t", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId))
+        try vault.saveLoginToken(SavedLogin(
+            token: "t", expiresMs: 1_800_000_000_000), server: account.server, deviceId: account.deviceId)
         for item in [Vault.Item.account, .notifyKey, .loginToken] {
             let a = try #require(attributes(item))
             #expect(a[kSecAttrAccessible as String] as? String == kSecAttrAccessibleWhenUnlockedThisDeviceOnly as String)
@@ -67,9 +102,9 @@ import Testing
 
     @Test func theLoginTokenIsKeptAndDeletedOnItsOwn() throws {
         defer { try? vault.clear() }
-        let token = LoginToken(token: "bearer-abc", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId)
+        let token = SavedLogin(token: "bearer-abc", expiresMs: 1_800_000_000_000)
         try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(token)
+        try vault.saveLoginToken(token, server: account.server, deviceId: account.deviceId)
         #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
         try vault.deleteLoginToken()
         #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == nil)
@@ -82,7 +117,7 @@ import Testing
         let other = Vault(service: vault.service + ".other")
         defer { try? other.clear() }
         try vault.save(account, notifyKey: notify)
-        try vault.saveLoginToken(LoginToken(token: "t", expiresAt: .now, server: account.server, deviceId: account.deviceId))
+        try vault.saveLoginToken(SavedLogin(token: "t", expiresMs: nowMs()), server: account.server, deviceId: account.deviceId)
         try vault.write(.pendingKey, Data(repeating: 3, count: 32))
         try other.save(account, notifyKey: notify)
         try vault.clear()
@@ -109,9 +144,9 @@ import Testing
 
     @Test func aLoginKeptForOneAccountIsNeverGivenToAnother() throws {
         defer { try? vault.clear() }
-        let token = LoginToken(
-            token: "bearer-abc", expiresAt: Date(timeIntervalSince1970: 1_800_000_000), server: account.server, deviceId: account.deviceId)
-        try vault.saveLoginToken(token)
+        let token = SavedLogin(
+            token: "bearer-abc", expiresMs: 1_800_000_000_000)
+        try vault.saveLoginToken(token, server: account.server, deviceId: account.deviceId)
         #expect(try vault.loginToken(server: account.server, deviceId: account.deviceId) == token)
         // Another device of the same server, the same device ID on another server, and neither: none of them gets it.
         #expect(try vault.loginToken(server: account.server, deviceId: "another-device") == nil)
@@ -152,7 +187,7 @@ import Testing
     }
 
     @Test func descriptionsLeaveTheKeysOut() {
-        let token = LoginToken(token: "bearer-secret-value", expiresAt: Date(timeIntervalSince1970: 0), server: account.server, deviceId: account.deviceId)
+        let token = SavedLogin(token: "bearer-secret-value", expiresMs: 0)
         var dumped = ""
         dump(account, to: &dumped)
         dump(token, to: &dumped)

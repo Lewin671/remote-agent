@@ -79,7 +79,7 @@ final class Harness {
         parts.defaults = defaults
         parts.notificationCenter = notificationCenter
         parts.saveJoined = { vault, account in
-            try vault.save(account.stored, notifyKey: Data(repeating: 0, count: 32))
+            try vault.save(account, notifyKey: Data(repeating: 0, count: 32))
         }
         parts.securityReady = { [securityReady] _, _ in securityReady }  // This lifecycle suite uses a mock engine; protocol setup has separate tests.
         parts.checkRetainedIdentity = identityCheck
@@ -105,7 +105,7 @@ final class Harness {
     var engine: FakeEngine { engines.last! }
 
     func store() throws {
-        try vault.save(account.stored, notifyKey: Data(repeating: 5, count: 32))
+        try vault.save(account, notifyKey: Data(repeating: 5, count: 32))
     }
 
     /// An account on the device, read and in use, in the foreground.
@@ -290,7 +290,7 @@ final class Harness {
         await eventually("join") { h.model.stage == .join }
         try await h.model.joined(h.account)
         #expect(h.model.stage == .ready)
-        #expect(try h.vault.load() == h.account.stored)
+        #expect(try h.vault.load() == h.account)
         #expect(try h.vault.notifyKey() == Data(repeating: 0, count: 32))
         #expect(h.engine.calls == ["network true", "start"])
     }

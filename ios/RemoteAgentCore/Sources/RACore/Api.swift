@@ -7,7 +7,7 @@ import os
 
 /// A device of the account. `root` and `deviceSeed` are secrets: the app
 /// keeps them in the Keychain and never logs them.
-public struct Account: Sendable, CustomStringConvertible {
+public struct Account: Equatable, Sendable, CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let server: String
     /// Protocol 8 and earlier history only. A device that joined by pairing
     /// does not receive it; an empty value means it has none.
@@ -30,6 +30,8 @@ public struct Account: Sendable, CustomStringConvertible {
 
     /// Never the keys, so that they cannot reach a log by accident.
     public var description: String { "Account(server=\(server), device=\(deviceId))" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror { Mirror(self, children: ["server": server, "deviceId": deviceId]) }
     public var hasRoot: Bool { root.count == 32 }
 }
 

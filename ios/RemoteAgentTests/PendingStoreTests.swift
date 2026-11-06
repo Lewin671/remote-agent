@@ -205,7 +205,7 @@ import Testing
         let cacheRoot = FileManager.default.temporaryDirectory.appending(path: "ra-cache-\(UUID().uuidString)", directoryHint: .isDirectory)
         defer { try? FileManager.default.removeItem(at: cacheRoot) }
         let s = store()
-        try vault.save(VaultAccount(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
+        try vault.save(Account(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
         try s.put(folder: "a", name: "1", data: Data([1]))
         let cache = try CipherStore.open(root: cacheRoot, account: "acct")
         await cache.putBlob(name: "x", data: Data([1]))
@@ -231,7 +231,7 @@ import Testing
         }
         let s = store()
         let first = s.scoped()
-        try vault.save(VaultAccount(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
+        try vault.save(Account(server: "https://ra.example.com", root: Data(repeating: 1, count: 32), deviceSeed: Data(repeating: 2, count: 32), deviceId: "d"), notifyKey: Data(repeating: 3, count: 32))
         try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
 
         #expect(throws: (any Error).self) { try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s) }

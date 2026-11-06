@@ -89,7 +89,7 @@ import Testing
         #expect(old.calls.contains("close"))
         #expect(h.engines.count == 2 && h.engine !== old)
         #expect(h.model.context !== before && h.model.stage == .ready)
-        #expect(try h.vault.load() == h.account.stored)
+        #expect(try h.vault.load() == h.account)
         #expect(h.defaults.string(forKey: AccountDefaults.key("home-scope")) == "project")
         #expect(h.pending.get(folder: "session", name: "draft") == Data([1, 2, 3]))
     }

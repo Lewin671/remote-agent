@@ -127,7 +127,7 @@ final class AppModel {
             }
         var saveJoined: @Sendable (Vault, Account) throws -> Void = { vault, account in
             try vault.save(
-                account.stored,
+                account,
                 notifyKey: DeviceSecurity.NotifyRecord(record: vault.readSecurity()).bytes())
         }
         var securityReady: @Sendable (Vault, Account) throws -> Bool = { vault, account in
@@ -372,7 +372,7 @@ final class AppModel {
                     try erase?(storage)
                     let stored = try storage.vault.load()
                     let ready =
-                        try stored.map { try securityReady(storage.vault, Account($0)) } ?? false
+                        try stored.map { try securityReady(storage.vault, $0.resolvingAccountId()) } ?? false
                     return (stored, ready)
                 }
             }.value
@@ -382,15 +382,15 @@ final class AppModel {
             switch result {
             case .success((let stored?, let ready)):
                 if ready {
-                    await use(Account(stored))
+                    await use(stored.resolvingAccountId())
                 } else {
-                    securitySetup = Account(stored)
+                    securitySetup = stored.resolvingAccountId()
                     lastServer = stored.server
                     // Only an explicit login denial means the identity cannot be reused.
                     // Offline and other failures leave the existing setup flow available.
                     let check = parts.checkRetainedIdentity
                     let denied = await probeRetainedIdentity {
-                        try await check(Account(stored))
+                        try await check(stored.resolvingAccountId())
                     }
                     guard gen == generation else { return }
                     retainedIdentityDenied = denied
