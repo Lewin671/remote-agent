@@ -345,36 +345,3 @@ private struct FirstLevel: View {
         .toolbar(.hidden, for: .navigationBar)
     }
 }
-
-/// What a destination shows until its screen is written: its name and what
-/// it was opened with, on the surface the screen will have. Replace a
-/// screen file's body; this stays for the ones not written yet.
-struct ScreenPlaceholder: View {
-    private let title: String
-    private let detail: [String]
-    private let gray: Bool
-
-    init(_ title: String, detail: [String] = [], gray: Bool = false) {
-        self.title = title
-        self.detail = detail
-        self.gray = gray
-    }
-
-    var body: some View {
-        Page(gray: gray) {
-            VStack(spacing: 0) {
-                ConnectionBar()
-                VStack(spacing: 0) {
-                    Spacer(minLength: 24)
-                    Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-                    Text("这个页面还没有做").type(T.sm, Theme.muted).padding(.top, 8)
-                    ForEach(detail, id: \.self) { line in
-                        Text(line).type(T.mono, Theme.muted).multilineTextAlignment(.center).lineLimit(3).padding(.top, 6)
-                    }
-                    Spacer(minLength: 24)
-                }
-                .padding(.horizontal, 24)
-            }
-        }
-    }
-}

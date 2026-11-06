@@ -41,13 +41,6 @@ extension AuthorityBootstrap {
         let response = try await rpc(t) { try await api.recovery.getRecoveryContext(request: request).value() }
         return try RecoveryContext(response, genesisPrefix: genesisPrefix, now: UInt64(max(clock(), 1)))
     }
-    public func recoveryContext(server: String, code: String) async throws -> RecoveryContext {
-        let t = try begin(); defer { busy = false }
-        guard let decoded = RecoveryCode.decode(code) else { throw PairError("恢复码无效") }
-        let api = try Api(server: server, http: http)
-        return try await context(api: api, recoveryEd: SigningKey(seed: decoded.seed).publicKey,
-            signerSeed: decoded.seed, genesisPrefix: decoded.genesis, ticket: t)
-    }
     /// This path queries only challenge/context. It does not submit recovery or persist the seed.
     public func completeAccountPublicProfile(server: String, code: String) async throws {
         let t = try begin(); defer { busy = false }

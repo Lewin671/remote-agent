@@ -26,8 +26,6 @@ struct TerminalPane: View {
     let sessionId: String
     /// The session has not ended.
     let running: Bool
-    /// Shows the chat instead.
-    var onChat: () -> Void = {}
 
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context

@@ -164,7 +164,7 @@ private struct SessionPage: View {
                 ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
                 enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil, dark: term)
             if term {
-                TerminalPane(sessionId: sid, running: true) { pick(0) }
+                TerminalPane(sessionId: sid, running: true)
             } else {
                 ChatPane(session: s, status: status, chat: chat) { pick(1) }
             }

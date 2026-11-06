@@ -86,12 +86,6 @@ extension String {
         return String(units: utf16.suffix(max(0, n)))
     }
 
-    /// Kotlin's substring(n).
-    func jvmDrop(_ n: Int) -> String {
-        if n <= 0 { return self }
-        return String(units: utf16.dropFirst(n))
-    }
-
     /// Kotlin's trim().
     public func jvmTrim() -> String {
         let s = unicodeScalars
@@ -136,11 +130,6 @@ extension String {
     func jvmStartsWith(_ prefix: String) -> Bool { utf8.starts(with: prefix.utf8) }
 
     func jvmEndsWith(_ suffix: String) -> Bool { utf8.reversed().starts(with: suffix.utf8.reversed()) }
-
-    /// Kotlin's removePrefix.
-    func removingPrefix(_ prefix: String) -> String {
-        jvmStartsWith(prefix) ? String(decoding: utf8.dropFirst(prefix.utf8.count), as: UTF8.self) : self
-    }
 
     /// Kotlin's removeSuffix.
     func removingSuffix(_ suffix: String) -> String {
@@ -319,8 +308,6 @@ struct Rx: @unchecked Sendable {
         let ns = s as NSString
         return whole.firstMatch(in: s, range: all(ns)).map { Match(source: ns, result: $0) }
     }
-
-    func containsMatch(in s: String) -> Bool { find(s) != nil }
 
     /// Kotlin's replace with a function of the match.
     func replace(_ s: String, first: Bool = false, _ with: (Match) -> String) -> String {

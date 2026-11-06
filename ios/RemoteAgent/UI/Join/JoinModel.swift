@@ -184,7 +184,6 @@ final class JoinModel {
     }
 
     var canJoin: Bool { code.count == 8 && server.count > 8 }
-    var canJoinWithSecret: Bool { !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     /// Working can still be left: a pairing that has not begun to register.
     var canCancel: Bool { !joiningWithSecret && attempt?.registering != true }
 

@@ -100,14 +100,3 @@ extension View {
         modifier(Typed(style: style, color: color))
     }
 }
-
-/// A length that grows with Dynamic Type as text in `style` does: an inline icon, a dot's offset.
-struct ScaledLength: DynamicProperty {
-    @ScaledMetric private var value: CGFloat
-
-    init(_ value: CGFloat, relativeTo style: Font.TextStyle) {
-        _value = ScaledMetric(wrappedValue: value, relativeTo: style)
-    }
-
-    var wrappedValue: CGFloat { value }
-}

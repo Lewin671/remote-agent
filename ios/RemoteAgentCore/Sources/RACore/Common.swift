@@ -3,8 +3,6 @@
 import Foundation
 import RAProto
 
-public func machineOf(_ state: RemoteState, _ s: SessionView) -> MachineView? { state.machines[s.machineId] }
-
 public func machineLabel(_ state: RemoteState, id: String) -> String { machineName(state.machines[id], id: id) }
 
 /// The link to the server in a word: what 设置 says before anything is measured.

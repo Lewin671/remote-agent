@@ -304,19 +304,6 @@ struct Chip: View {
     }
 }
 
-/// A card on a grey page.
-struct Card<Content: View>: View {
-    private let content: Content
-
-    init(@ViewBuilder content: () -> Content) { self.content = content() }
-
-    var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
-    }
-}
-
 /// A box with a 1 pt outline, radius 10.
 struct Bordered<Content: View>: View {
     private let content: Content
