@@ -196,3 +196,19 @@ it("uses another machine only for this start when a project's saved machine is o
   expect(ns!.cfg.machineId).toBe("vps");
   expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.machineId).toBe("mac");
 });
+
+// A failed first prompt has its own event row. It must never also appear
+// as a second, acknowledged message below that row.
+it.each([InputStatus.FAILED, InputStatus.NEEDS_TERMINAL])("does not claim delivery of failed startup input %s", status => {
+  const r = demo(); const s = r.sessions.get("s-idle")!;
+  const text = "核实图片中的内容";
+  r.prompts.set(s.id, text);
+  r.events(s.id).splice(0, r.events(s.id).length,
+    event(1, { case: "inputState", value: { requestId: "first", status: InputStatus.QUEUED, text, imageIds: ["image"] } }),
+    event(2, { case: "inputState", value: { requestId: "first", status, reason: "input_changed" } }),
+  );
+  mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
+  expect(host.textContent).toContain("没发出去");
+  expect(host.textContent).not.toContain("已送达电脑");
+  expect(host.querySelectorAll(".me")).toHaveLength(1);
+});

@@ -885,8 +885,7 @@ function ChatBody({
   const showPrompt =
     prompt &&
     !events.some((e) => e.kind.case === "userMessage") &&
-    promptState !== InputStatus.CANCELED &&
-    promptState !== InputStatus.UNCONFIRMED;
+    (promptState === undefined || promptState === InputStatus.SUBMITTED);
 
   const header = (
     <>
@@ -932,14 +931,12 @@ function ChatBody({
           后面的记录没读到
         </Banner>
       )}
-      {showPrompt &&
-        promptState !== InputStatus.QUEUED &&
-        promptState !== InputStatus.HELD_BY_CLI && (
-          <div className="me">
-            <div>{prompt}</div>
-            <small>已送达电脑</small>
-          </div>
-        )}
+      {showPrompt && (
+        <div className="me">
+          <div>{prompt}</div>
+          <small>已送达电脑</small>
+        </div>
+      )}
       {session.info?.status === SessionStatus.STARTING && (
         <div className="sysline">
           正在 {machine} 上启动 {agentName(agent)}…
