@@ -271,6 +271,9 @@ service ClientService {
   // GetSecurityStates returns states after an epoch, up to eight at a time.
   rpc GetSecurityStates(GetSecurityStatesRequest) returns (GetSecurityStatesResponse);
   rpc DeleteMachineRecords(DeleteMachineRecordsRequest) returns (DeleteMachineRecordsResponse);
+  // Permanently delete this account's relay records. Only its current authority
+  // may sign this operation, bound to the current head and a fresh login challenge.
+  rpc DeleteAccount(DeleteAccountRequest) returns (DeleteAccountResponse);
 }
 
 message Machine {
@@ -811,3 +814,12 @@ message DeviceRemoved {
 // Only the current authority may explicitly delete a computer archive.
 message DeleteMachineRecordsRequest { string machine_id = 1; }
 message DeleteMachineRecordsResponse {}
+
+message DeleteAccountRequest {
+  bytes state_hash = 1;
+  bytes challenge = 2;
+  // Ed25519 over "remote-agent/v1/delete-account\x00", account ID, a NUL,
+  // state_hash (32 bytes), and challenge (32 bytes), in that order.
+  bytes signature = 3;
+}
+message DeleteAccountResponse {}

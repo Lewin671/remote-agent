@@ -225,6 +225,11 @@ public protocol PBClientServiceClientInterface: Sendable {
 
     @available(iOS 13, *)
     func `deleteMachineRecords`(request: PBDeleteMachineRecordsRequest, headers: Connect.Headers) async -> ResponseMessage<PBDeleteMachineRecordsResponse>
+
+    /// Permanently delete this account's relay records. Only its current authority
+    /// may sign this operation, bound to the current head and a fresh login challenge.
+    @available(iOS 13, *)
+    func `deleteAccount`(request: PBDeleteAccountRequest, headers: Connect.Headers) async -> ResponseMessage<PBDeleteAccountResponse>
 }
 
 /// Concrete implementation of `PBClientServiceClientInterface`.
@@ -315,6 +320,11 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
         return await self.client.unary(path: "/remoteagent.v1.ClientService/DeleteMachineRecords", idempotencyLevel: .unknown, request: request, headers: headers)
     }
 
+    @available(iOS 13, *)
+    public func `deleteAccount`(request: PBDeleteAccountRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBDeleteAccountResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.ClientService/DeleteAccount", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
     public enum Metadata {
         public enum Methods {
             public static let listMachines = Connect.MethodSpec(name: "ListMachines", service: "remoteagent.v1.ClientService", type: .unary)
@@ -333,6 +343,7 @@ public final class PBClientServiceClient: PBClientServiceClientInterface, Sendab
             public static let putSecurityState = Connect.MethodSpec(name: "PutSecurityState", service: "remoteagent.v1.ClientService", type: .unary)
             public static let getSecurityStates = Connect.MethodSpec(name: "GetSecurityStates", service: "remoteagent.v1.ClientService", type: .unary)
             public static let deleteMachineRecords = Connect.MethodSpec(name: "DeleteMachineRecords", service: "remoteagent.v1.ClientService", type: .unary)
+            public static let deleteAccount = Connect.MethodSpec(name: "DeleteAccount", service: "remoteagent.v1.ClientService", type: .unary)
         }
     }
 }

@@ -112,6 +112,32 @@ private func createAuthority(_ server: TestServer, vault: AuthorityTestVault = A
 
 @Suite(.serialized, .enabled(if: GoServer.available, GoServer.missing))
 struct AuthorityWorkflowTests {
+    @Test func accountDeletionRequiresForegroundProofAndPreservesLocalKeys() async throws {
+        let server = try await TestServer(); defer { server.close() }
+        let (account, vault, _) = try await createAuthority(server)
+        let gate = enabledGate()
+        let management = try coordinator(account, vault, gate: gate)
+        gate.set(active: false, protectedDataAvailable: true)
+        await #expect(throws: (any Error).self) { try await management.deleteAccount() }
+        // A refused local action must not delete the remote account.
+        let api = try Api(server: server.url, http: HTTP())
+        _ = try await login(api: api, account: account)
+        gate.set(active: true, protectedDataAvailable: true)
+        try await management.deleteAccount()
+        await #expect(throws: (any Error).self) { _ = try await login(api: api, account: account) }
+        // Only AppModel's successful logout may erase this installation.
+        #expect(try vault.readSecurity().memberID == account.deviceId)
+    }
+
+    @Test func failedAccountDeletionDoesNotDiscardLocalIdentity() async throws {
+        let server = try await TestServer()
+        let (account, vault, _) = try await createAuthority(server)
+        let management = try coordinator(account, vault)
+        server.close()
+        await #expect(throws: (any Error).self) { try await management.deleteAccount() }
+        #expect(try vault.readSecurity().memberID == account.deviceId)
+    }
+
     @Test func creationRotationVetoHintsAndContextOnlyProfileRepair() async throws {
         let server = try await TestServer(); defer { server.close() }
         let (account, vault, originalCode) = try await createAuthority(server)

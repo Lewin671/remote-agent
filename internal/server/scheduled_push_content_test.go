@@ -17,6 +17,7 @@ import (
 
 func TestScheduledWebPushDelivery(t *testing.T) {
 	ts := newTestServer(t)
+	seedPushAccount(t, ts, ts.acct())
 	p := ts.srv.push
 	key, err := ecdh.P256().GenerateKey(rand.Reader)
 	if err != nil {

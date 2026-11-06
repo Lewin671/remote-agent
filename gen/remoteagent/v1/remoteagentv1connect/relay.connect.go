@@ -118,6 +118,9 @@ const (
 	// ClientServiceDeleteMachineRecordsProcedure is the fully-qualified name of the ClientService's
 	// DeleteMachineRecords RPC.
 	ClientServiceDeleteMachineRecordsProcedure = "/remoteagent.v1.ClientService/DeleteMachineRecords"
+	// ClientServiceDeleteAccountProcedure is the fully-qualified name of the ClientService's
+	// DeleteAccount RPC.
+	ClientServiceDeleteAccountProcedure = "/remoteagent.v1.ClientService/DeleteAccount"
 	// MachineServicePutMachineProcedure is the fully-qualified name of the MachineService's PutMachine
 	// RPC.
 	MachineServicePutMachineProcedure = "/remoteagent.v1.MachineService/PutMachine"
@@ -568,6 +571,9 @@ type ClientServiceClient interface {
 	// GetSecurityStates returns states after an epoch, up to eight at a time.
 	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
 	DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error)
+	// Permanently delete this account's relay records. Only its current authority
+	// may sign this operation, bound to the current head and a fresh login challenge.
+	DeleteAccount(context.Context, *connect.Request[v1.DeleteAccountRequest]) (*connect.Response[v1.DeleteAccountResponse], error)
 }
 
 // NewClientServiceClient constructs a client for the remoteagent.v1.ClientService service. By
@@ -677,6 +683,12 @@ func NewClientServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(clientServiceMethods.ByName("DeleteMachineRecords")),
 			connect.WithClientOptions(opts...),
 		),
+		deleteAccount: connect.NewClient[v1.DeleteAccountRequest, v1.DeleteAccountResponse](
+			httpClient,
+			baseURL+ClientServiceDeleteAccountProcedure,
+			connect.WithSchema(clientServiceMethods.ByName("DeleteAccount")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -698,6 +710,7 @@ type clientServiceClient struct {
 	putSecurityState     *connect.Client[v1.PutSecurityStateRequest, v1.PutSecurityStateResponse]
 	getSecurityStates    *connect.Client[v1.GetSecurityStatesRequest, v1.GetSecurityStatesResponse]
 	deleteMachineRecords *connect.Client[v1.DeleteMachineRecordsRequest, v1.DeleteMachineRecordsResponse]
+	deleteAccount        *connect.Client[v1.DeleteAccountRequest, v1.DeleteAccountResponse]
 }
 
 // ListMachines calls remoteagent.v1.ClientService.ListMachines.
@@ -780,6 +793,11 @@ func (c *clientServiceClient) DeleteMachineRecords(ctx context.Context, req *con
 	return c.deleteMachineRecords.CallUnary(ctx, req)
 }
 
+// DeleteAccount calls remoteagent.v1.ClientService.DeleteAccount.
+func (c *clientServiceClient) DeleteAccount(ctx context.Context, req *connect.Request[v1.DeleteAccountRequest]) (*connect.Response[v1.DeleteAccountResponse], error) {
+	return c.deleteAccount.CallUnary(ctx, req)
+}
+
 // ClientServiceHandler is an implementation of the remoteagent.v1.ClientService service.
 type ClientServiceHandler interface {
 	ListMachines(context.Context, *connect.Request[v1.ListMachinesRequest]) (*connect.Response[v1.ListMachinesResponse], error)
@@ -818,6 +836,9 @@ type ClientServiceHandler interface {
 	// GetSecurityStates returns states after an epoch, up to eight at a time.
 	GetSecurityStates(context.Context, *connect.Request[v1.GetSecurityStatesRequest]) (*connect.Response[v1.GetSecurityStatesResponse], error)
 	DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error)
+	// Permanently delete this account's relay records. Only its current authority
+	// may sign this operation, bound to the current head and a fresh login challenge.
+	DeleteAccount(context.Context, *connect.Request[v1.DeleteAccountRequest]) (*connect.Response[v1.DeleteAccountResponse], error)
 }
 
 // NewClientServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -923,6 +944,12 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(clientServiceMethods.ByName("DeleteMachineRecords")),
 		connect.WithHandlerOptions(opts...),
 	)
+	clientServiceDeleteAccountHandler := connect.NewUnaryHandler(
+		ClientServiceDeleteAccountProcedure,
+		svc.DeleteAccount,
+		connect.WithSchema(clientServiceMethods.ByName("DeleteAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/remoteagent.v1.ClientService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ClientServiceListMachinesProcedure:
@@ -957,6 +984,8 @@ func NewClientServiceHandler(svc ClientServiceHandler, opts ...connect.HandlerOp
 			clientServiceGetSecurityStatesHandler.ServeHTTP(w, r)
 		case ClientServiceDeleteMachineRecordsProcedure:
 			clientServiceDeleteMachineRecordsHandler.ServeHTTP(w, r)
+		case ClientServiceDeleteAccountProcedure:
+			clientServiceDeleteAccountHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1028,6 +1057,10 @@ func (UnimplementedClientServiceHandler) GetSecurityStates(context.Context, *con
 
 func (UnimplementedClientServiceHandler) DeleteMachineRecords(context.Context, *connect.Request[v1.DeleteMachineRecordsRequest]) (*connect.Response[v1.DeleteMachineRecordsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.DeleteMachineRecords is not implemented"))
+}
+
+func (UnimplementedClientServiceHandler) DeleteAccount(context.Context, *connect.Request[v1.DeleteAccountRequest]) (*connect.Response[v1.DeleteAccountResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.ClientService.DeleteAccount is not implemented"))
 }
 
 // MachineServiceClient is a client for the remoteagent.v1.MachineService service.

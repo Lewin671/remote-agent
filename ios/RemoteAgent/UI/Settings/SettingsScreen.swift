@@ -16,6 +16,8 @@ struct SettingsScreen: View {
     @State private var leaving = false
     @State private var exitText = ""
     @State private var images: ImageStorageModel?
+    @State private var deletingAccount = false
+    @Environment(\.openURL) private var openURL
 
     var body: some View {
         let state = model.state
@@ -46,6 +48,9 @@ struct SettingsScreen: View {
                         .valueLead { Dot(state.conn == .online ? Theme.green : Theme.gray) }
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
+                        GRow("隐私政策", chevron: true) { openURL(PublicInformation.privacy) }
+                        GRow("支持与反馈", chevron: true) { openURL(PublicInformation.support) }
+                        GRow("删除整个账户…", danger: true) { deletingAccount = true }
                         // It asks first, as every row that ends in an ellipsis does (design-system §8).
                         GRow("退出并删除本机密钥…", danger: true) {
                             Task {
@@ -65,6 +70,7 @@ struct SettingsScreen: View {
             }
             .startAtEndForScreenshots()
         }
+        .sheet(isPresented: $deletingAccount) { AccountDeletionScreen() }
         .confirm(
             isPresented: $leaving, title: "退出并删除本机密钥？",
             text: exitText, confirm: "退出", danger: true

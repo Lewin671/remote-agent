@@ -29,6 +29,7 @@ struct JoinScreen: View {
                             Btn("新建账户", kind: .primary) { begin(.create) }
                             Btn("加入已有账户") { selection = "join" }
                             Btn("用恢复码找回管理权") { begin(.recover) }
+                            PrivacyPolicyLink().frame(maxWidth: .infinity)
                         }.padding(16).frame(maxWidth: 480).frame(maxWidth: .infinity)
                     }
                 }

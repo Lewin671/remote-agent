@@ -82,4 +82,10 @@ public interface ClientServiceClientInterface {
   public suspend fun getSecurityStates(request: GetSecurityStatesRequest, headers: Headers = emptyMap()): ResponseMessage<GetSecurityStatesResponse>
 
   public suspend fun deleteMachineRecords(request: DeleteMachineRecordsRequest, headers: Headers = emptyMap()): ResponseMessage<DeleteMachineRecordsResponse>
+
+  /**
+   *  Permanently delete this account's relay records. Only its current authority
+   *  may sign this operation, bound to the current head and a fresh login challenge.
+   */
+  public suspend fun deleteAccount(request: DeleteAccountRequest, headers: Headers = emptyMap()): ResponseMessage<DeleteAccountResponse>
 }

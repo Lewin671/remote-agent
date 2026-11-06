@@ -2251,6 +2251,34 @@ public struct PBDeleteMachineRecordsResponse: Sendable {
   public init() {}
 }
 
+public struct PBDeleteAccountRequest: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var stateHash: Data = Data()
+
+  public var challenge: Data = Data()
+
+  /// Ed25519 over "remote-agent/v1/delete-account\x00", account ID, a NUL,
+  /// state_hash (32 bytes), and challenge (32 bytes), in that order.
+  public var signature: Data = Data()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
+public struct PBDeleteAccountResponse: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
+}
+
 // MARK: - Code below here is support for the SwiftProtobuf runtime.
 
 fileprivate let _protobuf_package = "remoteagent.v1"
@@ -6096,6 +6124,65 @@ extension PBDeleteMachineRecordsResponse: SwiftProtobuf.Message, SwiftProtobuf._
   }
 
   public static func ==(lhs: PBDeleteMachineRecordsResponse, rhs: PBDeleteMachineRecordsResponse) -> Bool {
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDeleteAccountRequest: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteAccountRequest"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}state_hash\0\u{1}challenge\0\u{1}signature\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularBytesField(value: &self.stateHash) }()
+      case 2: try { try decoder.decodeSingularBytesField(value: &self.challenge) }()
+      case 3: try { try decoder.decodeSingularBytesField(value: &self.signature) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.stateHash.isEmpty {
+      try visitor.visitSingularBytesField(value: self.stateHash, fieldNumber: 1)
+    }
+    if !self.challenge.isEmpty {
+      try visitor.visitSingularBytesField(value: self.challenge, fieldNumber: 2)
+    }
+    if !self.signature.isEmpty {
+      try visitor.visitSingularBytesField(value: self.signature, fieldNumber: 3)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDeleteAccountRequest, rhs: PBDeleteAccountRequest) -> Bool {
+    if lhs.stateHash != rhs.stateHash {return false}
+    if lhs.challenge != rhs.challenge {return false}
+    if lhs.signature != rhs.signature {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBDeleteAccountResponse: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".DeleteAccountResponse"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap()
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    // Load everything into unknown fields
+    while try decoder.nextFieldNumber() != nil {}
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBDeleteAccountResponse, rhs: PBDeleteAccountResponse) -> Bool {
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

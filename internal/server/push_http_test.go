@@ -46,6 +46,7 @@ func TestPushEndpointRejectsInternalDestinations(t *testing.T) {
 // that was delivered to is gone.
 func TestGoneSubscriptionDoesNotDeleteItsReplacement(t *testing.T) {
 	ts := newTestServer(t)
+	seedPushAccount(t, ts, ts.acct())
 	p := ts.srv.push
 	ctx := context.Background()
 	kinds := []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}

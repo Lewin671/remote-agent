@@ -367,6 +367,15 @@ func (s *store) deleteAccount(ctx context.Context, id string) error {
 		return err
 	}
 	defer tx.Rollback()
+	if err := deleteAccountRows(ctx, tx, id); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// Shared by operator deletion and authority-confirmed deletion. The caller
+// checks its authorization inside this same write transaction.
+func deleteAccountRows(ctx context.Context, tx *sql.Tx, id string) error {
 	if _, err := tx.ExecContext(ctx, `INSERT INTO revoked_devices (id, account_id, revoked_ms)
 		SELECT id, account_id, ? FROM devices WHERE account_id = ? ON CONFLICT (id) DO NOTHING`, nowMs(), id); err != nil {
 		return err
@@ -383,7 +392,7 @@ func (s *store) deleteAccount(ctx context.Context, id string) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return errNoRows
 	}
-	return tx.Commit()
+	return nil
 }
 
 // accountUsage is what an account has stored, for its quota.
@@ -605,8 +614,13 @@ func (t *tstore) addToken(ctx context.Context, hash []byte, deviceID string, exp
 		return err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms) VALUES (?, ?, ?, ?)`, hash, t.acct, deviceID, expires); err != nil {
+	res, err := tx.ExecContext(ctx, `INSERT INTO tokens (hash, account_id, device_id, expires_ms)
+ SELECT ?, a.id, ?, ? FROM accounts a WHERE a.id=?`, hash, deviceID, expires, t.acct)
+	if err != nil {
 		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errNoRows
 	}
 	if _, err := tx.ExecContext(ctx, `DELETE FROM tokens WHERE account_id = ?1 AND device_id = ?2 AND hash NOT IN
   (SELECT hash FROM tokens WHERE account_id = ?1 AND device_id = ?2 ORDER BY expires_ms DESC LIMIT ?3)`, t.acct, deviceID, maxDeviceTokens); err != nil {

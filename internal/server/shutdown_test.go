@@ -106,6 +106,7 @@ func TestCloseCancelsAndWaitsBeforeClosingStorage(t *testing.T) {
 func TestCloseCancelsPushDeliveryAndWaits(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		ts := newPushAdmissionServer(t)
+		seedPushAccount(t, ts, ts.acct())
 		s := ts.srv
 		s.ctx, s.cancel = context.WithCancel(context.Background())
 		s.stop = make(chan struct{})

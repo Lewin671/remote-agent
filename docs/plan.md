@@ -14,9 +14,9 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 自己的模型目录，模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | Antigravity（agy） | daemon 与协议 13、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；源会话退出后的 MCP 定时派发、API 计费来源仍待验证。审计修复的真实双图与自然计划流程见[复验](acceptance-notes.md#antigravity-审计修复复验2026-11-04) |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩；一台中继上的多个账户、开放注册和账户管理（[architecture](architecture.md#一台中继上的多个账户)） | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)）；多账户：自动测试，加一次旧库迁移的本地演练 | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收；多账户在公共中继上由别人走一遍「试用」流程 |
-| 网页 | 当前界面稿 [client-v56](design/client-v56.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
+| 网页 | 当前界面稿 [client-v57](design/client-v57.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |
 | Android App | 当前界面稿的手机画面；原生终端、FCM 推送、在通知里审批 | 模拟器上的真实 CLI（到 v8）；v7、v8 的画面用示例数据对照过；定时任务见下行，其余 v9 以后的改动主要过自动测试 | 真机验收；聊天开头的「开始时间 · 目录」一行；平板和横屏布局；下方「Android 的小缺口」 |
-| iOS App | 当前界面稿的手机画面；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 没有签名身份，没装过真机；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
+| iOS App | 当前界面稿的手机画面；原生终端；从 App 发图、文件和看大图。没有推送，也没有在通知里审批（[ios-client · 还不能做的](ios-client.md#还不能做的)） | 模拟器真实 CLI：文件选择/发送已由 XCUITest 点按真实系统选择器（[记录](acceptance-notes.md#ios-原生选择器实测2026-10-28)），其余链路主要由调试信号触发（[记录](acceptance-notes.md#11-ios)）；各画面用三组示例数据看过亮色、暗色和特大字号 | 已具备付费开发者签名与 TestFlight 分发；手工手势、VoiceOver 朗读、硬件键盘、iPad 横屏都没验证；下方「iOS」一组待确认 |
 | 客户端状态推导 | 三端共同规则与共享事件向量（[契约](architecture.md#客户端状态推导的共同规则)） | 网页真实 CLI（独立无头 Chrome 手机宽/宽屏）；原生自动测试（[记录](acceptance-notes.md#客户端状态推导共享向量)） | 当前 checkpoint 已过自动验收；聊天历史分段读取 |
 | 客户端文件附件 | 协议、daemon 与网页、Android、iOS 三端已整合：文件选择、原样上传、文件条目、草稿恢复和逐请求能力检查；尚未发布 | [网页](acceptance-notes.md#文件附件phase-a2026-10-28)、[Android](acceptance-notes.md#文件附件androidphase-b2026-10-28)、[iOS](acceptance-notes.md#文件附件iosphase-b2026-10-28) 的自动测试与隔离真实 CLI；原生模拟器的系统文件选择器已操作 | 真机、云文件提供器、大文件内存与故障恢复的联合验收，见「待确认 › 文件附件」 |
 | 会话里的图片 | 显示、从客户端发图、存储限额和清理 | 真实 CLI（[记录](acceptance-notes.md#7-会话里的图片daemonserver)） | 初始取值待调（见「待确认」） |
@@ -98,7 +98,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 **iOS**
 
-- 要不要注册付费的 Apple 开发者账号，用什么渠道装到真机（TestFlight 还是只装自己的设备）。没有它 App 只能在模拟器上跑，下面两项也做不了
+- App Store 首版：补齐隐私政策、账户删除、截图和实际审核访问方式后提审；TestFlight 已上传 0.54.2（1），仍需真机验收与正式审核。
 - 推送：要用 APNs，server 要加一种推送目标和 APNs 的凭据；做不做未定
 - 在通知里审批：iOS 没有「锁屏上整条不出现」的办法，锁屏上显不显示内容由系统的预览设置决定（[scope.md](scope.md) 第 4 节）；要做得先决定接不接受
 - `ios/` 的改动现在不算产品变化，不触发发版，CI 也不构建它（没有可分发的产物，GitHub 的流水线里也没有 macOS）；有了分发渠道后再定

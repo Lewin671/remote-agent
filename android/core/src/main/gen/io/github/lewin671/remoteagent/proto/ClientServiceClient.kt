@@ -247,4 +247,20 @@ public class ClientServiceClient(
     ),
   )
 
+
+  /**
+   *  Permanently delete this account's relay records. Only its current authority
+   *  may sign this operation, bound to the current head and a fresh login challenge.
+   */
+  override suspend fun deleteAccount(request: DeleteAccountRequest, headers: Headers): ResponseMessage<DeleteAccountResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.ClientService/DeleteAccount",
+      io.github.lewin671.remoteagent.proto.DeleteAccountRequest::class,
+      io.github.lewin671.remoteagent.proto.DeleteAccountResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
 }

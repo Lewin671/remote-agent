@@ -484,6 +484,8 @@ func TestOldLayoutIsRefused(t *testing.T) {
 // A notification reaches the devices of its own account only.
 func TestNotificationsStayInTheirAccount(t *testing.T) {
 	ts := newTestServer(t)
+	seedPushAccount(t, ts, "a")
+	seedPushAccount(t, ts, "b")
 	p := ts.srv.push
 	hits := make(chan string, 4)
 	p.client = &http.Client{Transport: roundTripperFunc(func(r *http.Request) (*http.Response, error) {

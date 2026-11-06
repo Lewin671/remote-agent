@@ -78,6 +78,7 @@ func TestNotificationDeliveriesAreBoundedAndOverloadIsRetryable(t *testing.T) {
 	// Each account has two clients subscribed.
 	accounts := maxPushDeliveries / maxAccountPushDeliveries
 	for a := range accounts + 1 {
+		seedPushAccount(t, ts, fmt.Sprint("acct-", a))
 		for _, id := range []string{"a", "b"} {
 			if err := p.subscribe(context.Background(), st(fmt.Sprint("acct-", a)), fmt.Sprint(a, "-client-", id), sub, []pb.NotifyKind{pb.NotifyKind_NOTIFY_KIND_ATTENTION}); err != nil {
 				t.Fatal(err)

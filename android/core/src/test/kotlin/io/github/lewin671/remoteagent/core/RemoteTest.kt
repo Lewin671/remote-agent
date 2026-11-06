@@ -1031,14 +1031,27 @@ class RemoteTest {
             val r = client(MemoryCache(), historyIdleCount = 1)
             r.start()
             val active = r.events("s1")
-            val subscriber = launch { active.collect {} }
+            val loaded = CompletableDeferred<Unit>()
+            var activeWasReclaimed = false
+            val subscriber = launch {
+                active.collect { value ->
+                    if (value.events.size == 3) loaded.complete(Unit)
+                    else if (loaded.isCompleted && value.events.isEmpty()) activeWasReclaimed = true
+                }
+            }
             try {
-                withTimeout(10_000) { active.first { it.events.size == 3 } }
+                withTimeout(10_000) { loaded.await() }
                 val second = r.events("s2")
                 withTimeout(10_000) { second.first { it.events.size == 1 } }
                 val third = r.events("s3")
                 withTimeout(10_000) { third.first { it.events.size == 1 } }
-                withTimeout(5_000) { while (second.value.events.isNotEmpty()) delay(10) }
+                // Subscription-count callbacks may mark either idle flow as most
+                // recently used. Test the budget/protected-consumer invariant,
+                // rather than imposing an unobserved callback ordering.
+                withTimeout(5_000) {
+                    while (second.value.events.isNotEmpty() && third.value.events.isNotEmpty()) delay(10)
+                }
+                assertFalse(activeWasReclaimed)
                 assertEquals(3, active.value.events.size)
             } finally {
                 subscriber.cancelAndJoin()

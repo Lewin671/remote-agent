@@ -138,6 +138,11 @@ func (t *tstore) putPrefs(ctx context.Context, objectID string, expected uint64,
 		return false, nil, err
 	}
 	defer tx.Rollback()
+	// Authentication can precede account deletion while this write waits.
+	var present int
+	if err := tx.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present); err != nil {
+		return false, nil, err
+	}
 	o, err := prefsTx(ctx, tx, t.acct, objectID)
 	if err != nil {
 		return false, nil, err

@@ -175,9 +175,16 @@ func (p *pusher) subscribe(ctx context.Context, t *tstore, deviceID, sub string,
 	for _, k := range kinds {
 		mask |= kindBit(k)
 	}
-	_, err := t.db.ExecContext(ctx, `INSERT INTO push_subs (device_id, account_id, subscription, kinds) VALUES (?, ?, ?, ?)
+	res, err := t.db.ExecContext(ctx, `INSERT INTO push_subs (device_id, account_id, subscription, kinds)
+ SELECT ?, a.id, ?, ? FROM accounts a WHERE a.id=?
 		ON CONFLICT (device_id) DO UPDATE SET subscription = excluded.subscription, kinds = excluded.kinds
-		WHERE push_subs.account_id = excluded.account_id`, deviceID, t.acct, sub, mask)
+		WHERE push_subs.account_id = excluded.account_id`, deviceID, sub, mask, t.acct)
+	if err == nil {
+		if n, _ := res.RowsAffected(); n == 0 {
+			var present int
+			return t.db.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+		}
+	}
 	return err
 }
 
@@ -200,9 +207,16 @@ func (p *pusher) setFCM(ctx context.Context, t *tstore, deviceID, token string, 
 	if len(token) > 4096 || strings.ContainsAny(token, " \n\t") {
 		return errors.New("malformed FCM token")
 	}
-	_, err := t.db.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, account_id, token, kinds) VALUES (?, ?, ?, ?)
+	res, err := t.db.ExecContext(ctx, `INSERT INTO fcm_targets (device_id, account_id, token, kinds)
+ SELECT ?, a.id, ?, ? FROM accounts a WHERE a.id=?
 		ON CONFLICT (device_id) DO UPDATE SET token = excluded.token, kinds = excluded.kinds
-		WHERE fcm_targets.account_id = excluded.account_id`, deviceID, t.acct, token, kindMask(kinds))
+		WHERE fcm_targets.account_id = excluded.account_id`, deviceID, token, kindMask(kinds), t.acct)
+	if err == nil {
+		if n, _ := res.RowsAffected(); n == 0 {
+			var present int
+			return t.db.QueryRowContext(ctx, `SELECT 1 FROM accounts WHERE id=?`, t.acct).Scan(&present)
+		}
+	}
 	return err
 }
 

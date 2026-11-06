@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v56 · 2026-11-03</title>
+<title>remote-agent 客户端设计稿 v57 · 2026-11-06</title>
 <style>
   /* 颜色：文字色和实心按钮底色分开定义，亮暗两套都满足正文 4.5:1 */
   /* 圆角、字号、颜色的用途见 ../design-system.md */
@@ -1242,18 +1242,16 @@
 <div class="top">
   <div>
     <h1>remote-agent 客户端</h1>
-    <div class="sub">PWA / Android / iOS 设计稿 · v56 · 2026-11-03 · 上一版 v55 在 git 历史里</div>
+    <div class="sub">PWA / Android / iOS 设计稿 · v57 · 2026-11-06 · 上一版 v56 在 git 历史里</div>
   </div>
   <div class="theme" id="theme"><button class="on" data-t="auto">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note" style="margin-top:12px">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。右上角可以切换主题，默认跟随系统。保留项目管理、历史、设备、配对、图片和额度页面；新建与聊天共用轻输入框。功能按钮是界面示意，不执行远程操作；主题、章节链接和等待事项可点击。</div>
 
 <div class="note">
-  <h4>相对 v55 的改动</h4><ul>
-<li>新建会话、项目设置、电脑新项目默认设置与定时任务增加第三个 CLI（Antigravity，命令 <code>agy</code>）；只列目标机器已安装的 CLI，只装一个时不显示切换器，缺少项目上次用的 CLI 时提示条写明本次改用的 CLI 并提供「换机器」，不覆盖项目记住的选择。</li>
-<li>去掉「Codex 无前缀、Claude Code 加前缀」的弹层标题差异：所有 CLI 共用「会话设置」「审批模式」标题，会话所属 CLI 统一在 <code>⋯</code> 菜单头（<code>&lt;CLI&gt; · &lt;项目&gt; · &lt;机器&gt;</code>）与会话列表第三行显示。</li>
-<li>对齐 Antigravity 实测能力与限制：会话设置照常显示上下文窗口占用（如 <code>294k / 1,048k</code>）与「压缩」（<code>/compact</code>），模型与推理强度在会话中置灰只读展示并写明「运行中不能换模型，新建会话时可选」「运行中不能换推理强度」（仅新建与项目设置可选模型和 <code>low / medium / high</code> 强度，<code>GPT-OSS 120B</code> 固定为 <code>medium</code>）；计划待批准提供「修改计划… / 批准」并注明「批准后回到默认模式（询问）」；审批模式区分未以完全放行启动、已以完全放行启动（其余三项置灰不可退回）及当前账户不支持自动模式，Claude Code 终端模式统一写 <code>accept edits</code>；启动时由 daemon 自动信任会话目录，不弹目录信任引导。</li>
-<li>电脑详情的「新项目默认设置」改为顶部按已装 CLI 切换的一组列表，「审批超时」独立在下面；「账户额度」各 CLI 统一单行显示最高已用窗口（如 <code>已用 62% · 5 小时</code>），点进 Antigravity 额度页（如 <code>Google AI Pro</code>）按模型组展示 5 小时 / 7 天及 Gemini 4 Argon 周配额卡片，保留首轮回复前的「暂未获取额度」与「API 计费」状态。</li>
+  <h4>相对 v56 的改动</h4><ul>
+<li>iOS 首次使用页和设置页增加隐私政策入口；设置页增加支持入口与「删除整个账户…」。网页和 Android 的设置入口保持各自现有实现。</li>
+<li>iOS 删号用独立确认页：说明删除范围、其他设备与电脑本地副本、撤销标记的保留；只有当前管理端可提交，需输入「删除账户」并再次确认。请求未确认成功前保留本机密钥，失败或结果未知时展示核对和退出提示。</li>
 </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#schedules">定时任务</a><a href="#schedule-long">定时 · 长描述</a><a href="#schedule-wide">定时 · 宽屏</a>
@@ -2475,6 +2473,9 @@ git status --short gen/</pre>
 <div class="row">服务器<span class="v">ra.remote-agent.top</span></div>
 <div class="row">连接检测<span class="v"><span class="dot idle"></span> 已连接<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
 <div class="row">版本<span class="v" style="color:var(--blue)">可更新到 0.29.0<svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
+<div class="row">隐私政策（iOS）<span class="v">›</span></div>
+<div class="row">支持与反馈（iOS）<span class="v">›</span></div>
+<div class="row" style="color:var(--red)">删除整个账户…（iOS）<span class="v">›</span></div>
 <div class="row">开源许可<span class="v"><svg class="ic" aria-hidden="true"><use href="#lu-chevron-right"/></svg></span></div>
 <div class="row" style="color:var(--red)">退出并删除本机密钥</div>
 </div>
@@ -2558,6 +2559,8 @@ git status --short gen/</pre>
 </div>
 </div>
 <h3 id="update-recheck" style="font-size:17px;margin:32px 0 16px">已有更新 · 再次检查</h3><div class="screens"><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="opacity:.4;">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px"></div><div class="btns" style="margin-top:8px"><button disabled class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;opacity:.4;">正在检查更新…</button></div></div></div><div class="cap">再次检查中：保留已发现的版本与说明，两个操作暂时禁用。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.30.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">下载并安装（6.1 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px"></div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">检查完成：直接展示最新的 0.30.0，可跨过原来提示的 0.29.0。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">安装</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--muted);margin-top:6px">已是最新发布版本</div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">仍是同一发布版：已下载的包继续可安装；这里的“最新”指发布版，当前安装的仍是 0.28.0。</div></div><div><div class="phone gray"><div class="sb"><span>9:41</span><span class="sbi"><i class="sig"></i><i class="bat"></i></span></div><div class="body gray"><div class="large"><h3>设置</h3></div></div><div class="dim"></div><div class="sheet"><div class="grab"></div><div class="ns-head"><b>新版本 0.29.0</b><span>以后再说</span></div><div class="muted small">当前版本 0.28.0</div><div style="font-size:15px;color:var(--fg2);margin-top:8px">优化会话列表与连接提示。协议版本不变，电脑上的 remote-agent 不用升级。</div><div class="btns" style="margin-top:14px"><div class="btn pri" style="">下载并安装（5.7 MiB）</div></div><div class="hint">下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。</div><div class="small" style="color:var(--red);margin-top:6px">没能检查更新：连不上发布地址</div><div class="btns" style="margin-top:8px"><button  class="btn" style="width:100%;min-height:44px;background:transparent;color:var(--blue);border:0;font:inherit;">检查更新</button></div></div></div><div class="cap">检查失败：保留原来的更新，检查按钮可再次点击，也可以继续下载已知版本。</div></div></div>
+<h2 id="ios-account-deletion">iOS · 删除整个账户</h2>
+<div class="screens"><div><div class="phone gray"><div class="sb"><span>9:41</span></div><div class="body pad" style="overflow:auto"><h3>删除账户</h3><h4>永久删除账户</h4><p>删除当前中继上的账户、设备登记、加密会话、图片与文件记录和账户设置，所有设备失去访问权限，无法用恢复码找回。</p><p class="small muted">电脑上的原始 CLI 记录与项目文件、其他设备已下载的副本不会被远程删除。中继保留最小设备撤销标记以防旧身份重新注册。</p><div class="row">输入“删除账户”以确认</div><div class="btn" style="background:var(--red-bg);color:var(--on-solid);margin-top:16px">永久删除账户</div><p class="small muted">提交前再弹出一次不可恢复确认；普通客户端提示到当前管理端执行。</p></div></div><div class="cap">请求成功后清理本机密钥与缓存；网络中断导致结果未知时保留身份，提示先核对。</div></div></div>
 <h2 id="states">状态集</h2>
 <div class="stgrid">
 
