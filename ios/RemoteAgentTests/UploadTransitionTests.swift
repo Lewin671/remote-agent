@@ -35,11 +35,6 @@ private struct TransitionChannel: UploadChannel {
     private func machine(_ id: String) -> MachineView {
         MachineView(id: id, online: true, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
     }
-    private func until(_ condition: @MainActor () -> Bool) async {
-        for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(5)) }
-        #expect(condition())
-    }
-
     @Test func offlineAToBToANeverRestoresOldReadiness() async throws {
         let (url, p) = try ready(); defer { try? FileManager.default.removeItem(at: url) }
         let remote = try remote()
@@ -76,7 +71,7 @@ private struct TransitionChannel: UploadChannel {
             }
         }
         p.job = job
-        await until { installed }
+        await eventually { installed }
         center.remove(key, p)
         await job.value
         #expect(observed)
@@ -94,7 +89,7 @@ private struct TransitionChannel: UploadChannel {
             // must already own this reservation when the next action supersedes it.
             p.invalidate(retiring: true)
         }
-        await until { !draft.running }
+        await eventually { !draft.running }
         let uploads = ImageUploads(prepare: { _, _ in throw UserError("unexpected preparation") }, channel: { _ in TransitionChannel(aborts: aborts) })
         await uploads.discard(p).value
         #expect(commands.sent.first?.createSession.fileIds == ["first-file"])

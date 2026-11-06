@@ -13,10 +13,6 @@ import Testing
         p.state = .ready; p.machineId = "mac"; p.imageId = "uploaded-file"; p.expiresMs = Int64.max
         return (url, p)
     }
-    private func until(_ done: @MainActor () -> Bool) async {
-        for _ in 0..<200 where !done() { try? await Task.sleep(for: .milliseconds(10)) }
-    }
-
     @Test func losingFileSupportCancelsEvenAnAlreadyReadyFilesRefresh() async throws {
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }
@@ -47,14 +43,14 @@ import Testing
         let attachments = ImageDraft(key: "new", files: VolatileFiles(), saves: nil)
         attachments.append([p])
         draft.start(commands, cfg, images: attachments) { _, _, _ in }
-        await until { !draft.running }
+        await eventually { !draft.running }
         #expect(draft.frozen)
         #expect(commands.sent.first?.createSession.fileIds == ["uploaded-file"])
         #expect(commands.sent.first?.createSession.imageIds.isEmpty == true)
         p.imageId = "renewed-file"
         commands.answer(CommandError(CommandError.unknownOutcome, "unknown"))
         draft.start(commands, cfg, images: attachments) { _, _, _ in }
-        await until { !draft.running }
+        await eventually { !draft.running }
         #expect(commands.sent.count == 1)
         #expect(commands.forwarded.count == 2 && commands.forwarded.last?.retry == true)
     }
@@ -80,7 +76,7 @@ import Testing
         let store = SessionStore()
         let taken = center.send(sid: "session", machineId: "mac", store: store, text: "", mode: .queue, commands: commands) { _ in }
         #expect(taken)
-        await until { store.outgoing("session").first?.state == .unknown }
+        await eventually { store.outgoing("session").first?.state == .unknown }
         let outgoing = try #require(store.outgoing("session").first)
         #expect(outgoing.fileIds == ["uploaded-file"] && outgoing.imageIds.isEmpty)
         #expect(commands.sent.first?.send.fileIds == ["uploaded-file"])

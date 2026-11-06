@@ -44,12 +44,6 @@ import UIKit
         }
     }
 
-    /// Waits for what runs after `done`, on other tasks.
-    private func eventually(_ what: String, _ ok: @MainActor () -> Bool) async {
-        for _ in 0..<500 where !ok() { try? await Task.sleep(nanoseconds: 2_000_000) }
-        #expect(ok(), "\(what)")
-    }
-
     @Test func aDraftWithoutImagesIsNotThisCodesToSend() async {
         let c = center()
         #expect(await send(c, "只有文字") == nil)

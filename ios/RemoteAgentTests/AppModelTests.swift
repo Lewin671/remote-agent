@@ -7,16 +7,6 @@ import os
 
 @testable import RemoteAgent
 
-/// Waits until `condition` holds, for as long as a slow simulator may need.
-@MainActor
-func eventually(_ what: String = "", _ condition: @MainActor () -> Bool) async {
-    for _ in 0..<500 {
-        if condition() { return }
-        try? await Task.sleep(nanoseconds: 10_000_000)
-    }
-    Issue.record("never happened: \(what)")
-}
-
 /// The engine as the lifecycle sees it: a Remote that is never started shows
 /// what the test tells it to, and every call is written down.
 final class FakeEngine: SyncEngine, @unchecked Sendable {

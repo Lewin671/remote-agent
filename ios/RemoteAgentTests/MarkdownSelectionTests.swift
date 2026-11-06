@@ -89,10 +89,13 @@ import UIKit
         host.view.setNeedsLayout()
         host.view.layoutIfNeeded()
         #expect(window.isKeyWindow)
-        try await Task.sleep(for: .milliseconds(300))
         func find(_ view: UIView) -> UITextView? {
             if let text = view as? UITextView { return text }
             return view.subviews.lazy.compactMap { find($0) }.first
+        }
+        await eventually("selection viewport laid out") {
+            guard let view = find(host.view) else { return false }
+            return view.bounds.width > 0 && view.bounds.height > 0 && view.contentSize.height > 0
         }
         let textView = try #require(find(host.view))
         try await check(host, textView)
@@ -114,7 +117,7 @@ import UIKit
             let end = NSRange(location: (message as NSString).length - 6, length: 6)
             view.selectedRange = end
             view.scrollRangeToVisible(end)
-            try await Task.sleep(for: .milliseconds(300))
+            await eventually("selection scrolled into view") { view.contentOffset.y > 0 }
             #expect(
                 view.contentOffset.y > 0, "A selection at the end must scroll the text viewport")
             #expect(view.selectedRange == end)

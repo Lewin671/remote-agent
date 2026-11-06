@@ -20,11 +20,6 @@ import Testing
         p.imageId = "file-1"; p.machineId = "m"; p.expiresMs = Int64.max; p.state = .ready
         return p
     }
-    private func until(_ condition: @MainActor () -> Bool) async {
-        for _ in 0..<200 where !condition() { try? await Task.sleep(for: .milliseconds(5)) }
-        #expect(condition())
-    }
-
     @Test func aReadyFileCannotLeaveTheComposerAfterCapabilityDisappears() async throws {
         let remote = try remote(); await remote.showForTest(state: state(support: false))
         ImageCenter.install(remote: remote, files: VolatileFiles()); defer { ImageCenter.remove(remote) }
@@ -34,7 +29,7 @@ import Testing
         #expect(center.send(sid: "s", machineId: "m", store: store, text: "whole message", mode: .queue, commands: commands) {
             if case .failure(let error) = $0 { failure = errorText(error) }
         })
-        await until { failure != nil || !commands.sent.isEmpty }
+        await eventually { failure != nil || !commands.sent.isEmpty }
         #expect(failure?.contains("更新") == true)
         #expect(commands.sent.isEmpty && store.outgoing("s").isEmpty && draft.images.first === p)
     }
@@ -87,7 +82,7 @@ import Testing
         let cfg = NewConfig(machineId: "m", cwd: "/work/example"), draft = NewSessionDraft(nil, settled: true)
         draft.text = "keep all attachments"
         draft.start(remote, cfg, images: attachments) { _, _, _ in Issue.record("unsupported create was sent") }
-        await until { !draft.running }
+        await eventually { !draft.running }
         #expect(draft.error.contains("更新") && !draft.frozen)
         #expect(draft.text == "keep all attachments" && attachments.images.first === p && p.imageId == "file-1")
     }
@@ -102,9 +97,9 @@ import Testing
         _ = center.send(sid: "s", machineId: "m", store: store, text: "whole message", mode: .queue, commands: commands, keep: { _, _, _ in
             gate.markEntered(); gate.open.wait()
         }) { if case .failure(let error) = $0 { failure = errorText(error) } }
-        await until { gate.entered }
+        await eventually { gate.entered }
         await remote.showForTest(state: state(support: false)); gate.open.signal()
-        await until { failure != nil || !commands.sent.isEmpty }
+        await eventually { failure != nil || !commands.sent.isEmpty }
         #expect(failure?.contains("更新") == true && commands.sent.isEmpty)
         #expect(draft.images.count == 1 && store.outgoing("s").isEmpty)
     }

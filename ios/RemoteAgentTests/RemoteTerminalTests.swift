@@ -95,10 +95,6 @@ import Testing
 
     private func output(_ text: String) -> PBTerminalFrame { .with { $0.output = Data(text.utf8) } }
 
-    private func until(_ what: @MainActor () -> Bool) async {
-        for _ in 0..<300 where !what() { try? await Task.sleep(for: .milliseconds(10)) }
-    }
-
     /// A pull down reads the record; the live screen keeps being written to behind the
     /// reader and never moves it, and a key leaves reading before it is sent
     /// (architecture §11 「回看历史」).
@@ -106,13 +102,13 @@ import Testing
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("live"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
 
         t.readUp(40)
         #expect(t.reading && t.history.phase == .opening && t.history.entryPull == 40)
-        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
+        await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let request = streams.sent.last!.historyRequest
         #expect(!request.requestID.isEmpty && request.cursor.isEmpty)
 
@@ -125,7 +121,7 @@ import Testing
                 }
             })
         streams.listener(0).onFrame(output(" output"))
-        await until { t.history.pending.isEmpty }
+        await eventually { t.history.pending.isEmpty }
         #expect(t.history.open && t.history.pages.first?.lines == ["older"])
         // Output arrived while reading: the pill says so, and the live screen behind has it.
         #expect(t.history.hasNewOutput)
@@ -135,7 +131,7 @@ import Testing
         // A key leaves reading first, and then goes as it always did.
         t.send(Data("input".utf8))
         #expect(!t.reading)
-        await until { streams.sent.last?.input == Data("input".utf8) }
+        await eventually { streams.sent.last?.input == Data("input".utf8) }
         #expect(streams.sent.last?.input == Data("input".utf8))
         t.close()
     }
@@ -154,14 +150,14 @@ import Testing
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("live"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         let before = streams.sent.count
         t.readUp(RemoteTerminal.readPull - 1)
         #expect(!t.reading && streams.sent.count == before)
         t.readUp(RemoteTerminal.readPull)
-        await until { streams.sent.count == before + 1 }
+        await eventually { streams.sent.count == before + 1 }
         #expect(t.history.phase == .opening && streams.sent.count == before + 1)
         t.close()
     }
@@ -172,12 +168,12 @@ import Testing
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("live"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
 
         t.readUp(40)
-        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
+        await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let first = streams.sent.last!.historyRequest
         streams.listener(0).onFrame(
             .with {
@@ -186,7 +182,7 @@ import Testing
                     $0.error = "cannot capture terminal history; retry"
                 }
             })
-        await until { t.history.phase == .openingFailed }
+        await eventually { t.history.phase == .openingFailed }
         #expect(
             !t.history.open && t.history.opening == TerminalHistory.Opening.failed
                 && t.state == .live)
@@ -196,12 +192,12 @@ import Testing
         // A key-bar key clears it first, and then goes as it always did.
         t.send(Data("x".utf8))
         #expect(!t.reading && t.history.opening == nil)
-        await until { streams.sent.last?.input == Data("x".utf8) }
+        await eventually { streams.sent.last?.input == Data("x".utf8) }
         #expect(streams.sent.last?.input == Data("x".utf8))
 
         // The 键盘 key does the same before it acts.
         t.readUp(40)
-        await until { streams.sent.last?.historyRequest.requestID.isEmpty == false }
+        await eventually { streams.sent.last?.historyRequest.requestID.isEmpty == false }
         let asked = streams.sent.last!.historyRequest
         streams.listener(0).onFrame(
             .with {
@@ -210,14 +206,14 @@ import Testing
                     $0.error = "cannot capture terminal history; retry"
                 }
             })
-        await until { t.history.phase == .openingFailed }
+        await eventually { t.history.phase == .openingFailed }
         t.leaveReading()
         #expect(!t.reading)
 
         // Another pull up asks for the capture again, with no cursor.
         let before = streams.sent.count
         t.readUp(40)
-        await until { streams.sent.count == before + 1 }
+        await eventually { streams.sent.count == before + 1 }
         #expect(t.history.phase == .opening && streams.sent.count == before + 1)
         let second = streams.sent.last!.historyRequest
         #expect(second.cursor.isEmpty && second.requestID != first.requestID)
@@ -229,7 +225,7 @@ import Testing
                     $0.nextCursor = "capture:200"
                 }
             })
-        await until { t.history.open }
+        await eventually { t.history.open }
         #expect(t.history.pages.first?.lines == ["older"])
         t.close()
     }
@@ -239,15 +235,15 @@ import Testing
         let t = terminal(streams)
         #expect(t.state == .connecting)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("one"))
         streams.listener(0).onFrame(output("\r\ntwo"))
-        await until { t.host.screenText == "one\ntwo" }
+        await eventually { t.host.screenText == "one\ntwo" }
         #expect(t.state == .live)
         #expect(t.size == TerminalSize(80, 24))
         #expect(t.host.screenText == "one\ntwo")
         streams.listener(0).onClose("终端连接断开")
-        await until { t.state != .live }
+        await eventually { t.state != .live }
         #expect(t.state == .closed("终端连接断开"))
         // The last picture stays under the notice.
         #expect(t.host.screenText == "one\ntwo")
@@ -259,14 +255,14 @@ import Testing
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         let old = streams.listener(0)
         old.onFrame(snapshot("before"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         // All at once, before the main thread gets to look.
         let chunk = PBTerminalFrame.with { $0.output = Data(repeating: 0x78, count: 64 * 1024) }
         for _ in 0..<40 { old.onFrame(chunk) }
-        await until { streams.count == 2 }
+        await eventually { streams.count == 2 }
         #expect(streams.count == 2)
         #expect(t.state == .connecting)
         // What the old stream still delivers changes nothing.
@@ -276,7 +272,7 @@ import Testing
         #expect(t.state == .connecting)
         #expect(!t.host.screenText.contains("stale"))
         streams.listener(1).onFrame(snapshot("fresh"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         #expect(t.host.screenText == "fresh")
         #expect(streams.count == 2)
         t.close()
@@ -287,9 +283,9 @@ import Testing
         let online = Flag()
         let t = terminal(streams, online: online)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("shown"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         t.close()
         #expect(t.state == .closed(RemoteTerminal.paused))
         streams.listener(0).onFrame(output(" more"))
@@ -308,7 +304,7 @@ import Testing
         let streams = Streams()
         let t = terminal(streams, fail: "连不上终端")
         t.connect()
-        await until { t.state != .connecting }
+        await eventually { t.state != .connecting }
         #expect(t.state == .closed("连不上终端"))
     }
 
@@ -318,9 +314,9 @@ import Testing
         let streams = Streams(answers: false)
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("x"))
-        await until { t.host.screenText == "x" }
+        await eventually { t.host.screenText == "x" }
         #expect(t.host.screenText == "x")
         #expect(t.state == .connecting)
         t.send(Data("ls".utf8))
@@ -328,12 +324,12 @@ import Testing
         #expect(!t.fitted && streams.sent.isEmpty)
         // The command answered: live, fitted on its own, and what is typed goes out.
         streams.answer(0)
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         #expect(t.state == .live)
-        await until { !streams.sent.isEmpty } // TermConn seals/sends on its asynchronous writer.
+        await eventually { !streams.sent.isEmpty } // TermConn seals/sends on its asynchronous writer.
         #expect(t.fitted && streams.sent.map(\.resize.fit) == [true])
         t.send(Data("ls".utf8))
-        await until { streams.sent.last?.input == Data("ls".utf8) }
+        await eventually { streams.sent.last?.input == Data("ls".utf8) }
         #expect(streams.sent.last?.input == Data("ls".utf8))
         t.close()
     }
@@ -343,12 +339,12 @@ import Testing
         let streams = Streams(answers: false)
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.answer(0)
         try? await Task.sleep(for: .milliseconds(100))
         #expect(t.state == .connecting)
         streams.listener(0).onFrame(snapshot("x"))
-        await until { t.state == .live }
+        await eventually { t.state == .live }
         #expect(t.state == .live && t.fitted)
         t.close()
     }
@@ -358,18 +354,18 @@ import Testing
         let streams = Streams()
         let t = terminal(streams)
         t.connect()
-        await until { streams.count == 1 }
+        await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("x"))
         streams.listener(0).onFrame(.with { $0.closed = "cannot read the screen" })
         streams.listener(0).onClose("终端连接断开")
-        await until { t.state != .connecting }
+        await eventually { t.state != .connecting }
         try? await Task.sleep(for: .milliseconds(100))
         #expect(t.state == .closed("cannot read the screen"))
         // A stream that just ends says what the connection says.
         t.connect()
-        await until { streams.count == 2 }
+        await eventually { streams.count == 2 }
         streams.listener(1).onClose("终端连接断开")
-        await until { t.state != .connecting }
+        await eventually { t.state != .connecting }
         #expect(t.state == .closed("终端连接断开"))
     }
 }

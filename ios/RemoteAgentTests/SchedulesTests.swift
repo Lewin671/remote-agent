@@ -416,7 +416,6 @@ import UIKit
         state.machines["m"] = MachineView(id: "m", online: online, lastSeenMs: 0, meta: meta)
         return state
     }
-    func settle(_ done: () -> Bool) async { for _ in 0..<100 where !done() { try? await Task.sleep(for: .milliseconds(10)) } }
     @Test func revokedArchiveDropsTasksBadgeAndPendingRead() async {
         let store=ScheduleStore();var attention=task();attention.status="paused";attention.reason="agent_schedule_permissions_changed"
         var release:CheckedContinuation<Void,Never>?;var returned=false
@@ -468,19 +467,19 @@ import UIKit
     @Test func revisionChangesAndReconnectionsReadButUnrelatedStateDoesNotPoll() async {
         let store = ScheduleStore(); var reads = 0
         store.configure(.init(cached: { _ in nil }, list: { _ in reads += 1; return [self.task()] }))
-        store.reconcile(state()); await settle { reads == 1 && store.loading.isEmpty }
+        store.reconcile(state()); await eventually { reads == 1 && store.loading.isEmpty }
         #expect(store.tasks.count == 1)
         for _ in 0..<4 { store.reconcile(state()) }
         await Task.yield(); #expect(reads == 1)
-        store.reconcile(state(revision: 2)); await settle { reads == 2 && store.loading.isEmpty }
+        store.reconcile(state(revision: 2)); await eventually { reads == 2 && store.loading.isEmpty }
         store.reconcile(state(online: false, revision: 2)); #expect(!store.online("m") && store.tasks.count == 1)
-        store.reconcile(state(revision: 2)); await settle { reads == 3 && store.loading.isEmpty }
+        store.reconcile(state(revision: 2)); await eventually { reads == 3 && store.loading.isEmpty }
         #expect(reads == 3)
     }
     @Test func offlineStartsWithCacheAndHidesUnsupportedMachines() async {
         let store = ScheduleStore(); var reads = 0
         store.configure(.init(cached: { _ in [self.task()] }, list: { _ in reads += 1; return [] }))
-        store.reconcile(state(online: false)); await settle { store.loading.isEmpty }
+        store.reconcile(state(online: false)); await eventually { store.loading.isEmpty }
         #expect(store.tasks.count == 1 && reads == 0 && !store.online("m"))
         var unsupported = state(online: false); unsupported.machines["m"]?.meta?.capabilities.scheduledTasks = false
         store.reconcile(unsupported); #expect(store.tasks.isEmpty)
@@ -488,7 +487,7 @@ import UIKit
     @Test func readFailureKeepsSnapshotAndOnlyExplicitRetryReadsAgain() async {
         let store = ScheduleStore(); var reads = 0
         store.configure(.init(cached: { _ in [self.task()] }, list: { _ in reads += 1; throw UserError("测试读取失败") }))
-        store.reconcile(state()); await settle { store.loading.isEmpty }
+        store.reconcile(state()); await eventually { store.loading.isEmpty }
         #expect(store.tasks.count == 1 && store.errors["m"] != nil)
         store.reconcile(state()); await Task.yield(); #expect(reads == 1)
         await store.refresh("m"); #expect(reads == 2)
@@ -497,7 +496,7 @@ import UIKit
         let store = ScheduleStore(); var reads = 0
         store.configure(.init(cached: { _ in nil }, list: { _ in reads += 1; try await Task.sleep(for: .milliseconds(30)); return [self.task("\(reads)")] }))
         store.reconcile(state()); await Task.yield(); store.reconcile(state(revision: 2))
-        await settle { reads == 2 && store.loading.isEmpty }
+        await eventually { reads == 2 && store.loading.isEmpty }
         #expect(reads == 2 && store.tasks.first?.task.id == "2")
     }
     @Test func draftsAreAccountScopedAndCurrentConversationTargetsDoNotCarryNewSessionSettings() throws {

@@ -17,11 +17,6 @@ import Testing
         return d
     }
 
-    /// Waits until `done` holds, or two seconds.
-    private func until(_ done: @MainActor () -> Bool) async {
-        for _ in 0..<200 where !done() { try? await Task.sleep(for: .milliseconds(10)) }
-    }
-
     @Test func theScopeIsRememberedOnThisDeviceAndForgottenWithTheAccount() throws {
         let d = defaults()
         let root = Demo.account.root
@@ -70,7 +65,7 @@ import Testing
         // Another change to the project waits for the one on its way.
         changes.run(remote, .hide(path: Demo.foo))
         #expect(changes.states[JvmKey(Demo.foo)] == .saving(.pin(path: Demo.foo)))
-        await until { changes.states[JvmKey(Demo.foo)]?.saving == false }
+        await eventually { changes.states[JvmKey(Demo.foo)]?.saving == false }
         #expect(changes.states[JvmKey(Demo.foo)] == .failed(.pin(path: Demo.foo), "没有连上服务器，连上后才能修改"))
         #expect(!done)
         #expect(changes.states[JvmKey(Demo.foo)]?.ofSettings == false)
@@ -89,7 +84,7 @@ import Testing
         #expect(draft.running && draft.progress.running)
         // A second tap while one start is on its way does nothing.
         draft.start(remote, cfg) { sid, _, _ in started = sid }
-        await until { !draft.running }
+        await eventually { !draft.running }
         #expect(started == nil)
         #expect(draft.prompt == "say hi" && draft.text == "  say hi \n")
         // Nothing reached a computer, so the outcome is known: it did not start, and ↑ is a new start.
