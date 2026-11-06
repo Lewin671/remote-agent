@@ -52,20 +52,19 @@ enum Demo {
         }
     }
 
-    /// What each computer lists for each CLI: Codex's models, Claude
-    /// Code's, and Antigravity's, with efforts and context windows, one of them with a long
-    /// slug and no display name. For every computer of every set.
-    static let models: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
-        func model(_ slug: String, _ name: String, efforts: [String] = [], defaultEffort: String = "", window: Int64 = 0, autoUnavailable: Bool = false) -> PBModelInfo {
-            .with {
-                $0.slug = slug
-                $0.displayName = name
-                $0.efforts = efforts
-                $0.defaultEffort = defaultEffort.isEmpty ? (efforts.isEmpty ? "" : "medium") : defaultEffort
-                $0.contextWindow = window
-                $0.autoUnavailable = autoUnavailable
-            }
+    static func model(_ slug: String, _ name: String, efforts: [String] = [], defaultEffort: String? = nil, window: Int64 = 0, autoUnavailable: Bool = false) -> PBModelInfo {
+        .with {
+            $0.slug = slug
+            $0.displayName = name
+            $0.efforts = efforts
+            $0.defaultEffort = defaultEffort ?? (efforts.isEmpty ? "" : "medium")
+            $0.contextWindow = window
+            $0.autoUnavailable = autoUnavailable
         }
+    }
+
+    /// What each computer lists for each CLI, including long names and unavailable auto selection.
+    static let models: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
         let efforts = ["low", "medium", "high", "xhigh", "max", "ultra"]
         let modelEfforts = ["low", "medium", "high", "xhigh", "max"]
         let codex = PBListModelsResponse.with {
@@ -229,13 +228,18 @@ enum Demo {
         Dictionary(list.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
     }
 
-    // Events, numbered in the order given, a second apart, ending now.
+    // Events, numbered in the order given, ending now.
     private static func events(_ now: Int64, _ kinds: [PBEvent.OneOf_Kind]) -> [PBEvent] {
+        events(now, kinds.map { ($0, nil) })
+    }
+
+    static func events(_ now: Int64, _ kinds: [(PBEvent.OneOf_Kind, PBOrigin?)], step: Int64 = 1000) -> [PBEvent] {
         kinds.enumerated().map { i, kind in
             .with {
                 $0.seq = UInt64(i + 1)
-                $0.time = ts(now - Int64(kinds.count - i) * 1000)
-                $0.kind = kind
+                $0.time = ts(now - Int64(kinds.count - i) * step)
+                $0.kind = kind.0
+                if let origin = kind.1 { $0.origin = origin }
             }
         }
     }

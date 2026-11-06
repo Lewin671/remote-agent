@@ -168,13 +168,7 @@ enum SessionSamples {
 
     private static let modelLists: [(machineId: String, agent: PBAgent, models: PBListModelsResponse)] = {
         func model(_ slug: String, _ name: String, _ efforts: [String], autoUnavailable: Bool = false) -> PBModelInfo {
-            .with {
-                $0.slug = slug
-                $0.displayName = name
-                $0.efforts = efforts
-                $0.defaultEffort = efforts.contains("medium") ? "medium" : ""
-                $0.autoUnavailable = autoUnavailable
-            }
+            Demo.model(slug, name, efforts: efforts, defaultEffort: efforts.contains("medium") ? "medium" : "", autoUnavailable: autoUnavailable)
         }
         let codex = PBListModelsResponse.with {
             $0.defaultModel = "gpt-6-astra"
@@ -210,18 +204,6 @@ enum SessionSamples {
             ]
         }
     }()
-
-    /// Events numbered in the order given, a second apart, ending now. An event's origin is who caused it.
-    private static func events(_ now: Int64, _ kinds: [(PBEvent.OneOf_Kind, PBOrigin?)], step: Int64 = 1000) -> [PBEvent] {
-        kinds.enumerated().map { i, kind in
-            .with {
-                $0.seq = UInt64(i + 1)
-                $0.time = ts(now - Int64(kinds.count - i) * step)
-                $0.kind = kind.0
-                if let origin = kind.1 { $0.origin = origin }
-            }
-        }
-    }
 
     private static let mine = PBOrigin.with {
         $0.kind = .client
@@ -348,8 +330,8 @@ enum SessionSamples {
 
     private static func events(_ now: Int64) -> [String: [PBEvent]] {
         [
-            "sample-rows": events(now, rows(now)),
-            "sample-queue": events(now, [
+            "sample-rows": Demo.events(now, rows(now)),
+            "sample-queue": Demo.events(now, [
                 turn, user("把导出改成流式的，别一次读进内存"), thought("先看现在怎么读的。"), call("rg -n ReadAll internal/export"),
                 agent("现在是 `io.ReadAll` 之后再写，我改成边读边写。"), started("go test ./internal/export/... -run TestStream -count=1"),
                 input("q1", .heldByCli, text: "顺便把缓冲区大小做成可配置的"),
@@ -358,27 +340,27 @@ enum SessionSamples {
                 input("q4", .queued, text: "这条是中断前排着的，方向变了以后要不要发由你决定", mode: .queue, paused: true),
                 input("q5", .queued, text: "最后更新一下 CHANGELOG", mode: .queue),
             ]),
-            "sample-send": events(now, [
+            "sample-send": Demo.events(now, [
                 turn, user("看一下 CI 为什么红了"), call("gh run view --log-failed", ms: 4_200),
                 agent("是 `lint` 这一步：`internal/export/stream.go` 有一个没用到的变量。"), turnEnd(21_000),
                 input("f1", .queued, text: "修掉它"), input("f1", .failed, reason: "input_changed"),
                 input("f2", .queued, text: "然后重新跑 CI"), input("f2", .needsTerminal, reason: "write_failed"),
                 input("f3", .queued, text: "跑完告诉我"), input("f3", .unconfirmed),
             ]),
-            "sample-start": events(now, [input("p1", .queued, text: "给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")]),
-            "sample-claude": events(now, [
+            "sample-start": Demo.events(now, [input("p1", .queued, text: "给这个仓库加一个 Makefile，包含 build、test 和 lint 三个目标")]),
+            "sample-claude": Demo.events(now, [
                 turn, user("把 README 里的安装步骤更新一下"), call("README.md", kind: .fileChange, item: "Edit"),
                 agent("已更新安装步骤。"), turnEnd(9_000),
             ]),
-            "sample-old": events(now, [turn, user("你好"), agent("你好。"), turnEnd(900)]),
-            "sample-long": events(now, long(), step: 400),
-            "sample-wait": events(now, [
+            "sample-old": Demo.events(now, [turn, user("你好"), agent("你好。"), turnEnd(900)]),
+            "sample-long": Demo.events(now, long(), step: 400),
+            "sample-wait": Demo.events(now, [
                 turn, user("把依赖装上"),
                 approval("W1", "curl -fsSL https://example.com/install.sh | sh", "下载并运行安装脚本", now: now, left: 50_000),
                 started("curl -fsSL https://example.com/install.sh | sh"),
             ]),
-            "sample-many": events(now, busy()),
-            "sample-ask": events(now, [
+            "sample-many": Demo.events(now, busy()),
+            "sample-ask": Demo.events(now, [
                 turn, user("把缓存层换掉"), call("rg -n cache internal", item: "Grep"),
                 (.questionAsked(.with {
                     $0.questionID = "SQ"
@@ -400,7 +382,7 @@ enum SessionSamples {
                     ]
                 }), nil),
             ]),
-            "sample-ended": events(now, [
+            "sample-ended": Demo.events(now, [
                 turn, user("把日志级别调成 debug"), call("config/log.yaml", kind: .fileChange), agent("已调成 `debug`。"), turnEnd(6_000),
                 input("u1", .queued, text: "再把采样率调到 100%", mode: .queue), input("u1", .canceled, reason: "exited"),
                 (.sessionState(.with { $0.status = .exited }), nil),

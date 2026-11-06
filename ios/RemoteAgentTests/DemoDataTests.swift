@@ -47,6 +47,16 @@ import Testing
         #expect(Demo.events(.empty, now: now).isEmpty)
     }
 
+    @Test func sharedEventBuilderKeepsOriginAndSubsecondSpacing() {
+        let sender = PBOrigin.with { $0.kind = .client; $0.deviceID = "sample-sender" }
+        let message = PBEvent.OneOf_Kind.userMessage(.with { $0.text = "sample message" })
+        let events = Demo.events(10_550, [(message, sender), (.turnStarted(.init()), nil)], step: 400)
+        #expect(events.map(\.seq) == [1, 2])
+        #expect(events.map { $0.time.seconds } == [9, 10])
+        #expect(events[0].origin == sender && events[0].kind == message)
+        #expect(!events[1].hasOrigin)
+    }
+
     @Test(arguments: DemoSet.allCases)
     func historiesBelongToSessionsAndAreNumberedFromOne(set: DemoSet) {
         let s = Demo.state(set, now: now)
