@@ -95,13 +95,8 @@ struct SessionComposer: View {
     @State private var interrupt = ActionRunner()
     @State private var notice = ""
 
-    private var images: SessionImageContext {
-        let machine = model.state.machines[session.machineId]
-        return SessionImageContext(
-            sessionId: session.id, machineId: session.machineId, remote: context.remote, store: context.sessionStore,
-            blocked: uploadBlocked(
-                machine, online: model.state.conn == .online, name: machineLabel(model.state, id: session.machineId)),
-            limit: imageLimit(for: machine), machine: machine)
+    private var images: ComposerAttachments {
+        ComposerAttachments(state: model.state, key: ImageCenter.sessionKey(session.id), machineId: session.machineId, remote: context.remote)
     }
 
     private func send(_ mode: PBSendMode) {
@@ -109,13 +104,13 @@ struct SessionComposer: View {
         let sid = session.id
         let message = store.draft(sid).jvmTrim()
         let images = images
-        let attached = SessionImages.hasImages(images)
+        let attached = images.hasImages
         if message.isEmpty && !attached { return }
-        SessionImages.refresh(images)
+        images.refresh()
         // Every image must be on the computer first: never a message with some of them.
-        if attached && !SessionImages.ready(images) { return }
+        if attached && !images.ready { return }
         SessionHaptics.tap()
-        let taken = SessionImages.send(images, text: message, mode: mode) { kept in
+        let taken = SessionImages.send(context.remote, session: sid, store: store, machineId: session.machineId, text: message, mode: mode) { kept in
             switch kept {
             case .success:
                 if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
@@ -137,7 +132,7 @@ struct SessionComposer: View {
         let online = state.conn == .online
         let running = status == .running || derived.running
         let images = images
-        let attached = SessionImages.hasImages(images)
+        let attached = images.hasImages
         let text = store.draft(sid)
         // A computer on another protocol version would refuse it: its notice says which side to update.
         let refused = protocolMismatch(state.machines[session.machineId]) != nil
@@ -147,10 +142,10 @@ struct SessionComposer: View {
                 text: Binding(get: { store.draft(sid) }, set: { store.setDraft(sid, $0) }),
                 placeholder: composerPlaceholder(derived),
                 canSend: composerCanSend(
-                    text: text, online: online, keeping: store.isKeeping(sid), hasImages: attached, imagesReady: SessionImages.ready(images),
+                    text: text, online: online, keeping: store.isKeeping(sid), hasImages: attached, imagesReady: images.ready,
                     refused: refused),
                 onSend: { send(.steer) },
-                onPlus: { SessionImages.plusTapped(images) },
+                onPlus: { images.pick() },
                 plusEnabled: images.blocked == nil,
                 onQueue: running ? { send(.queue) } : nil,
                 onInterrupt: running
@@ -167,7 +162,7 @@ struct SessionComposer: View {
                 focus: focus,
                 sendHint: online ? "" : "连上服务器后才能发送"
             ) {
-                SessionImages.DraftStrip(context: images)
+                images.strip(session: (sid, store))
             }
             Color.clear.frame(height: 0)
                 .debugSignal("session.draft") { store.setDraft(sid, SessionDebug.text) }

@@ -217,21 +217,14 @@ private struct ImageDraftDebug: ViewModifier {
 }
 
 extension View {
-    func sessionImageDebug(_ context: SessionImageContext) -> some View {
+    func imageDraftDebug(_ attachments: ComposerAttachments, session: (id: String, store: SessionStore)?) -> some View {
         modifier(ImageDraftDebug(
-            center: ImageCenter.of(context.remote), key: ImageCenter.sessionKey(context.sessionId), machine: context.machineId,
-            blocked: context.blocked, max: context.limit, session: (context.sessionId, context.store), fileMachine: context.machine))
-    }
-
-    func projectImageDebug(_ context: ProjectImageContext) -> some View {
-        modifier(ImageDraftDebug(
-            center: ImageCenter.of(context.remote), key: ImageCenter.projectKey(context.key), machine: context.machineId,
-            blocked: context.blocked, max: context.limit, fileMachine: context.machine))
+            center: attachments.center, key: attachments.key, machine: attachments.machineId,
+            blocked: attachments.blocked, max: attachments.limit, session: session, fileMachine: attachments.machine))
     }
 }
 #else
 extension View {
-    func sessionImageDebug(_ context: SessionImageContext) -> some View { self }
-    func projectImageDebug(_ context: ProjectImageContext) -> some View { self }
+    func imageDraftDebug(_ attachments: ComposerAttachments, session: (id: String, store: SessionStore)?) -> some View { self }
 }
 #endif

@@ -47,8 +47,8 @@ struct NewSessionBox: View {
         let config = draft.config.value
         let agents = config.map { machineAgents(state.machines[$0.machineId]) } ?? []
         // The first message may be images alone: they make a draft as text does.
-        let images = ProjectImageContext(state: state, key: key, config: config, remote: context.remote)
-        let drafting = draft.drafting || ProjectImages.hasImages(images)
+        let images = attachments(config)
+        let drafting = draft.drafting || images.hasImages
         let notices = newSessionNotices(
             state, config: config, name: name, pick: draft.agent, drafting: drafting, settled: settled, start: draft.progress)
         let canSend = canStart(draft)
@@ -71,9 +71,9 @@ struct NewSessionBox: View {
             }
             ComposerPill(
                 text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
-                plus: ProjectImages.available(images) ? .on : .dimmed, focus: $focused,
-                onPlus: { ProjectImages.pick(images) },
-                top: { ProjectImages.Strip(context: images) }
+                plus: images.blocked == nil ? .on : .dimmed, focus: $focused,
+                onPlus: { images.pick() },
+                top: { images.strip() }
             ) {
                 Button { start(draft) } label: { ComposerCircle.send(enabled: canSend) }
                     .buttonStyle(PressStyle())
@@ -113,6 +113,10 @@ struct NewSessionBox: View {
         }
     }
 
+    private func attachments(_ config: NewConfig?) -> ComposerAttachments {
+        ComposerAttachments(state: state, key: ImageCenter.projectKey(key), machineId: config?.machineId, remote: context.remote)
+    }
+
     /// Another CLI for the draft: the text stays, and the draft takes the project's set for that CLI.
     private func switchAgent(_ draft: NewSessionDraft, _ c: NewConfig, to agent: PBAgent) {
         draft.agent = agent
@@ -125,21 +129,21 @@ struct NewSessionBox: View {
     /// script) is held to it too.
     private func canStart(_ draft: NewSessionDraft) -> Bool {
         let config = draft.config.value
-        let images = ProjectImageContext(state: state, key: key, config: config, remote: context.remote)
+        let images = attachments(config)
         // Every image must be on the machine first: never a start with some of them.
         return canStartSession(
-            state, config: config, drafting: draft.drafting || ProjectImages.hasImages(images), settled: settled, running: draft.running)
-            && ProjectImages.ready(images)
+            state, config: config, drafting: draft.drafting || images.hasImages, settled: settled, running: draft.running)
+            && images.ready
     }
 
     private func start(_ draft: NewSessionDraft) {
-        let refresh = ProjectImageContext(state: state, key: key, config: draft.config.value, remote: context.remote)
-        ProjectImages.refresh(refresh)
+        let refresh = attachments(draft.config.value)
+        refresh.refresh()
         guard canStart(draft), let cfg = draft.config.value else { return }
         let machine = initial?.machineId
-        let images = ProjectImageContext(state: state, key: key, config: cfg, remote: context.remote)
+        let images = attachments(cfg)
         draft.start(
-            context.remote, cfg, images: ProjectImages.draft(images), onImagesUsed: { ProjectImages.used(images, $0) }
+            context.remote, cfg, images: images.draft, onImagesUsed: { images.used($0) }
         ) { sid, used, prompt in
             // What the project stores of this start is read off the lists as they are now.
             let state = model.state

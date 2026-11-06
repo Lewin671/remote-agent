@@ -173,17 +173,12 @@ import UIKit
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))
         draft.append([ready("a")])
-        // The message box as it is drawn, and as it is drawn again after a look at the terminal: each is
-        // a new view, and what they share is the session's store.
-        func box() -> SessionImageContext {
-            SessionImageContext(sessionId: sid, machineId: "mac", remote: remote, store: store, blocked: nil, limit: 4)
-        }
         let disk = DispatchSemaphore(value: 0)
         var outcomes = 0
-        #expect(SessionImages.send(box(), text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in disk.wait() }) { _ in outcomes += 1 })
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in disk.wait() }) { _ in outcomes += 1 })
         #expect(store.isKeeping(sid))
         // Taken over, and nothing done: the first message has these images.
-        #expect(SessionImages.send(box(), text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "看图", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
         try await Task.sleep(nanoseconds: 50_000_000)
         #expect(store.outgoing(sid).isEmpty && outcomes == 0)
         disk.signal()
@@ -192,7 +187,7 @@ import UIKit
         #expect(store.outgoing(sid).count == 1 && computer.sent.count == 1 && draft.images.isEmpty)
         // The lock went with the message: the next one is sent.
         draft.append([ready("b")])
-        #expect(SessionImages.send(box(), text: "再看", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
+        #expect(SessionImages.send(remote, session: sid, store: store, machineId: "mac", text: "再看", mode: .steer, commands: computer, keep: { _, _, _ in }) { _ in outcomes += 1 })
         await eventually("the second message is delivered") { computer.sent.count == 2 }
     }
 
@@ -424,21 +419,22 @@ import UIKit
         #expect(o.images[0].processed == nil)
     }
 
-    @Test func theButtonsFollowTheDraft() async {
+    @Test(arguments: ["session:test", "project:/work/example"])
+    func theButtonsFollowTheDraft(key: String) async {
         let c = center()
-        let context = SessionImageContext(sessionId: sid, machineId: "mac", remote: remote, store: store, blocked: nil, limit: 6)
-        _ = c.draft(ImageCenter.sessionKey(sid))
-        await c.restoredDraft(ImageCenter.sessionKey(sid))
-        #expect(!SessionImages.hasImages(context) && SessionImages.ready(context))
+        let context = ComposerAttachments(remote: remote, key: key, machineId: "mac", blocked: nil, limit: 6)
+        _ = c.draft(key)
+        await c.restoredDraft(key)
+        #expect(!context.hasImages && context.ready)
         let waiting = PendingImage(id: "w", uri: nil)
-        c.draft(ImageCenter.sessionKey(sid)).append([ready("a"), waiting])
+        c.draft(key).append([ready("a"), waiting])
         // Never a message with some of its images.
-        #expect(SessionImages.hasImages(context) && !SessionImages.ready(context))
-        c.remove(ImageCenter.sessionKey(sid), waiting)
-        #expect(SessionImages.ready(context))
+        #expect(context.hasImages && !context.ready)
+        c.remove(key, waiting)
+        #expect(context.ready)
         // On another computer they are not there.
-        let other = SessionImageContext(sessionId: sid, machineId: "vps", remote: remote, store: store, blocked: nil, limit: 6)
-        #expect(!SessionImages.ready(other))
+        let other = ComposerAttachments(remote: remote, key: key, machineId: "vps", blocked: nil, limit: 6)
+        #expect(!other.ready)
     }
 
     @Test func plusSaysWhyItAddsNothing() {
