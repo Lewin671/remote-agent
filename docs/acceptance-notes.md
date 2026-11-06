@@ -185,6 +185,20 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 ## 11. iOS
 
+### Release 本机卡顿诊断（2026-11-06）
+
+自然复现仍未取得，决定在正常使用的 Release 中保留最小本机数值诊断，以取得下一次卡死前的输入与更新序列；这不是聊天卡死修复。设计和隐私边界维护在 [iOS 客户端设计](ios-client.md#本机卡顿诊断)，文件取回步骤见 [development](development.md#ios-卡顿诊断)。本轮未使用手机，不重新做真机复现，也未安装 Release 包。
+
+验证覆盖缓冲回绕、并发追加与快照、后台布局 scope 不污染主线程 scope、五秒计数不随环形数据淘汰、相对时间、非有限数值标记、假主线程停顿只生成一个文件、恢复更新原文件、旧 ping 不影响新请求、暂停与五份保留。报告 JSON 的所有值都为数值、数组、对象或空值，接口不接受消息正文或字符串标识。
+
+在 Apple Silicon Mac 上，`swift test --package-path ios/RemoteAgentCore -c release --jobs 4 --filter ChatDiagnosticsTests/appendMicrobenchmark` 预热 10,000 次、测量 300,000 次：追加约 35 ns/条。事件槽 80 B，4,096 槽为 320 KiB，另有固定计数桶；不代表 iPhone 的实测开销。主线程追加不分配字符串，不编码 JSON、不写磁盘。模拟器原有混合行／历史补齐／变高回复基线继续通过。
+
+iOS 27 模拟器验证默认路径位于 App 数据容器内，目录确实排除备份。实际启动示例 App 后，后台 ping 正常且没有报告；使用调试器允许其它线程运行、受控阻塞主线程约四秒，后台在未回复约 2.16 秒时生成一份报告，恢复后同一文件记录约 4.05 秒持续时间，保存 4,096 条事件，JSON 仅含数值。这是诊断线路的受控验收，不是原卡死的复现。假报告已移出容器，本次启动的模拟器已关闭。
+
+完整检查：`swift test --package-path ios/RemoteAgentCore --jobs 4`，Markdown 17 项、RACore 646 项（含一项 opt-in 跳过）通过；`xcodebuild -quiet -collect-test-diagnostics never -parallel-testing-enabled NO -jobs 4 -project ios/RemoteAgent.xcodeproj -scheme RemoteAgent -destination 'platform=iOS Simulator,name=iPhone 18 Pro' build test`，App 构建与 423 项 / 468 次运行通过。独立 DerivedData 的 `Release` / `generic/platform=iOS` 开发签名构建通过，检查 entitlements 确认 `get-task-allow = true`；没有安装到设备。
+
+对先前收集的 runner / diagnose 日志再次核对：testmanagerd 控制服务连接成功，随后 runner 的 IDE DTX 控制通道请求被拒绝，并在测试函数之前退出 code 74。日志的 `automation mode = 1` 位于 `XCTCapabilities` 能力协商字典，不是「Enable UI Automation」设置快照；未找到开关关闭或授权拒绝的明确记录。已有 Developer Mode 为 enabled 的记录也不能证明 UI 自动化开关开启。**把 code 74 归因于该开关关闭仍是猜测，不是已证明的原因。**
+
 ### 聊天滚动卡死复查（2026-11-06）
 
 基于 v0.55.0 的任务代码，重新检查包含 v0.54.2 的七份 iPhone 13 / iOS 18.5 watchdog 报告。新增报告的主线程在 `DynamicPreferenceCombiner` → AttributeGraph → `ViewGraph.updateOutputs` → `_UIHostingView.layoutSubviews`，旧报告还包含 lazy stack 的放置与索引解析。报告没有提供连续的几何值、状态写入或视图失效记录；它们支持继续调查布局路径，但**不能证明哪个值反复变化，也不能区分布局反馈、SwiftUI 内部计算不收敛和一次耗时很长的布局**。原始报告不入库。本轮未改产品代码，没有把另一条可疑路径当作已经证明的根因。
@@ -233,7 +247,7 @@ Android 正式 APK 的 SHA256SUMS 校验通过。现有模拟器的旧应用签�
 
 手机的 LAN 真实链路未建立：隔离中继仅绑定私有 LAN 地址，客户端最初因 HTTP 地址校验拒绝请求；临时 Debug 私有地址放行后仍报网络不可用，未完成建账户，未启动测试 daemon / CLI。没有确定网络错误的底层原因。此前模拟器的真实 CLI 记录不能替代手机验收。
 
-设备工作结束后，临时账户本机存储已退出清理，RA dev 和 UI-test runner 均已卸载并查询确认不存在，隔离环境已停止并删除。14 个临时修改文件按原始字节还原，新增诊断文件删除；插桩、host hook、压力驱动、HTTP 放行、ATS 变化均未保留在产品中。本地仅保留追踪、profile、失败诊断与可重放补丁。还原后重新执行上述两条完整检查：App 构建和 421 项 / 466 次测试通过；Markdown 17 项、RACore 637 项（含一项 opt-in 跳过）通过。Package 首轮与模拟器检查并行时，`aBadCachedPrefixIsDroppedWhileTheNewerReadIsStillInFlight` 等待 1,100 个事件超时；随后产品代码不变、单独重跑全量通过，未确定该次超时的原因。
+设备工作结束后，临时账户本机存储已退出清理，RA dev 和 UI-test runner 均已卸载并查询确认不存在，隔离环境已停止并删除。该轮 14 个临时修改文件按原始字节还原，新增诊断文件删除；临时 host hook、压力驱动、HTTP 放行、ATS 变化均未保留。后续保留的最小诊断见[本机诊断验收](#release-本机卡顿诊断2026-11-06)。本地仅保留追踪、profile、失败诊断与可重放补丁。还原后重新执行上述两条完整检查：App 构建和 421 项 / 466 次测试通过；Markdown 17 项、RACore 637 项（含一项 opt-in 跳过）通过。Package 首轮与模拟器检查并行时，`aBadCachedPrefixIsDroppedWhileTheNewerReadIsStillInFlight` 等待 1,100 个事件超时；随后产品代码不变、单独重跑全量通过，未确定该次超时的原因。
 
 证据边界：**没有复现永久卡死，没有证明完整的非收敛循环，也没有证据解释间歇性或 iOS 18.5 与 27 的差异**；不能据此宣称修好。真机程序压力和模拟器窗口基线覆盖前缀补齐与同一行增长，真实 CLI 链路未构造大规模历史前缀；定时跳转没有新做直接界面验收。下一步应先打通真机 XCTest 控制通道，重复真实拖动、惯性及交互收键盘场景，取得卡死时的连续几何值、失效链和主线程栈，再决定共享层改法；不应把已收敛的往返改成另一条猜测性修补。未决状态见 [plan](plan.md#待确认)。
 

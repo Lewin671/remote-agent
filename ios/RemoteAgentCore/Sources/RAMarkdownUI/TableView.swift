@@ -1,3 +1,4 @@
+import RACore
 import RAMarkdown
 import SwiftUI
 
@@ -26,6 +27,7 @@ struct TableLayout: Layout {
     let minWidth: CGFloat
     let maxWidth: CGFloat
     let readable: CGFloat
+    var diagnosticEntity: UInt64 = 0
 
     struct Metrics {
         var widths: [CGFloat] = []
@@ -60,10 +62,14 @@ struct TableLayout: Layout {
     }
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout Metrics?) -> CGSize {
-        metrics(subviews, &cache).size
+        let pass = ChatDiagnosticRing.shared.beginLayout(.tableSize, entity: diagnosticEntity)
+        defer { ChatDiagnosticRing.shared.endLayout(pass) }
+        return metrics(subviews, &cache).size
     }
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout Metrics?) {
+        let pass = ChatDiagnosticRing.shared.beginLayout(.tablePlace, entity: diagnosticEntity)
+        defer { ChatDiagnosticRing.shared.endLayout(pass) }
         let m = metrics(subviews, &cache)
         guard !m.widths.isEmpty else { return }
         var y = bounds.minY
@@ -105,12 +111,14 @@ struct TableView: View, Equatable {
     /// The width the reply has for the table, measured from the scroll view once it is laid out.
     @State private var viewport = CGFloat.infinity
     @State private var more = false
+    @Environment(\.chatDiagnosticEntity) private var diagnosticEntity
 
     nonisolated static func == (a: TableView, b: TableView) -> Bool {
         a.head == b.head && a.align == b.align && a.rows == b.rows && a.tone == b.tone && a.bleed == b.bleed && a.look == b.look
     }
 
     var body: some View {
+        let entity = diagnosticEntity
         let columns = head.count
         let all = [head] + rows
         // The separator row's alignment wins; without one, quantities go right.
@@ -120,7 +128,7 @@ struct TableView: View, Equatable {
         let scroll = ScrollView(.horizontal, showsIndicators: false) {
             TableLayout(
                 columns: columns, rows: all.count, viewport: viewport, gap: theme.tableColumnGap, pad: theme.tableRowPadding,
-                minWidth: theme.tableCellMinWidth, maxWidth: theme.tableCellMaxWidth, readable: theme.tableReadableWidth * scale
+                minWidth: theme.tableCellMinWidth, maxWidth: theme.tableCellMaxWidth, readable: theme.tableReadableWidth * scale, diagnosticEntity: entity
             ) {
                 ForEach(all.indices, id: \.self) { ri in
                     ForEach(0..<columns, id: \.self) { ci in
@@ -134,11 +142,17 @@ struct TableView: View, Equatable {
             .padding(.horizontal, bleed)
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { viewport = max(0, $0 - 2 * bleed) }
+        .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.tableViewport, entity: entity) { g.size.width } } action: {
+            let width = max(0, $0 - 2 * bleed)
+            ChatDiagnosticRing.shared.record(.tableViewport, entity: entity, Double(width), Double($0))
+            viewport = width
+        }
         Group {
             if #available(iOS 18.0, macOS 15.0, *) {
                 scroll
-                    .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.x + $0.containerSize.width < $0.contentSize.width - 1 } action: { more = $1 }
+                    .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.x + $0.containerSize.width < $0.contentSize.width - 1 } action: { _, new in
+                        ChatDiagnosticRing.shared.record(.tableMore, entity: entity, new ? 1 : 0); more = new
+                    }
                     .mask { fade }
             } else {
                 // Without the scroll position there is no telling when the end is reached, and a fade left there would hide the last column.

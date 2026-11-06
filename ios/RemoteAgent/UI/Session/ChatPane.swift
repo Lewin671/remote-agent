@@ -18,6 +18,7 @@
 // the keyboard by `KeyboardTrack`, which reads UIKit's keyboard layout
 // guide.
 import RACore
+import RAMarkdownUI
 import RAProto
 import SwiftUI
 import UIKit
@@ -30,10 +31,12 @@ import UIKit
 /// at most once per display-sized interval, and let a new gesture cancel them.
 @MainActor
 final class ChatScrollWork {
+    private let diagnosticEntity = ChatDiagnosticRing.shared.identity()
     private var task: Task<Void, Never>?
     private var action: (() -> Void)?
 
     func schedule(_ action: @escaping () -> Void) {
+        ChatDiagnosticRing.shared.record(.workSchedule, entity: diagnosticEntity)
         self.action = action
         guard task == nil else { return }
         task = Task { [weak self] in
@@ -43,11 +46,13 @@ final class ChatScrollWork {
             let action = self.action
             self.action = nil
             self.task = nil
+            ChatDiagnosticRing.shared.record(.workExecute, entity: diagnosticEntity)
             action?()
         }
     }
 
     func cancel() {
+        ChatDiagnosticRing.shared.record(.workCancel, entity: diagnosticEntity)
         task?.cancel()
         task = nil
         action = nil
@@ -60,6 +65,7 @@ final class ChatScrollWork {
 @MainActor
 @Observable
 final class ChatScrollTracker {
+    @ObservationIgnored let diagnosticEntity = ChatDiagnosticRing.shared.identity()
     /// Rows that came in while reading back.
     private(set) var fresh = 0
     /// The end is more than a little out of sight.
@@ -85,8 +91,10 @@ final class ChatScrollTracker {
     private var needsScroll: Bool { measured && contentMeasured && endY > floorY + 0.5 }
 
     func follow(_ action: @escaping () -> Void) {
+        ChatDiagnosticRing.shared.record(.followRequest, entity: diagnosticEntity, Double(endY), Double(floorY), scroll.following ? 1 : 0, dragging ? 1 : 0)
         followWork.schedule { [weak self] in
             guard let self, !self.dragging, !self.keeping, self.scroll.following, self.needsScroll else { return }
+            ChatDiagnosticRing.shared.record(.followExecute, entity: self.diagnosticEntity)
             action()
         }
     }
@@ -95,13 +103,15 @@ final class ChatScrollTracker {
 
     private func publish() {
         let f = scroll.fresh(rows: rows)
-        if f != fresh { fresh = f }
+        if f != fresh { ChatDiagnosticRing.shared.record(.fresh, entity: diagnosticEntity, Double(f)); fresh = f }
         let a = measured && endY > floorY + 240
-        if a != away { away = a }
+        if a != away { ChatDiagnosticRing.shared.record(.away, entity: diagnosticEntity, a ? 1 : 0); away = a }
     }
 
     /// The rows in sight, by ID, where the list shows them. Known from iOS 18 (`KeepsPlace`).
     @ObservationIgnored var inSight: [String: CGRect] = [:]
+    // Only visible row IDs are held in memory; files receive just the integer token.
+    @ObservationIgnored var diagnosticRows: [String: UInt64] = [:]
 
     /// Rows joined in front, and the list is being put back where the reader was (`KeepsPlace`).
     @ObservationIgnored private(set) var keeping = false
@@ -109,12 +119,14 @@ final class ChatScrollTracker {
     /// The list is put back where the reader was: it is neither judged nor sent to the end meanwhile.
     func keep() {
         cancelFollow()
+        ChatDiagnosticRing.shared.record(.keep, entity: diagnosticEntity)
         keeping = true
     }
 
     /// The list is back, or the reader took it over: judged again from the next change.
     func kept() {
         guard keeping else { return }
+        ChatDiagnosticRing.shared.record(.kept, entity: diagnosticEntity)
         keeping = false
         publish()
     }
@@ -123,6 +135,7 @@ final class ChatScrollTracker {
     /// from an earlier history join. Follow again after release if still at the end.
     func interaction(_ active: Bool) -> Bool {
         let ended = dragging && !active
+        ChatDiagnosticRing.shared.record(.dragging, entity: diagnosticEntity, active ? 1 : 0)
         dragging = active
         if active {
             cancelFollow()
@@ -134,6 +147,7 @@ final class ChatScrollTracker {
     /// The content was laid out or scrolled: its height, and where its end is on the screen.
     /// True when the list should go to its end.
     func content(height: CGFloat, endY: CGFloat) -> Bool {
+        ChatDiagnosticRing.shared.record(.content, entity: diagnosticEntity, Double(height), Double(endY))
         contentMeasured = true
         let grew = abs(height - contentHeight) > 0.5
         contentHeight = height
@@ -143,6 +157,7 @@ final class ChatScrollTracker {
 
     /// The top of the bar under the list moved: the dock opened, the keyboard came or went.
     func floor(_ y: CGFloat) -> Bool {
+        ChatDiagnosticRing.shared.record(.floor, entity: diagnosticEntity, Double(y))
         let moved = abs(y - floorY) > 0.5
         floorY = y
         measured = true
@@ -151,6 +166,7 @@ final class ChatScrollTracker {
 
     /// The number of rows changed.
     func count(_ n: Int) -> Bool {
+        ChatDiagnosticRing.shared.record(.count, entity: diagnosticEntity, Double(n))
         let changed = n != rows
         rows = n
         return settle(changed: changed)
@@ -174,6 +190,7 @@ final class ChatScrollTracker {
     /// Reads back as a finger would: away from the end, and no longer following. For driving the page from a script.
     func leave() {
         cancelFollow()
+        ChatDiagnosticRing.shared.record(.leave, entity: diagnosticEntity)
         keeping = false
         scroll.observe(userDragging: true, atBottom: false, rows: rows)
         publish()
@@ -181,6 +198,7 @@ final class ChatScrollTracker {
 
     /// Rows came in front of those there were.
     func prepended(_ n: Int) {
+        ChatDiagnosticRing.shared.record(.prepend, entity: diagnosticEntity, Double(n))
         scroll.prepended(n)
         publish()
     }
@@ -194,12 +212,14 @@ final class ChatScrollTracker {
             list.panGestureRecognizer.isEnabled = false
             list.panGestureRecognizer.isEnabled = true
         }
+        ChatDiagnosticRing.shared.record(.scrollStop, entity: diagnosticEntity, Double(list.contentOffset.y))
         list.setContentOffset(list.contentOffset, animated: false)
     }
 
     /// The user asked for the end.
     func jump() {
         cancelFollow()
+        ChatDiagnosticRing.shared.record(.jump, entity: diagnosticEntity)
         keeping = false
         scroll.jumpToEnd(rows: rows)
         publish()
@@ -290,12 +310,16 @@ private struct KeepsPlace: ViewModifier {
 
         func body(content: Content) -> some View {
             // The rows are given before they are laid out: what is in sight is still what the reader saw.
+            let diagnosticEntity = tracker.diagnosticEntity
             let _ = mark(joins)
             content
                 .scrollPosition($position)
                 .onScrollGeometryChange(for: Sight.self) { g in
-                    Sight(offset: g.contentOffset.y, content: g.contentSize.height, height: g.containerSize.height)
+                    ChatDiagnosticRing.shared.measure(.sight, entity: diagnosticEntity) {
+                        Sight(offset: g.contentOffset.y, content: g.contentSize.height, height: g.containerSize.height)
+                    }
                 } action: { _, new in
+                    ChatDiagnosticRing.shared.record(.sight, entity: diagnosticEntity, Double(new.offset), Double(new.content), Double(new.height))
                     place.sight = new
                     correct()
                 }
@@ -314,6 +338,7 @@ private struct KeepsPlace: ViewModifier {
         private func mark(_ joins: Int) {
             guard joins != place.joins else { return }
             let first = place.joins == nil
+            ChatDiagnosticRing.shared.record(.joins, entity: tracker.diagnosticEntity, Double(joins))
             place.joins = joins
             // Left alone, the list would show the earlier history instead.
             guard !first, !tracker.scroll.following else { return }
@@ -332,6 +357,7 @@ private struct KeepsPlace: ViewModifier {
                 ?? seen.first.map({ ($0.key, $0.value, UnitPoint.top) })
             else { return }
             place.rounds += 1
+            ChatDiagnosticRing.shared.record(.keepTarget, entity: tracker.diagnosticRows[id] ?? 0, Double(frame.minY), Double(at.y))
             place.target = Target(id: id, y: frame.minY, anchor: at, round: place.rounds)
             place.started = false
             place.tries = 0
@@ -365,6 +391,7 @@ private struct KeepsPlace: ViewModifier {
             } else {
                 tracker.inSight[target.id] = nil
                 place.tries += 1
+                ChatDiagnosticRing.shared.record(.positionY, entity: tracker.diagnosticRows[target.id] ?? 0, Double(place.sight.offset + y - target.y))
                 position.scrollTo(y: place.sight.offset + y - target.y)
             }
         }
@@ -373,6 +400,7 @@ private struct KeepsPlace: ViewModifier {
             // Only a layout from now on tells where the row is.
             tracker.inSight[target.id] = nil
             place.tries += 1
+            ChatDiagnosticRing.shared.record(.positionID, entity: tracker.diagnosticRows[target.id] ?? 0, Double(target.anchor.y))
             position.scrollTo(id: target.id, anchor: target.anchor)
         }
 
@@ -404,6 +432,12 @@ private struct ListFinder: UIViewRepresentable {
         @available(*, unavailable)
         required init?(coder: NSCoder) { fatalError("not from a nib") }
 
+        override func layoutSubviews() {
+            let pass = ChatDiagnosticRing.shared.beginLayout(.listLayout)
+            defer { ChatDiagnosticRing.shared.endLayout(pass) }
+            super.layoutSubviews()
+        }
+
         override func didMoveToWindow() {
             super.didMoveToWindow()
             guard #available(iOS 18.0, *), window != nil else { return }
@@ -414,20 +448,36 @@ private struct ListFinder: UIViewRepresentable {
 
 /// Tells, from iOS 18, where a row in the list's sight is (`KeepsPlace`).
 private struct InSight: ViewModifier {
+    @State private var diagnosticEntity = ChatDiagnosticRing.shared.identity()
     let id: String
     let tracker: ChatScrollTracker
 
     func body(content: Content) -> some View {
+        let entity = diagnosticEntity
         if #available(iOS 18.0, *) {
             content
+                .environment(\.chatDiagnosticEntity, entity)
                 .onGeometryChange(for: CGRect?.self) { g in
-                    let frame = g.frame(in: .scrollView)
-                    let height = g.bounds(of: .scrollView)?.height ?? .infinity
-                    return frame.maxY > 0 && frame.minY < height ? frame : nil
+                    ChatDiagnosticRing.shared.measure(.row, entity: entity) {
+                        let frame = g.frame(in: .scrollView)
+                        let height = g.bounds(of: .scrollView)?.height ?? .infinity
+                        return frame.maxY > 0 && frame.minY < height ? frame : nil
+                    }
                 } action: { frame in
+                    if let frame {
+                        ChatDiagnosticRing.shared.record(.row, entity: entity, Double(frame.minY), Double(frame.height), Double(frame.width), Double(tracker.diagnosticEntity))
+                        tracker.diagnosticRows[id] = entity
+                    } else {
+                        ChatDiagnosticRing.shared.record(.rowHidden, entity: entity)
+                        tracker.diagnosticRows[id] = nil
+                    }
                     tracker.inSight[id] = frame
                 }
-                .onDisappear { tracker.inSight[id] = nil }
+                .onDisappear {
+                    ChatDiagnosticRing.shared.record(.rowHidden, entity: entity)
+                    tracker.diagnosticRows[id] = nil
+                    tracker.inSight[id] = nil
+                }
         } else {
             content
         }
@@ -472,8 +522,13 @@ final class KeyboardTrack {
     /// while SwiftUI and the keyboard agree, the difference while a drag is
     /// taking the keyboard away.
     var lag: CGFloat {
-        guard inset > base + 1 else { return 0 }
-        return max(0, inset - max(overlap, base))
+        guard inset > base + 1 else {
+            ChatDiagnosticRing.shared.record(.keyboardLag, 0)
+            return 0
+        }
+        let value = max(0, inset - max(overlap, base))
+        ChatDiagnosticRing.shared.record(.keyboardLag, Double(value))
+        return value
     }
 }
 
@@ -545,10 +600,13 @@ private struct KeyboardProbe: UIViewRepresentable {
         }
 
         override func layoutSubviews() {
+            let pass = ChatDiagnosticRing.shared.beginLayout(.keyboardLayout)
+            defer { ChatDiagnosticRing.shared.endLayout(pass) }
             super.layoutSubviews()
             let overlap = max(0, bounds.maxY - line.frame.minY)
             let base = window?.safeAreaInsets.bottom ?? 0
             guard abs(overlap - track.overlap) > 0.5 || abs(base - track.base) > 0.5 else { return }
+            ChatDiagnosticRing.shared.record(.keyboardGuide, Double(overlap), Double(base))
             // Inside the system's own keyboard animation the bar follows with one of its own; under a finger it follows at once.
             let animated = UIView.inheritedAnimationDuration > 0
             let track = track
@@ -610,10 +668,10 @@ struct ChatPane: View {
 
     private func toEnd(_ proxy: ScrollViewProxy, animated: Bool = false) {
         if animated && !reduceMotion {
-            withAnimation(.easeOut(duration: 0.25)) { proxy.scrollTo(Self.end, anchor: .bottom) }
+            withAnimation(.easeOut(duration: 0.25)) { ChatDiagnosticRing.shared.record(.proxyEnd, entity: tracker.diagnosticEntity); proxy.scrollTo(Self.end, anchor: .bottom) }
             return
         }
-        proxy.scrollTo(Self.end, anchor: .bottom)
+        ChatDiagnosticRing.shared.record(.proxyEnd, entity: tracker.diagnosticEntity); proxy.scrollTo(Self.end, anchor: .bottom)
     }
 
     private func dockItems(_ d: Derived) -> [DockItem] {
@@ -627,6 +685,8 @@ struct ChatPane: View {
     }
 
     var body: some View {
+        let diagnosticEntity = tracker.diagnosticEntity
+        let _ = ChatDiagnosticRing.shared.record(.chatBody, entity: diagnosticEntity, Double(chat.diagnosticEntity))
         let state = model.state
         let store = context.sessionStore
         let d = chat.derived
@@ -728,8 +788,8 @@ struct ChatPane: View {
                 // A reply is a column of text: on a wide screen it keeps the width it reads well at (design-system §4).
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGRect.self) {
-                    $0.frame(in: .global)
+                .onGeometryChange(for: CGRect.self) { g in
+                    ChatDiagnosticRing.shared.measure(.content, entity: diagnosticEntity) { g.frame(in: .global) }
                 } action: { frame in
                     if tracker.content(height: frame.height, endY: frame.maxY) { tracker.follow { toEnd(proxy) } }
                 }
@@ -749,8 +809,8 @@ struct ChatPane: View {
                     .frame(maxWidth: 760)
                     .frame(maxWidth: .infinity)
                     .background(Theme.card.ignoresSafeArea(edges: .bottom))
-                    .onGeometryChange(for: CGFloat.self) {
-                        $0.frame(in: .global).minY
+                    .onGeometryChange(for: CGFloat.self) { g in
+                        ChatDiagnosticRing.shared.measure(.floor, entity: diagnosticEntity) { g.frame(in: .global).minY }
                     } action: { y in
                         if tracker.floor(y) { tracker.follow { toEnd(proxy) } }
                     }
@@ -772,6 +832,7 @@ struct ChatPane: View {
                     let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
                     let fallback = rows.first { $0.id.hasPrefix("e") && (UInt64($0.id.dropFirst()) ?? 0) >= jump.seq }
                     if let target = exact ?? fallback {
+                        ChatDiagnosticRing.shared.record(.proxyScheduled, entity: tracker.diagnosticRows[target.id] ?? 0)
                         proxy.scrollTo(target.id, anchor: .top)
                         appliedScheduledJump = jump.runID
                     }
@@ -784,28 +845,34 @@ struct ChatPane: View {
             .debugSignal("session.top") {
                 // The rows as they are when the signal comes, not as they were when it was set up.
                 tracker.leave()
-                if let first = chat.rows.first { proxy.scrollTo(first.id, anchor: .top) }
+                if let first = chat.rows.first { ChatDiagnosticRing.shared.record(.proxyTop, entity: tracker.diagnosticEntity); proxy.scrollTo(first.id, anchor: .top) }
             }
             .debugSignal("session.back") {
                 tracker.leave()
                 if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first {
+                    ChatDiagnosticRing.shared.record(.proxyBack, entity: tracker.diagnosticEntity)
                     proxy.scrollTo(row.id, anchor: .top)
                 }
             }
         }
+        .onAppear { ChatDiagnosticRing.shared.record(.chatEnter) }
         .onDisappear {
+            ChatDiagnosticRing.shared.record(.chatLeave)
             tracker.cancelFollow()
             chat.interaction(false)
             context.sessionStore.clearScheduledJump(sid)
         }
         .background { KeyboardProbe(track: keyboard).frame(width: 0, height: 0) }
-        .onGeometryChange(for: CGFloat.self) {
-            $0.safeAreaInsets.bottom
+        .onGeometryChange(for: CGFloat.self) { g in
+            ChatDiagnosticRing.shared.measure(.keyboardInset) { g.safeAreaInsets.bottom }
         } action: {
+            ChatDiagnosticRing.shared.record(.keyboardInset, Double($0))
             keyboard.inset = $0
         }
         // What the chat shows of itself, above the keyboard: an open dock item takes up to about 60% of it.
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { paneHeight = $0 }
+        .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.paneHeight) { g.size.height } } action: {
+            ChatDiagnosticRing.shared.record(.paneHeight, Double($0)); paneHeight = $0
+        }
         .environment(\.chatHeight, paneHeight)
         .environment(open)
         .environment(

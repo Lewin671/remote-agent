@@ -2,6 +2,8 @@
 // mockup's CSS (1 CSS px = 1 pt): lines, tap targets, dots, arrows, avatars,
 // chips. What each is for is in docs/design-system.md §6; the Android
 // counterparts are in ui/Kit.kt and ui/Common.kt.
+import RACore
+import RAMarkdownUI
 import SwiftUI
 import UIKit
 
@@ -148,6 +150,7 @@ struct CutText: View {
     private let color: Color
     private let lines: Int
     @Binding private var cut: Bool
+    @Environment(\.chatDiagnosticEntity) private var diagnosticEntity
     @State private var shown: CGFloat = 0
     @State private var whole: CGFloat = 0
 
@@ -160,15 +163,22 @@ struct CutText: View {
     }
 
     var body: some View {
+        let entity = diagnosticEntity
         Text(text).type(style, color).lineLimit(lines)
-            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { shown = $0 }
+            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.cutShown, entity: entity) { g.size.height } } action: {
+                ChatDiagnosticRing.shared.record(.cutShown, entity: entity, Double($0)); shown = $0
+            }
             .background {
                 // The same text at the same width with nothing held back, measured and not drawn.
                 Text(text).type(style, color).fixedSize(horizontal: false, vertical: true).hidden()
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { whole = $0 }
+                    .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.cutWhole, entity: entity) { g.size.height } } action: {
+                        ChatDiagnosticRing.shared.record(.cutWhole, entity: entity, Double($0)); whole = $0
+                    }
                     .accessibilityHidden(true)
             }
-            .onChange(of: whole > shown + 0.5, initial: true) { _, isCut in cut = isCut }
+            .onChange(of: whole > shown + 0.5, initial: true) { _, isCut in
+                ChatDiagnosticRing.shared.record(.cutBinding, entity: entity, isCut ? 1 : 0); cut = isCut
+            }
     }
 }
 
@@ -384,6 +394,7 @@ struct ClampedCode: View {
     private let background: Color?
     private let border: Bool
     @State private var open = false
+    @Environment(\.chatDiagnosticEntity) private var diagnosticEntity
     @State private var shown: CGFloat = 0
     @State private var whole: CGFloat = 0
     @State private var one: CGFloat = 0
@@ -397,19 +408,28 @@ struct ClampedCode: View {
     }
 
     var body: some View {
+        let entity = diagnosticEntity
         let more = whole > shown + 0.5 ? linesPast(lines, whole: whole, one: one, two: two) : 0
         VStack(alignment: .leading, spacing: 0) {
             Code(text, maxLines: open ? nil : lines, background: background, border: border)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if !open { shown = $0 } }
+                .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeShown, entity: entity) { g.size.height } } action: {
+                    ChatDiagnosticRing.shared.record(.codeShown, entity: entity, Double($0)); if !open { shown = $0 }
+                }
                 .background {
                     // The whole text, one line and two, at the same width, measured and not drawn.
                     ZStack {
                         Code(text, background: background, border: border).fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { whole = $0 }
+                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeWhole, entity: entity) { g.size.height } } action: {
+                        ChatDiagnosticRing.shared.record(.codeWhole, entity: entity, Double($0)); whole = $0
+                    }
                         Code("x").fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { one = $0 }
+                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeOne, entity: entity) { g.size.height } } action: {
+                                ChatDiagnosticRing.shared.record(.codeOne, entity: entity, Double($0)); one = $0
+                            }
                         Code("x\nx").fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { two = $0 }
+                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeTwo, entity: entity) { g.size.height } } action: {
+                                ChatDiagnosticRing.shared.record(.codeTwo, entity: entity, Double($0)); two = $0
+                            }
                     }
                     .hidden()
                     .accessibilityHidden(true)

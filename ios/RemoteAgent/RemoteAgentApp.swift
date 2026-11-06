@@ -32,7 +32,10 @@ struct RemoteAgentApp: App {
                 // The stream is kept only while the app is in front (architecture §10 「后台和内存」).
                 .onChange(of: phase, initial: true) { _, new in
                     // Hosting the tests, the app stays as it starts: no Keychain, no connection.
-                    if !LaunchDriver.isTesting { model.scenePhase(new) }
+                    if !LaunchDriver.isTesting {
+                        ChatFieldDiagnostics.shared.foreground(new != .background)
+                        model.scenePhase(new)
+                    }
                 }
         }
     }

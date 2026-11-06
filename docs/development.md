@@ -60,3 +60,19 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量
 - 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/` 和 `web/src/gen/`，一并提交
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
+
+## iOS 卡顿诊断
+
+实现和隐私边界见 [iOS 客户端设计](ios-client.md#本机卡顿诊断)。前台主线程超过两秒没有回复时才生成报告，正常运行时目录可能不存在。开发签名的 Release 构建与 Debug 使用同一个容器内相对路径；无需启动或重装 App 即可取回已有文件：
+
+```sh
+xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
+  --domain-type appDataContainer \
+  --domain-identifier io.github.lewin671.remoteagent \
+  --source 'Library/Application Support/Diagnostics' \
+  --destination ./chat-diagnostics
+```
+
+`RA_TEST_DEVICE` 填目标设备的标识；独立 Debug App 的 bundle identifier 改为 `io.github.lewin671.remoteagent.dev`。此命令需要可访问 App 数据容器的开发签名及配对环境，不承诺 App Store 安装包可这样读取。模拟器可用 `xcrun simctl get_app_container <simulator> <bundle-identifier> data` 找到数据容器后读取相同相对目录。
+
+报告 `format = 1`。`path` 对应代码中的 `ChatDiagnosticPath.rawValue`；`a…d` 是对应 `record` 调用的数值，`nonFinite` 的四个位标记原输入非有限值。`entity` 是进程内小整数，`sequence` 是诊断序号，均不是服务器事件或会话标识。`layoutBegin.a` 指明测量种类，`layout` 配对 begin/end；`mainThread` 区分主线程与后台测量，`mainLayout` 是快照时尚未结束的主线程 scope。时间单位是纳秒，相对于该进程内缓冲的创建；`createdAtUnixMilliseconds` 仅用于文件时间。`startedAt` 是未回复 ping 的投递时间，`recoveredAt` 和 `duration` 在恢复后补入，不代表已经定位卡顿起点或根因。

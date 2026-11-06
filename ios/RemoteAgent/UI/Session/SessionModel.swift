@@ -170,6 +170,7 @@ actor ChatBuilder {
 @MainActor
 @Observable
 final class SessionModel {
+    @ObservationIgnored let diagnosticEntity = ChatDiagnosticRing.shared.identity()
     private(set) var rows: [ChatRow] = []
     private(set) var derived = Derived()
     private(set) var liveError: String?
@@ -258,6 +259,7 @@ final class SessionModel {
     }
 
     private func rebuild() async {
+        ChatDiagnosticRing.shared.record(.modelRebuild, entity: diagnosticEntity, Double(events.count), interacting ? 1 : 0)
         asked += 1
         let turn = asked
         #if DEBUG
@@ -287,6 +289,7 @@ final class SessionModel {
             if historyPartial != partial { historyPartial = partial }
             if snapshot.rows != rows { rows = snapshot.rows }
         }
+        ChatDiagnosticRing.shared.record(.modelApply, entity: diagnosticEntity, Double(rows.count), Double(joins), Double(joined), deferredHistory ? 1 : 0)
         if snapshot.derived != derived { derived = snapshot.derived }
         if snapshot.startPrompt != startPrompt { startPrompt = snapshot.startPrompt }
         if snapshot.spoke != spoke { spoke = snapshot.spoke }

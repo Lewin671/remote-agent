@@ -55,6 +55,7 @@ final class ChatOpen {
 
     func toggle(_ key: String) {
         if keys.remove(key) == nil { keys.insert(key) }
+        ChatDiagnosticRing.shared.record(.collapseToggle, Double(keys.count))
     }
 }
 

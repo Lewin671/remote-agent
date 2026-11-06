@@ -193,7 +193,9 @@ struct PendingDock<Content: View, Actions: View>: View {
                         VStack(alignment: .leading, spacing: 0) { content }
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.bottom, 6)
-                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bodyHeight = $0 }
+                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.dockBody) { g.size.height } } action: {
+                                ChatDiagnosticRing.shared.record(.dockBody, Double($0)); bodyHeight = $0
+                            }
                     }
                     .scrollBounceBehavior(.basedOnSize)
                     // As tall as what it holds, up to the room: past it the body scrolls and the actions stay.

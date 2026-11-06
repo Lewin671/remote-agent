@@ -38,7 +38,7 @@ let package = Package(
         .testTarget(name: "RACoreTests", dependencies: ["RACore"]),
         // The reply's Markdown: a parser held to testdata/markdown, and the SwiftUI that draws it.
         .target(name: "RAMarkdown"),
-        .target(name: "RAMarkdownUI", dependencies: ["RAMarkdown"]),
+        .target(name: "RAMarkdownUI", dependencies: ["RAMarkdown", "RACore"]),
         .testTarget(name: "RAMarkdownTests", dependencies: ["RAMarkdown"]),
         .testTarget(name: "RAMarkdownUITests", dependencies: ["RAMarkdownUI"]),
     ]

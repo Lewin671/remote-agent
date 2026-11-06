@@ -123,7 +123,9 @@ struct ScheduleResultBody: View {
                 ForEach(Array(blocks.enumerated()), id: \.offset) { index, block in
                     MarkdownView(blocks: [block], selectable: false)
                         .fixedSize(horizontal: false, vertical: true)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { heights[index] = $0 }
+                        .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.scheduleBlock) { g.size.height } } action: {
+                            ChatDiagnosticRing.shared.record(.scheduleBlock, Double(index), Double($0)); heights[index] = $0
+                        }
                 }
             }.hidden().allowsHitTesting(false).accessibilityHidden(true)
         }
