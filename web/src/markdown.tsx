@@ -8,6 +8,7 @@
 
 import { Fragment, memo, useEffect, useMemo, useRef, useState } from "react";
 import { Box, BoxChecked, Check, ChevronDown, ChevronUp, Copy, X } from "./icons";
+import { mathRanges, maskMath, mathText, mathParagraphs, mathLines } from "./math";
 import { useRowExpanded } from "./views/RowState";
 
 /** Whether a link target may be opened: web pages only, so javascript:,
@@ -54,6 +55,7 @@ function inlineLinks(text: string): Map<number, { close: number; end: number; au
 export type Span =
   | { t: "text"; v: string }
   | { t: "code"; v: string }
+  | { t: "math"; v: string }
   | { t: "b" | "i" | "s"; c: Span[] }
   | { t: "link"; v: string; href: string }
   | { t: "ref"; v: string; target: string };
@@ -85,7 +87,7 @@ function bareUrl(raw: string): string {
 // sentence's own punctuation: a full-width mark, a dash or a curly quote.
 // Other scripts stay in it, as in https://example.com/文档/安装.
 const inlineRe =
-  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)/gu;
+  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)|(\$\$|\\\[|\\\()/gu;
 
 /** Inline Markdown: `code`, **bold**, *italic*, _italic_, ~~struck~~,
  * [links](target), <https://autolinks> and bare https:// URLs. */
@@ -97,7 +99,10 @@ export function inlineSpans(text: string): Span[] {
     if (last?.t === "text") last.v += v;
     else out.push({ t: "text", v });
   };
-  const links = inlineLinks(text);
+  const ranges = mathRanges(text);
+  const math = new Map(ranges.map(r => [r.start, r]));
+  const masked = maskMath(text, ranges);
+  const links = inlineLinks(masked);
   const runs = [...text.matchAll(/`+/g)];
   const closers = new Map<number, number>();
   const next = new Map<number, number>();
@@ -109,11 +114,19 @@ export function inlineSpans(text: string): Span[] {
   const re = new RegExp(inlineRe);
   let last = 0;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) {
+  while ((m = re.exec(masked))) {
     if (m.index < last) continue;
     const escapedTick = m[1] !== undefined && escapedAt(text, m.index);
     if (m.index > last) push(text.slice(last, escapedTick ? m.index - 1 : m.index));
-    if (m[1] !== undefined) {
+    const formula = math.get(m.index);
+    if (formula) {
+      out.push({ t: "math", v: mathText(formula.source) });
+      last = formula.end;
+      re.lastIndex = last;
+      continue;
+    }
+    if (m[9] !== undefined) push(m[0]);
+    else if (m[1] !== undefined) {
       const end = escapedTick ? undefined : closers.get(m.index);
       if (end !== undefined) {
         out.push({ t: "code", v: text.slice(m.index + m[1].length, end) });
@@ -124,10 +137,10 @@ export function inlineSpans(text: string): Span[] {
       push(m[1]);
     }
     // Emphasis may wrap code and links, so its content is inline Markdown too.
-    else if (m[2] !== undefined) out.push({ t: "b", c: inlineSpans(m[2]) });
-    else if (m[3] !== undefined) out.push({ t: "i", c: inlineSpans(m[3]) });
-    else if (m[4] !== undefined) out.push({ t: "i", c: inlineSpans(m[4]) });
-    else if (m[5] !== undefined) out.push({ t: "s", c: inlineSpans(m[5]) });
+    else if (m[2] !== undefined) out.push({ t: "b", c: inlineSpans(text.slice(m.index + 2, m.index + m[0].length - 2)) });
+    else if (m[3] !== undefined) out.push({ t: "i", c: inlineSpans(text.slice(m.index + 1, m.index + m[0].length - 1)) });
+    else if (m[4] !== undefined) out.push({ t: "i", c: inlineSpans(text.slice(m.index + 1, m.index + m[0].length - 1)) });
+    else if (m[5] !== undefined) out.push({ t: "s", c: inlineSpans(text.slice(m.index + 2, m.index + m[0].length - 2)) });
     else if (m[8] !== undefined) {
       const url = bareUrl(m[8]);
       if (url) {
@@ -163,6 +176,8 @@ function Spans({ spans }: { spans: Span[] }) {
         switch (s.t) {
           case "text":
             return s.v;
+          case "math":
+            return <span key={i} className="mdmath">{s.v}</span>;
           case "code":
             return <code key={i}>{s.v}</code>;
           case "b":
@@ -334,13 +349,20 @@ export function tableCells(line: string): string[] {
     return n % 2 === 1;
   };
   if (s.endsWith("|") && !escaped(s.length - 1)) s = s.slice(0, -1);
+  const formulas = new Map(mathRanges(s).map(r => [r.start, r]));
   const cells: string[] = [];
   const br = /<br\s*\/?>/iy;
   let cur = "";
   let code = 0;
   const ticks = new Map<number, number>();
-  for (const m of s.matchAll(/`+/g)) ticks.set(m[0].length, (ticks.get(m[0].length) ?? 0) + 1);
+  for (const m of maskMath(s, [...formulas.values()]).matchAll(/`+/g)) ticks.set(m[0].length, (ticks.get(m[0].length) ?? 0) + 1);
   for (let i = 0; i < s.length; i++) {
+    const formula = formulas.get(i);
+    if (formula) {
+      cur += s.slice(i, formula.end);
+      i = formula.end - 1;
+      continue;
+    }
     const c = s[i];
     if (c === "\\" && (s[i + 1] === "|" || s[i + 1] === "\\")) {
       cur += s[i + 1] === "|" ? "|" : "\\\\";
@@ -395,6 +417,7 @@ export function mdBlocks(md: string, depth = 0): Block[] {
     nextNonBlank[i] = nextLine;
     if (lines[i].trim()) nextLine = i;
   }
+  const formulas = mathParagraphs(lines);
   const blocks: Block[] = [];
   let text: string[] = [];
   const flush = () => {
@@ -420,6 +443,13 @@ export function mdBlocks(md: string, depth = 0): Block[] {
       flush();
       blocks.push({ kind: "code", lang: f[2].toLowerCase(), text: body.join("\n") });
       i = j;
+      continue;
+    }
+    const formulaEnd = formulas.get(i);
+    if (formulaEnd !== undefined) {
+      flush();
+      blocks.push({ kind: "text", text: lines.slice(i, formulaEnd + 1).join("\n") });
+      i = formulaEnd;
       continue;
     }
     // CLI replies sometimes add a separator cell. The header owns the
@@ -531,7 +561,7 @@ function parseList(lines: string[], base: number, depth: number): Block {
 
 /** Lines of a paragraph, keeping the single line breaks the CLIs use. */
 function Lines({ text }: { text: string }) {
-  const lines = text.split("\n");
+  const lines = mathLines(text);
   return (
     <>
       {lines.map((l, i) => (
@@ -548,7 +578,7 @@ function Lines({ text }: { text: string }) {
 function CellLines({ text }: { text: string }) {
   return (
     <>
-      {text.split("\n").map((l, i) => (
+      {mathLines(text).map((l, i) => (
         <Fragment key={i}>
           {i > 0 && <br />}
           <Rich text={l} />

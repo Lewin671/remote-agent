@@ -294,3 +294,34 @@ describe("a reply's elements (design-system §7)", () => {
 it("breaks a table cell's lines at <br>", () => {
   expect(html("| a | b |\n| --- | --- |\n| x | `p` 一<br>`q` 二 |")).toContain("<code>p</code> 一<br/><code>q</code> 二");
 });
+
+
+describe("math fallback", () => {
+  it("keeps paragraph code and emphasis on their own lines while preserving multiline math", () => {
+    const out = html("a `b\nc` d\na **b\nc** d\nbefore `\n$$\nx_1 + y^2\n$$\nafter `");
+    expect(out).toContain("<span>a `b</span><span><br/>c` d</span>");
+    expect(out).toContain("<span><br/>a **b</span><span><br/>c** d</span>");
+    expect(out).toContain("before `");
+    expect(out).toContain("after `");
+    expect(out).not.toMatch(/<code|<b>|<em>/);
+    expect(out.match(/class="mdmath"/g)).toHaveLength(1);
+    expect(out).toContain('<span class="mdmath">x₁ + y²</span>');
+    expect(html("a `b` d")).toContain("<code>b</code>");
+  });
+
+  it("renders multiline display math as a formula paragraph without code controls", () => {
+    const out = html("前文\n$$\n\\frac{a+b}{c}\n\n* x_1\n$$\n后文");
+    expect(out).toContain('<span class="mdmath">(a+b)/c * x₁</span>');
+    expect(out).not.toMatch(/<code|<button|<em>|<ul/);
+    expect(out.match(/<p>/g)).toHaveLength(3);
+  });
+
+  it("keeps formula markup and unsupported source opaque and escapes HTML", () => {
+    const out = html('见 $$a * b * c + x_1$$ 和 $$\\unknown{<img>}$$，`$$x$$`，$100 到 $200');
+    expect(out).toContain('<span class="mdmath">a * b * c + x₁</span>');
+    expect(out).toContain('<span class="mdmath">\\unknown{&lt;img&gt;}</span>');
+    expect(out).toContain('<code>$$x$$</code>');
+    expect(out).toContain('$100 到 $200');
+    expect(out).not.toMatch(/<img|<em>/);
+  });
+});

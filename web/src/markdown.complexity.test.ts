@@ -52,8 +52,8 @@ async function work(session: Session, run: () => unknown): Promise<number> {
   await session.post("Profiler.takePreciseCoverage");
   const native = nativeWork(run, new Set());
   const { result } = await session.post("Profiler.takePreciseCoverage");
-  const parser = result.filter((script) => script.url.endsWith("/markdown.tsx"));
-  expect(parser).toHaveLength(1);
+  const parser = result.filter((script) => script.url.endsWith("/markdown.tsx") || script.url.endsWith("/math.ts"));
+  expect(parser).toHaveLength(2);
   const blocks = parser.flatMap((script) => script.functions.flatMap((fn) => fn.ranges));
   const executed = blocks.reduce((sum, range) => sum + range.count, 0);
   expect(executed).toBeGreaterThan(0);
@@ -61,6 +61,11 @@ async function work(session: Session, run: () => unknown): Promise<number> {
 }
 
 const inlineCases: Record<string, (n: number) => string> = {
+  "unclosed math": (n) => "\\(".repeat(n),
+  "escaped math": (n) => "\\".repeat(n) + "$$x$$",
+  "repeated math": (n) => "$$x_1$$ ".repeat(n),
+  "nested math": (n) => "$$" + "{".repeat(n) + "x" + "}".repeat(n) + "$$",
+
   "unclosed brackets": (n) => "[".repeat(n),
   "unclosed targets": (n) => "[x](".repeat(n),
   "unclosed autolinks": (n) => "<https://".repeat(n),
@@ -73,6 +78,9 @@ const inlineCases: Record<string, (n: number) => string> = {
   "unclosed backticks": (n) => "`".repeat(n) + "x",
 };
 const blockCases: Record<string, (n: number) => string> = {
+  "many formulas on one line": (n) => "$$x$$ ".repeat(n),
+  "many display formulas": (n) => "$$x$$\n".repeat(n),
+
   hashes: (n) => "# " + "#".repeat(n) + "x",
   "spaced hashes": (n) => "# " + "# ".repeat(n) + "x",
   "blank separator": (n) => "a|b\n" + " ".repeat(n) + "x",

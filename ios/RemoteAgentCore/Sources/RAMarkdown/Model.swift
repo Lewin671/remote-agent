@@ -15,6 +15,7 @@
 public indirect enum MarkdownSpan: Hashable, Sendable {
     case text(String)
     case code(String)
+    case math(String)
     case bold([MarkdownSpan])
     case italic([MarkdownSpan])
     case strike([MarkdownSpan])

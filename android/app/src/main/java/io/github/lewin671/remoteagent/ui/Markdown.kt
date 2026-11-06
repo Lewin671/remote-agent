@@ -91,6 +91,7 @@ import java.util.regex.Pattern
 sealed interface Span {
     data class Text(val v: String) : Span
     data class Code(val v: String) : Span
+    data class Math(val v: String) : Span
     data class Bold(val c: List<Span>) : Span
     data class Italic(val c: List<Span>) : Span
     data class Strike(val c: List<Span>) : Span
@@ -123,7 +124,7 @@ sealed interface Block {
 // parser reads by: it includes the full-width space of Chinese text.
 private const val WS = "\\t\\n\\u000B\\f\\r \\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000\\uFEFF"
 
-private fun Char.isSpace(): Boolean =
+internal fun Char.isSpace(): Boolean =
     this == ' ' || this in '\t'..'\r' || this == ' ' || this == ' ' || this in ' '..' ' ||
         this == ' ' || this == ' ' || this == ' ' || this == ' ' || this == '　' || this == '\uFEFF'
 
@@ -215,7 +216,7 @@ private fun bareUrl(raw: String): String {
 private val inlineRe: Pattern = Pattern.compile(
     "(`+)|\\*\\*([^*\\n]+)\\*\\*|(?<![A-Za-z0-9_*])\\*([^*$WS][^*\\n]*?)\\*(?![A-Za-z0-9_*])" +
         "|(?<![\\p{L}\\p{N}_])_([^_$WS][^_\\n]*?)_(?![\\p{L}\\p{N}_])|~~([^~\\n]+)~~|(\\[)|(<https?://)" +
-        "|(?<![A-Za-z0-9_/])(https?://[^$WS<>\\u2010-\\u2027\\u3000-\\u303f\\uff00-\\uffef]+)",
+        "|(?<![A-Za-z0-9_/])(https?://[^$WS<>\\u2010-\\u2027\\u3000-\\u303f\\uff00-\\uffef]+)|(\\$\\$|\\\\\\[|\\\\\\()",
 )
 private val ticksRe = Regex("`+")
 
@@ -230,7 +231,10 @@ fun inlineSpans(text: String): List<Span> {
         }
         out += span
     }
-    val links = inlineLinks(text)
+    val ranges = mathRanges(text)
+    val math = ranges.associateBy { it.start }
+    val masked = maskMath(text, ranges)
+    val links = inlineLinks(masked)
     // The next run of as many backticks closes a run, found without rescanning.
     val closers = HashMap<Int, Int>()
     val next = HashMap<Int, Int>()
@@ -238,7 +242,7 @@ fun inlineSpans(text: String): List<Span> {
         next[run.value.length]?.let { closers[run.range.first] = it }
         next[run.value.length] = run.range.first
     }
-    val m = inlineRe.matcher(text)
+    val m = inlineRe.matcher(masked)
     var last = 0
     var from = 0
     while (from <= text.length && m.find(from)) {
@@ -255,7 +259,13 @@ fun inlineSpans(text: String): List<Span> {
         if (at > last) plain.append(text, last, if (escapedTick) at - 1 else at)
         // Where the text goes on when a branch below took more or less than the match.
         var resume = -1
+        val formula = math[at]
         when {
+            formula != null -> {
+                add(Span.Math(mathText(formula.source)))
+                resume = formula.end
+            }
+            m.group(9) != null -> plain.append(m.group())
             ticks != null -> {
                 val end = if (escapedTick) null else closers[at]
                 if (end != null) {
@@ -264,10 +274,10 @@ fun inlineSpans(text: String): List<Span> {
                 } else plain.append(ticks)
             }
             // Emphasis may wrap code and links, so its content is inline Markdown too.
-            bold != null -> add(Span.Bold(inlineSpans(bold)))
-            star != null -> add(Span.Italic(inlineSpans(star)))
-            under != null -> add(Span.Italic(inlineSpans(under)))
-            struck != null -> add(Span.Strike(inlineSpans(struck)))
+            bold != null -> add(Span.Bold(inlineSpans(text.substring(at + 2, m.end() - 2))))
+            star != null -> add(Span.Italic(inlineSpans(text.substring(at + 1, m.end() - 1))))
+            under != null -> add(Span.Italic(inlineSpans(text.substring(at + 1, m.end() - 1))))
+            struck != null -> add(Span.Strike(inlineSpans(text.substring(at + 2, m.end() - 2))))
             bare != null -> {
                 val url = bareUrl(bare)
                 if (url.isNotEmpty()) {
@@ -341,6 +351,7 @@ private fun shownText(spans: List<Span>, out: StringBuilder) {
     for (s in spans) when (s) {
         is Span.Text -> out.append(s.v)
         is Span.Code -> out.append(s.v)
+        is Span.Math -> out.append(s.v)
         is Span.Link -> out.append(s.v)
         is Span.Ref -> out.append(s.v)
         is Span.Bold -> shownText(s.c, out)
@@ -478,12 +489,20 @@ fun tableCells(line: String): List<String> {
     var s = line.trimSpace().removePrefix("|")
     // A pipe after an odd run of backslashes is escaped.
     if (s.endsWith("|") && !escapedAt(s, s.lastIndex)) s = s.dropLast(1)
+    val formulas = mathRanges(s).associateBy { it.start }
+    val masked = maskMath(s, formulas.values.toList())
     val cells = mutableListOf<String>()
     val cell = StringBuilder()
     var code = 0
-    val ticks = ticksRe.findAll(s).groupingBy { it.value.length }.eachCount().toMutableMap()
+    val ticks = ticksRe.findAll(masked).groupingBy { it.value.length }.eachCount().toMutableMap()
     var i = 0
     while (i < s.length) {
+        val formula = formulas[i]
+        if (formula != null) {
+            cell.append(s, i, formula.end)
+            i = formula.end
+            continue
+        }
         when {
             s[i] == '\\' && i + 1 < s.length && (s[i + 1] == '|' || s[i + 1] == '\\') -> {
                 if (s[i + 1] == '|') cell.append('|') else cell.append("\\\\")
@@ -529,6 +548,7 @@ fun parseMarkdown(md: String, depth: Int = 0): List<Block> {
         nextNonBlank[i] = nextLine
         if (!lines[i].isBlankLine()) nextLine = i
     }
+    val formulas = mathParagraphs(lines)
     val blocks = mutableListOf<Block>()
     val text = mutableListOf<String>()
     fun flush() {
@@ -560,6 +580,13 @@ fun parseMarkdown(md: String, depth: Int = 0): List<Block> {
             flush()
             blocks += Block.Code(f.group(2).orEmpty().lowercase(Locale.ROOT), body.joinToString("\n"))
             i = j + 1
+            continue
+        }
+        val formulaEnd = formulas[i]
+        if (formulaEnd != null) {
+            flush()
+            blocks += Block.Para(lines.subList(i, formulaEnd + 1).joinToString("\n"))
+            i = formulaEnd + 1
             continue
         }
         // The header owns the columns; ignore surplus separator cells in CLI replies.
@@ -686,6 +713,7 @@ fun richText(spans: List<Span>, p: Palette, codeSize: TextUnit = 13.sp): Annotat
 private fun AnnotatedString.Builder.appendSpans(spans: List<Span>, p: Palette, codeSize: TextUnit) {
     for (s in spans) when (s) {
         is Span.Text -> append(s.v)
+        is Span.Math -> withStyle(SpanStyle(background = p.chip)) { append(s.v) }
         // The chip behind it is drawn by RichText, which finds it by this annotation.
         is Span.Code -> withAnnotation(CODE, "") { withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = codeSize)) { append(s.v) } }
         is Span.Bold -> withStyle(SpanStyle(fontWeight = platformWeight(FontWeight.SemiBold))) { appendSpans(s.c, p, codeSize) }
@@ -697,8 +725,8 @@ private fun AnnotatedString.Builder.appendSpans(spans: List<Span>, p: Palette, c
 }
 
 /** A paragraph as styled text, keeping the single line breaks the CLIs use. */
-private fun richLines(text: String, p: Palette, codeSize: TextUnit = 13.sp): AnnotatedString = buildAnnotatedString {
-    text.split("\n").forEachIndexed { i, line ->
+internal fun richLines(text: String, p: Palette, codeSize: TextUnit = 13.sp): AnnotatedString = buildAnnotatedString {
+    mathLines(text).forEachIndexed { i, line ->
         if (i > 0) append('\n')
         appendSpans(inlineSpans(line), p, codeSize)
     }

@@ -37,6 +37,7 @@ class MarkdownCasesTest {
     private fun spans(v: List<Span>): JsonElement = JsonArray(v.map { s ->
         when (s) {
             is Span.Text -> obj("t" to JsonPrimitive("text"), "v" to JsonPrimitive(s.v))
+            is Span.Math -> obj("t" to JsonPrimitive("math"), "v" to JsonPrimitive(s.v))
             is Span.Code -> obj("t" to JsonPrimitive("code"), "v" to JsonPrimitive(s.v))
             is Span.Bold -> obj("t" to JsonPrimitive("b"), "c" to spans(s.c))
             is Span.Italic -> obj("t" to JsonPrimitive("i"), "c" to spans(s.c))

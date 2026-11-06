@@ -35,7 +35,7 @@ extension Markdown {
 private func appendShown(_ spans: [MarkdownSpan], to out: inout String) {
     for s in spans {
         switch s {
-        case .text(let v), .code(let v): out += v
+        case .text(let v), .code(let v), .math(let v): out += v
         case .link(let v, _), .ref(let v, _): out += v
         case .bold(let c), .italic(let c), .strike(let c): appendShown(c, to: &out)
         }
@@ -224,7 +224,10 @@ func spans(_ text: Scalars) -> [MarkdownSpan] {
         }
         out.append(span)
     }
-    let links = inlineLinks(text)
+    let ranges = mathRanges(text)
+    let math = Dictionary(uniqueKeysWithValues: ranges.map { ($0.start, $0) })
+    let masked = maskMath(text, ranges)
+    let links = inlineLinks(masked)
     // The next run of as many backticks closes a run, found without rescanning.
     var closers: [Int: Int] = [:]
     var next: [Int: Int] = [:]
@@ -242,7 +245,14 @@ func spans(_ text: Scalars) -> [MarkdownSpan] {
     var last = 0
     var from = 0
     while from < text.count {
-        guard let m = markAt(text, from) else {
+        if let formula = math[from] {
+            if from > last { plain += text[last..<from] }
+            add(.math(mathText(formula.source)))
+            from = formula.end
+            last = from
+            continue
+        }
+        guard let m = markAt(masked, from) else {
             from += 1
             continue
         }

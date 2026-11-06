@@ -27,6 +27,7 @@ private let repoRoot: URL = {
         v.map { s -> [String: Any] in
             switch s {
             case .text(let v): ["t": "text", "v": v]
+            case .math(let v): ["t": "math", "v": v]
             case .code(let v): ["t": "code", "v": v]
             case .bold(let c): ["t": "b", "c": spans(c)]
             case .italic(let c): ["t": "i", "c": spans(c)]

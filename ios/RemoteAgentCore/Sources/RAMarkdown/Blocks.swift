@@ -165,16 +165,18 @@ func cells(_ line: Scalars) -> [String] {
     var end = row.count
     // A pipe after an odd run of backslashes is escaped.
     if row.last == "|", !escapedAt(row, row.count - 1) { end -= 1 }
+    let formulas = Dictionary(uniqueKeysWithValues: mathRanges(Array(row[..<end])).map { ($0.start, $0) })
+    let masked = maskMath(row, Array(formulas.values))
     // How many runs of each length are still ahead: a run opens code only if another can close it.
     var ticks: [Int: Int] = [:]
     var i = 0
     while i < end {
-        guard row[i] == "`" else {
+        guard masked[i] == "`" else {
             i += 1
             continue
         }
         var j = i + 1
-        while j < end, row[j] == "`" { j += 1 }
+        while j < end, masked[j] == "`" { j += 1 }
         ticks[j - i, default: 0] += 1
         i = j
     }
@@ -187,6 +189,11 @@ func cells(_ line: Scalars) -> [String] {
     var code = 0
     i = 0
     while i < end {
+        if let formula = formulas[i] {
+            cell += row[i..<formula.end]
+            i = formula.end
+            continue
+        }
         let c = row[i]
         if c == "\\", i + 1 < end, row[i + 1] == "|" || row[i + 1] == "\\" {
             if row[i + 1] == "|" {
@@ -241,6 +248,7 @@ func blocks(_ lines: [Scalars], depth: Int) -> [MarkdownBlock] {
         nextNonBlank[i] = nextLine
         if !lines[i].isBlankLine { nextLine = i }
     }
+    let formulas = mathParagraphs(lines)
     var out: [MarkdownBlock] = []
     var text: [Scalars] = []
     func flush() {
@@ -269,6 +277,12 @@ func blocks(_ lines: [Scalars], depth: Int) -> [MarkdownBlock] {
             flush()
             out.append(.code(lang: f.lang, text: join(body)))
             i = j + 1
+            continue
+        }
+        if let formulaEnd = formulas[i] {
+            flush()
+            out.append(.paragraph(join(Array(lines[i...formulaEnd]))))
+            i = formulaEnd + 1
             continue
         }
         if line.contains("|"), i + 1 < lines.count, tableSep(lines[i + 1]) {

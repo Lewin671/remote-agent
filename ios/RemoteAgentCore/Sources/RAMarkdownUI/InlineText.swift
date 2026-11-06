@@ -63,7 +63,7 @@ struct ChipRenderer: TextRenderer {
 }
 
 /// Builds the styled text of a block from its spans.
-private struct RichBuilder {
+struct RichBuilder {
     enum Piece {
         case plain(AttributedString)
         case code(AttributedString)
@@ -106,14 +106,14 @@ private struct RichBuilder {
         }
     }
 
-    mutating func lineBreak() {
-        plain(run("\n", font(spec.size, Style(weight: spec.weight, color: spec.color)), Style(weight: spec.weight, color: spec.color)))
-    }
-
     mutating func append(_ spans: [MarkdownSpan], _ style: Style) {
         for s in spans {
             switch s {
             case .text(let v): plain(run(v, font(spec.size, style), style))
+            case .math(let v):
+                var a = run(v, font(spec.size, style), style)
+                a.swiftUI.backgroundColor = theme.chip
+                plain(a)
             case .code(let v):
                 var a = run(v, font(spec.codeSize, style, mono: true), style)
                 if chips {
@@ -193,7 +193,7 @@ extension View {
     }
 }
 
-/// Inline Markdown as text. `lines` keeps the single line breaks of a paragraph or of a cell's `<br>`; a heading has none.
+/// Inline Markdown as text. `lines` keeps the single line breaks of a paragraph or of a cell's `<br>`, except inside a formula; a heading has none.
 struct InlineText: View, Equatable {
     let source: String
     var lines = false
@@ -203,13 +203,13 @@ struct InlineText: View, Equatable {
     private var theme: MarkdownTheme { look.theme }
     private var scale: CGFloat { look.scale }
 
-    private func build(chips: Bool) -> RichBuilder {
+    func build(chips: Bool) -> RichBuilder {
         var b = RichBuilder(spec: spec, theme: theme, scale: scale, chips: chips)
         let style = RichBuilder.Style(weight: spec.weight, color: spec.color)
         if lines {
-            for (i, line) in source.split(separator: "\n", omittingEmptySubsequences: false).enumerated() {
-                if i > 0 { b.lineBreak() }
-                b.append(Markdown.inlineSpans(String(line)), style)
+            for (i, line) in Markdown.mathLines(source).enumerated() {
+                if i > 0 { b.append([.text("\n")], style) }
+                b.append(Markdown.inlineSpans(line), style)
             }
         } else {
             b.append(Markdown.inlineSpans(source), style)

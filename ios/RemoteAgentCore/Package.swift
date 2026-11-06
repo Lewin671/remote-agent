@@ -40,5 +40,6 @@ let package = Package(
         .target(name: "RAMarkdown"),
         .target(name: "RAMarkdownUI", dependencies: ["RAMarkdown"]),
         .testTarget(name: "RAMarkdownTests", dependencies: ["RAMarkdown"]),
+        .testTarget(name: "RAMarkdownUITests", dependencies: ["RAMarkdownUI"]),
     ]
 )

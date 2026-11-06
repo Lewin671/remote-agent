@@ -1145,6 +1145,83 @@
      "text": "| a | b |\n| --- | --- | invalid |\n| x | y |"
     }
    ]
+  },
+  {
+   "name": "display formula",
+   "md": "前文\n$$\n\\frac{a+b}{c}\n\n* x_1\n$$\n后文",
+   "want": [
+    {
+     "kind": "text",
+     "text": "前文"
+    },
+    {
+     "kind": "text",
+     "text": "$$\n\\frac{a+b}{c}\n\n* x_1\n$$"
+    },
+    {
+     "kind": "text",
+     "text": "后文"
+    }
+   ]
+  },
+  {
+   "name": "display bracket formula",
+   "md": "\\[\nx_1 + y^2\n\\]",
+   "want": [
+    {
+     "kind": "text",
+     "text": "\\[\nx_1 + y^2\n\\]"
+    }
+   ]
+  },
+  {
+   "name": "formula in fenced code",
+   "md": "```tex\n$$x_1$$\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "tex",
+     "text": "$$x_1$$"
+    }
+   ]
+  },
+  {
+   "name": "table formula body is opaque",
+   "md": "| 公式 | 值 |\n| --- | --- |\n| $$|x| + x_1$$ | 1 |",
+   "want": [
+    {
+     "kind": "table",
+     "head": [
+      "公式",
+      "值"
+     ],
+     "align": [
+      null,
+      null
+     ],
+     "rows": [
+      [
+       "$$|x| + x_1$$",
+       "1"
+      ]
+     ]
+    }
+   ]
+  },
+  {
+   "name": "tilde code cannot steal display delimiters",
+   "md": "~~~tex\n$$unclosed\n~~~~\n$$\nx_1\n$$",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "tex",
+     "text": "$$unclosed"
+    },
+    {
+     "kind": "text",
+     "text": "$$\nx_1\n$$"
+    }
+   ]
   }
  ],
  "inline": [
@@ -1858,6 +1935,291 @@
     {
      "t": "text",
      "v": "…"
+    }
+   ]
+  },
+  {
+   "name": "inline EBITDA formula",
+   "md": "因此 $$\\text{EBITDA} = \\text{净利润} + \\text{所得税} + \\text{利息费用} + \\text{折旧} + \\text{摊销}$$。",
+   "want": [
+    {
+     "t": "text",
+     "v": "因此 "
+    },
+    {
+     "t": "math",
+     "v": "EBITDA = 净利润 + 所得税 + 利息费用 + 折旧 + 摊销"
+    },
+    {
+     "t": "text",
+     "v": "。"
+    }
+   ]
+  },
+  {
+   "name": "text with parentheses",
+   "md": "$$\\text{息税前利润 (EBIT)} + \\text{折旧费用 (D)}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "息税前利润 (EBIT) + 折旧费用 (D)"
+    }
+   ]
+  },
+  {
+   "name": "profit margin",
+   "md": "$$\\frac{净利润}{营业收入} \\times 100\\%$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "净利润/营业收入 × 100%"
+    }
+   ]
+  },
+  {
+   "name": "nested fractions",
+   "md": "$$\\dfrac{a+b}{\\tfrac{c}{d}}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "(a+b)/(c/d)"
+    }
+   ]
+  },
+  {
+   "name": "square roots",
+   "md": "$$\\sqrt{x} + \\sqrt{a+b}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "√x + √(a+b)"
+    }
+   ]
+  },
+  {
+   "name": "formatting commands",
+   "md": "$$\\mathrm{A} \\textbf{B} \\operatorname{sin}(\\mathit{x})$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "A B sin(x)"
+    }
+   ]
+  },
+  {
+   "name": "greek and comparison symbols",
+   "md": "$$\\alpha \\Delta \\Sigma \\omega \\leq \\ge \\neq \\approx \\to \\Rightarrow \\infty$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "α Δ Σ ω ≤ ≥ ≠ ≈ → ⇒ ∞"
+    }
+   ]
+  },
+  {
+   "name": "operators and spacing",
+   "md": "$$\\sum\\,x \\prod\\;y \\cdot z \\div 2 \\pm 1\\quad\\left(x\\right)$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "∑ x ∏ y · z ÷ 2 ± 1 (x)"
+    }
+   ]
+  },
+  {
+   "name": "unicode scripts",
+   "md": "$$x^2 + x_1 + x^{n} + x_{ij} + x^{abc} + x^{q} + x_{a+b}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "x² + x₁ + xⁿ + xᵢⱼ + xᵃᵇᶜ + x^q + x_(a+b)"
+    }
+   ]
+  },
+  {
+   "name": "bracket delimiter",
+   "md": "\\[\\frac{a}{b}\\]",
+   "want": [
+    {
+     "t": "math",
+     "v": "a/b"
+    }
+   ]
+  },
+  {
+   "name": "parenthesis delimiter",
+   "md": "\\(x^2\\)",
+   "want": [
+    {
+     "t": "math",
+     "v": "x²"
+    }
+   ]
+  },
+  {
+   "name": "dollar prices are not math",
+   "md": "股价从 $100 涨到 $200",
+   "want": [
+    {
+     "t": "text",
+     "v": "股价从 $100 涨到 $200"
+    }
+   ]
+  },
+  {
+   "name": "escaped money and unclosed math",
+   "md": "\\$5 和 $$abc 和 \\(def",
+   "want": [
+    {
+     "t": "text",
+     "v": "\\$5 和 $$abc 和 \\(def"
+    }
+   ]
+  },
+  {
+   "name": "math in inline code",
+   "md": "`$$x$$` 和 ``\\(x\\)``",
+   "want": [
+    {
+     "t": "code",
+     "v": "$$x$$"
+    },
+    {
+     "t": "text",
+     "v": " 和 "
+    },
+    {
+     "t": "code",
+     "v": "\\(x\\)"
+    }
+   ]
+  },
+  {
+   "name": "matrix keeps complete source",
+   "md": "$$\\begin{pmatrix}a & b \\\\ c & d\\end{pmatrix}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "\\begin{pmatrix}a & b \\\\ c & d\\end{pmatrix}"
+    }
+   ]
+  },
+  {
+   "name": "unknown command keeps complete source",
+   "md": "$$\\text{A} + \\unknown{x}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "\\text{A} + \\unknown{x}"
+    }
+   ]
+  },
+  {
+   "name": "unbalanced group keeps complete source",
+   "md": "$$\\frac{a}{b$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "\\frac{a}{b"
+    }
+   ]
+  },
+  {
+   "name": "optional root keeps complete source",
+   "md": "$$\\sqrt[3]{x}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "\\sqrt[3]{x}"
+    }
+   ]
+  },
+  {
+   "name": "math markers stay opaque",
+   "md": "$$a * b * c + x_{foo} + [x](https://example.com)$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "a * b * c + x_foo + [x](https://example.com)"
+    }
+   ]
+  },
+  {
+   "name": "emphasis wraps opaque formula",
+   "md": "**结果 $$a * b * c + x_1$$**",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "结果 "
+      },
+      {
+       "t": "math",
+       "v": "a * b * c + x₁"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "escaped formula openers",
+   "md": "\\$$x$$ 和 \\\\(y\\\\) 和 \\\\[z\\\\]",
+   "want": [
+    {
+     "t": "text",
+     "v": "\\$$x$$ 和 \\\\(y\\\\) 和 \\\\[z\\\\]"
+    }
+   ]
+  },
+  {
+   "name": "escaped closing delimiter",
+   "md": "$$x\\$$y$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "x\\$$y"
+    }
+   ]
+  },
+  {
+   "name": "multiline inline formula",
+   "md": "$$a +\nb$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "a + b"
+    }
+   ]
+  },
+  {
+   "name": "display body across blank lines",
+   "md": "$$\n\\frac{a+b}{c}\n\n* x_1\n$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "(a+b)/c * x₁"
+    }
+   ]
+  },
+  {
+   "name": "escaped braces and grouping",
+   "md": "$$\\left\\{x\\right\\} + {y}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "{x} + y"
+    }
+   ]
+  },
+  {
+   "name": "non BMP math text",
+   "md": "$$\\text{𠮷😀} + x^{𠮷}$$",
+   "want": [
+    {
+     "t": "math",
+     "v": "𠮷😀 + x^𠮷"
     }
    ]
   }
