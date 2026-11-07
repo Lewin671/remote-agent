@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPollUsesOneInvocationAndDistinguishesFailures(t *testing.T) {
@@ -70,8 +71,17 @@ func TestPollRealSessionAndExactMissingTarget(t *testing.T) {
 	if err := c.KillSession("prefix-longer"); err != nil {
 		t.Fatal(err)
 	}
-	if _, alive, err := c.Poll(context.Background(), "prefix-longer"); err != nil || alive {
-		t.Fatalf("poll stopped server: %v %v", alive, err)
+	// The server exits with its last session; a poll racing that exit sees the
+	// transient "server exited unexpectedly" before the definitive answer.
+	for i := 0; ; i++ {
+		_, alive, err := c.Poll(context.Background(), "prefix-longer")
+		if err == nil && !alive {
+			break
+		}
+		if i == 50 || err == nil || !strings.Contains(err.Error(), "server exited unexpectedly") {
+			t.Fatalf("poll stopped server: %v %v", alive, err)
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
