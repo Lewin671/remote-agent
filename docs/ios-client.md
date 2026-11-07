@@ -125,6 +125,6 @@ SwiftTerm 固定在 1.11.2：1.12 起带 Metal 着色器，构建需要 Xcode �
 
 ## 分发与账户删除
 
-使用付费 Apple 开发者签名，可归档为 App Store 分发包并上传 TestFlight；App Store 上架需另行提交审核。首次使用页和设置页都链接到公开的 [隐私政策](privacy.md)。系统升级和 TestFlight/App Store 管理 App 更新，不使用 Android 的安装更新流程。
+使用付费 Apple 开发者签名，归档为 App Store 分发包经 TestFlight 提交审核，已在[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)上架。首次使用页和设置页都链接到公开的 [隐私政策](privacy.md)。系统升级和 TestFlight/App Store 管理 App 更新，不使用 Android 的安装更新流程。
 
 「设置 › 删除整个账户…」与退出本机分开。只有当前管理端可提交，界面先说明不可恢复的数据范围、其他设备与电脑原始文件不受远程清理，以及最小撤销标记的保留；要求输入确认文字并再次确认。协调器在前台/解锁门控与安全操作串行约束下，同步当前成员链后签署独立删号域的短期挑战。服务端在同一事务中核对管理端与成员链头、删除整个账户，再终止其设备连接。未收到成功响应时不擦除本机身份，也不宣称远端已删除。具体报文以 relay.proto 为准。

@@ -47,7 +47,7 @@ remote-agent 让你在手机或浏览器上操作自己 Mac 或 Linux 电脑上�
 
 ## 在公共中继上试用
 
-**1. 建账户**：在网页 [remote-agent.top](https://remote-agent.top)、Android App（[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 里的 APK）或 iOS App（预览）里建。离线保存只显示一次的恢复码。
+**1. 建账户**：在网页 [remote-agent.top](https://remote-agent.top)、Android App（[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 里的 APK）或 iOS App（预览，[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)）里建。离线保存只显示一次的恢复码。
 
 **2. 安装 daemon**：在装有 tmux 3.2+、已登录 `codex` 或 `claude` 的 macOS 或 Linux 上：
 
@@ -120,7 +120,7 @@ remote-agent codex                                          # 或：remote-agent
 ## 常见问题
 
 **能在 iPhone 或 Android 手机上用 Claude Code、Codex 或 Antigravity 吗？**
-能。Android 装[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 里的 APK，之后它会自己更新。iPhone 上把网页添加到主屏幕（这样能收网页推送），或者从源码构建 iOS 预览版。
+能。Android 装[最新 Release](https://github.com/Lewin671/remote-agent/releases/latest) 里的 APK，之后它会自己更新。iPhone 上把网页添加到主屏幕（这样能收网页推送），或者从[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)安装 iOS 预览版（iOS 17+）。
 
 **中继能看到我的代码和提示词吗？**
 看不到。消息、工具输出、终端输出、图片、文件、项目名和路径都在你自己的设备上加密。中继只看到 ID、时间、密文大小和 IP 地址。见[中继能看到什么](docs/reference.zh-CN.md#安全模型)。
@@ -145,7 +145,7 @@ agent 在 tmux 里继续运行，客户端重连后补上进度。电脑睡眠�
 - **尚未到 1.0。** 各组件一起升级，升级前先读发布说明；存储的数据可能需要重建。
 - **Antigravity 在新建时选择模型和推理强度。** 当前会话操作差异见[项目边界](docs/scope.md#mvp-之后要做)。
 - **客户端界面是简体中文。**
-- **iOS 是预览版：** 用 Xcode 从源码构建；还没有 App Store 或 TestFlight 版本，也没有推送，只在模拟器上测过。
+- **iOS 是预览版：** 只在[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)上架（iOS 17+），其他地区用 Xcode 从源码构建；还没有推送。
 - **自部署中继上 Android 没有推送：** 发布的 App 只能经维护者的中继收推送；请改用网页的 Web Push。
 - **一个账户就是一个人。** 没有团队和共享；一台中继可以承载多个互不相干的账户。
 

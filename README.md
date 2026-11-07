@@ -47,7 +47,7 @@ The client that creates the account is its sole authority and signs membership w
 
 ## Quick start on the public relay
 
-**1. Create an account** in the web client at [remote-agent.top](https://remote-agent.top), the Android app (the APK on the [latest release](https://github.com/Lewin671/remote-agent/releases/latest)) or the iOS app (preview). Save the recovery code it shows once, offline.
+**1. Create an account** in the web client at [remote-agent.top](https://remote-agent.top), the Android app (the APK on the [latest release](https://github.com/Lewin671/remote-agent/releases/latest)) or the iOS app (preview, on the [US App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)). Save the recovery code it shows once, offline.
 
 **2. Install the daemon** on macOS or Linux with tmux 3.2+ and a signed-in `codex` or `claude`:
 
@@ -121,7 +121,7 @@ Create the account in a client (Web, Android or iOS preview; it asks for the rel
 ## FAQ
 
 **Can I use Claude Code, Codex or Antigravity on an iPhone or an Android phone?**
-Yes. On Android, install the APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest); it updates itself. On iPhone, add the web client to the home screen (Web Push works there), or build the iOS preview from source.
+Yes. On Android, install the APK from the [latest release](https://github.com/Lewin671/remote-agent/releases/latest); it updates itself. On iPhone, add the web client to the home screen (Web Push works there), or install the iOS preview from the [US App Store](https://apps.apple.com/us/app/remote-agent/id6831608344) (iOS 17+).
 
 **Can the relay read my code or prompts?**
 No. Messages, tool output, terminal output, images, files, project names and paths are encrypted on your devices. The relay sees IDs, timestamps, ciphertext sizes and IP addresses. See [what the relay can see](docs/reference.md#security-model).
@@ -146,7 +146,7 @@ No. The daemon runs on macOS and Linux.
 - **Pre-1.0.** Upgrade all components together and read the release notes first; stored data may have to be recreated.
 - **Antigravity chooses its model and effort at launch.** See [CLI differences](docs/scope.md#mvp-之后要做) for its current session controls.
 - **The client UI is in Simplified Chinese.**
-- **iOS is a preview:** build it from source with Xcode; no App Store or TestFlight build and no push yet, tested only in the simulator.
+- **iOS is a preview:** available only on the [US App Store](https://apps.apple.com/us/app/remote-agent/id6831608344) (iOS 17+); elsewhere, build it from source with Xcode. No push yet.
 - **No Android push on a self-hosted relay:** the published app gets pushes only through the maintainer's relay; use the web client's Web Push instead.
 - **One person per account.** No teams or sharing; a relay can host many separate accounts.
 

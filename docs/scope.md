@@ -103,7 +103,7 @@
 - **Claude Code**：和 Codex 同等对待，同样以原生 TUI 跑在 tmux 里，客户端能做的操作两者一致；`remote-agent claude` 是本地入口，新建会话时选 CLI。设计见 [architecture.md](architecture.md) 第 16 节，实测见 [claude-code-notes.md](claude-code-notes.md)
 - **Antigravity**（`agy`）：同样以原生 TUI 跑在 tmux 里，`remote-agent agy` 是本地入口。当前远程操作的差异：会话中不换模型和推理强度，普通会话不远程改为完全放行，以完全放行启动时锁定远程模式切换，暂不提供分叉；其余操作和另外两个 CLI 一致。设计见 [architecture.md](architecture.md) 第 19 节，实测见 [antigravity-notes.md](antigravity-notes.md)
 - **客户端界面**：支持多个 CLI 的统一输入区和能力差异；设备页按 CLI 展示可获取的账户额度及缺失、过期状态；项目管理支持添加项目、常用置顶和从列表移除（移除保留会话和历史，不移动或删除本地目录；要再用就重新添加这个目录）；连接检测按段显示到服务器和到每台电脑的往返延时；会话可以重命名，也可以分叉（用 CLI 自己的分叉从当前对话另开一个会话，原会话不动）；区分电脑与客户端，展示多端消息来源和共享状态，设备名称保持端到端加密；显示会话里出现的图片（在电脑上粘贴的、Agent 查看或生成的），也能从客户端发图片和任意文件给 Agent；文件原样发送，包含元数据，Agent 按本机路径读取（[session-files.md](session-files.md)）。界面见 [design/client-v57.html](design/client-v57.html)
-- **iOS 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；支持通过 TestFlight 和 App Store 分发。首版无推送和通知审批，管理端没有后台安全提醒，建议每天打开一次；不保证在 48 小时内看到恢复申请。真机已支持付费开发者签名和 TestFlight；App Store 审核准备见 [plan.md](plan.md)。选型见 [ios-client.md](ios-client.md)，进度见 [plan.md](plan.md)
+- **iOS 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；支持通过 TestFlight 和 App Store 分发。首版无推送和通知审批，管理端没有后台安全提醒，建议每天打开一次；不保证在 48 小时内看到恢复申请。已在[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)上架。选型见 [ios-client.md](ios-client.md)，进度见 [plan.md](plan.md)
 - **Android 原生 App**：覆盖 PWA 的全部功能，终端用原生视图；审批请求以富通知显示，解锁后可以在通知里直接允许或拒绝。只给自己用，侧载安装，不上架应用商店；App 自己检查新版本、下载并交给系统安装，安装包来自本仓库的 Release。选型见 [android-client.md](android-client.md)，进度见 [plan.md](plan.md)
 
 ### 不做（MVP 之后再评估）
