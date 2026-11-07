@@ -1222,6 +1222,38 @@
      "text": "$$\nx_1\n$$"
     }
    ]
+  },
+  {
+   "name": "single dollar remains inline in list",
+   "md": "$x^2$\n- next",
+   "want": [
+    {
+     "kind": "text",
+     "text": "$x^2$"
+    },
+    {
+     "kind": "list",
+     "ordered": false,
+     "start": 1,
+     "items": [
+      {
+       "text": "next",
+       "children": []
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "single dollar in fenced code",
+   "md": "```\n$\\to$\n```",
+   "want": [
+    {
+     "kind": "code",
+     "lang": "",
+     "text": "$\\to$"
+    }
+   ]
   }
  ],
  "inline": [
@@ -2222,6 +2254,406 @@
      "v": "𠮷😀 + x^𠮷"
     }
    ]
+  },
+  {
+   "name": "reported inline arrow",
+   "md": "*Kim...* $\\to$ **wanted the fish too**",
+   "want": [
+    {
+     "t": "i",
+     "c": [
+      {
+       "t": "text",
+       "v": "Kim..."
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": " "
+    },
+    {
+     "t": "math",
+     "v": "→"
+    },
+    {
+     "t": "text",
+     "v": " "
+    },
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "wanted the fish too"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "reported bold wraps italic",
+   "md": "**文字陷阱（为什么容易误选 *also ordered the fish*？）**：",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "文字陷阱（为什么容易误选 "
+      },
+      {
+       "t": "i",
+       "c": [
+        {
+         "t": "text",
+         "v": "also ordered the fish"
+        }
+       ]
+      },
+      {
+       "t": "text",
+       "v": "？）"
+      }
+     ]
+    },
+    {
+     "t": "text",
+     "v": "："
+    }
+   ]
+  },
+  {
+   "name": "bold wraps italic at either edge",
+   "md": "***first* and *last***",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "i",
+       "c": [
+        {
+         "t": "text",
+         "v": "first"
+        }
+       ]
+      },
+      {
+       "t": "text",
+       "v": " and "
+      },
+      {
+       "t": "i",
+       "c": [
+        {
+         "t": "text",
+         "v": "last"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "triple stars wrap italic in bold",
+   "md": "***x***",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "i",
+       "c": [
+        {
+         "t": "text",
+         "v": "x"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "single dollar scripts",
+   "md": "$x^2 + y_1$",
+   "want": [
+    {
+     "t": "math",
+     "v": "x² + y₁"
+    }
+   ]
+  },
+  {
+   "name": "single dollar valid unchanged conversion",
+   "md": "$x_q$",
+   "want": [
+    {
+     "t": "math",
+     "v": "x_q"
+    }
+   ]
+  },
+  {
+   "name": "single dollar inside bold",
+   "md": "**value $x^2$**",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "value "
+      },
+      {
+       "t": "math",
+       "v": "x²"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "single dollar prices",
+   "md": "costs $5 and $10",
+   "want": [
+    {
+     "t": "text",
+     "v": "costs $5 and $10"
+    }
+   ]
+  },
+  {
+   "name": "adjacent single dollar prices",
+   "md": "$5,$6",
+   "want": [
+    {
+     "t": "text",
+     "v": "$5,$6"
+    }
+   ]
+  },
+  {
+   "name": "single dollar number only",
+   "md": "price $5$",
+   "want": [
+    {
+     "t": "text",
+     "v": "price $5$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar inner spaces",
+   "md": "$ \\to $",
+   "want": [
+    {
+     "t": "text",
+     "v": "$ \\to $"
+    }
+   ]
+  },
+  {
+   "name": "single dollar leading space",
+   "md": "$ \\to$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$ \\to$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar trailing space",
+   "md": "$\\to $",
+   "want": [
+    {
+     "t": "text",
+     "v": "$\\to $"
+    }
+   ]
+  },
+  {
+   "name": "single dollar unknown command",
+   "md": "$\\unknowncmd$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$\\unknowncmd$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar partially supported",
+   "md": "$\\to + \\unknowncmd$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$\\to + \\unknowncmd$"
+    }
+   ]
+  },
+  {
+   "name": "escaped single dollars",
+   "md": "\\$\\to\\$",
+   "want": [
+    {
+     "t": "text",
+     "v": "\\$\\to\\$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar followed by digit",
+   "md": "$x^2$5",
+   "want": [
+    {
+     "t": "text",
+     "v": "$x^2$5"
+    }
+   ]
+  },
+  {
+   "name": "single dollar across lines",
+   "md": "$x^2\ny_1$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$x^2\ny_1$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar next close is invalid",
+   "md": "$x^2 $ + y_1$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$x^2 $ + y_1$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar does not close with double",
+   "md": "$x^2$$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$x^2$$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar does not open within double",
+   "md": "$$x^2$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$$x^2$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar in inline code",
+   "md": "`$\\to$`",
+   "want": [
+    {
+     "t": "code",
+     "v": "$\\to$"
+    }
+   ]
+  },
+  {
+   "name": "single dollar math masks inline marks",
+   "md": "$\\text{*literal*}$",
+   "want": [
+    {
+     "t": "math",
+     "v": "*literal*"
+    }
+   ]
+  },
+  {
+   "name": "single dollar after rejected formula",
+   "md": "$\\unknowncmd$ then $\\to$",
+   "want": [
+    {
+     "t": "text",
+     "v": "$\\unknowncmd$ then "
+    },
+    {
+     "t": "math",
+     "v": "→"
+    }
+   ]
+  },
+  {
+   "name": "bold wraps single-star italic",
+   "md": "**a *b* c**",
+   "want": [
+    {
+     "t": "b",
+     "c": [
+      {
+       "t": "text",
+       "v": "a "
+      },
+      {
+       "t": "i",
+       "c": [
+        {
+         "t": "text",
+         "v": "b"
+        }
+       ]
+      },
+      {
+       "t": "text",
+       "v": " c"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "even backslashes before single dollar",
+   "md": "\\\\$\\to$",
+   "want": [
+    {
+     "t": "text",
+     "v": "\\\\"
+    },
+    {
+     "t": "math",
+     "v": "→"
+    }
+   ]
+  },
+  {
+   "name": "escaped single dollar inside formula",
+   "md": "$x^2 + \\$ + \\to$",
+   "want": [
+    {
+     "t": "math",
+     "v": "x² + $ + →"
+    }
+   ]
+  },
+  {
+   "name": "single dollar followed by non ASCII digit",
+   "md": "$x^2$５",
+   "want": [
+    {
+     "t": "math",
+     "v": "x²"
+    },
+    {
+     "t": "text",
+     "v": "５"
+    }
+   ]
   }
  ],
  "numericColumn": [
@@ -2463,6 +2895,26 @@
   },
   {
    "md": "****",
+   "want": false
+  },
+  {
+   "md": "**文字陷阱（为什么容易误选 *also ordered the fish*？）**：",
+   "want": true
+  },
+  {
+   "md": "***first* and *last***",
+   "want": true
+  },
+  {
+   "md": "**a *b* c**",
+   "want": true
+  },
+  {
+   "md": "**a *b*\nc**",
+   "want": false
+  },
+  {
+   "md": "**a** **b**",
    "want": false
   }
  ],

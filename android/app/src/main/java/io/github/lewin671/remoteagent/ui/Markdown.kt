@@ -212,11 +212,12 @@ private fun bareUrl(raw: String): String {
 // Groups: 1 a run of backticks, 2 bold, 3 *italic*, 4 _italic_, 5 struck,
 // 6 '[', 7 an autolink's opener, 8 a bare URL. Word characters and digits
 // are spelled out: Android's Pattern reads \\w and \\d as any script's, and
-// the web client's are ASCII.
+// the web client's are ASCII. Bold uses possessive runs to avoid JVM stack
+// growth; each star pair has only one possible parse, as on web and iOS.
 private val inlineRe: Pattern = Pattern.compile(
-    "(`+)|\\*\\*([^*\\n]+)\\*\\*|(?<![A-Za-z0-9_*])\\*([^*$WS][^*\\n]*?)\\*(?![A-Za-z0-9_*])" +
+    "(`+)|\\*\\*((?=[^*\\n]|\\*[^*\\n])[^*\\n]*+(?:\\*[^*\\n]++\\*[^*\\n]*+)*+)\\*\\*|(?<![A-Za-z0-9_*])\\*([^*$WS][^*\\n]*?)\\*(?![A-Za-z0-9_*])" +
         "|(?<![\\p{L}\\p{N}_])_([^_$WS][^_\\n]*?)_(?![\\p{L}\\p{N}_])|~~([^~\\n]+)~~|(\\[)|(<https?://)" +
-        "|(?<![A-Za-z0-9_/])(https?://[^$WS<>\\u2010-\\u2027\\u3000-\\u303f\\uff00-\\uffef]+)|(\\$\\$|\\\\\\[|\\\\\\()",
+        "|(?<![A-Za-z0-9_/])(https?://[^$WS<>\\u2010-\\u2027\\u3000-\\u303f\\uff00-\\uffef]+)|(\\$\\$?|\\\\\\[|\\\\\\()",
 )
 private val ticksRe = Regex("`+")
 
@@ -400,7 +401,7 @@ fun numericColumn(cells: List<String>): Boolean {
     return n > 0
 }
 
-private val boldLine = Regex("\\*\\*[^*\\n]+\\*\\*[:：]?")
+private val boldLine = Regex("\\*\\*(?=[^*\\n]|\\*[^*\\n])[^*\\n]*+(?:\\*[^*\\n]++\\*[^*\\n]*+)*+\\*\\*[:：]?")
 
 /** A paragraph that is one bold line, the way the CLIs often write a small heading: it gets a heading's space, not a paragraph's. */
 fun boldHeading(text: String): Boolean = boldLine.matches(text.trimSpace())

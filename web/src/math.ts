@@ -82,6 +82,11 @@ const subscript: Record<string, string> = {"0": "₀", "1": "₁", "2": "₂", "
 const grouped = (v: string) => /[+\-*/=<>×·÷±≤≥≠≈→⇒^_\s]/u.test(v) ? `(${v})` : v;
 
 export function mathText(source: string): string {
+  return simplifyMath(source) ?? source;
+}
+
+/** Null means unsupported syntax; an unchanged result can still be valid. */
+export function simplifyMath(source: string): string | null {
   let i = 0, valid = true;
   const skip = () => { while (i < source.length && /\s/u.test(source[i])) i++; };
   const argument = (depth: number, required = true): string => {
@@ -126,7 +131,7 @@ export function mathText(source: string): string {
     return out.join("");
   };
   const result = sequence(0);
-  return valid && i === source.length ? result.replace(/\s+/gu, " ").trim() : source;
+  return valid && i === source.length ? result.replace(/\s+/gu, " ").trim() : null;
 }
 
 export interface MathRange { start: number; end: number; source: string }
@@ -145,6 +150,8 @@ export function mathRanges(text: string, singleLineCode = false): MathRange[] {
     } else if (pair === "$$" || pair === "\\[" || pair === "\\]" || pair === "\\(" || pair === "\\)") {
       tokens.push({ at: i, value: pair, escaped: slashes % 2 === 1, line });
       i++;
+    } else if (text[i] === "$" && text[i - 1] !== "$") {
+      tokens.push({ at: i, value: "$", escaped: slashes % 2 === 1, line });
     }
     if (text[i] === "\n") line++;
     slashes = text[i] === "\\" ? slashes + 1 : 0;
@@ -152,11 +159,11 @@ export function mathRanges(text: string, singleLineCode = false): MathRange[] {
   const next = new Map<string, number>(), close = new Map<number, number>();
   for (const t of [...tokens].reverse()) {
     const key = t.value === "\\[" ? "\\]" : t.value === "\\(" ? "\\)" : t.value;
-    const code = singleLineCode && t.value[0] === "`";
-    const end = next.get(code ? `${t.line}:${key}` : key);
+    const lineBound = t.value === "$" || (singleLineCode && t.value[0] === "`");
+    const end = next.get(lineBound ? `${t.line}:${key}` : key);
     if (end !== undefined) close.set(t.at, end);
     // Escaped ticks may close code; escaped math delimiters cannot close math.
-    if (!t.escaped || t.value[0] === "`") next.set(code ? `${t.line}:${t.value}` : t.value, t.at);
+    if (!t.escaped || t.value[0] === "`") next.set(lineBound ? `${t.line}:${t.value}` : t.value, t.at);
   }
   const out: MathRange[] = [];
   let until = 0;
@@ -165,6 +172,15 @@ export function mathRanges(text: string, singleLineCode = false): MathRange[] {
     const end = close.get(t.at);
     if (end === undefined) continue;
     if (t.value[0] === "`") until = end + t.value.length;
+    else if (t.value === "$") {
+      // Only inspect the gap to the next single dollar on this line. Failed
+      // candidates never search ahead again, keeping total conversion linear.
+      if (t.at + 1 === end || /\s/u.test(text[t.at + 1]) || /\s/u.test(text[end - 1]) || /[0-9]/.test(text[end + 1] ?? "")) continue;
+      const source = text.slice(t.at + 1, end);
+      if (!/[\\^_]/.test(source) || simplifyMath(source) === null) continue;
+      out.push({ start: t.at, end: end + 1, source });
+      until = end + 1;
+    }
     else if (t.value === "$$" || t.value === "\\[" || t.value === "\\(") {
       out.push({ start: t.at, end: end + 2, source: text.slice(t.at + 2, end) });
       until = end + 2;
@@ -176,7 +192,10 @@ export function mathRanges(text: string, singleLineCode = false): MathRange[] {
 export function maskMath(text: string, ranges: MathRange[]): string {
   if (!ranges.length) return text;
   const chars = text.split("");
-  for (const r of ranges) for (let i = r.start + 2; i < r.end; i++) if (chars[i] !== "\n") chars[i] = "a";
+  for (const r of ranges) {
+    const width = text[r.start] === "$" && text[r.start + 1] !== "$" ? 1 : 2;
+    for (let i = r.start + width; i < r.end; i++) if (chars[i] !== "\n") chars[i] = "a";
+  }
   return chars.join("");
 }
 
@@ -207,7 +226,7 @@ export function mathParagraphs(lines: string[]): Map<number, number> {
     return " ".repeat(line.length);
   }).join("\n");
   for (const r of mathRanges(outsideCode, true)) {
-    if (text.startsWith("\\(", r.start) || r.start !== starts[r.start] || r.end !== ends[r.end - 1]) continue;
+    if (!(text.startsWith("$$", r.start) || text.startsWith("\\[", r.start)) || r.start !== starts[r.start] || r.end !== ends[r.end - 1]) continue;
     out.set(numbers[r.start], numbers[r.end - 1]);
   }
   return out;

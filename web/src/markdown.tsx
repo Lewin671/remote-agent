@@ -87,7 +87,7 @@ function bareUrl(raw: string): string {
 // sentence's own punctuation: a full-width mark, a dash or a curly quote.
 // Other scripts stay in it, as in https://example.com/文档/安装.
 const inlineRe =
-  /(`+)|\*\*([^*\n]+)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)|(\$\$|\\\[|\\\()/gu;
+  /(`+)|\*\*((?=[^*\n]|\*[^*\n])[^*\n]*(?:\*[^*\n]+\*[^*\n]*)*)\*\*|(?<![\w*])\*([^*\s][^*\n]*?)\*(?![\w*])|(?<![\p{L}\p{N}_])_([^_\s][^_\n]*?)_(?![\p{L}\p{N}_])|~~([^~\n]+)~~|(\[)|(<https?:\/\/)|(?<![\w/])(https?:\/\/[^\s<>‐-‧　-〿＀-￯]+)|(\$\$?|\\\[|\\\()/gu;
 
 /** Inline Markdown: `code`, **bold**, *italic*, _italic_, ~~struck~~,
  * [links](target), <https://autolinks> and bare https:// URLs. */
@@ -300,7 +300,7 @@ export function looseList(items: string[]): boolean {
 /** A paragraph that is one bold line, the way the CLIs often write a
  * small heading: it gets a heading's space, not a paragraph's. */
 export function boldHeading(text: string): boolean {
-  return /^\*\*[^*\n]+\*\*[:：]?$/.test(text.trim());
+  return /^\*\*(?=[^*\n]|\*[^*\n])[^*\n]*(?:\*[^*\n]+\*[^*\n]*)*\*\*[:：]?$/.test(text.trim());
 }
 
 /** Code longer than this is cut to FOLD_SHOWN lines until it is opened. */

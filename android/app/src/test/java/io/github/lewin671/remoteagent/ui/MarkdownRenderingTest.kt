@@ -6,6 +6,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MarkdownRenderingTest {
+    @Test fun longBoldRunsDoNotOverflowTheJvmStack() {
+        val plain = "a".repeat(10_000)
+        assertEquals(listOf(Span.Bold(listOf(Span.Text(plain)))), inlineSpans("**$plain**"))
+        assertTrue(boldHeading("**$plain**"))
+        val italics = " *b* ".repeat(2_000)
+        val source = "**$italics**"
+        val bold = inlineSpans(source).single() as Span.Bold
+        assertEquals(2_000, bold.c.count { it is Span.Italic })
+        assertTrue(boldHeading(source))
+    }
+
     @Test fun paragraphLinesKeepCodeSeparateAndMultilineMathTogether() {
         for (palette in listOf(LightPalette, DarkPalette)) {
             val source = "a `b\nc` d\na **b\nc** d\nbefore `\n\$\$\nx_1 + y^2\n\$\$\nafter `"

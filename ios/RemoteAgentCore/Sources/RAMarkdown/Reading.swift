@@ -107,11 +107,11 @@ extension Markdown {
 
     /// A paragraph that is one bold line, the way the CLIs often write a small heading: it gets a heading's space, not a paragraph's.
     public static func boldHeading(_ text: String) -> Bool {
-        // `**X**` with an optional colon, where X holds no star and no line break.
         var t = text.scalars.trimmed()
         if t.last == ":" || t.last == "：" { t = t.dropLast() }
-        guard t.count >= 5, t.prefix(2).allSatisfy({ $0 == "*" }), t.suffix(2).allSatisfy({ $0 == "*" }) else { return false }
-        return !t.dropFirst(2).dropLast(2).contains { $0 == "*" || $0 == "\n" }
+        let source = Array(t)
+        guard source.starts(with: "**", at: 0), let inner = doubled(source, 0, "*") else { return false }
+        return inner.upperBound + 2 == source.count
     }
 
     private static func titled(_ b: MarkdownBlock) -> Bool {

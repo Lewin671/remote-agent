@@ -1,5 +1,5 @@
-// The cases both clients read Markdown by. Android runs the same file
-// (MarkdownCasesTest.kt), so a change here changes both or fails one.
+// Shared cases for web, Android (MarkdownCasesTest.kt), and iOS
+// (RAMarkdownTests/CasesTests.swift), keeping all three parsers aligned.
 //
 // To add a case, add its name and md to testdata/markdown/cases.json and run
 // `UPDATE_MD_CASES=1 pnpm test markdown.cases`, then read the `want` it wrote.

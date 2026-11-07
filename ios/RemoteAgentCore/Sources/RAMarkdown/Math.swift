@@ -84,9 +84,14 @@ private func mathGrouped(_ v: String) -> String {
 }
 
 func mathText(_ source: String) -> String {
+    simplifyMath(source) ?? source
+}
+
+/// Nil means unsupported syntax; an unchanged result can still be valid.
+func simplifyMath(_ source: String) -> String? {
     var parser = MathTextParser(source: source.scalars)
     let result = parser.sequence(0)
-    guard parser.valid, parser.i == parser.source.count else { return source }
+    guard parser.valid, parser.i == parser.source.count else { return nil }
     // Collapse whitespace without changing unsupported source.
     var out = ""
     var space = false
@@ -187,6 +192,8 @@ func mathRanges(_ text: Scalars, singleLineCode: Bool = false) -> [MathRange] {
         } else if ["$$", "\\[", "\\]", "\\(", "\\)"].contains(pair) {
             tokens.append(MathToken(at: i, value: pair, escaped: slashes % 2 == 1, line: line))
             i += 1
+        } else if text[i] == "$", i == 0 || text[i - 1] != "$" {
+            tokens.append(MathToken(at: i, value: "$", escaped: slashes % 2 == 1, line: line))
         }
         if text[i] == "\n" { line += 1 }
         slashes = text[i] == "\\" ? slashes + 1 : 0
@@ -196,9 +203,9 @@ func mathRanges(_ text: Scalars, singleLineCode: Bool = false) -> [MathRange] {
     var close: [Int: Int] = [:]
     for t in tokens.reversed() {
         let key = t.value == "\\[" ? "\\]" : t.value == "\\(" ? "\\)" : t.value
-        let code = singleLineCode && t.value.first == "`"
-        if let end = next[code ? "\(t.line):\(key)" : key] { close[t.at] = end }
-        if !t.escaped || t.value.first == "`" { next[code ? "\(t.line):\(t.value)" : t.value] = t.at }
+        let lineBound = t.value == "$" || (singleLineCode && t.value.first == "`")
+        if let end = next[lineBound ? "\(t.line):\(key)" : key] { close[t.at] = end }
+        if !t.escaped || t.value.first == "`" { next[lineBound ? "\(t.line):\(t.value)" : t.value] = t.at }
     }
     var out: [MathRange] = []
     var until = 0
@@ -206,6 +213,17 @@ func mathRanges(_ text: Scalars, singleLineCode: Bool = false) -> [MathRange] {
         if t.at < until || t.escaped { continue }
         guard let end = close[t.at] else { continue }
         if t.value.first == "`" { until = end + t.value.count }
+        else if t.value == "$" {
+            // Convert only adjacent single-dollar gaps, even after rejection.
+            if t.at + 1 == end || isSpace(text[t.at + 1]) || isSpace(text[end - 1]) { continue }
+            if end + 1 < text.count, text[end + 1] >= "0", text[end + 1] <= "9" { continue }
+            let content = text[t.at + 1..<end]
+            guard content.contains(where: { $0 == "\\" || $0 == "^" || $0 == "_" }) else { continue }
+            let source = String(content)
+            guard simplifyMath(source) != nil else { continue }
+            out.append(MathRange(start: t.at, end: end + 1, source: source))
+            until = end + 1
+        }
         else if ["$$", "\\[", "\\("].contains(t.value) {
             out.append(MathRange(start: t.at, end: end + 2, source: String(text[t.at + 2..<end])))
             until = end + 2
@@ -216,7 +234,10 @@ func mathRanges(_ text: Scalars, singleLineCode: Bool = false) -> [MathRange] {
 
 func maskMath(_ text: Scalars, _ ranges: [MathRange]) -> Scalars {
     var chars = text
-    for r in ranges { for i in r.start + 2..<r.end where chars[i] != "\n" { chars[i] = "a" } }
+    for r in ranges {
+        let width = text[r.start] == "$" && text[r.start + 1] != "$" ? 1 : 2
+        for i in r.start + width..<r.end where chars[i] != "\n" { chars[i] = "a" }
+    }
     return chars
 }
 
@@ -258,7 +279,7 @@ func mathParagraphs(_ lines: [Scalars]) -> [Int: Int] {
         masked += line
     }
     for r in mathRanges(masked, singleLineCode: true) {
-        if text.starts(with: "\\(", at: r.start) || r.start != starts[r.start] || r.end != ends[r.end - 1] { continue }
+        if !(text.starts(with: "$$", at: r.start) || text.starts(with: "\\[", at: r.start)) || r.start != starts[r.start] || r.end != ends[r.end - 1] { continue }
         out[numbers[r.start]] = numbers[r.end - 1]
     }
     return out

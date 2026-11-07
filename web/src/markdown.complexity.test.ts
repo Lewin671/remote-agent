@@ -61,6 +61,14 @@ async function work(session: Session, run: () => unknown): Promise<number> {
 }
 
 const inlineCases: Record<string, (n: number) => string> = {
+  "single dollar openers": (n) => "$x^2 ".repeat(n),
+  "single dollar failed conversions": (n) => "$\\unknowncmd$ ".repeat(n),
+  "single dollar rejected closers": (n) => "$x^2$5 ".repeat(n),
+  "single dollar long rejected gap": (n) => "$x^2$" + "a".repeat(n) + "$\\unknowncmd$",
+  "single dollar formulas": (n) => "$x^2 + y_1$ ".repeat(n),
+  "long bold": (n) => "**" + "a".repeat(n) + "**",
+  "bold with many italics": (n) => "**" + " *a* ".repeat(n) + "**",
+  "unclosed bold with italics": (n) => "**a *b* ".repeat(n),
   "unclosed math": (n) => "\\(".repeat(n),
   "escaped math": (n) => "\\".repeat(n) + "$$x$$",
   "repeated math": (n) => "$$x_1$$ ".repeat(n),

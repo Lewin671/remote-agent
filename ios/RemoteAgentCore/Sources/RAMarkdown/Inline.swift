@@ -159,13 +159,24 @@ private struct Found {
     let inner: Range<Int>
 }
 
-/// `open X+ open` for bold and strike: a doubled delimiter around at least one scalar that is neither the delimiter nor a line break.
-private func doubled(_ t: Scalars, _ at: Int, _ d: Unicode.Scalar) -> Range<Int>? {
+/// A doubled delimiter around nonempty, single-line content. Bold also admits
+/// paired single stars, so its recursive inline parse can find italics.
+func doubled(_ t: Scalars, _ at: Int, _ d: Unicode.Scalar) -> Range<Int>? {
     guard at + 1 < t.count, t[at + 1] == d else { return nil }
     var j = at + 2
-    while j < t.count, t[j] != d, t[j] != "\n" { j += 1 }
-    guard j > at + 2, j + 1 < t.count, t[j] == d, t[j + 1] == d else { return nil }
-    return at + 2..<j
+    while j < t.count, t[j] != "\n" {
+        if t[j] != d { j += 1; continue }
+        if j + 1 < t.count, t[j + 1] == d {
+            return j > at + 2 ? at + 2..<j : nil
+        }
+        guard d == "*" else { return nil }
+        let start = j
+        j += 1
+        while j < t.count, t[j] != "*", t[j] != "\n" { j += 1 }
+        guard j > start + 1, j < t.count, t[j] == "*" else { return nil }
+        j += 1
+    }
+    return nil
 }
 
 /// `d X d` for italics: the first scalar inside is not white space, and the
@@ -272,7 +283,7 @@ func spans(_ text: Scalars) -> [MarkdownSpan] {
                 plain += text[m.inner]
             }
         // Emphasis may wrap code and links, so its content is inline Markdown too.
-        // It cannot hold its own delimiter, which is what bounds the nesting.
+        // Doubled delimiters cannot nest; bold may contain single-star italics.
         case .bold: add(.bold(spans(Array(text[m.inner]))))
         case .star, .under: add(.italic(spans(Array(text[m.inner]))))
         case .struck: add(.strike(spans(Array(text[m.inner]))))

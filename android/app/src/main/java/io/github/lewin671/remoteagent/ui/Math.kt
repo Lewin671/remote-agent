@@ -82,15 +82,18 @@ private val mathSuperscript = mapOf("0" to "⁰", "1" to "¹", "2" to "²", "3" 
 private val mathSubscript = mapOf("0" to "₀", "1" to "₁", "2" to "₂", "3" to "₃", "4" to "₄", "5" to "₅", "6" to "₆", "7" to "₇", "8" to "₈", "9" to "₉", "+" to "₊", "-" to "₋", "=" to "₌", "(" to "₍", ")" to "₎", "a" to "ₐ", "e" to "ₑ", "h" to "ₕ", "i" to "ᵢ", "j" to "ⱼ", "k" to "ₖ", "l" to "ₗ", "m" to "ₘ", "n" to "ₙ", "o" to "ₒ", "p" to "ₚ", "r" to "ᵣ", "s" to "ₛ", "t" to "ₜ", "u" to "ᵤ", "v" to "ᵥ", "x" to "ₓ", "−" to "₋")
 private fun mathGrouped(v: String): String = if (v.any { it in "+-*/=<>×·÷±≤≥≠≈→⇒^_" || it.isSpace() }) "($v)" else v
 
-internal fun mathText(source: String): String = MathTextParser(source).parse()
+internal fun mathText(source: String): String = simplifyMath(source) ?: source
+
+/** Null means unsupported syntax; an unchanged result can still be valid. */
+internal fun simplifyMath(source: String): String? = MathTextParser(source).parse()
 
 private class MathTextParser(private val source: String) {
     private var i = 0
     private var valid = true
 
-    fun parse(): String {
+    fun parse(): String? {
         val result = sequence(0)
-        if (!valid || i != source.length) return source
+        if (!valid || i != source.length) return null
         return buildString {
             var space = false
             for (c in result) {
@@ -168,6 +171,8 @@ internal fun mathRanges(text: String, singleLineCode: Boolean = false): List<Mat
         } else if (pair in listOf("\$\$", "\\[", "\\]", "\\(", "\\)")) {
             tokens += MathToken(i, pair, slashes % 2 == 1, line)
             i++
+        } else if (text[i] == '$' && text.getOrNull(i - 1) != '$') {
+            tokens += MathToken(i, "\$", slashes % 2 == 1, line)
         }
         if (text[i] == '\n') line++
         slashes = if (text[i] == '\\') slashes + 1 else 0
@@ -177,9 +182,9 @@ internal fun mathRanges(text: String, singleLineCode: Boolean = false): List<Mat
     val close = HashMap<Int, Int>()
     for (t in tokens.asReversed()) {
         val key = when (t.value) { "\\[" -> "\\]"; "\\(" -> "\\)"; else -> t.value }
-        val code = singleLineCode && t.value[0] == '`'
-        next[if (code) "${t.line}:$key" else key]?.let { close[t.at] = it }
-        if (!t.escaped || t.value[0] == '`') next[if (code) "${t.line}:${t.value}" else t.value] = t.at
+        val lineBound = t.value == "\$" || (singleLineCode && t.value[0] == '`')
+        next[if (lineBound) "${t.line}:$key" else key]?.let { close[t.at] = it }
+        if (!t.escaped || t.value[0] == '`') next[if (lineBound) "${t.line}:${t.value}" else t.value] = t.at
     }
     val out = ArrayList<MathRange>()
     var until = 0
@@ -187,6 +192,14 @@ internal fun mathRanges(text: String, singleLineCode: Boolean = false): List<Mat
         if (t.at < until || t.escaped) continue
         val end = close[t.at] ?: continue
         if (t.value[0] == '`') until = end + t.value.length
+        else if (t.value == "\$") {
+            // Convert only adjacent single-dollar gaps, even after rejection.
+            if (t.at + 1 == end || text[t.at + 1].isSpace() || text[end - 1].isSpace() || text.getOrNull(end + 1) in '0'..'9') continue
+            val source = text.substring(t.at + 1, end)
+            if (source.none { it == '\\' || it == '^' || it == '_' } || simplifyMath(source) == null) continue
+            out += MathRange(t.at, end + 1, source)
+            until = end + 1
+        }
         else if (t.value in listOf("\$\$", "\\[", "\\(")) {
             out += MathRange(t.at, end + 2, text.substring(t.at + 2, end))
             until = end + 2
@@ -198,7 +211,10 @@ internal fun mathRanges(text: String, singleLineCode: Boolean = false): List<Mat
 internal fun maskMath(text: String, ranges: List<MathRange>): String {
     if (ranges.isEmpty()) return text
     val chars = text.toCharArray()
-    for (r in ranges) for (i in r.start + 2 until r.end) if (chars[i] != '\n') chars[i] = 'a'
+    for (r in ranges) {
+        val width = if (text[r.start] == '$' && text.getOrNull(r.start + 1) != '$') 1 else 2
+        for (i in r.start + width until r.end) if (chars[i] != '\n') chars[i] = 'a'
+    }
     return String(chars)
 }
 
@@ -235,7 +251,7 @@ internal fun mathParagraphs(lines: List<String>): Map<Int, Int> {
         }
     }.joinToString("\n")
     for (r in mathRanges(outsideCode, singleLineCode = true)) {
-        if (text.startsWith("\\(", r.start) || r.start != starts[r.start] || r.end != ends[r.end - 1]) continue
+        if (!(text.startsWith("\$\$", r.start) || text.startsWith("\\[", r.start)) || r.start != starts[r.start] || r.end != ends[r.end - 1]) continue
         out[numbers[r.start]] = numbers[r.end - 1]
     }
     return out
