@@ -13,7 +13,10 @@ Open-source remote control for AI coding agents. Chat, approve permissions, watc
 
 [Quick start](#quick-start-on-the-public-relay) · [Host your own](#host-your-own) · [Comparison](#how-it-compares) · [FAQ](#faq) · [Reference](docs/reference.md) · [简体中文](README.zh-CN.md)
 
+[![Download Android APK](https://img.shields.io/badge/Android-Download_APK-3DDC84?logo=android&logoColor=white)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![Download on the US App Store](https://img.shields.io/badge/App_Store-Download_for_iOS-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/remote-agent/id6831608344)
+
+Android 8.0+ · Download the `.apk` file under **Assets** in the latest release.
 
 iOS preview · iPhone & iPad · iOS 17+ · US App Store only
 

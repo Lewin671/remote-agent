@@ -13,7 +13,10 @@
 
 [快速试用](#在公共中继上试用) · [自己部署](#自己部署) · [对比](#和其他方案的区别) · [常见问题](#常见问题) · [参考](docs/reference.zh-CN.md) · [English](README.md)
 
+[![下载 Android APK](https://img.shields.io/badge/Android-Download_APK-3DDC84?logo=android&logoColor=white)](https://github.com/Lewin671/remote-agent/releases/latest)
 [![从美区 App Store 下载](https://img.shields.io/badge/App_Store-Download_for_iOS-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/remote-agent/id6831608344)
+
+Android 8.0+ · 在最新 Release 的 **Assets** 中下载 `.apk` 安装包。
 
 iOS 预览版 · iPhone 和 iPad · iOS 17+ · 仅美区 App Store
 
