@@ -12,7 +12,7 @@
 | **中继**（`remote-agent-server`） | 你掌控的一台 Linux 服务器 | 设备鉴权，存储和转发密文，发送推送通知。读不到内容。 |
 | **网页** | 任意 HTTPS 静态托管 | 可安装的 PWA：对话视图、实时终端、审批、Web Push。 |
 | **Android App** | Android 8.0 及以上 | 原生客户端，带原生终端，可在通知里直接审批；和网页、iOS 一样，可成为账户的唯一管理端（配对、删除、续租约和恢复）。 |
-| **iOS App**（预览） | iPhone 和 iPad，iOS 17 及以上 | SwiftUI 原生客户端，带原生终端、审批和图片。还没有分发，见[现状与限制](../README.zh-CN.md#现状与限制)。 |
+| **iOS App**（预览） | iPhone 和 iPad，iOS 17 及以上 | SwiftUI 原生客户端，带原生终端、审批和图片。已在[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)上架，见[现状与限制](../README.zh-CN.md#现状与限制)。 |
 
 建账户的客户端持有账户根密钥，中继上没有。以后加入的设备通过管理端签出的成员状态加入，拿到内容密钥的 grant，不拿根密钥。可选的根密钥用于账户签名和离线备份，需要时由 `account secret` 另行保管；当前客户端不再用它解密协议 10 前的历史。新设备通过扫二维码或输入配对码加入账户，双方核对一串相同的 emoji 后才交换密钥。
 
@@ -54,7 +54,9 @@
 
 ## 下载与校验
 
-每个 [Release](https://github.com/Lewin671/remote-agent/releases/latest) 都包含同一版本的全部组件：
+iOS 预览版从[美区 App Store](https://apps.apple.com/us/app/remote-agent/id6831608344)安装（iPhone 和 iPad，iOS 17+）。它与 GitHub Release 单独分发，产品版本可能不同。
+
+每个 [GitHub Release](https://github.com/Lewin671/remote-agent/releases/latest) 都包含同一版本的以下组件：
 
 | 文件 | 内容 | 平台 |
 |---|---|---|
@@ -78,6 +80,7 @@ Android App 始终用同一把密钥签名，证书的 SHA-256 指纹是：
 
 ## 更新
 
+- **iOS App**：通过 App Store 更新。
 - **Android App**：从本仓库的 Release 自动更新，见 **设置 › 版本**。
 - **Daemon**：`remote-agent update check`、`remote-agent update` 和 `remote-agent update status`。自动更新默认关闭；用 `remote-agent update auto enable --time 04:00`（本机时间）为这台电脑开启，用 `remote-agent update auto disable` 关闭。更新时通过 HTTPS 校验大小和 SHA-256，原子替换二进制，tmux 会话不中断，新 daemon 起不来就回滚。改变协议或存储数据的升级不会自动进行，请按发布说明操作。
 - **中继和网页**：用新版本重新运行安装脚本。

@@ -13,6 +13,10 @@ Open-source remote control for AI coding agents. Chat, approve permissions, watc
 
 [Quick start](#quick-start-on-the-public-relay) · [Host your own](#host-your-own) · [Comparison](#how-it-compares) · [FAQ](#faq) · [Reference](docs/reference.md) · [简体中文](README.zh-CN.md)
 
+[![Download on the US App Store](https://img.shields.io/badge/App_Store-Download_for_iOS-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/remote-agent/id6831608344)
+
+iOS preview · iPhone & iPad · iOS 17+ · US App Store only
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.svg">
   <img src="docs/assets/demo-light.svg" alt="Animated overview: Claude Code runs natively in tmux on your computer and asks to run go test; the request is encrypted and crosses a relay you host, which sees only ciphertext; you approve it on your phone; the tests run on the computer and the results reach the phone; the phone opens the live terminal of the same session; the next message is sent from the phone and appears in the terminal." width="880">

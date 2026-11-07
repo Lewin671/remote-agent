@@ -13,6 +13,10 @@
 
 [快速试用](#在公共中继上试用) · [自己部署](#自己部署) · [对比](#和其他方案的区别) · [常见问题](#常见问题) · [参考](docs/reference.zh-CN.md) · [English](README.md)
 
+[![从美区 App Store 下载](https://img.shields.io/badge/App_Store-Download_for_iOS-0D96F6?logo=apple&logoColor=white)](https://apps.apple.com/us/app/remote-agent/id6831608344)
+
+iOS 预览版 · iPhone 和 iPad · iOS 17+ · 仅美区 App Store
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/demo-dark.zh-CN.svg">
   <img src="docs/assets/demo-light.zh-CN.svg" alt="动画概览：Claude Code 以原生形态跑在你电脑的 tmux 里，请求执行 go test；请求加密后经过你自己部署的中继，中继只看得到密文；你在手机上允许；测试在电脑上运行，结果回到手机；手机打开同一个会话的实时终端；再从手机发出下一条消息，它出现在电脑的终端里。" width="880">

@@ -12,7 +12,7 @@ The details behind the [README](../README.md): the components, everyday commands
 | **Relay** (`remote-agent-server`) | A Linux server you control | Authenticates devices, stores and forwards ciphertext, sends push notifications. Cannot read content. |
 | **Web client** | Any static HTTPS host | Installable PWA: conversation view, live terminal, approvals, Web Push. |
 | **Android app** | Android 8.0 or later | Native client with a native terminal and approvals from the notification; can be the sole account authority (pairing, removal, lease renewal and recovery), like Web and iOS. |
-| **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Not distributed yet — see [Status and limitations](../README.md#status-and-limitations). |
+| **iOS app** (preview) | iPhone and iPad, iOS 17 or later | Native SwiftUI client with a native terminal, approvals and images. Available on the [US App Store](https://apps.apple.com/us/app/remote-agent/id6831608344); see [Status and limitations](../README.md#status-and-limitations). |
 
 The client that creates the account holds the account root; the relay holds none. Devices added later join through an authority-signed membership and receive content-key grants, not the root. The optional root (`account secret`) remains account-signing and offline backup material; current clients no longer decrypt pre-protocol-10 history with it. Devices join by scanning a QR code or entering a pairing code, and both sides confirm a short emoji sequence before keys are exchanged.
 
@@ -54,7 +54,9 @@ The web client is deliberately **not** served by the relay: a compromised relay 
 
 ## Downloads and verification
 
-Each [release](https://github.com/Lewin671/remote-agent/releases/latest) ships every component at the same version:
+Install the iOS preview from the [US App Store](https://apps.apple.com/us/app/remote-agent/id6831608344) (iPhone and iPad, iOS 17+). It is distributed separately from GitHub Releases and may have a different product version.
+
+Each [GitHub release](https://github.com/Lewin671/remote-agent/releases/latest) ships the following components at the same version:
 
 | File | Contents | Platforms |
 |---|---|---|
@@ -78,6 +80,7 @@ The Android app is always signed with the same key. Its certificate's SHA-256 fi
 
 ## Updating
 
+- **iOS app:** update through the App Store.
 - **Android app:** updates itself from this repository's releases — **Settings › Version**.
 - **Daemon:** `remote-agent update check`, `remote-agent update`, and `remote-agent update status`. Automatic updates are off by default; enable them per computer with `remote-agent update auto enable --time 04:00` (local time) and disable them with `remote-agent update auto disable`. The updater verifies size and SHA-256 over HTTPS, swaps the binary atomically, keeps tmux sessions running, and rolls back if the new daemon fails to start. Upgrades that change the protocol or stored data are not applied automatically; follow the release notes instead.
 - **Relay and web client:** rerun the installer for the new version.
