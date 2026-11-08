@@ -37,7 +37,8 @@ jobs:
            github.event.workflow_run.conclusion == 'success' &&
            github.event.workflow_run.event == 'push' &&
            github.event.workflow_run.head_repository.full_name == github.repository) }}
-    runs-on: macos-26
+    # Match the Xcode 27 toolchain used for local iOS acceptance.
+    runs-on: xcode-27
     timeout-minutes: 90
     steps:
       # Publishing tools come from main; product files always come from the tag.
@@ -100,6 +101,11 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
           working-directory: ios
+      - name: Report Xcode toolchain
+        if: steps.plan.outputs.skip != 'true'
+        run: |
+          xcodebuild -version
+          swift --version
       - name: Publishing policy tests
         if: steps.plan.outputs.skip != 'true'
         working-directory: ios
