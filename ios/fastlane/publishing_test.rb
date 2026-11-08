@@ -64,4 +64,20 @@ class PublishingTest < Minitest::Test
     assert_raises(RuntimeError) { Publishing.decision([version]) }
   end
 
+
+  def test_invalid_credentials_cannot_appear_in_public_error_logs
+    name = 'IOS_PUBLISH_TEST_SECRET'
+    ENV[name] = '{"key":"credential-sentinel"'
+    error = assert_raises(RuntimeError) { Publishing.secret(name, %w[key]) }
+    refute_includes error.message, 'credential-sentinel'
+    assert_nil error.cause
+    ENV[name] = '"credential-sentinel"'
+    error = assert_raises(RuntimeError) { Publishing.secret(name, %w[key]) }
+    refute_includes error.message, 'credential-sentinel'
+    ENV[name] = '{"key":"credential-sentinel"}'
+    assert_equal 'credential-sentinel', Publishing.secret(name, %w[key]).fetch('key')
+  ensure
+    ENV.delete(name)
+  end
+
 end

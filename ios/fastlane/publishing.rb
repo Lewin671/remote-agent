@@ -7,6 +7,16 @@ module Publishing
   EDITABLE = %w[PREPARE_FOR_SUBMISSION DEVELOPER_REJECTED REJECTED METADATA_REJECTED INVALID_BINARY].freeze
   SUBMITTED = %w[WAITING_FOR_REVIEW IN_REVIEW PENDING_APPLE_RELEASE PROCESSING_FOR_DISTRIBUTION READY_FOR_DISTRIBUTION].freeze
 
+  def self.secret(name, required)
+    value = JSON.parse(ENV.fetch(name, ''))
+    valid = value.is_a?(Hash) && required.all? { |key| value[key].is_a?(String) && !value[key].empty? }
+    raise "Invalid #{name} configuration" unless valid
+    value
+  rescue JSON::ParserError
+    # Parser errors can include fragments of a credential in public CI logs.
+    raise "Invalid #{name} JSON configuration", cause: nil
+  end
+
   def self.source
     File.realpath(ENV.fetch('IOS_SOURCE_DIR', File.expand_path('../..', __dir__)))
   end
