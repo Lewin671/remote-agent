@@ -39,6 +39,7 @@ struct ProjectSettingsSheet: View {
     @State private var models: PBListModelsResponse?
     @State private var modelsError = ""
     @State private var modelsFor = ""
+    @State private var allModels = false
     @State private var settings: PBDaemonSettings?
     @State private var removing: String?
 
@@ -243,12 +244,15 @@ struct ProjectSettingsSheet: View {
                     $0.effort = ""
                 }
             }
-            ForEach(Array(ms.models.enumerated()), id: \.element.slug) { i, m in
-                ListItem(m.displayName.isEmpty ? m.slug : m.displayName, checked: c.model == m.slug, last: i == ms.models.count - 1) {
+            let shown = shownModels(ms.models, picked: ms.models.first { $0.slug == c.model }, all: allModels)
+            let few = shown.count == ms.models.count
+            ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
+                ListItem(m.displayName.isEmpty ? m.slug : m.displayName, checked: c.model == m.slug, last: few && i == shown.count - 1) {
                     Haptics.selection()
                     draft.edit(pickModel(c, m))
                 }
             }
+            if !few { TextAction("全部模型", style: T.body, arrow: true) { allModels = true } }
             // With the default model an effort can still be chosen; choosing one does not fix the model.
             if let efforts = effortChoices(c, models: ms, settings: settings) {
                 FieldLabel("推理强度")

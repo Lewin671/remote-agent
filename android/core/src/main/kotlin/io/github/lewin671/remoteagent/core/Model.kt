@@ -612,6 +612,16 @@ fun autoUnavailable(
 }
 
 /**
+ * The models a picker lists before 全部模型: a short list whole, so none is out of reach; a long
+ * one its first three and the picked one, so 推理强度 below the list stays in sight.
+ */
+fun <M> shownModels(models: List<M>, picked: M?, all: Boolean): List<M> {
+    if (all || models.size <= 5) return models
+    val top = models.take(3)
+    return if (picked == null || picked in top) top else top + picked
+}
+
+/**
  * The entry of a model list that a session's model is. Codex reports the slug it was started with;
  * Claude Code offers aliases (sonnet, opus) but records the full ID (claude-sonnet-5-5), so an
  * alias matches a full ID that has it as one of its words.

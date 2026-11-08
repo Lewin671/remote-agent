@@ -272,6 +272,15 @@ import Testing
         #expect(findModel(models, id: "opus[1m]") { $0 } == "opus")
     }
 
+    @Test func aLongModelListShowsThreeAndThePickedOne() {
+        let few = ["a", "b", "c", "d", "e"]
+        #expect(shownModels(few, picked: nil, all: false) == few)
+        let many = few + ["f", "g"]
+        #expect(shownModels(many, picked: "b", all: false) == ["a", "b", "c"])
+        #expect(shownModels(many, picked: "g", all: false) == ["a", "b", "c", "g"])
+        #expect(shownModels(many, picked: "g", all: true) == many)
+    }
+
     @Test func aLateConfirmationIsForTheMessageRecordedAfterIt() {
         let client = PBOrigin.with { $0.kind = .client; $0.deviceID = "x" }
         let events = [

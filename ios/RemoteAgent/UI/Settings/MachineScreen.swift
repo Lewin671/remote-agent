@@ -385,6 +385,7 @@ private struct DefaultModelSheet: View {
     @State private var attempt = 0
     /// The model whose efforts are being offered; the one in use to begin with.
     @State private var model: String?
+    @State private var all = false
 
     var body: some View {
         let chosen = model ?? current.model
@@ -399,19 +400,22 @@ private struct DefaultModelSheet: View {
                 ListItem("默认（\(agentName(agent)) 自己的配置）", checked: chosen.isEmpty) {
                     onPick("", "")
                 }
-                ForEach(Array(models.models.enumerated()), id: \.offset) { i, m in
+                let shown = shownModels(models.models, picked: models.models.first { $0.slug == chosen }, all: all)
+                let few = shown.count == models.models.count
+                ForEach(Array(shown.enumerated()), id: \.offset) { i, m in
                     let note = [
                         contextText(tokens: m.contextWindow), m.efforts.isEmpty ? "无推理强度" : nil,
                     ].compactMap { $0 }.joined(separator: " · ")
                     ListItem(
                         m.displayName.or(m.slug), checked: m.slug == chosen,
                         small: note.isEmpty ? nil : note,
-                        last: i == models.models.count - 1
+                        last: few && i == shown.count - 1
                     ) {
                         // A model without efforts is chosen at once; one with them waits for the effort.
                         if m.efforts.isEmpty { onPick(m.slug, "") } else { model = m.slug }
                     }
                 }
+                if !few { TextAction("全部模型", style: T.body, arrow: true) { all = true } }
                 if let m = models.models.first(where: { $0.slug == chosen }), !m.efforts.isEmpty {
                     FieldLabel("推理强度")
                     ChoiceGrid(m.efforts, selected: current.model == m.slug ? current.effort : nil)

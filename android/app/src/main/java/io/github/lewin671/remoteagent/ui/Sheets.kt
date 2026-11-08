@@ -450,7 +450,13 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                         it.slug
                     }
                 if (pickedModel.isEmpty()) pickedModel = current?.slug.orEmpty()
-                val list = if (all || offered.size <= 5) offered else offered.take(3)
+                val list =
+                    io.github.lewin671.remoteagent.core.shownModels(
+                        offered,
+                        offered.firstOrNull { it.slug == pickedModel },
+                        all,
+                    )
+                val few = list.size == offered.size
                 list.forEachIndexed { i, m ->
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
@@ -463,7 +469,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                                     ?.let { "最高 $it" },
                         checked = m.slug == pickedModel,
                         enabled = !running && !act.running,
-                        last = i == list.size - 1 && (all || offered.size <= 5),
+                        last = i == list.size - 1 && few,
                         onClick = {
                             pickedModel = m.slug
                             // A model without efforts has nothing more to choose.
@@ -471,13 +477,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                         },
                     )
                 }
-                if (!all && offered.size > 5)
-                    Box(
-                        Modifier.heightIn(min = 44.dp).clickable { all = true },
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        ArrowText("全部模型", p.blue, T.body)
-                    }
+                if (!few) AllModels { all = true }
                 val model = offered.firstOrNull { it.slug == pickedModel }
                 if (model != null && model.effortsList.isNotEmpty()) {
                     FieldLabel("推理强度")
@@ -687,4 +687,12 @@ fun PageNote(text: String) {
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(24.dp),
     )
+}
+
+/** The link under a model list cut short by [io.github.lewin671.remoteagent.core.shownModels]. */
+@Composable
+fun AllModels(onClick: () -> Unit) {
+    Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onClick), contentAlignment = Alignment.CenterStart) {
+        ArrowText("全部模型", pal.blue, T.body)
+    }
 }

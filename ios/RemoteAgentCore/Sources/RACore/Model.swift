@@ -337,6 +337,16 @@ public func findModel<M>(_ models: [M], id: String, slug: (M) -> String) -> M? {
     return models.first { words.contains(slug($0).lowercased()) }
 }
 
+/// The models a picker lists before 全部模型: a short list whole, so none is out
+/// of reach; a long one its first three and the picked one, so 推理强度 below
+/// the list stays in sight.
+public func shownModels<M: Equatable>(_ models: [M], picked: M?, all: Bool) -> [M] {
+    if all || models.count <= 5 { return models }
+    let top = Array(models.prefix(3))
+    guard let picked, !top.contains(picked) else { return top }
+    return top + [picked]
+}
+
 /// Whether the model a CLI reports (`id`) is the one chosen by slug or alias.
 public func modelIs(_ id: String, _ slug: String) -> Bool {
     !id.isEmpty && !slug.isEmpty && (id.jvmEquals(slug) || modelWordBreak.split(id.lowercased()).contains(slug.lowercased()))

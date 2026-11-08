@@ -689,6 +689,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   const taskEditing = scheduled && lockMachine;
   const [pick, setPick] = useState<Pick>(start);
   const [removing, setRemoving] = useState(false);
+  const [allModels, setAllModels] = useState(false);
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
   const { remote, p, machine } = ns;
@@ -757,6 +758,12 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
     );
   else if (pick === "model") {
     const chosen = findModel(info.models?.models, cfg.model || def.model || info.models?.defaultModel || "");
+    // A long list shows three and the picked model, as the session sheet
+    // does, so 推理强度 below it stays in sight.
+    const list = info.models?.models ?? [];
+    const picked = cfg.model ? findModel(list, cfg.model) : undefined;
+    const few = allModels || list.length <= 5;
+    const shown = few ? list : [...list.slice(0, 3), ...(picked && !list.slice(0, 3).includes(picked) ? [picked] : [])];
     body = (
       <>
         {info.error && (
@@ -772,15 +779,20 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             </div>
             {!cfg.model && <span className="ck"><Check /></span>}
           </button>
-          {info.models?.models.map((m) => (
+          {shown.map((m) => (
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
               <div className="mt">
                 {m.displayName || m.slug}
                 {m.efforts.length === 1 && <div className="md">推理强度固定为 {m.efforts[0]}</div>}
               </div>
-              {cfg.model && m === findModel(info.models?.models, cfg.model) && <span className="ck"><Check /></span>}
+              {m === picked && <span className="ck"><Check /></span>}
             </button>
           ))}
+          {!few && (
+            <button className="mi link-row" onClick={() => setAllModels(true)}>
+              全部模型<ChevronRight />
+            </button>
+          )}
         </div>
         {chosen && chosen.efforts.length > 0 && (
           <>

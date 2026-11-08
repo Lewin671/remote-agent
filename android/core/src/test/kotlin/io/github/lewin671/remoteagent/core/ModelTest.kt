@@ -315,6 +315,16 @@ class ModelTest {
     }
 
     @Test
+    fun aLongModelListShowsThreeAndThePickedOne() {
+        val few = listOf("a", "b", "c", "d", "e")
+        assertEquals(few, shownModels(few, null, false))
+        val many = few + listOf("f", "g")
+        assertEquals(listOf("a", "b", "c"), shownModels(many, "b", false))
+        assertEquals(listOf("a", "b", "c", "g"), shownModels(many, "g", false))
+        assertEquals(many, shownModels(many, "g", true))
+    }
+
+    @Test
     fun aLateConfirmationIsForTheMessageRecordedAfterIt() {
         val client = Origin.newBuilder().setKind(OriginKind.ORIGIN_KIND_CLIENT).setDeviceId("x")
         val events = listOf(

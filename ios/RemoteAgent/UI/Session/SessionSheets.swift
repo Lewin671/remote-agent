@@ -167,8 +167,8 @@ struct SessionModelSheet: View {
 
     @ViewBuilder private func list(_ offered: [PBModelInfo]) -> some View {
         let current = findModel(offered, id: session.info?.model ?? "") { $0.slug }
-        let few = all || offered.count <= 5
-        let shown = few ? offered : Array(offered.prefix(3))
+        let shown = shownModels(offered, picked: offered.first { $0.slug == picked }, all: all)
+        let few = shown.count == offered.count
         ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
             let top = m.efforts.last
             ListItem(

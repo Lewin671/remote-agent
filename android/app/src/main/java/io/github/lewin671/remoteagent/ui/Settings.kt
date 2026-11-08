@@ -1001,6 +1001,7 @@ private fun DefaultModelSheet(
     }
     val d = defaultsFor(s, agent)
     var model by remember { mutableStateOf(d.model) }
+    var all by remember { mutableStateOf(false) }
     Sheet(onClose) {
         SheetHead("${agentName(agent)} · 新会话默认模型")
         val ms = models
@@ -1019,7 +1020,14 @@ private fun DefaultModelSheet(
                     checked = model.isEmpty(),
                     onClick = { onPick("", "") },
                 )
-                ms.modelsList.forEachIndexed { i, m ->
+                val shown =
+                    io.github.lewin671.remoteagent.core.shownModels(
+                        ms.modelsList,
+                        ms.modelsList.firstOrNull { it.slug == model },
+                        all,
+                    )
+                val few = shown.size == ms.modelsCount
+                shown.forEachIndexed { i, m ->
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
                         small =
@@ -1034,12 +1042,13 @@ private fun DefaultModelSheet(
                                 .joinToString(" · ")
                                 .ifEmpty { null },
                         checked = m.slug == model,
-                        last = i == ms.modelsCount - 1,
+                        last = few && i == shown.size - 1,
                         onClick = {
                             if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug
                         },
                     )
                 }
+                if (!few) AllModels { all = true }
                 ms.modelsList
                     .firstOrNull { it.slug == model }
                     ?.takeIf { it.effortsList.isNotEmpty() }

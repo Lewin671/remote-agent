@@ -1172,6 +1172,33 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await vi.waitFor(() => expect(button("high", document)?.className).toBe("on"));
 });
 
+it("keeps the effort in sight under a long model list", async () => {
+  const r = demo();
+  const real = r.listModels.bind(r);
+  r.listModels = async (...a: Parameters<DemoRemote["listModels"]>) => {
+    const got = await real(...a);
+    const extra = Array.from({ length: 8 }, (_, i) => ({ ...got.models[0], slug: `old-${i}`, displayName: `Old ${i}` }));
+    return { ...got, models: [...got.models, ...extra] };
+  };
+  const project = "/Users/me/Code/foo";
+  mount(<WideHome remote={r} go={() => undefined} project={project} />);
+  await fromMenu("新会话设置");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy(), { timeout: 3000 });
+  // The default row, three models and the link: the effort follows right after.
+  expect(document.querySelectorAll(".list .mi")).toHaveLength(5);
+  expect(button("high", document)).toBeTruthy();
+  await click(button(/^全部模型/, document));
+  expect(button("Old 7", document)).toBeTruthy();
+  await click(button("Old 7", document));
+  await click(button("完成", document));
+  await fromMenu("新会话设置");
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  // Collapsed again, the picked model is still listed and checked.
+  await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy());
+  expect(button("Old 7", document)?.querySelector(".ck")).toBeTruthy();
+});
+
 it("names a new project's default model as Codex does, even when /model hides it", async () => {
   const r = demo();
   // The machine's default is a model Codex leaves out of its list.

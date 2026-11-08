@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.ConnState
 import io.github.lewin671.remoteagent.core.DEFAULT_AGENT
 import io.github.lewin671.remoteagent.core.MachineView
+import io.github.lewin671.remoteagent.core.shownModels
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.defaultsFor
@@ -831,6 +832,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     // The sets changed here, by CLI; the others stay as stored.
     val edited = remember { mutableStateMapOf<Agent, NewConfig>().apply { if (initial != null) put(initial.agent, initial) } }
     var page by remember { mutableStateOf(open) }
+    var allModels by remember { mutableStateOf(false) }
     // Models are per machine: on another one every CLI starts over.
     val moved = machine != machineId
     val agents = machineAgents(state.machines[machine])
@@ -965,17 +967,20 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     else -> {
                         val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
-                        ms.modelsList.forEachIndexed { i, m ->
+                        val shown = shownModels(ms.modelsList, ms.modelsList.firstOrNull { it.slug == c.model }, allModels)
+                        val few = shown.size == ms.modelsCount
+                        shown.forEachIndexed { i, m ->
                             ListItem(
                                 m.displayName.ifEmpty { m.slug },
                                 small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
                                 checked = c.model == m.slug,
-                                last = i == ms.modelsCount - 1,
+                                last = few && i == shown.size - 1,
                                 onClick = {
                                     edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
                                 },
                             )
                         }
+                        if (!few) AllModels { allModels = true }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
                             val defaultEffort = if (c.model.isEmpty()) {
                                 defaultsFor(settings, c.agent).effort.ifEmpty { m.defaultEffort }
