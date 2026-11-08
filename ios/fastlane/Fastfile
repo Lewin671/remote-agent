@@ -100,7 +100,7 @@ platform :ios do
             # fastlane maps this option to usesNonExemptEncryption. The app uses Apple's CryptoKit.
             submission_information: { export_compliance_uses_encryption: false })
     submitted = app.get_app_store_versions(filter: { platform: 'IOS', versionString: Publishing.version }).first
-    UI.user_error!('Submission state was not confirmed') unless submitted && Publishing::SUBMITTED.include?(submitted.app_version_state) && submitted.release_type == 'AFTER_APPROVAL'
+    UI.user_error!('Submission state was not confirmed') unless submitted && Publishing::SUBMITTED.include?(submitted.app_version_state) && submitted.release_type == 'AFTER_APPROVAL' && submitted.build&.version == Publishing.build_number
     UI.success("#{Publishing.version} submitted; Apple will release it after approval")
   end
 end

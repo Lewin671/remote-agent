@@ -44,7 +44,10 @@ module Publishing
       state = v.app_version_state
       raise "A newer App Store version exists (#{v.version_string})" if number > Gem::Version.new(version)
       if v.version_string == version
-        return :done if SUBMITTED.include?(state) && v.release_type == 'AFTER_APPROVAL'
+        if SUBMITTED.include?(state) && v.release_type == 'AFTER_APPROVAL'
+          raise 'Submitted build number does not match the product release' unless v.build&.version == build_number
+          return :done
+        end
         raise "Version #{version} needs attention: #{state} / #{v.release_type}" unless EDITABLE.include?(state)
       elsif !%w[READY_FOR_DISTRIBUTION REPLACED_WITH_NEW_VERSION].include?(state)
         raise "Previous App Store version #{v.version_string} is still #{state}; finish it before retrying"

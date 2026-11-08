@@ -4,7 +4,8 @@ require 'fileutils'
 require_relative 'publishing'
 
 class PublishingTest < Minitest::Test
-  Version = Struct.new(:version_string, :app_version_state, :release_type)
+  Build = Struct.new(:version)
+  Version = Struct.new(:version_string, :app_version_state, :release_type, :build)
 
   def setup
     @dir = Dir.mktmpdir
@@ -26,7 +27,7 @@ class PublishingTest < Minitest::Test
 
   def test_submitted_or_live_automatic_version_is_idempotent
     %w[WAITING_FOR_REVIEW IN_REVIEW READY_FOR_DISTRIBUTION].each do |state|
-      assert_equal :done, Publishing.decision([Version.new('0.56.2', state, 'AFTER_APPROVAL')])
+      assert_equal :done, Publishing.decision([Version.new('0.56.2', state, 'AFTER_APPROVAL', Build.new('163'))])
     end
   end
 
@@ -55,6 +56,12 @@ class PublishingTest < Minitest::Test
     assert_equal 'Improved chat scrolling', Publishing.notes
     File.write(File.join(@dir, 'untracked'), 'dirty')
     assert_raises(RuntimeError) { Publishing.validate_source! }
+  end
+
+
+  def test_wrong_submitted_build_is_not_reported_as_success
+    version = Version.new('0.56.2', 'WAITING_FOR_REVIEW', 'AFTER_APPROVAL', Build.new('2'))
+    assert_raises(RuntimeError) { Publishing.decision([version]) }
   end
 
 end

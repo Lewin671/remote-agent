@@ -93,4 +93,4 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 - `RA_PUBLIC_DENY` 沿用 GitHub Release 的公开内容检查。流水线只上传 tag 的更新说明，保留 App Store 现有截图、商店资料、审核联系方式和分发地区。加密声明沿用已经审核的实现：仅使用 Apple 系统 CryptoKit，不含非豁免加密；若实现变化，先核对声明再发布。
 - 手动运行工作流且不勾选 `publish`，完成测试及无签名 Release 归档演练；实际发布验证成功后，将仓库变量 `IOS_APP_STORE_ENABLED` 设为 `true`，启用后续自动发布。
 
-本地演练：在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。
+本地演练需要 Ruby 3.3、Bundler 4 和 Xcode 27。在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。
