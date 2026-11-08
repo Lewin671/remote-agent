@@ -89,7 +89,7 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 初次配置：
 
 - 创建专用于发布的 App Store Connect 团队 API Key，角色为 App Manager。将标准 fastlane JSON 保存为仓库 Secret `ASC_API_KEY`：`key_id`、`issuer_id`、`key`（完整 p8 内容）。不保存 Apple 登录密码或验证码。
-- 创建专用 Apple Distribution 证书及对应 App Store 分发描述文件。Secret `IOS_SIGNING` 是 JSON：`certificate`（p12 的 Base64）、`password`（p12 密码）、`profile`（mobileprovision 的 Base64）、`team_id`。构建时写进临时 Keychain，结束时清理。证书或描述文件到期前更新此 Secret。
+- 创建专用 Apple Distribution 证书及对应 App Store 分发描述文件。Secret `IOS_SIGNING` 是 JSON：`certificate`（p12 的 Base64）、`password`（p12 密码）、`profile`（mobileprovision 的 Base64）、`team_id`。构建时写进临时 Keychain，结束时清理。证书或描述文件到期前更新此 Secret。用 OpenSSL 导出 p12 时，使用 `-keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1`，并先在临时 macOS 钥匙串验证可导入且存在 Apple Distribution 身份；默认导出格式可能报 MAC verification failed。
 - `RA_PUBLIC_DENY` 沿用 GitHub Release 的公开内容检查。流水线只上传 tag 的更新说明，保留 App Store 现有截图、商店资料、审核联系方式和分发地区。加密声明沿用已经审核的实现：仅使用 Apple 系统 CryptoKit，不含非豁免加密；若实现变化，先核对声明再发布。
 - 手动运行工作流且不勾选 `publish`，完成测试及无签名 Release 归档演练；实际发布验证成功后，将仓库变量 `IOS_APP_STORE_ENABLED` 设为 `true`，启用后续自动发布。
 
