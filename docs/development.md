@@ -80,3 +80,17 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 聊天 collection 的 `.sight` 是合并后的 UIKit viewport 样本（offset、contentSize.height、bounds.height）；`.content` 是内容高度和 `height - offset`，`.floor` 是 viewport 的底边高度，两者都用 collection 内坐标，不是窗口坐标。`.row` 是可见 cell 相对 viewport 的 y、高、宽和列表实体，离开可见区记 `.rowHidden`。`.listLayout` scope 每次 `UICollectionView.layoutSubviews` 都记录，因此即使观测合并，也能从逐路径计数看见布局风暴。`.keep` / `.keepTarget` / `.positionY` / `.kept` 表示 snapshot 前插或 cell 重排时的单次 offset 修正，`.positionID` 表示 UIKit 按行定位；`proxy…` 这些已有路径名保留其操作目的，定位已由 UIKit 执行。主线程 watchdog 和报告格式不变。
 
 模拟器聊天回归：`ChatScrollStressTests.tallRowsAtViewportBoundary` 用 609 pt viewport 和长短高度相差超过 1,000 pt 的正文／代码／表格混排行，测试附件保存数值环缓冲与开始／结束计数。`ChatCollectionTests` 断言跟随、前插、fresh、cell 自适应和宽屏布局；`RemoteAgentUITests/ChatGestureTests` 用 `-demo -demoRoute session/sample-boundary` 的合成数据执行原生拖动／快速滑动、回到底部和输入区收键盘。它们不连接中继或真实 CLI，不替代端到端验收。
+
+
+## iOS App Store 自动发布
+
+`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先跑 Swift package 测试并归档 Release，再上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；已有版本在审核或待手动发布时会明确失败，不撤回审核、不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
+
+初次配置：
+
+- 创建专用于发布的 App Store Connect 团队 API Key，角色为 App Manager。将标准 fastlane JSON 保存为仓库 Secret `ASC_API_KEY`：`key_id`、`issuer_id`、`key`（完整 p8 内容）。不保存 Apple 登录密码或验证码。
+- 创建专用 Apple Distribution 证书及对应 App Store 分发描述文件。Secret `IOS_SIGNING` 是 JSON：`certificate`（p12 的 Base64）、`password`（p12 密码）、`profile`（mobileprovision 的 Base64）、`team_id`。构建时写进临时 Keychain，结束时清理。证书或描述文件到期前更新此 Secret。
+- `RA_PUBLIC_DENY` 沿用 GitHub Release 的公开内容检查。流水线只上传 tag 的更新说明，保留 App Store 现有截图、商店资料、审核联系方式和分发地区。加密声明沿用已经审核的实现：仅使用 Apple 系统 CryptoKit，不含非豁免加密；若实现变化，先核对声明再发布。
+- 手动运行工作流且不勾选 `publish`，完成测试及无签名 Release 归档演练；实际发布验证成功后，将仓库变量 `IOS_APP_STORE_ENABLED` 设为 `true`，启用后续自动发布。
+
+本地演练：在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。

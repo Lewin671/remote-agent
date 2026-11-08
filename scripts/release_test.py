@@ -44,7 +44,7 @@ class ReleaseTests(unittest.TestCase):
         self.git('commit', '-qm', 'Test commit')
 
     def test_docs_and_tests_do_not_release(self):
-        for path in ('docs/plan.md', 'AGENTS.md', 'internal/a_test.go', 'android/core/src/test/kotlin/Test.kt', 'android/app/src/androidTest/Test.kt', 'scripts/release_test.py'):
+        for path in ('docs/plan.md', 'AGENTS.md', 'internal/a_test.go', 'android/core/src/test/kotlin/Test.kt', 'android/app/src/androidTest/Test.kt', 'scripts/release_test.py', 'ios/RemoteAgentCore/Tests/RACoreTests/AppTests.swift'):
             self.write(path, 'test')
         self.commit()
         self.assertFalse(release.prepare('patch')['eligible'])
@@ -54,12 +54,14 @@ class ReleaseTests(unittest.TestCase):
 
     def test_release_tooling_and_public_pages_do_not_release(self):
         for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
+                     'ios/Gemfile', 'ios/Gemfile.lock', 'ios/fastlane/Fastfile', 'ios/fastlane/publishing.rb', '.github/workflows/ios-app-store.yml',
                      'deploy/deploy.sh', 'install.sh', 'docs/assets/demo-light.svg', 'README.md'):
             self.assertFalse(release.product_change(path), path)
 
     def test_what_is_packed_or_decides_the_build_releases(self):
         for path in ('cmd/remote-agent/main.go', 'web/src/main.tsx', 'android/app/build.gradle.kts', 'go.mod', 'scripts/daemon.sh', 'scripts/build-go.sh',
-                     'scripts/build-dist.sh', 'scripts/notices.py', 'scripts/android-ci.py', 'deploy/self-host/compose.yaml'):
+                     'ios/RemoteAgent/Views/ChatView.swift', 'ios/RemoteAgentCore/Sources/RACore/App.swift', 'ios/RemoteAgent.xcodeproj/project.pbxproj',
+                     'ios/scripts/version.sh', 'scripts/build-dist.sh', 'scripts/notices.py', 'scripts/android-ci.py', 'deploy/self-host/compose.yaml'):
             self.assertTrue(release.product_change(path), path)
 
     def test_product_change_bumps_shared_version_and_code(self):

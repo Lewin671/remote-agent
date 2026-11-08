@@ -1,0 +1,106 @@
+require_relative 'publishing'
+require 'securerandom'
+require 'base64'
+require 'plist'
+require 'fileutils'
+require 'shellwords'
+
+default_platform(:ios)
+skip_docs
+opt_out_usage
+
+platform :ios do
+  desc 'Check core tests and archive Release without signing or contacting Apple'
+  lane :verify do
+    FileUtils.mkdir_p(ENV.fetch('IOS_OUTPUT_DIR'))
+    root = Publishing.source
+    sh('swift', 'test', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
+    sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
+       '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
+       '-archivePath', File.join(ENV.fetch('IOS_OUTPUT_DIR'), 'RemoteAgent.xcarchive'),
+       'CODE_SIGNING_ALLOWED=NO', 'archive')
+  end
+
+  desc 'Upload an immutable release, submit for review and release after approval'
+  lane :publish do
+    Publishing.validate_source!
+    key = JSON.parse(ENV.fetch('ASC_API_KEY'))
+    api_key = app_store_connect_api_key(key_id: key.fetch('key_id'), issuer_id: key.fetch('issuer_id'),
+                                       key_content: key.fetch('key'), in_house: false)
+    app = Spaceship::ConnectAPI::App.find(Publishing::BUNDLE_ID)
+    UI.user_error!('App Store app was not found') unless app
+    versions = app.get_app_store_versions(filter: { platform: 'IOS' })
+    if Publishing.decision(versions) == :done
+      UI.success('This version is already submitted with automatic release enabled')
+      next
+    end
+    notes = Publishing.notes
+    output = ENV.fetch('IOS_OUTPUT_DIR')
+    Dir.mkdir(output) unless Dir.exist?(output)
+    # Validate public notes even when resuming a previously uploaded build.
+    notes_path = File.join(output, 'release-notes.txt')
+    File.write(notes_path, notes)
+    sh('python3', File.expand_path('../../scripts/public_scan.py', __dir__), notes_path)
+    builds = Spaceship::ConnectAPI::Build.all(app_id: app.id, version: Publishing.version,
+                                            build_number: Publishing.build_number, platform: 'IOS')
+    build = builds.first
+    UI.user_error!('Uploaded build is invalid; fix the source and publish a new version') if build && %w[FAILED INVALID].include?(build.processing_state)
+    unless build
+      signing = JSON.parse(ENV.fetch('IOS_SIGNING'))
+      keychain = File.join(output, 'signing.keychain-db')
+      password = SecureRandom.hex(32)
+      begin
+        create_keychain(path: keychain, password: password, default_keychain: false,
+                        unlock: true, timeout: 7200, lock_when_sleeps: true)
+        certificate = File.join(output, 'distribution.p12')
+        File.binwrite(certificate, Base64.strict_decode64(signing.fetch('certificate')))
+        File.chmod(0600, certificate)
+        import_certificate(certificate_path: certificate, certificate_password: signing.fetch('password'),
+                           keychain_path: keychain, keychain_password: password)
+        profile = File.join(output, 'distribution.mobileprovision')
+        File.binwrite(profile, Base64.strict_decode64(signing.fetch('profile')))
+        installed_profile = install_provisioning_profile(path: profile)
+        profile_info = FastlaneCore::ProvisioningProfile.parse(profile)
+        build_app(project: File.join(Publishing.source, 'ios/RemoteAgent.xcodeproj'), scheme: 'RemoteAgent',
+                  configuration: 'Release', clean: true, export_method: 'app-store',
+                  output_directory: output, output_name: 'RemoteAgent.ipa',
+                  archive_path: File.join(output, 'RemoteAgent.xcarchive'),
+                  codesigning_identity: 'Apple Distribution', skip_profile_detection: true,
+                  xcargs: "CURRENT_PROJECT_VERSION=#{Publishing.build_number} DEVELOPMENT_TEAM=#{signing.fetch('team_id').shellescape} CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER=#{profile_info['Name'].shellescape}",
+                  export_options: { signingStyle: 'manual', teamID: signing.fetch('team_id'),
+                                    manageAppVersionAndBuildNumber: false,
+                                    provisioningProfiles: { Publishing::BUNDLE_ID => profile_info['Name'] } })
+        app_path = File.join(output, 'RemoteAgent.xcarchive/Products/Applications/RemoteAgent.app')
+        info = Plist.parse_xml(File.join(app_path, 'Info.plist'))
+        expected = { 'CFBundleIdentifier' => Publishing::BUNDLE_ID,
+                     'CFBundleShortVersionString' => Publishing.version,
+                     'CFBundleVersion' => Publishing.build_number,
+                     'RASourceCommit' => Publishing.git('rev-parse', '--short=12', 'HEAD') }
+        expected.each { |name, value| UI.user_error!("Archive #{name} does not match the release") unless info[name] == value }
+        sh('codesign', '--verify', '--deep', '--strict', app_path)
+        upload_to_testflight(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
+                             ipa: File.join(output, 'RemoteAgent.ipa'), skip_submission: true,
+                             skip_waiting_for_build_processing: false, wait_processing_timeout_duration: 1800,
+                             uses_non_exempt_encryption: false)
+      ensure
+        delete_keychain(keychain_path: keychain) if File.exist?(keychain)
+        File.delete(certificate) if certificate && File.exist?(certificate)
+        File.delete(profile) if profile && File.exist?(profile)
+        File.delete(installed_profile) if installed_profile && File.exist?(installed_profile)
+      end
+    end
+    # deliver waits for the exact build if a previous upload is still processing.
+    deliver(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
+            app_version: Publishing.version, build_number: Publishing.build_number,
+            skip_binary_upload: true, skip_screenshots: true, force: true,
+            metadata_path: File.join(output, 'metadata'),
+            release_notes: { 'default' => notes },
+            submit_for_review: true, automatic_release: true,
+            run_precheck_before_submit: false, reject_if_possible: false,
+            # fastlane maps this option to usesNonExemptEncryption. The app uses Apple's CryptoKit.
+            submission_information: { export_compliance_uses_encryption: false })
+    submitted = app.get_app_store_versions(filter: { platform: 'IOS', versionString: Publishing.version }).first
+    UI.user_error!('Submission state was not confirmed') unless submitted && Publishing::SUBMITTED.include?(submitted.app_version_state) && submitted.release_type == 'AFTER_APPROVAL'
+    UI.success("#{Publishing.version} submitted; Apple will release it after approval")
+  end
+end

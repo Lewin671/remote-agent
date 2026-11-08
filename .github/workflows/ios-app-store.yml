@@ -1,0 +1,134 @@
+name: iOS App Store
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published product tag (empty verifies main without publishing)
+        type: string
+        required: false
+      publish:
+        description: Upload, submit for Apple review and release after approval
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# Apple permits only one pending iOS version. Never cancel an upload midway.
+concurrency:
+  group: ios-app-store
+  cancel-in-progress: false
+
+env:
+  FASTLANE_SKIP_UPDATE_CHECK: '1'
+  FASTLANE_HIDE_CHANGELOG: '1'
+  FASTLANE_OPT_OUT_USAGE: '1'
+
+jobs:
+  app-store:
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          (vars.IOS_APP_STORE_ENABLED == 'true' &&
+           github.event.workflow_run.conclusion == 'success' &&
+           github.event.workflow_run.event == 'push' &&
+           github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: macos-26
+    timeout-minutes: 90
+    steps:
+      # Publishing tools come from main; product files always come from the tag.
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Resolve published product
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+          RUN_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          publish=false
+          tag="$INPUT_TAG"
+          if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+            git fetch origin "$RUN_COMMIT"
+            version=$(git show "${RUN_COMMIT}:version.properties" | sed -n 's/^version=//p')
+            tag="v$version"
+            publish=true
+          elif [ "$INPUT_PUBLISH" = true ]; then
+            [ -n "$tag" ] || { echo 'Publishing requires an explicit tag'; exit 1; }
+            publish=true
+          fi
+          if [ -n "$tag" ]; then
+            [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
+            git fetch origin "refs/tags/$tag:refs/tags/$tag" main
+            git merge-base --is-ancestor "$tag^{commit}" origin/main
+            if [ "$publish" = true ]; then
+              gh release view "$tag" --json isDraft,isPrerelease --jq 'select(.isDraft == false and .isPrerelease == false) | .isDraft' | grep -qx false
+              latest=$(gh release view --json tagName --jq .tagName)
+              if [ "$latest" != "$tag" ]; then
+                echo "Skipping superseded product release $tag (latest: $latest)"
+                echo 'skip=true' >> "$GITHUB_OUTPUT"
+              fi
+            fi
+            ref=$(git rev-parse "$tag^{commit}")
+            if [ "$GITHUB_EVENT_NAME" = workflow_run ]; then
+              [ "$ref" = "$RUN_COMMIT" ] || { echo "Tag does not match the successful release run"; exit 1; }
+            fi
+          else
+            ref=$(git rev-parse HEAD)
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          ref: ${{ steps.plan.outputs.ref }}
+          path: product
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+          working-directory: ios
+      - name: Publishing policy tests
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: ios
+        run: bundle exec ruby fastlane/publishing_test.rb
+      - name: Check and archive Release without publishing
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: ios
+        env:
+          IOS_SOURCE_DIR: ${{ github.workspace }}/product
+          IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-verify
+        run: |
+          mkdir -p "$IOS_OUTPUT_DIR"
+          bundle exec fastlane ios verify
+      - name: Upload and submit for automatic release
+        if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.publish == 'true'
+        working-directory: ios
+        env:
+          IOS_SOURCE_DIR: ${{ github.workspace }}/product
+          IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-publish
+          ASC_API_KEY: ${{ secrets.ASC_API_KEY }}
+          IOS_SIGNING: ${{ secrets.IOS_SIGNING }}
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
+        run: |
+          test -n "$ASC_API_KEY" && test -n "$IOS_SIGNING"
+          bundle exec fastlane ios publish
+      - name: Remove temporary signing and build files
+        if: always()
+        shell: bash
+        run: |
+          keychain="$RUNNER_TEMP/ios-publish/signing.keychain-db"
+          if [ -f "$keychain" ]; then security delete-keychain "$keychain"; fi
+          rm -rf "$RUNNER_TEMP/ios-publish" "$RUNNER_TEMP/ios-verify"

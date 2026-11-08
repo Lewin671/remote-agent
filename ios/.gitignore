@@ -4,3 +4,8 @@ build/
 DerivedData/
 xcuserdata/
 *.xcuserstate
+.bundle/
+vendor/
+fastlane/report.xml
+fastlane/README.md
+fastlane/Preview.html

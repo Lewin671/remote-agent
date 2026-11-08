@@ -14,10 +14,11 @@ SEMVER = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
 # the binaries, and the scripts that decide how they are built. The tools
 # that test, version and publish a release are not in it, nor are the
 # installer and the guides, which are read from main.
-PRODUCT_PATHS = ("cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/self-host/")
+PRODUCT_PATHS = ("cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/self-host/",
+                 "ios/RemoteAgent/", "ios/RemoteAgentCore/", "ios/RemoteAgent.xcodeproj/")
 PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py",
                  # Writes the signing and Firebase settings the APK is built with.
-                 "scripts/android-ci.py"}
+                 "scripts/android-ci.py", "ios/scripts/version.sh"}
 
 
 def git(*args):
@@ -42,7 +43,7 @@ def product_change(path):
     # broken test there fails the release as surely as broken code.
     if path.startswith("web/src/"):
         return True
-    tests = path.endswith(("_test.go", "_test.py", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")) or any(part in path for part in ("/src/test/", "/src/androidTest/", "/tests/", "/testdata/"))
+    tests = path.endswith(("_test.go", "_test.py", ".test.ts", ".test.tsx", ".spec.ts", ".spec.tsx")) or any(part in path for part in ("/src/test/", "/src/androidTest/", "/tests/", "/Tests/", "/testdata/"))
     return not tests and not path.endswith(".md") and (path in PRODUCT_FILES or path.startswith(PRODUCT_PATHS))
 
 
