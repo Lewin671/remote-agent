@@ -3,7 +3,11 @@
 # to deploy it: the parts go live in an order that keeps every client
 # working, and each is checked to run the release before the next starts.
 #
-# Usage: scripts/ship.sh [vX.Y.Z]   (default: the version on origin/main)
+# Usage: scripts/ship.sh [--web-only] [vX.Y.Z]   (default: the version on origin/main)
+#
+# --web-only updates only Cloudflare Pages, verifies its production source
+# through the API and refuses a protocol change. It does not contact or restart
+# the server or daemon.
 #
 # 1. waits for the tag's Release workflow and refuses a release that failed
 # 2. the server, if its code changed since the deployed one
@@ -34,6 +38,13 @@ fail() {
 	exit 1
 }
 
+web_only=false
+if [ "${1:-}" = --web-only ]; then
+	web_only=true
+	shift
+fi
+[ "$#" -le 1 ] || fail "usage: $0 [--web-only] [vX.Y.Z]"
+
 case $SHIP_SERVER in
 always | never | auto) ;;
 *) fail "RA_SHIP_SERVER must be always, never or auto" ;;
@@ -48,8 +59,10 @@ git -C "$ROOT" merge-base --is-ancestor "$commit" origin/main || fail "$tag is n
 lock=${TMPDIR:-/tmp}/remote-agent-ship.lock
 mkdir "$lock" 2>/dev/null || fail "another ship is running (or remove $lock if none is)"
 work=
+cloudflare_record=
 cleanup() {
 	[ -z "$work" ] || git -C "$ROOT" worktree remove --force "$work"
+	[ -z "$cloudflare_record" ] || rm -f "$cloudflare_record"
 	rmdir "$lock"
 }
 trap cleanup EXIT
@@ -75,6 +88,7 @@ git -C "$ROOT" worktree add -q --detach "$work" "$commit"
 # The commit a build reports in "name version (commit)".
 built_commit() { sed -n 's/.*(\([0-9a-f]\{40\}\)).*/\1/p'; }
 
+if [ "$web_only" = false ]; then
 say "server"
 deployed=$(ssh "$HOST" "$DIR/remote-agent-server --version" 2>/dev/null | built_commit) || deployed=
 deploy_server=$SHIP_SERVER
@@ -107,9 +121,31 @@ else
 	echo "skipped: the server's code is unchanged since the deployed ${deployed:-?}"
 fi
 
+fi
+
 say "web"
+# Web-only deployment uses control-plane verification when public HTTP access
+# is restricted. The CLI reports failed/active stages by name, successful ones
+# by age; the parser accepts only a successful production/main source.
+cloudflare_source() {
+	(cd "$work/web" && pnpm exec wrangler pages deployment list --project-name remote-agent --environment production --json) >"$cloudflare_record" || return 1
+	python3 "$ROOT/scripts/web-deployment.py" --source <"$cloudflare_record"
+}
+if [ "$web_only" = true ]; then
+	(cd "$work/web" && pnpm install --frozen-lockfile --silent)
+	cloudflare_record=$(mktemp "${TMPDIR:-/tmp}/remote-agent-web.XXXXXX")
+	deployed_web=$(cloudflare_source) || fail "cannot verify the deployed web source through Cloudflare"
+	previous_protocol=$(git -C "$ROOT" show "$deployed_web:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
+	target_protocol=$(git -C "$ROOT" show "$commit:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
+	[ -n "$previous_protocol" ] && [ "$previous_protocol" = "$target_protocol" ] || fail "web-only deployment cannot change protocol; coordinate a full ship"
+fi
 # The page's main script carries the commit it was built from.
 web_has() {
+	if [ "$web_only" = true ]; then
+		cloudflare_source >/dev/null || return 1
+		python3 "$ROOT/scripts/web-deployment.py" --commit "$1" <"$cloudflare_record"
+		return
+	fi
 	page=$(curl -fsS --retry 2 --max-time 60 "$WEB_URL/?ship=$1") || return 1
 	for js in $(printf '%s' "$page" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js'); do
 		curl -fsS --retry 2 --max-time 180 "$WEB_URL$js" | grep -q "$1" && return 0
@@ -119,14 +155,27 @@ web_has() {
 if web_has "$commit"; then
 	echo "skipped: already $tag"
 else
-	(cd "$work/web" && pnpm install --frozen-lockfile --silent && VITE_DEFAULT_SERVER=$SERVER_URL pnpm run deploy)
+	if [ "$web_only" = true ]; then
+		(cd "$work/web" && VITE_DEFAULT_SERVER=$SERVER_URL pnpm run deploy)
+	else
+		(cd "$work/web" && pnpm install --frozen-lockfile --silent && VITE_DEFAULT_SERVER=$SERVER_URL pnpm run deploy)
+	fi
 	i=0
 	until web_has "$commit"; do
 		i=$((i + 1))
 		[ $i -lt 12 ] || fail "$WEB_URL does not serve $tag"
 		sleep 5
 	done
-	echo "web serves $tag"
+	if [ "$web_only" = true ]; then
+		echo "Cloudflare production points to $tag"
+	else
+		echo "web serves $tag"
+	fi
+fi
+
+if [ "$web_only" = true ]; then
+	say "shipped web $tag"
+	exit 0
 fi
 
 say "daemon"

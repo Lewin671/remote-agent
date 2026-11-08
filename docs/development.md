@@ -41,6 +41,7 @@ remote-agent events <id> -f    # 持续查看事件
 
 ```sh
 deploy/deploy.sh root@your-vps           # 部署 server，第一次会生成 setup token
+scripts/ship.sh --web-only [vX.Y.Z]     # 仅更新 Cloudflare Pages；协议变化时拒绝，按 API 校验生产提交
 scripts/ship.sh [vX.Y.Z]                # 我们自己的部署：按顺序上线 server、网页和本机 daemon
 remote-agent account join --server https://ra.example.com --code 12345678   # 在新电脑上加入（管理端显示配对码）
 cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cloudflare Pages（先 npx wrangler login）
