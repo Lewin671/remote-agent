@@ -2072,3 +2072,11 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 - 仓库自动触发开关已启用；[云端重跑记录](https://github.com/Lewin671/remote-agent/actions/runs/42461451644)验证已送审版本的幂等处理。发布工具变动未单独递增产品版本。
 
 本轮验证发布链路，不包含新的手机界面或真实 CLI 端到端验收。Apple 审核结果仍待其处理；当前版本已设置审核通过后自动发布。
+
+### Web 单独上线（2026-11-08）
+
+按北京时间，使用 `scripts/ship.sh --web-only v0.56.3` 从正式 tag 的干净 checkout 构建并部署 Web。Cloudflare 生产/main 原先为 `v0.56.0`（`2b486de`），部署后独立查询确认最新成功提交为 `d3cc183`，与 `v0.56.3` 的 `d3cc18321627efbd6760927d6ece0193f1ccc35f` 一致。前后协议版本均为 13。
+
+发布工具回归 47 项及 `go test ./...` 通过。新增隔离测试确认只更新 Web 时不调用 SSH、daemon 或公共页面 HTTP；协议变化时在部署前停止。实际上线仅运行 Web 阶段，没有更新或重启中继及本机 daemon。构建、上传、Cloudflare 生产提交校验均成功；临时 tag checkout 已清理。
+
+此前公共页面直接请求返回 403，本轮按工作流停止该访问路径，以已认证的 Cloudflare 控制面完成部署及校验，没有重试页面访问或声称完成浏览器界面验收。使用方式见 [development](development.md#连接-server-和网页)。
