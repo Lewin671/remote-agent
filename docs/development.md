@@ -84,7 +84,7 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 
 ## iOS App Store 自动发布
 
-`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先跑 Swift package 测试并归档 Release，再上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；已有版本在审核或待手动发布时会明确失败，不撤回审核、不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
+`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先串行运行 Swift package 测试，再归档签名的 Release 并上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；已有版本在审核或待手动发布时会明确失败，不撤回审核、不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
 
 初次配置：
 
@@ -93,4 +93,4 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 - `RA_PUBLIC_DENY` 沿用 GitHub Release 的公开内容检查。流水线只上传 tag 的更新说明，保留 App Store 现有截图、商店资料、审核联系方式和分发地区。加密声明沿用已经审核的实现：仅使用 Apple 系统 CryptoKit，不含非豁免加密；若实现变化，先核对声明再发布。
 - 手动运行工作流且不勾选 `publish`，完成测试及无签名 Release 归档演练；实际发布验证成功后，将仓库变量 `IOS_APP_STORE_ENABLED` 设为 `true`，启用后续自动发布。
 
-本地演练需要 Ruby 3.3、Bundler 4 和 Xcode 27。在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。
+本地演练需要 Ruby 3.3、Bundler 4 和 Xcode 27。在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。演练额外执行无签名归档；正式发布只执行后续的分发签名归档。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。

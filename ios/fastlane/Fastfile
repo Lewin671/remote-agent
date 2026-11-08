@@ -11,14 +11,18 @@ opt_out_usage
 
 platform :ios do
   desc 'Check core tests and archive Release without signing or contacting Apple'
-  lane :verify do
+  lane :verify do |options|
     FileUtils.mkdir_p(ENV.fetch('IOS_OUTPUT_DIR'))
     root = Publishing.source
-    sh('swift', 'test', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
-    sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
-       '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
-       '-archivePath', File.join(ENV.fetch('IOS_OUTPUT_DIR'), 'RemoteAgent.xcarchive'),
-       'CODE_SIGNING_ALLOWED=NO', 'archive')
+    # Swift Testing otherwise runs socket/deadline tests alongside unrelated fixture builds.
+    sh('swift', 'test', '--no-parallel', '--package-path', File.join(root, 'ios/RemoteAgentCore'), '--jobs', '4')
+    # A publishing run archives with its distribution signature in the next lane.
+    if options[:archive].to_s != 'false'
+      sh('xcodebuild', '-project', File.join(root, 'ios/RemoteAgent.xcodeproj'),
+         '-scheme', 'RemoteAgent', '-configuration', 'Release', '-destination', 'generic/platform=iOS',
+         '-archivePath', File.join(ENV.fetch('IOS_OUTPUT_DIR'), 'RemoteAgent.xcarchive'),
+         'CODE_SIGNING_ALLOWED=NO', 'archive')
+    end
   end
 
   desc 'Upload an immutable release, submit for review and release after approval'

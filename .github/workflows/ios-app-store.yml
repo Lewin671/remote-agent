@@ -116,15 +116,20 @@ jobs:
         if: steps.plan.outputs.skip != 'true'
         working-directory: ios
         run: bundle exec ruby fastlane/publishing_test.rb
-      - name: Check and archive Release without publishing
+      - name: Check iOS release (unsigned archive for rehearsals)
         if: steps.plan.outputs.skip != 'true'
         working-directory: ios
         env:
           IOS_SOURCE_DIR: ${{ github.workspace }}/product
           IOS_OUTPUT_DIR: ${{ runner.temp }}/ios-verify
+          WILL_PUBLISH: ${{ steps.plan.outputs.publish }}
         run: |
           mkdir -p "$IOS_OUTPUT_DIR"
-          bundle exec fastlane ios verify
+          if [ "$WILL_PUBLISH" = true ]; then
+            bundle exec fastlane ios verify archive:false
+          else
+            bundle exec fastlane ios verify
+          fi
       - name: Upload and submit for automatic release
         if: steps.plan.outputs.skip != 'true' && steps.plan.outputs.publish == 'true'
         working-directory: ios
