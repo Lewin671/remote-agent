@@ -326,7 +326,7 @@ function tableSep(line: string): boolean {
   let s = line.trim();
   if (s.startsWith("|")) s = s.slice(1);
   if (s.endsWith("|")) s = s.slice(0, -1);
-  return s.split("|").every((c) => /^:?-{3,}:?$/.test(c.trim()));
+  return s.split("|").every((c) => /^:?-+:?$/.test(c.trim()));
 }
 
 /** A heading's text, without the closing hashes some write after it. */

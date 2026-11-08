@@ -417,7 +417,7 @@ private val fenceRe: Pattern = Pattern.compile("[$WS]*(`{3,}|~{3,})[$WS]*([^$WS`
 // the same greedy parse while preventing that quadratic backtracking.
 private val listRe: Pattern = Pattern.compile("([$WS]*)([-*+]|[0-9]{1,9}[.)])[$WS]++([^\\n\\r\\u2028\\u2029]*)")
 private val taskRe = Regex("\\[([ xX])\\][$WS]++(.*)", RegexOption.DOT_MATCHES_ALL)
-private val sepCell = Regex(":?-{3,}:?")
+private val sepCell = Regex(":?-+:?")
 
 /** A line that ends a fence opened by [n] of [mark]: the same character, at least as many. */
 private fun closesFence(line: String, mark: Char, n: Int): Boolean {

@@ -74,7 +74,7 @@ private func tableSep(_ line: Scalars) -> Bool {
     var s = line.trimmed()
     if s.first == "|" { s = s.dropFirst() }
     if s.last == "|" { s = s.dropLast() }
-    // Every cell is `:?-{3,}:?` once trimmed.
+    // Every cell is `:?-+:?` once trimmed: GFM asks for one dash, not three.
     for cell in s.split(separator: "|", omittingEmptySubsequences: false) {
         var lo = cell.startIndex
         var hi = cell.endIndex
@@ -82,7 +82,7 @@ private func tableSep(_ line: Scalars) -> Bool {
         while hi > lo, isSpace(cell[hi - 1]) { hi -= 1 }
         if lo < hi, cell[lo] == ":" { lo += 1 }
         if hi > lo, cell[hi - 1] == ":" { hi -= 1 }
-        guard hi - lo >= 3, cell[lo..<hi].allSatisfy({ $0 == "-" }) else { return false }
+        guard hi > lo, cell[lo..<hi].allSatisfy({ $0 == "-" }) else { return false }
     }
     return true
 }
