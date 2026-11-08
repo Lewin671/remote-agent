@@ -2061,3 +2061,14 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 `ios/scripts/check.sh` 最终通过（含 436 个 App／模拟器测试），`go test ./...` 通过。末次原生 UI 验收没有新增 stall 文件。
 
 **边界与异常**：首轮新列表原生自动化期间有一次恢复的 3.53 s 主线程停顿；报告时没有活动的已测量 layout scope，近期只有 49 个 layout scope，内容高度没有交替，时刻与 XCTest 查询 collection 元素重叠。这不是已知的单轮次布局振荡复现，也不能据此证明停顿由测试工具造成；报告保留，末次完整验收没有再次出现。没有覆盖 iPhone 13／iOS 18.5、真机交互收键盘的逐帧 lag 像素对齐、表格／计划预览的逐个手工点击，以及 server → daemon → 真实 CLI 的端到端操作链。
+
+### iOS App Store 自动发布（2026-11-08）
+
+按北京时间记录，产品源码为 `v0.56.3`，构建号 `164`，源码提交 `d3cc18321627`。发布工具独立从 main 读取，具体操作和维护入口见 [development · iOS App Store 自动发布](development.md#ios-app-store-自动发布)。
+
+- GitHub Xcode 27 runner 完成 Swift 包测试、分发签名归档和 IPA 上传；Apple 完成该构建的处理。本机也导出同一 tag 的签名 IPA，核对 bundle identifier、产品版本、构建号、源码提交及 codesign 签名，归档和导出的 IPA 信息一致。
+- Swift 包测试串行运行，保留真实登录取消测试的两秒断言；本机完整通过。发布策略 Ruby 回归为 9 项测试、38 个断言，覆盖已送审重跑、较新版本与旧版在审时拒绝、构建号匹配、凭据错误脱敏、只配置 App Release 目标、异常时原样恢复工程和实际语言的更新说明。`go test ./...` 通过。
+- 云端首次送审被缺少更新说明挡住后，使用修复后的同一发布入口复用已上传构建，为已有商店语言写入 tag 更新说明并完成送审。Apple API 核对为 `WAITING_FOR_REVIEW`、`AFTER_APPROVAL`、build `164`；不覆盖截图、商店资料或地区。
+- 仓库自动触发开关已启用；[云端重跑记录](https://github.com/Lewin671/remote-agent/actions/runs/42461451644)验证已送审版本的幂等处理。发布工具变动未单独递增产品版本。
+
+本轮验证发布链路，不包含新的手机界面或真实 CLI 端到端验收。Apple 审核结果仍待其处理；当前版本已设置审核通过后自动发布。
