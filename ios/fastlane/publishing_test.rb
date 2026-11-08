@@ -122,4 +122,12 @@ class PublishingTest < Minitest::Test
     ENV['RA_SOURCE_COMMIT'] = previous
   end
 
+
+  def test_release_notes_use_actual_store_locales_instead_of_the_default_pseudo_locale
+    expected = { 'zh-Hans' => 'Release notes', 'en-US' => 'Release notes' }
+    assert_equal expected, Publishing.localized_notes(['zh-Hans', 'en-US'], 'zh-Hans', 'Release notes')
+    assert_equal({ 'zh-Hans' => 'Notes' }, Publishing.localized_notes([], 'zh-Hans', 'Notes'))
+    assert_raises(RuntimeError) { Publishing.localized_notes(['default'], nil, 'Notes') }
+  end
+
 end

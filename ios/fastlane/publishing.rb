@@ -88,6 +88,12 @@ module Publishing
     text
   end
 
+  def self.localized_notes(locales, primary_locale, text)
+    languages = (locales + [primary_locale]).compact.uniq.reject { |locale| locale.empty? || locale == 'default' }
+    raise 'App Store localization is missing' if languages.empty?
+    languages.to_h { |locale| [locale, text] }
+  end
+
   def self.decision(versions)
     versions.sort_by { |v| Gem::Version.new(v.version_string) }.reverse.each do |v|
       number = Gem::Version.new(v.version_string)

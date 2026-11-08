@@ -79,6 +79,9 @@ platform :ios do
       next
     end
     notes = Publishing.notes
+    metadata_version = versions.find { |version| version.version_string == Publishing.version } || app.get_live_app_store_version(platform: 'IOS')
+    locales = metadata_version ? metadata_version.get_app_store_version_localizations.map(&:locale) : []
+    localized_notes = Publishing.localized_notes(locales, app.primary_locale, notes)
     output = ENV.fetch('IOS_OUTPUT_DIR')
     Dir.mkdir(output) unless Dir.exist?(output)
     # Validate public notes even when resuming a previously uploaded build.
@@ -101,7 +104,7 @@ platform :ios do
             app_version: Publishing.version, build_number: Publishing.build_number,
             skip_binary_upload: true, skip_screenshots: true, force: true,
             metadata_path: File.join(output, 'metadata'),
-            release_notes: { 'default' => notes },
+            release_notes: localized_notes,
             submit_for_review: true, automatic_release: true,
             run_precheck_before_submit: false, reject_if_possible: false,
             # fastlane maps this option to usesNonExemptEncryption. The app uses Apple's CryptoKit.
