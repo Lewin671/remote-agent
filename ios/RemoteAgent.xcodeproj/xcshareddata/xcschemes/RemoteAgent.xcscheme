@@ -38,6 +38,14 @@
                ReferencedContainer = "container:RemoteAgent.xcodeproj">
             </BuildableReference>
          </TestableReference>
+         <TestableReference skipped = "NO">
+            <BuildableReference BuildableIdentifier = "primary"
+               BlueprintIdentifier = "B30000000000000000000010"
+               BuildableName = "RemoteAgentUITests.xctest"
+               BlueprintName = "RemoteAgentUITests"
+               ReferencedContainer = "container:RemoteAgent.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction

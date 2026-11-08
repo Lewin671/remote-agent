@@ -8,7 +8,7 @@
 // real session.
 //
 //   -demo -demoRoute session/sample-rows      (and sample-queue, sample-send, sample-start,
-//                                              sample-claude, sample-old, sample-long,
+//                                              sample-claude, sample-old, sample-long, sample-boundary,
 //                                              sample-wait, sample-many, sample-ask, sample-ended)
 //   -sessionPerf          print what each pass over the events cost, and the frames while session.stream plays
 //   -sessionShow <what>   open a session with something showing: menu, mode, confirmFull,
@@ -155,6 +155,7 @@ enum SessionSamples {
                 $0.fullAccessUnavailable = true
             },
             session("sample-old", "另一个协议版本的电脑", now: now, machine: oldMachine),
+            session("sample-boundary", "Tall row boundary stress", now: now),
             session("sample-long", "一段很长的历史", now: now, status: .running, context: 380_000),
             session("sample-wait", "别的客户端也在处理", now: now, status: .running, approvals: 1),
             session("sample-many", "一轮很忙的活", now: now, status: .running, agent: .claude, mode: .fullAccess),
@@ -353,6 +354,7 @@ enum SessionSamples {
                 agent("已更新安装步骤。"), turnEnd(9_000),
             ]),
             "sample-old": Demo.events(now, [turn, user("你好"), agent("你好。"), turnEnd(900)]),
+            "sample-boundary": boundaryEvents(),
             "sample-long": Demo.events(now, long(), step: 400),
             "sample-wait": Demo.events(now, [
                 turn, user("把依赖装上"),
@@ -438,6 +440,23 @@ enum SessionSamples {
             turnEnd(254_000, aborted: true, by: theirs),
             turn, user("页面右上角加一个刷新按钮", by: typed), agent("加好了，在标题右边。"), usage(total: 366_400, last: 118_000), turnEnd(18_000),
         ]
+    }
+
+    /// Shared by the 609 pt layout stress test and native gesture UI test.
+    static func boundaryEvents() -> [PBEvent] {
+        return (1...140).map { n in
+            .with {
+                $0.seq = UInt64(n)
+                switch n % 4 {
+                case 0:
+                    $0.agentMessage.text = String(repeating: "A tall reply with **variable height** and wrapped paragraphs.\n\n", count: 26)
+                        + "```swift\n" + String(repeating: "let example = 42\n", count: 80) + "```\n\n"
+                        + "| Column | Value |\n| --- | --- |\n" + String(repeating: "| A wrapping table cell | example |\n", count: 12)
+                case 2: $0.agentMessage.text = "A short reply."
+                default: $0.userMessage.text = "Message \(n)"
+                }
+            }
+        }
     }
 
     /// A long history: turns of a message, thinking, tools and a reply with a table and code.

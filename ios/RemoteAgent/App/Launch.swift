@@ -49,7 +49,7 @@
 //
 // Sessions (UI/Session/SessionSamples.swift)
 //   -demo -demoRoute session/<id>    the sample sessions: sample-rows, sample-queue, sample-send, sample-start,
-//                                    sample-claude, sample-agy, sample-old, sample-long, sample-wait, sample-many, sample-ask,
+//                                    sample-claude, sample-agy, sample-old, sample-long, sample-boundary, sample-wait, sample-many, sample-ask,
 //                                    sample-ended; and the sets' own (run, ask, …)
 //   -sessionShow <what>              a session with something showing: menu, mode, confirmFull, model, rename,
 //                                    project, stop, fold, reason

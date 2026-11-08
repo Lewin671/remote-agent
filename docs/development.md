@@ -76,3 +76,7 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 `RA_TEST_DEVICE` 填目标设备的标识；独立 Debug App 的 bundle identifier 改为 `io.github.lewin671.remoteagent.dev`。此命令需要可访问 App 数据容器的开发签名及配对环境，不承诺 App Store 安装包可这样读取。模拟器可用 `xcrun simctl get_app_container <simulator> <bundle-identifier> data` 找到数据容器后读取相同相对目录。
 
 报告 `format = 1`。`path` 对应代码中的 `ChatDiagnosticPath.rawValue`；`a…d` 是对应 `record` 调用的数值，`nonFinite` 的四个位标记原输入非有限值。`entity` 是进程内小整数，`sequence` 是诊断序号，均不是服务器事件或会话标识。`layoutBegin.a` 指明测量种类，`layout` 配对 begin/end；`mainThread` 区分主线程与后台测量，`mainLayout` 是快照时尚未结束的主线程 scope。时间单位是纳秒，相对于该进程内缓冲的创建；`createdAtUnixMilliseconds` 仅用于文件时间。`startedAt` 是未回复 ping 的投递时间，`recoveredAt` 和 `duration` 在恢复后补入，不代表已经定位卡顿起点或根因。
+
+聊天 collection 的 `.sight` 是合并后的 UIKit viewport 样本（offset、contentSize.height、bounds.height）；`.content` 是内容高度和 `height - offset`，`.floor` 是 viewport 的底边高度，两者都用 collection 内坐标，不是窗口坐标。`.row` 是可见 cell 相对 viewport 的 y、高、宽和列表实体，离开可见区记 `.rowHidden`。`.listLayout` scope 每次 `UICollectionView.layoutSubviews` 都记录，因此即使观测合并，也能从逐路径计数看见布局风暴。`.keep` / `.keepTarget` / `.positionY` / `.kept` 表示 snapshot 前插或 cell 重排时的单次 offset 修正，`.positionID` 表示 UIKit 按行定位；`proxy…` 这些已有路径名保留其操作目的，定位已由 UIKit 执行。主线程 watchdog 和报告格式不变。
+
+模拟器聊天回归：`ChatScrollStressTests.tallRowsAtViewportBoundary` 用 609 pt viewport 和长短高度相差超过 1,000 pt 的正文／代码／表格混排行，测试附件保存数值环缓冲与开始／结束计数。`ChatCollectionTests` 断言跟随、前插、fresh、cell 自适应和宽屏布局；`RemoteAgentUITests/ChatGestureTests` 用 `-demo -demoRoute session/sample-boundary` 的合成数据执行原生拖动／快速滑动、回到底部和输入区收键盘。它们不连接中继或真实 CLI，不替代端到端验收。

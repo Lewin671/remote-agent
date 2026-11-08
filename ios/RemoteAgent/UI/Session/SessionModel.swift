@@ -176,8 +176,6 @@ final class SessionModel {
     private(set) var liveError: String?
     private(set) var unavailableCount = 0
     private(set) var historyPartial = false
-    /// Keep a newest segment's short-content alignment through backfill.
-    private(set) var tailFirst = false
     /// How many times earlier history joined in front of the rows shown.
     private(set) var joins = 0
     /// How many rows the last join put in front of those shown (`rowsInFront`).
@@ -267,7 +265,6 @@ final class SessionModel {
         #endif
         let partial = pendingHistoryPartial
         let from = events.first?.seq ?? 1
-        let newestSegment = partial && from > 1
         let snapshot = await builder.build(events, params, stateEvents: stateEvents)
         // A later pass that finished first already shows more.
         guard turn > applied else { return }
@@ -279,7 +276,6 @@ final class SessionModel {
             deferredHistory = true
         } else {
             deferredHistory = false
-            if newestSegment && !tailFirst { tailFirst = true }
             // Earlier history came in front: not a gap filled after the rows, nor the end of the history said to be further.
             if from < shownFrom && !rows.isEmpty {
                 joined = rowsInFront(before: rows, after: snapshot.rows)

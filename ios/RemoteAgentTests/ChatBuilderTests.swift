@@ -52,11 +52,11 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         tail.inputState.requestID = "request"; tail.inputState.status = .submitted
         let model = SessionModel()
         await model.show(SessionEvents(events: [tail], stateEvents: [], historyPartial: true))
-        #expect(model.ready && model.historyPartial && model.tailFirst && !model.loaded)
+        #expect(model.ready && model.historyPartial && !model.loaded)
         #expect(model.derived.inputs.isEmpty)
         await model.show(SessionEvents(events: [tail], loaded: true))
         #expect(model.derived.inputs["request"] == .submitted)
-        #expect(model.loaded && !model.historyPartial && model.tailFirst)
+        #expect(model.loaded && !model.historyPartial)
     }
 
     @Test func aReplyIsParsedOnceHoweverOftenTheChatIsBuilt() async {

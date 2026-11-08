@@ -95,113 +95,89 @@ extension Ref<LiveAnnouncer> {
         #expect(scroll.v.fresh(rows: 1_043) == 3)
     }
 
-    /// At 700 pt of a bar at 700, then moved back by a finger.
     @MainActor private func readingBack() -> ChatScrollTracker {
         let tracker = ChatScrollTracker()
-        _ = tracker.floor(700)
-        _ = tracker.count(10)
-        _ = tracker.content(height: 2_000, endY: 700)
+        _ = tracker.viewport(height: 2_000, offset: 1_300, floor: 700, count: 10)
         _ = tracker.interaction(true)
-        _ = tracker.content(height: 2_000, endY: 1_500)
+        _ = tracker.viewport(height: 2_000, offset: 500, floor: 700, count: 10)
         _ = tracker.interaction(false)
         return tracker
     }
 
-    @MainActor @Test func theTrackerIsNotSentToTheEndWhileTheReaderIsPutBack() {
+    @MainActor @Test func keepingSuspendsFollowUntilTheAnchorIsRestored() {
         let tracker = readingBack()
         tracker.keep()
-        // On the way back the list passes its end at a size it already had: that is not the reader at the end.
-        #expect(!tracker.content(height: 2_000, endY: 700))
-        #expect(!tracker.scroll.following)
-        // Nor are its growth and its new rows a reason to go there.
-        #expect(!tracker.content(height: 9_000, endY: 700))
-        #expect(!tracker.count(500))
+        #expect(!tracker.viewport(height: 9_000, offset: 8_300, floor: 700, count: 500))
         #expect(!tracker.scroll.following)
         tracker.kept()
-        // Put back, it is judged again: at its end it follows.
-        _ = tracker.content(height: 9_000, endY: 700)
+        _ = tracker.viewport(height: 9_000, offset: 8_300, floor: 700, count: 500)
         #expect(tracker.scroll.following)
     }
 
-    @MainActor @Test func askingForTheEndWhileTheReaderIsPutBackEndsIt() {
+    @MainActor @Test func askingForTheEndOrDraggingEndsKeeping() {
         let tracker = readingBack()
         tracker.keep()
         tracker.jump()
-        #expect(!tracker.keeping)
-        // It follows again, and a step of the way back that was under way does not undo that.
-        tracker.kept()
-        #expect(tracker.scroll.following)
-        #expect(tracker.content(height: 9_000, endY: 1_500))
-    }
-
-    @MainActor @Test func aNewDragTakesOverFromHistoryRestoration() {
-        let tracker = readingBack()
+        #expect(!tracker.keeping && tracker.scroll.following)
+        #expect(tracker.viewport(height: 9_000, offset: 7_500, floor: 700, count: 10))
         tracker.keep()
         _ = tracker.interaction(true)
-        #expect(!tracker.keeping, "a pending history correction must give the reader control")
-        #expect(!tracker.content(height: 9_000, endY: 1_800))
+        #expect(!tracker.keeping)
+        #expect(!tracker.viewport(height: 9_000, offset: 7_200, floor: 700, count: 10))
         #expect(!tracker.scroll.following)
     }
 
-    @MainActor @Test func estimatedHeightChangesAtTheEndDoNotFeedAnotherScroll() {
+    @MainActor @Test func cachedSizeChangesAlreadyAtTheEndNeedNoScroll() {
         let tracker = ChatScrollTracker()
-        _ = tracker.floor(700)
-        _ = tracker.count(100)
-        _ = tracker.content(height: 10_000, endY: 700)
-        // Lazy rows above the viewport replace estimates with measured heights.
-        // The bottom is already correct. Scrolling again here re-enters layout
-        // even though there is no distance left to travel.
-        var commands = 0
+        _ = tracker.viewport(height: 10_000, offset: 9_300, floor: 700, count: 100)
         for i in 0..<100 {
-            if tracker.content(height: i.isMultiple(of: 2) ? 10_010 : 10_000, endY: 700) { commands += 1 }
+            let height: CGFloat = i.isMultiple(of: 2) ? 10_010 : 10_000
+            #expect(!tracker.viewport(height: height, offset: height - 700, floor: 700, count: 100))
         }
-        #expect(commands == 0)
-        // Real growth still needs a correction, even within the follow slack.
-        #expect(tracker.content(height: 10_012, endY: 712))
+        #expect(tracker.viewport(height: 10_012, offset: 9_300, floor: 700, count: 100))
     }
 
-    @MainActor @Test func growthAtTheBottomDoesNotIssueScrollCommandsUnderAFinger() {
+    @MainActor @Test func growthWithinSlackWaitsForFingerAndDecelerationToEnd() {
         let tracker = ChatScrollTracker()
-        _ = tracker.floor(700)
-        _ = tracker.count(10)
-        _ = tracker.content(height: 2_000, endY: 700)
+        _ = tracker.viewport(height: 2_000, offset: 1_300, floor: 700, count: 10)
         _ = tracker.interaction(true)
-        #expect(!tracker.count(11), "new rows must not interrupt a drag starting at the bottom")
-        #expect(!tracker.content(height: 2_001, endY: 701))
-        #expect(!tracker.floor(699))
-        // Release follows even if no further event or layout arrives.
+        #expect(!tracker.viewport(height: 2_001, offset: 1_300, floor: 699, count: 11))
+        #expect(tracker.scroll.following)
         #expect(tracker.interaction(false))
-        #expect(!tracker.interaction(false), "an idle phase does not repeatedly scroll")
-        #expect(tracker.content(height: 2_200, endY: 900))
+        #expect(!tracker.interaction(false), "an idle callback does not repeatedly scroll")
+        #expect(tracker.viewport(height: 2_200, offset: 1_300, floor: 700, count: 11))
     }
 
-    @MainActor @Test func theTrackerFollowsGrowthAndTheKeyboardOnlyAtTheEnd() {
+    @MainActor @Test func growthAndViewportChangesFollowOnlyAtTheEnd() {
         let tracker = ChatScrollTracker()
-        _ = tracker.floor(700)
-        _ = tracker.count(10)
-        #expect(!tracker.content(height: 2_000, endY: 700), "already at the end")
-        #expect(!tracker.content(height: 2_000, endY: 700), "nothing changed")
-        // A reply grows by 300 pt: its end is now under the bar.
-        #expect(tracker.content(height: 2_300, endY: 1_000))
-        _ = tracker.content(height: 2_300, endY: 700)
-        // The keyboard comes up.
-        #expect(tracker.floor(400))
-        _ = tracker.content(height: 2_300, endY: 400)
+        #expect(!tracker.viewport(height: 2_000, offset: 1_300, floor: 700, count: 10))
+        #expect(tracker.viewport(height: 2_300, offset: 1_300, floor: 700, count: 10))
+        _ = tracker.viewport(height: 2_300, offset: 1_600, floor: 700, count: 10)
+        #expect(tracker.viewport(height: 2_300, offset: 1_600, floor: 400, count: 10))
+        _ = tracker.viewport(height: 2_300, offset: 1_900, floor: 400, count: 10)
         #expect(tracker.fresh == 0 && !tracker.away)
-
-        // The user drags back by a screen.
         _ = tracker.interaction(true)
-        #expect(!tracker.content(height: 2_300, endY: 1_200))
+        #expect(!tracker.viewport(height: 2_300, offset: 1_100, floor: 400, count: 10))
         _ = tracker.interaction(false)
         #expect(tracker.away)
-        #expect(!tracker.content(height: 2_600, endY: 1_500), "a growing reply moves nothing for someone reading back")
-        #expect(!tracker.floor(700), "nor does the keyboard going away")
-        #expect(!tracker.count(13))
+        #expect(!tracker.viewport(height: 2_600, offset: 1_100, floor: 700, count: 13))
         #expect(tracker.fresh == 3)
+        tracker.prepended(100)
+        #expect(!tracker.viewport(height: 10_600, offset: 9_100, floor: 700, count: 113))
+        #expect(tracker.fresh == 3, "history is not fresh")
         tracker.jump()
         #expect(tracker.fresh == 0)
-        #expect(tracker.content(height: 2_700, endY: 1_600))
+        #expect(tracker.viewport(height: 10_700, offset: 9_100, floor: 700, count: 113))
     }
+
+    @MainActor @Test func coherentViewportDoesNotReviveFollowingAfterAJumpBack() {
+        let tracker = ChatScrollTracker()
+        _ = tracker.viewport(height: 2_000, offset: 1_300, floor: 700, count: 10)
+        tracker.leave()
+        #expect(!tracker.viewport(height: 2_000, offset: 500, floor: 700, count: 10))
+        #expect(!tracker.scroll.following && tracker.away)
+    }
+
 }
 
 @Suite struct SessionWordsTests {

@@ -8,7 +8,7 @@ import UIKit
 
 @MainActor
 @Suite struct ChatScrollLayoutTests {
-    /// Exercises the actual lazy chat, including its geometry callbacks. Pure
+    /// Exercises the actual collection-backed chat, including its geometry callbacks. Pure
     /// tracker tests cannot detect a layout that never returns to the run loop.
     @Test(.timeLimit(.minutes(1)))
     func scrollingWhileHistoryAndRepliesArrive() async throws {
@@ -33,6 +33,7 @@ import UIKit
                     : .userMessage(.with { $0.text = "Message \(n)" })
             }
         }
+        events[450].origin.scheduledRunID = "target-run"
         await chat.show(SessionEvents(events: Array(events.suffix(60)), stateEvents: [], historyPartial: true))
         let host = UIHostingController(rootView:
             ChatPane(session: session, status: .idle, chat: chat, onTerminal: {})
@@ -70,6 +71,15 @@ import UIKit
         }
         #expect(chat.loaded && chat.joins > 0)
         #expect(scroll.contentSize.height.isFinite && scroll.contentSize.height > scroll.bounds.height)
+        let collection = try #require(scroll as? UICollectionView)
+        let source = try #require(collection.dataSource as? UICollectionViewDiffableDataSource<Int, String>)
+        // The seq fallback deliberately cannot match: this must find the
+        // scheduled-run user row and position it at the viewport's top.
+        context.sessionStore.jumpToScheduledRun(session.id, runID: "target-run", seq: 999_999)
+        try await Task.sleep(for: .milliseconds(250))
+        let index = try #require(source.indexPath(for: "e451"))
+        let frame = try #require(collection.layoutAttributesForItem(at: index)).frame
+        #expect(abs(frame.minY - collection.contentOffset.y) < 1)
         await model.logout()
     }
 
@@ -77,8 +87,8 @@ import UIKit
     /// of the freeze. Include the rows that measure themselves (plan previews
     /// and Markdown tables), an open dock, and changes to the viewport. Moving
     /// UIScrollView here does not exercise touch tracking or deceleration.
-    @Test(.timeLimit(.minutes(1)), arguments: [DynamicTypeSize.large, .accessibility3])
-    func mixedRowsSettleAfterHistoryStreamingAndViewportChanges(size: DynamicTypeSize) async throws {
+    @Test(.timeLimit(.minutes(1)), arguments: [(DynamicTypeSize.large, ColorScheme.light), (.large, .dark), (.accessibility3, .dark)])
+    func mixedRowsSettleAfterHistoryStreamingAndViewportChanges(size: DynamicTypeSize, scheme: ColorScheme) async throws {
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
         let remote = Demo.remote()
@@ -133,7 +143,7 @@ import UIKit
         let host = UIHostingController(rootView:
             ChatPane(session: session, status: .idle, chat: chat, onTerminal: {})
                 .environment(model).environment(context).environment(Navigator())
-                .environment(\.dynamicTypeSize, size))
+                .environment(\.dynamicTypeSize, size).preferredColorScheme(scheme))
         let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
         let window = UIWindow(windowScene: scene)
         window.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
@@ -182,6 +192,10 @@ import UIKit
             #expect(abs(scroll.contentOffset.y - settledOffset.y) < 0.5)
         }
         #expect(settledSize.height.isFinite && settledSize.height > scroll.bounds.height)
+        let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+            window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+        }
+        Attachment.record(try #require(image.pngData()), named: "mixed-chat-\(scheme)-\(size).png")
         await model.logout()
     }
 }

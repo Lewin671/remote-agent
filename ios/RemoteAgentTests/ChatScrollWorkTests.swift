@@ -42,8 +42,7 @@ import Testing
 
     @Test func queuedFollowRechecksGestureRestorationAndLatestGeometry() async throws {
         let tracker = ChatScrollTracker()
-        _ = tracker.floor(700)
-        _ = tracker.content(height: 2_000, endY: 900)
+        _ = tracker.viewport(height: 2_000, offset: 1_100, floor: 700, count: 10)
         var calls = 0
         tracker.follow { calls += 1 }
         _ = tracker.interaction(true)
@@ -56,10 +55,10 @@ import Testing
         #expect(calls == 0)
         tracker.kept()
         tracker.follow { calls += 1 }
-        _ = tracker.content(height: 2_000, endY: 700)
+        _ = tracker.viewport(height: 2_000, offset: 1_300, floor: 700, count: 10)
         try await Task.sleep(for: .milliseconds(80))
         #expect(calls == 0, "the system already placed the bottom while the request waited")
-        _ = tracker.content(height: 2_200, endY: 900)
+        _ = tracker.viewport(height: 2_200, offset: 1_300, floor: 700, count: 10)
         tracker.follow { calls += 1 }
         try await Task.sleep(for: .milliseconds(80))
         #expect(calls == 1)

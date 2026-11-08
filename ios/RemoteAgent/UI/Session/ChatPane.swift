@@ -2,18 +2,14 @@
 // at the bottom what waits for the user and the message box. Android's
 // `ChatPane` and `Bottom` in ui/Session.kt.
 //
-// Scrolling. The list is lazy, opens at its end, and stays there as
-// content arrives only for someone who is at the end (`ChatScroll`, the
-// package's `Follow`): a reply that grows, a new row, the dock opening or
-// the keyboard coming up keep the end in sight; someone reading back is
-// moved by none of them, and is told what arrived by a pill that goes to
-// the end. Where the end is, is measured, not inferred from a scroll the
-// app asked for, which ends before a long list has laid itself out.
+// Scrolling. UIKit caches self-sizing SwiftUI cells and owns the position.
+// The tracker publishes only the new-row count and jump-to-end pill; the
+// collection controller handles follow, history anchors and user gestures.
 //
 // The keyboard. The bottom bar is the scroll view's safe-area inset, so
 // the system moves it with the keyboard and the rows end above it. A drag
 // on the chat takes the keyboard down with the finger
-// (`scrollDismissesKeyboard(.interactively)`); SwiftUI only learns of the
+// (`UIScrollView.keyboardDismissMode = .interactive`); SwiftUI only learns of the
 // keyboard's place when that drag ends, so meanwhile the bar is kept on
 // the keyboard by `KeyboardTrack`, which reads UIKit's keyboard layout
 // guide.
@@ -25,10 +21,8 @@ import UIKit
 
 // MARK: Where the end of the list is
 
-/// Geometry is delivered inside SwiftUI's layout transaction. A scroll there
-/// can synchronously lay out the lazy stack again, which changes its estimates
-/// and delivers more geometry. Coalesce corrections outside that transaction,
-/// at most once per display-sized interval, and let a new gesture cancel them.
+/// Coalesce UIKit layout/scroll observations outside layout. A gesture cancels
+/// pending follow work before it can issue a programmatic move.
 @MainActor
 final class ChatScrollWork {
     private let diagnosticEntity = ChatDiagnosticRing.shared.identity()
@@ -73,14 +67,21 @@ final class ChatScrollTracker {
 
     @ObservationIgnored private(set) var scroll = ChatScroll()
     @ObservationIgnored private(set) var dragging = false
-    /// The list's scroll view, from iOS 18 (`ListFinder`).
-    @ObservationIgnored weak var list: UIScrollView?
+    @ObservationIgnored private var requestedRow: String?
+    @ObservationIgnored weak var controller: ChatCollectionController? {
+        didSet {
+            if let controller, let requestedRow {
+                self.requestedRow = nil
+                controller.toRow(requestedRow)
+            }
+        }
+    }
+
     @ObservationIgnored private var contentHeight: CGFloat = 0
     @ObservationIgnored private var endY: CGFloat = 0
     @ObservationIgnored private var floorY: CGFloat = 0
     @ObservationIgnored private var rows = 0
     @ObservationIgnored private var measured = false
-    @ObservationIgnored private var contentMeasured = false
     @ObservationIgnored private let followWork = ChatScrollWork()
 
     /// The end counts as in sight within this of the bar: a list at rest is rarely there to the point.
@@ -88,7 +89,13 @@ final class ChatScrollTracker {
 
     private var atBottom: Bool { !measured || endY <= floorY + Self.slack }
     // Follow slack decides intent, not whether another layout is needed.
-    private var needsScroll: Bool { measured && contentMeasured && endY > floorY + 0.5 }
+    private var needsScroll: Bool { measured && endY > floorY + 0.5 }
+
+    /// An initial scheduled jump can arrive before the representable mounts.
+    func toRow(_ id: String) {
+        if let controller { controller.toRow(id) }
+        else { requestedRow = id }
+    }
 
     func follow(_ action: @escaping () -> Void) {
         ChatDiagnosticRing.shared.record(.followRequest, entity: diagnosticEntity, Double(endY), Double(floorY), scroll.following ? 1 : 0, dragging ? 1 : 0)
@@ -108,12 +115,7 @@ final class ChatScrollTracker {
         if a != away { ChatDiagnosticRing.shared.record(.away, entity: diagnosticEntity, a ? 1 : 0); away = a }
     }
 
-    /// The rows in sight, by ID, where the list shows them. Known from iOS 18 (`KeepsPlace`).
-    @ObservationIgnored var inSight: [String: CGRect] = [:]
-    // Only visible row IDs are held in memory; files receive just the integer token.
-    @ObservationIgnored var diagnosticRows: [String: UInt64] = [:]
-
-    /// Rows joined in front, and the list is being put back where the reader was (`KeepsPlace`).
+    /// Rows joined in front, and the list is being put back where the reader was (UIKit snapshot update).
     @ObservationIgnored private(set) var keeping = false
 
     /// The list is put back where the reader was: it is neither judged nor sent to the end meanwhile.
@@ -128,7 +130,7 @@ final class ChatScrollTracker {
         guard keeping else { return }
         ChatDiagnosticRing.shared.record(.kept, entity: diagnosticEntity)
         keeping = false
-        publish()
+        // The collection publishes its coherent post-update viewport later.
     }
 
     /// A new gesture owns the position, including any correction still pending
@@ -138,37 +140,26 @@ final class ChatScrollTracker {
         ChatDiagnosticRing.shared.record(.dragging, entity: diagnosticEntity, active ? 1 : 0)
         dragging = active
         if active {
+            requestedRow = nil
             cancelFollow()
             kept()
         }
         return ended && !keeping && scroll.following && needsScroll
     }
 
-    /// The content was laid out or scrolled: its height, and where its end is on the screen.
-    /// True when the list should go to its end.
-    func content(height: CGFloat, endY: CGFloat) -> Bool {
-        ChatDiagnosticRing.shared.record(.content, entity: diagnosticEntity, Double(height), Double(endY))
-        contentMeasured = true
-        let grew = abs(height - contentHeight) > 0.5
+    /// UIKit delivers one coherent viewport sample. Update all coordinates
+    /// before judging intent; mixing an old end with a new floor could revive
+    /// following just before a requested jump to an earlier row.
+    func viewport(height: CGFloat, offset: CGFloat, floor: CGFloat, count: Int) -> Bool {
+        ChatDiagnosticRing.shared.record(.content, entity: diagnosticEntity, Double(height), Double(height - offset))
+        ChatDiagnosticRing.shared.record(.floor, entity: diagnosticEntity, Double(floor))
+        ChatDiagnosticRing.shared.record(.count, entity: diagnosticEntity, Double(count))
+        let changed = abs(height - contentHeight) > 0.5 || abs(floor - floorY) > 0.5 || count != rows
         contentHeight = height
-        self.endY = endY
-        return settle(changed: grew)
-    }
-
-    /// The top of the bar under the list moved: the dock opened, the keyboard came or went.
-    func floor(_ y: CGFloat) -> Bool {
-        ChatDiagnosticRing.shared.record(.floor, entity: diagnosticEntity, Double(y))
-        let moved = abs(y - floorY) > 0.5
-        floorY = y
+        endY = height - offset
+        floorY = floor
+        rows = count
         measured = true
-        return settle(changed: moved)
-    }
-
-    /// The number of rows changed.
-    func count(_ n: Int) -> Bool {
-        ChatDiagnosticRing.shared.record(.count, entity: diagnosticEntity, Double(n))
-        let changed = n != rows
-        rows = n
         return settle(changed: changed)
     }
 
@@ -200,20 +191,8 @@ final class ChatScrollTracker {
     func prepended(_ n: Int) {
         ChatDiagnosticRing.shared.record(.prepend, entity: diagnosticEntity, Double(n))
         scroll.prepended(n)
-        publish()
-    }
-
-    /// Stops the list where it is: a finger on it is let go of, a glide ends. The list takes no move
-    /// from the app while it moves, or not for long: a finger takes it back where it holds it, a glide
-    /// goes on from where it was.
-    func stop() {
-        guard let list, list.isTracking || list.isDecelerating else { return }
-        if list.isTracking {
-            list.panGestureRecognizer.isEnabled = false
-            list.panGestureRecognizer.isEnabled = true
-        }
-        ChatDiagnosticRing.shared.record(.scrollStop, entity: diagnosticEntity, Double(list.contentOffset.y))
-        list.setContentOffset(list.contentOffset, animated: false)
+        // Do not publish against the old row count while a snapshot is being
+        // applied: the next viewport includes the prepend and its new count.
     }
 
     /// The user asked for the end.
@@ -223,283 +202,6 @@ final class ChatScrollTracker {
         keeping = false
         scroll.jumpToEnd(rows: rows)
         publish()
-    }
-}
-
-/// Tells when the user's finger is moving the list. The system says so from
-/// iOS 18; before that a drag on the list is taken for it.
-private struct DragWatch: ViewModifier {
-    let onChange: (Bool) -> Void
-
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content.onScrollPhaseChange { _, phase in
-                onChange(phase == .interacting || phase == .decelerating || phase == .tracking)
-            }
-        } else {
-            content.simultaneousGesture(
-                DragGesture(minimumDistance: 4).onChanged { _ in onChange(true) }.onEnded { _ in
-                    onChange(false)
-                })
-        }
-    }
-}
-
-/// Keeps what the reader sees when the earlier history joins in front of
-/// the newest rows. The list is held at its top on a change of size (see
-/// `EndAnchored`), which would put older rows where the reader was; the
-/// first row in sight that is still there after the join is put back where
-/// it was instead. Rows at the join may not be (a tool call is shown where
-/// it started once that is read, calls next to each other fold), so only
-/// those the joined list still has count. Until the joined rows are
-/// measured their layout is only an estimate, so the row is gone to, by an
-/// anchor that puts it where it was, and then set to the point while it does
-/// not hold. Asking for the end ends it. A list in motion as the rows join,
-/// under a finger or gliding, joins its prefix only after that motion ends
-/// (`SessionModel.interaction`). A list that follows its end stays
-/// there. Before iOS 18 the list keeps its end in place on a change of size
-/// by itself.
-private struct KeepsPlace: ViewModifier {
-    /// How many times the earlier history joined (`SessionModel.joins`), and the rows as shown.
-    let joins: Int
-    let rows: [ChatRow]
-    let tracker: ChatScrollTracker
-
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content.modifier(Keeping(joins: joins, rows: rows, tracker: tracker))
-        } else {
-            content
-        }
-    }
-
-    @available(iOS 18.0, *)
-    private struct Keeping: ViewModifier {
-        let joins: Int
-        let rows: [ChatRow]
-        let tracker: ChatScrollTracker
-        @State private var position = ScrollPosition()
-        @State private var place = Place()
-
-        struct Target: Equatable {
-            let id: String
-            /// From the top of sight to the row's top.
-            let y: CGFloat
-            /// Where the row is in sight, as `scrollTo(id:anchor:)` puts it.
-            let anchor: UnitPoint
-            let round: Int
-        }
-
-        /// The list's offset and height, and the height of what is in sight, not under bars.
-        struct Sight: Equatable {
-            var offset: CGFloat = 0
-            var content: CGFloat = 0
-            var height: CGFloat = 0
-        }
-
-        @MainActor final class Place {
-            var joins: Int?
-            var sight = Sight()
-            /// The row to put back, and where its top was.
-            var target: Target?
-            var started = false
-            var tries = 0
-            let work = ChatScrollWork()
-            var rounds = 0
-        }
-
-        func body(content: Content) -> some View {
-            // The rows are given before they are laid out: what is in sight is still what the reader saw.
-            let diagnosticEntity = tracker.diagnosticEntity
-            let _ = mark(joins)
-            content
-                .scrollPosition($position)
-                .onScrollGeometryChange(for: Sight.self) { g in
-                    ChatDiagnosticRing.shared.measure(.sight, entity: diagnosticEntity) {
-                        Sight(offset: g.contentOffset.y, content: g.contentSize.height, height: g.containerSize.height)
-                    }
-                } action: { _, new in
-                    ChatDiagnosticRing.shared.record(.sight, entity: diagnosticEntity, Double(new.offset), Double(new.content), Double(new.height))
-                    place.sight = new
-                    correct()
-                }
-                .onChange(of: joins) { correct() }
-                .onDisappear { finish() }
-        }
-
-        private func correct() {
-            guard place.target != nil else { return }
-            place.work.schedule {
-                if place.started { step() } else { begin() }
-            }
-        }
-
-        /// Takes the row to put back when the earlier history joins.
-        private func mark(_ joins: Int) {
-            guard joins != place.joins else { return }
-            let first = place.joins == nil
-            ChatDiagnosticRing.shared.record(.joins, entity: tracker.diagnosticEntity, Double(joins))
-            place.joins = joins
-            // Left alone, the list would show the earlier history instead.
-            guard !first, !tracker.scroll.following else { return }
-            let ids = Set(rows.lazy.map(\.id))
-            // Rows keep their IDs across the join unless they are tool calls whose start was not read yet.
-            let seen = tracker.inSight.filter { ids.contains($0.key) }.sorted { $0.value.minY < $1.value.minY }
-            // Put back in one move: the first row whose place an anchor can give (one wholly in sight,
-            // or one taller than the sight that fills it), else the first, moved by what is left after.
-            let sight = place.sight
-            func anchor(_ frame: CGRect) -> UnitPoint? {
-                let room = sight.height - frame.height
-                if abs(room) < 1 { return abs(frame.minY) < 1 ? .top : nil }
-                return (0...1).contains(frame.minY / room) ? UnitPoint(x: 0.5, y: frame.minY / room) : nil
-            }
-            guard let (id, frame, at) = seen.lazy.compactMap({ row in anchor(row.value).map { (row.key, row.value, $0) } }).first
-                ?? seen.first.map({ ($0.key, $0.value, UnitPoint.top) })
-            else { return }
-            place.rounds += 1
-            ChatDiagnosticRing.shared.record(.keepTarget, entity: tracker.diagnosticRows[id] ?? 0, Double(frame.minY), Double(at.y))
-            place.target = Target(id: id, y: frame.minY, anchor: at, round: place.rounds)
-            place.started = false
-            place.tries = 0
-            tracker.keep()
-        }
-
-        /// The first move back, after the joined rows came: from the list's first layout of them, or when it was told.
-        private func begin() {
-            guard let target = place.target, !place.started else { return }
-            guard tracker.keeping else { return finish() }
-            place.started = true
-            // End any remaining motion before applying the correction.
-            tracker.stop()
-            go(to: target)
-            // A list that stops moving before the row is back is not held any longer.
-            Task {
-                try? await Task.sleep(for: .seconds(1))
-                if place.target?.round == target.round { finish() }
-            }
-        }
-
-        /// One step back to the row: to it while it is not in sight, then by what is left.
-        private func step() {
-            guard let target = place.target else { return }
-            // The end was asked for, or the reader went elsewhere.
-            guard tracker.keeping else { return finish() }
-            // Not laid out since the last step.
-            guard let y = tracker.inSight[target.id]?.minY else { return }
-            if place.tries >= 8 || abs(y - target.y) < 0.5 {
-                finish()
-            } else {
-                tracker.inSight[target.id] = nil
-                place.tries += 1
-                ChatDiagnosticRing.shared.record(.positionY, entity: tracker.diagnosticRows[target.id] ?? 0, Double(place.sight.offset + y - target.y))
-                position.scrollTo(y: place.sight.offset + y - target.y)
-            }
-        }
-
-        private func go(to target: Target) {
-            // Only a layout from now on tells where the row is.
-            tracker.inSight[target.id] = nil
-            place.tries += 1
-            ChatDiagnosticRing.shared.record(.positionID, entity: tracker.diagnosticRows[target.id] ?? 0, Double(target.anchor.y))
-            position.scrollTo(id: target.id, anchor: target.anchor)
-        }
-
-        private func finish() {
-            place.work.cancel()
-            place.target = nil
-            tracker.kept()
-        }
-    }
-}
-
-/// Finds, from iOS 18, the scroll view the rows are in, for `ChatScrollTracker.stop`.
-private struct ListFinder: UIViewRepresentable {
-    let tracker: ChatScrollTracker
-
-    func makeUIView(context: Context) -> Finder { Finder(tracker: tracker) }
-    func updateUIView(_ view: Finder, context: Context) {}
-
-    final class Finder: UIView {
-        private let tracker: ChatScrollTracker
-
-        init(tracker: ChatScrollTracker) {
-            self.tracker = tracker
-            super.init(frame: .zero)
-            isUserInteractionEnabled = false
-            isHidden = true
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) { fatalError("not from a nib") }
-
-        override func layoutSubviews() {
-            let pass = ChatDiagnosticRing.shared.beginLayout(.listLayout)
-            defer { ChatDiagnosticRing.shared.endLayout(pass) }
-            super.layoutSubviews()
-        }
-
-        override func didMoveToWindow() {
-            super.didMoveToWindow()
-            guard #available(iOS 18.0, *), window != nil else { return }
-            tracker.list = sequence(first: superview, next: { $0?.superview }).lazy.compactMap { $0 as? UIScrollView }.first
-        }
-    }
-}
-
-/// Tells, from iOS 18, where a row in the list's sight is (`KeepsPlace`).
-private struct InSight: ViewModifier {
-    @State private var diagnosticEntity = ChatDiagnosticRing.shared.identity()
-    let id: String
-    let tracker: ChatScrollTracker
-
-    func body(content: Content) -> some View {
-        let entity = diagnosticEntity
-        if #available(iOS 18.0, *) {
-            content
-                .environment(\.chatDiagnosticEntity, entity)
-                .onGeometryChange(for: CGRect?.self) { g in
-                    ChatDiagnosticRing.shared.measure(.row, entity: entity) {
-                        let frame = g.frame(in: .scrollView)
-                        let height = g.bounds(of: .scrollView)?.height ?? .infinity
-                        return frame.maxY > 0 && frame.minY < height ? frame : nil
-                    }
-                } action: { frame in
-                    if let frame {
-                        ChatDiagnosticRing.shared.record(.row, entity: entity, Double(frame.minY), Double(frame.height), Double(frame.width), Double(tracker.diagnosticEntity))
-                        tracker.diagnosticRows[id] = entity
-                    } else {
-                        ChatDiagnosticRing.shared.record(.rowHidden, entity: entity)
-                        tracker.diagnosticRows[id] = nil
-                    }
-                    tracker.inSight[id] = frame
-                }
-                .onDisappear {
-                    ChatDiagnosticRing.shared.record(.rowHidden, entity: entity)
-                    tracker.diagnosticRows[id] = nil
-                    tracker.inSight[id] = nil
-                }
-        } else {
-            content
-        }
-    }
-}
-
-/// Opens the list at its end. Where the system can be told apart what the
-/// anchor is for (iOS 18), it is only that: a chat shorter than the screen
-/// starts at the top, and a change of size moves nothing by itself, since a
-/// list held to its end by the system would also drag back someone who is
-/// reading earlier rows. Staying at the end is `ChatScrollTracker`'s.
-private struct EndAnchored: ViewModifier {
-    let tailFirst: Bool
-    func body(content: Content) -> some View {
-        if #available(iOS 18.0, *) {
-            content
-                .defaultScrollAnchor(.bottom, for: .initialOffset)
-                .defaultScrollAnchor(.top, for: .sizeChanges)
-                .defaultScrollAnchor(tailFirst ? .bottom : .top, for: .alignment)
-        } else {
-            content.defaultScrollAnchor(.bottom)
-        }
     }
 }
 
@@ -640,7 +342,6 @@ struct ChatPane: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var open = ChatOpen()
     @State private var tracker = ChatScrollTracker()
     @State private var keyboard = KeyboardTrack()
@@ -652,27 +353,12 @@ struct ChatPane: View {
     @State private var paneHeight: CGFloat = 0
     @FocusState private var typing: Bool
 
-    nonisolated private static let end = "chat-end"
-    private enum Entry: Identifiable {
-        case message(ChatRow)
-        case footer
-        var id: String {
-            switch self { case .message(let row): row.id; case .footer: ChatPane.end }
-        }
-    }
-
     private func selectMessage(_ text: String) {
         typing = false
         selecting = SelectedText(text: text)
     }
 
-    private func toEnd(_ proxy: ScrollViewProxy, animated: Bool = false) {
-        if animated && !reduceMotion {
-            withAnimation(.easeOut(duration: 0.25)) { ChatDiagnosticRing.shared.record(.proxyEnd, entity: tracker.diagnosticEntity); proxy.scrollTo(Self.end, anchor: .bottom) }
-            return
-        }
-        ChatDiagnosticRing.shared.record(.proxyEnd, entity: tracker.diagnosticEntity); proxy.scrollTo(Self.end, anchor: .bottom)
-    }
+    private func toEnd() { tracker.controller?.toEnd() }
 
     private func dockItems(_ d: Derived) -> [DockItem] {
         var items =
@@ -707,152 +393,52 @@ struct ChatPane: View {
         let pending = pendingInputs(d)
         let outgoing = store.outgoing(sid).filter { outgoingShown(input: d.inputs[$0.requestId]) }
         let dock = dockItems(d)
-        ScrollViewReader { proxy in
-            let trailing = Group {
-                // Offline, the connection bar says the content may be stale and the next
-                // connection fetches again: a failed fetch adds nothing to that.
-                if let failure = chat.error ?? (online ? chat.fetchError : nil) {
-                    Banner("后面的记录没读到：\(failure)", tone: .error, action: "重试") {
-                        context.remote.retryEvents(sid)
-                    }
-                    .padding(.horizontal, chatMargin).padding(.vertical, 8)
-                }
-                let visible = shownPending(pending, expanded: allPending)
-                // A waiting message and the same message on its way share a request ID: each kind of
-                // bubble is told apart from the other, or the list keeps the one it had.
-                ForEach(Array(visible.enumerated()), id: \.element.id) { i, p in
-                    PendingBubble(
-                        session: session, pending: p, index: i + 1, count: pending.count,
-                        starting: status == .starting ? agentName(session.agent) : nil
-                    )
-                    .id("pending-" + p.id)
-                }
-                if visible.count < pending.count {
-                    TextAction(
-                        "还有 \(pending.count - 2) 条排队 展开", style: T.metaB, alignment: .trailing
-                    ) { allPending = true }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .padding(.horizontal, chatMargin)
-                }
-                // Messages from this client, until the chat shows them.
-                ForEach(outgoing) { o in
-                    OutgoingBubble(
-                        session: session, message: o, input: d.inputs[o.requestId],
-                        failure: d.failures[o.requestId], onTerminal: onTerminal
-                    )
-                    .id("out-" + o.requestId)
-                }
-                Color.clear.frame(height: 8)
-            }
-
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    Color.clear.frame(height: 6)
-                    if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
-                        Skeleton(inset: chatMargin)
-                    }
-                    if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
-                        Text("历史记录尚未读全。")
-                            .type(T.sm, Theme.muted).padding(.horizontal, chatMargin)
-                    }
-                    if chat.unavailableCount > 0 {
-                        Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
-                            .type(T.sm, Theme.muted).padding(.horizontal,16)
-                    }
-
-                    if let message = chat.liveError {
-                        Banner(message, tone: .error, action: "重试") {
-                            context.remote.retryEvents(sid)
-                        }.padding(.horizontal, chatMargin)
-                    }
-                    if let start = chat.startPrompt {
-                        ChatBubble(
-                            start.text, caption: start.caption,
-                            captionColor: start.failed ? Theme.red : start.warning ? Theme.orangeInk : Theme.muted)
-                    }
-                    // Every scroll target belongs to this data collection.
-                    // A separate eager footer can keep a stale estimated frame
-                    // when the lazy message collection is replaced or prepended.
-                    ForEach(rows.map(Entry.message) + [.footer]) { entry in
-                        VStack(spacing: 0) {
-                            switch entry {
-                            case .message(let row):
-                                ScheduledChatRow(row: row, env: env)
-                                    .modifier(InSight(id: row.id, tracker: tracker))
-                            case .footer: trailing
-                            }
-                        }.id(entry.id)
-                    }
-                }
-                .background { ListFinder(tracker: tracker) }
-                // A reply is a column of text: on a wide screen it keeps the width it reads well at (design-system §4).
+        ChatCollection(
+            items: listItems(rows: rows, env: env, pending: pending, outgoing: outgoing, derived: d, online: online),
+            env: env, tracker: tracker, ready: chat.ready, joins: chat.joins,
+            prepended: chat.rows.prefix(chat.joined).reduce(0) { $0 + shown($1).count },
+            count: rows.count + pending.count + outgoing.count,
+            interaction: { chat.interaction($0) })
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            bottom(d, dock: dock)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .onGeometryChange(for: CGRect.self) { g in
-                    ChatDiagnosticRing.shared.measure(.content, entity: diagnosticEntity) { g.frame(in: .global) }
-                } action: { frame in
-                    if tracker.content(height: frame.height, endY: frame.maxY) { tracker.follow { toEnd(proxy) } }
+                .background(Theme.card.ignoresSafeArea(edges: .bottom))
+                .overlay(alignment: .top) {
+                    pill {
+                        tracker.jump()
+                        toEnd()
+                    }
+                    .alignmentGuide(.top) { $0[.bottom] + 8 }
                 }
-            }
-            .modifier(EndAnchored(tailFirst: chat.tailFirst))
-            .scrollDismissesKeyboard(.interactively)
-            .modifier(DragWatch {
-                chat.interaction($0)
-                if tracker.interaction($0) { tracker.follow { toEnd(proxy) } }
-            })
-            .modifier(KeepsPlace(joins: chat.joins, rows: rows, tracker: tracker))
-            // The earlier history is not new to someone reading back.
-            // Counted as the tracker counts the rows: as shown.
-            .onChange(of: chat.joins) { tracker.prepended(chat.rows.prefix(chat.joined).reduce(0) { $0 + shown($1).count }) }
-            .safeAreaInset(edge: .bottom, spacing: 0) {
-                bottom(d, dock: dock)
-                    .frame(maxWidth: 760)
-                    .frame(maxWidth: .infinity)
-                    .background(Theme.card.ignoresSafeArea(edges: .bottom))
-                    .onGeometryChange(for: CGFloat.self) { g in
-                        ChatDiagnosticRing.shared.measure(.floor, entity: diagnosticEntity) { g.frame(in: .global).minY }
-                    } action: { y in
-                        if tracker.floor(y) { tracker.follow { toEnd(proxy) } }
-                    }
-                    .overlay(alignment: .top) {
-                        pill {
-                            tracker.jump()
-                            toEnd(proxy, animated: true)
-                        }
-                        .alignmentGuide(.top) { $0[.bottom] + 8 }
-                    }
-                    .offset(y: keyboard.lag)
-            }
-            .onChange(of: rows.count + pending.count + outgoing.count, initial: true) { _, n in
-                if tracker.count(n) { tracker.follow { toEnd(proxy) } }
-            }
-            .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: chat.loaded, jump: jump) {
-                if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
-                    tracker.leave()
-                    let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
-                    let fallback = rows.first { $0.id.hasPrefix("e") && (UInt64($0.id.dropFirst()) ?? 0) >= jump.seq }
-                    if let target = exact ?? fallback {
-                        ChatDiagnosticRing.shared.record(.proxyScheduled, entity: tracker.diagnosticRows[target.id] ?? 0)
-                        proxy.scrollTo(target.id, anchor: .top)
-                        appliedScheduledJump = jump.runID
-                    }
-                }
-            })
-            .debugSignal("session.end") {
-                tracker.jump()
-                toEnd(proxy, animated: true)
-            }
-            .debugSignal("session.top") {
-                // The rows as they are when the signal comes, not as they were when it was set up.
+                .offset(y: keyboard.lag)
+        }
+        .modifier(ScheduledJumpObserver(rowIDs: rows.map(\.id), loaded: chat.loaded, jump: jump) {
+            if let jump, appliedScheduledJump != jump.runID, chat.loaded, !rows.isEmpty {
                 tracker.leave()
-                if let first = chat.rows.first { ChatDiagnosticRing.shared.record(.proxyTop, entity: tracker.diagnosticEntity); proxy.scrollTo(first.id, anchor: .top) }
-            }
-            .debugSignal("session.back") {
-                tracker.leave()
-                if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first {
-                    ChatDiagnosticRing.shared.record(.proxyBack, entity: tracker.diagnosticEntity)
-                    proxy.scrollTo(row.id, anchor: .top)
+                let exact = rows.first { if case .user(let u) = $0.item { return u.scheduledRunID == jump.runID }; return false }
+                let fallback = rows.first { $0.id.hasPrefix("e") && (UInt64($0.id.dropFirst()) ?? 0) >= jump.seq }
+                if let target = exact ?? fallback {
+                    ChatDiagnosticRing.shared.record(.proxyScheduled, entity: tracker.diagnosticEntity)
+                    tracker.toRow(target.id)
+                    appliedScheduledJump = jump.runID
                 }
+            }
+        })
+        .debugSignal("session.end") {
+            tracker.jump()
+            toEnd()
+        }
+        .debugSignal("session.top") {
+            // The rows as they are when the signal comes, not as they were when it was set up.
+            tracker.leave()
+            if let first = chat.rows.first { ChatDiagnosticRing.shared.record(.proxyTop, entity: tracker.diagnosticEntity); tracker.toRow(first.id) }
+        }
+        .debugSignal("session.back") {
+            tracker.leave()
+            if let row = chat.rows.dropFirst(chat.rows.count * 3 / 4).first {
+                ChatDiagnosticRing.shared.record(.proxyBack, entity: tracker.diagnosticEntity)
+                tracker.toRow(row.id)
             }
         }
         .onAppear { ChatDiagnosticRing.shared.record(.chatEnter) }
@@ -913,6 +499,69 @@ struct ChatPane: View {
                 }
             }
         }
+    }
+
+    /// Each auxiliary row participates in the same diffable snapshot as messages.
+    private func listItems(rows: [ChatRow], env: ChatEnv, pending: [PendingInput], outgoing: [Outgoing],
+                           derived d: Derived, online: Bool) -> [ChatCollectionItem] {
+        var items = [ChatCollectionItem("chat-top") { Color.clear.frame(height: 6) }]
+        let sid = session.id
+        if !chat.ready || (!chat.loaded && rows.isEmpty && chat.startPrompt == nil) {
+            items.append(ChatCollectionItem("chat-loading") { Skeleton(inset: chatMargin) })
+        }
+        if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
+            items.append(ChatCollectionItem("chat-history") {
+                Text("历史记录尚未读全。").type(T.sm, Theme.muted).padding(.horizontal, chatMargin)
+            })
+        }
+        if chat.unavailableCount > 0 {
+            items.append(ChatCollectionItem("chat-unavailable") {
+                Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
+                    .type(T.sm, Theme.muted).padding(.horizontal, 16)
+            })
+        }
+        if let message = chat.liveError {
+            items.append(ChatCollectionItem("chat-live-error") {
+                Banner(message, tone: .error, action: "重试") { context.remote.retryEvents(sid) }
+                    .padding(.horizontal, chatMargin)
+            })
+        }
+        if let start = chat.startPrompt {
+            items.append(ChatCollectionItem("chat-start") {
+                ChatBubble(start.text, caption: start.caption,
+                           captionColor: start.failed ? Theme.red : start.warning ? Theme.orangeInk : Theme.muted)
+            })
+        }
+        items += rows.map { row in
+            ChatCollectionItem(row.id, row: row) { ScheduledChatRow(row: row, env: env) }
+        }
+        if let failure = chat.error ?? (online ? chat.fetchError : nil) {
+            items.append(ChatCollectionItem("chat-fetch-error") {
+                Banner("后面的记录没读到：\(failure)", tone: .error, action: "重试") { context.remote.retryEvents(sid) }
+                    .padding(.horizontal, chatMargin).padding(.vertical, 8)
+            })
+        }
+        let visible = shownPending(pending, expanded: allPending)
+        for (i, p) in visible.enumerated() {
+            items.append(ChatCollectionItem("pending-" + p.id) {
+                PendingBubble(session: session, pending: p, index: i + 1, count: pending.count,
+                              starting: status == .starting ? agentName(session.agent) : nil)
+            })
+        }
+        if visible.count < pending.count {
+            items.append(ChatCollectionItem("chat-more-pending") {
+                TextAction("还有 \(pending.count - 2) 条排队 展开", style: T.metaB, alignment: .trailing) { allPending = true }
+                    .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin)
+            })
+        }
+        for o in outgoing {
+            items.append(ChatCollectionItem("out-" + o.requestId) {
+                OutgoingBubble(session: session, message: o, input: d.inputs[o.requestId],
+                               failure: d.failures[o.requestId], onTerminal: onTerminal)
+            })
+        }
+        items.append(ChatCollectionItem("chat-end") { Color.clear.frame(height: 8) })
+        return items
     }
 
     private func announce(_ last: ChatItem?, _ dock: [DockItem]) {

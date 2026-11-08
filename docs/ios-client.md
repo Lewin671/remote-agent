@@ -69,11 +69,19 @@ CryptoKit 的 Ed25519 签名带随机盐，同一条消息两次签名不同，�
 - **不是 Secure Enclave**：协议要原始的 32 字节（设备 seed 用来签信封，根密钥用于账户签名，不再解密旧历史），所以这些密钥用的时候在内存里，钥匙串只保护存储，和 Android 的 Keystore 包装是同一个程度
 - **密文缓存**：数据库、WAL 和图片文件设了「首次解锁后可用」的文件保护，排除在备份之外；每个账户一个库，退出账户时先删钥匙串条目，再删缓存和待发图片。钥匙串条目删掉之后，缓存和待发图片各删各的，一处失败不跳过另一处；清理结束前不读取账户，清理没做完时「重试」先把它做完，再看本机有没有账户
 
+## 聊天列表
+
+聊天正文用 `UIViewControllerRepresentable` 包装的 `UICollectionView`：compositional list layout、自适应高度的 `UIHostingConfiguration` cell，以及以聊天行 ID 为键的 diffable snapshot。消息、加载提示、错误横幅、排队消息、本机待发消息和页尾都在同一份 snapshot 中。正文仍由现有 SwiftUI 行绘制，传入相同的 environment 和操作；一列最多 760 pt，在宽屏居中。`UIHostingConfiguration` 的 cell 自适应尺寸从 iOS 16 起可用，项目最低系统仍是 iOS 17。
+
+虚拟化和滚动位置归 UIKit 管。已经测量的 cell 由 collection layout 缓存；未显示的 cell 仍可有估计尺寸，但不再让 SwiftUI lazy stack 在同一次 layout 中反复替换整列的高度估计。展开代码、表格、折叠块和图片尺寸变化通过 self-sizing invalidation 更新 cell，不把行几何写回 SwiftUI。打开时定位到末尾，内容不足一屏时从顶部开始。滚动、布局和 viewport 变化合并到布局结束后的观测，只有 `fresh` 和 `away` 发布给 SwiftUI 的消息提示。读者距末尾 28 pt 以内继续跟随；手指拖动及其减速期间不发程序定位，新手势取消待执行的定位。回到末尾清掉新消息数；定时任务跳转按行 ID 定位到顶部。
+
+历史前插仍由 `SessionModel` 在手势和减速结束后应用。snapshot 更新前记住仍存在的首个可见行及其屏幕位置，更新布局后按该行顶部增加的高度调整一次 `contentOffset`，不按整列高度差猜测，不使用 anchor 重试循环；前插行不算新消息。读者回看时，cell 自身重排也以可见行保持位置。输入框和 dock 保留为外层 SwiftUI `safeAreaInset`，collection 用 UIKit 的 interactive keyboard dismissal；`KeyboardTrack` 继续修正交互收键盘期间输入区和 SwiftUI safe area 的时差。
+
 ## 本机卡顿诊断
 
 聊天的几何测量、位置保持、跟随调度、键盘、折叠预览、表格和模型更新写入固定 4,096 条的数值环形缓冲。追加是 O(1)，使用预分配存储；不在热路径格式化字符串、编码 JSON 或访问文件。路径是代码枚举，实体是进程内分配的小整数，不记录正文、密钥、会话名、消息／账户／设备标识或其哈希。时间为缓冲创建后的单调相对时间，不保存设备开机时长。读取计时 API 的用途按 [Apple 的本地耗时测量理由 35F9.1](https://developer.apple.com/documentation/bundleresources/app-privacy-configuration/nsprivacyaccessedapitypes/nsprivacyaccessedapitype) 声明。
 
-布局标记只包围现有的公开几何读取、自定义 `Layout` 和自身 UIKit view 的布局回调；不替换 SwiftUI 私有 hosting 类的方法，不添加布局容器。诊断保留原有测量写入，不额外回写布局输入。这些 scope 不是 SwiftUI 全部内部 layout pass。记录 App 发出的 `scrollTo` / `ScrollPosition` 定位，内部绑定的自动更新由实际 scroll geometry 反映，不拦截绑定 setter。主循环轮次和独立的主线程 ping 用来识别 scope 之外的停顿。
+布局标记只包围现有的公开几何读取、自定义 `Layout` 和自身 UIKit view 的布局回调；不替换 SwiftUI 私有 hosting 类的方法，不添加布局容器。诊断保留原有测量写入，不额外回写布局输入。这些 scope 不是 SwiftUI 全部内部 layout pass。记录 App 发出的 UIKit 行定位与 offset 调整；collection 的布局 scope 记录每次自身 `layoutSubviews`，滚动和可见行数据来自 UIKit，不再为每行安装 SwiftUI 几何读取。主循环轮次和独立的主线程 ping 用来识别 scope 之外的停顿。
 
 前台（含暂时 inactive）时后台队列每 500 ms 投递一次主线程 ping，最多一个待回复请求。超过两秒未回复，后台复制缓冲和当前及前四个单调秒桶的逐路径计数，原子保存一份 JSON；恢复响应后更新同一文件的持续时间。主线程只执行数值追加；后台快照在短锁内作有界复制，编码、写入及清理均在锁外。正常响应不写文件，进入后台暂停探测，防止系统挂起被当成卡顿。
 
