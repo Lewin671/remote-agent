@@ -1,6 +1,8 @@
 require 'json'
 require 'open3'
 require 'rubygems'
+require 'xcodeproj'
+require 'cfpropertylist'
 
 module Publishing
   BUNDLE_ID = 'io.github.lewin671.remoteagent'
@@ -40,6 +42,44 @@ module Publishing
     raise 'Publishing requires a clean product checkout' unless git('status', '--porcelain').empty?
     raise 'Build must be the exact version tag' unless git('rev-parse', "v#{version}^{commit}") == git('rev-parse', 'HEAD')
     raise 'Release tag must be annotated' unless git('cat-file', '-t', "v#{version}") == 'tag'
+  end
+
+  def self.with_app_signing(team_id, profile_name)
+    validate_source!
+    path = File.join(source, 'ios/RemoteAgent.xcodeproj/project.pbxproj')
+    original = File.binread(path)
+    previous_commit = ENV['RA_SOURCE_COMMIT']
+    begin
+      # Only build-specific signing metadata changes; restore the tagged project byte-for-byte.
+      ENV['RA_SOURCE_COMMIT'] = git('rev-parse', '--short=12', 'HEAD')
+      project = Xcodeproj::Project.open(File.dirname(path))
+      target = project.targets.find { |item| item.name == 'RemoteAgent' }
+      config = target&.build_configurations&.find { |item| item.name == 'Release' }
+      raise 'RemoteAgent Release configuration is missing' unless config
+      config.build_settings.merge!('CODE_SIGN_STYLE' => 'Manual', 'DEVELOPMENT_TEAM' => team_id,
+                                  'CODE_SIGN_IDENTITY' => 'Apple Distribution',
+                                  'PROVISIONING_PROFILE_SPECIFIER' => profile_name)
+      project.save
+      yield
+    ensure
+      File.binwrite(path, original)
+      ENV['RA_SOURCE_COMMIT'] = previous_commit
+    end
+    # Unexpected changes to dependencies or sources must not reach the uploader.
+    validate_source!
+  end
+
+  def self.verify_archive!(output)
+    app = File.join(output, 'RemoteAgent.xcarchive/Products/Applications/RemoteAgent.app')
+    info = CFPropertyList.native_types(CFPropertyList::List.new(file: File.join(app, 'Info.plist')).value)
+    expected = { 'CFBundleIdentifier' => BUNDLE_ID,
+                 'CFBundleShortVersionString' => version,
+                 'CFBundleVersion' => build_number,
+                 'RASourceCommit' => git('rev-parse', '--short=12', 'HEAD') }
+    expected.each { |name, value| raise "Archive #{name} does not match the release" unless info[name] == value }
+    _, _, status = Open3.capture3('codesign', '--verify', '--deep', '--strict', app)
+    raise 'Archive signature validation failed' unless status.success?
+    info
   end
 
   def self.notes

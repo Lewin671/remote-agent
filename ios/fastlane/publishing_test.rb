@@ -80,4 +80,46 @@ class PublishingTest < Minitest::Test
     ENV.delete(name)
   end
 
+
+  def test_only_the_app_release_uses_the_profile_and_the_tag_is_restored_on_error
+    project_path = File.join(@dir, 'ios/RemoteAgent.xcodeproj')
+    FileUtils.mkdir_p(File.dirname(project_path))
+    project = Xcodeproj::Project.new(project_path)
+    project.new_target(:application, 'RemoteAgent', :ios, '17.0')
+    project.new_target(:bundle, 'PackageResources', :ios, '17.0')
+    project.save
+    Publishing.git('init', '-q')
+    Publishing.git('config', 'user.name', 'Release test')
+    Publishing.git('config', 'user.email', 'release@example.invalid')
+    Publishing.git('add', '.')
+    Publishing.git('commit', '-qm', 'Signing fixture')
+    Publishing.git('tag', '-a', 'v0.56.2', '-m', 'Signing fixture')
+    path = File.join(project_path, 'project.pbxproj')
+    original = File.binread(path)
+    previous = ENV['RA_SOURCE_COMMIT']
+    ENV['RA_SOURCE_COMMIT'] = 'previous-value'
+    Publishing.with_app_signing('EXAMPLETEAM', 'Example App Store') do
+      configured = Xcodeproj::Project.open(project_path)
+      configured.targets.each do |target|
+        target.build_configurations.each do |config|
+          if target.name == 'RemoteAgent' && config.name == 'Release'
+            assert_equal 'Example App Store', config.build_settings['PROVISIONING_PROFILE_SPECIFIER']
+            assert_equal 'Apple Distribution', config.build_settings['CODE_SIGN_IDENTITY']
+          else
+            assert_nil config.build_settings['PROVISIONING_PROFILE_SPECIFIER']
+          end
+        end
+      end
+      assert_equal Publishing.git('rev-parse', '--short=12', 'HEAD'), ENV['RA_SOURCE_COMMIT']
+    end
+    assert_equal original, File.binread(path)
+    assert_equal 'previous-value', ENV['RA_SOURCE_COMMIT']
+    assert_raises(RuntimeError) { Publishing.with_app_signing('EXAMPLETEAM', 'Example App Store') { raise 'Build failure' } }
+    assert_equal original, File.binread(path)
+    assert_equal 'previous-value', ENV['RA_SOURCE_COMMIT']
+    Publishing.validate_source!
+  ensure
+    ENV['RA_SOURCE_COMMIT'] = previous
+  end
+
 end

@@ -1,9 +1,7 @@
 require_relative 'publishing'
 require 'securerandom'
 require 'base64'
-require 'plist'
 require 'fileutils'
-require 'shellwords'
 
 default_platform(:ios)
 skip_docs
@@ -23,6 +21,48 @@ platform :ios do
          '-archivePath', File.join(ENV.fetch('IOS_OUTPUT_DIR'), 'RemoteAgent.xcarchive'),
          'CODE_SIGNING_ALLOWED=NO', 'archive')
     end
+  end
+
+  desc 'Build and validate a signed IPA without uploading to Apple'
+  lane :package do
+    Publishing.validate_source!
+    output = ENV.fetch('IOS_OUTPUT_DIR')
+    FileUtils.mkdir_p(output)
+    signing = Publishing.secret('IOS_SIGNING', %w[certificate password profile team_id])
+    keychain = File.join(output, 'signing.keychain-db')
+    password = SecureRandom.hex(32)
+    begin
+      create_keychain(path: keychain, password: password, default_keychain: false,
+                      unlock: true, timeout: 7200, lock_when_sleeps: true)
+      certificate = File.join(output, 'distribution.p12')
+      File.binwrite(certificate, Base64.strict_decode64(signing.fetch('certificate')))
+      File.chmod(0600, certificate)
+      import_certificate(certificate_path: certificate, certificate_password: signing.fetch('password'),
+                         keychain_path: keychain, keychain_password: password)
+      profile = File.join(output, 'distribution.mobileprovision')
+      File.binwrite(profile, Base64.strict_decode64(signing.fetch('profile')))
+      installed_profile = install_provisioning_profile(path: profile)
+      profile_info = FastlaneCore::ProvisioningProfile.parse(profile)
+      Publishing.with_app_signing(signing.fetch('team_id'), profile_info.fetch('Name')) do
+        build_app(project: File.join(Publishing.source, 'ios/RemoteAgent.xcodeproj'), scheme: 'RemoteAgent',
+                  configuration: 'Release', clean: true, export_method: 'app-store',
+                  output_directory: output, output_name: 'RemoteAgent.ipa',
+                  archive_path: File.join(output, 'RemoteAgent.xcarchive'),
+                  skip_profile_detection: true,
+                  xcargs: "CURRENT_PROJECT_VERSION=#{Publishing.build_number}",
+                  export_options: { signingStyle: 'manual', teamID: signing.fetch('team_id'),
+                                    manageAppVersionAndBuildNumber: false,
+                                    provisioningProfiles: { Publishing::BUNDLE_ID => profile_info['Name'] } })
+      end
+      Publishing.verify_archive!(output)
+      UI.success('Verified the signed archive version, build, commit and signature')
+    ensure
+      delete_keychain(keychain_path: keychain) if File.exist?(keychain)
+      File.delete(certificate) if certificate && File.exist?(certificate)
+      File.delete(profile) if profile && File.exist?(profile)
+      File.delete(installed_profile) if installed_profile && File.exist?(installed_profile)
+    end
+    File.join(output, 'RemoteAgent.ipa')
   end
 
   desc 'Upload an immutable release, submit for review and release after approval'
@@ -50,48 +90,11 @@ platform :ios do
     build = builds.first
     UI.user_error!('Uploaded build is invalid; fix the source and publish a new version') if build && %w[FAILED INVALID].include?(build.processing_state)
     unless build
-      signing = Publishing.secret('IOS_SIGNING', %w[certificate password profile team_id])
-      keychain = File.join(output, 'signing.keychain-db')
-      password = SecureRandom.hex(32)
-      begin
-        create_keychain(path: keychain, password: password, default_keychain: false,
-                        unlock: true, timeout: 7200, lock_when_sleeps: true)
-        certificate = File.join(output, 'distribution.p12')
-        File.binwrite(certificate, Base64.strict_decode64(signing.fetch('certificate')))
-        File.chmod(0600, certificate)
-        import_certificate(certificate_path: certificate, certificate_password: signing.fetch('password'),
-                           keychain_path: keychain, keychain_password: password)
-        profile = File.join(output, 'distribution.mobileprovision')
-        File.binwrite(profile, Base64.strict_decode64(signing.fetch('profile')))
-        installed_profile = install_provisioning_profile(path: profile)
-        profile_info = FastlaneCore::ProvisioningProfile.parse(profile)
-        build_app(project: File.join(Publishing.source, 'ios/RemoteAgent.xcodeproj'), scheme: 'RemoteAgent',
-                  configuration: 'Release', clean: true, export_method: 'app-store',
-                  output_directory: output, output_name: 'RemoteAgent.ipa',
-                  archive_path: File.join(output, 'RemoteAgent.xcarchive'),
-                  codesigning_identity: 'Apple Distribution', skip_profile_detection: true,
-                  xcargs: "CURRENT_PROJECT_VERSION=#{Publishing.build_number} DEVELOPMENT_TEAM=#{signing.fetch('team_id').shellescape} CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER=#{profile_info['Name'].shellescape}",
-                  export_options: { signingStyle: 'manual', teamID: signing.fetch('team_id'),
-                                    manageAppVersionAndBuildNumber: false,
-                                    provisioningProfiles: { Publishing::BUNDLE_ID => profile_info['Name'] } })
-        app_path = File.join(output, 'RemoteAgent.xcarchive/Products/Applications/RemoteAgent.app')
-        info = Plist.parse_xml(File.join(app_path, 'Info.plist'))
-        expected = { 'CFBundleIdentifier' => Publishing::BUNDLE_ID,
-                     'CFBundleShortVersionString' => Publishing.version,
-                     'CFBundleVersion' => Publishing.build_number,
-                     'RASourceCommit' => Publishing.git('rev-parse', '--short=12', 'HEAD') }
-        expected.each { |name, value| UI.user_error!("Archive #{name} does not match the release") unless info[name] == value }
-        sh('codesign', '--verify', '--deep', '--strict', app_path)
-        upload_to_testflight(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
-                             ipa: File.join(output, 'RemoteAgent.ipa'), skip_submission: true,
-                             skip_waiting_for_build_processing: false, wait_processing_timeout_duration: 1800,
-                             uses_non_exempt_encryption: false)
-      ensure
-        delete_keychain(keychain_path: keychain) if File.exist?(keychain)
-        File.delete(certificate) if certificate && File.exist?(certificate)
-        File.delete(profile) if profile && File.exist?(profile)
-        File.delete(installed_profile) if installed_profile && File.exist?(installed_profile)
-      end
+      ipa = package
+      upload_to_testflight(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
+                           ipa: ipa, skip_submission: true,
+                           skip_waiting_for_build_processing: false, wait_processing_timeout_duration: 1800,
+                           uses_non_exempt_encryption: false)
     end
     # deliver waits for the exact build if a previous upload is still processing.
     deliver(api_key: api_key, app_identifier: Publishing::BUNDLE_ID,
