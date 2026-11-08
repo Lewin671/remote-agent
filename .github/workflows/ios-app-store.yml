@@ -19,11 +19,6 @@ on:
 permissions:
   contents: read
 
-# Apple permits only one pending iOS version. Never cancel an upload midway.
-concurrency:
-  group: ios-app-store
-  cancel-in-progress: false
-
 env:
   FASTLANE_SKIP_UPDATE_CHECK: '1'
   FASTLANE_HIDE_CHANGELOG: '1'
@@ -37,6 +32,11 @@ jobs:
            github.event.workflow_run.conclusion == 'success' &&
            github.event.workflow_run.event == 'push' &&
            github.event.workflow_run.head_repository.full_name == github.repository) }}
+    # Evaluate the enable/success condition before reserving Apple's single slot.
+    # Disabled workflow_run events must not displace a queued manual rehearsal.
+    concurrency:
+      group: ios-app-store
+      cancel-in-progress: false
     # Match the Xcode 27 toolchain used for local iOS acceptance.
     runs-on: xcode-27
     timeout-minutes: 90
