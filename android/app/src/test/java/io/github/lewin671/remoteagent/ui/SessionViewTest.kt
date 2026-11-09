@@ -35,6 +35,8 @@ class SessionViewTest {
         )
         assertEquals("定时任务运行已结束，会话自动关闭了。", exitReason("stopped", true))
         assertEquals("会话是被手动结束的。", exitReason("stopped", false))
+        assertEquals("会话长时间没有活动，已自动结束。", exitReason("stopped", idleClosed = true))
+        assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone", idleClosed = true))
         assertEquals("tmux 会话已经不在了。", exitReason("tmux session gone", true))
         // Every other detail keeps the words the card had before.
         assertEquals("会话是被手动结束的。", exitReason("stopped"))

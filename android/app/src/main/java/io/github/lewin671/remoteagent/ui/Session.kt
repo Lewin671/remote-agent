@@ -917,7 +917,7 @@ private fun Bottom(
         EndCard(
             "会话已结束",
             buildString {
-                append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed))
+                append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed, d.idleClosed))
                 if (state.unlinked) append("连上服务器后才能恢复。")
                 else if (m?.online == true)
                     append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
@@ -1237,8 +1237,9 @@ private const val LOGIN_SHELL_TIMEOUT_DETAIL = "did not start the CLI within"
 // Why the session ended, in plain words. A login shell that could not start
 // the CLI says so in the daemon's own words (they name the command or the
 // timeout), with what the user can do about it.
-fun exitReason(detail: String, scheduledClosed: Boolean = false): String {
+fun exitReason(detail: String, scheduledClosed: Boolean = false, idleClosed: Boolean = false): String {
     if (detail == "stopped" && scheduledClosed) return "定时任务运行已结束，会话自动关闭了。"
+    if (detail == "stopped" && idleClosed) return "会话长时间没有活动，已自动结束。"
     if (detail == "stopped") return "会话是被手动结束的。"
     if (detail.startsWith(LOGIN_SHELL_DETAIL)) {
         val stuck = if (detail.contains(LOGIN_SHELL_TIMEOUT_DETAIL)) "，可能卡在等待输入" else ""

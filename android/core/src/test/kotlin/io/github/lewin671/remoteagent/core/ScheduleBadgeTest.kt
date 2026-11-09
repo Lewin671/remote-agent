@@ -123,6 +123,16 @@ class ScheduleBadgeTest {
         assertFalse(derive(listOf(auto,state(SessionStatus.SESSION_STATUS_STARTING,false))).scheduledClosed)
         assertFalse(derive(listOf(auto,state(SessionStatus.SESSION_STATUS_EXITED,false))).scheduledClosed)
     }
+    @Test fun idleCloseComesFromTheLatestStateAndResetsOnResumeOrManualStop() {
+        fun state(status: SessionStatus, idle: Boolean) = Event.newBuilder().setSessionState(SessionState.newBuilder().setStatus(status).setDetail("stopped").setIdleClosed(idle)).build()
+        val idle = state(SessionStatus.SESSION_STATUS_EXITED,true)
+        assertTrue(derive(listOf(idle)).idleClosed)
+        assertFalse(derive(listOf(idle)).scheduledClosed)
+        assertTrue(currentActions(derive(listOf(idle)), null, listOf(idle)).idleClosed)
+        assertFalse(derive(listOf(state(SessionStatus.SESSION_STATUS_EXITED,false))).idleClosed)
+        assertFalse(derive(listOf(idle,state(SessionStatus.SESSION_STATUS_STARTING,false))).idleClosed)
+        assertFalse(derive(listOf(idle,state(SessionStatus.SESSION_STATUS_EXITED,false))).idleClosed)
+    }
     @Test fun markingUnreadOnlyRemovesLatestResultAndReadDismissesAllNotices() {
         val dismissed = mutableListOf<String>()
         val seen = ScheduleSeen(onRead = { dismissed += it.map { r -> r.id } })

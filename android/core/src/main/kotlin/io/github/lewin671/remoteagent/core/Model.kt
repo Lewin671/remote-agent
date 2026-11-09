@@ -798,6 +798,7 @@ class Derived(
     var running: Boolean = false,
     var runningSeq: Long = 0,
     var scheduledClosed: Boolean = false,
+    var idleClosed: Boolean = false,
     var usage: TokenUsage? = null,
     val compactions: HashMap<Long, Compaction> = HashMap(),
     var plan: PlanProposed? = null,
@@ -1099,6 +1100,7 @@ internal class EventReducer(agent: Agent) {
                 }
                 Event.KindCase.SESSION_STATE -> {
                     d.scheduledClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.scheduledClosed
+                    d.idleClosed = e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED && e.sessionState.idleClosed
                     if (e.sessionState.status == SessionStatus.SESSION_STATUS_EXITED) {
                         d.running = false
                         d.runningSeq = e.seq
@@ -1159,6 +1161,7 @@ internal class EventReducer(agent: Agent) {
             running = d.running,
             runningSeq = d.runningSeq,
             scheduledClosed = d.scheduledClosed,
+            idleClosed = d.idleClosed,
             usage = d.usage,
             plan = d.plan,
             compactions = HashMap(d.compactions),
@@ -1691,6 +1694,7 @@ fun currentActions(
         running = if (live != null && d.runningSeq <= live.session.lastSeq) live.running else d.running,
         runningSeq = d.runningSeq,
         scheduledClosed = d.scheduledClosed,
+        idleClosed = d.idleClosed,
         usage = d.usage,
         compactions = d.compactions,
         plan = plan,
