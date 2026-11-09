@@ -393,6 +393,50 @@ public  final class DaemonSettings extends
     bitField0_ = (bitField0_ & ~0x00000002);
   }
 
+  public static final int IDLE_CLOSE_MINUTES_FIELD_NUMBER = 8;
+  private int idleCloseMinutes_;
+  /**
+   * <pre>
+   * A session with nothing going on for this long has its CLI closed;
+   * resuming it continues the conversation. Zero retains the daemon's
+   * default (6 hours), negative never closes.
+   * </pre>
+   *
+   * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+   * @return The idleCloseMinutes.
+   */
+  @java.lang.Override
+  public int getIdleCloseMinutes() {
+    return idleCloseMinutes_;
+  }
+  /**
+   * <pre>
+   * A session with nothing going on for this long has its CLI closed;
+   * resuming it continues the conversation. Zero retains the daemon's
+   * default (6 hours), negative never closes.
+   * </pre>
+   *
+   * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+   * @param value The idleCloseMinutes to set.
+   */
+  private void setIdleCloseMinutes(int value) {
+    
+    idleCloseMinutes_ = value;
+  }
+  /**
+   * <pre>
+   * A session with nothing going on for this long has its CLI closed;
+   * resuming it continues the conversation. Zero retains the daemon's
+   * default (6 hours), negative never closes.
+   * </pre>
+   *
+   * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+   */
+  private void clearIdleCloseMinutes() {
+
+    idleCloseMinutes_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.DaemonSettings parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -880,6 +924,52 @@ public  final class DaemonSettings extends
       return this;
     }
 
+    /**
+     * <pre>
+     * A session with nothing going on for this long has its CLI closed;
+     * resuming it continues the conversation. Zero retains the daemon's
+     * default (6 hours), negative never closes.
+     * </pre>
+     *
+     * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+     * @return The idleCloseMinutes.
+     */
+    @java.lang.Override
+    public int getIdleCloseMinutes() {
+      return instance.getIdleCloseMinutes();
+    }
+    /**
+     * <pre>
+     * A session with nothing going on for this long has its CLI closed;
+     * resuming it continues the conversation. Zero retains the daemon's
+     * default (6 hours), negative never closes.
+     * </pre>
+     *
+     * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+     * @param value The idleCloseMinutes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIdleCloseMinutes(int value) {
+      copyOnWrite();
+      instance.setIdleCloseMinutes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * A session with nothing going on for this long has its CLI closed;
+     * resuming it continues the conversation. Zero retains the daemon's
+     * default (6 hours), negative never closes.
+     * </pre>
+     *
+     * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIdleCloseMinutes() {
+      copyOnWrite();
+      instance.clearIdleCloseMinutes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.DaemonSettings)
   }
   @java.lang.Override
@@ -904,10 +994,11 @@ public  final class DaemonSettings extends
             "claude_",
             "imageUploadQuotaBytes_",
             "antigravity_",
+            "idleCloseMinutes_",
           };
           java.lang.String info =
-              "\u0000\u0007\u0000\u0001\u0001\u0007\u0007\u0000\u0000\u0000\u0001\u0004\u0002\u0208" +
-              "\u0003\u0208\u0004\f\u0005\u1009\u0000\u0006\u0002\u0007\u1009\u0001";
+              "\u0000\b\u0000\u0001\u0001\b\b\u0000\u0000\u0000\u0001\u0004\u0002\u0208\u0003\u0208" +
+              "\u0004\f\u0005\u1009\u0000\u0006\u0002\u0007\u1009\u0001\b\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

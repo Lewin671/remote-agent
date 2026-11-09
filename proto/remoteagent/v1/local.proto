@@ -409,6 +409,10 @@ message DaemonSettings {
   int64 image_upload_quota_bytes = 6;
   // Defaults for new Antigravity sessions.
   AgentDefaults antigravity = 7;
+  // A session with nothing going on for this long has its CLI closed;
+  // resuming it continues the conversation. Zero retains the daemon's
+  // default (6 hours), negative never closes.
+  int32 idle_close_minutes = 8;
 }
 
 message AgentDefaults {

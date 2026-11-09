@@ -61,4 +61,16 @@ public interface SessionStateOrBuilder extends
    * @return The scheduledClosed.
    */
   boolean getScheduledClosed();
+
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+   * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+   * "stopped".
+   * </pre>
+   *
+   * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+   * @return The idleClosed.
+   */
+  boolean getIdleClosed();
 }

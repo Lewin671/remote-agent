@@ -2635,9 +2635,13 @@ type DaemonSettings struct {
 	// Zero retains the daemon's default. Limits cover files, not CLI history.
 	ImageUploadQuotaBytes int64 `protobuf:"varint,6,opt,name=image_upload_quota_bytes,json=imageUploadQuotaBytes,proto3" json:"image_upload_quota_bytes,omitempty"`
 	// Defaults for new Antigravity sessions.
-	Antigravity   *AgentDefaults `protobuf:"bytes,7,opt,name=antigravity,proto3" json:"antigravity,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Antigravity *AgentDefaults `protobuf:"bytes,7,opt,name=antigravity,proto3" json:"antigravity,omitempty"`
+	// A session with nothing going on for this long has its CLI closed;
+	// resuming it continues the conversation. Zero retains the daemon's
+	// default (6 hours), negative never closes.
+	IdleCloseMinutes int32 `protobuf:"varint,8,opt,name=idle_close_minutes,json=idleCloseMinutes,proto3" json:"idle_close_minutes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *DaemonSettings) Reset() {
@@ -2717,6 +2721,13 @@ func (x *DaemonSettings) GetAntigravity() *AgentDefaults {
 		return x.Antigravity
 	}
 	return nil
+}
+
+func (x *DaemonSettings) GetIdleCloseMinutes() int32 {
+	if x != nil {
+		return x.IdleCloseMinutes
+	}
+	return 0
 }
 
 type AgentDefaults struct {
@@ -4253,7 +4264,7 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x16\n" +
 	"\x06parent\x18\x02 \x01(\tR\x06parent\x12\x12\n" +
 	"\x04home\x18\x03 \x01(\tR\x04home\x12\x12\n" +
-	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\x88\x03\n" +
+	"\x04dirs\x18\x04 \x03(\tR\x04dirs\"\xb6\x03\n" +
 	"\x0eDaemonSettings\x128\n" +
 	"\x18approval_timeout_seconds\x18\x01 \x01(\x05R\x16approvalTimeoutSeconds\x12#\n" +
 	"\rdefault_model\x18\x02 \x01(\tR\fdefaultModel\x12%\n" +
@@ -4261,7 +4272,8 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\fdefault_mode\x18\x04 \x01(\x0e2\x1c.remoteagent.v1.ApprovalModeR\vdefaultMode\x125\n" +
 	"\x06claude\x18\x05 \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\x06claude\x127\n" +
 	"\x18image_upload_quota_bytes\x18\x06 \x01(\x03R\x15imageUploadQuotaBytes\x12?\n" +
-	"\vantigravity\x18\a \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\vantigravity\"o\n" +
+	"\vantigravity\x18\a \x01(\v2\x1d.remoteagent.v1.AgentDefaultsR\vantigravity\x12,\n" +
+	"\x12idle_close_minutes\x18\b \x01(\x05R\x10idleCloseMinutes\"o\n" +
 	"\rAgentDefaults\x12\x14\n" +
 	"\x05model\x18\x01 \x01(\tR\x05model\x12\x16\n" +
 	"\x06effort\x18\x02 \x01(\tR\x06effort\x120\n" +

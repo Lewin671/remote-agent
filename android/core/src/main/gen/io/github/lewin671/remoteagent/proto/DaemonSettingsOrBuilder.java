@@ -110,4 +110,16 @@ public interface DaemonSettingsOrBuilder extends
    * @return The antigravity.
    */
   io.github.lewin671.remoteagent.proto.AgentDefaults getAntigravity();
+
+  /**
+   * <pre>
+   * A session with nothing going on for this long has its CLI closed;
+   * resuming it continues the conversation. Zero retains the daemon's
+   * default (6 hours), negative never closes.
+   * </pre>
+   *
+   * <code>int32 idle_close_minutes = 8 [json_name = "idleCloseMinutes"];</code>
+   * @return The idleCloseMinutes.
+   */
+  int getIdleCloseMinutes();
 }

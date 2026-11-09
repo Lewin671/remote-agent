@@ -1050,6 +1050,11 @@ public struct PBDaemonSettings: Sendable {
   /// Clears the value of `antigravity`. Subsequent reads from it will return its default value.
   public mutating func clearAntigravity() {self._antigravity = nil}
 
+  /// A session with nothing going on for this long has its CLI closed;
+  /// resuming it continues the conversation. Zero retains the daemon's
+  /// default (6 hours), negative never closes.
+  public var idleCloseMinutes: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -3229,7 +3234,7 @@ extension PBListDirectoriesResponse: SwiftProtobuf.Message, SwiftProtobuf._Messa
 
 extension PBDaemonSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".DaemonSettings"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}approval_timeout_seconds\0\u{3}default_model\0\u{3}default_effort\0\u{3}default_mode\0\u{1}claude\0\u{3}image_upload_quota_bytes\0\u{1}antigravity\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}approval_timeout_seconds\0\u{3}default_model\0\u{3}default_effort\0\u{3}default_mode\0\u{1}claude\0\u{3}image_upload_quota_bytes\0\u{1}antigravity\0\u{3}idle_close_minutes\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -3244,6 +3249,7 @@ extension PBDaemonSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
       case 5: try { try decoder.decodeSingularMessageField(value: &self._claude) }()
       case 6: try { try decoder.decodeSingularInt64Field(value: &self.imageUploadQuotaBytes) }()
       case 7: try { try decoder.decodeSingularMessageField(value: &self._antigravity) }()
+      case 8: try { try decoder.decodeSingularInt32Field(value: &self.idleCloseMinutes) }()
       default: break
       }
     }
@@ -3275,6 +3281,9 @@ extension PBDaemonSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     try { if let v = self._antigravity {
       try visitor.visitSingularMessageField(value: v, fieldNumber: 7)
     } }()
+    if self.idleCloseMinutes != 0 {
+      try visitor.visitSingularInt32Field(value: self.idleCloseMinutes, fieldNumber: 8)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -3286,6 +3295,7 @@ extension PBDaemonSettings: SwiftProtobuf.Message, SwiftProtobuf._MessageImpleme
     if lhs._claude != rhs._claude {return false}
     if lhs.imageUploadQuotaBytes != rhs.imageUploadQuotaBytes {return false}
     if lhs._antigravity != rhs._antigravity {return false}
+    if lhs.idleCloseMinutes != rhs.idleCloseMinutes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

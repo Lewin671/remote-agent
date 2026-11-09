@@ -206,6 +206,50 @@ public  final class SessionState extends
     scheduledClosed_ = false;
   }
 
+  public static final int IDLE_CLOSED_FIELD_NUMBER = 5;
+  private boolean idleClosed_;
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+   * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+   * "stopped".
+   * </pre>
+   *
+   * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+   * @return The idleClosed.
+   */
+  @java.lang.Override
+  public boolean getIdleClosed() {
+    return idleClosed_;
+  }
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+   * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+   * "stopped".
+   * </pre>
+   *
+   * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+   * @param value The idleClosed to set.
+   */
+  private void setIdleClosed(boolean value) {
+    
+    idleClosed_ = value;
+  }
+  /**
+   * <pre>
+   * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+   * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+   * "stopped".
+   * </pre>
+   *
+   * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+   */
+  private void clearIdleClosed() {
+
+    idleClosed_ = false;
+  }
+
   public static io.github.lewin671.remoteagent.proto.SessionState parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -501,6 +545,52 @@ public  final class SessionState extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+     * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+     * "stopped".
+     * </pre>
+     *
+     * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+     * @return The idleClosed.
+     */
+    @java.lang.Override
+    public boolean getIdleClosed() {
+      return instance.getIdleClosed();
+    }
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+     * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+     * "stopped".
+     * </pre>
+     *
+     * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+     * @param value The idleClosed to set.
+     * @return This builder for chaining.
+     */
+    public Builder setIdleClosed(boolean value) {
+      copyOnWrite();
+      instance.setIdleClosed(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+     * idle for longer than DaemonSettings.idle_close_minutes; detail stays
+     * "stopped".
+     * </pre>
+     *
+     * <code>bool idle_closed = 5 [json_name = "idleClosed"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearIdleClosed() {
+      copyOnWrite();
+      instance.clearIdleClosed();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.SessionState)
   }
   @java.lang.Override
@@ -521,10 +611,11 @@ public  final class SessionState extends
             "detail_",
             "planOpen_",
             "scheduledClosed_",
+            "idleClosed_",
           };
           java.lang.String info =
-              "\u0000\u0004\u0000\u0000\u0001\u0004\u0004\u0000\u0000\u0000\u0001\f\u0002\u0208" +
-              "\u0003\u0007\u0004\u0007";
+              "\u0000\u0005\u0000\u0000\u0001\u0005\u0005\u0000\u0000\u0000\u0001\f\u0002\u0208" +
+              "\u0003\u0007\u0004\u0007\u0005\u0007";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

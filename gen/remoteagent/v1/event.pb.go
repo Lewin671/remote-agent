@@ -3255,8 +3255,12 @@ type SessionState struct {
 	// Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
 	// run's CLI; detail stays "stopped".
 	ScheduledClosed bool `protobuf:"varint,4,opt,name=scheduled_closed,json=scheduledClosed,proto3" json:"scheduled_closed,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+	// idle for longer than DaemonSettings.idle_close_minutes; detail stays
+	// "stopped".
+	IdleClosed    bool `protobuf:"varint,5,opt,name=idle_closed,json=idleClosed,proto3" json:"idle_closed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SessionState) Reset() {
@@ -3313,6 +3317,13 @@ func (x *SessionState) GetPlanOpen() bool {
 func (x *SessionState) GetScheduledClosed() bool {
 	if x != nil {
 		return x.ScheduledClosed
+	}
+	return false
+}
+
+func (x *SessionState) GetIdleClosed() bool {
+	if x != nil {
+		return x.IdleClosed
 	}
 	return false
 }
@@ -3710,12 +3721,14 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x10QuestionAnswered\x12\x1f\n" +
 	"\vquestion_id\x18\x01 \x01(\tR\n" +
 	"questionId\x128\n" +
-	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"\xa5\x01\n" +
+	"\aanswers\x18\x02 \x03(\v2\x1e.remoteagent.v1.QuestionAnswerR\aanswers\"\xc6\x01\n" +
 	"\fSessionState\x125\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1d.remoteagent.v1.SessionStatusR\x06status\x12\x16\n" +
 	"\x06detail\x18\x02 \x01(\tR\x06detail\x12\x1b\n" +
 	"\tplan_open\x18\x03 \x01(\bR\bplanOpen\x12)\n" +
-	"\x10scheduled_closed\x18\x04 \x01(\bR\x0fscheduledClosed\"\xd1\x02\n" +
+	"\x10scheduled_closed\x18\x04 \x01(\bR\x0fscheduledClosed\x12\x1f\n" +
+	"\vidle_closed\x18\x05 \x01(\bR\n" +
+	"idleClosed\"\xd1\x02\n" +
 	"\n" +
 	"InputState\x12\x1d\n" +
 	"\n" +

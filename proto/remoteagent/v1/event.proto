@@ -477,6 +477,10 @@ message SessionState {
   // Set with SESSION_STATUS_EXITED when the daemon closed a finished scheduled
   // run's CLI; detail stays "stopped".
   bool scheduled_closed = 4;
+  // Set with SESSION_STATUS_EXITED when the daemon closed a CLI that was
+  // idle for longer than DaemonSettings.idle_close_minutes; detail stays
+  // "stopped".
+  bool idle_closed = 5;
 }
 
 enum InputStatus {
