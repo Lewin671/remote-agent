@@ -619,7 +619,7 @@ struct ChatPane: View {
         if status == .exited {
             VStack(spacing: 0) {
                 if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").type(T.meta, Theme.muted).padding(8) }
-                EndedCard(scheduledClosed: d.scheduledClosed, session: session, machine: machine, name: name)
+                EndedCard(scheduledClosed: d.scheduledClosed, idleClosed: d.idleClosed, session: session, machine: machine, name: name)
             }
         } else if status == .offline {
             Ticking { now in
@@ -863,6 +863,7 @@ struct SessionEndCard<Actions: View>: View {
 /// 会话已结束, with 恢复会话 while its computer can be reached.
 private struct EndedCard: View {
     let scheduledClosed: Bool
+    let idleClosed: Bool
     let session: SessionView
     let machine: MachineView?
     let name: String
@@ -876,7 +877,7 @@ private struct EndedCard: View {
         SessionEndCard(
             act.running ? "正在恢复…" : "会话已结束",
             text: endedText(
-                detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, unlinked: state.unlinked,
+                detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.unlinked,
                 machineOnline: machine?.online == true, machine: name),
             dot: act.running ? Theme.blueBg : Theme.gray
         ) {

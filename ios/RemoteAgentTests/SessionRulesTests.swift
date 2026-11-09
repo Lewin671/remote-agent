@@ -188,6 +188,13 @@ extension Ref<LiveAnnouncer> {
         #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("定时任务运行已结束，会话自动关闭了。"))
     }
 
+    @Test func idleCloseUsesExplicitCause() {
+        #expect(exitReason("stopped", idleClosed: true) == "会话长时间没有活动，已自动结束。")
+        #expect(exitReason("stopped", idleClosed: false) == "会话是被手动结束的。")
+        #expect(exitReason("tmux session gone", idleClosed: true) == "tmux 会话已经不在了。")
+        #expect(endedText(detail: "stopped", idleClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("会话长时间没有活动，已自动结束。"))
+    }
+
     private func pending(mode: PBSendMode = .steer, paused: Bool = false, held: Bool = false) -> PendingInput {
         PendingInput(id: "q", text: "t", mode: mode, paused: paused, held: held, origin: nil)
     }

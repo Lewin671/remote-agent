@@ -148,6 +148,8 @@ public struct Derived: Equatable, Sendable {
     public var running = false
     public var runningSeq: UInt64 = 0
     public var scheduledClosed = false
+    /// The daemon closed the session after it sat idle too long (DaemonSettings.idle_close_minutes).
+    public var idleClosed = false
     public var compactions = [UInt64: Compaction]()
     public var usage: PBTokenUsage?
     public var plan: PBPlanProposed?
@@ -372,6 +374,7 @@ struct EventReducer: Sendable {
             if !planning && !c.model.isEmpty { model = mm }
         case .sessionState(let s):
             d.scheduledClosed = s.status == .exited && s.scheduledClosed
+            d.idleClosed = s.status == .exited && s.idleClosed
             if s.status == .exited { endTools(e.seq) }
         case .sessionForked:
             // What came before is a copy of the source's history: nothing
