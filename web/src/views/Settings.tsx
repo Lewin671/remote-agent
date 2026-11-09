@@ -823,9 +823,36 @@ function usePush(remote: Remote) {
 
 const timeouts = [60, 300, 600, 1800, 3000];
 
+/** Idle close choices in minutes; negative turns it off. */
+const idleCloses = [-1, 60, 120, 360, 720, 1440];
+/** What the daemon uses for 0. */
+const idleCloseDefault = 360;
+
+/** The idle close setting as the daemon applies it: 0 is its default and
+ * any negative value is off. */
+function idleCloseValue(minutes: number): number {
+  if (minutes < 0) return -1;
+  return minutes || idleCloseDefault;
+}
+
+export function idleCloseLabel(minutes: number): string {
+  const m = idleCloseValue(minutes);
+  if (m < 0) return "关闭";
+  return m % 60 === 0 ? `${m / 60} 小时` : `${m} 分钟`;
+}
+
+/** The choices to show: the fixed ones plus the current value when it is
+ * something else, in order. */
+export function idleCloseChoices(minutes: number): number[] {
+  const cur = idleCloseValue(minutes);
+  if (idleCloses.includes(cur)) return idleCloses;
+  return [...idleCloses, cur].sort((a, b) => a - b);
+}
+
 type Field =
   | { agent: Agent; what: "model" | "effort" | "mode" }
-  | { what: "timeout" };
+  | { what: "timeout" }
+  | { what: "idleClose" };
 
 /** One machine: usage, CLI versions, new-session defaults per CLI, its
  * projects. */
@@ -917,6 +944,34 @@ export function MachinePage({
             ))}
           </div>
           <div className="hint">没人回复的审批过了这个时间就拒绝</div>
+        </Sheet>
+      );
+    else if (pick.what === "idleClose")
+      sheet = (
+        <Sheet onClose={() => setPick(undefined)}>
+          <h4>空闲自动结束会话</h4>
+          <div className="list">
+            {idleCloseChoices(st.idleCloseMinutes).map((t) => (
+              <button
+                key={t}
+                className="mi"
+                onClick={() => void save({ ...st, idleCloseMinutes: t })}
+              >
+                <div className="mt">
+                  {idleCloseLabel(t)}
+                  {t === idleCloseDefault && "（默认）"}
+                </div>
+                {t === idleCloseValue(st.idleCloseMinutes) && (
+                  <span className="ck">
+                    <Check />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+          <div className="hint">
+            会话这么久没有任何活动（没在运行、没有待处理、终端没人输入）就自动结束，随时可以恢复，聊天记录都在
+          </div>
         </Sheet>
       );
     else {
@@ -1167,6 +1222,16 @@ export function MachinePage({
               审批超时
               <span className="v">
                 {Math.round(st.approvalTimeoutSeconds / 60)} 分钟
+                <ChevronRight />
+              </span>
+            </button>
+            <button
+              className="row"
+              onClick={() => setPick({ what: "idleClose" })}
+            >
+              空闲自动结束会话
+              <span className="v">
+                {idleCloseLabel(st.idleCloseMinutes)}
                 <ChevronRight />
               </span>
             </button>

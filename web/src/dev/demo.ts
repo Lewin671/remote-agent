@@ -2496,6 +2496,7 @@ export class DemoRemote extends Remote {
     return (this.saved ??= create(DaemonSettingsSchema, {
       imageUploadQuotaBytes: 1n << 30n,
       approvalTimeoutSeconds: 600,
+      idleCloseMinutes: 360,
       defaultModel: "gpt-6-astra",
       defaultEffort: "medium",
       defaultMode: ApprovalMode.AUTO,

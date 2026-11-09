@@ -2369,6 +2369,37 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   expect(host.querySelector(".cli-tabs")).toBeNull();
 });
 
+it("shows and saves the machine's idle close setting, including a value outside the list", async () => {
+  const r = demo();
+  (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { approvalTimeoutSeconds: 600, idleCloseMinutes: 90 });
+  const { MachinePage } = await import("./Settings");
+  mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话90 分钟"));
+  await click(button(/^空闲自动结束会话/));
+  const items = () => [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
+  expect(items().map((b) => b.textContent)).toEqual(["关闭", "1 小时", "90 分钟", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual(["90 分钟"]);
+  expect(document.querySelector(".sheet .hint")?.textContent).toContain("随时可以恢复，聊天记录都在");
+  await click(button("关闭", document));
+  await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话关闭"));
+  expect((r as unknown as { saved: { idleCloseMinutes: number } }).saved.idleCloseMinutes).toBe(-1);
+  await click(button(/^空闲自动结束会话/));
+  // Off now: the custom value is gone from the list and 关闭 is checked.
+  expect(items().map((b) => b.textContent)).toEqual(["关闭", "1 小时", "2 小时", "6 小时（默认）", "12 小时", "24 小时"]);
+  expect(items().filter((b) => b.querySelector(".ck")).map((b) => b.textContent)).toEqual(["关闭"]);
+  await click(button("12 小时", document));
+  await vi.waitFor(() => expect(button(/^空闲自动结束会话/)?.textContent).toBe("空闲自动结束会话12 小时"));
+});
+
+it("names idle close values the way the daemon applies them", async () => {
+  const { idleCloseLabel } = await import("./Settings");
+  expect(idleCloseLabel(-1)).toBe("关闭");
+  expect(idleCloseLabel(-30)).toBe("关闭");
+  expect(idleCloseLabel(0)).toBe("6 小时");
+  expect(idleCloseLabel(180)).toBe("3 小时");
+  expect(idleCloseLabel(90)).toBe("90 分钟");
+});
+
 it("lists installed CLIs in machine picker subtitles and explains fallback when CLI is missing", async () => {
   const r = demo();
   const { ProjectPage } = await import("./Project");
