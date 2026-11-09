@@ -354,7 +354,7 @@ struct MachineScreen: View {
                         last: minutes == choices.last
                     ) { save(s.with(idleCloseMinutes: minutes)) }
                 }
-                Hint("会话这么久没有任何活动（没在运行、没有待处理的事、终端里也没人输入）就自动结束，随时可以恢复，聊天记录都在。")
+                Hint("会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。")
             case .imageQuota:
                 SheetHead("空间上限")
                 ForEach(imageQuotaChoices, id: \.self) { bytes in

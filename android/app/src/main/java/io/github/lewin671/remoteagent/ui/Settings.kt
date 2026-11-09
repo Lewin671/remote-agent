@@ -769,7 +769,7 @@ fun DeviceScreen(id: String) {
                         ),
                     )
                     Text(
-                        "会话长时间没有任何活动（没有运行、没有待处理、终端无人输入）就自动结束，随时可以恢复，聊天记录都在。",
+                        "会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
                         style = T.sm,
                         color = p.muted,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
