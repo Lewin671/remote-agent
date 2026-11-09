@@ -21,13 +21,14 @@ struct MachineScreen: View {
     private enum Pick: Identifiable, Hashable {
         case model(PBAgent)
         case mode(PBAgent)
-        case timeout, imageQuota
+        case timeout, idleClose, imageQuota
 
         var id: String {
             switch self {
             case .model(let agent): "model-\(agent.rawValue)"
             case .mode(let agent): "mode-\(agent.rawValue)"
             case .timeout: "timeout"
+            case .idleClose: "idle-close"
             case .imageQuota: "image-quota"
             }
         }
@@ -262,6 +263,10 @@ struct MachineScreen: View {
                         "审批超时", value: timeoutText(seconds: s.approvalTimeoutSeconds),
                         chevron: true, enabled: !busy
                     ) { picking = .timeout }
+                    GRow(
+                        "空闲自动结束会话", value: idleCloseText(minutes: s.idleCloseMinutes),
+                        chevron: true, enabled: !busy
+                    ) { picking = .idleClose }
                 }
             }
             if settings.saving { LoadingRow("正在保存…", inset: 30).padding(.bottom, 4) }
@@ -339,6 +344,17 @@ struct MachineScreen: View {
                     ) { save(s.with(timeoutMinutes: minutes)) }
                 }
                 Hint("没人处理的审批过了这么久就按拒绝算。")
+            case .idleClose:
+                SheetHead("空闲自动结束会话")
+                let choices = idleCloseChoices(current: s.idleCloseMinutes)
+                ForEach(choices, id: \.self) { minutes in
+                    ListItem(
+                        idleCloseText(minutes: Int32(minutes)), checked: idleCloseIs(minutes, s.idleCloseMinutes),
+                        small: minutes == idleCloseDefaultMinutes ? "默认" : nil,
+                        last: minutes == choices.last
+                    ) { save(s.with(idleCloseMinutes: minutes)) }
+                }
+                Hint("会话这么久没有任何活动（没在运行、没有待处理的事、终端里也没人输入）就自动结束，随时可以恢复，聊天记录都在。")
             case .imageQuota:
                 SheetHead("空间上限")
                 ForEach(imageQuotaChoices, id: \.self) { bytes in

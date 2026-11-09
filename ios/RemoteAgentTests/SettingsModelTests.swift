@@ -294,11 +294,27 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         let next = s.with(timeoutMinutes: 10)
         #expect(next.approvalTimeoutSeconds == 600 && next.imageUploadQuotaBytes == 1 << 30 && next.defaultModel == "m")
         #expect(s.with(imageQuota: 256 << 20).approvalTimeoutSeconds == 300)
+        #expect(s.with(idleCloseMinutes: -1).idleCloseMinutes == -1 && s.with(idleCloseMinutes: 720).approvalTimeoutSeconds == 300)
+    }
+
+    @Test func idleCloseChoicesShowWhatTheComputerHas() {
+        #expect(idleCloseChoices(current: 360) == idleCloseChoices)
+        #expect(idleCloseChoices(current: 0) == idleCloseChoices)
+        #expect(idleCloseChoices(current: -3) == idleCloseChoices)
+        #expect(idleCloseChoices(current: 90) == [-1, 60, 90, 120, 360, 720, 1440])
+        #expect(idleCloseChoices(current: 10080).last == 10080)
+        #expect(idleCloseIs(360, 0) && idleCloseIs(360, 360) && !idleCloseIs(60, 0))
+        #expect(idleCloseIs(-1, -7) && !idleCloseIs(-1, 0))
     }
 
     @Test func wordsForSizesAndTimes() {
         #expect(timeoutText(seconds: 600) == "10 分钟")
         #expect(timeoutText(seconds: 45) == "45 秒")
+        #expect(idleCloseText(minutes: -1) == "关闭")
+        #expect(idleCloseText(minutes: -5) == "关闭")
+        #expect(idleCloseText(minutes: 0) == "6 小时")
+        #expect(idleCloseText(minutes: 180) == "3 小时")
+        #expect(idleCloseText(minutes: 90) == "90 分钟")
         #expect(imageBytes(0) == "0.0 MiB")
         #expect(imageBytes(1) == "不到 0.1 MiB")
         #expect(imageBytes(104_857) == "不到 0.1 MiB")

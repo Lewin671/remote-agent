@@ -1,6 +1,7 @@
 // A computer's daemon settings as its page reads and changes them
-// (architecture §13): the approval timeout, the defaults new projects start
-// from, and where the computer keeps uploaded images. They are read and
+// (architecture §13): the approval timeout, how long an idle session stays
+// open, the defaults new projects start from, and where the computer keeps
+// uploaded images. They are read and
 // written with sealed machine commands, so every answer may also not come:
 // a save whose outcome is unknown is never called failed. The page reads
 // the settings again and says what the computer now has.
@@ -164,6 +165,25 @@ final class MachineSettingsModel {
 /// The approval timeouts offered, in minutes.
 let approvalTimeoutMinutes = [2, 5, 10, 30]
 
+/// How long a session may sit idle before the computer closes it, in minutes: never (-1), then 1 to 24 hours.
+let idleCloseChoices = [-1, 60, 120, 360, 720, 1440]
+
+/// What the computer does when the setting is 0, as it says in its answers.
+let idleCloseDefaultMinutes = 360
+
+/// The idle closes offered with `current` among them, so a value set elsewhere is shown checked in its place.
+func idleCloseChoices(current: Int32) -> [Int] {
+    let now = current == 0 ? idleCloseDefaultMinutes : Int(current)
+    let known = idleCloseChoices.contains(now) || (now < 0 && idleCloseChoices.contains(-1))
+    return known ? idleCloseChoices : (idleCloseChoices + [now]).sorted()
+}
+
+/// Whether `minutes` is what the computer has, taking 0 as its default and every negative as never.
+func idleCloseIs(_ minutes: Int, _ current: Int32) -> Bool {
+    if minutes < 0 { return current < 0 }
+    return minutes == (current == 0 ? idleCloseDefaultMinutes : Int(current))
+}
+
 /// The limits offered for a computer's uploaded images.
 let imageQuotaChoices: [Int64] = [256 << 20, 1 << 30, 5 << 30]
 
@@ -177,6 +197,12 @@ extension PBDaemonSettings {
         return s
     }
 
+    func with(idleCloseMinutes minutes: Int) -> PBDaemonSettings {
+        var s = self
+        s.idleCloseMinutes = Int32(minutes)
+        return s
+    }
+
     func with(imageQuota: Int64) -> PBDaemonSettings {
         var s = self
         s.imageUploadQuotaBytes = imageQuota
@@ -187,6 +213,13 @@ extension PBDaemonSettings {
 /// The approval timeout as its row writes it: whole minutes, or seconds when it is not a round number of them.
 func timeoutText(seconds: Int32) -> String {
     seconds % 60 == 0 ? "\(seconds / 60) 分钟" : "\(seconds) 秒"
+}
+
+/// The idle close as its row writes it: 关闭, whole hours, or minutes when it is not a round number of them.
+func idleCloseText(minutes: Int32) -> String {
+    let m = minutes == 0 ? Int32(idleCloseDefaultMinutes) : minutes
+    if m < 0 { return "关闭" }
+    return m % 60 == 0 ? "\(m / 60) 小时" : "\(m) 分钟"
 }
 
 /// What a computer's uploaded images take, with what is worth saying of it: sizes that are not zero.

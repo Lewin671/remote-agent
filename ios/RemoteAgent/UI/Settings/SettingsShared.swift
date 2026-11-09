@@ -254,6 +254,7 @@ extension View {
         static var daemonSettings: PBDaemonSettings {
             var s = PBDaemonSettings.with {
                 $0.approvalTimeoutSeconds = 600
+                $0.idleCloseMinutes = 360
                 $0.imageUploadQuotaBytes = 1 << 30
             }
             if let first = AGENTS.first {
