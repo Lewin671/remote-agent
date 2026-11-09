@@ -540,6 +540,7 @@ export function SessionPage({
           session={session}
           ended={ended}
           scheduledClosed={d.scheduledClosed}
+          idleClosed={d.idleClosed}
           machineOnline={machine?.online ?? false}
           agent={agent}
           mname={mname}
@@ -1566,6 +1567,7 @@ function EndCard({
   mname,
   lastSeen,
   scheduledClosed,
+  idleClosed,
 }: {
   remote: Remote;
   session: SessionView;
@@ -1575,10 +1577,12 @@ function EndCard({
   mname: string;
   lastSeen: bigint;
   scheduledClosed: boolean;
+  idleClosed: boolean;
 }) {
   const [resuming, setResuming] = useState(false);
   const [error, setError] = useState("");
   const status = session.info?.status;
+  const exited = status === SessionStatus.EXITED;
   useEffect(() => {
     if (status !== SessionStatus.EXITED) setResuming(false);
   }, [status]);
@@ -1651,7 +1655,12 @@ function EndCard({
       ) : machineOnline ? (
         <>
           <div className="d">
-            {exitReason(session.info?.statusDetail ?? "", session.info?.status === SessionStatus.EXITED && scheduledClosed)}恢复会在 {mname}{" "}
+            {exitReason(
+              session.info?.statusDetail ?? "",
+              exited && scheduledClosed,
+              exited && idleClosed,
+            )}
+            恢复会在 {mname}{" "}
             上用同样的设置重新打开它，聊天记录都在。
           </div>
           <div className="btns">

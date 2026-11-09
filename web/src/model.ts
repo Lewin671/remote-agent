@@ -938,6 +938,7 @@ export interface Derived {
   running: boolean;
   runningSeq: bigint; // last event that changed running
   scheduledClosed: boolean;
+  idleClosed: boolean;
   usage?: TokenUsage;
   plan?: PlanProposed; // the latest plan
   tools: RunningTool[]; // started and not completed, oldest first
@@ -984,6 +985,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
     running: false,
     runningSeq: 0n,
     scheduledClosed: false,
+    idleClosed: false,
     tools: [],
     unsettled: [],
     background: [],
@@ -1215,6 +1217,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
       }
       case "sessionState":
         d.scheduledClosed = k.value.status === SessionStatus.EXITED && k.value.scheduledClosed;
+        d.idleClosed = k.value.status === SessionStatus.EXITED && k.value.idleClosed;
         if (k.value.status === SessionStatus.EXITED) {
           d.running = false;
           d.runningSeq = e.seq;
@@ -1769,8 +1772,13 @@ const loginShellDetail = "the login shell";
 const loginShellTimeoutDetail = "did not start the CLI within";
 
 /** Why a session ended, in plain words. */
-export function exitReason(detail: string, scheduledClosed = false): string {
+export function exitReason(
+  detail: string,
+  scheduledClosed = false,
+  idleClosed = false,
+): string {
   if (detail === "stopped" && scheduledClosed) return "定时任务运行已结束，会话自动关闭了。";
+  if (detail === "stopped" && idleClosed) return "会话长时间没有活动，已自动结束。";
   if (detail === "stopped") return "会话是被手动结束的。";
   if (detail.startsWith(loginShellDetail)) {
     const stuck = detail.includes(loginShellTimeoutDetail)
