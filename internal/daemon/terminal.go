@@ -55,6 +55,9 @@ func (t *tmuxTerminal) Poll(ctx context.Context) (string, bool, error) {
 }
 func (t *tmuxTerminal) Alive() bool { return t.tmux.HasSession(t.name) }
 func (t *tmuxTerminal) Kill() error { return t.tmux.KillSession(t.name) }
+func (t *tmuxTerminal) ClientActivity(ctx context.Context) (time.Time, error) {
+	return t.tmux.ClientActivity(ctx, t.name)
+}
 
 func (t *tmuxTerminal) HostAlive(ctx context.Context) (bool, error) {
 	var d net.Dialer

@@ -1,7 +1,9 @@
 package tmux
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"testing"
@@ -83,6 +85,23 @@ func TestSessionCommands(t *testing.T) {
 	}
 	if !strings.Contains(screen, "hello world") {
 		t.Fatalf("capture: %q", screen)
+	}
+	if at, err := c.ClientActivity(context.Background(), "ra-x"); err != nil || !at.IsZero() {
+		t.Fatalf("activity without clients = %v: %v", at, err)
+	}
+	// A control-mode client, like a client's terminal view.
+	attach := exec.Command(c.bin(), c.Command("-C", "attach-session", "-t", "=ra-x")[1:]...)
+	stdin, _ := attach.StdinPipe()
+	if err := attach.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { stdin.Close(); attach.Wait() }()
+	var at time.Time
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline) && at.IsZero(); time.Sleep(20 * time.Millisecond) {
+		at, err = c.ClientActivity(context.Background(), "ra-x")
+	}
+	if err != nil || time.Since(at) > time.Minute {
+		t.Fatalf("activity with a client = %v: %v", at, err)
 	}
 	if err := c.KillSession("ra-x"); err != nil {
 		t.Fatal(err)

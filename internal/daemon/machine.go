@@ -120,7 +120,7 @@ func (d *Daemon) settingsPath() string { return filepath.Join(d.dir, "settings.j
 func (d *Daemon) settings() *pb.DaemonSettings {
 	st, _ := d.settingsContext(context.Background())
 	if st == nil {
-		st = &pb.DaemonSettings{ApprovalTimeoutSeconds: int32(d.cfg.ApprovalTimeout / time.Second), ImageUploadQuotaBytes: maxUploadStorage}
+		st = &pb.DaemonSettings{ApprovalTimeoutSeconds: int32(d.cfg.ApprovalTimeout / time.Second), ImageUploadQuotaBytes: maxUploadStorage, IdleCloseMinutes: defaultIdleCloseMinutes}
 	}
 	return st
 }
@@ -154,6 +154,9 @@ func (d *Daemon) settingsContext(ctx context.Context) (*pb.DaemonSettings, error
 	if st.ImageUploadQuotaBytes == 0 {
 		st.ImageUploadQuotaBytes = maxUploadStorage
 	}
+	if st.IdleCloseMinutes == 0 {
+		st.IdleCloseMinutes = defaultIdleCloseMinutes
+	}
 	return st, nil
 }
 
@@ -166,6 +169,11 @@ func (d *Daemon) updateSettings(st *pb.DaemonSettings) (*pb.DaemonSettings, erro
 		if n != 0 && (n < 32<<20 || n > 1024<<30) {
 			return nil, errors.New("image storage limits must be between 32 MiB and 1 TiB")
 		}
+	}
+	if n := st.IdleCloseMinutes; n < 0 {
+		st.IdleCloseMinutes = -1
+	} else if n != 0 && (n < minIdleCloseMinutes || n > maxIdleCloseMinutes) {
+		return nil, fmt.Errorf("idle close must be off or between %d and %d minutes", minIdleCloseMinutes, maxIdleCloseMinutes)
 	}
 	t := time.Duration(st.ApprovalTimeoutSeconds) * time.Second
 	if st.ApprovalTimeoutSeconds != 0 && (t < 30*time.Second || t > maxApprovalTimeout) {

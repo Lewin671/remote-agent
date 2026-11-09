@@ -32,7 +32,7 @@ func (d *Daemon) updateBusyReason() string {
 			s.mu.Unlock()
 			continue
 		}
-		busy := s.running || s.driving || s.queueLost || len(s.approvals) > 0 || len(s.questions) > 0 || s.planOpen || len(s.unproven) > 0 || len(s.recent) > 0 || s.waitReason != "" || s.queue == nil || len(s.queue.Queue) > 0 || len(s.queue.Held) > 0 || (s.status != pb.SessionStatus_SESSION_STATUS_IDLE && s.status != pb.SessionStatus_SESSION_STATUS_EXITED)
+		busy := s.busyLocked()
 		s.mu.Unlock()
 		if busy {
 			return "session has active work or pending interaction"
@@ -54,6 +54,12 @@ func (d *Daemon) updateBusyReason() string {
 		return "image upload is pending"
 	}
 	return ""
+}
+
+// busyLocked reports whether a live session has work in progress or
+// something waiting on the user or the terminal.
+func (s *session) busyLocked() bool {
+	return s.running || s.driving || s.queueLost || len(s.approvals) > 0 || len(s.questions) > 0 || s.planOpen || len(s.unproven) > 0 || len(s.recent) > 0 || s.waitReason != "" || s.queue == nil || len(s.queue.Queue) > 0 || len(s.queue.Held) > 0 || (s.status != pb.SessionStatus_SESSION_STATUS_IDLE && s.status != pb.SessionStatus_SESSION_STATUS_EXITED)
 }
 
 func (u *uploads) updateBusy() bool {

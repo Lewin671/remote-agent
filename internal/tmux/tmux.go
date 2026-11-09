@@ -231,6 +231,26 @@ func (c *Client) Poll(ctx context.Context, name string) (screen string, alive bo
 	return "", true, errors.New("tmux poll: missing liveness marker")
 }
 
+// ClientActivity is when a client attached to the session last had input,
+// or the zero time if none is attached.
+func (c *Client) ClientActivity(ctx context.Context, name string) (time.Time, error) {
+	out, err := c.RunContext(ctx, "list-clients", "-t", exactTarget(name), "-F", "#{client_activity}")
+	if err != nil {
+		return time.Time{}, err
+	}
+	var last time.Time
+	for _, line := range strings.Fields(out) {
+		sec, err := strconv.ParseInt(line, 10, 64)
+		if err != nil {
+			return time.Time{}, fmt.Errorf("tmux list-clients: unexpected activity %q", line)
+		}
+		if t := time.Unix(sec, 0); t.After(last) {
+			last = t
+		}
+	}
+	return last, nil
+}
+
 // AttachArgv returns the argv that attaches the current terminal to name.
 func (c *Client) AttachArgv(name string) []string {
 	return c.Command("attach-session", "-t", exactTarget(name))

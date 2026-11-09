@@ -19,6 +19,7 @@ type meta struct {
 	TaskCLIClosed        bool              `json:"task_cli_closed,omitempty"`
 	// Cause of the latest exit; TaskCLIClosed also fences resumed CLI lifetimes.
 	ScheduledClosed bool `json:"scheduled_closed,omitempty"`
+	IdleClosed      bool `json:"idle_closed,omitempty"`
 	// Creation provenance, set once by createByContext for a new task session.
 	// Resuming a session never replaces these IDs, including after human takeover.
 	ScheduledRunID  string `json:"scheduled_run_id,omitempty"`

@@ -169,7 +169,9 @@ func (s *session) enqueueInputContext(ctx context.Context, text, requestID strin
 			s.lifecycleMu.Unlock()
 			return 0, nil
 		}
-		resume := s.meta.Exited && s.meta.ScheduledTaskID != ""
+		// A CLI closed for being idle comes back for the message, like a
+		// scheduled one: the user did not end the conversation.
+		resume := s.meta.Exited && (s.meta.ScheduledTaskID != "" || s.meta.IdleClosed)
 		s.mu.Unlock()
 		if !resume {
 			break

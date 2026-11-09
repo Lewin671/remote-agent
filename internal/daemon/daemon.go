@@ -262,6 +262,8 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	stopSchedules := d.startScheduleLoop(ctx)
 	defer stopSchedules()
+	stopIdleClose := d.startIdleCloseLoop(ctx)
+	defer stopIdleClose()
 	// Exit/orphan cleanup and image-original LRU require restored liveness and
 	// turn pins for every session. Never start storage GC during restoration.
 	go d.imageGCLoop(ctx.Done())
@@ -348,7 +350,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			// Liveness does not depend on readable session history. Persist the
 			// correction before opening it, so a skipped/corrupt log cannot let
 			// later storage GC mistake this live session for an exited one.
-			m.Exited, m.ScheduledClosed = false, false
+			m.Exited, m.ScheduledClosed, m.IdleClosed = false, false, false
 			if err := m.save(dir); err != nil {
 				// Run must not start GC while disk still authorizes stale cleanup.
 				return fmt.Errorf("save reattached session liveness: %w", err)
@@ -1236,7 +1238,8 @@ func (s *session) resumeStateLocked(pendingInput bool) {
 	s.identityObservedAt = time.Now()
 	s.identityEmptySince = time.Time{}
 	s.identityFailed = false
-	s.meta.ScheduledClosed = false
+	s.meta.ScheduledClosed, s.meta.IdleClosed = false, false
+	s.activeAt = time.Now()
 	// Explicit/scheduled resume is independent of the old creation. An
 	// implicit resume remains owned until canonical input admission takes over.
 	if s.meta.ScheduledTaskID != "" {

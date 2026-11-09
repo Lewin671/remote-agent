@@ -2080,3 +2080,17 @@ Android 最终配置对三个模块使用同样的 A→B→B→A 完整命令：
 发布工具回归 47 项及 `go test ./...` 通过。新增隔离测试确认只更新 Web 时不调用 SSH、daemon 或公共页面 HTTP；协议变化时在部署前停止。实际上线仅运行 Web 阶段，没有更新或重启中继及本机 daemon。构建、上传、Cloudflare 生产提交校验均成功；临时 tag checkout 已清理。
 
 此前公共页面直接请求返回 403，本轮按工作流停止该访问路径，以已认证的 Cloudflare 控制面完成部署及校验，没有重试页面访问或声称完成浏览器界面验收。使用方式见 [development](development.md#连接-server-和网页)。
+
+## 空闲自动结束会话（2026-11-08，基于 v0.56.4 的未发布分支）
+
+daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 7 天或关闭），退出状态新增 `SessionState.idle_closed`，`detail` 仍为 `stopped`；只是增加字段，旧客户端把它显示成手动结束，协议版本不变。设计见 [architecture §13](architecture.md#13-daemon-设置与远程新建会话)。
+
+| 检查 | 结果 |
+|---|---|
+| `go test ./...` | 全部通过；新增 `internal/daemon/idle_close_test.go`（关闭与原因持久化、元数据先于事件的恢复、运行中/审批/排队/后台/定时/刚打字时不关、用量事件不算活动、设置校验与关闭），`internal/tmux` 用真实 tmux 核对 control-mode client 的 `client_activity` |
+| 网页：`pnpm typecheck`、`pnpm test`、`pnpm build` | 通过；95 个文件、1510 项测试 |
+| Android：`./gradlew :core:test :app:testDebugUnitTest :app:lintVitalRelease` | 通过 |
+| iOS：`ios/scripts/check.sh` | 通过；RACore 648 项，App 在模拟器上构建并跑完单元和 UI 测试 |
+| 隔离环境：`ios/scripts/dev-env.sh start --no-account`，`go run ./scripts/acceptance-idle-close` | 本 checkout 构建 server/daemon，临时账户、独立数据库、状态目录与 tmux socket，真实 Claude Code（Haiku）。加密客户端读到默认 360，设为关闭和 2 小时成功、30 分钟被拒；把设置文件改成 1 分钟后，会话回复后空闲 1 分 23 秒被关闭，客户端取回 EXITED + `idle_closed`，tmux 会话已不在；向已关闭的会话发消息自动恢复并得到回复，之后再次空闲关闭 |
+
+没覆盖：三端设置页和结束卡片没有截图或真机目视；本机 attach 着终端打字推迟关闭只有单元测试；没有实测 Codex 和 Antigravity 的空闲关闭（关闭和恢复走与手动结束相同的路径）。

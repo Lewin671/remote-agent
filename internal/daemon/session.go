@@ -132,10 +132,13 @@ type session struct {
 	status          pb.SessionStatus
 	detail          string
 	scheduledClosed bool // latest SessionState, rebuilt from the event log
-	storageFault    string
-	storageWarnAt   time.Time
-	parseHealth     parseHealth
-	parseWarnAt     time.Time
+	idleClosed      bool // likewise
+	// activeAt is when the session last showed activity (idle_close.go).
+	activeAt      time.Time
+	storageFault  string
+	storageWarnAt time.Time
+	parseHealth   parseHealth
+	parseWarnAt   time.Time
 	// Retain a transcript reset until its diagnostic watermark invalidation
 	// is durable, even if the file grows again while storage is unavailable.
 	parseHealthResetPending bool
@@ -294,11 +297,11 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 		}
 	}
 	// Recover an exit whose metadata was saved before its event was committed.
-	if m.Exited && m.ScheduledClosed && (s.status != pb.SessionStatus_SESSION_STATUS_EXITED || s.detail != "stopped" || !s.scheduledClosed) {
+	if m.Exited && (m.ScheduledClosed || m.IdleClosed) && (s.status != pb.SessionStatus_SESSION_STATUS_EXITED || s.detail != "stopped" || s.scheduledClosed != m.ScheduledClosed || s.idleClosed != m.IdleClosed) {
 		if err := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
-			Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: "stopped", ScheduledClosed: true,
+			Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: "stopped", ScheduledClosed: m.ScheduledClosed, IdleClosed: m.IdleClosed,
 		}}}); err != nil {
-			return nil, fmt.Errorf("restore scheduled exit: %w", err)
+			return nil, fmt.Errorf("restore automatic exit: %w", err)
 		}
 	}
 	if m.Exited {
@@ -340,6 +343,7 @@ func newSession(d *Daemon, dir string, m meta, term terminal, log *eventlog.Log)
 // observe updates derived state from an event. Callers hold s.mu or are
 // the only goroutine touching the session.
 func (s *session) observe(e *pb.Event) {
+	s.observeActivity(e)
 	s.observeNative(e)
 	s.observeScheduled(e)
 	s.ordering.observe(e)
@@ -403,6 +407,7 @@ func (s *session) observe(e *pb.Event) {
 		}
 		s.status, s.detail = k.SessionState.Status, k.SessionState.Detail
 		s.scheduledClosed = k.SessionState.ScheduledClosed
+		s.idleClosed = k.SessionState.IdleClosed
 		s.planOpen = k.SessionState.PlanOpen
 		if s.status != pb.SessionStatus_SESSION_STATUS_STARTING {
 			s.sawComposer = true
@@ -984,10 +989,20 @@ func (s *session) markExited(detail string) error {
 
 // Callers hold lifecycleMu through settlement, EXITED and cancellation.
 func (s *session) markExitedLocked(detail string) error {
-	return s.markExitedWithCauseLocked(detail, false)
+	return s.markExitedWithCauseLocked(detail, exitManual)
 }
 
-func (s *session) markExitedWithCauseLocked(detail string, scheduledClosed bool) error {
+// exitCause says who closed a CLI that remote-agent stopped.
+type exitCause int
+
+const (
+	exitManual exitCause = iota
+	exitScheduled
+	exitIdle
+)
+
+func (s *session) markExitedWithCauseLocked(detail string, cause exitCause) error {
+	scheduledClosed, idleClosed := cause == exitScheduled, cause == exitIdle
 	loops := s.sessionLoops
 	s.mu.Lock()
 	if s.meta.Exited {
@@ -995,7 +1010,7 @@ func (s *session) markExitedWithCauseLocked(detail string, scheduledClosed bool)
 		return nil
 	}
 	s.meta.Exited = true
-	s.meta.ScheduledClosed = scheduledClosed
+	s.meta.ScheduledClosed, s.meta.IdleClosed = scheduledClosed, idleClosed
 	m := s.meta
 	for id, a := range s.approvals {
 		if a.delivering {
@@ -1015,7 +1030,7 @@ func (s *session) markExitedWithCauseLocked(detail string, scheduledClosed bool)
 	// failed read or append is retried when restoring or resuming.
 	settleErr := s.settleExited()
 	commitErr := s.emit(&pb.Event{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{
-		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail, ScheduledClosed: scheduledClosed,
+		Status: pb.SessionStatus_SESSION_STATUS_EXITED, Detail: detail, ScheduledClosed: scheduledClosed, IdleClosed: idleClosed,
 	}}})
 	// Images sent for the session are kept while it runs: Codex reads
 	// them when a message is submitted, and the model may look at a path
@@ -1539,9 +1554,20 @@ func (s *session) kill() error {
 	return s.killContext(context.Background())
 }
 
-func (s *session) killContext(ctx context.Context) error { return s.killIf(ctx, false) }
+func (s *session) killContext(ctx context.Context) error { return s.killFor(ctx, exitManual, 0) }
 
 func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
+	if scheduledOnly {
+		return s.killFor(ctx, exitScheduled, 0)
+	}
+	return s.killFor(ctx, exitManual, 0)
+}
+
+// killFor stops the CLI. An automatic cause checks again, with the
+// transcript read and terminal control held, that the stop still applies;
+// idleFor is how long an idle close needs the session to have been idle.
+func (s *session) killFor(ctx context.Context, cause exitCause, idleFor time.Duration) error {
+	scheduledOnly := cause == exitScheduled
 	s.lifecycleMu.Lock()
 	defer s.lifecycleMu.Unlock()
 	s.ctlMu.Lock()
@@ -1578,6 +1604,12 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 		}
 		defer func() { s.mu.Lock(); s.closing = false; s.mu.Unlock() }()
 	}
+	if cause == exitIdle {
+		if !s.claimIdleClose(ctx, idleFor) {
+			return nil
+		}
+		defer func() { s.mu.Lock(); s.closing = false; s.mu.Unlock() }()
+	}
 	if err := s.term.Kill(); err != nil && s.term.Alive() {
 		return err
 	}
@@ -1595,7 +1627,7 @@ func (s *session) killIf(ctx context.Context, scheduledOnly bool) error {
 		s.meta.TaskCLIClosed = true
 		s.mu.Unlock()
 	}
-	return s.markExitedWithCauseLocked("stopped", scheduledOnly)
+	return s.markExitedWithCauseLocked("stopped", cause)
 }
 
 func (s *session) waitForPTYHostGone(parent context.Context) error {
