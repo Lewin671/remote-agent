@@ -564,6 +564,7 @@ fun DeviceScreen(id: String) {
     var pickModel by remember { mutableStateOf<Agent?>(null) }
     var pickMode by remember { mutableStateOf<Agent?>(null) }
     var pickTimeout by remember { mutableStateOf(false) }
+    var pickIdleClose by remember { mutableStateOf(false) }
     var activeAgent by remember(id) { mutableStateOf<Agent?>(null) }
     fun update(s: DaemonSettings, cleanImages: Boolean = false) =
         save.run(
@@ -755,6 +756,24 @@ fun DeviceScreen(id: String) {
                             },
                         ),
                     )
+                    Group(
+                        rows = listOf(
+                            @Composable {
+                                GRow(
+                                    "空闲自动结束会话",
+                                    idleCloseLabel(s.idleCloseMinutes),
+                                    onClick = if (save.running) null else ({ pickIdleClose = true }),
+                                    chevron = true,
+                                )
+                            },
+                        ),
+                    )
+                    Text(
+                        "会话长时间没有任何活动（没有运行、没有待处理、终端无人输入）就自动结束，随时可以恢复，聊天记录都在。",
+                        style = T.sm,
+                        color = p.muted,
+                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
+                    )
                 }
             }
             if (save.error.isNotEmpty())
@@ -915,7 +934,39 @@ fun DeviceScreen(id: String) {
             onClose = { pickTimeout = false },
         )
     }
+    if (pickIdleClose && cur != null) {
+        ChoiceSheet(
+            "空闲自动结束会话",
+            IDLE_CLOSE_CHOICES.map { (if (it == IDLE_CLOSE_DEFAULT) "${idleCloseLabel(it)}（默认）" else idleCloseLabel(it)) to null },
+            idleCloseChoice(cur.idleCloseMinutes),
+            onPick = { i ->
+                pickIdleClose = false
+                update(cur.toBuilder().setIdleCloseMinutes(IDLE_CLOSE_CHOICES[i]).build())
+            },
+            onClose = { pickIdleClose = false },
+        )
+    }
 }
+
+/** The daemon closes a session idle for 6 hours unless told otherwise; 0 stands for that. */
+internal const val IDLE_CLOSE_DEFAULT = 360
+
+/** Idle close choices in minutes; -1 never closes. */
+internal val IDLE_CLOSE_CHOICES = listOf(-1, 60, 120, IDLE_CLOSE_DEFAULT, 720, 1440)
+
+/** An idle close setting in words: 关闭, whole hours, or minutes for anything else. */
+internal fun idleCloseLabel(minutes: Int): String {
+    val m = if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes
+    return when {
+        m < 0 -> "关闭"
+        m % 60 == 0 -> "${m / 60} 小时"
+        else -> "$m 分钟"
+    }
+}
+
+/** Which choice the setting is, or -1 for a value set elsewhere. */
+internal fun idleCloseChoice(minutes: Int): Int =
+    IDLE_CLOSE_CHOICES.indexOf(if (minutes < 0) -1 else if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes)
 
 /** One usage window: its name, how much is used, a bar, and when it resets. */
 @Composable
