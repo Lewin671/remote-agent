@@ -168,6 +168,8 @@ enum MainTab: String, Sendable {
 final class Navigator {
     var tab = MainTab.home
     var path: [Route] = []
+    /// The window is wide: the first-level page is a sidebar, and what it opens replaces the main area.
+    var wide = false
 
     /// Goes to a destination from anywhere: a row, a notification, a link.
     /// The first-level pages replace the stack; a session already on top is
@@ -182,7 +184,10 @@ final class Navigator {
             tab = .home
         case .schedule, .newSchedule:
             if path.isEmpty { tab = .schedules }
-            if path.last != route { path.append(route) }
+            if wide { path = [route] } else if path.last != route { path.append(route) }
+        case .session where wide, .settings where wide:
+            // Chosen in the sidebar: the main area shows it, in place of what it showed.
+            path = [route]
         case .session(let id, _):
             // The same session again, as from a second notification: the page on top is replaced, not stacked.
             if case .session(let top, _)? = path.last, top == id {
@@ -278,12 +283,36 @@ struct MainView: View {
         _nav = State(initialValue: nav)
     }
 
+    @Environment(\.horizontalSizeClass) private var width
+
     var body: some View {
         @Bindable var nav = nav
-        NavigationStack(path: $nav.path) {
-            FirstLevel()
-                .navigationDestination(for: Route.self) { $0.destination.environment(\.page, $0) }
+        Group {
+            if width == .regular {
+                // Wide (design-system §6 「宽屏」): the first-level page as a sidebar on the grey window, what it opens beside it.
+                NavigationSplitView {
+                    FirstLevel(sidebar: true)
+                        .navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 420)
+                } detail: {
+                    NavigationStack(path: $nav.path) {
+                        WideEmpty(tab: nav.tab)
+                            .navigationDestination(for: Route.self) { route in
+                                // What the sidebar chose has no way back: the sidebar is beside it.
+                                route.destination.environment(\.page, route)
+                                    .navigationBarBackButtonHidden(nav.path.first == route)
+                            }
+                    }
+                }
+                .navigationSplitViewStyle(.balanced)
+                .background(DS.gbg.ignoresSafeArea())
+            } else {
+                NavigationStack(path: $nav.path) {
+                    FirstLevel()
+                        .navigationDestination(for: Route.self) { $0.destination.environment(\.page, $0) }
+                }
+            }
         }
+        .onChange(of: width, initial: true) { _, w in nav.wide = w == .regular }
         .tint(DS.blue)
         // Goes where a tap would, for a script: to the route written to `debug.route` (debug builds).
         .debugSignal("app.open") {
@@ -319,6 +348,8 @@ struct NewTaskTarget: Identifiable {
 /// sentences, and their buttons glass floating over them, so the system's
 /// bar is hidden here; a pushed page has it back.
 private struct FirstLevel: View {
+    /// Drawn as the wide window's sidebar: 新任务 at its top, 会话 / 定时 and the gear at its bottom.
+    var sidebar = false
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
@@ -342,16 +373,21 @@ private struct FirstLevel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Nothing can be started out of reach of the server, nor without a computer to run it.
+        .environment(\.sidebarCreate, sidebar ? SidebarCreate(enabled: !state.unlinked && !state.machines.isEmpty) { create(state) } : nil)
         .floatingBar(.bottom) {
-            BottomBar(
-                tab: $nav.tab,
-                badges: [
-                    .home: TabBadge(count: waiting),
-                    .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: "件"),
-                ],
-                // Nothing can be started out of reach of the server, nor without a computer to run it.
-                canCreate: !state.unlinked && !state.machines.isEmpty,
-                onCreate: { create(state) })
+            if sidebar {
+                SidebarFooter(tab: $nav.tab)
+            } else {
+                BottomBar(
+                    tab: $nav.tab,
+                    badges: [
+                        .home: TabBadge(count: waiting),
+                        .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: "件"),
+                    ],
+                    canCreate: !state.unlinked && !state.machines.isEmpty,
+                    onCreate: { create(state) })
+            }
         }
         // The bar stays at the bottom when a dialog over the page brings the keyboard up.
         .ignoresSafeArea(.keyboard, edges: .bottom)

@@ -50,6 +50,7 @@ private struct HomeTopBar: View {
     let scope: HomeScope?
     let onScope: () -> Void
     @Environment(Navigator.self) private var nav
+    @Environment(\.sidebarCreate) private var create
 
     var body: some View {
         GlassGroup {
@@ -74,8 +75,13 @@ private struct HomeTopBar: View {
                     .accessibilityIdentifier("scope-title")
                 }
                 Spacer(minLength: 0)
-                GlassIconButton("gearshape", label: "设置") { nav.open(.settings) }
-                    .accessibilityIdentifier("settings-button")
+                // In the wide window's sidebar 新任务 is here, and the gear at the sidebar's bottom.
+                if let create {
+                    SidebarCreateButton(create: create, schedules: false)
+                } else {
+                    GlassIconButton("gearshape", label: "设置") { nav.open(.settings) }
+                        .accessibilityIdentifier("settings-button")
+                }
             }
         }
         .padding(.horizontal, DS.Space.card)

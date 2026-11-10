@@ -8,6 +8,7 @@ import SwiftUI
 struct SchedulesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
+    @Environment(\.sidebarCreate) private var create
     @AppStorage("schedules.endedExpanded") private var endedExpanded = false
 
     var body: some View {
@@ -23,6 +24,9 @@ struct SchedulesScreen: View {
             Ticking { now in
                 List {
                     Group {
+                        if let create {
+                            HStack { Spacer(); SidebarCreateButton(create: create, schedules: true) }.padding(.horizontal, DS.Space.card)
+                        }
                         ScheduleHeadlineView(headline: headline)
                         ConnectionBar()
                         if model.state.conn == .online,
