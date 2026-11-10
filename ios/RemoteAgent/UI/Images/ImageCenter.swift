@@ -319,6 +319,25 @@ final class ImageCenter {
         }
     }
 
+    /// 照片和视频 was chosen: the library, unless neither another image nor (where the computer takes files) a video fits.
+    func library(_ key: String, blocked: String?, max: Int, machine: MachineView?) {
+        if let blocked { return say(key, blocked) }
+        let d = draft(key)
+        let imagesFull = d.photos.count >= max
+        let filesFull = !fileSupported(machine) || d.documents.count >= fileLimit(for: machine)
+        if imagesFull && filesFull { return say(key, "一条消息最多 \(max) 张") }
+        picking[key] = .photos
+    }
+
+    /// 文件 was chosen: the document picker, while another file fits.
+    func documents(_ key: String, blocked: String?, machine: MachineView?) {
+        if let blocked { return say(key, blocked) }
+        if let why = fileUploadBlocked(machine, online: true) { return say(key, why) }
+        let limit = fileLimit(for: machine)
+        if draft(key).documents.count >= limit { return say(key, "一条消息最多 \(limit) 个文件") }
+        picking[key] = .documents
+    }
+
     /// Adds what was picked, as many as fit, and starts preparing them.
     func add(_ key: String, _ picked: [Source], max: Int) {
         let draft = draft(key)
@@ -369,6 +388,27 @@ final class ImageCenter {
             return
         }
         say(key, blocked)
+    }
+
+    /// Videos from the library, which go as files: each is copied out of the
+    /// library into this app's temporary folder, and that copy is what the
+    /// draft keeps and uploads. One past the size limit is refused here, as
+    /// a picked document is, before anything is sent.
+    func addVideos(_ key: String, _ items: [PhotosPickerItem], machine: MachineView?, online: Bool) {
+        if let blocked = fileUploadBlocked(machine, online: online) { return say(key, blocked) }
+        Task {
+            var urls: [URL] = []
+            for item in items {
+                do {
+                    guard let video = try await item.loadTransferable(type: LibraryVideo.self) else { throw PickedFile.unreadable }
+                    urls.append(video.url)
+                } catch {
+                    say(key, "读不到这段视频，请重新选择")
+                }
+            }
+            guard !closed, !urls.isEmpty else { return }
+            addFiles(key, urls, machine: machine, online: online)
+        }
     }
 
     /// Adds the images on the clipboard.
@@ -740,3 +780,27 @@ final class ImageCenter {
         }
     }
 #endif
+
+/// A video chosen in the library, as a file of this app's: the picker hands
+/// over a copy that lives only while it is read, so it is copied again into
+/// a folder of its own under the temporary directory, named as it was.
+struct LibraryVideo: Transferable {
+    let url: URL
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(importedContentType: .movie) { received in
+            let folder = FileManager.default.temporaryDirectory
+                .appendingPathComponent("library-videos", isDirectory: true)
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let copy = folder.appendingPathComponent(received.file.lastPathComponent)
+            try FileManager.default.copyItem(at: received.file, to: copy)
+            return LibraryVideo(url: copy)
+        }
+    }
+}
+
+extension PhotosPickerItem {
+    /// The item is a video (a movie of any kind), which goes as a file.
+    var isVideo: Bool { supportedContentTypes.contains { $0.conforms(to: .movie) } }
+}

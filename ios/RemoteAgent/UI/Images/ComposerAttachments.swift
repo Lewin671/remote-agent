@@ -1,5 +1,6 @@
 import RACore
 import SwiftUI
+import UIKit
 
 /// The attachment draft shared by new-session and session composers.
 @MainActor
@@ -34,6 +35,17 @@ struct ComposerAttachments {
     }
 
     func pick() { center.plus(key, blocked: blocked, max: limit, filesSupported: fileSupported(machine)) }
+
+    /// The computer takes files: ＋ offers them, and the library holds videos too.
+    var filesOffered: Bool { fileSupported(machine) }
+    /// Asking whether the clipboard has an image does not read it, so nothing is asked of the user yet.
+    var clipboardHasImage: Bool { UIPasteboard.general.hasImages }
+
+    /// 照片和视频 (照片 without files): the system's picker, while anything fits.
+    func pickLibrary() { center.library(key, blocked: blocked, max: limit, machine: machine) }
+    /// 文件: the system's document picker.
+    func pickFiles() { center.documents(key, blocked: blocked, machine: machine) }
+    func paste() { center.paste(key, max: limit) }
     func refresh() { center.aim(key, at: machineId, blocked: blocked != nil, machine: machine) }
     func used(_ images: [PendingImage]) { center.used(key, images, machineId: machineId) }
 

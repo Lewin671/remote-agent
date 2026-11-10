@@ -403,7 +403,8 @@ struct ChatPane: View {
             bottom(d, dock: dock)
                 .frame(maxWidth: 760)
                 .frame(maxWidth: .infinity)
-                .background(Theme.card.ignoresSafeArea(edges: .bottom))
+                // The message box floats on glass: the chat fades out under it, it is not cut by a bar.
+                .background { EdgeFade(edge: .bottom) }
                 .overlay(alignment: .top) {
                     pill {
                         tracker.jump()

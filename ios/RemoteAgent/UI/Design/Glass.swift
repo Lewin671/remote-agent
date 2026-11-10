@@ -73,7 +73,7 @@ private struct FloatingBar<Bar: View>: ViewModifier {
 }
 
 /// The page's colour, solid at the screen's edge and gone a little past what floats there.
-private struct EdgeFade: View {
+struct EdgeFade: View {
     let edge: VerticalEdge
 
     var body: some View {

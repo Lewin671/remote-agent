@@ -261,7 +261,10 @@ private struct ImagePickerHost: ViewModifier {
     @State private var next: ImageCenter.Pick?
 
     func body(content: Content) -> some View {
-        let room = Swift.max(max - center.draft(key).photos.count, 1)
+        let draft = center.draft(key)
+        // Videos go as files where the computer takes files (session-files.md 「从相册选视频」).
+        let videos = fileSupported(machine)
+        let room = Swift.max(max - draft.photos.count + (videos ? Swift.max(fileLimit(for: machine) - draft.documents.count, 0) : 0), 1)
         content
             .actionMenu(
                 isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),
@@ -299,14 +302,16 @@ private struct ImagePickerHost: ViewModifier {
             }
             .photosPicker(
                 isPresented: Binding(get: { center.picking[key] == .photos }, set: { if !$0, center.picking[key] == .photos { center.picking[key] = nil } }),
-                selection: $picked, maxSelectionCount: room, selectionBehavior: .ordered, matching: .images,
+                selection: $picked, maxSelectionCount: room, selectionBehavior: .ordered, matching: videos ? .any(of: [.images, .videos]) : .images,
                 // The file as it is: nothing is converted before this app has taken its metadata out.
                 preferredItemEncoding: .current
             )
             .onChange(of: picked) { _, items in
                 guard !items.isEmpty else { return }
                 picked = []
-                center.add(key, items.map { .item($0) }, max: max)
+                let (moving, still) = (items.filter(\.isVideo), items.filter { !$0.isVideo })
+                if !still.isEmpty { center.add(key, still.map { .item($0) }, max: max) }
+                if !moving.isEmpty { center.addVideos(key, moving, machine: machine, online: blocked == nil) }
             }
     }
 }
