@@ -405,3 +405,20 @@ public let scheduleIntervalHint = "第一次会在一个完整间隔后运行，
 public func scheduleLimits(_ trigger: ScheduleTrigger, now: Date = Date(), zone: TimeZone = .current) -> String {
     [trigger.maxRuns.flatMap { $0 > 0 ? "共 \($0) 次" : nil }, trigger.until.flatMap(scheduleDate).map { "到 " + scheduleMoment($0, now: now, zone: zone) }].compactMap { $0 }.joined(separator: "，或")
 }
+
+/// The 定时 page's sentence (design-system §6 「大标题」「定时列表」): how many
+/// tasks stopped, else how many have new results, and the other kind
+/// counted under it. `count` is the number drawn orange in the title.
+public struct ScheduleHeadline: Equatable, Sendable {
+    public var title: String
+    public var count: Int?
+    public var sub: String
+}
+
+public func scheduleHeadline(stopped: Int, fresh: Int, visible: Int, loading: Bool) -> ScheduleHeadline {
+    if visible == 0 { return ScheduleHeadline(title: loading ? "正在读取任务…" : "还没有定时任务", count: nil, sub: "") }
+    if stopped > 0 {
+        return ScheduleHeadline(title: "\(stopped) 个任务停下了", count: stopped, sub: fresh > 0 ? "另有 \(fresh) 个新结果" : "")
+    }
+    return ScheduleHeadline(title: fresh > 0 ? "\(fresh) 个新结果" : "没有新结果", count: nil, sub: "")
+}
