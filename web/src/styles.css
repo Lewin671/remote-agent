@@ -832,6 +832,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 
 /* ---------- settings: grouped lists on a paper page ---------- */
 .grp { margin: 0 16px 12px; }
+.grp + .cli-tabs, .label + .cli-tabs { margin: 0 16px 8px; flex: none; }
 .row { display: flex; align-items: center; gap: 12px; padding: 0 16px 0 18px; min-height: 50px; font-size: 17px; width: 100%; position: relative; text-align: left; }
 .row + .row::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; border-top: .5px solid var(--sep); }
 .row .v { margin-left: auto; color: var(--ink2); font-size: 17px; display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; overflow: hidden; }
@@ -868,6 +869,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .set-banners { display: flex; flex-direction: column; gap: 8px; margin: 10px 16px 0; }
 .set-banners:empty { display: none; }
 .row > .chev { margin-left: -4px; }
+.row > .chev:only-child { margin-left: auto; }
 .row > .seg { margin-left: auto; }
 .row.help .link { margin-left: 8px; font-size: 13px; }
 /* A computer (design-system §6 电脑卡与额度): a gray card, 28 round; one
