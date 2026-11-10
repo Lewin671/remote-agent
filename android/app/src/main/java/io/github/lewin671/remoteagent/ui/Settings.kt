@@ -121,15 +121,10 @@ fun ToggleRow(title: String, sub: String, value: Boolean, enabled: Boolean = tru
     }
 }
 
-/** A small colored square with an icon, in front of a machine's row. */
+/** A row's leading icon (design-system §5): an ink2 line icon, no coloured tile. */
 @Composable
-private fun Ico(icon: ImageVector, bg: Color) {
-    Box(
-        Modifier.size(26.dp).clip(RoundedCornerShape(7.dp)).background(bg),
-        contentAlignment = Alignment.Center,
-    ) {
-        Ic(icon, 16.dp, Color.White)
-    }
+private fun Ico(icon: ImageVector) {
+    Ic(icon, 22.dp, pal.ink2)
 }
 
 internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?): ImageVector = when {
@@ -213,7 +208,7 @@ fun SettingsScreen() {
                                     state.devices.values,
                                 ),
                                 "当前",
-                                lead = { Ico(clientIcon(state.devices[me]?.meta), p.blue) },
+                                lead = { Ico(clientIcon(state.devices[me]?.meta)) },
                                 onClick = { nav.client(me) },
                             )
                         },
@@ -223,7 +218,7 @@ fun SettingsScreen() {
                                 GRow(
                                     io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values),
                                     "已配对",
-                                    lead = { Ico(clientIcon(c.meta), p.blue) },
+                                    lead = { Ico(clientIcon(c.meta)) },
                                     onClick = { nav.client(c.id) },
                                     chevron = true,
                                 )
