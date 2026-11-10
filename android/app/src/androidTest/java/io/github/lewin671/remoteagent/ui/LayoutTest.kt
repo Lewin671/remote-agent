@@ -427,7 +427,7 @@ class LayoutTest {
         }
         ui.onNodeWithText("自动").assertIsSelected()
     }
-    @Test fun machineStatusStaysAtTheTrailingEdgeWithQuotasAndLargeFont() {
+    @Test fun machineCardKeepsStatusAndQuotaUnderTheNameWithLargeFont() {
         // Keep both readings today in every simulator timezone.
         val now = java.time.LocalDate.now().atTime(12, 0).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         val name = "A very long workstation name that must leave room for status"
@@ -450,12 +450,19 @@ class LayoutTest {
             ui.runOnIdle { dark = theme }
             for (connected in listOf(true, false)) {
                 ui.runOnIdle { online = connected }
-                val status = ui.onNodeWithText(if (connected) "在线" else "2 小时前", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                val status = ui.onNodeWithText(if (connected) "在线" else "2 小时前在线", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
                 val title = ui.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
                 val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
-                assertTrue("status overlaps title", status.left >= title.right)
-                assertTrue("status outside row", status.right <= frame.right)
-                assertTrue("status should stay at row end", status.right > frame.left + frame.width * .65f)
+                assertTrue("status overlaps title", status.top >= title.bottom)
+                assertTrue("title outside card", title.right <= frame.right)
+                assertTrue("status outside card", status.right <= frame.right)
+                if (connected) {
+                    val quota = ui.onNodeWithText("剩 38%", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                    assertTrue("quota above status", quota.top >= status.bottom)
+                    assertTrue("quota outside card", quota.right <= frame.right)
+                } else {
+                    ui.onNodeWithText("剩 38%", useUnmergedTree = true).assertDoesNotExist()
+                }
             }
         }
     }

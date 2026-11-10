@@ -136,7 +136,7 @@ class ScheduleLayoutGallery {
         val spec = JsonObject(task.spec + ("trigger" to trigger))
         val foreign = ScheduledTask(machine, JsonObject(task.json + ("spec" to spec)))
         prepare(listOf(foreign));content { ScheduleDetailScreen(machine,foreign.id) }
-        ui.onNodeWithText(scheduleTiming(trigger), substring = true).assertExists();both("detail-foreign")
+        ui.onAllNodesWithText(scheduleTiming(trigger), substring = true).onFirst().assertExists();both("detail-foreign")
     }
     @Test fun currentDetail() { prepare();content { ScheduleDetailScreen(machine,current.id) };both("current-detail") }
     @Test fun rename() { prepare();content { ScheduleDetailScreen(machine,task.id) };ui.onNodeWithText("任务名").performScrollTo().performClick();ui.onNodeWithText("重命名任务").assertIsDisplayed();both("rename") }

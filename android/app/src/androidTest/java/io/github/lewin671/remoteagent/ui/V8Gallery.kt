@@ -254,7 +254,7 @@ class V8Gallery {
     @Test fun pickManyProjects() {
         val extras = (1..9).map { n -> session("project$n", "mac", "$home/Code/project$n", "项目 $n") }.toMap()
         val st = homeState(false).copy(sessions = homeState(false).sessions + extras)
-        shoot("06-pick-many", st, then = { ui.onNodeWithContentDescription("新会话").performClick() }) { HomeScreen() }
+        shoot("06-pick-many", st, then = { ui.onNodeWithText("新任务").performClick() }) { HomeScreen() }
     }
 
     private fun projectState() = RemoteState(
@@ -282,7 +282,7 @@ class V8Gallery {
     }
 
     @Test fun pickProject() {
-        shoot("06-pick-project", homeState(false), then = { ui.onNodeWithContentDescription("新会话").performClick() }) { HomeScreen() }
+        shoot("06-pick-project", homeState(false), then = { ui.onNodeWithText("新任务").performClick() }) { HomeScreen() }
     }
 
     private fun sessionState(vararg s: Pair<String, SessionView>, conn: ConnState = ConnState.ONLINE, ms: Map<String, MachineView> = machines) =
@@ -363,7 +363,7 @@ class V8Gallery {
     @Test fun homeApprovalLongOpen() {
         val st = homeState(true)
         val ev = events(turn(), user("迁移订单表"), approval("A1", longCommand(20), longDesc))
-        shoot("01-home-approval-long-open", st, mapOf("api" to ev, "dep" to depEvents), then = { ui.onNodeWithText("展开", substring = true).performClick() }) { HomeScreen() }
+        shoot("01-home-approval-long-open", st, mapOf("api" to ev, "dep" to depEvents), then = { ui.onNodeWithText("看完整命令").performClick() }) { HomeScreen() }
     }
 
     @Test fun approvalPage() {
