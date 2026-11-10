@@ -110,15 +110,16 @@ fun SessionScreen(sid: String) {
             if (note != null) {
                 Text(
                     note,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = T.s17b,
+                    color = p.ink,
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 )
                 // The server could not be asked: it is asked again by itself, and at once on a tap.
                 if (lookup is io.github.lewin671.remoteagent.core.SessionLookup.Failed)
-                    TextButton(onClick = { lookupAttempt++ }) { Text("重试") }
-                TextButton(onClick = nav.back) { Text("返回") }
+                    PillButton("重试", { lookupAttempt++ }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                TextLink("返回", nav.back)
             } else {
-                CircularProgressIndicator()
+                Spinner(p.ink2, size = 24.dp)
                 Text(
                     if (state.conn == ConnState.ONLINE) "读取中…" else "连上服务器后读取这个会话",
                     color = p.ink2,

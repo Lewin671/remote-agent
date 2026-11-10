@@ -108,7 +108,7 @@ class MainActivity : ComponentActivity() {
                         }
                         !loaded ->
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator(color = pal.ink2)
+                                io.github.lewin671.remoteagent.ui.Spinner(pal.ink2, size = 24.dp)
                             }
                         r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
                         r.state.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }

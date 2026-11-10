@@ -901,7 +901,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 @Composable
                 fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
                     rows.forEachIndexed { i, r ->
-                        if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.sep, thickness = 1.dp)
+                        if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                         r()
                     }
                 }

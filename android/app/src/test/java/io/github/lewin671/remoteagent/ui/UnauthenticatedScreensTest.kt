@@ -108,7 +108,7 @@ class UnauthenticatedScreensTest {
         ui.onNodeWithText("加入已有账户").performClick()
         ui.onNodeWithText("扫描二维码").performScrollTo().performClick()
         ui.onNodeWithText("需要相机权限才能扫码；也可以返回手动输入配对码。").assertExists()
-        ui.onNodeWithText("取消").performClick()
+        ui.onNodeWithContentDescription("取消").performClick()
         ui.onNodeWithText("扫描二维码").assertExists()
     }
 

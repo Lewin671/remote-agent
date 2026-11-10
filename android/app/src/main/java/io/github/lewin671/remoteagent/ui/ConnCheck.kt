@@ -138,13 +138,13 @@ internal fun ConnCheckSheet(
             line("实时推送") {
                 dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state))
             }
-            HorizontalDivider(color = p.sep, thickness = 1.dp)
+            HorizontalDivider(color = p.sep, thickness = 0.5.dp)
             val network = state.link != Link.NO_NETWORK
             line("本机网络") { dotted(if (network) p.green else p.faint, if (network) "正常" else "不通") }
-            HorizontalDivider(color = p.sep, thickness = 1.dp)
+            HorizontalDivider(color = p.sep, thickness = 0.5.dp)
             line("服务器", serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
-                HorizontalDivider(color = p.sep, thickness = 1.dp)
+                HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                 line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, "不在线", p.ink2) }
             }
         }

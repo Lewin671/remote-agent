@@ -43,6 +43,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -139,13 +141,12 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
         }
         val cur = all[pager.currentPage]
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = nav.back) {
-                Ic(Lucide.X, 22.dp, Color.White, contentDescription = "关闭")
-            }
+            GlassButton(Lucide.X, "关闭", nav.back, dark = true)
+            Spacer(Modifier.width(12.dp))
             Text(
                 "${pager.currentPage + 1} / ${all.size}",
                 color = Color.White,
-                style = MaterialTheme.typography.titleSmall,
+                style = T.s15b,
             )
         }
         Column(
@@ -165,7 +166,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             Text(
                 from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "",
                 color = Color(0xFFD5DADE),
-                style = MaterialTheme.typography.bodySmall,
+                style = T.s13,
                 fontFamily = MonoFamily,
                 maxLines = 2,
             )
@@ -175,7 +176,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it) })
                     .joinToString(" · "),
                 color = Color(0xFFB9BFC6),
-                style = MaterialTheme.typography.bodySmall,
+                style = T.s13,
             )
             ViewerActions(remote, sid, cur)
         }
@@ -232,20 +233,17 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
                 is Big.Corrupt -> if (b.why == RETIRED_HISTORY_ERROR) b.why else "图片校验失败：${b.why}"
             }
         if (b == Big.Loading)
-            CircularProgressIndicator(
-                Modifier.align(Alignment.Center).size(36.dp),
-                color = Color.White,
-            )
+            Spinner(Color.White, Modifier.align(Alignment.Center), size = 32.dp, stroke = 3.dp)
         if (note != null)
             Text(
                 note,
                 Modifier.align(Alignment.TopCenter)
                     .padding(top = 72.dp)
-                    .background(Color(0xCC000000), RoundedCornerShape(10.dp))
+                    .background(Color(0xCC000000), Radii.Pill)
                     .clickable(enabled = b is Big.Failed || b == Big.Offline) { attempt++ }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
+                style = T.s15,
             )
     }
 }
@@ -349,7 +347,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                 else doSave()
             },
         ) {
-            Text("保存", color = Color(0xFF9EC1FF))
+            Text("保存", style = T.s15b, color = CardColors.link)
         }
         TextButton(
             onClick = {
@@ -373,10 +371,10 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                 }
             },
         ) {
-            Text("分享", color = Color(0xFF9EC1FF))
+            Text("分享", style = T.s15b, color = CardColors.link)
         }
         if (msg.isNotEmpty())
-            Text(msg, color = Color.White, style = MaterialTheme.typography.bodySmall)
+            Text(msg, color = Color.White, style = T.s13)
     }
 }
 

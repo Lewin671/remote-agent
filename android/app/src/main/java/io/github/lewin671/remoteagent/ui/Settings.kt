@@ -443,12 +443,9 @@ internal fun PushNotice(
 ) {
     if (push.problem.isEmpty()) return
     Column(Modifier.padding(horizontal = 20.dp).padding(top = 8.dp)) {
-        Text(push.problem, style = T.s12, color = pal.ink2)
-        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.s12, color = pal.ink2)
-        if (push.action.isNotEmpty())
-            TextButton(onClick = onAction) {
-                Text(push.action, style = T.s12, color = pal.blue)
-            }
+        Text(push.problem, style = T.s13, color = pal.ink2)
+        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.s13, color = pal.ink2)
+        if (push.action.isNotEmpty()) TextLink(push.action, onAction, style = T.s13)
     }
 }
 
@@ -1328,8 +1325,9 @@ fun PairScreen(replacesDeviceId: String = "") {
                             TextStyle(
                                 fontFamily = MonoFamily,
                                 fontWeight = FontWeight.SemiBold,
-                                fontSize = 26.sp,
-                                letterSpacing = 4.sp,
+                                fontSize = 40.sp,
+                                lineHeight = 44.sp,
+                                letterSpacing = 2.4.sp,
                             ),
                         color = p.ink,
                     )

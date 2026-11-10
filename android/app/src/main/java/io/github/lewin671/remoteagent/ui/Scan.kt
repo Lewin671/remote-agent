@@ -53,10 +53,10 @@ fun QrScanner(onResult: (String) -> Unit, onCancel: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         if (granted) CameraPreview(onResult)
         else Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("需要相机权限才能扫码；也可以返回手动输入配对码。")
-            Button(onClick = { ask.launch(Manifest.permission.CAMERA) }) { Text("允许使用相机") }
+            Text("需要相机权限才能扫码；也可以返回手动输入配对码。", style = T.s17, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            PillButton("允许使用相机", { ask.launch(Manifest.permission.CAMERA) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
         }
-        TextButton(onClick = onCancel, modifier = Modifier.align(Alignment.TopStart).padding(8.dp)) { Text("取消", color = Color.White) }
+        GlassButton(Lucide.X, "取消", onCancel, Modifier.align(Alignment.TopStart).padding(16.dp), dark = true)
     }
 }
 

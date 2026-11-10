@@ -6,12 +6,16 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import io.github.lewin671.remoteagent.RaApp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 
 @Composable
 fun AccountLoadFailure(message: String, retry: () -> Unit, discard: () -> Unit) {
-    Column {
-        Text(message)
-        TextButton(onClick = retry) { Text("重试") }
+    Column(Modifier.padding(24.dp)) {
+        Text(message, style = T.s17, color = pal.ink)
+        PillButton("重试", retry, Modifier.fillMaxWidth().padding(top = 16.dp), ButtonKind.INK)
         DiscardSetupAction(discard)
     }
 }
@@ -19,7 +23,7 @@ fun AccountLoadFailure(message: String, retry: () -> Unit, discard: () -> Unit) 
 @Composable
 fun DiscardSetupAction(discard: () -> Unit) {
     var asking by remember { mutableStateOf(false) }
-    TextButton(onClick = { asking = true }) { Text("退出并重新开始") }
+    TextLink("退出并重新开始", { asking = true }, Modifier.fillMaxWidth(), danger = true)
     if (asking)
         Confirm(
             "退出并删除本机密钥？",
