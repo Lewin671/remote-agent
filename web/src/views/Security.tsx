@@ -1,4 +1,4 @@
-import { ChevronRight } from "../icons";
+import { ChevronRight, Lock } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useState } from "react";
 import {
@@ -33,18 +33,16 @@ export function RecoveryNotice({
   useRemote(remote);
   if (!remote.isAuthority || !remote.recoveryPending) return null;
   return (
-    <div className="gbanner">
-      <Banner
-        kind="warn"
-        action="处理"
-        onAction={() => go("settings/security")}
-      >
-        恢复申请待处理
-        {remote.recoveryReadyMs > 0n
-          ? ` · 可生效时间：${futureTime(remote.recoveryReadyMs)}`
-          : ""}
-      </Banner>
-    </div>
+    <Banner
+      kind="warn"
+      action="处理"
+      onAction={() => go("settings/security")}
+    >
+      恢复申请待处理
+      {remote.recoveryReadyMs > 0n
+        ? ` · 可生效时间：${futureTime(remote.recoveryReadyMs)}`
+        : ""}
+    </Banner>
   );
 }
 export function SecurityGroup({
@@ -56,10 +54,14 @@ export function SecurityGroup({
 }) {
   return (
     <>
-      <div className="glabel">账户安全</div>
+      <div className="label">账户安全</div>
       <div className="grp">
         <button className="row" onClick={() => go("settings/security")}>
+          <span className="ico">
+            <Lock />
+          </span>
           账户安全<span className="v">{remote.isAuthority ? "本机是管理端" : authorityName(remote)}</span>
+          <ChevronRight className="chev" />
         </button>
       </div>
     </>
@@ -196,13 +198,11 @@ export function SecurityPage({
         }} />}
       <NavBar title={page === "overview" ? "账户安全" : page === "recovery" ? "恢复码" : page === "pending" ? "未完成的安全操作" : remote.isAuthority ? "交接管理权" : "接管管理权"} onBack={page === "overview" ? onBack : () => setPage("overview")} />
       <div className="body security-body">
+        <div className="set-banners">
         {remote.recoveryPending && (
           <Banner kind="warn" action={remote.isAuthority ? "否决" : undefined} onAction={() => setPage("recovery")}>
             {`有人正在用恢复码申请接管管理权，${remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : "48 小时"} 后生效。不是你本人就现在否决。`}
           </Banner>
-        )}
-        {page === "overview" && pending && (
-          <div className="grp"><button className="row" onClick={() => setPage("pending")}>未完成的安全操作<span className="v"><ChevronRight /></span></button></div>
         )}
         {remote.security.recoveryStatusStale && (
           <Banner kind="warn">安全状态可能过期，请联网后重新核实。</Banner>
@@ -220,11 +220,15 @@ export function SecurityPage({
         {remote.authorityError && (
           <Banner kind="warn">{remote.authorityError}</Banner>
         )}
+        </div>
+        {page === "overview" && pending && (
+          <div className="grp"><button className="row" onClick={() => setPage("pending")}>未完成的安全操作<ChevronRight className="chev" /></button></div>
+        )}
         {page === "overview" && <>
         <div className="grp">
           <div className="row">当前管理端<span className="v">{remote.isAuthority ? "本机" : authorityName(remote)}</span></div>
-          <div className="row col">
-            远程控制有效期<div className="hint">{lease || "正在读取…"}</div>
+          <div className="row">
+            远程控制有效期<span className="v">{lease || "正在读取…"}</span>
           </div>
           {remote.isAuthority && (
             <button
@@ -244,11 +248,11 @@ export function SecurityPage({
             </button>
           )}
         </div>
-        <p className="manage-hint">回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。</p>
-        {!remote.isAuthority && <p className="manage-hint">{`请打开${authorityName(remote)}续期。`}</p>}
+        <p className="gf">回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。</p>
+        {!remote.isAuthority && <p className="gf">{`请打开${authorityName(remote)}续期。`}</p>}
         <div className="grp">
-          {remote.isAuthority && <button className="row" onClick={() => setPage("recovery")}>恢复码<span className="v"><ChevronRight /></span></button>}
-          {(remote.isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{remote.isAuthority ? "交接管理权" : "接管管理权"}<span className="v"><ChevronRight /></span></button>}
+          {remote.isAuthority && <button className="row" onClick={() => setPage("recovery")}>恢复码<ChevronRight className="chev" /></button>}
+          {(remote.isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{remote.isAuthority ? "交接管理权" : "接管管理权"}<ChevronRight className="chev" /></button>}
         </div>
         </>}
         {page === "pending" && pending && (
@@ -328,13 +332,13 @@ export function SecurityPage({
                   ? "我已保存，发布换码"
                   : "我已保存，通知管理端"}
             </button>
-            <p className="hint">
+            <p className="gf">
               保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。
             </p>
           </>
         ) : page === "recovery" && remote.isAuthority ? (
           <>
-          <p className="hint">更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。</p>
+          <p className="txt">更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。</p>
           <div className="grp">
             <button
               className="row act"
@@ -354,19 +358,20 @@ export function SecurityPage({
         ) : null}
         {page === "handoff" && (remote.isAuthority ? (
           <>
-            <p className="hint">
+            <p className="txt">
               在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。
             </p>
             <div className="grp">
               {offers.map((o) => (
                 <button
-                  className="row act"
+                  className="row"
                   key={o.id}
                   disabled={busy || !!pending}
                   onClick={() => setTarget(o.id)}
                 >
                   交接给{" "}
                   {clientName(remote.devices.get(o.id), remote.devices, o.id)}
+                  <ChevronRight className="chev" />
                 </button>
               ))}
               <button
@@ -383,8 +388,8 @@ export function SecurityPage({
           </>
         ) : localClient ? (
           <>
-            <p className="hint">{BROWSER_AUTHORITY_NOTICE}</p>
-            <p className="hint">
+            <Banner>{BROWSER_AUTHORITY_NOTICE}</Banner>
+            <p className="txt">
               先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。
             </p>
             {offered && (
@@ -408,12 +413,12 @@ export function SecurityPage({
             </button>
           </>
         ) : (
-          <p className="hint">电脑只能运行 CLI，不能接管管理权。</p>
+          <p className="txt">电脑只能运行 CLI，不能接管管理权。</p>
         ))}
         {page === "handoff" && !profileReady && (
           <>
-            <div className="glabel">补齐账户公钥</div>
-            <p className="hint">
+            <div className="label">补齐账户公钥</div>
+            <p className="txt">
               接任前可重新配对，或在接任后输入新恢复码补齐公开资料。查询公开资料不会发起紧急恢复。
             </p>
             <button
@@ -455,8 +460,10 @@ export function SecurityPage({
             </button>
           </>
         )}
-        {message && <Banner kind="">{message}</Banner>}
-        {(error || readError) && <Banner kind="err">{error || readError}</Banner>}
+        <div className="set-banners">
+          {message && <Banner kind="">{message}</Banner>}
+          {(error || readError) && <Banner kind="err">{error || readError}</Banner>}
+        </div>
       </div>
       {target && (
         <Alert

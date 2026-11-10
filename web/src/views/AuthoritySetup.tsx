@@ -82,9 +82,8 @@ export function AccountEntry({
   if (!mode)
     return (
       <div className="setup authority-setup account-entry">
-        <div className="large">
-          <h3>remote-agent</h3>
-        </div>
+        <h3 className="hl">remote-agent</h3>
+        <div className="hl-sub">在任何设备上操作电脑里的 AI 编程 CLI</div>
         <div className="grp">
           <button className="row entry-row" aria-label="新建账户" onClick={() => setMode("create")}>
             <span className="row-name">新建账户<small>这台设备成为管理端</small></span>
@@ -99,7 +98,7 @@ export function AccountEntry({
             <span className="v"><ChevronRight /></span>
           </button>
         </div>
-        {error && <Banner kind="err">{error}</Banner>}
+        {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       </div>
     );
   const pending = startup?.kind === mode;
@@ -109,7 +108,7 @@ export function AccountEntry({
         title={mode === "create" ? "新建账户" : "用恢复码找回管理权"}
         onBack={!pending ? () => setMode("") : undefined}
       />
-      <p className="hint">{BROWSER_AUTHORITY_NOTICE}</p>
+      <Banner kind="">{BROWSER_AUTHORITY_NOTICE}</Banner>
       {!pending && (
         <label className="field">
           <small>服务器</small>
@@ -178,10 +177,10 @@ export function AccountEntry({
         </>
       ) : (
         <>
-          <p className="hint">若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。</p>
+          <p className="txt">若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。</p>
           {!pending && (
             <>
-              <p className="hint">
+              <p className="txt">
                 提交后需等待 48
                 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。
               </p>
@@ -216,7 +215,7 @@ export function AccountEntry({
               {code ? (
                 <CodeBackup code={code} saved={saved} onSaved={setSaved} />
               ) : (
-                <p className="hint">
+                <p className="txt">
                   原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。
                 </p>
               )}

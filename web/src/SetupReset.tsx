@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert } from "./ui";
+import { Alert, Banner } from "./ui";
 import { authorityExitAdvice } from "./security-operation";
 import { forgetAccount } from "./storage";
 
@@ -10,8 +10,8 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
   const [advice, setAdvice] = useState("");
   return (
     <>
-      {error && <p>{error}</p>}
-      <button onClick={() => { void authorityExitAdvice().then(a => { setAdvice(a.message); setAsking(true); }).catch(e => setError(String(e))); }}>退出并重新开始</button>
+      {error && <Banner kind="err">{error}</Banner>}
+      <button className="link mid" onClick={() => { void authorityExitAdvice().then(a => { setAdvice(a.message); setAsking(true); }).catch(e => setError(String(e))); }}>退出并重新开始</button>
       {asking && (
         <Alert
           title="退出并删除本机密钥？"

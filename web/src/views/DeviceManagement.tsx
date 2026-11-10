@@ -1,5 +1,5 @@
 import { pairingQRCode } from "../qr-code";
-import { Plus } from "../icons";
+import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
 import type { AuthorityPairing } from "../authority-pairing";
@@ -208,25 +208,27 @@ export function PairCodePage({
   };
   if (!remote.isAuthority)
     return (
-      <div className="page">
+      <div className="page set">
         <NavBar title="添加设备" onBack={onBack} />
-        <ManagementEntry remote={remote} go={() => {}} />
+        <div className="body">
+          <ManagementEntry remote={remote} go={() => {}} />
+        </div>
       </div>
     );
   return (
-    <div className="page">
+    <div className="page set">
       <NavBar
         title={replaces ? "重新加入并接续会话" : "添加设备"}
         onBack={onBack}
       />
       <div className="body security-body">
-        <p className="hint">电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。</p>
+        <p className="txt">电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。</p>
         {done ? (
           <Banner kind="">设备已加入</Banner>
         ) : !pair ? (
           <>
             {replaces && (
-              <p className="hint">
+              <p className="txt">
                 只允许这台电脑以新身份接回原档案，保留原会话和历史。
               </p>
             )}
@@ -257,25 +259,27 @@ export function PairCodePage({
             <div className="pair-code">
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>
-            <p className="hint center-text">
+            <p className="pcs">
               有效期至 {futureTime(pair.expires, Date.now(), "time")}
             </p>
             {emoji ? (
               <>
-                <div className="emoji big">{emoji.join(" ")}</div>
-                <p className="hint">
+                <div className="emoji">{emoji.join(" ")}</div>
+                <p className="txt center-text">
                   核对新设备上的 4 个图案。先在新设备确认，再在这里允许。
                 </p>
                 {!approved && (
                   <>
-                    <label className="backup-check">
-                      <input
-                        type="checkbox"
-                        checked={confirmed}
-                        onChange={(e) => setConfirmed(e.target.checked)}
-                      />
-                      图案一致，新设备已先确认
-                    </label>
+                    <div className="grp">
+                      <label className="row backup-check">
+                        <input
+                          type="checkbox"
+                          checked={confirmed}
+                          onChange={(e) => setConfirmed(e.target.checked)}
+                        />
+                        图案一致，新设备已先确认
+                      </label>
+                    </div>
                     <button
                       className="btn pri"
                       disabled={busy || !confirmed}
@@ -291,13 +295,15 @@ export function PairCodePage({
                   </>
                 )}
                 {approved && (
-                  <p role="status" className="hint">
+                  <p role="status" className="wait">
+                    <LoaderCircle />
                     已批准，等待新设备完成绑定…
                   </p>
                 )}
               </>
             ) : (
-              <p role="status" className="hint center-text">
+              <p role="status" className="wait">
+                <LoaderCircle />
                 等待新设备输入配对码…
               </p>
             )}
@@ -326,7 +332,7 @@ export function PairCodePage({
             )}
           </>
         )}
-        {error && <Banner kind="err">{error}</Banner>}
+        {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       </div>
     </div>
   );

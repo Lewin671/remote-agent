@@ -204,11 +204,9 @@ export function Setup({
   if (emoji)
     return (
       <div className="setup">
-        <div className="large">
-          <h3>核对图案</h3>
-        </div>
-        <div className="emoji big">{emoji.join(" ")}</div>
-        <p className="muted center-text small">
+        <h3 className="hl">核对图案</h3>
+        <div className="emoji">{emoji.join(" ")}</div>
+        <p className="txt center-text">
           核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。
         </p>
         {comparisonPending && (
@@ -225,8 +223,8 @@ export function Setup({
             图案一致，信任并继续
           </button>
         )}
-        <p className="muted center-text small" style={{ marginTop: 24 }}>
-          <LoaderCircle />{" "}
+        <p className="wait">
+          <LoaderCircle />
           {comparisonPending
             ? "请先在本机确认图案"
             : registering
@@ -237,7 +235,7 @@ export function Setup({
           <button className="btn" disabled={registering} onClick={giveUp}>
             图案不一致，返回填码
           </button>
-          <p className="muted center-text small">
+          <p className="gf center-text">
             返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。
           </p>
         </div>
@@ -246,11 +244,9 @@ export function Setup({
 
   return (
     <div className="setup">
-      <div className="large">
-        <h3>{existing ? "一次性安全设置" : "加入账户"}</h3>
-      </div>
+      <h3 className="hl">{existing ? "一次性安全设置" : "加入账户"}</h3>
       <>
-        <p className="muted small lead">
+        <p className="txt lead">
           {existing
             ? joinExistingLead
             : joinLead}
@@ -277,7 +273,7 @@ export function Setup({
           />
         </label>
         {banner}
-        <div className="big">
+        <div className="setup-go">
           <button
             className="btn pri"
             disabled={busy || code.replace(/\s/g, "").length !== 8 || !server}
