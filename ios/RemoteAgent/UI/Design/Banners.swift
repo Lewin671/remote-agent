@@ -4,7 +4,8 @@ import SwiftUI
 
 enum BannerTone: Sendable { case plain, warn, error }
 
-/// A notice: `gbg`, radius 18, one sentence, at most one text action at the right.
+/// A notice: `gbg`, radius 18, one sentence, at most one text action at the
+/// right; one that wants you to act (`.warn`) is on `orange-soft`.
 struct Banner: View {
     private let text: String
     private let tone: BannerTone
@@ -38,6 +39,6 @@ struct Banner: View {
         }
         .padding(.leading, 12).padding(.trailing, action != nil && onAction != nil ? 4 : 12)
         .frame(minHeight: 38)
-        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
+        .background(tone == .warn ? DS.orangeSoft : DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
     }
 }
