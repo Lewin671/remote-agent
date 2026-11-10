@@ -23,6 +23,8 @@ struct NewTaskChrome {
 struct NewTaskScreen: View {
     /// The project the task starts in; another can be chosen from the sentence.
     @State var key: String
+    /// The computer of a folder just chosen, which has no session to say it; nil for a project.
+    @State var machine: String?
     let onClose: () -> Void
     /// The session started: the sheet closes and its page opens.
     let onStarted: (String) -> Void
@@ -30,15 +32,18 @@ struct NewTaskScreen: View {
     @Environment(AccountContext.self) private var context
     @State private var settings: ProjectSettingsRequest?
     @State private var picking = false
+    /// The list of projects has turned into 新项目 · 选目录.
+    @State private var browsing = false
     @State private var summaryModels = SummaryModels()
 
     var body: some View {
         let state = model.state
-        let seed = projectStart(state, key: key)
+        // As on a project's page (`ProjectPageView`): a folder's computer is the one it was chosen on.
+        let seed = projectStart(state, key: key, machine: machine)
         let draft = context.newSessionDrafts.of(key, initial: seed?.config, settled: seed?.settled != false)
-        let start = projectStart(state, key: key, pick: draft.agent)
-        let initial = start?.config
-        let selected = projectConfig(state, key: key, pick: newSessionPick(state, draft))
+        let start = projectStart(state, key: key, pick: draft.agent, machine: machine)
+        let initial = start?.config ?? machine.map { NewConfig(machineId: $0, cwd: key) }
+        let selected = machine == nil ? projectConfig(state, key: key, pick: newSessionPick(state, draft)) : draft.config.value ?? initial
         let launch = launchConfig(draft: draft.config.value, project: selected, hidden: isHidden(state, key: key))
         let several = machineAgents(state.machines[draft.config.value?.machineId ?? ""]).count > 1
         NewSessionBox(
@@ -63,9 +68,14 @@ struct NewTaskScreen: View {
                     onClose: { settings = nil })
             }
         }
-        .kitSheet(isPresented: $picking, size: .large) {
-            SheetHead("在哪个项目", action: "取消", onAction: { picking = false })
-            ProjectPickList(state: state, onPick: { choose($0, from: draft) }, onNew: {})
+        .kitSheet(isPresented: $picking, size: .large, onDismiss: { browsing = false }) {
+            if browsing {
+                SheetHead("新项目 · 选目录", action: "取消", onAction: { picking = false }, onBack: { browsing = false })
+                ProjectDirPicker(state) { machine, path in choose(path, on: machine, from: draft) }
+            } else {
+                SheetHead("在哪个项目", action: "取消", onAction: { picking = false })
+                ProjectPickList(state: state, onPick: { choose($0, from: draft) }, onNew: { browsing = true })
+            }
         }
         .task(id: launch.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }) {
             let remote = context.remote
@@ -76,15 +86,16 @@ struct NewTaskScreen: View {
         }
     }
 
-    /// Another project: what was written goes along when that project's draft is empty.
-    private func choose(_ next: String, from draft: NewSessionDraft) {
+    /// Another project, or a folder chosen on `machine`: what was written goes along when its draft is empty.
+    private func choose(_ next: String, on machine: String? = nil, from draft: NewSessionDraft) {
         picking = false
-        guard next != key else { return }
+        guard next != key || machine != self.machine else { return }
         let state = model.state
-        let seed = projectStart(state, key: next)
+        let seed = projectStart(state, key: next, machine: machine)
         let other = context.newSessionDrafts.of(next, initial: seed?.config, settled: seed?.settled != false)
         if other.text.isEmpty { other.text = draft.text }
         key = next
+        self.machine = machine
     }
 
     /// Stores a change to the project's settings; the draft takes them at once, written or not.

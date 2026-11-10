@@ -338,9 +338,10 @@ struct ScheduleViewingObserver: ViewModifier {
     }
 }
 
-/// The project 新任务 opens in.
+/// The project 新任务 opens in; `machine` when it is a folder just chosen there.
 struct NewTaskTarget: Identifiable {
     let key: String
+    var machine: String? = nil
     var id: String { key }
 }
 
@@ -357,8 +358,8 @@ private struct FirstLevel: View {
     @State private var pickBrowsing = HomeLaunch.value("-homeSheet") == "pickBrowse"
     @State private var newSchedule = HomeLaunch.value("-homeSheet") == "newSchedule"
     /// The project 新任务 is open in, and the one chosen in the list of projects, opened once that list has gone.
-    @State private var newTask: NewTaskTarget? = HomeLaunch.value("-newTask").map(NewTaskTarget.init)
-    @State private var chosen: String?
+    @State private var newTask: NewTaskTarget? = HomeLaunch.value("-newTask").map { NewTaskTarget(key: $0) }
+    @State private var chosen: NewTaskTarget?
 
     var body: some View {
         @Bindable var nav = nav
@@ -394,17 +395,17 @@ private struct FirstLevel: View {
         .toolbar(.hidden, for: .navigationBar)
         .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: {
             pickBrowsing = false
-            if let key = chosen { newTask = NewTaskTarget(key: key) }
+            if let chosen { newTask = chosen }
             chosen = nil
         }) {
-            PickProjectSheet(state: state, browsing: $pickBrowsing, onClose: { pick = false }) { key in
-                chosen = key
+            PickProjectSheet(state: state, browsing: $pickBrowsing, onClose: { pick = false }) { target in
+                chosen = target
                 pick = false
             }
         }
         .sheet(item: $newTask) { target in
             NavigationStack {
-                NewTaskScreen(key: target.key, onClose: { newTask = nil }) { sid in
+                NewTaskScreen(key: target.key, machine: target.machine, onClose: { newTask = nil }) { sid in
                     newTask = nil
                     nav.open(.session(id: sid))
                 }
