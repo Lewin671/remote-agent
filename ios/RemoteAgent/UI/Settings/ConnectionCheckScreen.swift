@@ -65,7 +65,8 @@ struct ConnectionCheckScreen: View {
         case .ok(let ms):
             let late = ms >= slow
             return GRow(title, sub: sub, value: "\(ms) ms" + (late ? " · 较慢" : ""), valueColor: DS.ink2)
-                .valueLead { Dot(late ? DS.orange : DS.green) }
+                // Slow asks nothing of you: a light grey dot, not orange (design-system §2).
+                .valueLead { Dot(late ? DS.faint : DS.green) }
         }
     }
 
