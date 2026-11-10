@@ -7,8 +7,7 @@
 // machine is replaced only by the user's choice for this start. What is
 // said above the box is `newSessionNotices`.
 //
-// The input is the pill of a session's message box (the kit's
-// `ComposerPill`, design-system §6 输入框): it starts at one line and grows
+// The input is a session's message box (`MessageCapsule`, design-system §6 输入框): it starts at one line and grows
 // to six, ＋ at the left, the round send button at the right.
 import RACore
 import RAProto
@@ -69,14 +68,18 @@ struct NewSessionBox: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, Theme.Space.page)
             }
-            ComposerPill(
+            MessageCapsule(
                 text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
-                plus: images.blocked == nil ? .on : .dimmed, focus: $focused,
-                onPlus: { images.pick() },
-                top: { images.strip() }
+                focus: $focused
             ) {
-                Button { start(draft) } label: { ComposerCircle.send(enabled: canSend) }
-                    .buttonStyle(PressStyle())
+                images.strip()
+            } plus: {
+                Button { images.pick() } label: { PlusCircle(dimmed: images.blocked != nil) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("添加附件")
+            } trailing: {
+                Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
+                    .buttonStyle(.plain)
                     .disabled(!canSend)
                     .accessibilityLabel("开始")
                     .accessibilityIdentifier("new-session-start")

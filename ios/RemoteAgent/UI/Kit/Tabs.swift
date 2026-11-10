@@ -1,58 +1,7 @@
-// Choosing one of a few (docs/design-system.md §6): underlined tabs switch
-// a view (聊天 / 终端), a segmented pill picks one value of a setting (自动 /
-// 亮色 / 暗色), and the tab bar switches between the first-level pages.
+// Choosing one of a few (docs/design-system.md §6): a segmented pill picks
+// one value of a setting (自动 / 亮色 / 暗色). The view switch 聊天 / 终端 is
+// `GlassSegmented`.
 import SwiftUI
-
-/// Tabs that switch a view: underlined, on phones and wide screens alike.
-struct ViewTabs: View {
-    private let items: [String]
-    @Binding private var selected: Int
-    private let enabled: (Int) -> Bool
-    private let dot: Int?
-    private let dark: Bool
-    private let inset: CGFloat
-
-    /// `dot` marks a tab that needs you; `dark` is for the terminal's own colours; `inset` is the space at the sides, none inside a sheet.
-    init(_ items: [String], selected: Binding<Int>, enabled: @escaping (Int) -> Bool = { _ in true }, dot: Int? = nil, dark: Bool = false, inset: CGFloat = 16) {
-        self.items = items
-        _selected = selected
-        self.enabled = enabled
-        self.dot = dot
-        self.dark = dark
-        self.inset = inset
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(items.indices, id: \.self) { i in
-                let on = i == selected
-                let ok = enabled(i)
-                let ink = dark ? (on ? Theme.Term.fg : Theme.Term.dim) : (on ? Theme.fg : Theme.muted)
-                Button {
-                    if !on { selected = i }
-                } label: {
-                    HStack(spacing: 3) {
-                        Text(items[i]).type(on ? T.smB : T.sm, ink)
-                        if i == dot { Dot(Theme.orange) }
-                    }
-                    .frame(maxWidth: .infinity, minHeight: Theme.minHit)
-                    .overlay(alignment: .bottom) {
-                        if on { Rectangle().fill(dark ? Theme.Term.fg : Theme.fg2).frame(height: 2) }
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressStyle())
-                .disabled(!ok)
-                .opacity(ok ? 1 : 0.4)
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityValue(i == dot ? "需要处理" : "")
-            }
-        }
-        .bottomLine(dark ? Theme.Term.line : Theme.line)
-        .padding(.horizontal, inset).padding(.bottom, 4)
-        .accessibilityElement(children: .contain)
-    }
-}
 
 /// A segmented pill for the values of one setting: the groove is `seg`, the chosen one a raised card.
 struct SegPick: View {

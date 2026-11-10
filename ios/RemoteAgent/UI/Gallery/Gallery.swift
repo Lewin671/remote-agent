@@ -332,6 +332,15 @@
                 ConnBanner(state(.noServer)) {}
                 ConnBanner(state(.noServer, loaded: false, error: "服务器没有回应")) {}
             }
+            SectionLabel("会话顶部的玻璃条")
+            VStack(spacing: 8) {
+                GlassStrip(text: "没有网络，连上后会自动同步", symbol: "wifi.slash")
+                GlassStrip(text: "正在重连…", spinning: true)
+                GlassStrip(text: "连不上服务器", symbol: "icloud.slash", tone: .error, action: "详情") {}
+                GlassStrip(text: "每天 09:00 发送「检查 CI」", symbol: "clock", action: "管理") {}
+                GlassStrip(text: "这个会话完全放行，命令不再逐条确认", symbol: "exclamationmark.shield", tone: .attention)
+            }
+            .padding(.horizontal, 16)
             SectionLabel("提示条")
             VStack(spacing: 8) {
                 Banner("已停止等待这次配对")
@@ -429,10 +438,10 @@
 
         var body: some View {
             SectionLabel("视图切换")
-            ViewTabs(["聊天", "终端"], selected: $tab, dot: 1)
-            ViewTabs(["聊天", "终端", "并排"], selected: $tab, enabled: { $0 < 2 })
-            ViewTabs(["聊天", "终端"], selected: $darkTab, dark: true)
-                .padding(.top, 4).background(Theme.Term.bg)
+            GlassSegmented(items: ["聊天", "终端"], selected: $tab, dot: 1).padding(.vertical, 8)
+            GlassSegmented(items: ["聊天", "终端", "并排"], selected: $tab, enabled: { $0 < 2 }).padding(.vertical, 8)
+            GlassSegmented(items: ["聊天", "终端"], selected: $darkTab).padding(.vertical, 8)
+                .frame(maxWidth: .infinity).background(Theme.Term.bg).environment(\.colorScheme, .dark)
             SectionLabel("分段按钮")
             ViewThatFits(in: .horizontal) {
                 HStack {
@@ -520,34 +529,26 @@
             // In a sheet, which has its own margin, it keeps none.
             FilterBox(text: $filter, placeholder: "搜索项目", inset: 0).padding(.horizontal, 24)
             SectionLabel("消息输入框")
-            ComposerPill(
-                text: $message, placeholder: "描述任务…", label: "描述任务…", plus: .dimmed, focus: $typing,
-                onPlus: {}
-            ) {
-                Button {
-                } label: {
-                    ComposerCircle.send(enabled: false)
-                }.buttonStyle(PressStyle()).disabled(true)
+            MessageCapsule(text: $message, placeholder: "描述任务…", label: "描述任务…", focus: $typing) {
+                EmptyView()
+            } plus: {
+                PlusCircle(dimmed: true)
+            } trailing: {
+                InkCircle(symbol: "arrow.up", enabled: false)
             }
-            ComposerPill(
-                text: $long, placeholder: "发消息…", label: "消息", focus: $typingLong, onPlus: {}
-            ) {
-                Button {
-                } label: {
-                    ComposerCircle.send(enabled: true)
-                }.buttonStyle(PressStyle())
+            MessageCapsule(text: $long, placeholder: "发消息…", label: "消息", focus: $typingLong) {
+                EmptyView()
+            } plus: {
+                PlusCircle()
+            } trailing: {
+                InkCircle(symbol: "arrow.up")
             }
-            ComposerPill(
-                text: $message, placeholder: "插入这一轮…", label: "消息", plus: .off, focus: $typing,
-                onPlus: {}
-            ) {
-                Button {
-                } label: {
-                    ComposerCircle(Theme.chip, enabled: true) {
-                        Ic(Lucide.square, size: 14, color: Theme.red)
-                    }
-                }
-                .buttonStyle(PressStyle())
+            MessageCapsule(text: $message, placeholder: "插入这一轮…", label: "消息", focus: $typing) {
+                EmptyView()
+            } plus: {
+                PlusCircle()
+            } trailing: {
+                InkCircle(symbol: "stop.fill")
             }
             SectionLabel("说明")
             VStack(alignment: .leading, spacing: 0) {
@@ -601,7 +602,7 @@
                             return s
                         }()
                     ) {}
-                    ViewTabs(["聊天", "终端"], selected: $tab, dot: 1)
+                    GlassSegmented(items: ["聊天", "终端"], selected: $tab, dot: 1).padding(.vertical, 8)
                     PageNote("导航栏是系统的：返回、边缘右滑和大字号都交给它。")
                     Row44(action: {}) {
                         Dot(Theme.dot(.wait))
