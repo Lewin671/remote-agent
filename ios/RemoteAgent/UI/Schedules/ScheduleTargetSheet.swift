@@ -10,6 +10,7 @@ struct ScheduleTargetSheet: View {
     @Environment(AppModel.self) private var model
     @State private var config: NewConfig?
     @State private var picker: ScheduleConfigPage?
+    @State private var models = SummaryModels()
     init(machine: String, target: ScheduleTarget, onSave: @escaping (ScheduleTarget) -> Void, onClose: @escaping () -> Void) {
         self.machine = machine; self.target = target; self.onSave = onSave; self.onClose = onClose
         let mode: Mode? = ["ask": .ask, "auto": .auto, "full": .full][target.mode ?? ""]
@@ -22,13 +23,14 @@ struct ScheduleTargetSheet: View {
                 GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
                 ScheduleAgentRow(state: model.state, config: $config, fixedMachine: machine)
                 GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? DS.red : nil) { picker = .mode }
-                GRow("模型", value: c.model.isEmpty ? "默认" : c.model, chevron: true) { picker = .model }
+                GRow("模型", value: modelValue(c.model, models: models.list), chevron: true) { picker = .model }
             }
             Hint("任务保存在这台电脑上；更改只影响之后的运行。")
             TextAction("取消", alignment: .center, action: onClose)
         }.kitSheet(item: $picker, size: .large) { page in
             ScheduleConfigSheet(page: page, config: $config, fixedMachine: machine) { picker = nil }
         }
+        .modelNames(models, for: config)
     }
     private func save() {
         guard let c = config, c.machineId == machine else { return }
@@ -37,6 +39,30 @@ struct ScheduleTargetSheet: View {
         next.model = c.model.isEmpty ? nil : c.model; next.effort = c.effort.isEmpty ? nil : c.effort
         next.mode = c.mode.map { $0 == .full ? "full" : $0 == .auto ? "auto" : "ask" }
         onSave(next); onClose()
+    }
+}
+
+extension View {
+    /// Fetches the models of `config`'s computer and CLI into `models`, for the name of the one chosen.
+    func modelNames(_ models: SummaryModels, for config: NewConfig?) -> some View {
+        modifier(ModelNames(models: models, key: config.map { SummaryModels.Key(machine: $0.machineId, agent: $0.agent) }))
+    }
+}
+
+private struct ModelNames: ViewModifier {
+    let models: SummaryModels
+    let key: SummaryModels.Key?
+    @Environment(AppModel.self) private var model
+    @Environment(AccountContext.self) private var context
+
+    func body(content: Content) -> some View {
+        content.task(id: key) {
+            let remote = context.remote
+            await models.load(key) { key in
+                await HomeLaunch.settled(model)
+                return try? await remote.listModels(key.machine, agent: key.agent)
+            }
+        }
     }
 }
 

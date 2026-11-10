@@ -328,6 +328,13 @@ private let modelWordBreak = Rx("[-_.\(Jre.s)]")
 /// it was started with; Claude Code offers aliases (sonnet, opus) but records
 /// the full ID (claude-sonnet-5-5), so an alias matches a full ID that has it
 /// as one of its words.
+/// A chosen model as a row's value says it: 「默认」 when none is, its name
+/// once the computer's list has it, its ID until then.
+public func modelValue(_ id: String, models: PBListModelsResponse?) -> String {
+    if id.isEmpty { return "默认" }
+    return models.flatMap { findModel($0.models, id: id) { $0.slug } }.map { $0.displayName.ifEmpty(id) } ?? id
+}
+
 public func findModel<M>(_ models: [M], id: String, slug: (M) -> String) -> M? {
     if id.isEmpty { return nil }
     // A "[1m]" suffix names the 1M window on the command line; it is not part of the ID.

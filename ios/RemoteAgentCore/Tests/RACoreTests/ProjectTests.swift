@@ -450,6 +450,14 @@ import Testing
         // The cut falls in the middle of the emoji, which Kotlin leaves as half a pair; here the half goes.
         #expect(summaryMachine(st, id: "c") == "0123456789abcd…")
     }
+
+    @Test func aChosenModelIsCalledByItsNameOnceTheListHasIt() {
+        let models = PBListModelsResponse.with { $0.models = [.with { $0.slug = "claude-haiku-5-5"; $0.displayName = "Haiku 5.5" }] }
+        #expect(modelValue("claude-haiku-5-5", models: models) == "Haiku 5.5")
+        #expect(modelValue("claude-haiku-5-5", models: nil) == "claude-haiku-5-5")
+        #expect(modelValue("other-model", models: models) == "other-model")
+        #expect(modelValue("", models: models) == "默认")
+    }
 }
 
 /// Android's SwitchTest (in ProjectTest.kt).

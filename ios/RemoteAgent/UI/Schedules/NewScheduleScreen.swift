@@ -66,6 +66,7 @@ struct NewScheduleScreen: View {
     @Environment(\.page) private var page
     @State private var timing = false
     @State private var picker: ScheduleConfigPage?
+    @State private var models = SummaryModels()
     var body: some View {
         let draft = context.scheduleDrafts.of(sessionID)
         let state = model.state
@@ -91,7 +92,7 @@ struct NewScheduleScreen: View {
                                 GRow("项目", value: draft.config.map { projectName($0.cwd) } ?? "选择项目", chevron: true) { picker = .project }
                                 ScheduleAgentRow(state: state, config: Bindable(draft).config)
                                 GRow("权限", value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? "跟随 CLI 设置", chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? DS.red : nil) { picker = .mode }
-                                GRow(state.machines.count > 1 ? "机器和模型" : "模型", value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", draft.config.map { $0.model.isEmpty ? "默认" : $0.model } ?? "默认"].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
+                                GRow(state.machines.count > 1 ? "机器和模型" : "模型", value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", modelValue(draft.config?.model ?? "", models: models.list)].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
                             }
                         }
                         .disabled(draft.mutation.frozen)
@@ -135,6 +136,7 @@ struct NewScheduleScreen: View {
             if model.isDemo { timing = HomeLaunch.value("-schedulePanel")?.hasPrefix("timing-") == true }
             #endif
         }
+        .modelNames(models, for: draft.config)
         .task(id: state.machines.keys.sorted()) {
             if draft.config == nil, let p = listedProjects(state).first { draft.config = projectStart(state, key: p.key)?.config }
             #if DEBUG
