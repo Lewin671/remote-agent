@@ -25,7 +25,7 @@ function open(query: string, patch?: (r: DemoRemote) => void) {
   act(() => root!.render(<ConnCheck remote={r} onClose={() => undefined} />));
   return r;
 }
-const rows = () => Object.fromEntries([...host.querySelectorAll(".conn-check .sr")].map((e) => [e.firstElementChild!.firstChild!.textContent, e.lastElementChild!.textContent!.trim()]));
+const rows = () => Object.fromEntries([...host.querySelectorAll(".conn-check .mi")].map((e) => [e.firstElementChild!.firstChild!.textContent, e.lastElementChild!.textContent!.trim()]));
 
 describe("connection check", () => {
   it("takes the middle sample", () => {

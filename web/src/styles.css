@@ -721,11 +721,14 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* In a sheet or a menu the rounded lists run to the sheet's own padding. */
 :is(.sheet, .pop) .grp { margin-left: 0; margin-right: 0; }
 :is(.sheet, .pop) .find { margin: 0 0 12px; }
-.conn-check .sr { gap: 12px; }
-.conn-check .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.conn-check .who small { display: block; font-size: 13px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; }
-.conn-check .v { flex: none; font-variant-numeric: tabular-nums; }
-.conn-check .v.red { color: var(--red); white-space: normal; text-align: right; flex: 0 1 auto; }
+.conn-check .mt small { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.conn-check .mv { flex: none; font-size: 15px; font-variant-numeric: tabular-nums; }
+.conn-check .mv em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
+.conn-check .mv > .ic { width: 12px; height: 12px; }
+.conn-check .mv.red { color: var(--red); white-space: normal; text-align: right; flex: 0 1 auto; }
+.sheet > .set-banners { margin: 0 0 12px; }
+.sheet > .gf { padding: 0 12px; margin: 8px 0 0; }
+.banner > span > .ic { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
 .conn-again { margin-top: 12px; }
 .sheet .hint + .setrows { margin-top: 12px; }
 .manage > .hint { margin-top: 12px; }

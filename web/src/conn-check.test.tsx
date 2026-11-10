@@ -20,7 +20,7 @@ it("shows a disconnected push stream even when server and computer round trips s
   const reconnect = vi.spyOn(remote, "reconnectNow").mockImplementation(() => {});
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
-  const push = () => [...host.querySelectorAll(".sr")].find(row => row.textContent?.startsWith("实时推送"));
+  const push = () => [...host.querySelectorAll(".conn-check .mi")].find(row => row.textContent?.startsWith("实时推送"));
   try {
     await act(async () => root.render(<ConnCheck remote={remote} onClose={() => {}} />));
     expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalled();

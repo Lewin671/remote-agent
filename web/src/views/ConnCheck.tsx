@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
-import { StateMark, Sheet, useRemote, type Mark } from "../ui";
+import { Banner, StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
@@ -32,11 +32,11 @@ export function connWord(remote: Remote, showWaiting = remote.showWaiting): { to
 }
 
 function Result({ p, slow }: { p?: Ping; slow: number }) {
-  if (!p || p.state === "wait") return <span className="v muted"><LoaderCircle /> 检测中…</span>;
-  if (p.state === "skip") return <span className="v muted">未检测</span>;
-  if (p.state === "fail") return <span className="v red">{p.error}</span>;
+  if (!p || p.state === "wait") return <span className="mv"><LoaderCircle /><em>检测中…</em></span>;
+  if (p.state === "skip") return <span className="mv">未检测</span>;
+  if (p.state === "fail") return <span className="mv red">{p.error}</span>;
   return (
-    <span className="v">
+    <span className="mv">
       <StateMark kind={p.ms >= slow ? "off" : "online"} />
       <em>{p.ms} ms{p.ms >= slow && " · 较慢"}</em>
     </span>
@@ -94,50 +94,50 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
     void check();
     return () => void run.current++;
   }, [check]);
+  const down = remote.conn !== "online";
   return (
-    <Sheet onClose={onClose}>
-      <div className="ns-head">
-        <b>连接检测</b>
-        <button className="link" onClick={onClose}>
-          完成
-        </button>
-      </div>
-      <div className="setrows conn-check">
-        <div className="sr">
-          <span>实时推送</span>
-          <span className="v"><StateMark kind={stream.tone} /><em>{stream.text}</em></span>
+    <Sheet onClose={onClose} title="连接检测" action={{ label: "完成", onClick: onClose }}>
+      {down && (
+        <div className="set-banners">
+          <Banner>
+            {connecting && <LoaderCircle />}
+            {connecting
+              ? `正在${remote.everOnline ? "重连" : "连接"}：${remote.connStep}，已 ${Math.max(0, Math.floor((now - startedAt!) / 1000))} 秒。${remote.connError && `上一次失败：${remote.connError}`}`
+              : remote.connError
+                ? `实时推送未连接，会话变化可能延迟。最近一次失败：${remote.connError}`
+                : remote.network ? "实时推送未连接。" : "本机网络不通，联网后会重新连接。"}
+          </Banner>
         </div>
-        <div className="sr">
-          <span>本机网络</span>
-          <span className="v">
+      )}
+      <div className="list conn-check">
+        <div className="mi">
+          <span className="mt">实时推送</span>
+          <span className="mv"><StateMark kind={stream.tone} /><em>{stream.text}</em></span>
+        </div>
+        <div className="mi">
+          <span className="mt">本机网络</span>
+          <span className="mv">
             <StateMark kind={remote.network ? "online" : "off"} />
             <em>{remote.network ? "正常" : "不通"}</em>
           </span>
         </div>
-        <div className="sr">
-          <span className="who">
+        <div className="mi">
+          <span className="mt">
             服务器<small>{new URL(remote.account.server).host}</small>
           </span>
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
         {list.map((m) => (
-          <div key={m.id} className="sr">
-            <span className="who">{machineName(m)}</span>
-            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="v muted"><StateMark kind="off" /><em>不在线</em></span>}
+          <div key={m.id} className="mi">
+            <span className="mt">{machineName(m)}</span>
+            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>不在线</em></span>}
           </div>
         ))}
       </div>
-      {remote.conn !== "online" && (
-        <div className="hint">{connecting
-          ? `正在${remote.everOnline ? "重连" : "连接"}：${remote.connStep}，已 ${Math.max(0, Math.floor((now - startedAt!) / 1000))} 秒。${remote.connError && `上一次失败：${remote.connError}`}`
-          : remote.connError
-            ? `实时推送未连接，会话变化可能延迟。最近一次失败：${remote.connError}`
-            : remote.network ? "实时推送未连接。" : "本机网络不通，联网后会重新连接。"}</div>
-      )}
-      <div className="hint">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</div>
+      <p className="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</p>
       <div className="btns conn-again">
-        {remote.conn !== "online" && <button className="btn" onClick={() => remote.reconnectNow(true)}>立即重连</button>}
-        <button className="btn" disabled={busy} onClick={() => void check()}>
+        {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>立即重连</button>}
+        <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>
           再测一次
         </button>
       </div>
