@@ -183,7 +183,7 @@ fun Card(
         modifier
             .fillMaxWidth()
             .clip(Radii.R28)
-            .background(if (LocalOnSoft.current) p.paper else p.gbg)
+            .background(if (LocalOnSoft.current) p.raised else p.gbg)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         content()

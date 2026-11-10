@@ -609,7 +609,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
         }
     }
     if (timeOpen) ScheduleTimeSheet(trigger, { triggerText = it.toString(); timeOpen = false }, { timeOpen = false })
-    if (pickProject) Sheet({ pickProject = false }, color = pal.gbg) {
+    if (pickProject) Sheet({ pickProject = false }) {
         SheetHead("选项目", "取消", { pickProject = false })
         ProjectPickList(state, { path -> project = path; config = null; pickProject = false }, { pickProject = false; pickDirectory = true })
     }

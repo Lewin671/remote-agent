@@ -133,7 +133,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                 color = p.ink2,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
-        Mode.entries.forEachIndexed { i, m ->
+        SheetList { Mode.entries.forEachIndexed { i, m ->
             val reason = unavailable(m)
             ListItem(
                 m.text,
@@ -146,7 +146,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
                     if (m == Mode.FULL && cur != Mode.FULL) confirmFull = true else set(m)
                 },
             )
-        }
+        } }
         Hint(
             when {
                 s.info?.modeLocked == true ->
@@ -278,7 +278,7 @@ fun ContextBox(
 ) {
     val p = pal
     Row(
-        Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(12.dp),
+        Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -413,22 +413,28 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                     ?: io.github.lewin671.remoteagent.core.modelLabel(ms?.modelsList, s.info?.model.orEmpty(), s.agent())
                     ?: s.info?.model?.ifEmpty { null }
                     ?: "默认模型"
-                ListItem(
-                    modelDisplay,
-                    small = "运行中不能换模型，新建会话时可选",
-                    enabled = false,
-                    onClick = null,
-                )
+                SheetList {
+                    ListItem(
+                        modelDisplay,
+                        small = "运行中不能换模型，新建会话时可选",
+                        enabled = false,
+                        last = true,
+                        onClick = null,
+                    )
+                }
                 FieldLabel("推理强度")
                 val effortDisplay = s.info?.effort?.ifEmpty { null }
                     ?: current?.defaultEffort?.ifEmpty { null }
                     ?: "默认"
-                ListItem(
-                    effortDisplay,
-                    small = "运行中不能换推理强度",
-                    enabled = false,
-                    onClick = null,
-                )
+                SheetList {
+                    ListItem(
+                        effortDisplay,
+                        small = "运行中不能换推理强度",
+                        enabled = false,
+                        last = true,
+                        onClick = null,
+                    )
+                }
             }
             loadError.isNotEmpty() ->
                 Notice(
@@ -461,7 +467,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                         all,
                     )
                 val few = list.size == offered.size
-                list.forEachIndexed { i, m ->
+                SheetList { list.forEachIndexed { i, m ->
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
                         small =
@@ -473,14 +479,14 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                                     ?.let { "最高 $it" },
                         checked = m.slug == pickedModel,
                         enabled = !running && !act.running,
-                        last = i == list.size - 1 && few,
+                        last = i == list.size - 1,
                         onClick = {
                             pickedModel = m.slug
                             // A model without efforts has nothing more to choose.
                             if (m.effortsList.isEmpty() && m != current) setModel(m.slug, "")
                         },
                     )
-                }
+                } }
                 if (!few) AllModels { all = true }
                 val model = offered.firstOrNull { it.slug == pickedModel }
                 if (model != null && model.effortsList.isNotEmpty()) {

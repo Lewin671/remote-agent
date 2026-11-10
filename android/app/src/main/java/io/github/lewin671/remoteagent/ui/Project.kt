@@ -708,7 +708,7 @@ fun NewSessionBox(
             if (summary != null) SummaryChip(summary, full, Modifier.weight(1f, fill = false).testTag("project-settings-summary"), onSettings)
         }
     }
-    if (picking && c != null) Sheet({ picking = false }, color = p.gbg) {
+    if (picking && c != null) Sheet({ picking = false }) {
         SheetHead("用哪个 CLI", "取消", { picking = false })
         Group(Modifier.padding(start = 0.dp, end = 0.dp), rows = agents.map { a -> @Composable {
             GRow(agentName(a), onClick = {
@@ -899,7 +899,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     { SetRow(if (lockMachine) "权限" else "审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
                 )
                 @Composable
-                fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
+                fun card(rows: List<@Composable () -> Unit>) = SheetList {
                     rows.forEachIndexed { i, r ->
                         if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.sep, thickness = 0.5.dp)
                         r()
@@ -935,7 +935,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             }
             "machine" -> {
                 SheetHead("机器", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
-                used.forEachIndexed { i, id ->
+                SheetList { used.forEachIndexed { i, id ->
                     val m = state.machines[id]
                     val online = m?.online == true
                     val agents = machineAgents(m)
@@ -959,7 +959,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         },
                         trailing = { StatusMark(if (online) MarkKind.ONLINE else MarkKind.OFF) },
                     )
-                }
+                } }
                 Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
             }
             "model" -> {
@@ -970,19 +970,21 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
                         val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
-                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         val shown = shownModels(ms.modelsList, ms.modelsList.firstOrNull { it.slug == c.model }, allModels)
                         val few = shown.size == ms.modelsCount
+                        SheetList {
+                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), last = shown.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
                         shown.forEachIndexed { i, m ->
                             ListItem(
                                 m.displayName.ifEmpty { m.slug },
                                 small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
                                 checked = c.model == m.slug,
-                                last = few && i == shown.size - 1,
+                                last = i == shown.size - 1,
                                 onClick = {
                                     edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
                                 },
                             )
+                        }
                         }
                         if (!few) AllModels { allModels = true }
                         projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
@@ -997,19 +999,23 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             }
             "context" -> {
                 SheetHead("上下文窗口", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
-                ListItem("1M", "Claude Code 的默认窗口", checked = !c.standardContext, onClick = { edit(c.copy(standardContext = false)); page = "" })
-                ListItem("标准 200k", "超过 200k 前自动压缩", checked = c.standardContext, last = true, onClick = { edit(c.copy(standardContext = true)); page = "" })
+                SheetList {
+                    ListItem("1M", "Claude Code 的默认窗口", checked = !c.standardContext, onClick = { edit(c.copy(standardContext = false)); page = "" })
+                    ListItem("标准 200k", "超过 200k 前自动压缩", checked = c.standardContext, last = true, onClick = { edit(c.copy(standardContext = true)); page = "" })
+                }
                 Hint("窗口在会话开始时确定，改了只影响之后新建的会话。")
             }
             "mode" -> {
                 SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
-                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
                 val chosen = models?.let { projectModel(c, it, settings) }
+                SheetList {
+                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
                 newSessionModes.forEachIndexed { i, m ->
                     // The list says which models come without the auto mode
                     // (Claude Code's Haiku 4.5); until it has come, none is.
                     val off = m == Mode.AUTO && chosen?.autoUnavailable == true
                     ListItem(m.text, if (off) "当前模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
+                }
                 }
                 Hint("完全放行的新会话直接按此设置启动。")
             }
@@ -1034,7 +1040,7 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
 fun PickProjectSheet(state: RemoteState, onClose: () -> Unit, replace: Boolean = false) {
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
-    Sheet(onClose, color = pal.gbg) {
+    Sheet(onClose) {
         if (!browsing) {
             SheetHead("新会话 · 选项目", "取消", onClose)
             ProjectPickList(state, onPick = { onClose(); if (replace) nav.back(); nav.projectNew(it) }, onNew = { browsing = true })
@@ -1118,9 +1124,11 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
                 style = T.mono13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp),
             )
             if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
-            if (d.parent.isNotEmpty()) ListItem("上一级", last = d.dirsList.isEmpty(), onClick = { path = d.parent }, icon = Lucide.ChevronLeft)
-            d.dirsList.forEachIndexed { i, name ->
-                ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.ink2, T.s15) })
+            if (d.parent.isNotEmpty() || d.dirsList.isNotEmpty()) SheetList {
+                if (d.parent.isNotEmpty()) ListItem("上一级", last = d.dirsList.isEmpty(), onClick = { path = d.parent }, icon = Lucide.ChevronLeft)
+                d.dirsList.forEachIndexed { i, name ->
+                    ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.ink2, T.s15) })
+                }
             }
             PillButton("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), ButtonKind.INK)
         }

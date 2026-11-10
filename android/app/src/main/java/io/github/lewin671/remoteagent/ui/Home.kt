@@ -337,7 +337,7 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
     val p = pal
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
-    Sheet(onClose, color = p.gbg) {
+    Sheet(onClose) {
         if (browsing) {
             SheetHead("新项目 · 选目录", "取消", onClose, onBack = { browsing = false })
             DirPicker(state) { machine, path ->

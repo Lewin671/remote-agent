@@ -491,7 +491,7 @@ private fun ChoiceSheet(
 ) {
     Sheet(onClose) {
         SheetHead(title)
-        options.forEachIndexed { i, (label, desc) ->
+        SheetList { options.forEachIndexed { i, (label, desc) ->
             val ok = enabled(i)
             ListItem(
                 label,
@@ -501,7 +501,7 @@ private fun ChoiceSheet(
                 last = i == options.size - 1,
                 onClick = if (ok) ({ onPick(i) }) else null,
             )
-        }
+        } }
     }
 }
 
@@ -1045,11 +1045,6 @@ private fun DefaultModelSheet(
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             else -> {
-                ListItem(
-                    "默认（${agentName(agent)} 自己的配置）",
-                    checked = model.isEmpty(),
-                    onClick = { onPick("", "") },
-                )
                 val shown =
                     io.github.lewin671.remoteagent.core.shownModels(
                         ms.modelsList,
@@ -1057,6 +1052,13 @@ private fun DefaultModelSheet(
                         all,
                     )
                 val few = shown.size == ms.modelsCount
+                SheetList {
+                ListItem(
+                    "默认（${agentName(agent)} 自己的配置）",
+                    checked = model.isEmpty(),
+                    last = shown.isEmpty(),
+                    onClick = { onPick("", "") },
+                )
                 shown.forEachIndexed { i, m ->
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
@@ -1072,11 +1074,12 @@ private fun DefaultModelSheet(
                                 .joinToString(" · ")
                                 .ifEmpty { null },
                         checked = m.slug == model,
-                        last = few && i == shown.size - 1,
+                        last = i == shown.size - 1,
                         onClick = {
                             if (m.effortsList.isEmpty()) onPick(m.slug, "") else model = m.slug
                         },
                     )
+                }
                 }
                 if (!few) AllModels { all = true }
                 ms.modelsList

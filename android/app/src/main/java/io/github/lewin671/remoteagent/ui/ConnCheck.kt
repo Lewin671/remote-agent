@@ -134,7 +134,7 @@ internal fun ConnCheckSheet(
     }
     Sheet(onClose) {
         SheetHead("连接检测", "完成", onClose)
-        Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
+        Column(Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
             line("实时推送") {
                 dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state))
             }

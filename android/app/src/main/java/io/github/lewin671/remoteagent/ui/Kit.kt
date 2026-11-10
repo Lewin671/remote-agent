@@ -198,7 +198,7 @@ fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 @Composable
 fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     val p = pal
-    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.R20).background(if (LocalOnSoft.current) p.paper else p.gbg)) {
+    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
         rows.forEachIndexed { i, r ->
             Box(if (i > 0) Modifier.topLine(p.sep, 18.dp) else Modifier) { r() }
         }
@@ -299,24 +299,26 @@ private fun Grab() {
     }
 }
 
-/** A bottom sheet: card, top corners 20, grab handle, 16 dp sides (design-system §6). */
+/** A bottom sheet (design-system §6): gbg, top corners 38, grab handle, 16 dp sides; groups inside are raised. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, color: Color? = null, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { canDismiss || it != androidx.compose.material3.SheetValue.Hidden }),
-        containerColor = color ?: p.paper,
+        containerColor = p.gbg,
         shape = Radii.sheet,
         dragHandle = { Grab() },
         scrimColor = Color.Black.copy(alpha = .35f),
         tonalElevation = 0.dp,
     ) {
-        Column(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp).then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier),
-            content = content,
-        )
+        androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+            Column(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp).then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier),
+                content = content,
+            )
+        }
     }
 }
 
@@ -337,8 +339,8 @@ fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onCl
     val p = pal
     val ink = if (!enabled) p.ink2 else if (danger) p.red else p.ink
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 50.dp).then(if (!last) Modifier.bottomLine(p.sep) else Modifier)
-            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier).padding(horizontal = 2.dp),
+        Modifier.fillMaxWidth().heightIn(min = 50.dp).then(if (!last) Modifier.bottomLine(p.sep, 18.dp) else Modifier)
+            .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier).padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
@@ -355,6 +357,13 @@ fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onCl
         trailing?.invoke()
         if (checked) Mark(Lucide.Check, p.blue, 16.dp)
     }
+}
+
+/** The rounded list [ListItem]s sit in (design-system §6): raised in a sheet or on gbg, gbg on paper; radius 20. */
+@Composable
+fun SheetList(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val p = pal
+    Column(modifier.fillMaxWidth().clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg), content = content)
 }
 
 /** A dialog (design-system §6 对话框): gbg, radius 30, floating; 取消 at the left, the confirmation at the right, ink or red. */
@@ -410,7 +419,7 @@ class SheetAction(
 fun ActionSheet(info: (@Composable () -> Unit)?, groups: List<List<SheetAction>>, onDismiss: () -> Unit) {
     val p = pal
     val busy = groups.any { g -> g.any { it.busy } }
-    Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy, color = p.gbg) {
+    Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy) {
         if (info != null) Box(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 16.dp), contentAlignment = Alignment.CenterStart) { info() }
         groups.filter { it.isNotEmpty() }.forEachIndexed { gi, g ->
             Column(Modifier.fillMaxWidth().padding(top = if (gi > 0) 12.dp else 0.dp).clip(Radii.R20).background(p.raised)) {
@@ -458,7 +467,7 @@ internal fun ActionSheetRow(a: SheetAction, first: Boolean = true, onClick: () -
 @Composable
 fun Code(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, bg: Color? = null) {
     val p = pal
-    Box(modifier.fillMaxWidth().clip(Radii.R14).background(bg ?: if (LocalOnSoft.current) p.paper else p.gbg).padding(horizontal = 14.dp, vertical = 10.dp)) {
+    Box(modifier.fillMaxWidth().clip(Radii.R14).background(bg ?: if (LocalOnSoft.current) p.raised else p.gbg).padding(horizontal = 14.dp, vertical = 10.dp)) {
         Text(text, style = T.mono13, color = p.ink2, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }
