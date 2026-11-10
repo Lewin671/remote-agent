@@ -9,8 +9,41 @@ import SwiftUI
 extension View {
     /// A ⋯ menu over this view: `groups` of rows, `info` at the top.
     func menuSheet<Info: View>(isPresented: Binding<Bool>, groups: [[SheetAction]], @ViewBuilder info: @escaping () -> Info) -> some View {
-        sheet(isPresented: isPresented) {
-            MenuSheet(groups: groups.filter { !$0.isEmpty }, info: info()) { isPresented.wrappedValue = false }
+        modifier(MenuSheetHost(isPresented: isPresented, groups: groups, info: info))
+    }
+}
+
+/// A row that closes the menu acts once the sheet has gone: a dialog or sheet
+/// it brings up would otherwise come up under one still leaving, and a field
+/// there would not get the keyboard.
+struct AfterDismiss {
+    private var pending: (() -> Void)?
+
+    /// What runs now: the action of a row that keeps the menu open, else nothing until `dismissed`.
+    mutating func choose(_ action: @escaping () -> Void, keepOpen: Bool) -> (() -> Void)? {
+        if keepOpen { return action }
+        pending = action
+        return nil
+    }
+
+    /// The sheet has gone: the action chosen, once.
+    mutating func dismissed() -> (() -> Void)? {
+        defer { pending = nil }
+        return pending
+    }
+}
+
+private struct MenuSheetHost<Info: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    let groups: [[SheetAction]]
+    let info: () -> Info
+    @State private var after = AfterDismiss()
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented, onDismiss: { after.dismissed()?() }) {
+            MenuSheet(groups: groups.filter { !$0.isEmpty }, info: info()) { a in
+                if let now = after.choose(a.action, keepOpen: a.keepOpen) { now() } else { isPresented = false }
+            }
         }
     }
 }
@@ -18,7 +51,7 @@ extension View {
 private struct MenuSheet<Info: View>: View {
     let groups: [[SheetAction]]
     let info: Info
-    let dismiss: () -> Void
+    let choose: (SheetAction) -> Void
 
     var body: some View {
         // Leaving while a choice is running would drop its answer.
@@ -46,8 +79,7 @@ private struct MenuSheet<Info: View>: View {
         let ink = a.value == nil && a.danger ? DS.red : a.value == nil && a.warn ? DS.orangeInk : DS.ink
         return Button {
             if a.danger && a.value == nil { Haptics.destructive() }
-            if !a.keepOpen { dismiss() }
-            a.action()
+            choose(a)
         } label: {
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 2) {

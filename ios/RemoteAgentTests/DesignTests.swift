@@ -48,3 +48,24 @@ import UIKit
         }
     }
 }
+
+@Suite struct AfterDismissTests {
+    @Test func aRowThatClosesTheMenuActsOnceTheSheetHasGone() {
+        var after = AfterDismiss()
+        var ran = 0
+        #expect(after.choose({ ran += 1 }, keepOpen: false) == nil)
+        #expect(ran == 0)
+        after.dismissed()?()
+        #expect(ran == 1)
+        // Swiping the sheet away later runs nothing again.
+        #expect(after.dismissed() == nil)
+    }
+
+    @Test func aRowThatKeepsTheMenuOpenActsAtOnce() {
+        var after = AfterDismiss()
+        var ran = 0
+        after.choose({ ran += 1 }, keepOpen: true)?()
+        #expect(ran == 1)
+        #expect(after.dismissed() == nil)
+    }
+}
