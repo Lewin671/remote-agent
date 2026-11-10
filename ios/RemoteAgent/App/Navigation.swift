@@ -318,6 +318,7 @@ private struct FirstLevel: View {
     @Environment(AccountContext.self) private var context
     @State private var pick = ["pick", "pickBrowse"].contains(HomeLaunch.value("-homeSheet"))
     @State private var pickBrowsing = HomeLaunch.value("-homeSheet") == "pickBrowse"
+    @State private var newSchedule = HomeLaunch.value("-homeSheet") == "newSchedule"
 
     var body: some View {
         @Bindable var nav = nav
@@ -349,13 +350,23 @@ private struct FirstLevel: View {
         .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: { pickBrowsing = false }) {
             PickProjectSheet(state: state, browsing: $pickBrowsing) { pick = false }
         }
+        .sheet(isPresented: $newSchedule) {
+            NavigationStack {
+                NewScheduleScreen(sessionID: "", onCreated: { route in
+                    newSchedule = false
+                    nav.open(route)
+                }, onClose: { newSchedule = false })
+            }
+            .sheetSurface()
+            .presentationDetents([.large])
+        }
     }
 
     /// 新定时 opens its page. 新任务 starts in the scope's project; under every project it asks which first.
     private func create(_ state: RemoteState) {
         switch nav.tab {
         case .schedules:
-            nav.open(.newSchedule())
+            newSchedule = true
         case .home:
             if case .of(let key) = resolveScope(remembered: context.homeScopes.remembered(state), state: state) {
                 nav.open(.project(key: key, focusNew: true))

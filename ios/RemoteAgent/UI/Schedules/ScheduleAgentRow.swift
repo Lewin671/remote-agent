@@ -13,14 +13,27 @@ struct ScheduleAgentRow: View {
         if let c = config {
             let agents = machineAgents(state.machines[c.machineId])
             if agents.count > 1 {
-                GRow("CLI").trailing {
-                    ScheduleAgentPicker(agents: agents, selection: Binding(get: { c.agent.rawValue }, set: { raw in
-                        guard let agent = agents.first(where: { $0.rawValue == raw }) else { return }
-                        let defaults = projectStart(state, key: c.cwd, pick: agent, machine: c.machineId)?.config
-                        config = RACore.switchAgent(c, project: defaults, agent: agent)
-                    })).frame(width: agents.count > 2 ? 260 : 208, height: 32)
-                    .accessibilityIdentifier("schedule-cli-picker")
+                let picker = ScheduleAgentPicker(agents: agents, selection: Binding(get: { c.agent.rawValue }, set: { raw in
+                    guard let agent = agents.first(where: { $0.rawValue == raw }) else { return }
+                    let defaults = projectStart(state, key: c.cwd, pick: agent, machine: c.machineId)?.config
+                    config = RACore.switchAgent(c, project: defaults, agent: agent)
+                }))
+                .accessibilityIdentifier("schedule-cli-picker")
+                // Beside its name where the row has room, under it where it does not.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 10) {
+                        Text("CLI").font(.body).foregroundStyle(DS.ink).fixedSize()
+                        Spacer(minLength: 10)
+                        picker.fixedSize()
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("CLI").font(.body).foregroundStyle(DS.ink)
+                        picker
+                    }
+                    .padding(.vertical, 8)
                 }
+                .padding(.horizontal, 14)
+                .frame(minHeight: DS.minHit)
             } else if let agent = agents.first {
                 GRow("CLI", value: agentName(agent))
             }
@@ -49,9 +62,13 @@ private struct ScheduleAgentPicker: UIViewRepresentable {
         }
         control.selectedSegmentIndex = agents.firstIndex { $0.rawValue == selection } ?? UISegmentedControl.noSegment
         control.isEnabled = enabled
-        control.selectedSegmentTintColor = UIColor(DS.gbg)
-        control.setTitleTextAttributes([.foregroundColor: UIColor(DS.ink2)], for: .normal)
+        control.selectedSegmentTintColor = UIColor(DS.raised)
+        control.setTitleTextAttributes([.foregroundColor: UIColor(DS.ink)], for: .normal)
         control.setTitleTextAttributes([.foregroundColor: UIColor(DS.ink)], for: .selected)
+    }
+    /// As wide as offered; asked for its ideal, as wide as its titles, so a row too narrow puts it under its name.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UISegmentedControl, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? uiView.intrinsicContentSize.width, height: 32)
     }
     @MainActor final class Coordinator: NSObject {
         var selection: Binding<Int>

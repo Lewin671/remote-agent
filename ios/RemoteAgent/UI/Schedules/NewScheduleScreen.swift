@@ -53,9 +53,13 @@ final class ScheduleDraft {
 }
 extension AccountContext { var scheduleDrafts: ScheduleDrafts { memory.value { ScheduleDrafts() } } }
 
+/// 新定时 (design-system §6 「弹层与对话框」): a whole-page sheet from the
+/// bottom, closed at its top left, submitted with 创建 at its top right.
 struct NewScheduleScreen: View {
     let sessionID: String
     var onCreated: ((Route) -> Void)? = nil
+    /// Closes the sheet it is in; nil when it is a pushed page.
+    var onClose: (() -> Void)? = nil
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
@@ -100,12 +104,26 @@ struct NewScheduleScreen: View {
                         if draft.mutation.frozen {
                             TextAction("放弃原请求", enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)
                         }
-                        Btn(draft.mutation.running ? "正在创建…" : draft.mutation.frozen ? "重试同一请求" : "创建", kind: .primary, enabled: ready && !draft.mutation.running && !draft.mutation.expired) { create(draft, machine: machine, spec: spec) }.padding(16)
                     }.disabled(draft.mutation.running)
                 }.scrollDismissesKeyboard(.interactively)
             }
         }
-        .navBar(sessionID.isEmpty ? "新任务" : "定时发到这个对话")
+        .navBar(sessionID.isEmpty ? "新定时" : "定时发到这个对话")
+        .toolbar {
+            if let onClose {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(action: onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                let enabled = ready && !draft.mutation.running && !draft.mutation.expired
+                Button { create(draft, machine: machine, spec: spec) } label: {
+                    Text(draft.mutation.running ? "正在创建…" : draft.mutation.frozen ? "重试" : "创建").font(.body.weight(.semibold))
+                }
+                .buttonStyle(.borderedProminent).tint(DS.btn).foregroundStyle(DS.btnFg)
+                .disabled(!enabled)
+            }
+        }
         .kitSheet(isPresented: $timing, size: .large) {
             ScheduleTimingSheet(trigger: draft.trigger, onSave: { draft.trigger = $0 }, onClose: { timing = false })
         }

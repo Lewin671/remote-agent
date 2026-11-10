@@ -245,8 +245,7 @@ private struct SessionPage: View {
                 NewScheduleScreen(sessionID: sid, onCreated: { route in
                     guard scheduleSending else { return }
                     scheduleSending = false; nav.open(route, from: page)
-                })
-                .toolbar { ToolbarItem(placement: .topBarLeading) { TextAction("取消") { scheduleSending = false } } }
+                }, onClose: { scheduleSending = false })
             }.sheetSurface().presentationDetents([.large])
         }
         .sessionRename(isPresented: $rename, session: s)
