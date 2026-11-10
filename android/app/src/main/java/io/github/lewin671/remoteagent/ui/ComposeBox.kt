@@ -84,7 +84,6 @@ fun ComposeBox(
     hasDraft: Boolean = text.isNotBlank(),
 ) {
     val p = pal
-    var attachMenu by remember { mutableStateOf(false) }
     var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     val shape = RoundedCornerShape(27.dp)
@@ -93,15 +92,7 @@ fun ComposeBox(
             Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).padding(7.dp)) {
                 top?.invoke()
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    val label = if (onFile != null) "添加附件" else "添加图片"
-                    Box(
-                        Modifier.size(40.dp).disabledAlpha(plusEnabled).clip(CircleShape).background(if (attachMenu) p.fill2 else p.fill)
-                            .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = label) { if (onFile != null) attachMenu = true else onPlus() }
-                            .semantics { contentDescription = label },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Ic(Lucide.Plus, 22.dp, p.ink)
-                    }
+                    AttachButton(onPlus, onFile, plusEnabled)
                     BasicTextField(
                         text, onText,
                         Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
@@ -134,12 +125,6 @@ fun ComposeBox(
                     }
                 }
             }
-            if (attachMenu && onFile != null) Popup(popupPositionProvider = AboveProvider(gap, right = false), onDismissRequest = { attachMenu = false }, properties = PopupProperties(focusable = true)) {
-                AttachMenu(
-                    onMedia = { attachMenu = false; onPlus() },
-                    onFile = { attachMenu = false; onFile() },
-                )
-            }
             if (sendMenu) Popup(popupPositionProvider = AboveProvider(gap, right = true), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
                 Column(Modifier.padding(12.dp).width(IntrinsicSize.Max).widthIn(min = 200.dp, max = 260.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
                     listOf(
@@ -157,6 +142,29 @@ fun ComposeBox(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * ＋ (design-system §6 输入框): a fill circle, 40. It opens the library at
+ * once, or, when the computer takes files ([onFile]), a glass menu above it.
+ */
+@Composable
+fun AttachButton(onPlus: () -> Unit, onFile: (() -> Unit)?, enabled: Boolean) {
+    val p = pal
+    var open by remember { mutableStateOf(false) }
+    val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
+    val label = if (onFile != null) "添加附件" else "添加图片"
+    Box(
+        Modifier.size(40.dp).disabledAlpha(enabled).clip(CircleShape).background(if (open) p.fill2 else p.fill)
+            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label) { if (onFile != null) open = true else onPlus() }
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Ic(Lucide.Plus, 22.dp, p.ink)
+        if (open && onFile != null) Popup(popupPositionProvider = AboveProvider(gap, right = false), onDismissRequest = { open = false }, properties = PopupProperties(focusable = true)) {
+            AttachMenu(onMedia = { open = false; onPlus() }, onFile = { open = false; onFile() })
         }
     }
 }

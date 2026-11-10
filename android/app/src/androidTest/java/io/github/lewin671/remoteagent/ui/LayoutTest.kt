@@ -216,7 +216,7 @@ class LayoutTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
+                    Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.paper)) {
                         GroupTitle("今天", date = true)
                         SessionRow(state, session(ended = true), System.currentTimeMillis())
                         NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name", mode = Mode.ASK), "remote-agent-with-a-very-long-project-name", false)

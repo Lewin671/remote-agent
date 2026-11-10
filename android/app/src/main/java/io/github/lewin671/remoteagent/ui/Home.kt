@@ -176,7 +176,7 @@ fun HomeScreen() {
     }
     if (updating) UpdateSheet { updating = false }
     if (details) ServerDetails(state) { details = false }
-    if (pick) PickProjectSheet(state) { pick = false }
+    if (pick) PickProjectSheet(state, { pick = false })
     if (menu) ScopeSheet(state, scope, onPick = { HomeScopes.choose(context, remote.account.localKey, it) }) { menu = false }
 }
 

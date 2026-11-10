@@ -62,6 +62,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -362,34 +365,16 @@ fun startedSession(r: io.github.lewin671.remoteagent.proto.CommandResult?): Stri
     r?.takeIf { it.hasCreateSession() && it.createSession.hasSession() }?.createSession?.session?.id?.takeIf { it.isNotEmpty() }
 
 /**
- * A project: its sessions, and at the bottom the message box that starts a
- * new one. The header folds into the navigation bar once it is scrolled away;
- * the keyboard only shortens the list, so nothing jumps as it comes and goes.
+ * 新任务 in a project (design-system §6 新任务): a whole page, the sentence
+ * naming the project and the CLI, the task in large type, and ＋ and the
+ * summary of the project's settings above the keyboard. The project's
+ * sessions are on the home page in its scope.
  */
 @Composable
 fun ProjectScreen(key: String, focus: Boolean) {
     val remote = LocalRemote.current
-    val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val p = pal
-    val t = now()
-    val sessions = state.sessions.values.filter { it.info?.taskOwned != true && projectKey(it) == key }.sortedWith(sessionOrder)
-    val active = sessions.filter { !exited(it) }
-    val ended = sessions.filter { exited(it) }
-    // The rows are one project's: never the project, the CLI only when its sessions used more than one (client-v27).
-    val meta = io.github.lewin671.remoteagent.core.rowMeta(state, sessions, project = false)
-    var showEnded by rememberSaveable { mutableStateOf(false) }
-    // The project as the machines' summaries and the sessions held here have it: its ended
-    // sessions come a page at a time, so how many there are is the summaries' to say.
-    val project = io.github.lewin671.remoteagent.core.project(state, key)
-    val endedTotal = maxOf(project?.ended ?: 0, ended.size)
-    val machines = project?.machineIds.orEmpty().map { machineLabel(state, it) }.distinct()
-    // 最近结束 wants three; the whole list asks for a page each time its end is reached. Either
-    // way what is shown must not reach past the pages fetched: a session kept from before a
-    // reconnect, or fetched by its ID, has others before it that are fetched first.
-    FetchEarlier(state, page = io.github.lewin671.remoteagent.core.needsEndedPage(state, ended, if (showEnded) ended.size else 3, endedTotal))
-    val list = rememberLazyListState()
-    val compact by remember { derivedStateOf { list.firstVisibleItemIndex > 0 } }
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
     // The page of project settings that is open ("" is the first), or null.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
@@ -408,55 +393,29 @@ fun ProjectScreen(key: String, focus: Boolean) {
         val cfg = launch ?: return@LaunchedEffect
         summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
     }
-    Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
-        val folded = launch?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
-        PageBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
-        LazyColumn(Modifier.weight(1f), state = list) {
-            item {
-                Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    ProjectAvatar(key, 52)
-                    Column(Modifier.weight(1f)) {
-                        Text(projectName(key), style = T.h22, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("${active.size} 个进行中 · ", style = T.s13, color = p.ink2)
-                            Box(Modifier.clickable(enabled = endedTotal > 0) { showEnded = !showEnded }) { ArrowText("已结束 $endedTotal", p.blue, T.s13b, down = showEnded) }
-                        }
-                        if (launch != null) {
-                            val full = launch.mode == Mode.FULL || (launch.mode == null && defaultModeOf(state.machines[launch.machineId], launch.agent).mode == Mode.FULL)
-                            SummaryChip(projectSummary(state, launch, summaryModels), full, Modifier.padding(top = 6.dp).testTag("project-settings-summary")) { settingsOpen = "" }
-                        }
+    var picking by remember { mutableStateOf(false) }
+    val agents = launch?.let { machineAgents(state.machines[it.machineId]) }.orEmpty()
+    Column(Modifier.fillMaxSize().background(p.paper)) {
+        // The CLI is in the sentence when there is more than one to choose: the summary does not repeat it.
+        val summary = launch?.let { projectSummary(state, it, summaryModels).removePrefix(if (agents.size > 1) agentName(it.agent) + " · " else "") }
+        val full = launch != null && (launch.mode == Mode.FULL || (launch.mode == null && defaultModeOf(state.machines[launch.machineId], launch.agent).mode == Mode.FULL))
+        NewSessionBox(
+            state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
+            summary = summary, full = full, onSettings = { settingsOpen = "" }, onProject = { picking = true },
+            banner = {
+                Column(Modifier.padding(horizontal = 12.dp)) {
+                    when (val change = PrefsChanges.states[key]) {
+                        PrefsChanges.State.Saving -> Notice("正在保存项目设置…", Modifier.padding(top = 8.dp))
+                        is PrefsChanges.State.Failed -> Notice("项目设置没能保存：${change.error}", Modifier.padding(top = 8.dp), tone = NoticeTone.ERROR,
+                            action = "重试", onAction = { PrefsChanges.run(remote, change.op) })
+                        else -> {}
                     }
+                    if (hidden) HiddenBanner(state, key)
                 }
-            }
-            when (val change = PrefsChanges.states[key]) {
-                PrefsChanges.State.Saving -> item { Notice("正在保存项目设置…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
-                is PrefsChanges.State.Failed -> item { Notice("项目设置没能保存：${change.error}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), tone = NoticeTone.ERROR,
-                    action = "重试", onAction = { PrefsChanges.run(remote, change.op) }) }
-                else -> {}
-            }
-            if (hidden) item { HiddenBanner(state, key) }
-            if (active.isNotEmpty()) {
-                item { Label("进行中", active.size) }
-                items(active, key = { it.id }) { s -> SessionRow(state, s, t, meta, last = s == active.last()) }
-            }
-            val recent = if (showEnded) ended else ended.take(3)
-            val earlier = state.moreSessions && ended.size < endedTotal
-            if (recent.isNotEmpty() || (showEnded && earlier)) {
-                item { Label(if (showEnded) "已结束" else "最近结束", if (showEnded) endedTotal else null) }
-                items(recent, key = { it.id }) { s -> EndedRow(s, t) }
-                // Composed when the end of the list is reached: that is when the next page is fetched.
-                if (showEnded && earlier) item(key = "earlier") {
-                    FetchEarlier(state, page = true)
-                    EarlierTail(state, Modifier.padding(start = 35.dp, end = 16.dp, top = 12.dp, bottom = 4.dp).testTag("project-earlier"))
-                }
-            }
-            item { Spacer(Modifier.height(12.dp)) }
-        }
-        // A hidden project stays reachable from its sessions and
-        // notifications; starting a new session there restores it first.
-        if (!hidden) NewSessionBox(state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
+            },
+        )
     }
+    if (picking) PickProjectSheet(state, { picking = false }, replace = true)
     val open = settingsOpen
     if (open != null && selected != null) NewSettingsSheet(state, key, projectName(key), selected.machineId, selected.agent, open, onDone = { op ->
         if (op != null) {
@@ -475,34 +434,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
 private fun draftPick(state: RemoteState, entry: Drafts.NewSession): Agent? =
     entry.config.value?.takeIf { missingAgent(state, it, entry.agent.value) == null }?.agent ?: entry.agent.value
 
-/**
- * The CLI of the next session, in a row of its own above the message box
- * (client-v26): a grey pill of the machine's CLIs, each 44 dp to touch.
- */
-@Composable
-fun AgentSwitch(agents: List<Agent>, selected: Agent, modifier: Modifier = Modifier, onSelect: (Agent) -> Unit) {
-    val p = pal
-    Row(modifier.fillMaxWidth()) {
-        Row(
-            Modifier.drawBehind { drawRoundRect(p.fill2, Offset(0f, 4.dp.toPx()), Size(size.width, size.height - 8.dp.toPx()), CornerRadius(10.dp.toPx())) }
-                .padding(horizontal = 2.dp).selectableGroup().semantics { contentDescription = "新会话使用的 CLI" },
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            for (a in agents) {
-                val on = a == selected
-                Box(Modifier.heightIn(min = 44.dp).selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(a) }).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
-                    Box(
-                        Modifier.widthIn(min = 56.dp).heightIn(min = 32.dp)
-                            .then(if (on) Modifier.shadow(1.dp, RoundedCornerShape(8.dp)).background(p.paper, RoundedCornerShape(8.dp)) else Modifier).padding(horizontal = 10.dp),
-                        contentAlignment = Alignment.Center,
-                    ) { Text(agentName(a), style = if (on) T.s13b else T.s13, color = if (on) p.ink else p.ink2, maxLines = 1) }
-                }
-            }
-        }
-    }
-}
-
-/** The new-session settings as a button that opens the project's settings; only 完全放行 is red. */
+/** The new-session settings as a capsule as wide as its words, opening the project's settings; only 完全放行 is red. */
 @Composable
 private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val p = pal
@@ -514,10 +446,10 @@ private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Mod
             append(summary.substring(start + Mode.FULL.text.length))
         } else append(summary)
     }
-    Row(modifier.clip(RoundedCornerShape(10.dp)).background(p.fill2).clickable(onClick = onClick).heightIn(min = 32.dp).padding(horizontal = 10.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(shown, style = T.s13, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Arrow(p.ink3)
+    Row(modifier.heightIn(min = 40.dp).clip(Radii.Pill).background(p.fill).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(shown, style = T.s15, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Arrow(p.ink2, T.s15)
     }
 }
 
@@ -593,7 +525,19 @@ fun configLines(state: RemoteState, c: NewConfig, d: DefaultMode): Pair<String, 
  * is written stays, and takes the settings once they are known.
  */
 @Composable
-fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean, onMachine: () -> Unit = {}, settled: Boolean = true) {
+fun NewSessionBox(
+    state: RemoteState,
+    initial: NewConfig?,
+    name: String,
+    focus: Boolean,
+    onMachine: () -> Unit = {},
+    settled: Boolean = true,
+    summary: String? = null,
+    full: Boolean = false,
+    onSettings: () -> Unit = {},
+    onProject: (() -> Unit)? = null,
+    banner: @Composable () -> Unit = {},
+) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -710,20 +654,83 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             }
         }
     }
-    notices()
-    if (c != null && agents.size > 1) AgentSwitch(agents, c.agent, Modifier.padding(horizontal = 16.dp)) { a ->
-        entry.agent.value = a
-        val to = projectStart(state, key, a, c.machineId)
-        draft.retarget(switchAgent(c, to?.config, a), to?.settled != false)
+    var picking by remember { mutableStateOf(false) }
+    // 新任务 (design-system §6): close at the top left and the ink send at the right; the sentence
+    // 「在 [项目] 用 [CLI]」; what to do in large type; ＋ and the summary of the settings above the keyboard.
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            GlassButton(Lucide.X, "关闭", nav.back)
+            Spacer(Modifier.weight(1f))
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(if (canStart) p.btn else p.fill2)
+                    .clickable(enabled = canStart, role = Role.Button, onClickLabel = "开始") { start() }
+                    .semantics { contentDescription = "开始" },
+                contentAlignment = Alignment.Center,
+            ) { Ic(Lucide.ArrowUp, 22.dp, if (canStart) p.btnFg else p.ink3) }
+        }
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("在", style = T.s17, color = p.ink2)
+            Token(onProject, Modifier.testTag("new-project")) {
+                ProjectAvatar(key, 26)
+                Text(name, style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            }
+            if (c != null && agents.size > 1) {
+                Text("用", style = T.s17, color = p.ink2)
+                Token({ picking = true }, Modifier.testTag("new-agent")) { Text(agentName(c.agent), style = T.s15b, color = p.ink, maxLines = 1) }
+            }
+        }
+        banner()
+        Box(Modifier.padding(top = 10.dp)) { notices() }
+        BasicTextField(
+            text, { text = it },
+            Modifier.weight(1f).fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 16.dp).focusRequester(fr),
+            textStyle = T.s17.copy(color = p.ink),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(p.blue),
+            decorationBox = { inner ->
+                Box {
+                    if (text.isEmpty()) Text("要做什么？", style = T.h22.copy(fontSize = 24.sp), color = p.ink3)
+                    inner()
+                }
+            },
+        )
+        Box(Modifier.padding(horizontal = 16.dp)) { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) }
+        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            AttachButton(
+                onPlus = pick,
+                onFile = rememberDocumentPicker(images, remote, machine),
+                enabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine?.let { state.machines[it] }) && machineOnline),
+            )
+            if (summary != null) SummaryChip(summary, full, Modifier.weight(1f, fill = false).testTag("project-settings-summary"), onSettings)
+        }
     }
-    ComposeBox(
-        text, { text = it }, "描述任务…",
-        canSend = canStart,
-        onSend = ::start,
-        onFile = rememberDocumentPicker(images, remote, machine),
-        onPlus = pick, plusEnabled = !images.restoring && (blocked == null || io.github.lewin671.remoteagent.core.filesSupported(machine?.let { state.machines[it] }) && machineOnline),
-        sendLabel = "开始", focusRequester = fr,
-        top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
+    if (picking && c != null) Sheet({ picking = false }, color = p.gbg) {
+        SheetHead("用哪个 CLI", "取消", { picking = false })
+        Group(Modifier.padding(start = 0.dp, end = 0.dp), rows = agents.map { a -> @Composable {
+            GRow(agentName(a), onClick = {
+                picking = false
+                entry.agent.value = a
+                val to = projectStart(state, key, a, c.machineId)
+                draft.retarget(switchAgent(c, to?.config, a), to?.settled != false)
+            }, trailing = { if (a == c.agent) Ic(Lucide.Check, 18.dp, p.blue) })
+        } })
+    }
+}
+
+/** A tappable word in the new task's sentence: fill, 15 / 600 ink, 36 tall. */
+@Composable
+private fun Token(onClick: (() -> Unit)?, modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+    Row(
+        modifier.heightIn(min = 36.dp).clip(Radii.Pill).background(pal.fill)
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(start = 5.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        content = content,
     )
 }
 
@@ -1024,13 +1031,13 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
  * into 新项目 · 选目录. Choosing opens the project with its box focused.
  */
 @Composable
-fun PickProjectSheet(state: RemoteState, onClose: () -> Unit) {
+fun PickProjectSheet(state: RemoteState, onClose: () -> Unit, replace: Boolean = false) {
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
     Sheet(onClose, color = pal.gbg) {
         if (!browsing) {
             SheetHead("新会话 · 选项目", "取消", onClose)
-            ProjectPickList(state, onPick = { onClose(); nav.projectNew(it) }, onNew = { browsing = true })
+            ProjectPickList(state, onPick = { onClose(); if (replace) nav.back(); nav.projectNew(it) }, onNew = { browsing = true })
         } else {
             SheetHead("新项目 · 选目录", "取消", onClose, onBack = { browsing = false })
             DirPicker(state) { machine, path -> onClose(); nav.newProjectAt(machine, path) }
@@ -1158,11 +1165,13 @@ fun NewProjectAtScreen(machine: String, path: String) {
         summaryModels = runCatching { remote.listModels(selected.machineId, selected.agent) }.getOrNull()
     }
     var settingsOpen by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
-        PageBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
-        SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
-        Text("这个项目还没有会话。", style = T.s13, color = p.ink2, modifier = Modifier.padding(16.dp).weight(1f))
-        NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
+    val agents = machineAgents(state.machines[selected.machineId])
+    Column(Modifier.fillMaxSize().background(p.paper)) {
+        NewSessionBox(
+            state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
+            summary = projectSummary(state, selected, summaryModels).removePrefix(if (agents.size > 1) agentName(selected.agent) + " · " else ""),
+            full = selected.mode == Mode.FULL, onSettings = { settingsOpen = "" },
+        )
     }
     val open = settingsOpen
     if (open != null) NewSettingsSheet(state, path, projectName(path), selected.machineId, selected.agent, open, onDone = { op ->
