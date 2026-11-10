@@ -11,7 +11,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 | 部分 | 已实现 | 验证到哪 | 还缺什么 |
 |---|---|---|---|
 | daemon 和本地命令（Codex） | 托管会话、注入、rollout 解析、审批、提问、计划、中断、切换模型和模式、压缩、恢复、`doctor`；事件提交错误返回调用方，存储故障与持久解析诊断仅本机可查询 | 真实 CLI（`scripts/acceptance.sh`，[记录](acceptance-notes.md#2-本地和端到端p0-到-p2)） | Codex 0.159.2 的命令结果没有退出码，失败的命令显示成 ✓（见「待确认」） |
-| daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 自己的模型目录，模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
+| daemon（Claude Code） | 和 Codex 同等的全部操作，外加账户额度采集、退出结算和首条输出前中断恢复；模型列表、档位、上下文窗口和 auto 是否可用都读 Claude Code 的模型目录（它自己的缓存和编进 daemon 的副本取较新的），模型按具体 ID 选择 | 真实 CLI（`scripts/acceptance-claude.sh`，[记录](acceptance-notes.md#3-claude-code)） | 网页和原生客户端的直接界面操作；图片、auto 模式、审批超时、压缩、分叉 |
 | Antigravity（agy） | daemon 与协议 13、网页/Android/iOS 的多 CLI 界面已整合完成（[architecture §19](architecture.md#19-接入-antigravity)） | agy 1.5.0 真实加密端到端与 doctor；本机 Chrome 直接操作的新建、消息、审批、额度及会话设置；三端自动检查，见[整合验收](acceptance-notes.md#antigravity-三端整合与网页直接验收2026-11-04) | 原生客户端真机与直接界面操作；源会话退出后的 MCP 定时派发、API 计费来源仍待验证。审计修复的真实双图与自然计划流程见[复验](acceptance-notes.md#antigravity-审计修复复验2026-11-04) |
 | server 和端到端加密 | 设备登记和登录、密文存储和转发、配对、Web Push 和 FCM、图片存取和配额、会话列表分页、信封内层压缩；一台中继上的多个账户、开放注册和账户管理（[architecture](architecture.md#一台中继上的多个账户)） | 自动测试，加线上 server 的手动验收；协议版本 3 的分页和压缩在线上账户里用网页走过一遍（[记录](acceptance-notes.md#8-v9-以后的界面改动)）；多账户：自动测试，加一次旧库迁移的本地演练 | 协议版本 3 在 Android、Safari、多项目和断线重连下的验收；多账户在公共中继上由别人走一遍「试用」流程 |
 | 网页 | 当前界面稿 [client-v57](design/client-v57.html) 的全部画面，手机和宽屏 | 到 v7：真实 CLI 加逐屏对照；v8：真实 CLI，没有逐屏对照；v9 以后的改动大多只过自动测试（[记录](acceptance-notes.md#8-v9-以后的界面改动)） | 真机上的键盘、系统选图、分享面板、推送和扫码；Codex 生成图只用演示数据看过；往上翻时分段读取更早的记录 |

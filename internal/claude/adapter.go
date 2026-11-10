@@ -147,11 +147,8 @@ const (
 	StandardContextEnv = "CLAUDE_CODE_DISABLE_1M_CONTEXT"
 )
 
-// Models lists the models of Claude Code's own catalog. The default is the
-// model set in ~/.claude/settings.json, if any. Without a catalog (a fresh
-// install Claude Code has not fetched one for yet) there is no list: the
-// models are named by IDs Claude Code itself chooses, so none can be
-// offered or switched to.
+// Models lists the models of Claude Code's own catalog (catalog). The
+// default is the model set in ~/.claude/settings.json, if any.
 func (a *Adapter) Models() (*pb.ListModelsResponse, error) {
 	cat, err := a.catalog()
 	if err != nil {
@@ -581,13 +578,15 @@ func (a *Adapter) NewParser() agent.Parser {
 	return p
 }
 
-// catalog is Claude Code's model catalog as the installed CLI lists it.
+// catalog is Claude Code's model catalog as the installed CLI lists it:
+// the current one (CurrentCatalog) without the models this release of the
+// CLI or its provider does not offer.
 func (a *Adapter) catalog() (*Catalog, error) {
-	c, err := LoadCatalog(a.home)
+	c, err := CurrentCatalog(a.home)
 	if err != nil {
 		return nil, err
 	}
-	return c.ForVersion(a.Version()), nil
+	return c.ForVersion(a.Version()).ForProvider(provider(os.Getenv)), nil
 }
 
 // SubmitLog is the transcript itself: submitted messages show up there

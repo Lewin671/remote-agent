@@ -1,0 +1,354 @@
+{
+  "source": "https://downloads.claude.ai/model-catalog/v1/catalog.json",
+  "issued_at": "2026-11-10T03:49:03Z",
+  "version": 4463,
+  "models": [
+    {
+      "id": "claude-opus-5-5",
+      "name": "Opus 5.5",
+      "short_name": "Opus",
+      "description": "For complex work and everyday tasks",
+      "section": "main",
+      "min_claude_code_version": "2.1.280",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "medium",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-sonnet-5-5",
+      "name": "Sonnet 5.5",
+      "short_name": "Sonnet",
+      "description": "Most efficient for simpler tasks",
+      "section": "main",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "medium",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-fable-5-2",
+      "name": "Fable 5.2",
+      "short_name": "Fable",
+      "description": "For your toughest challenges",
+      "section": "main",
+      "min_claude_code_version": "2.1.290",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "medium",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-haiku-5-5",
+      "name": "Haiku 5.5",
+      "short_name": "Haiku",
+      "description": "Fastest for quick answers",
+      "section": "main",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "medium",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-fable-5-1",
+      "name": "Fable 5.1",
+      "short_name": "Fable",
+      "section": "overflow",
+      "min_claude_code_version": "2.1.251",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "name": "Haiku 4.5",
+      "short_name": "Haiku",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "auto_permission_mode": "unavailable",
+      "runtime": {
+        "max_input_tokens": 200000
+      }
+    },
+    {
+      "id": "claude-sonnet-5",
+      "name": "Sonnet 5",
+      "short_name": "Sonnet",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-opus-5",
+      "name": "Opus 5",
+      "short_name": "Opus",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-fable-5",
+      "name": "Fable 5",
+      "short_name": "Fable",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-opus-4-8",
+      "name": "Opus 4.8",
+      "short_name": "Opus",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-opus-4-7",
+      "name": "Opus 4.7",
+      "short_name": "Opus",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "mantle",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max"
+        ],
+        "default_effort": "xhigh",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-opus-4-6",
+      "name": "Opus 4.6",
+      "short_name": "Opus",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "name": "Sonnet 4.6",
+      "short_name": "Sonnet",
+      "section": "overflow",
+      "offered_on": [
+        "first_party",
+        "anthropic_aws",
+        "bedrock",
+        "vertex",
+        "foundry",
+        "gateway"
+      ],
+      "runtime": {
+        "effort_levels": [
+          "low",
+          "medium",
+          "high",
+          "max"
+        ],
+        "default_effort": "high",
+        "max_input_tokens": 1000000
+      }
+    },
+    {
+      "id": "claude-opus-4-1-20250805",
+      "name": "Opus 4.1",
+      "short_name": "Opus",
+      "section": "overflow",
+      "offered_on": [
+        "bedrock"
+      ],
+      "auto_permission_mode": "unavailable",
+      "runtime": {
+        "max_input_tokens": 200000
+      }
+    }
+  ]
+}

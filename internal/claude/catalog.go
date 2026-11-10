@@ -1,23 +1,69 @@
 package claude
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Claude Code keeps a model catalog of its own: the models /model offers
 // with their effort levels, context window and capabilities. It fetches the
 // catalog for the logged-in account about once an hour and caches one file
 // per account and surface under cache/model-catalog
-// (docs/claude-code-notes.md §9). remote-agent reads these files and never
+// (docs/claude-code-notes.md §13). remote-agent reads these files and never
 // writes them; the list it hands to clients is this catalog, so a model is
 // named by the ID the CLI itself uses rather than by an alias whose meaning
 // changes between releases.
+//
+// Claude Code stops fetching when it is told to keep to essential traffic
+// (CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC), and the cached file then
+// stays as it was, missing every model released since. The daemon
+// therefore also carries a trimmed copy of the catalog Claude Code
+// publishes (builtin-catalog.json, refreshed by scripts/model_catalog.py
+// before each release) and uses whichever of the two is newer. It never
+// fetches one itself.
+
+//go:embed builtin-catalog.json
+var builtinCatalogJSON []byte
+
+// builtinCatalog is the catalog built into the daemon; tests replace it.
+var builtinCatalog = parseBuiltin(builtinCatalogJSON)
+
+// parseBuiltin reads the built-in catalog: its rows have the cached
+// catalog's shape, and issued_at stands for the time it was fetched.
+func parseBuiltin(b []byte) *Catalog {
+	var f struct {
+		IssuedAt time.Time    `json:"issued_at"`
+		Models   []catalogRow `json:"models"`
+	}
+	if err := json.Unmarshal(b, &f); err != nil {
+		panic(fmt.Sprintf("built-in model catalog: %v", err))
+	}
+	return newCatalog(f.IssuedAt.UnixMilli(), f.Models)
+}
+
+// CurrentCatalog is the catalog to go by: the newer of the one Claude Code
+// has cached under home and the built-in one. Only a whole catalog is
+// taken, never rows from both: a row only the older one has may be a model
+// since withdrawn.
+func CurrentCatalog(home string) (*Catalog, error) {
+	cached, err := LoadCatalog(home)
+	b := builtinCatalog
+	switch {
+	case b == nil || len(b.Models) == 0:
+		return cached, err
+	case cached == nil || b.fetchedAt > cached.fetchedAt:
+		return b, nil
+	}
+	return cached, nil
+}
 
 // catalogDir is where the catalogs are cached under a Claude Code home.
 const catalogDir = "cache/model-catalog"
@@ -53,6 +99,9 @@ type Model struct {
 	// MinVersion is the oldest Claude Code release that lists the model;
 	// empty when the row does not say.
 	MinVersion string
+	// OfferedOn are the providers the model is served by ("first_party",
+	// "bedrock", "vertex", ...); empty when the row does not say.
+	OfferedOn []string
 }
 
 // Catalog is the model list Claude Code has cached, in the order /model
@@ -173,8 +222,9 @@ type catalogRow struct {
 		DefaultEffort  string   `json:"default_effort"`
 		MaxInputTokens int64    `json:"max_input_tokens"`
 	} `json:"runtime"`
-	AutoPermissionMode string `json:"auto_permission_mode"`
-	MinVersion         string `json:"min_claude_code_version"`
+	AutoPermissionMode string   `json:"auto_permission_mode"`
+	MinVersion         string   `json:"min_claude_code_version"`
+	OfferedOn          []string `json:"offered_on"`
 }
 
 // parseCatalog reads one cached file: nil for anything that is not this
@@ -185,8 +235,14 @@ func parseCatalog(b []byte) *Catalog {
 	if json.Unmarshal(b, &f) != nil || f.Catalog == nil || f.Catalog.Surface != catalogSurface || f.Catalog.Config == nil {
 		return nil
 	}
-	c := &Catalog{fetchedAt: f.FetchedAt, byID: map[string]*Model{}, byName: map[string]*Model{}}
-	for _, r := range f.Catalog.Config.Models {
+	return newCatalog(f.FetchedAt, f.Catalog.Config.Models)
+}
+
+// newCatalog is the catalog of these rows, fetched at this time (Unix
+// milliseconds).
+func newCatalog(fetchedAt int64, rows []catalogRow) *Catalog {
+	c := &Catalog{fetchedAt: fetchedAt, byID: map[string]*Model{}, byName: map[string]*Model{}}
+	for _, r := range rows {
 		if r.ID == "" || r.Disabled {
 			continue
 		}
@@ -205,13 +261,29 @@ func parseCatalog(b []byte) *Catalog {
 		}
 		m.AutoUnavailable = r.AutoPermissionMode == "unavailable"
 		m.MinVersion = r.MinVersion
-		c.Models = append(c.Models, m)
-		c.byID[m.ID] = m
-		if m.Name != "" {
-			c.byName[m.Name] = m
-		}
+		m.OfferedOn = r.OfferedOn
+		c.add(m)
 	}
 	return c
+}
+
+func (c *Catalog) add(m *Model) {
+	c.Models = append(c.Models, m)
+	c.byID[m.ID] = m
+	if m.Name != "" {
+		c.byName[m.Name] = m
+	}
+}
+
+// filter is the catalog with only the models keep accepts.
+func (c *Catalog) filter(keep func(*Model) bool) *Catalog {
+	out := &Catalog{fetchedAt: c.fetchedAt, byID: map[string]*Model{}, byName: map[string]*Model{}}
+	for _, m := range c.Models {
+		if keep(m) {
+			out.add(m)
+		}
+	}
+	return out
 }
 
 // ForVersion is the catalog as Claude Code version v lists it in /model: a
@@ -221,18 +293,39 @@ func (c *Catalog) ForVersion(v string) *Catalog {
 	if c == nil || v == "" {
 		return c
 	}
-	out := &Catalog{fetchedAt: c.fetchedAt, byID: map[string]*Model{}, byName: map[string]*Model{}}
-	for _, m := range c.Models {
-		if m.MinVersion != "" && versionLess(v, m.MinVersion) {
-			continue
-		}
-		out.Models = append(out.Models, m)
-		out.byID[m.ID] = m
-		if m.Name != "" {
-			out.byName[m.Name] = m
+	return c.filter(func(m *Model) bool { return m.MinVersion == "" || !versionLess(v, m.MinVersion) })
+}
+
+// ForProvider is the catalog without the models provider p does not
+// serve. A row that does not name its providers is kept.
+func (c *Catalog) ForProvider(p string) *Catalog {
+	if c == nil || p == "" {
+		return c
+	}
+	return c.filter(func(m *Model) bool { return len(m.OfferedOn) == 0 || slices.Contains(m.OfferedOn, p) })
+}
+
+// providerEnv are the variables that point Claude Code at a provider other
+// than Anthropic's own API, with the catalog's names for them.
+var providerEnv = []struct{ env, provider string }{
+	{"CLAUDE_CODE_USE_BEDROCK", "bedrock"},
+	{"CLAUDE_CODE_USE_VERTEX", "vertex"},
+	{"CLAUDE_CODE_USE_FOUNDRY", "foundry"},
+	{"CLAUDE_CODE_USE_ANTHROPIC_AWS", "anthropic_aws"},
+	{"CLAUDE_CODE_USE_MANTLE", "mantle"},
+	{"CLAUDE_CODE_USE_GATEWAY", "gateway"},
+}
+
+// provider is the catalog's name for the provider Claude Code uses, by
+// the daemon's environment: Anthropic's own API unless one of providerEnv
+// is set.
+func provider(getenv func(string) string) string {
+	for _, p := range providerEnv {
+		if v := getenv(p.env); v != "" && v != "0" && !strings.EqualFold(v, "false") {
+			return p.provider
 		}
 	}
-	return out
+	return "first_party"
 }
 
 // versionLess reports whether dotted version a is older than b. A suffix

@@ -20,6 +20,7 @@ const catalogSample = "testdata/catalog/example-org-1a2b3c4d5e6f-cc.json"
 // and a file of another surface, which must not be taken.
 func testCatalogHome(t *testing.T) string {
 	t.Helper()
+	withBuiltin(t, nil)
 	home := t.TempDir()
 	dir := filepath.Join(home, catalogDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -39,6 +40,16 @@ func testCatalogHome(t *testing.T) string {
 		}
 	}
 	return home
+}
+
+// withBuiltin replaces the built-in catalog for the test. The tests on the
+// sample catalog run without one: the built-in catalog is newer than the
+// sample, and would be taken in its place.
+func withBuiltin(t *testing.T, c *Catalog) {
+	t.Helper()
+	old := builtinCatalog
+	builtinCatalog = c
+	t.Cleanup(func() { builtinCatalog = old })
 }
 
 // testCatalog is the catalog of testCatalogHome.
@@ -237,5 +248,108 @@ func TestCatalogIgnoresUnusedExternalMetadata(t *testing.T) {
 		if got := parseCatalog(data); !reflect.DeepEqual(got, want) {
 			t.Fatalf("unused metadata %s changed catalog", metadata)
 		}
+	}
+}
+
+// The built-in catalog reads: every row has an ID and a name, no ID twice,
+// and it carries the time it was issued, which decides against the cache.
+func TestBuiltinCatalog(t *testing.T) {
+	c := parseBuiltin(builtinCatalogJSON)
+	if len(c.Models) == 0 || c.fetchedAt <= 0 {
+		t.Fatalf("built-in catalog: %d models, issued %d", len(c.Models), c.fetchedAt)
+	}
+	seen := map[string]bool{}
+	for _, m := range c.Models {
+		if m.ID == "" || m.Name == "" || seen[m.ID] {
+			t.Errorf("row %+v: no ID, no name or a repeated ID", m)
+		}
+		seen[m.ID] = true
+	}
+}
+
+// The newer of the cached and the built-in catalog is taken, whole: the
+// cache Claude Code stopped refreshing gives way to a newer built-in one,
+// a cache fetched since wins over it, and without a cache the built-in
+// one is there from the start.
+func TestCurrentCatalogTakesTheNewer(t *testing.T) {
+	home := testCatalogHome(t)
+	cached, err := LoadCatalog(home)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer := newCatalog(cached.fetchedAt+1, []catalogRow{{ID: "claude-new-1", Name: "New 1"}})
+	older := newCatalog(cached.fetchedAt-1, []catalogRow{{ID: "claude-old-1", Name: "Old 1"}})
+
+	withBuiltin(t, newer)
+	if c, err := CurrentCatalog(home); err != nil || c != newer {
+		t.Fatalf("newer built-in catalog not taken: %v", err)
+	}
+	if c, err := CurrentCatalog(t.TempDir()); err != nil || c != newer {
+		t.Fatalf("built-in catalog not taken without a cache: %v", err)
+	}
+	withBuiltin(t, older)
+	c, err := CurrentCatalog(home)
+	if err != nil || c.ByID("claude-old-1") != nil || len(c.Models) != len(cached.Models) {
+		t.Fatalf("newer cache not taken whole: %v", err)
+	}
+	withBuiltin(t, nil)
+	if _, err := CurrentCatalog(t.TempDir()); err == nil {
+		t.Fatal("a catalog from nowhere")
+	}
+}
+
+// A model not served by the provider in use is left out; a row that does
+// not name its providers stays. The provider comes from the variables
+// Claude Code reads, Anthropic's own API without any.
+func TestCatalogForProvider(t *testing.T) {
+	c := newCatalog(1, []catalogRow{
+		{ID: "a", Name: "A", OfferedOn: []string{"first_party", "bedrock"}},
+		{ID: "b", Name: "B", OfferedOn: []string{"bedrock"}},
+		{ID: "c", Name: "C"},
+	})
+	ids := func(c *Catalog) (out []string) {
+		for _, m := range c.Models {
+			out = append(out, m.ID)
+		}
+		return out
+	}
+	if got := ids(c.ForProvider("first_party")); !reflect.DeepEqual(got, []string{"a", "c"}) {
+		t.Errorf("first_party: %v", got)
+	}
+	if got := ids(c.ForProvider("bedrock")); !reflect.DeepEqual(got, []string{"a", "b", "c"}) {
+		t.Errorf("bedrock: %v", got)
+	}
+	if c.ForProvider("first_party").ByID("b") != nil {
+		t.Error("left-out model still found by ID")
+	}
+	env := func(m map[string]string) func(string) string { return func(k string) string { return m[k] } }
+	for want, e := range map[string]map[string]string{
+		"first_party": {},
+		"bedrock":     {"CLAUDE_CODE_USE_BEDROCK": "1"},
+		"vertex":      {"CLAUDE_CODE_USE_BEDROCK": "0", "CLAUDE_CODE_USE_VERTEX": "true"},
+	} {
+		if got := provider(env(e)); got != want {
+			t.Errorf("provider(%v) = %s, want %s", e, got, want)
+		}
+	}
+}
+
+// With the built-in catalog, a CLI release lists the models it offers on
+// Anthropic's API: Fable 5.2 from 2.1.290 on and not before, and never
+// Opus 4.1, which only Bedrock serves.
+func TestBuiltinCatalogForTheInstalledCLI(t *testing.T) {
+	c := parseBuiltin(builtinCatalogJSON).ForProvider("first_party")
+	if c.ByID("claude-opus-4-1-20250805") != nil {
+		t.Error("Opus 4.1 offered on Anthropic's API")
+	}
+	m := c.ByID("claude-fable-5-2")
+	if m == nil || m.MinVersion == "" {
+		t.Skip("the built-in catalog has no Fable 5.2 with a minimum version")
+	}
+	if c.ForVersion(m.MinVersion).ByID(m.ID) == nil {
+		t.Errorf("%s missing at %s", m.ID, m.MinVersion)
+	}
+	if c.ForVersion("2.1.1").ByID(m.ID) != nil {
+		t.Errorf("%s offered to 2.1.1", m.ID)
 	}
 }
