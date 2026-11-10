@@ -173,7 +173,7 @@ fun SessionScreen(sid: String) {
                 tab = it
                 viewPrefs.edit().putInt("tab", it).apply()
             },
-            Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp).widthIn(min = 188.dp),
+            Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp).widthIn(min = 188.dp).width(androidx.compose.foundation.layout.IntrinsicSize.Max),
             enabled = { it == 0 || hasTerminal },
             dot = if (status == Status.POPUP) 1 else -1,
             dark = term,
@@ -820,6 +820,7 @@ private fun PendingBubble(
                         })
                     },
                     enabled = online && !resume.running,
+                    modifier = Modifier.padding(start = 8.dp),
                     style = T.s13,
                     alignment = Alignment.Center,
                 )
@@ -828,6 +829,7 @@ private fun PendingBubble(
                     if (cancel is Cancels.State.Failed) "重试" else "取消",
                     { Cancels.cancel(remote, sid, pending.id) },
                     enabled = online,
+                    modifier = Modifier.padding(start = 8.dp),
                     style = T.s13,
                     alignment = Alignment.Center,
                 )

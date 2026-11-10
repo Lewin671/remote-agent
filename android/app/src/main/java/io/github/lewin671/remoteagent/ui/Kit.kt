@@ -544,7 +544,7 @@ internal fun ActionSheetRow(a: SheetAction, first: Boolean = true, onClick: () -
             Text(a.text, style = T.s17, color = if (!a.enabled) p.ink3 else if (a.danger && a.value == null) p.red else p.ink, modifier = Modifier.weight(1f))
             if (a.value != null) {
                 Text(a.value, style = T.s17, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.ink2,
-                    textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(2f, fill = false))
+                    textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 220.dp))
                 Arrow(p.ink3, T.s15)
             }
         }
