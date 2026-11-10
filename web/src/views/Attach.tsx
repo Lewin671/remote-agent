@@ -1,10 +1,12 @@
 // Choosing images for a message: the ＋ button (the system's picker:
 // library, camera, files), dropping or pasting on wide screens, and the
-// tray of chosen images above the text with each one's upload.
+// tray of chosen images above the text with each one's upload. A computer
+// that takes files also gets videos from the library: they go as files
+// (session-files.md 从相册选视频), drawn in the tray among the images.
 
 import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
 import { Tray, type TrayItem } from "../attach";
-import { machineName } from "../model";
+import { clock, machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
 import { FileChip } from "./Files";
@@ -72,11 +74,30 @@ export function attachmentFiles(list: FileList | DataTransferItemList | null | u
   return out;
 }
 
-export function imageFiles(list: FileList | DataTransferItemList | null | undefined): File[] {
-  return attachmentFiles(list).filter((f) => f.type.startsWith("image/"));
+/** Whether a chosen file is a video, which goes as a file and shows in
+ * the tray beside the images. */
+export function isVideo(f: Blob): boolean {
+  return f.type.startsWith("video/");
 }
 
-/** A quiet two-choice menu only when the machine offers file uploads. */
+/** What the library picker offers: images, and videos too when the
+ * computer takes files. */
+export function mediaAccept(fileSupported: boolean): string {
+  return fileSupported ? "image/*,video/*" : "image/*";
+}
+
+/** Files chosen from the library into the tray: images as images, the
+ * rest (videos) as files, which checks their size and count as it takes
+ * them, and says so when the computer cannot take files. */
+export function addMedia(tray: Tray, files: File[]) {
+  const images = files.filter((f) => f.type.startsWith("image/"));
+  const other = files.filter((f) => !f.type.startsWith("image/"));
+  if (images.length) tray.add(images);
+  if (other.length) tray.addFiles(other);
+}
+
+/** ＋ opens the library at once; when the machine offers file uploads it
+ * opens a small menu above it instead: 照片和视频, 文件. */
 export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", label = <Plus /> }: {
   tray: Tray; blocked: string; onBlocked: (why: string) => void; className?: string; label?: ReactNode;
 }) {
@@ -94,7 +115,9 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
   const pick = (file: boolean) => {
     setOpen(false);
     if (blocked) return onBlocked(blocked);
-    if (file ? tray.files().length >= tray.maxFiles : tray.full()) return onBlocked(file ? `一条消息最多 ${tray.maxFiles} 个文件` : `一条消息最多 ${tray.max} 张`);
+    const filesFull = tray.files().length >= tray.maxFiles;
+    // The library is full only when neither another image nor a video fits.
+    if (file ? filesFull : tray.full() && (!tray.fileSupported || filesFull)) return onBlocked(file ? `一条消息最多 ${tray.maxFiles} 个文件` : `一条消息最多 ${tray.max} 张`);
     (file ? files : input).current?.click();
   };
   return <span className="attach-wrap" ref={wrap}>
@@ -102,12 +125,12 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
       onMouseDown={(e) => e.preventDefault()} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
     {open && (
       <div className="attach-menu glass" role="menu">
-        <button role="menuitem" onClick={() => pick(false)}><ImageIcon />图片</button>
+        <button role="menuitem" onClick={() => pick(false)}><ImageIcon />照片和视频</button>
         <button role="menuitem" onClick={() => pick(true)}><FileIcon />文件</button>
         <p>文件原样发送，包含其中的元数据。</p>
       </div>
     )}
-    <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { tray.add(imageFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+    <input ref={input} type="file" accept={mediaAccept(tray.fileSupported)} multiple hidden onChange={(e) => { addMedia(tray, attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
     <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
   </span>;
 }
@@ -143,6 +166,61 @@ function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => vo
   );
 }
 
+/** A chosen video in the tray: its first frame with its length in a
+ * corner, or, when neither can be read, the file icon and its name. */
+function VideoThumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => void; onRetry: () => void }) {
+  const [url, setUrl] = useState<string>();
+  const [length, setLength] = useState<number | "unknown">();
+  useEffect(() => {
+    const u = URL.createObjectURL(item.file);
+    setUrl(u);
+    setLength(undefined);
+    return () => URL.revokeObjectURL(u);
+  }, [item.file]);
+  const busy = item.state === "preparing" || item.state === "uploading";
+  const read = typeof length === "number";
+  return (
+    <span className={"pic tthumb video" + (length === "unknown" ? " plain" : "")} title={item.name}>
+      {url && length !== "unknown" && (
+        <video
+          src={url + "#t=0.1"}
+          muted
+          playsInline
+          preload="metadata"
+          aria-hidden
+          onLoadedMetadata={(e) => {
+            const d = e.currentTarget.duration;
+            setLength(Number.isFinite(d) ? d : "unknown");
+          }}
+          onError={() => setLength("unknown")}
+        />
+      )}
+      {length === "unknown" && (
+        <span className="vname">
+          <FileIcon />
+          <span>{item.name}</span>
+        </span>
+      )}
+      {read && <span className="dur">{clock(length * 1000)}</span>}
+      {busy && item.progress > 0 && item.progress < 1 ? (
+        <span className="pct">
+          <b style={{ width: `${Math.round(item.progress * 100)}%` }} />
+        </span>
+      ) : (
+        busy && <span className="ring spin" aria-label="上传中" />
+      )}
+      {item.state === "failed" && (
+        <button className="badge retry" onClick={onRetry} title={item.error}>
+          重试
+        </button>
+      )}
+      <button className="x" onClick={onRemove} aria-label={`移除视频 ${item.name ?? ""}`.trim()}>
+        <X />
+      </button>
+    </span>
+  );
+}
+
 function mb(n: number): string {
   return n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
@@ -152,18 +230,27 @@ function mb(n: number): string {
 export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
   if (tray.items.length === 0 && !tray.note) return <>{note}</>;
   const images = tray.images();
-  const files = tray.files();
+  // Videos from the library sit among the images, in the order chosen;
+  // other files are chips.
+  const thumbs = tray.items.filter((i) => i.kind !== "file" || isVideo(i.file));
+  const files = tray.files().filter((i) => !isVideo(i.file));
   const failed = images.filter((i) => i.state === "failed");
-  const failedFiles = files.filter((i) => i.state === "failed");
+  const failedFiles = tray.files().filter((i) => i.state === "failed");
   return (
     <div className="attachments">
+      {thumbs.length > 0 && (
+        <div className="att-tray">
+          {thumbs.map((i) =>
+            i.kind === "file" ? (
+              <VideoThumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
+            ) : (
+              <Thumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
+            ),
+          )}
+        </div>
+      )}
       {images.length > 0 && (
         <>
-          <div className="att-tray">
-            {images.map((i) => (
-              <Thumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
-            ))}
-          </div>
           <div className="att-meta">
             <button
               className={"orig" + (tray.original ? " on" : "")}
@@ -183,10 +270,8 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
         </>
       )}
       {tray.original && images.length > 0 && <div className="att-hint">原图保住画质；两个 CLI 仍会把过大的图缩到 2000px 左右。</div>}
-      {files.length > 0 && <>
-        <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>
-        <div className="att-hint">文件原样发送，包含其中的元数据。</div>
-      </>}
+      {files.length > 0 && <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>}
+      {tray.files().length > 0 && <div className="att-hint">文件原样发送，包含其中的元数据。</div>}
       {failedFiles.length > 0 && <Banner kind="err">{failedFiles[0].error}。点「重试」或移除后才能发送</Banner>}
       {failed.length > 0 && (
         <Banner kind="err">

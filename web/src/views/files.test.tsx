@@ -10,7 +10,7 @@ import { DemoRemote } from "../dev/demo";
 import { Remote } from "../remote";
 import { PendingBubbles } from "./Queue";
 import { Tray } from "../attach";
-import { AttachButton, useDropPaste } from "./Attach";
+import { AttachButton, TrayView, useDropPaste } from "./Attach";
 import { FileChip, withoutFileLines } from "./Files";
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
@@ -21,11 +21,11 @@ function tray() {
   const t = new Tray(async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 }), async (_m, p) => ({ imageId: p.format === "file" ? "" : "i", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined);
   t.machineId = "mac"; t.fileSupported = true; return t;
 }
-it("offers 图片 / 文件, and selecting an image under 文件 never compresses it", async () => {
+it("offers 照片和视频 / 文件, and selecting an image under 文件 never compresses it", async () => {
   const t = tray(); const prepare = vi.spyOn(t as unknown as { prepare: () => Promise<unknown> }, "prepare");
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
-  expect([...host.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).toEqual(["图片", "文件"]);
+  expect([...host.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).toEqual(["照片和视频", "文件"]);
   const file = new File(["bytes"], "photo.png", { type: "image/png" });
   const input = host.querySelector<HTMLInputElement>('input:not([accept])')!;
   Object.defineProperty(input, "files", { value: [file], configurable: true });
@@ -93,7 +93,7 @@ it("closes the plus menu after either choice, outside pointerdown and Escape", a
   const menus = () => host.querySelectorAll('[role="menu"]');
   const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="file"]')];
   const clicks = inputs.map((input) => vi.spyOn(input, "click").mockImplementation(() => undefined));
-  for (const label of ["图片", "文件"]) {
+  for (const label of ["照片和视频", "文件"]) {
     await act(async () => plus().click());
     expect(menus()).toHaveLength(1);
     await act(async () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === label)!.click());
@@ -163,3 +163,82 @@ it("keeps original queued content when a held live snapshot carries truncated te
   expect(historical.accepted.get("r")?.mode).toBe(SendMode.QUEUE);
 });
 
+/** A file of the given size without holding its bytes. */
+function sized(name: string, type: string, size: number): File {
+  const f = new File(["v"], name, { type });
+  Object.defineProperty(f, "size", { value: size });
+  return f;
+}
+/** Chooses files in the picker an AttachButton's menu item opens. */
+async function choose(label: string, files: File[]) {
+  const plus = host.querySelector<HTMLButtonElement>("button")!;
+  const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="file"]')];
+  const clicked: HTMLInputElement[] = [];
+  for (const input of inputs) vi.spyOn(input, "click").mockImplementation(() => void clicked.push(input));
+  if (plus.getAttribute("aria-expanded") !== null) {
+    await act(async () => plus.click());
+    await act(async () => [...host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((b) => b.textContent === label)!.click());
+  } else await act(async () => plus.click());
+  const input = clicked[0];
+  Object.defineProperty(input, "files", { value: files, configurable: true });
+  await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })));
+  return input;
+}
+it("takes images and videos together from the library when the computer takes files", async () => {
+  const t = tray();
+  const upload = vi.spyOn(t as unknown as { upload: () => Promise<unknown> }, "upload");
+  mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
+  const input = await choose("照片和视频", [new File(["png"], "shot.png", { type: "image/png" }), sized("clip.mov", "video/quicktime", 2048)]);
+  expect(input.accept).toBe("image/*,video/*");
+  await vi.waitFor(() => expect(t.ready()).toBe(true));
+  // The image goes as an image; the video as a file, uploaded as it is.
+  expect(t.images().map((i) => i.file.type)).toEqual(["image/png"]);
+  expect(t.files().map((f) => f.name)).toEqual(["clip.mov"]);
+  expect(t.fileIds()).toEqual(["clip.mov"]);
+  expect(upload.mock.calls.map((c) => (c as unknown[])[1] as { format: string }).map((p) => p.format).sort()).toEqual(["file", "png"]);
+});
+it("says at once that a video over the file limit is too big, and uploads nothing", async () => {
+  const t = tray();
+  const upload = vi.spyOn(t as unknown as { upload: () => Promise<unknown> }, "upload");
+  mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
+  await choose("照片和视频", [sized("long.mp4", "video/mp4", 100 * 1024 * 1024 + 1)]);
+  expect(t.items).toHaveLength(0);
+  expect(t.note).toContain("「long.mp4」超过单个文件 100 MB 的上限");
+  expect(upload).not.toHaveBeenCalled();
+  // At the file count limit, a video is not taken either.
+  t.maxFiles = 1;
+  await choose("照片和视频", [sized("a.mp4", "video/mp4", 10), sized("b.mp4", "video/mp4", 10)]);
+  expect(t.files().map((f) => f.name)).toEqual(["a.mp4"]);
+  expect(t.note).toContain("一条消息最多 1 个文件");
+});
+it("offers only images from the library when the computer cannot take files", async () => {
+  const t = tray(); t.fileSupported = false;
+  mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
+  expect(host.querySelector('[aria-label="添加图片"]')).toBeTruthy();
+  // ＋ opens the library at once, which lists images only.
+  const input = await choose("", [sized("clip.mov", "video/quicktime", 10)]);
+  expect(input.accept).toBe("image/*");
+  expect(host.querySelector('[role="menu"]')).toBeNull();
+  // A video slipped through the picker is not sent as a file.
+  expect(t.files()).toHaveLength(0);
+  expect(t.note).toContain("这台电脑不支持发送文件");
+});
+it("draws a chosen video among the images, its length in a corner, or its name when it cannot be read", async () => {
+  const t = tray();
+  t.add([new File(["png"], "shot.png", { type: "image/png" })]);
+  t.addFiles([sized("clip.mov", "video/quicktime", 10), new File(["a,b"], "data.csv", { type: "text/csv" })]);
+  mount(<TrayView tray={t} />);
+  const thumbs = [...host.querySelectorAll(".att-tray .pic")];
+  expect(thumbs).toHaveLength(2);
+  expect(thumbs[1].classList.contains("video")).toBe(true);
+  // Other files stay chips.
+  expect([...host.querySelectorAll(".file-chip")].map((c) => c.querySelector(".file-name")?.getAttribute("aria-label"))).toEqual(["data.csv"]);
+  const video = thumbs[1].querySelector("video")!;
+  Object.defineProperty(video, "duration", { value: 75.4, configurable: true });
+  await act(async () => video.dispatchEvent(new Event("loadedmetadata")));
+  expect(thumbs[1].querySelector(".dur")?.textContent).toBe("1:15");
+  await act(async () => thumbs[1].querySelector("video")!.dispatchEvent(new Event("error")));
+  expect(thumbs[1].querySelector("video")).toBeNull();
+  expect(thumbs[1].querySelector(".vname")?.textContent).toBe("clip.mov");
+  expect(thumbs[1].querySelector(".dur")).toBeNull();
+});
