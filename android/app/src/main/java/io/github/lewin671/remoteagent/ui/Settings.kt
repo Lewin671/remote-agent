@@ -38,6 +38,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import kotlin.math.roundToInt
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -172,10 +174,10 @@ fun SettingsScreen() {
         RotateRecoveryScreen { rotating = false }
         return
     }
-    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(
             Modifier.fillMaxSize()
-                .background(p.gbg)
+                .background(p.paper)
                 .verticalScroll(rememberScrollState())
                 .readableColumn(),
         ) {
@@ -364,90 +366,70 @@ fun SettingsScreen() {
 }
 
 /**
- * Settings' 电脑 group. Only the authority gets the 添加设备 row; other clients name it.
+ * Settings' 电脑 (design-system §6 设置): each computer a card with its name,
+ * whether it is online, and a line per CLI of how much quota is left with a
+ * thin bar, orange at 20% or less. 添加设备 is the row after them; only the
+ * authority has it, other clients name it.
  */
 @Composable
 internal fun MachinesGroup(state: RemoteState, t: Long) {
     val nav = LocalNav.current
     val p = pal
     GLabel("电脑", "全部设备", onAction = { nav.devices() })
-    val machineRows =
-        state.machines.values
-            .sortedBy { machineLabel(state, it.id) }
-            .map { m ->
-                @Composable {
-                    Row(
-                        Modifier.fillMaxWidth()
-                            .clickable { nav.device(m.id) }
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        Ico(Lucide.Laptop, p.blue)
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                machineLabel(state, m.id),
-                                style = T.s15,
-                                color = p.ink,
-                                maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                            )
-                            val q =
-                                io.github.lewin671.remoteagent.core
-                                    .quotaGroups(m, t)
-                                    .firstOrNull()
-                                    ?.let { g ->
-                                        g.rows
-                                            .lastOrNull { it.percent != null }
-                                            ?.let {
-                                                "${agentName(g.agent)} · ${it.label}${it.used}"
-                                            }
-                                    }
-                            if (q != null)
-                                Text(
-                                    q,
-                                    style = T.s13,
-                                    color = p.ink2,
-                                    modifier = Modifier.padding(top = 2.dp),
-                                )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        ) {
-                            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF)
-                            Text(
-                                if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).ifEmpty { "离线" },
-                                style = T.s13,
-                                color = p.ink2,
-                                maxLines = 1,
-                            )
-                        }
-                        Arrow(p.ink2, T.s15)
-                    }
+    val machines = state.machines.values.sortedBy { machineLabel(state, it.id) }
+    for (m in machines) MachineCard(state, m, t) { nav.device(m.id) }
+    if (state.isAuthority)
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 52.dp).clip(Radii.Pill).background(p.gbg)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button) { nav.pair() },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+        ) {
+            Ic(Lucide.Plus, 20.dp, p.blue)
+            Text("添加设备", style = T.s17b, color = p.blue)
+        }
+    else Hint(
+        if (machines.isEmpty()) noMachinesHint(state) else addDeviceHint(state),
+        Modifier.padding(horizontal = 28.dp),
+    )
+    Spacer(Modifier.height(12.dp))
+}
+
+/** One computer's card: gbg, radius 28, outlined only when it is away. */
+@Composable
+private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.core.MachineView, t: Long, onClick: () -> Unit) {
+    val p = pal
+    Column(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R28)
+            .then(if (m.online) Modifier.background(p.gbg) else Modifier.border(0.5.dp, p.sep, Radii.R28))
+            .clickable(onClick = onClick).padding(18.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(machineLabel(state, m.id), style = T.h20, color = p.ink, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            Arrow(p.ink3, T.s17)
+        }
+        Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
+            Text(
+                if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).let { if (it.isEmpty()) "离线" else "${it}在线" },
+                style = T.s13, color = p.ink2, maxLines = 1,
+            )
+        }
+        if (m.online) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t)) {
+            val row = g.rows.filter { it.percent != null }.maxByOrNull { it.percent!! } ?: continue
+            val left = (100 - row.percent!!).coerceIn(0.0, 100.0)
+            val low = left <= 20.0
+            Column(Modifier.padding(top = 14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(agentName(g.agent), style = T.s15b, color = p.ink, modifier = Modifier.weight(1f), maxLines = 1)
+                    Text("剩 ${left.roundToInt()}%", style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
+                    if (row.reset.isNotEmpty()) Text(row.reset, style = T.s13, color = p.ink2, maxLines = 1)
+                }
+                Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
+                    Box(Modifier.fillMaxWidth((left / 100).toFloat()).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
                 }
             }
-    if (state.isAuthority)
-        Group(
-            rows =
-                machineRows +
-                    listOf(
-                        @Composable {
-                            GRow(
-                                "添加设备",
-                                onClick = { nav.pair() },
-                                action = true,
-                                icon = Lucide.Plus,
-                            )
-                        },
-                    ),
-        )
-    else {
-        if (machineRows.isNotEmpty()) Group(rows = machineRows)
-        Hint(
-            if (machineRows.isEmpty()) noMachinesHint(state) else addDeviceHint(state),
-            Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
-        )
+        }
     }
 }
 
