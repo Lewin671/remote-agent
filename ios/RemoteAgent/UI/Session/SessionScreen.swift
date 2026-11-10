@@ -88,6 +88,7 @@ private struct SessionPage: View {
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.horizontalSizeClass) private var width
     @State private var chat = SessionModel()
     @State private var tab: Int
     @State private var menu = false
@@ -145,7 +146,12 @@ private struct SessionPage: View {
         let status = shownStatus(state, s)
         let running = chat.derived.running || status == .running
         let hasTerminal = terminalAvailable(status)
+        // A wide window shows both side by side as a third choice (design-system §6 「宽屏」).
+        let wide = width == .regular
+        let both = wide && tab == 2 && hasTerminal
         let term = tab == 1 && hasTerminal
+        let views = wide ? ["聊天", "终端", "并排"] : ["聊天", "终端"]
+        let view = Binding(get: { both ? 2 : term ? 1 : 0 }, set: { pick($0) })
         let live = status != .exited && status != .offline
         let mode = status == .exited ? nil : modeLabel(s)
         // Unknown context is left out, never shown as 0%.
@@ -154,7 +160,16 @@ private struct SessionPage: View {
         let refusal = protocolMismatch(state.machines[s.machineId])
         let subtitle = sessionSubtitle(status: status, mode: mode)
         Group {
-            if term {
+            if both {
+                // The terminal is a dark panel set into the page beside the chat.
+                HStack(spacing: 0) {
+                    ChatPane(session: s, status: status, chat: chat) { pick(1) }
+                    TerminalPane(sessionId: sid, running: true)
+                        .background(TermColors.bg)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.command, style: .continuous))
+                        .padding(12)
+                }
+            } else if term {
                 TerminalPane(sessionId: sid, running: true)
             } else {
                 ChatPane(session: s, status: status, chat: chat) { pick(1) }
@@ -166,10 +181,11 @@ private struct SessionPage: View {
         // Under the title: 聊天 / 终端 on glass, then the strips of what stands in the way, the content sliding under them.
         .floatingBar(.top) {
             VStack(spacing: 8) {
-                GlassSegmented(
-                    items: ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
-                    enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
-                    .accessibilityIdentifier("session-view")
+                // Wide, the choice is in the bar beside ⋯ and the top is one line.
+                if !wide {
+                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
+                        .accessibilityIdentifier("session-view")
+                }
                 ConnectionStrip()
                 if let refusal { GlassStrip(text: refusal, symbol: "exclamationmark.triangle", tone: .attention) }
                 if !act.error.isEmpty { GlassStrip(text: act.error, symbol: "xmark", tone: .error) }
@@ -196,6 +212,12 @@ private struct SessionPage: View {
             ToolbarItem(placement: .principal) {
                 SessionTitle(
                     title: titleOf(s), mark: StatusKind(status), status: subtitle.status, mode: subtitle.mode, danger: subtitle.danger)
+            }
+            if wide {
+                ToolbarItem(placement: .topBarTrailing) {
+                    GlassSegmented(items: views, selected: view, enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
+                        .accessibilityIdentifier("session-view")
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { menu = true } label: {
