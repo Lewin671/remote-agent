@@ -102,7 +102,7 @@ struct DialogCard<Content: View>: View {
 /// `value`: what a setting is now; the row then reads 「名称 …… 值 ›」 and
 /// opens where it is changed, and `danger` (完全放行) or `warn` (a nearly
 /// full context) colour the value. Without one, `danger` makes the row red
-/// (中断本轮, 结束会话…). Not `enabled`: greyed and not tappable. `note`: a
+/// (中断, 结束会话…). Not `enabled`: greyed and not tappable. `note`: a
 /// small line under it, why it is not available or (`noteError`) how it
 /// failed. `busy`: it is running, shown with a spinner; the other choices are
 /// then given not enabled and the menu stays until it ends. `keepOpen`:

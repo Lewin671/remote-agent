@@ -6,7 +6,7 @@
 // state and its approval mode, red only for full access. Everything else
 // about the session (CLI, project, computer, folder) heads the ⋯ menu, a
 // list whose rows are the mode, the model and the context (「名称 …… 值 ›」),
-// then 项目设置, 重命名, 分叉会话, and in red 中断本轮 and 结束会话…. A
+// then 项目设置, 重命名, 分叉会话, and in red 中断 and 结束会话…, in three groups of a system sheet. A
 // choice that cannot be made now is not hidden: it is greyed, with when it
 // can be under it.
 import RACore
@@ -209,11 +209,12 @@ private struct SessionPage: View {
         }
         .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
-        .actionMenu(isPresented: $menu, actions: actions(status: status, running: running, live: live, mode: mode, percent: percent)) {
+        .menuSheet(isPresented: $menu, groups: groups(status: status, running: running, live: live, mode: mode, percent: percent)) {
+            // What the menu is about: the CLI, the project, the computer, then the folder (design-system §6 「弹层与对话框」).
             VStack(alignment: .leading, spacing: 2) {
                 Text("\(agentName(s.agent)) · \(projectName(projectKey(s))) · \(machineLabel(state, id: s.machineId))")
-                    .type(T.bodyB, Theme.fg)
-                Text(shortPath(s.info?.cwd ?? "")).type(T.mono, Theme.fg2)
+                    .font(.headline).foregroundStyle(DS.ink)
+                Text(shortPath(s.info?.cwd ?? "")).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
             }
         }
         .onChange(of: menu) { _, shown in if !shown { context.sessionStore.dismissForkError(sid) } }
@@ -290,7 +291,8 @@ private struct SessionPage: View {
         }
     }
 
-    private func actions(status: Status, running: Bool, live: Bool, mode: ModeLabel?, percent: Int?) -> [SheetAction] {
+    /// The menu's three groups: the settings (审批模式, 模型, 上下文), what can be done, and 结束会话….
+    private func groups(status: Status, running: Bool, live: Bool, mode: ModeLabel?, percent: Int?) -> [[SheetAction]] {
         let state = model.state
         let s = session
         let sid = s.id
@@ -305,20 +307,22 @@ private struct SessionPage: View {
         let raw = s.info?.model ?? ""
         let name = models.flatMap { findModel($0.models, id: raw) { $0.slug }?.displayName } ?? raw
         let effort = s.info?.effort ?? ""
+        var settings: [SheetAction] = []
         var list: [SheetAction] = []
+        var end: [SheetAction] = []
         if live {
             // A mode that could not be read has no row: there is nothing to say of it.
             for row in menuSettings(mode: mode, model: name, effort: effort, percent: percent) {
-                list.append(SheetAction(row.text, value: row.value, danger: row.danger, warn: row.warn, enabled: !forking) {
+                settings.append(SheetAction(row.text, value: row.value, danger: row.danger, warn: row.warn, enabled: !forking) {
                     afterMenu { sheet = row.opens == .mode ? .mode : .model }
                 })
             }
         }
-        list.append(SheetAction("定时发送…", enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : "需要更新 remote-agent") {
-            afterMenu { scheduleSending = true }
-        })
         list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
+        })
+        list.append(SheetAction("定时发送…", enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : "需要更新 remote-agent") {
+            afterMenu { scheduleSending = true }
         })
         if reachable {
             list.append(SheetAction("重命名", enabled: !forking) { afterMenu { rename = true } })
@@ -340,14 +344,14 @@ private struct SessionPage: View {
             }
         }
         if running {
-            list.append(SheetAction("中断本轮", danger: true, enabled: !forking) {
+            list.append(SheetAction("中断", danger: true, enabled: !forking) {
                 command(act) { $0.interrupt = .with { $0.sessionID = sid } }
             })
         }
         if status != .exited {
-            list.append(SheetAction("结束会话…", danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
+            end.append(SheetAction("结束会话…", danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
         }
-        return list
+        return [settings, list, end]
     }
 }
 
