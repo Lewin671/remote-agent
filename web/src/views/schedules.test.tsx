@@ -107,10 +107,13 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
   ]);
   const go = vi.fn();
   await mount(<SchedulesPage remote={r} go={go} />);
-  expect(host.textContent!.indexOf("需要你看一下")).toBeLessThan(
-    host.textContent!.indexOf("最近"),
+  // The sentence counts what stopped; its card comes before the other tasks.
+  expect(host.querySelector(".hl")?.textContent).toBe("1 个任务停下了");
+  expect(host.textContent!.indexOf("失败任务")).toBeLessThan(
+    host.textContent!.indexOf("其他任务"),
   );
-  expect(host.querySelectorAll(".sess")).toHaveLength(2);
+  expect(host.querySelector(".rc.warn")?.textContent).toContain("失败任务");
+  expect(host.querySelectorAll(".schedule-line")).toHaveLength(2);
   await click(/失败任务/);
   expect(go).toHaveBeenCalledWith("tasks/mac/bad");
   await act(async () => {
@@ -118,7 +121,7 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
     r.touch();
   });
   expect(host.textContent).toContain(scheduleOffline);
-  expect(host.querySelectorAll(".sess.off")).toHaveLength(2);
+  expect(host.querySelectorAll(".schedule-line.off")).toHaveLength(2);
   await act(async () =>
     root!.render(
       <ScheduleDetail
@@ -452,7 +455,7 @@ it("creates with an optional name after the message and preserves that name in t
     [...host.querySelectorAll(".schedule-body > label, .schedule-body label")]
       .slice(0, 2)
       .map((el) => el.textContent),
-  ).toEqual(["让 agent 做什么", "任务名"]);
+  ).toEqual(["消息", "任务名"]);
   await input(name, "每小时看 PR");
   await input(
     host.querySelector("textarea")!,
@@ -731,7 +734,7 @@ it("uses the shared new-task explanation in the actual creation page", async () 
   // is the same whichever project comes first.
   for (const m of r.machines.values()) if (m.meta) m.meta.agents = r.machines.get("mac")!.meta!.agents;
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
-  expect(host.querySelector(".manage-hint")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。");
+  expect(host.querySelector(".schedule-body > .gf:last-child")?.textContent).toBe("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。");
 });
 
 it("defaults dual limits to count and preserves the deadline when only the zone changes",async()=>{
@@ -762,12 +765,12 @@ it("shows CLI as plain text on a single-CLI computer and a segmented control whe
   r.sessions.clear();
   r.sessions.set("s-idle", idle);
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
-  expect(host.querySelector(".mini-seg")).not.toBeNull();
+  expect(host.querySelector(".schedule-field .seg")).not.toBeNull();
   await act(async () => {
     r.machines.get("mac")!.meta!.agents = r.machines.get("mac")!.meta!.agents.filter((a) => a.agent === Agent.CODEX);
     r.touch();
   });
-  expect(host.querySelector(".mini-seg")).toBeNull();
+  expect(host.querySelector(".schedule-field .seg")).toBeNull();
   const cliField = [...host.querySelectorAll(".schedule-field")].find((el) => el.firstElementChild?.textContent === "CLI");
   expect(cliField?.querySelector(".v")?.textContent).toBe("Codex");
 });
@@ -889,11 +892,12 @@ it("keeps unread on opening the list, reads only the detail, and keeps entry dot
   expect(r.scheduleNewResults()).toBe(true);
   await mount(<SchedulesPage remote={r} go={() => {}} />);
   expect(r.scheduleNewResults()).toBe(true);
-  expect(host.querySelectorAll(".sess.unread")).toHaveLength(2);
+  expect(host.querySelectorAll(".schedule-line.unread")).toHaveLength(2);
+  expect(host.querySelector(".hl")?.textContent).toBe("2 个新结果");
   tasks[0].runs!.push(run("while-list-open", { notified: true }));
   await act(async () => { await r.refreshSchedules("mac"); });
   expect(r.scheduleNewResults()).toBe(true);
-  expect(host.querySelectorAll(".sess.unread")).toHaveLength(2);
+  expect(host.querySelectorAll(".schedule-line.unread")).toHaveLength(2);
   await act(async () => root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />));
   expect(r.scheduleNewResults()).toBe(true);
   expect(host.querySelectorAll(".schedule-unread-dot")).toHaveLength(2);
@@ -947,12 +951,12 @@ it("leaves 新定时 to the bottom row and remembers the ended group on this dev
   // The page's head has no button of its own: the shell's ink 新定时 makes a task.
   expect(host.querySelector(".large button")).toBeNull();
   expect(host.querySelector(".task-new")).toBeNull();
-  expect(host.querySelectorAll(".sess")).toHaveLength(0);
+  expect(host.querySelectorAll(".schedule-line")).toHaveLength(0);
   await click(/已结束/);
-  expect(host.querySelectorAll(".sess")).toHaveLength(1);
+  expect(host.querySelectorAll(".schedule-line")).toHaveLength(1);
   expect(localStorage.getItem("schedule-ended-open")).toBe("true");
   await act(async () => root!.render(<SchedulesPage key="remount" remote={r} go={go} />));
-  expect(host.querySelectorAll(".sess")).toHaveLength(1);
+  expect(host.querySelectorAll(".schedule-line")).toHaveLength(1);
 });
 it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
   const r = remote(); r.machines.get("mac")!.online = false;
@@ -1122,9 +1126,11 @@ it("shows the latest notified preview instead of a newer quiet result, caps unre
   await r.refreshSchedules("mac");
   r.machines.get("mac")!.online = false;
   await mount(<SchedulesPage remote={r} go={() => {}} />);
-  const row = host.querySelector(".sess")!;
+  // A new result is a card: its blue dot in its head, four lines of it, 看全文 ›.
+  const row = host.querySelector(".rc.schedule-line")!;
   expect(row.classList.contains("unread")).toBe(true);
-  expect(row.querySelector('.schedule-lead [aria-label="有新结果"]')).not.toBeNull();
+  expect(row.querySelector('.row1 [aria-label="有新结果"]')).not.toBeNull();
+  expect(row.querySelector(".go")?.textContent).toBe("看全文");
   expect(row.querySelector(".row1 b")?.textContent).toBe(longTitle);
   expect(row.querySelector(".row1 > span")?.textContent).toBe(scheduleTime(ended_at));
   expect(row.querySelector(".pv")?.textContent).toBe(summary);
@@ -1136,7 +1142,8 @@ it("shows the latest notified preview instead of a newer quiet result, caps unre
   tasks[0].status = "failed";
   tasks[0].reason = "relay_session_limit";
   await act(async () => { r.schedules.get("mac")!.tasks = tasks; r.touch(); });
-  expect(host.querySelector(".sess .pv")?.textContent).toBe("已停下 · 中继上的会话数已满");
+  expect(host.querySelector(".rc.warn .pv")?.textContent).toBe("已停下 · 中继上的会话数已满");
+  expect(host.querySelector(".rc.warn .go")?.textContent).toBe("去处理");
 });
 
 it("captures unread dots when a deep-linked detail receives its first task snapshot", async () => {
@@ -1248,15 +1255,17 @@ it("marks only the recent group read, retains the attention dot, and exposes key
     kind: { case: "schedule", value: { resultJson: new TextEncoder().encode(JSON.stringify({ tasks })) } },
   }));
   await r.refreshSchedules("mac");
-  tasks = [task({ id: "attention", status: "failed", runs: [run("a", { notified: true })] }), task({ id: "recent", runs: [run("r", { notified: true })] })];
+  tasks = [task({ id: "attention", status: "failed", runs: [run("a", { notified: true })] }), task({ id: "recent", runs: [run("r", { notified: true })] }), task({ id: "recent-2", runs: [run("r2", { notified: true })] })];
   await r.refreshSchedules("mac");
   const go = vi.fn();
   await mount(<SchedulesPage remote={r} go={go} />);
-  expect(host.querySelector('.attention .schedule-lead [aria-label="需要你处理"]')).not.toBeNull();
+  expect(host.querySelector('.attention .row1 [aria-label="需要你处理"]')).not.toBeNull();
+  expect(host.querySelector(".hl-sub")?.textContent).toBe("另有 2 个新结果");
   expect(host.querySelectorAll('.attention .schedule-unread-dot')).toHaveLength(1);
   await click("全部标为已读");
   expect(r.scheduleHasNew("mac", tasks[0])).toBe(true);
   expect(r.scheduleHasNew("mac", tasks[1])).toBe(false);
+  expect(r.scheduleHasNew("mac", tasks[2])).toBe(false);
   expect(button("全部标为已读")).toBeUndefined();
   const unread = host.querySelector<HTMLButtonElement>('.schedule-read-action[aria-label="标为未读"]')!;
   await act(async () => unread.click());
@@ -1352,7 +1361,8 @@ it("keeps the detail menu's specified order", async () => {
   const t = task({ runs: [run("result", { notified: true, session_id: undefined })] }), r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  expect([...host.querySelectorAll(".schedule-menu > button.row")].map(button => button.textContent)).toEqual(["立即运行一次", "标为未读", "暂停", "删除任务…"]);
+  expect([...host.querySelectorAll(".schedule-menu .mi")].map(button => button.textContent)).toEqual(["立即运行一次", "标为未读", "暂停", "删除任务…"]);
+  expect(host.querySelector(".schedule-menu .mi.danger")?.textContent).toBe("删除任务…");
 });
 
 it("protects a name-only schedule draft after leaving the creation form", async () => {
@@ -1408,14 +1418,14 @@ it.each(["never", "running", "single-result"])("omits the entire earlier group w
   const r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-history")).toBeNull();
-  expect([...host.querySelectorAll(".glabel")].some(label => label.textContent?.includes("更早"))).toBe(false);
+  expect([...host.querySelectorAll(".label")].some(label => label.textContent?.includes("更早"))).toBe(false);
   expect(host.textContent).not.toMatch(/表示已请求通知|不保证送达|记录保留最近/);
 });
 
 it("shows the earlier group once a previous execution exists", async () => {
   const t = task({ runs: [run("latest", { notified: true, session_id: undefined, ended_at: "2026-11-01T09:00:00Z" }), run("older", { notified: true, session_id: undefined, ended_at: "2026-11-01T08:00:00Z" })] }), r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
-  expect(host.querySelector(".schedule-history .glabel")?.textContent).toBe("更早1 次");
+  expect(host.querySelector(".schedule-history .label")?.textContent).toBe("更早1 次");
   expect(host.querySelectorAll(".schedule-history .schedule-run")).toHaveLength(1);
 });
 
@@ -1438,8 +1448,10 @@ it.each(["light", "dark"])("aligns the attention banner, recovery button and car
   expect(getComputedStyle(banner.parentElement!).marginRight).toBe(cardStyle.marginRight);
   expect(actionStyle.paddingLeft).toBe(cardStyle.marginLeft);
   expect(actionStyle.paddingRight).toBe(cardStyle.marginRight);
-  expect(alertStyle.padding).toBe(cardStyle.padding);
-  expect(alertStyle.borderRadius).toBe(cardStyle.borderRadius);
+  // The banner's text starts where the card's does; a banner is 18 round, a card 28.
+  expect(alertStyle.paddingLeft).toBe(cardStyle.paddingLeft);
+  expect(alertStyle.borderRadius).toBe("18px");
+  expect(cardStyle.borderRadius).toBe("28px");
   expect(alertStyle.backgroundColor).not.toBe(getComputedStyle(column.parentElement!).backgroundColor);
   expect(alertStyle.fontSize).toBe("13px");
   expect(alertStyle.color).toBe(getComputedStyle(document.documentElement).getPropertyValue("--orange-ink").trim());
@@ -1486,7 +1498,7 @@ it("uses the latest task at the instant a stale menu action is invoked", async (
   r.markScheduleRead("mac", current);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={before.id} go={go} onBack={() => {}} />);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  const control = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu > button.row")].find(button => button.textContent === "标为未读")!;
+  const control = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu .mi")].find(button => button.textContent === "标为未读")!;
   // The store has advanced, but this DOM action still closes over the old task.
   r.schedules.get("mac")!.tasks = [current];
   await act(async () => control.click());

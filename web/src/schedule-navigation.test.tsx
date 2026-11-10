@@ -157,7 +157,7 @@ it.each(["context", "keyboard"])("marking another task unread via %s preserves t
   const other = host.querySelectorAll<HTMLElement>(".side .schedule-row-wrap")[1];
   if (action === "context") {
     await act(async () => other.querySelector(".schedule-line")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
-    const buttons = host.querySelectorAll<HTMLButtonElement>(".schedule-menu > button.row");
+    const buttons = host.querySelectorAll<HTMLButtonElement>(".schedule-menu .mi");
     expect(buttons[0].textContent).toBe("标为未读");
     expect(buttons[1].textContent).toBe("立即运行一次");
     await act(async () => buttons[0].click());

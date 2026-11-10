@@ -1213,158 +1213,137 @@ input.field { margin: 0; }
 .account-entry .large { margin-bottom: 16px; }
 .account-entry .entry-row { padding-top: 12px; padding-bottom: 12px; }
 
-/* Scheduled tasks use the same rows, fields and muted surfaces as sessions. */
-.schedule-body { padding-block: 12px 24px; }
-.schedules-page .large { padding-top: 20px; }
-.schedules-page .glabel { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 8px; font-size: 13px; font-weight: var(--w6); color: var(--ink2); }
-.schedules-page .glabel span { font-weight: 400; }
-.schedule-empty { display: flex; flex-direction: column; align-items: center; padding: 48px 24px 24px; text-align: center; }
-.schedule-empty > .ic { font-size: 30px; color: var(--ink2); margin-bottom: 16px; }
-.schedule-empty b { font-size: 17px; font-weight: var(--w6); }
-.schedule-empty p { max-width: 320px; font-size: 13px; color: var(--ink2); margin: 8px 0 0; }
-
-.schedules-page button:disabled, .timing-sheet button:disabled { opacity: .4; }
-.schedule-field { width: 100%; flex-wrap: wrap; gap: 8px; }
-.schedule-field > span:first-child { white-space: nowrap; }
-.schedule-field .v { display: flex; align-items: center; justify-content: flex-end; gap: 4px; margin-left: auto; min-width: 0; overflow-wrap: anywhere; text-align: right; }
-.schedule-field .mini-seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 2px; border-radius: 12px; background: var(--gbg); }
-.schedule-field .mini-seg button { min-height: 44px; padding: 4px 8px; border-radius: 12px; color: var(--ink2); }
-.schedule-field .mini-seg .on { color: var(--ink); background: var(--knob); }
-.schedule-prompt { display: block; padding: 8px 16px 16px; font-size: 13px; color: var(--ink2); }
-.schedule-prompt textarea { display: block; width: 100%; resize: vertical; min-height: 120px; border: none; background: transparent; color: var(--ink); font-size: 15px; padding: 12px 0 0; line-height: 1.6; }
-.schedule-inputs { padding: 8px 16px; }
-.schedule-inputs label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--ink2); margin-bottom: 16px; }
-.schedule-inputs input, .schedule-inputs select, .schedule-inputs textarea { min-width: 0; width: 100%; min-height: 44px; border: 1px solid var(--sep); border-radius: 12px; background: var(--gbg); color: var(--ink); padding: 8px 12px; font: inherit; font-size: 15px; }
-.schedule-inputs textarea { resize: vertical; }
-.schedule-inputs .check-field { flex-direction: row; align-items: center; justify-content: space-between; }
-.schedule-inputs input[type=checkbox] { width: 24px; min-height: 44px; }
-.weekdays { display: flex; flex-wrap: wrap; margin-bottom: 16px; }
-.weekdays button { min-width: 44px; min-height: 44px; border-radius: 12px; font-size: 13px; }
-.weekdays .on { color: var(--blue); background: var(--fill); }
-.schedule-run { width: 100%; display: flex; align-items: center; gap: 8px; }
-.schedule-run > span { min-width: 0; flex: 1; overflow-wrap: anywhere; }
-.schedule-run small { display: block; font-size: 12px; color: var(--ink2); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.schedule-run > .ic { flex: none; color: var(--ink2); }
-.schedule-actions .row { width: 100%; min-height: 44px; }
-.schedule-strip { display: flex; align-items: center; gap: 8px; margin: 0 16px; min-height: 44px; border-bottom: 1px solid var(--sep); font-size: 13px; color: var(--ink2); flex: none; }
-.schedule-strip > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.schedule-strip > span:last-child { margin-left: auto; white-space: nowrap; color: var(--blue); }
-.schedule-reply-hint { font-size: 12px; color: var(--ink2); padding: 4px 16px; flex: none; text-align: center; }
-.schedule-quiet { font-size: 13px; color: var(--ink2); min-height: 44px; padding: 8px 0; width: 100%; text-align: left; }
-.schedule-notification { font-size: 13px; color: var(--ink2); overflow-wrap: anywhere; }
-.schedule-session-overlay { display: flex; min-height: 0; max-height: calc(88dvh - 40px); }
-.schedule-session-sheet { padding: 10px 0 0; display: flex; flex-direction: column; overflow: hidden; }
-.schedule-session-sheet > .grab { flex: none; }
-@media (min-width: 900px) {
-  .schedules-page .large { width: min(100%, 760px); margin-inline: auto; padding: 24px 16px 0; }
-  .schedules-page .large h3 { font-size: 22px; }
-  .schedules-page > .body { width: min(100%, 760px); margin-inline: auto; }
-  .schedules-page.gray > .body { width: 100%; padding-inline: max(0px, calc((100% - 760px) / 2)); }
-}
-
-
-.schedules-page .btn.wide { width: 100%; justify-content: center; }
-.schedule-name { display: block; margin: 8px 16px 0; font-size: 13px; color: var(--ink2); }
-.schedule-name input { display: block; width: 100%; min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--sep); background: transparent; color: var(--ink); font-size: 15px; }
-
-
-/* v52: task content precedes settings; long prompts remain readable in place. */
-.schedules-page .large { display: flex; align-items: center; justify-content: space-between; }
-.schedule-ended { width: 100%; display: flex; justify-content: space-between; align-items: center; min-height: 44px; padding: 12px 16px; font-size: 13px; color: var(--ink2); }
-.schedule-ended > span:last-child { display: flex; align-items: center; gap: 8px; }
-.schedule-recovery { margin-bottom: 12px; }
-.schedule-description { margin: 0 16px; padding: 0 16px 12px; background: var(--gbg); border-radius: 20px; }
-.schedule-description-head { display: flex; align-items: center; justify-content: space-between; font-size: 15px; color: var(--ink); }
-.schedule-description-head button { display: flex; align-items: center; gap: 4px; font-size: 13px; min-width: 44px; min-height: 44px; color: var(--blue); }
-.schedule-text { font-size: 15px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
-.schedule-text-content { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
-.schedule-text.expanded > .schedule-text-content { display: block; }
-.schedule-expand, .schedule-text-meta { display: flex; align-items: center; gap: 4px; min-height: 44px; font-size: 13px; color: var(--blue); }
-.schedule-text-meta { color: var(--ink2); font-size: 12px; }
-.schedule-more { width: 100%; min-height: 44px; color: var(--blue); font-size: 13px; }
-.weekdays { padding: 2px; border-radius: 12px; background: var(--gbg); }
-.weekdays button { flex: 1; color: var(--ink2); }
-.weekdays .on { color: var(--ink); background: var(--knob); }
-.schedule-prompt textarea.schedule-autosize { min-height: 60px; max-height: 204px; overflow-y: auto; resize: none; }
-.schedule-editor { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--paper); min-height: 0; }
-.schedule-editor-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; flex: none; border-bottom: 1px solid var(--sep); }
-.schedule-editor-nav b { font-size: 17px; font-weight: var(--w6); }
-.schedule-editor-nav button { min-width: 52px; min-height: 44px; color: var(--blue); }
-.schedule-editor textarea { flex: 1; width: 100%; min-height: 0; border: 0; outline: none; resize: none; padding: 16px; background: transparent; color: var(--ink); font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
-.schedule-selected { background: var(--fill); }
-.schedule-sidebar { flex: 1; min-height: 0; background: transparent; }
-.schedule-sidebar .large { padding: 12px 16px; margin: 0; flex: none; }
-.schedule-sidebar .large h3 { font-size: 17px; }
-.schedule-sidebar .schedule-body { padding-top: 0; }
-.schedule-session-overlay .schedule-prompt textarea { max-height: 108px; }
-@media (min-width: 900px) {
-  .dm > .schedules-page { width: 100%; max-width: 760px; margin-inline: auto; position: relative; }
-  .dm > .schedules-page > .navbar { padding: 20px 16px 0; }
-  .dm > .schedules-page > .navbar .back { display: none; }
-  .dm > .schedules-page > .navbar .title { text-align: left; align-items: flex-start; }
-  .dm > .schedules-page > .navbar .title b { font-size: 22px; }
-  .side .schedule-empty { padding-inline: 16px; }
-  .schedule-session-overlay { max-height: calc(76dvh - 40px); }
-}
-.schedule-field .task-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.schedule-run-back { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: var(--blue); }
-
-/* Schedule conversations share SessionLine; blue marks unread notification runs. */
-.sess.schedule-line .row1 { flex-wrap: wrap; }
-.sess.schedule-line .row1 b { flex: 1; min-width: 3em; font-weight: var(--w5); }
-.sess.schedule-line .row1 > span { margin-left: auto; flex: none; }
-.sess.schedule-line.unread .row1 b { font-weight: var(--w6); }
-.sess.schedule-line.unread .pv { color: var(--ink); }
-.schedule-unread-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); margin-right: 8px; vertical-align: middle; }
-
-/* Schedule inbox: dots signal new results; numbers are reserved for attention. */
-.schedule-lead { display: flex; align-items: flex-start; justify-content: center; flex: 0 0 22px !important; padding-top: 7px; }
-.schedule-lead .schedule-unread-dot { flex: none; margin: 0; }
-.schedule-lead .attention-dot { background: var(--orange); }
-.sess.schedule-line { gap: 0; text-align: left; }
-.sess.schedule-line .sm, .sess.schedule-line .mc { display: block; }
-.sess.schedule-line .pv { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.45; }
-.sess.schedule-line .row1 b { font-size: 15px; }
-.sess.schedule-line.attention .row1 b { font-weight: var(--w6); }
+/* ---------- 定时 (design-system §6 定时列表, client-v58 #schedules) ---------- */
+/* The phone's list: no buttons at the top, only the fade; a sentence. */
+.tbar .tsp { height: 44px; }
+.schedules-page > .body > .connbar { margin-top: 0; }
+.schedule-list > .banner { margin: 10px 16px 0; }
+.schedule-list > .home-note { margin: 0; }
+.schedule-group > .sec { padding-top: 26px; min-height: 44px; align-items: center; }
+.sec .sec-act { margin-left: auto; color: var(--blue); font-size: 15px; font-weight: 400; min-height: 44px; }
+/* A card: a task that stopped (orange dot, its reason in orange, 去处理 ›)
+   or one with a new result (blue dot, four lines of it, 看全文 ›). */
+.rc { display: block; width: calc(100% - 32px); margin: 12px 16px 0; background: var(--gbg); border-radius: 28px; padding: 18px; text-align: left; }
+.rc .row1 { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+.rc .row1 b { flex: 1; min-width: 0; font-weight: var(--w6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc .row1 > span { flex: none; font-size: 13px; color: var(--ink2); }
+.rc .pv { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; margin-top: 10px; font-size: 17px; line-height: 1.5; overflow-wrap: anywhere; }
+.rc.warn .pv { -webkit-line-clamp: 2; line-clamp: 2; font-size: 15px; color: var(--ink2); }
+.rc .pv strong, .sess.schedule-line .pv strong { color: var(--orange-ink); font-weight: var(--w6); }
+.rc .pv .none { color: var(--ink2); }
+.rc .f { display: flex; align-items: center; gap: 10px; margin-top: 12px; min-width: 0; }
+.rc .mc { flex: 1; min-width: 0; font-size: 13px; color: var(--ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rc .go { flex: none; display: flex; align-items: center; font-size: 15px; color: var(--blue); }
+.rc .go > .ic { font-size: 16px; }
+.rc .mc > .spin, .sess.schedule-line .mc > .spin { width: 11px; height: 11px; margin-right: 5px; vertical-align: -1px; }
+/* A row: the title (500; ink2 once paused), its time, two lines, the third line. */
+.sess.schedule-line .row1 b { font-weight: var(--w5); }
 .sess.schedule-line.paused .row1 b { color: var(--ink2); }
-.sess.schedule-line .pv strong { color: var(--orange-ink); font-weight: var(--w6); }
-.sess.schedule-line .mc { font-size: 12px; }
-.sess.schedule-line .mc > .spin { width: 12px; height: 12px; margin-right: 3px; vertical-align: -2px; }
-.schedule-attention-label { color: var(--orange-ink); }
-.schedule-mark-all { min-height: 44px; color: var(--blue); font-size: 13px; font-weight: 400; margin-block: -12px; }
+.sess.schedule-line .pv .none { color: var(--ink2); }
+.sess.schedule-line:not(:has(.gut)) .sm { padding-left: 0; }
 .schedule-row-wrap { position: relative; }
 .schedule-read-action { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.schedule-read-action:focus-visible { inset: auto 16px 4px auto; width: auto; height: 44px; clip-path: none; background: var(--paper); color: var(--blue); padding: 8px; z-index: 1; }
+.schedule-read-action:focus-visible { inset: auto 16px 4px auto; width: auto; height: 44px; clip-path: none; background: var(--paper); color: var(--blue); padding: 8px; z-index: 1; border-radius: 14px; }
+.schedule-ended { display: flex; align-items: center; gap: 2px; min-height: 44px; margin-top: 12px; }
 .schedule-new-badge { display: inline-block; width: 9px; height: 9px; flex: none; background: var(--blue); border-radius: 50%; }
 .schedule-selection-empty { font-size: 15px; }
-.schedule-result { margin: 0 16px 16px; padding: 12px 16px; background: var(--gbg); border-radius: 20px; min-width: 0; }
-.schedule-result-head { display: flex; align-items: center; gap: 8px; justify-content: space-between; font-size: 12px; color: var(--ink2); }
-.schedule-result-head button, .schedule-running button { color: var(--blue); display: flex; align-items: center; min-height: 44px; flex: none; }
-.schedule-result h4 { font-size: 15px; font-weight: var(--w6); margin: 8px 0 12px; overflow-wrap: anywhere; }
-.schedule-result .ai { margin: 0; }
+/* The wide sidebar: the same groups as rows, the dot at their head. */
+.side .schedule-group > .sec { padding: 16px 12px 4px; min-height: 0; font-size: 12px; color: var(--ink2); }
+.side .sec .sec-act { font-size: 12px; min-height: 28px; }
+.side .schedule-list-empty, .side .schedule-sidebar > .home-note { padding: 8px 12px 0; }
+.side .schedule-sidebar > .banner { margin: 4px 4px 8px; }
+.side .sess.schedule-line .sm { padding: 0; }
+.side .schedule-ended { padding: 10px 12px; margin: 0; font-size: 12px; }
+.choices .sess, .schedule-choices .sess { padding-left: 12px; }
+
+/* A task's page: the stop and its ink 恢复, what runs, the latest result,
+   the earlier ones, what the agent is told and the settings, in one column
+   of at most 760. */
+.schedule-detail > .body { padding-bottom: 32px; }
+.schedule-detail-content { width: 100%; max-width: 760px; margin-inline: auto; display: flow-root; }
+.schedule-detail-content > .banner { margin: 10px 16px 0; }
+/* The stop, its ink 恢复 and the cards keep one column. */
+.schedule-attention { margin: 4px 16px 0; }
+.schedule-attention > .banner { padding: 4px 18px; }
+.schedule-attention .lead { margin-right: 8px; vertical-align: -.15em; }
+.schedule-recovery { display: flex; padding: 12px 16px 0; }
+.schedule-more { display: block; margin: 8px 16px 0; min-height: 44px; color: var(--blue); font-size: 15px; }
+.schedule-result { margin: 12px 16px 0; padding: 16px 18px; background: var(--gbg); border-radius: 28px; min-width: 0; }
+.schedule-result-head { display: flex; align-items: center; gap: 8px; min-height: 24px; font-size: 13px; color: var(--ink2); }
+.schedule-result-head > button { margin: -10px 0 -10px auto; display: flex; align-items: center; min-height: 44px; color: var(--blue); font-size: 15px; flex: none; }
+.schedule-result-head > button > .ic { font-size: 16px; }
+.schedule-result h4 { margin: 8px 0 0; font-size: 17px; font-weight: var(--w6); line-height: 1.4; overflow-wrap: anywhere; }
+.schedule-result .ai { margin: 10px 0 0; }
 .schedule-result .ai > [hidden] { display: none !important; }
-.schedule-running { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; color: var(--blue); font-size: 13px; }
-.schedule-running button { margin-left: auto; }
-.schedule-run { padding-block: 10px; }
-.schedule-run .schedule-run-text { display: block; }
-.schedule-run time { color: var(--ink2); font-size: 13px; }
-.schedule-run small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 15px; color: var(--ink); white-space: normal; }
-.schedule-menu-title { padding: 12px 16px; }
-.schedule-menu-title b { display: block; font-size: 15px; font-weight: var(--w6); }
-.schedule-menu-title small { display: block; font-size: 12px; color: var(--ink2); margin-top: 4px; overflow-wrap: anywhere; }
-.schedule-menu > .row { width: 100%; min-height: 44px; text-align: left; }
+.schedule-result .ai > .schedule-first-block-clipped { max-height: var(--schedule-result-limit); overflow: hidden; }
+.schedule-expand { display: flex; align-items: center; gap: 2px; min-height: 44px; margin-bottom: -10px; font-size: 15px; color: var(--blue); }
+.schedule-running .spin { color: var(--ink); }
+.schedule-detail .label { padding-left: 28px; padding-right: 28px; align-items: center; min-height: 44px; }
+.schedule-detail .label .link { font-size: 15px; min-height: 44px; }
+.schedule-run { padding-top: 10px; padding-bottom: 10px; align-items: flex-start; }
+.schedule-run .schedule-lead { width: 14px; flex: none; align-self: stretch; padding-top: 6px; }
+.schedule-run .schedule-run-text { flex: 1; min-width: 0; display: block; }
+.schedule-run time { display: block; font-size: 13px; color: var(--ink2); }
+.schedule-run small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; margin-top: 2px; font-size: 15px; line-height: 1.4; color: var(--ink); }
+.schedule-run .quiet { display: block; font-size: 15px; color: var(--ink2); }
+.schedule-run .quiet + small { font-size: 13px; color: var(--ink2); -webkit-line-clamp: 1; line-clamp: 1; }
+.schedule-run > .ic { align-self: center; color: var(--ink3); font-size: 16px; }
+.schedule-description { margin: 0 16px 12px; background: var(--gbg); border-radius: 20px; padding: 14px 18px; }
+.schedule-text { font-size: 17px; line-height: 1.45; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.schedule-text-content { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; overflow: hidden; }
+.schedule-text.expanded > .schedule-text-content { display: block; }
+.schedule-text-meta { display: flex; align-items: center; gap: 4px; min-height: 44px; font-size: 13px; color: var(--ink2); }
+.schedule-field { gap: 8px; }
+.schedule-field > span:first-child { white-space: nowrap; flex: none; }
+.schedule-field .v { min-width: 0; text-align: right; overflow-wrap: anywhere; white-space: normal; }
+.schedule-field .v .red { color: var(--red); }
+.schedule-field .task-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schedule-field > .chev { margin-left: -4px; }
+.schedule-field .seg { margin-left: auto; flex-wrap: wrap; border-radius: 18px; }
+.foot { margin: 8px 0 0; padding: 0 24px; font-size: 13px; line-height: 1.45; color: var(--ink2); text-align: center; overflow-wrap: anywhere; }
+/* On a wide window the page's top is a toolbar of one line, as a session's is. */
 @media (min-width: 900px) {
-  .side .sess.schedule-line { gap: 0; padding-block: 10px; }
-  .side .sess.schedule-line .row1 b { font-size: 15px; }
-  .side .sess.schedule-line .pv { font-size: 13px; }
+  .dm > .schedules-page > .navbar { min-height: 56px; padding: 0 12px 0 24px; }
+  .dm > .schedules-page > .navbar .back { display: none; }
+  .dm > .schedules-page > .navbar .title { flex-direction: row; align-items: baseline; gap: 10px; text-align: left; }
+  .dm > .schedules-page > .navbar .title b { font-size: 15px; max-width: 60%; }
+  .dm > .schedules-page > .navbar .title span { font-size: 13px; }
+  .dm > .schedules-page > .navbar button.more { width: 34px; height: 34px; background: var(--fill); border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 }
 
-.schedule-result .ai > .schedule-first-block-clipped { max-height: var(--schedule-result-limit); overflow: hidden; }
-
-/* The scroll viewport spans the pane; alerts, buttons and cards share one column. */
-.desk .page.gray > .schedule-detail-body { padding-inline: 0; }
-.schedule-detail-content { width: 100%; max-width: 760px; margin-inline: auto; display: flow-root; }
-.schedule-attention { margin: 0 16px 12px; }
-.schedule-attention > .banner { background: var(--orange-soft); border-radius: 20px; padding: 12px 16px; font-size: 13px; color: var(--orange-ink); }
-.schedule-attention > .banner > span { padding: 0; min-width: 0; overflow-wrap: anywhere; }
-
+/* 新定时: the whole-page sheet; from a conversation, a sheet. */
+.schedule-body { padding-block: 12px 24px; }
+.schedule-body > .field { width: auto; margin: 0 16px 12px; }
+.schedule-body > .banner { margin: 0 16px 12px; }
+.schedule-body > .grp { margin-bottom: 12px; }
+.field.big textarea, .field textarea { display: block; width: 100%; border: 0; outline: none; background: none; resize: none; padding: 2px 0 0; font-size: 17px; line-height: 1.45; color: var(--ink); }
+.schedule-prompt textarea.schedule-autosize { min-height: 52px; max-height: 204px; overflow-y: auto; }
+.nt-hd > .btn.sm { flex: none; }
+.schedule-session-sheet { padding: 8px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.schedule-session-sheet > .grab { flex: none; }
+.schedule-session-overlay { display: flex; min-height: 0; max-height: calc(88dvh - 40px); }
+.schedule-session-form { flex: 1; min-height: 0; overflow-y: auto; }
+.schedule-session-form > .sheet-head { padding: 0 16px; margin: 0 0 4px; }
+.schedule-create-foot { display: flex; margin: 4px 16px 0; }
+@media (min-width: 900px) { .schedule-session-overlay { max-height: calc(76dvh - 40px); } }
+.schedule-reply-hint { font-size: 13px; color: var(--ink2); padding: 4px 16px; flex: none; text-align: center; }
+/* The full editor of what the agent is told. */
+.schedule-editor { position: absolute; inset: 0; z-index: 30; display: flex; flex-direction: column; background: var(--paper); min-height: 0; }
+.schedule-editor-nav { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px 0; min-height: 56px; flex: none; }
+.schedule-editor-nav b { font-size: 17px; font-weight: var(--w6); }
+.schedule-editor-nav button { min-width: 52px; min-height: 44px; color: var(--blue); font-size: 17px; }
+.schedule-editor-nav button:disabled { opacity: .4; }
+.schedule-editor textarea { flex: 1; width: 100%; min-height: 0; border: 0; outline: none; resize: none; padding: 16px 24px; background: transparent; color: var(--ink); font-size: 17px; line-height: 1.5; overflow-wrap: anywhere; }
+/* 什么时候: the kind in a segmented control, then its fields. */
+.timing-sheet .seg.full { margin-bottom: 12px; }
+.schedule-inputs label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--ink2); margin-bottom: 12px; }
+.schedule-inputs input, .schedule-inputs select { min-width: 0; width: 100%; min-height: 48px; border: 0; border-radius: 18px; background: var(--lift); color: var(--ink); padding: 8px 16px; font: inherit; font-size: 17px; outline: none; }
+.schedule-inputs .check-field { flex-direction: row; align-items: center; justify-content: space-between; min-height: 44px; font-size: 17px; color: var(--ink); }
+.schedule-inputs input[type=checkbox] { width: 24px; min-height: 24px; accent-color: var(--green); }
+.weekdays { display: flex; flex-wrap: wrap; gap: 0; padding: 3px; margin-bottom: 12px; border-radius: 18px; background: var(--fill2); }
+.weekdays button { flex: 1; min-width: 44px; min-height: 38px; border-radius: 16px; font-size: 13px; color: var(--ink2); }
+.weekdays .on { color: var(--ink); background: var(--knob); font-weight: var(--w6); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+/* In a session: a glass strip under the view switch, 「定时 · 每小时，下次 …」 and 管理. */
+.schedule-strip { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 16px 8px; min-height: 38px; border-radius: 19px; padding: 0 8px 0 14px; font-size: 13px; color: var(--ink2); text-align: left; }
+.schedule-strip > span:first-of-type { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.schedule-strip .act { flex: none; display: flex; align-items: center; color: var(--blue); font-weight: var(--w6); }

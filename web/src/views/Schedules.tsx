@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { agentById, agentInfo } from "../agents";
-import { Clock, ChevronRight, ChevronDown, ChevronUp, Ellipsis, LoaderCircle } from "../icons";
+import { Clock, ChevronRight, ChevronDown, Ellipsis, Info, LoaderCircle, X } from "../icons";
 import {
   agentName,
   agentOf,
@@ -20,7 +20,9 @@ import {
   fromHere,
   Banner,
   ConnBar,
+  Exp,
   NavBar,
+  Segmented,
   Sheet,
   useNow,
   useRemote,
@@ -85,6 +87,12 @@ function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
     </>
   );
 }
+/** One task in a list (design-system §6 定时列表). layout "card": a task
+ * that stopped is a gray card with an orange dot, its reason in orange and
+ * 去处理 ›; one with a new result a card with a blue dot, up to four lines
+ * of it and 看全文 ›. Otherwise one row: the title, the time, two lines of
+ * the latest result and the third line; in the wide sidebar the row keeps
+ * the dot at its head. */
 export function ScheduleRow({
   remote,
   machineId,
@@ -92,6 +100,8 @@ export function ScheduleRow({
   go,
   now = Date.now(),
   selected = false,
+  layout = "row",
+  gut = false,
 }: {
   remote: Remote;
   machineId: string;
@@ -99,6 +109,9 @@ export function ScheduleRow({
   go: Go;
   now?: number;
   selected?: boolean;
+  layout?: "card" | "row";
+  /** A row with the state's dot at its head, as the wide sidebar draws them. */
+  gut?: boolean;
 }) {
   const m = remote.machines.get(machineId);
   const entries = remote.taskEntries();
@@ -117,26 +130,43 @@ export function ScheduleRow({
   const running = task.active_run && ["dispatching", "queued", "running"].includes(task.active_run.status);
   const [menu, setMenu] = useState(false);
   const mark = () => { if (fresh) remote.markScheduleRead(machineId, task); else { remote.markScheduleUnread(machineId, task, selected); if (selected) go("tasks"); } };
-  return <div className="schedule-row-wrap">
-    <button className={"sess schedule-line" + (fresh ? " unread" : "") + (attention ? " attention" : "") + (task.status === "paused" ? " paused" : "") + (offline ? " off" : "")}
-      onContextMenu={e => { if (matchMedia("(min-width: 900px)").matches) { e.preventDefault(); setMenu(true); } }}
-      onClick={() => go(taskRoute(machineId, task.id))}>
-      <span className="schedule-lead">{(attention || fresh) && <span className={"schedule-unread-dot" + (attention ? " attention-dot" : "")} role="img" aria-label={attention ? "需要你处理" : "有新结果"} />}</span>
-      <span className="sm"><span className="row1"><b>{task.spec.title}</b><span>{at ? scheduleTime(at, now) : ""}</span></span>
-        <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? "没能运行" : "已停下"}</strong> · {reasonText(task.reason).replace(/，任务已停下$/, "")}</> : notification ? runSummary(notification) || runResult(notification) : running ? "还没有结果" : allRuns(task).length ? lastResult(task, now) : `还没有运行${task.next_run_at ? " · 下次 " + dateTime(task.next_run_at, now) : ""}`}</span>
-        <span className="mc">{running && <><LoaderCircle className="spin" />正在运行 · </>}{[
-          timingText(task.spec.trigger), multiple(location) ? projectName(location(task)) : "", multiple(agent) ? agent(task) : "",
-          new Set(entries.map(e => e.machineId)).size > 1 ? machineName(m) : "",
-          target.type === "resume_session" ? targetSession?.info ? `在「${titleOf(targetSession)}」里` : "在对话里" : "",
-          task.status === "paused" ? "已暂停" : "", offline ? scheduleOfflineRow : "",
-        ].filter(Boolean).join(" · ")}</span>
-      </span>
-    </button>
+  const card = layout === "card" && (attention || fresh);
+  const dot = (attention || fresh) && <i className={"mark schedule-unread-dot " + (attention ? "wait attention-dot" : "unread")} role="img" aria-label={attention ? "需要你处理" : "有新结果"} />;
+  const row1 = <span className="row1">{card && dot}<b>{task.spec.title}</b><span>{at ? scheduleTime(at, now) : ""}</span></span>;
+  const pv = <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? "没能运行" : "已停下"}</strong> · {reasonText(task.reason).replace(/，任务已停下$/, "")}</> : notification ? runSummary(notification) || runResult(notification) : running ? <span className="none">还没有结果</span> : allRuns(task).length ? lastResult(task, now) : `还没有运行${task.next_run_at ? " · 下次 " + dateTime(task.next_run_at, now) : ""}`}</span>;
+  const mc = <span className="mc">{running && <><LoaderCircle className="spin" />正在运行 · </>}{[
+    timingText(task.spec.trigger), multiple(location) ? projectName(location(task)) : "", multiple(agent) ? agent(task) : "",
+    new Set(entries.map(e => e.machineId)).size > 1 ? machineName(m) : "",
+    target.type === "resume_session" ? targetSession?.info ? `在「${titleOf(targetSession)}」里` : "在对话里" : "",
+    task.status === "paused" ? "已暂停" : "", offline ? scheduleOfflineRow : "",
+  ].filter(Boolean).join(" · ")}</span>;
+  const flags = (fresh ? " unread" : "") + (attention ? " attention" : "") + (task.status === "paused" ? " paused" : "") + (offline ? " off" : "") + (selected ? " sel" : "");
+  const props = {
+    onContextMenu: (e: React.MouseEvent) => { if (matchMedia("(min-width: 900px)").matches) { e.preventDefault(); setMenu(true); } },
+    onClick: () => go(taskRoute(machineId, task.id)),
+  };
+  return <div className={"schedule-row-wrap" + (selected ? " schedule-selected" : "")}>
+    {card ? (
+      <button className={"rc schedule-line" + (attention ? " warn" : "") + flags} {...props}>
+        {row1}
+        {pv}
+        <span className="f">{mc}<span className="go">{attention ? "去处理" : "看全文"}<ChevronRight /></span></span>
+      </button>
+    ) : (
+      <button className={"sess schedule-line" + flags} {...props}>
+        {gut && <span className="gut">{dot}</span>}
+        <span className="sm">{row1}{pv}{mc}</span>
+      </button>
+    )}
     {notification && <button className="schedule-read-action" aria-label={fresh ? "标为已读" : "标为未读"} onClick={mark}>{fresh ? "标为已读" : "标为未读"}</button>}
     {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} contextMenu onClose={() => setMenu(false)} onUnread={selected ? () => go("tasks") : undefined} onDeleted={selected ? () => go("tasks") : undefined} />}
   </div>;
 }
 
+/** A task's ⋯: its name and 「项目 · CLI · 谁创建 · 日期」 at the top, then
+ * 立即运行一次, 标为未读 and 暂停 / 恢复, and in a group of its own the red
+ * 删除任务…. Opened from a wide row's context menu, 标为已读 or 标为未读
+ * comes first. */
 function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, onRecover, contextMenu = false }: { remote: Remote; machineId: string; task: ScheduleTask; onClose: () => void; onUnread?: () => void; onDeleted?: () => void; onRecover?: () => void; contextMenu?: boolean }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [deleting, setDeleting] = useState(false);
   const [rearming, setRearming] = useState<ScheduleTask>();
@@ -158,85 +188,130 @@ function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, o
     } catch (e) { setRearming(undefined); setError(errorText(e)); } finally { setBusy(false); }
   };
   if (rearming) return <TimingSheet trigger={rearming.spec.trigger} onClose={() => setRearming(undefined)} onSave={trigger => void perform("update", { ...rearming.spec, trigger }, rearming.revision)} />;
-  const readAction = latestNotification(task) && <button className="row" onClick={() => {
+  const readAction = latestNotification(task) && <button className="mi" role="menuitem" onClick={() => {
       if (contextMenu && fresh) remote.markScheduleRead(machineId, task);
       else { remote.markScheduleUnread(machineId, task, !!onUnread); onUnread?.(); }
       onClose();
-    }}>{contextMenu && fresh ? "标为已读" : "标为未读"}</button>;
-  return <Sheet onClose={() => !busy && onClose()} className="schedule-menu">
-    <div className="schedule-menu-title"><b>{task.spec.title}</b><small>{[menuProject ? projectName(menuProject) : "", menuAgent, task.source === "agent" ? "Agent 在对话里创建" : "你创建", dayText(task.created_at)].filter(Boolean).join(" · ")}</small></div>
-    {contextMenu && readAction}
-    <button className="row" disabled={!online || busy || !!frozen || !!task.active_run || !!task.manual_request || ended} onClick={() => void perform("run")}>立即运行一次</button>
-    {!contextMenu && readAction}
-    {!ended && <button className="row" disabled={!online || busy || !!frozen} onClick={() => { if (paused && onRecover) onRecover(); else if (task.status === "cancelled" && oneShot(task)) setRearming(task); else void perform(paused ? task.status === "cancelled" ? "update" : task.status === "failed" && oneShot(task) ? "run" : "resume" : "pause"); }}>{paused ? "恢复" : "暂停"}</button>}
-    <button className="row red" disabled={!online || busy || !!frozen} onClick={() => setDeleting(true)}>删除任务…</button>
+    }}><span className="mt">{contextMenu && fresh ? "标为已读" : "标为未读"}</span></button>;
+  return <Sheet onClose={() => !busy && onClose()} className="menu schedule-menu">
+    <div className="menu-info"><b>{task.spec.title}</b>{[menuProject ? projectName(menuProject) : "", menuAgent, task.source === "agent" ? "Agent 在对话里创建" : "你创建", dayText(task.created_at)].filter(Boolean).join(" · ")}</div>
+    <div className="list" role="menu">
+      {contextMenu && readAction}
+      <button className="mi" role="menuitem" disabled={!online || busy || !!frozen || !!task.active_run || !!task.manual_request || ended} onClick={() => void perform("run")}><span className="mt">立即运行一次</span></button>
+      {!contextMenu && readAction}
+      {!ended && <button className="mi" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => { if (paused && onRecover) onRecover(); else if (task.status === "cancelled" && oneShot(task)) setRearming(task); else void perform(paused ? task.status === "cancelled" ? "update" : task.status === "failed" && oneShot(task) ? "run" : "resume" : "pause"); }}><span className="mt">{paused ? "恢复" : "暂停"}</span></button>}
+    </div>
+    <div className="list" role="menu">
+      <button className="mi danger" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => setDeleting(true)}><span className="mt">删除任务…</span></button>
+    </div>
     {error && <Banner kind="err">{error}</Banner>}
     {deleting && <Alert title="删除任务？" text="不再自动运行，已开出的对话保留。" ok="删除" danger onCancel={() => setDeleting(false)} onOk={() => { setDeleting(false); void perform("cancel"); }} />}
   </Sheet>;
 }
 
+/** 定时 (design-system §6 定时列表): a sentence for a title (「N 个任务停下了」,
+ * 「N 个新结果」, 「没有新结果」, 「还没有定时任务」) and the other kind
+ * counted under it; the tasks that stopped as orange cards, those with
+ * new results as blue ones under 新结果, the rest one a row under 其他任务,
+ * and the ended ones folded. The wide sidebar lists the same groups as
+ * rows. */
 export function SchedulesPage({ remote, go, sidebar = false, selected }: { remote: Remote; go: Go; sidebar?: boolean; selected?: string }) {
   useRemote(remote);
   const [endedOpen, setEndedOpen] = useState(() => localStorage.getItem("schedule-ended-open") === "true");
   const now = useNow(60_000);
   const entries = remote.taskEntries();
-  const groups = groupTasks(entries, e => remote.scheduleHasNew(e.machineId, e.task));
+  const hasNew = (e: { machineId: string; task: ScheduleTask }) => remote.scheduleHasNew(e.machineId, e.task);
+  const groups = groupTasks(entries, hasNew);
   const supported = [...remote.machines.keys()].filter((id) =>
     remote.supportsSchedules(id),
   );
   const loading = [...remote.schedules.values()].some((s) => s.loading);
   const errors = supported.filter((id) => remote.schedules.get(id)?.error);
-  return (
-    <div className={"page schedules-page" + (sidebar ? " schedule-sidebar" : "")}>
-      <ConnBar remote={remote} />
-      <div className="large">
-        <h3>定时任务</h3>
-      </div>
-      <div className={"body schedule-body" + (sidebar ? "" : " under-bar")}>
-        <TaskOffline remote={remote} />
-        {errors.map((id) => (
-          <Banner
-            key={id}
-            kind="err"
-            action="重试"
-            onAction={() => void remote.refreshSchedules(id)}
-          >
-            {machineName(remote.machines.get(id))} 的任务没能读取：
-            {remote.schedules.get(id)?.error}
-          </Banner>
-        ))}
-        {supported.length === 0 && (
-          <Banner>需要更新电脑上的 remote-agent 才能使用定时任务。</Banner>
-        )}
-        {!entries.length && (
-          <div className="schedule-empty">
-            <b>{loading ? "正在读取任务…" : "还没有定时任务"}</b>
-            <p>
-              {scheduleEmpty}
-            </p>
+  const stopped = groups.get("需要你看一下") ?? [];
+  const recent = groups.get("最近") ?? [];
+  const fresh = recent.filter(hasNew);
+  const others = recent.filter((e) => !hasNew(e));
+  const ended = groups.get("已结束") ?? [];
+  const visible = stopped.length + recent.length + ended.length;
+  const title = !visible ? (loading ? "正在读取任务…" : "还没有定时任务")
+    : stopped.length ? <><em>{stopped.length}</em> 个任务停下了</>
+    : fresh.length ? `${fresh.length} 个新结果` : "没有新结果";
+  const sub = stopped.length > 0 && fresh.length > 0 ? `另有 ${fresh.length} 个新结果` : "";
+  const rows = (list: typeof entries, layout: "card" | "row") => list.map((e) => (
+    <ScheduleRow
+      key={e.machineId + e.task.id}
+      remote={remote}
+      go={go}
+      now={now}
+      layout={sidebar ? "row" : layout}
+      gut={sidebar}
+      selected={selected === taskRoute(e.machineId, e.task.id)}
+      {...e}
+    />
+  ));
+  const list = (
+    <>
+      <TaskOffline remote={remote} />
+      {errors.map((id) => (
+        <Banner
+          key={id}
+          kind="err"
+          action="重试"
+          onAction={() => void remote.refreshSchedules(id)}
+        >
+          {machineName(remote.machines.get(id))} 的任务没能读取：
+          {remote.schedules.get(id)?.error}
+        </Banner>
+      ))}
+      {supported.length === 0 && (
+        <Banner>需要更新电脑上的 remote-agent 才能使用定时任务。</Banner>
+      )}
+      {!visible && !loading && <p className="home-note">{scheduleEmpty}</p>}
+      {stopped.length > 0 && <section className="schedule-group attention-group">{rows(stopped, "card")}</section>}
+      {fresh.length > 0 && (
+        <section className="schedule-group">
+          <div className="sec">
+            新结果
+            {fresh.length > 1 && <button className="sec-act" onClick={() => fresh.forEach((e) => remote.markScheduleRead(e.machineId, e.task))}>全部标为已读</button>}
           </div>
-        )}
-        {[...groups].map(
-          ([group, tasks]) =>
-            tasks.length > 0 && (
-              <section key={group}>
-                {group === "已结束" ? <button className="schedule-ended" aria-expanded={endedOpen} onClick={() => setEndedOpen(old => { localStorage.setItem("schedule-ended-open", String(!old)); return !old; })}>
-                  <span>已结束</span><span>{tasks.length} {endedOpen ? <ChevronUp /> : <ChevronDown />}</span>
-                </button> : <div className={"glabel" + (group === "需要你看一下" ? " schedule-attention-label" : "")}>{group}{group === "需要你看一下" ? <span>{tasks.length}</span> : tasks.some(e => remote.scheduleHasNew(e.machineId, e.task)) && <button className="schedule-mark-all" onClick={() => tasks.forEach(e => remote.markScheduleRead(e.machineId, e.task))}>全部标为已读</button>}</div>}
-                {(group !== "已结束" || endedOpen) && tasks.map((e) => (
-                  <div className={selected === taskRoute(e.machineId, e.task.id) ? "schedule-selected" : ""} key={e.machineId + e.task.id}><ScheduleRow
-                    key={e.machineId + e.task.id}
-                    remote={remote}
-                    go={go}
-                    now={now}
-                    selected={selected === taskRoute(e.machineId, e.task.id)}
-                    {...e}
-                  /></div>
-                ))}
-              </section>
-            ),
-        )}
-
+          {rows(fresh, "card")}
+        </section>
+      )}
+      {others.length > 0 && (
+        <section className="schedule-group">
+          <div className="sec">其他任务</div>
+          {rows(others, "row")}
+        </section>
+      )}
+      {ended.length > 0 && (
+        <section className="schedule-group">
+          <button className="tail schedule-ended" aria-expanded={endedOpen} onClick={() => setEndedOpen((old) => { localStorage.setItem("schedule-ended-open", String(!old)); return !old; })}>
+            已结束 {ended.length}
+            <Exp up={endedOpen} />
+          </button>
+          {endedOpen && rows(ended, "row")}
+        </section>
+      )}
+    </>
+  );
+  if (sidebar)
+    return (
+      <>
+        <h1 className="whl">{title}</h1>
+        {sub && <div className="wsub">{sub}</div>}
+        <div className="scroll schedule-sidebar">{list}</div>
+      </>
+    );
+  return (
+    <div className="page schedules-page">
+      <div className="body under-bar">
+        <div className="tbar">
+          <span className="tsp" />
+        </div>
+        <ConnBar remote={remote} />
+        <h1 className="hl">{title}</h1>
+        {sub && <div className="hl-sub">{sub}</div>}
+        <div className="schedule-list">{list}</div>
       </div>
     </div>
   );
@@ -259,10 +334,8 @@ function Field({
       onClick={onClick}
     >
       <span>{name}</span>
-      <span className="v">
-        {value}
-        {!disabled && <ChevronRight />}
-      </span>
+      <span className="v">{value}</span>
+      {!disabled && <ChevronRight className="chev" />}
     </button>
   ) : (
     <div className="row schedule-field">
@@ -388,28 +461,20 @@ export function TimingSheet({
     }
   };
   return (
-    <Sheet onClose={onClose} className="timing-sheet">
-      <div className="ns-head">
-        <b>什么时候</b>
-        <button disabled={kind === "weekly" && !days.length} onClick={save}>完成</button>
-      </div>
-      <div className="seg">
-        {[
+    <Sheet onClose={onClose} className="timing-sheet" title="什么时候" action={{ label: "完成", onClick: save, disabled: kind === "weekly" && !days.length }}>
+      <Segmented
+        className="full"
+        label="频率"
+        value={kind}
+        onChange={setKind}
+        options={[
           ["at", "一次"],
           ["daily", "每天"],
           ["weekly", "每周"],
           ["interval", "每隔"],
           ...(kind === "after" ? [["after", "轮结束后"]] : []),
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            className={kind === id ? "on" : ""}
-            onClick={() => setKind(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+        ].map(([value, label]) => ({ value, label }))}
+      />
       <div className="schedule-inputs">
         {kind === "at" && (
           <label>
@@ -574,10 +639,10 @@ function ScheduleResult({ remote, run, unread, now, open }: { remote: Remote; ru
     return () => observer.disconnect();
   }, [text, expanded]);
   return <section className="schedule-result">
-    <div className="schedule-result-head"><span>{unread && <span className="schedule-unread-dot" role="img" aria-label="进入时未读" />}{dateTime(notificationTime(run), now)}</span>{run.session_id && open && <button onClick={open}>对话 <ChevronRight /></button>}</div>
+    <div className="schedule-result-head">{unread && <i className="mark unread schedule-unread-dot" role="img" aria-label="进入时未读" />}<span>{dateTime(notificationTime(run), now)}</span>{run.session_id && open && <button onClick={open}>对话<ChevronRight /></button>}</div>
     {title && <h4>{title}</h4>}
     <div className="ai" ref={body}><Markdown text={text} /></div>
-    {long && !expanded && <button className="schedule-expand" onClick={() => setExpanded(true)}>展开全文 <ChevronDown /></button>}
+    {long && !expanded && <button className="schedule-expand" onClick={() => setExpanded(true)}>展开全文<ChevronDown /></button>}
   </section>;
 }
 
@@ -692,11 +757,11 @@ export function ScheduleDetail({
       disabled={!r.session_id}
       onClick={() => openRun(r)}
     >
-      <span className="schedule-lead">{captured && visit.unread?.has(r.id) && <span className="schedule-unread-dot" role="img" aria-label="进入时未读" />}</span><span className="schedule-run-text">
+      <span className="schedule-lead">{captured && visit.unread?.has(r.id) && <i className="mark unread schedule-unread-dot" role="img" aria-label="进入时未读" />}</span><span className="schedule-run-text">
         <time>{dateTime(notificationTime(r), now)}</time>
         <small>{runSummary(r) || runResult(r)}</small>
       </span>
-      {r.session_id && <ChevronRight />}
+      {r.session_id && <ChevronRight className="chev" />}
     </button>
   );
   const pending = remote.scheduleAttempts.get(machineId + "/" + id);
@@ -711,7 +776,7 @@ export function ScheduleDetail({
   const earlierTask = { ...task, runs: earlier, active_run: undefined };
   const history = allHistory ? earlier.map(r => ({ key: r.id, quiet: false, runs: [r] })) : groupRuns(earlierTask).slice(0, 5);
   return (
-    <div className="page gray schedules-page">
+    <div className="page schedules-page schedule-detail">
       <NavBar
         title={task.spec.title}
         sub={attention ? "已停下" : target.type === "resume_session" ? `${timingText(task.spec.trigger)} · 发到「${targetSession?.info ? titleOf(targetSession) : "对话"}」` : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "进行中" ? task.next_run_at ? "下次 " + dateTime(task.next_run_at, now) : "下次待定" : nextText(task, now)}`}
@@ -732,7 +797,7 @@ export function ScheduleDetail({
           </Banner>
         )}
         {attention && (
-          <div className="schedule-attention"><Banner kind="warn">
+          <div className="schedule-attention"><Banner kind="warn"><Info className="lead" />
             {missingTarget ? <>
               {missingTargetRun && `${dateTime(missingTargetRun.started_at, now)} 的运行失败，`}任务已停下：{reasonText(task.reason)}。这个任务只发到原来的对话，恢复后还会失败。
             </> : <>
@@ -747,7 +812,7 @@ export function ScheduleDetail({
             </>}
           </Banner></div>
         )}
-        {attention && <div className="pad schedule-recovery"><button className="btn pri wide" disabled={!online || busy || !!pending?.frozen || !!task.active_run || !!task.manual_request} onClick={recover}>{failedOnce ? "立即运行一次" : "恢复"}</button></div>}
+        {attention && <div className="schedule-recovery"><button className="btn pri" disabled={!online || busy || !!pending?.frozen || !!task.active_run || !!task.manual_request} onClick={recover}>{failedOnce ? "立即运行一次" : "恢复"}</button></div>}
         {error && <Banner kind="err">{error}</Banner>}
         {notice && <Banner>{notice}</Banner>}
         {pending?.frozen && (
@@ -767,11 +832,11 @@ export function ScheduleDetail({
           </Banner>
         )}
         {latest?.id !== result?.id && <button className="schedule-more" onClick={() => setSnapshot({ task: machineId + "/" + id, runId: latest?.id })}>有新结果</button>}
-        {task.active_run && <div className="schedule-result schedule-running"><LoaderCircle className="spin" />正在运行 · {clockTime(task.active_run.started_at)} 开始{task.active_run.session_id && <button onClick={() => openRun(task.active_run!)}>对话 <ChevronRight /></button>}</div>}
+        {task.active_run && <div className="schedule-result schedule-running"><div className="schedule-result-head"><LoaderCircle className="spin" /><span>正在运行 · {clockTime(task.active_run.started_at)} 开始</span>{task.active_run.session_id && <button onClick={() => openRun(task.active_run!)}>对话<ChevronRight /></button>}</div></div>}
         {result && <ScheduleResult key={result.id} remote={remote} run={result} unread={captured && !!visit.unread?.has(result.id)} now={now} open={target.type === "resume_session" && !!task.active_run ? undefined : () => openRun(result)} />}
-        {!runs.length && <p className="hint">还没有运行</p>}
+        {!runs.length && <p className="gf">还没有运行</p>}
         {earlier.length > 0 && <section className="schedule-history">
-        <div className="glabel">
+        <div className="label">
           更早<span>{earlier.length} 次</span>
         </div>
         <div className="grp">
@@ -789,15 +854,18 @@ export function ScheduleDetail({
                     })
                   }
                 >
-                  <span>
-                    {dayText(notificationTime(g.runs[0]), now)} · {g.runs.length}{" "}
-                    次，都没有通知
+                  <span className="schedule-lead" />
+                  <span className="schedule-run-text">
+                    <span className="quiet">
+                      {dayText(notificationTime(g.runs[0]), now)} · {g.runs.length}{" "}
+                      次，都没有通知
+                    </span>
                     <small>
                       最近一次 {clockTime(notificationTime(g.runs[0]))}：
                       {g.runs[0].final_summary || "没有通知"}
                     </small>
                   </span>
-                  {expanded.has(g.key) ? <ChevronUp /> : <ChevronDown />}
+                  <Exp up={expanded.has(g.key)} />
                 </button>
                 {expanded.has(g.key) && g.runs.map(row)}
               </div>
@@ -808,11 +876,11 @@ export function ScheduleDetail({
           {!allHistory && earlier.length > 5 && <button className="row act schedule-more" onClick={() => setAllHistory(true)}>查看全部 {earlier.length} 次</button>}
         </div>
         </section>}
+        <div className="label">让 agent 做什么<button className="link" disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>编辑</button></div>
         <section className="schedule-description">
-          <div className="schedule-description-head"><span>让 agent 做什么</span><button disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>编辑{online && !busy && !task.active_run && !pending?.frozen && <ChevronRight />}</button></div>
           <ScheduleText key={task.spec.message} text={task.spec.message} lines={3} />
         </section>
-        <div className="glabel">设置</div>
+        <div className="label">设置</div>
         <div className="grp">
           <Field
             name="什么时候"
@@ -878,14 +946,14 @@ export function ScheduleDetail({
             }}
           />
         </div>
-        <p className="manage-hint">
+        <p className="foot">
           {target.type === "new_session"
             ? "每次新开一个对话，归在这个任务下面。"
             : "消息发到当前对话，等待当前轮结束。"}{" "}
           {task.source === "agent" ? "Agent 在对话里创建" : "你创建"} ·{" "}
           {dateTime(task.created_at, now)}
         </p>
-        {!online && <p className="manage-hint">{machineName(m)} 连上后才能修改、运行或删除。</p>}
+        {!online && <p className="foot">{machineName(m)} 连上后才能修改、运行或删除。</p>}
         </div>
       </div>
       {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} onClose={() => setMenu(false)} onUnread={() => go("tasks")} onDeleted={() => go("tasks")} onRecover={() => { setMenu(false); recover(); }} />}
@@ -1071,22 +1139,15 @@ function TaskTargetEditor({
     setWatch: () => {},
   };
   return (
-    <Sheet onClose={onClose}>
-      <div className="ns-head">
-        <b>在哪运行</b>
-        <button
-          disabled={
-            busy || !effectiveMode || effectiveMode === ApprovalMode.PLAN
-          }
-          onClick={() =>
-            effectiveMode === ApprovalMode.FULL_ACCESS
-              ? setConfirm(true)
-              : save()
-          }
-        >
-          保存
-        </button>
-      </div>
+    <Sheet
+      onClose={onClose}
+      title="在哪运行"
+      action={{
+        label: "保存",
+        disabled: busy || !effectiveMode || effectiveMode === ApprovalMode.PLAN,
+        onClick: () => (effectiveMode === ApprovalMode.FULL_ACCESS ? setConfirm(true) : save()),
+      }}
+    >
       <div className="grp">
         <Field
           name="项目"
@@ -1097,23 +1158,15 @@ function TaskTargetEditor({
           name="CLI"
           value={
             base.agents.length > 1 ? (
-              <span className="mini-seg">
-                {base.agents.map((agent) => (
-                  <button
-                    key={agent}
-                    className={agent === cfg.agent ? "on" : ""}
-                    onClick={() =>
-                      setCfg({
-                        ...base.configFor(agent),
-                        machineId,
-                        cwd: cfg.cwd,
-                      })
-                    }
-                  >
-                    {agentName(agent)}
-                  </button>
-                ))}
-              </span>
+              <Segmented
+                label="CLI"
+                value={String(cfg.agent)}
+                onChange={(v) => {
+                  const agent = Number(v) as typeof cfg.agent;
+                  setCfg({ ...base.configFor(agent), machineId, cwd: cfg.cwd });
+                }}
+                options={base.agents.map((agent) => ({ value: String(agent), label: agentName(agent) }))}
+              />
             ) : (
               agentName(cfg.agent)
             )
@@ -1251,10 +1304,10 @@ export function ScheduleCreate({
     setMessage(text);
     remote.drafts.set(draftKey, text);
   };
-  const content = (
+  const fields = (
     <>
-      <label className="schedule-prompt">
-        让 agent 做什么
+      <label className="field big schedule-prompt">
+        <small>{session ? "消息" : "让 agent 做什么"}</small>
         <ScheduleTextarea
           aria-label="让 agent 做什么"
           placeholder="描述要定时做的事，有结果时让 agent 通知你"
@@ -1262,8 +1315,9 @@ export function ScheduleCreate({
           onChange={(e) => setText(e.target.value)}
         />
       </label>
-      <label className="schedule-name">
-        任务名
+      {new TextEncoder().encode(message).length > scheduleMessageLimit && <p className="gf red">太长了，最多 32 KB</p>}
+      <label className="field schedule-name">
+        <small>任务名</small>
         <input
           aria-label="任务名"
           placeholder={message.trim() ? `留空会用：${taskName("", message)}` : "留空就用消息的第一句"}
@@ -1272,46 +1326,18 @@ export function ScheduleCreate({
         />
       </label>
       <div className="grp">
+        {!session && <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />}
         <Field
           name="什么时候"
           value={timingText(trigger)}
           onClick={() => setTiming(true)}
         />
-        <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />
-        {!session && (
-          <Field
-            name="项目"
-            value={project ? projectName(project) : "选项目"}
-            onClick={() => setChoosing(true)}
-          />
-        )}
+        {session && <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />}
       </div>
     </>
   );
-  return (
-    <div className="page schedules-page">
-      <NavBar title={session ? "定时发到这个对话" : "新任务"} onBack={onBack} />
-      <ConnBar remote={remote} />
-      <div className="body schedule-body">
-        {content}
-        {new TextEncoder().encode(message).length > scheduleMessageLimit && <p className="hint red">太长了，最多 32 KB</p>}
-        <ScheduleCreateConfig
-          key={session?.id ?? project}
-          remote={remote}
-          project={project}
-          name={name}
-          message={message}
-          trigger={trigger}
-          notifyFinish={notifyFinish}
-          session={session}
-          onDone={(machineId, task) => {
-            remote.drafts.delete(draftKey);
-            drafts.delete(draftKey);
-            if (location.hash === creationRoute)
-              go(session ? "s/" + session.id : taskRoute(machineId, task.id));
-          }}
-        />
-      </div>
+  const layers = (
+    <>
       {choosing && (
         <NewFlow
           remote={remote}
@@ -1333,9 +1359,71 @@ export function ScheduleCreate({
           onClose={() => setTiming(false)}
         />
       )}
-    </div>
+    </>
+  );
+  return (
+    <ScheduleCreateConfig
+      key={session?.id ?? project}
+      remote={remote}
+      project={project}
+      name={name}
+      message={message}
+      trigger={trigger}
+      notifyFinish={notifyFinish}
+      session={session}
+      onPickProject={() => setChoosing(true)}
+      onDone={(machineId, task) => {
+        remote.drafts.delete(draftKey);
+        drafts.delete(draftKey);
+        if (location.hash === creationRoute)
+          go(session ? "s/" + session.id : taskRoute(machineId, task.id));
+      }}
+    >
+      {(c) =>
+        session ? (
+          // From a conversation's ⋯: a sheet of the message, its name and
+          // when, the ink 创建 under them; the rest follows the conversation.
+          <div className="schedule-session-form">
+            <div className="sheet-head">
+              <span className="side-act" />
+              <b>定时发到这个对话</b>
+              <button className="side-act" onClick={onBack}>取消</button>
+            </div>
+            <ConnBar remote={remote} />
+            <div className="schedule-body">
+              {fields}
+              {c.notes}
+              <div className="schedule-create-foot">{c.button}</div>
+            </div>
+            {layers}
+            {c.layers}
+          </div>
+        ) : (
+          // From 新定时: the whole-page sheet, close at the top left and the
+          // ink 创建 at the top right.
+          <div className="page rise schedules-page schedule-create">
+            <header className="nt-hd">
+              <button className="fbtn" aria-label="关闭" onClick={onBack}>
+                <X />
+              </button>
+              <b>新定时</b>
+              {c.button}
+            </header>
+            <ConnBar remote={remote} />
+            <div className="body schedule-body">
+              {fields}
+              {c.rows}
+              {c.notes}
+            </div>
+            {layers}
+            {c.layers}
+          </div>
+        )
+      }
+    </ScheduleCreateConfig>
   );
 }
+type CreateParts = { rows: ReactNode; notes: ReactNode; button: ReactNode; layers: ReactNode };
 function ScheduleCreateConfig({
   remote,
   project,
@@ -1344,7 +1432,9 @@ function ScheduleCreateConfig({
   trigger,
   notifyFinish,
   session,
+  onPickProject,
   onDone,
+  children,
 }: {
   remote: Remote;
   project: string;
@@ -1353,7 +1443,9 @@ function ScheduleCreateConfig({
   trigger: ScheduleTrigger;
   notifyFinish: boolean;
   session?: SessionView;
+  onPickProject: () => void;
   onDone: (machineId: string, t: ScheduleTask) => void;
+  children: (parts: CreateParts) => ReactNode;
 }) {
   const ns = useNewSession(remote, project, () => undefined);
   const [config, setConfig] = useState(false);
@@ -1367,9 +1459,9 @@ function ScheduleCreateConfig({
     remote.conn === "online" && !!remote.machines.get(machineId)?.online;
   const pendingKey = "create:" + (session?.id ?? project);
   const pending = remote.scheduleAttempts.get(machineId + "/" + pendingKey);
+  const mode = ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode;
   const createTask = async () => {
     if (!validScheduleMessage(message) || busy) return;
-    const mode = ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode;
     if (!session && (!mode || mode === ApprovalMode.PLAN)) {
       setError("请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。");
       return;
@@ -1417,62 +1509,49 @@ function ScheduleCreateConfig({
     !online ||
     !validScheduleMessage(message) ||
     busy ||
-    (!session && (!project || ns.reading || !!ns.issue || !(ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) || (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN));
-  return (
+    (!session && (!project || ns.reading || !!ns.issue || !mode || mode === ApprovalMode.PLAN));
+  const rows = !session && (
+    <div className="grp">
+      <Field
+        name="项目"
+        value={project ? projectName(project) : "选项目"}
+        onClick={onPickProject}
+      />
+      <Field
+        name="CLI"
+        value={
+          ns.agents.length > 1 ? (
+            <Segmented
+              label="CLI"
+              value={String(ns.cfg.agent)}
+              onChange={(v) => !pending?.frozen && ns.setAgent(Number(v) as typeof ns.cfg.agent)}
+              options={ns.agents.map((a) => ({ value: String(a), label: agentName(a), disabled: !!pending?.frozen }))}
+            />
+          ) : (
+            agentName(ns.cfg.agent)
+          )
+        }
+      />
+      <Field
+        name="权限"
+        value={<span className={mode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{ns.modeText}</span>}
+        disabled={!!pending?.frozen}
+        onClick={() => setConfig(true)}
+      />
+      <Field
+        name={remote.machines.size > 1 ? "机器和模型" : "模型"}
+        value={
+          remote.machines.size > 1
+            ? [ns.parts.machine, ns.parts.model].join(" · ")
+            : ns.parts.model
+        }
+        disabled={!!pending?.frozen}
+        onClick={() => setConfig(true)}
+      />
+    </div>
+  );
+  const notes = (
     <>
-      {!session && (
-        <div className="grp">
-          <Field
-            name="CLI"
-            value={
-              ns.agents.length > 1 ? (
-                <span className="mini-seg">
-                  {ns.agents.map((a) => (
-                    <button
-                      key={a}
-                      className={ns.cfg.agent === a ? "on" : ""}
-                      disabled={!!pending?.frozen}
-                      onClick={() => ns.setAgent(a)}
-                    >
-                      {agentName(a)}
-                    </button>
-                  ))}
-                </span>
-              ) : (
-                agentName(ns.cfg.agent)
-              )
-            }
-          />
-          <Field
-            name="权限"
-            value={
-              <span
-                className={
-                  (ns.cfg.mode ||
-                    defaultModeOf(ns.machine, ns.cfg.agent).mode) ===
-                  ApprovalMode.FULL_ACCESS
-                    ? "red"
-                    : ""
-                }
-              >
-                {ns.modeText}
-              </span>
-            }
-            disabled={!!pending?.frozen}
-            onClick={() => setConfig(true)}
-          />
-          <Field
-            name={remote.machines.size > 1 ? "机器和模型" : "模型"}
-            value={
-              remote.machines.size > 1
-                ? [ns.parts.machine, ns.parts.model].join(" · ")
-                : ns.parts.model
-            }
-            disabled={!!pending?.frozen}
-            onClick={() => setConfig(true)}
-          />
-        </div>
-      )}
       {!supported && (
         <Banner>需要更新这台电脑上的 remote-agent 才能使用定时任务。</Banner>
       )}
@@ -1496,32 +1575,30 @@ function ScheduleCreateConfig({
         </Banner>
       )}
       {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
-      {!session && (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) === ApprovalMode.PLAN && <Banner kind="warn">计划模式不能创建执行任务，请先选择其他权限</Banner>}
-      {!session && !(ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) && <p className="manage-hint">请选择明确的权限，再创建定时任务。</p>}
-      <p className="manage-hint">
+      {!session && mode === ApprovalMode.PLAN && <Banner kind="warn">计划模式不能创建执行任务，请先选择其他权限</Banner>}
+      {!session && !mode && <p className="gf">请选择明确的权限，再创建定时任务。</p>}
+      <p className="gf">
         {session
           ? "消息会发到当前对话，等待正在运行的一轮结束。"
           : "每次运行新开一个对话，归在这个任务下面，不进会话列表。"}
         完成后默认通知；关闭后仅由 agent 主动通知。
       </p>
-      <div className="pad">
-        <button
-          className="btn pri wide"
-          disabled={disabled || pending?.expired}
-          onClick={() => {
-            if (
-              !session &&
-              (ns.cfg.mode || defaultModeOf(ns.machine, ns.cfg.agent).mode) ===
-                ApprovalMode.FULL_ACCESS &&
-              !pending?.frozen
-            )
-              setFull(true);
-            else void createTask();
-          }}
-        >
-          {busy ? "正在创建…" : pending?.frozen ? "重试创建" : "创建"}
-        </button>
-      </div>
+    </>
+  );
+  const button = (
+    <button
+      className={"btn pri" + (session ? "" : " sm")}
+      disabled={disabled || pending?.expired}
+      onClick={() => {
+        if (!session && mode === ApprovalMode.FULL_ACCESS && !pending?.frozen) setFull(true);
+        else void createTask();
+      }}
+    >
+      {busy ? "正在创建…" : pending?.frozen ? "重试创建" : "创建"}
+    </button>
+  );
+  const layers = (
+    <>
       {config && (
         <ConfigSheet ns={ns} scheduled onClose={() => setConfig(false)} />
       )}
@@ -1540,6 +1617,7 @@ function ScheduleCreateConfig({
       )}
     </>
   );
+  return <>{children({ rows, notes, button, layers })}</>;
 }
 
 export function ScheduleStrip({
@@ -1562,7 +1640,7 @@ export function ScheduleStrip({
   return (
     <>
       <button
-        className="schedule-strip"
+        className="schedule-strip glass"
         onClick={() =>
           tasks.length === 1
             ? go(taskRoute(nearest.machineId, nearest.task.id))
@@ -1579,16 +1657,17 @@ export function ScheduleStrip({
             ? nextText(nearest.task, now)
             : scheduleOffline}
         </span>
-        <span className="blue">
-          管理 <ChevronRight />
+        <span className="act">
+          管理<ChevronRight />
         </span>
       </button>
       {choosing && (
-        <Sheet onClose={() => setChoosing(false)}>
-          <h4>这个对话的定时任务</h4>
-          {tasks.map((e) => (
-            <ScheduleRow key={e.task.id} remote={remote} go={go} {...e} />
-          ))}
+        <Sheet onClose={() => setChoosing(false)} title="这个对话的定时任务">
+          <div className="list schedule-choices">
+            {tasks.map((e) => (
+              <ScheduleRow key={e.task.id} remote={remote} go={go} gut {...e} />
+            ))}
+          </div>
         </Sheet>
       )}
     </>
