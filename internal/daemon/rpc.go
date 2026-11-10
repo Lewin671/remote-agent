@@ -10,6 +10,7 @@ import (
 	"github.com/Lewin671/remote-agent/gen/remoteagent/v1/remoteagentv1connect"
 	"github.com/Lewin671/remote-agent/internal/agent"
 	"github.com/Lewin671/remote-agent/internal/contextio"
+	"github.com/Lewin671/remote-agent/internal/schedule"
 )
 
 type handler struct {
@@ -419,4 +420,45 @@ func uploadErr(err error) error {
 	}
 	slog.Error("image upload", "err", errClass(err))
 	return connect.NewError(connect.CodeInternal, errors.New("the machine could not store the image"))
+}
+
+// SendFile serves the session MCP's send_file. It is local only: a
+// forwarded client command never reaches it, and a client origin is refused.
+func (h *handler) SendFile(ctx context.Context, req *connect.Request[pb.SendFileRequest]) (*connect.Response[pb.SendFileResponse], error) {
+	if o := originOf(ctx); o.GetKind() != pb.OriginKind_ORIGIN_KIND_LOCAL {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("send_file is only for the session's local MCP"))
+	}
+	f, err := h.d.sendFile(ctx, req.Msg.SessionId, req.Header().Get(schedule.MCPScopeHeader), req.Msg.Path)
+	if err != nil {
+		return nil, sharedErr(err)
+	}
+	return connect.NewResponse(&pb.SendFileResponse{File: f}), nil
+}
+
+// GetSharedFileChunk is read-only. The relay forwards it only from the
+// account's Client devices (a Command's sender must be a Client), and
+// local callers share the machine's trust domain.
+func (h *handler) GetSharedFileChunk(ctx context.Context, req *connect.Request[pb.GetSharedFileChunkRequest]) (*connect.Response[pb.GetSharedFileChunkResponse], error) {
+	switch o := originOf(ctx); {
+	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_LOCAL:
+	case o.GetKind() == pb.OriginKind_ORIGIN_KIND_CLIENT && o.DeviceId != "":
+	default:
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("shared files are only for the account's client devices"))
+	}
+	res, err := h.d.uploads.sharedChunk(req.Msg.SessionId, req.Msg.FileId, req.Msg.Offset)
+	if err != nil {
+		return nil, sharedErr(err)
+	}
+	return connect.NewResponse(res), nil
+}
+
+// sharedErr keeps the codes of shared-file errors and hides the others,
+// which may name files.
+func sharedErr(err error) error {
+	var ce *connect.Error
+	if errors.As(err, &ce) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return rpcErr(err)
+	}
+	slog.Error("shared file", "err", errClass(err))
+	return connect.NewError(connect.CodeInternal, errors.New("the computer could not handle the shared file"))
 }

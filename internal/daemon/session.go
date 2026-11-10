@@ -1568,6 +1568,12 @@ func (s *session) annotate(evs []*pb.Event) (consume func()) {
 			if f := s.annotateUserMessage(e, k.UserMessage); f != nil {
 				done = append(done, f)
 			}
+		case *pb.Event_ToolCall:
+			// Stateless like file recognition: the CLI's record names the
+			// copy, which must belong to this session.
+			if c := k.ToolCall; sendFileTool(c) {
+				c.SharedFiles = s.d.uploads.sharedFiles(s.meta.ID, sharedFileIDs(c.Output))
+			}
 		}
 	}
 	return func() {

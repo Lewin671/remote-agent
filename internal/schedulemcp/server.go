@@ -1,9 +1,11 @@
-// Package schedulemcp exposes daemon schedules to native coding CLIs over
-// stdio. It supplies tool schemas only: no server instructions or prompts.
+// Package schedulemcp is the session's remote_agent MCP over stdio: daemon
+// schedules, notify_user and send_file. It supplies tool schemas only: no
+// server instructions or prompts.
 package schedulemcp
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
@@ -31,7 +33,16 @@ type UpdateInput struct {
 type NotifyInput struct {
 	Text string `json:"text" jsonschema:"Required notification body, up to 200 characters"`
 }
+type SendFileInput struct {
+	Path string `json:"path" jsonschema:"The file to send: an absolute path, or one relative to this session's working directory"`
+}
 type Empty struct{}
+
+// sendFileNote travels with every send_file success, so the model does not
+// tell the user the file has arrived.
+const sendFileNote = "The file is now in this conversation. The user downloads it from a Remote Agent client while this computer is online; success does not mean they have downloaded it."
+
+const sendFileDescription = "Send one file from this computer to the user: it appears in this conversation in the user's own Remote Agent clients (their phone, browser), and the user downloads it from there. It cannot be sent to anyone else. path is absolute or relative to the session's working directory and must be a regular file inside the project directory, this session's uploaded files or the system temporary directory, after resolving symlinks; credential and key folders are refused. For a directory, make a zip archive first. At most 100 MiB per file and 6 files per turn. The daemon copies the file now, so later changes to it are not sent; the copy stays on this computer until the session ends. Success means the file was offered, not that the user has downloaded it."
 
 // listScopeNote travels with every schedule_list result. The MCP sees only the
 // bound session's own tasks, so a bare empty list reads as "no tasks exist".
@@ -95,6 +106,26 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 	}
 	mcp.AddTool(server, &mcp.Tool{Name: "notify_user", Description: "Notify the user of a result worth their attention during this scheduled task turn. Ordinary turn-end notifications are suppressed for scheduled turns. Only available in a bound scheduled turn, at most 3 times per run. text is required (up to 200 characters). The notification title is always the dispatch-time task name and cannot be overridden. Success means the notification was durably recorded for delivery, not that the user has received it."}, func(ctx context.Context, _ *mcp.CallToolRequest, in NotifyInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "notify_user", "", 0, in, "")
+	})
+	mcp.AddTool(server, &mcp.Tool{Name: "send_file", Description: sendFileDescription}, func(ctx context.Context, _ *mcp.CallToolRequest, in SendFileInput) (*mcp.CallToolResult, map[string]any, error) {
+		// Copying up to 100 MiB with its hash can take a while on a slow disk.
+		ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+		req := connect.NewRequest(&pb.SendFileRequest{SessionId: sessionID, Path: in.Path})
+		req.Header().Set(schedule.MCPScopeHeader, sessionID)
+		res, err := client.SendFile(ctx, req)
+		if err != nil {
+			var ce *connect.Error
+			if errors.As(err, &ce) {
+				return nil, nil, errors.New(ce.Message())
+			}
+			return nil, nil, errors.New("cannot reach the Remote Agent daemon")
+		}
+		f := res.Msg.File
+		return nil, map[string]any{
+			"status": "offered", "file_id": f.GetFileId(), "name": f.GetName(), "size_bytes": f.GetSizeBytes(),
+			"sha256": hex.EncodeToString(f.GetSha256()), "note": sendFileNote,
+		}, nil
 	})
 	return server
 }

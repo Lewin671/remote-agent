@@ -121,6 +121,10 @@ type uploads struct {
 	hashFile         func(io.Writer, io.Reader) (int64, error)
 	beforeUploadStep func(string) error
 	afterUploadStep  func(string)
+	// Tests replace where send_file looks for the system temporary
+	// folders and the home directory's deny list.
+	tempRoots []string
+	home      string
 }
 
 func newUploads(root string) *uploads {
@@ -690,7 +694,10 @@ func (u *uploads) gcLocked(now time.Time) {
 		m, err := loadMeta(u.sessionStateDir(e.Name()))
 		if err == nil && m.Exited {
 			u.dropSessionLocked(e.Name())
-		} else if os.IsNotExist(err) {
+			continue
+		}
+		u.sweepShared(e.Name(), now)
+		if os.IsNotExist(err) {
 			// A failed session creation may have returned files to pending
 			// and removed its meta, leaving an empty/orphan directory.
 			if fi, err := e.Info(); err == nil && now.Sub(fi.ModTime()) >= unusedTTL {

@@ -3,8 +3,10 @@ package schedulemcp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -53,7 +55,7 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(list.Tools) != 9 {
+	if len(list.Tools) != 10 {
 		t.Fatalf("tool count %d", len(list.Tools))
 	}
 	for _, tool := range list.Tools {
@@ -113,5 +115,74 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	}
 	if note, _ := res.StructuredContent.(map[string]any)["scope_note"].(string); note != listScopeNote {
 		t.Fatalf("list result lacks the scope note: %+v", res.StructuredContent)
+	}
+}
+
+type sendBackend struct {
+	remoteagentv1connect.UnimplementedLocalServiceHandler
+	scope string
+	req   *pb.SendFileRequest
+	fail  bool
+}
+
+func (b *sendBackend) SendFile(_ context.Context, q *connect.Request[pb.SendFileRequest]) (*connect.Response[pb.SendFileResponse], error) {
+	b.scope, b.req = q.Header().Get(schedule.MCPScopeHeader), q.Msg
+	if b.fail {
+		return nil, connect.NewError(connect.CodeResourceExhausted, errors.New("at most 6 files can be sent in one turn"))
+	}
+	return connect.NewResponse(&pb.SendFileResponse{File: &pb.SharedFile{FileId: strings.Repeat("ab", 16), Name: "report.pdf", SizeBytes: 12, Sha256: []byte{0xde, 0xad}}}), nil
+}
+
+// send_file is a thin client: it binds the session, says what success means
+// and passes the daemon's refusal on as a tool error.
+func TestSendFile(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	b := &sendBackend{}
+	mux := http.NewServeMux()
+	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(b))
+	httpServer := httptest.NewServer(mux)
+	defer httpServer.Close()
+	server := New(remoteagentv1connect.NewLocalServiceClient(httpServer.Client(), httpServer.URL), "bound-session", "test")
+	st, ct := mcp.NewInMemoryTransports()
+	ss, err := server.Connect(ctx, st, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close()
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test", Version: "test"}, nil).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	list, err := cs.ListTools(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tool := range list.Tools {
+		// A read-only hint could let a CLI skip asking in its ask mode.
+		if tool.Name == "send_file" && tool.Annotations != nil && tool.Annotations.ReadOnlyHint {
+			t.Fatal("send_file claims to be read-only")
+		}
+	}
+	res, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "send_file", Arguments: map[string]any{"path": "out/report.pdf"}})
+	if err != nil || res.IsError {
+		t.Fatalf("send_file: %+v %v", res, err)
+	}
+	if b.scope != "bound-session" || b.req.SessionId != "bound-session" || b.req.Path != "out/report.pdf" {
+		t.Fatalf("not bound: %q %+v", b.scope, b.req)
+	}
+	out := res.StructuredContent.(map[string]any)
+	if out["file_id"] != strings.Repeat("ab", 16) || out["status"] != "offered" || out["sha256"] != "dead" || out["note"] != sendFileNote {
+		t.Fatalf("result: %+v", out)
+	}
+	// The CLIs record the text content; the daemon finds the ID there.
+	if text := res.Content[0].(*mcp.TextContent).Text; !strings.Contains(text, `"file_id":"`+strings.Repeat("ab", 16)+`"`) {
+		t.Fatalf("text content: %s", text)
+	}
+	b.fail = true
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "send_file", Arguments: map[string]any{"path": "x"}})
+	if err != nil || !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "at most 6 files") {
+		t.Fatalf("refusal: %+v %v", res, err)
 	}
 }

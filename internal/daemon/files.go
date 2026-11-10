@@ -383,7 +383,7 @@ func (u *uploads) recognizeFiles(session, text string) []*pb.SentFile {
 func uploadDataPath(root, path, ext string) bool {
 	rel, _ := filepath.Rel(root, path)
 	parts := strings.Split(rel, string(filepath.Separator))
-	return (len(parts) == 4 && parts[1] == "files") || (len(parts) == 3 && parts[0] == "pending") || ext == ".part" || ext == ".png" || ext == ".jpg" || ext == ".webp" || ext == ".gif"
+	return (len(parts) == 4 && (parts[1] == "files" || parts[1] == "shared")) || (len(parts) == 3 && parts[0] == "pending") || ext == ".part" || ext == ".png" || ext == ".jpg" || ext == ".webp" || ext == ".gif"
 }
 func (in input) messageText() string {
 	if len(in.Files) > 0 {
