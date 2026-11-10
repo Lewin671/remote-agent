@@ -84,6 +84,6 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
         </div>
       </div>;
     })}
-    {!all && ids.length > 3 && <button className="todo-more" onClick={() => setAll(true)}>还有 {ids.length - 2} 条排队 展开</button>}
+    {!all && ids.length > 3 && <button className="more-row" onClick={() => setAll(true)}>还有 {ids.length - 2} 条排队 展开</button>}
   </>;
 }

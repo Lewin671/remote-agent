@@ -47,7 +47,7 @@ it("shows pending bubbles in place and folds more than three", () => {
   mount(<PendingBubbles remote={r} session={s} d={derive(r.events(s.id), Agent.CLAUDE)} />);
   expect(host.querySelectorAll(".pending-bubble")).toHaveLength(2);
   expect(host.textContent).toContain("还有 2 条排队");
-  act(() => host.querySelector<HTMLButtonElement>(".todo-more")!.click());
+  act(() => host.querySelector<HTMLButtonElement>(".more-row")!.click());
   expect(host.querySelectorAll(".pending-bubble")).toHaveLength(4);
   const notes = [...host.querySelectorAll(".pending-meta > span")].map((x) => x.textContent);
   // Few words for what each waits for, numbered while more than one waits.

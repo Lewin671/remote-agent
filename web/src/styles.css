@@ -286,6 +286,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* The end of a list: 还有 N 个 in blue, or a count in ink2. */
 .more-row { display: flex; align-items: center; gap: 2px; width: 100%; min-height: 44px; padding: 13px 24px; font-size: 15px; color: var(--blue); text-align: left; }
 .tail { display: block; width: 100%; text-align: left; padding: 13px 24px; font-size: 15px; color: var(--ink2); }
+.chat .more-row { padding: 6px 0; justify-content: flex-end; font-size: 13px; }
 
 /* The title filter: a capsule with ⌕, ✕ once there is text. */
 .find { margin: 18px 16px 0; height: 40px; border-radius: 20px; background: var(--fill); color: var(--ink3); font-size: 17px; display: flex; align-items: center; gap: 8px; padding: 0 4px 0 14px; flex: none; }

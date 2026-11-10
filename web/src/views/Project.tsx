@@ -83,7 +83,7 @@ export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey
         <EndedRow key={s.id} s={s} go={go} />
       ))}
       {totalEnded > Math.min(shownEnded, ended.length) && (
-        <button className="todo-more" onClick={() => setShownEnded((n) => Math.min(n, ended.length) + PAGE)}>
+        <button className="more-row" onClick={() => setShownEnded((n) => Math.min(n, ended.length) + PAGE)}>
           {shownEnded > ended.length ? "正在加载更早的会话…" : <>全部 {totalEnded} 个已结束的会话<ChevronRight /></>}
         </button>
       )}
