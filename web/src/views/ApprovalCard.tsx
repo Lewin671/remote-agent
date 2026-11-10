@@ -1,7 +1,10 @@
 // The dark card (design-system §6 终端卡): a command waiting to be allowed,
-// dark in both themes. What would run comes first, then why, then the
-// buttons. A command not shown whole cannot be allowed: the card offers
-// 不允许 and 看完整命令 until it is opened in full.
+// dark in both themes, the same on the home, in a session's dock and on the
+// approval page. What would run comes first, then why, then the buttons. On
+// the home a command not shown whole cannot be allowed: the card offers
+// 不允许 and 看完整命令 until it is opened in full. Docked (in a session, or
+// on its own page) the command is whole and scrolls with the content above
+// the buttons, which stay in view.
 
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ApprovalRequested } from "../gen/remoteagent/v1/event_pb";
@@ -12,7 +15,14 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 import { useNow } from "../ui";
 import { ChevronRight } from "../icons";
 import { deadlineOf, useApproval } from "./actions";
-import { approvalText, approvalTitle } from "./Dock";
+
+export function approvalTitle(a: ApprovalRequested): string {
+  return a.command ? "请求执行" : "请求权限 · " + approvalDisplay(a.toolName);
+}
+
+export function approvalText(a: ApprovalRequested): string {
+  return approvalDisplay(a.command || a.toolInputJson || a.toolName);
+}
 
 /** Whole lines a card's command shows before 看完整命令. */
 export const CARD_LINES = 5;
@@ -40,6 +50,9 @@ export function ApprovalCard({
   where,
   onOpen,
   timeoutNote,
+  docked,
+  head: dockHead,
+  onDenying,
 }: {
   remote: Remote;
   sid: string;
@@ -51,11 +64,23 @@ export function ApprovalCard({
   onOpen?: () => void;
   /** The home's card says what the end of the time does: 「，超时拒绝」. */
   timeoutNote?: boolean;
+  /** Docked: the whole command in a scrolling content area, with the
+   * buttons under it. */
+  docked?: boolean;
+  /** A docked card's head in place of the card's own: the dock's line,
+   * which says what else waits and folds it. */
+  head?: ReactNode;
+  /** Writing a reason, which keeps a docked card open whatever the room. */
+  onDenying?: (open: boolean) => void;
 }) {
   const now = useNow(1000);
   const ap = useApproval(remote, sid, a);
   const [full, setFull] = useState(false);
-  const [denying, setDenying] = useState(() => remote.demoFlag("deny"));
+  const [denying, setDenyingState] = useState(() => remote.demoFlag("deny"));
+  const setDenying = (v: boolean) => {
+    setDenyingState(v);
+    onDenying?.(v);
+  };
   const cmd = useRef<HTMLPreElement>(null);
   const text = approvalText(a);
   const [lines, setLines] = useState(() => linesOf(null, "❯ " + text));
@@ -117,22 +142,12 @@ export function ApprovalCard({
   }
   const left = deadline - now;
   const time = unlinked ? "未连接" : deadline ? minutesLeft(deadline, now) + (timeoutNote && left > 0 ? "，超时拒绝" : "") : "";
-  const more = lines - CARD_LINES;
+  const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
-  const clamp = denying ? REASON_LINES : cut ? CARD_LINES : 0;
+  const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0;
   const always = remote.machines.get(remote.sessions.get(sid)?.machineId ?? "")?.meta?.capabilities?.approvalAlways;
-  return (
-    <div className="tc">
-      {head(time, !unlinked && deadline > 0 && left < 60_000)}
-      {title !== undefined && (
-        <h4>
-          <button onClick={onOpen}>
-            <span>{title}</span>
-            <ChevronRight />
-          </button>
-        </h4>
-      )}
-      {where && <div className="m">{where}</div>}
+  const command = (
+    <>
       <pre ref={cmd} className={"cmd" + (clamp ? " clamp" : "")} style={clamp ? ({ "--lines": clamp } as CSSProperties) : undefined}>
         <b>❯ </b>
         {text}
@@ -147,6 +162,10 @@ export function ApprovalCard({
       ) : null)}
       {truncated && <div className="ml red">{approvalTruncatedMessage}</div>}
       {!denying && a.description && <div className="y">{approvalDisplay(a.description)}</div>}
+    </>
+  );
+  const actions = (
+    <>
       {denying ? (
         <>
           <textarea
@@ -178,6 +197,32 @@ export function ApprovalCard({
           <button disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button>
         </div>
       )}
+    </>
+  );
+  if (docked)
+    return (
+      <div className="tc">
+        {dockHead ?? head(time, !unlinked && deadline > 0 && left < 60_000)}
+        <div className="pending-content">
+          <div className="pending-scroll">{command}</div>
+          <div className="pending-actions">{actions}</div>
+        </div>
+      </div>
+    );
+  return (
+    <div className="tc">
+      {head(time, !unlinked && deadline > 0 && left < 60_000)}
+      {title !== undefined && (
+        <h4>
+          <button onClick={onOpen}>
+            <span>{title}</span>
+            <ChevronRight />
+          </button>
+        </h4>
+      )}
+      {where && <div className="m">{where}</div>}
+      {command}
+      {actions}
     </div>
   );
 }

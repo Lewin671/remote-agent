@@ -33,7 +33,7 @@ it("shows safe approval text without changing the authenticated event or decisio
   const root = createRoot(host);
   try {
     act(() => root.render(<ApprovalPage remote={remote} sid={sid} a={a} agent={Agent.CODEX} title="session" onBack={() => undefined} />));
-    expect(host.querySelector("pre")!.textContent).toBe(approvalText(a));
+    expect(host.querySelector("pre")!.textContent).toBe("❯ " + approvalText(a));
     expect(host.textContent).toContain("desc\\u2066hidden\\u2069");
     expect(host.textContent).not.toContain("以后不再问");
     await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === "允许")!.click());

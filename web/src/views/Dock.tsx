@@ -7,114 +7,62 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
-import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "../approval-display";
+import { approvalDisplay } from "../approval-display";
 import { Markdown } from "../markdown";
 import { agentInfo } from "../agents";
 import { agentName, agentOf, askTitle, minutesLeft, optionLabel, type DockItem } from "../model";
 import type { Remote } from "../remote";
 import { Banner, Exp, NavBar, useNow } from "../ui";
-import { deadlineOf, useAnswer, useApproval, usePlan } from "./actions";
+import { deadlineOf, useAnswer, usePlan } from "./actions";
 import { Check, ChevronRight } from "../icons";
+import { ApprovalCard, approvalText, approvalTitle } from "./ApprovalCard";
 
-export function approvalTitle(a: ApprovalRequested): string {
-  return a.command ? "请求执行" : "请求权限 · " + approvalDisplay(a.toolName);
-}
-
-export function approvalText(a: ApprovalRequested): string {
-  return approvalDisplay(a.command || a.toolInputJson || a.toolName);
-}
-
-/** Approval content shared by the dock and the detail page: the reason
- * field replaces the buttons while it is open. */
-export function ApprovalActions({
-  remote,
-  sid,
-  a,
-  onReasonOpen,
-  shared,
-}: {
-  remote: Remote;
-  sid: string;
-  a: ApprovalRequested;
-  agent: Agent;
-  footless?: boolean;
-  wideRow?: boolean;
-  onReasonOpen?: (open: boolean) => void;
-  // The dock's own answering state, so its one-line form can say
-  // 等待确认 while the answer is on its way.
-  shared?: ReturnType<typeof useApproval>;
-}) {
-  const now = useNow(1000);
-  const own = useApproval(remote, sid, a);
-  const ap = shared ?? own;
-  const [reasonOpen, setReasonOpen] = useState(() => remote.demoFlag("deny"));
-  const reason = remote.approvalReasons.get(a.approvalId) ?? "";
-  const setReason = (text: string) => {
-    if (text) remote.approvalReasons.set(a.approvalId, text);
-    else remote.approvalReasons.delete(a.approvalId);
-    remote.touch();
-  };
-  const deadline = deadlineOf(a);
-  const expired = deadline > 0 && now >= deadline;
-  const truncated = approvalTruncated(a);
-  // An answer whose outcome is unknown holds: only a retry of it may go.
-  const locked = !!ap.busy || expired || (!!ap.error && ap.unknown);
-  const open = (v: boolean) => {
-    setReasonOpen(v);
-    onReasonOpen?.(v);
-  };
-  if (isSkeleton(a)) return <div className="approval-status muted">{skeletonMessage}</div>;
-  const error = ap.error && <div className="approval-status red">没送到电脑 <button className="link" onClick={ap.retry}>重试</button></div>;
-  if (ap.busy && !ap.error) return <div className="approval-status muted">正在提交…</div>;
-  if (ap.error) return error;
-  if (reasonOpen)
-    return (
-      <>
-        <textarea
-          className="field reason"
-          autoFocus
-          rows={1}
-          placeholder="说明（可选）"
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-        />
-        <div className="btns decide">
-          <button className="btn" onClick={() => open(false)}>取消</button>
-          <button className="btn no" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>不允许</button>
-        </div>
-        {error}
-      </>
-    );
-  const buttons = (
-    <div className="btns decide">
-      <button className="btn no" disabled={locked} onClick={() => open(true)}>
-        不允许
-      </button>
-      <button className="btn pri" disabled={locked || truncated} onClick={() => void ap.resolve(true)}>
-        {ap.busy.startsWith("allow") ? "允许中…" : "允许"}
-      </button>
-    </div>
-  );
-  const always = remote.machines.get(remote.sessions.get(sid)?.machineId ?? "")?.meta?.capabilities?.approvalAlways;
-  return (
-    <>
-      {truncated && <div className="approval-status red">{approvalTruncatedMessage}</div>}
-      {buttons}
-      {always && <div className="foot"><button className="link" disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button></div>}
-      {error}
-    </>
-  );
-}
+export { approvalText, approvalTitle };
 
 /** How a docked item draws itself: its one line, whether it is open, and
  * how many more items wait behind it. */
 type Frame = { open: boolean; onToggle: () => void; more: number };
 
-/** A waiting item: one line that opens in place into its content, which
- * scrolls, over its actions, which stay in view. Closed, the line is
- * type · summary · 处理; open, it is the only head: type, then what to know
- * about it (还有 N 项, time left), then 收起. `extra` sits before 收起 while
- * open, as the plan's 展开全文. */
+/** The head of an open item: 「● 类型　元信息　收起」, with `extra` (the
+ * plan's 展开全文) before 收起. */
+function OpenHead({ frame, label, meta, extra, busy }: { frame: Frame; label: string; meta?: ReactNode; extra?: ReactNode; busy?: boolean }) {
+  const keep = (e: { preventDefault(): void }) => e.preventDefault();
+  return (
+    <div className="k pending-head">
+      <button className="pending-sum" aria-expanded onMouseDown={keep} onClick={frame.onToggle}>
+        <i />
+        <span className="pending-label">{label}</span>
+      </button>
+      <span className="pending-brief">{meta}</span>
+      {extra}
+      {/* The same toggle as the label; the label is the one read aloud. */}
+      <button className="pending-action" tabIndex={-1} aria-hidden onMouseDown={keep} onClick={frame.onToggle}>
+        {busy ? "等待确认" : "收起"}
+      </button>
+    </div>
+  );
+}
+
+/** A folded item: one dark line 「● 类型 · 摘要 · 处理 ⌄」 that opens it. */
+function FoldedLine({ frame, label, brief, busy }: { frame: Frame; label: string; brief: string; busy?: boolean }) {
+  const info = [brief, frame.more > 0 ? `还有 ${frame.more} 项` : ""].filter(Boolean).join(" · ");
+  return (
+    <div className={"dock pending" + (busy ? " submitting" : "")}>
+      <div className="tc line">
+        <button className="k pending-sum" aria-expanded={false} onMouseDown={(e) => e.preventDefault()} onClick={frame.onToggle}>
+          <i />
+          <span className="pending-label">{label}</span>
+          <span className="pending-brief">{info}</span>
+          <span className="pending-action">{busy ? "等待确认" : <>处理 <Exp /></>}</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** A waiting item in the dark card's shell (design-system §6 停靠区): one
+ * line that opens in place into its content, which scrolls, over its
+ * actions, which stay in view. */
 function Pending({
   frame,
   label,
@@ -124,7 +72,6 @@ function Pending({
   busy,
   body,
   actions,
-  reasoning,
 }: {
   frame: Frame;
   label: string;
@@ -134,41 +81,17 @@ function Pending({
   busy?: boolean;
   body: ReactNode;
   actions: ReactNode;
-  reasoning?: boolean;
 }) {
-  const { open, more } = frame;
-  const info = open ? meta : [brief, more > 0 ? `还有 ${more} 项` : ""].filter(Boolean).join(" · ");
-  const keep = (e: { preventDefault(): void }) => e.preventDefault();
+  if (!frame.open) return <FoldedLine frame={frame} label={label} brief={brief} busy={busy} />;
   return (
-    <div className={"dock pending" + (open ? " open" : "") + (busy ? " submitting" : "") + (reasoning ? " reasoning" : "")}>
-      <div className="pending-head">
-        <button className="pending-sum" aria-expanded={open} onMouseDown={keep} onClick={frame.onToggle}>
-          <span className="pending-dot" />
-          <span className="pending-label">{label}</span>
-          <span className="pending-brief">{info}</span>
-        </button>
-        {open && extra}
-        {/* The same toggle as the line; the line is the one read aloud. */}
-        <button className="pending-action" tabIndex={-1} aria-hidden onMouseDown={keep} onClick={frame.onToggle}>
-          {busy ? (
-            "等待确认"
-          ) : open ? (
-            <>
-              收起 <Exp up />
-            </>
-          ) : (
-            <>
-              处理 <Exp />
-            </>
-          )}
-        </button>
-      </div>
-      {open && (
+    <div className={"dock pending open" + (busy ? " submitting" : "")}>
+      <div className="tc">
+        <OpenHead frame={frame} label={label} meta={meta} extra={extra} busy={busy} />
         <div className="pending-content">
           <div className="pending-scroll">{body}</div>
           <div className="pending-actions">{actions}</div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -188,7 +111,6 @@ function ApprovalDock({
   remote,
   sid,
   a,
-  agent,
   frame,
   onReasonOpen,
   reasoning,
@@ -196,38 +118,30 @@ function ApprovalDock({
   remote: Remote;
   sid: string;
   a: ApprovalRequested;
-  agent: Agent;
   frame: Frame;
   onReasonOpen: (open: boolean) => void;
   reasoning: boolean;
 }) {
   const now = useNow(1000);
-  const ap = useApproval(remote, sid, a);
   const deadline = deadlineOf(a);
   const left = deadline ? minutesLeft(deadline, now) : "";
   const title = approvalTitle(a);
-  if (isSkeleton(a)) return <div className="dock muted">{skeletonMessage}</div>;
+  if (isSkeleton(a)) return <div className="dock pending"><div className="tc line"><div className="k">{skeletonMessage}</div></div></div>;
+  // A permission request's arguments are no summary: its title says it.
+  if (!frame.open) return <FoldedLine frame={frame} label={title} brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""} />;
+  // Answered, the card itself shrinks to its one line of where it stands.
   return (
-    <Pending
-      frame={frame}
-      label={title}
-      // A permission request's arguments are no summary: its title says it.
-      brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""}
-      busy={!!ap.busy}
-      reasoning={reasoning}
-      meta={metaOf(
-        frame.more > 0 && `还有 ${frame.more} 项`,
-        // The head says the time; what happens at its end is the approval card's to say.
-        left,
-      )}
-      body={
-        <>
-          <pre className="cmd">{approvalText(a)}</pre>
-          {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
-        </>
-      }
-      actions={<ApprovalActions remote={remote} sid={sid} a={a} agent={agent} shared={ap} onReasonOpen={onReasonOpen} />}
-    />
+    <div className={"dock pending open" + (reasoning ? " reasoning" : "")}>
+      <ApprovalCard
+        remote={remote}
+        sid={sid}
+        a={a}
+        docked
+        onDenying={onReasonOpen}
+        // The head says the time; what happens at its end is the home card's to say.
+        head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, left)} />}
+      />
+    </div>
   );
 }
 
@@ -278,17 +192,17 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
         return (
           <button
             key={i}
-            className={"ans" + (on ? " on" : "") + (multi ? " multi" : "")}
+            className={"opt" + (on ? " on" : "") + (multi ? " multi" : "")}
             role={multi ? "checkbox" : undefined}
             aria-checked={multi ? on : undefined}
             disabled={multi ? frozen : !!ans.busy}
             onClick={() => (multi ? tick(i + 1) : void pick([i + 1]))}
           >
-            {multi ? <span className={"box" + (on ? " on" : "")}>{on && <Check />}</span> : on && <span className="ck"><Check /></span>}
+            {multi && <span className={"box" + (on ? " on" : "")}>{on && <Check />}</span>}
             <div>
               {text}
               {status === "err" && !multi ? (
-                <small className="red">没能提交，终端里的问题可能已经变了</small>
+                <small className="err">没能提交，终端里的问题可能已经变了</small>
               ) : status && status !== "err" && !multi ? (
                 <small>{status}</small>
               ) : (
@@ -296,6 +210,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
               )}
             </div>
             {recommended && <span className="tag">推荐</span>}
+            {!multi && on && <Check className="ck" />}
           </button>
         );
       })}
@@ -308,20 +223,17 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
       </button>
     </div>
   );
-  const failed = multi && ans.error && <div className="red small">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>;
+  const failed = multi && ans.error && <div className="ml red">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>;
   const foot = (page: boolean) => (
-    <div className="foot">
+    <div className="st">
       {ans.error && (!multi || ans.unknown) ? (
-        <>
-          <span />
-          <button className="link" onClick={retry}>
-            重试
-          </button>
-        </>
+        <button className="lk" onClick={retry}>
+          重试
+        </button>
       ) : (
         <>
           <span>{page && multi ? (ticked.length ? `已选 ${ticked.length} 项` : "") : "都不合适？"}</span>
-          <button className="link" onClick={onTerminal}>
+          <button className="lk" onClick={onTerminal}>
             其他回答：去终端<ChevronRight />
           </button>
         </>
@@ -332,12 +244,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
     label: askTitle(agent),
     text: item.text,
     busy: !!ans.busy,
-    steps: (
-      <span className="steps">
-        {n > 1 && q.questions.map((_, i) => <i key={i} className={i <= index ? "done" : ""} />)}
-        <span className="muted">{progress}</span>
-      </span>
-    ),
+    steps: progress,
     progress,
     answers,
     actions: (page: boolean) => (
@@ -380,6 +287,14 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
   if (terminalOnly) return <div className="muted">{skeletonMessage}</div>;
   return (
     <>
+      {/* The full page offers Codex's third choice above the other two. */}
+      {full && entry.planClearContext && (
+        <div className="btns decide">
+          <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
+            {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}
+          </button>
+        </div>
+      )}
       <div className="btns decide">
         <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
           {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : entry.planKeepLabel}
@@ -388,13 +303,6 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
           {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : entry.planApproveLabel}
         </button>
       </div>
-      {full && agentInfo(agentOf(remote.sessions.get(sid))).planClearContext && (
-        <div className="btns decide" style={{ marginTop: 8 }}>
-          <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
-            {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}
-          </button>
-        </div>
-      )}
       {plan.error && (
         <Banner kind="err" action="重试" onAction={plan.retry}>
           没能提交：{plan.error}
@@ -416,19 +324,17 @@ function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: s
       meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`)}
       extra={
         plan && (
-          <button className="link pending-full" onClick={onFull}>
+          <button className="lk pending-full" onClick={onFull}>
             展开全文<ChevronRight />
           </button>
         )
       }
-      body={<div className="plan-body">{plan ? <Markdown text={plan.text} /> : <span className="muted">计划的内容还没读到，可以去终端看</span>}</div>}
+      body={<div className="plan">{plan ? <Markdown text={plan.text} /> : "计划的内容还没读到，可以去终端看"}</div>}
       actions={
         <>
           <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
           {!isSkeleton(plan) && agentInfo(agentOf(remote.sessions.get(sid))).planNote && (
-            <div className="foot">
-              <span>{agentInfo(agentOf(remote.sessions.get(sid))).planNote}</span>
-            </div>
+            <div className="ml">{agentInfo(agentOf(remote.sessions.get(sid))).planNote}</div>
           )}
         </>
       }
@@ -453,12 +359,12 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
       body={
         title && (
           <>
-            <div className="q light">{title}</div>
+            <div className="q mono">{title}</div>
             {/* Claude Code's trust prompt starts on "No, exit": Enter alone
                 ends the session (claude-code-notes §1). Trusting stays the
                 user's choice, made in the terminal. */}
             {agentInfo(agent).trustFolderHint && /trust/i.test(title) && (
-              <div className="desc">
+              <div className="y">
                 {formatTrustHint(agentInfo(agent).trustFolderHint!)}
               </div>
             )}
@@ -574,7 +480,6 @@ export function Dock({
           remote={remote}
           sid={sid}
           a={item.approval}
-          agent={agent}
           frame={frame}
           reasoning={reasoning}
           onReasonOpen={setReasoning}
@@ -599,59 +504,60 @@ export function Dock({
 }
 
 /** A question on its own page, for when the dock has no room for it: the
- * question and options scroll, the buttons stay at the bottom. */
+ * dark card fills the page, its question and options scroll, the buttons
+ * stay at the bottom. */
 export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal }: { remote: Remote; sid: string; q: QuestionAsked; agent: Agent; title: string; onBack: () => void; onTerminal: () => void }) {
   const p = useQuestion(remote, sid, q, agent, onTerminal);
   return (
-    <div className="page">
+    <div className="page dpage">
       <NavBar onBack={onBack} title="回答提问" sub={`${title} · ${agentName(agent)}`} />
       {p && (
-        <>
-          <div className="question-full">
-            <div className="muted small">{p.progress}</div>
-            <div className="q">{p.text}</div>
-            {p.answers}
+        <div className="tc">
+          <div className="k">
+            <i />
+            {p.label}
+            {p.progress && <span>{p.progress}</span>}
           </div>
-          <div className="dock ask">{p.actions(true)}</div>
-        </>
+          <div className="pending-content">
+            <div className="pending-scroll">
+              <div className="q">{p.text}</div>
+              {p.answers}
+            </div>
+            <div className="pending-actions">{p.actions(true)}</div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-/** An approval on its own page: the whole command, scrollable, with the
- * buttons docked at the bottom. */
-export function ApprovalPage({ remote, sid, a, agent, title, onBack }: { remote: Remote; sid: string; a: ApprovalRequested; agent: Agent; title: string; onBack: () => void }) {
+/** An approval on its own page, for when the dock has no room: the dark
+ * card at the bottom of a paper page, its command scrolling over the
+ * buttons, which stay above the keyboard while a reason is written. */
+export function ApprovalPage({ remote, sid, a, title, onBack }: { remote: Remote; sid: string; a: ApprovalRequested; agent: Agent; title: string; onBack: () => void }) {
   const now = useNow(1000);
-  const [reasoning, setReasoning] = useState(false);
   const deadline = deadlineOf(a);
-  if (isSkeleton(a)) return <div className="page"><NavBar onBack={onBack} title="审批" sub={title} /><div className="body detail muted">{skeletonMessage}</div></div>;
+  if (isSkeleton(a)) return <div className="page dpage"><NavBar onBack={onBack} title="审批" sub={title} /><div className="tc"><div className="y">{skeletonMessage}</div></div></div>;
   return (
-    <div className="page">
+    <div className="page dpage">
       <NavBar onBack={onBack} title="审批详情" sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
-      <div className="body detail">
-        {/* A command speaks for itself; other requests name the tool. */}
-        {!a.command && <div className="h-kind">{approvalTitle(a)}</div>}
-        <pre className="cmd">{approvalText(a)}</pre>
-        {a.description && <div className="desc">{approvalDisplay(a.description)}</div>}
-      </div>
-      <div className={"dock" + (reasoning ? " reasoning" : "")}>
-        <ApprovalActions remote={remote} sid={sid} a={a} agent={agent} onReasonOpen={setReasoning} />
-      </div>
+      <ApprovalCard remote={remote} sid={sid} a={a} docked />
     </div>
   );
 }
 
-/** The whole plan, with every choice. */
+/** The whole plan on a paper page, its choices fixed at the bottom. */
 export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote; sid: string; plan: PlanProposed; title: string; onBack: () => void }) {
-  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title="计划" sub={title} /><div className="body detail muted">{skeletonMessage}</div></div>;
+  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title="计划全文" sub={title} /><div className="body chat muted">{skeletonMessage}</div></div>;
   return (
     <div className="page">
-      <NavBar onBack={onBack} title="计划" sub={title} />
-      <div className="body detail ai">
-        <Markdown text={plan.text} />
+      <NavBar onBack={onBack} title="计划全文" sub={`${title} · 计划待批准`} />
+      <div className="body chat">
+        <div className="ai">
+          <Markdown text={plan.text} />
+        </div>
       </div>
-      <div className="dock plan">
+      <div className="pfoot">
         <PlanButtons remote={remote} sid={sid} full terminalOnly={isSkeleton(plan)} />
       </div>
     </div>

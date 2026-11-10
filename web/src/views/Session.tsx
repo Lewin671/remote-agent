@@ -315,7 +315,6 @@ export function SessionPage({
     );
   const toTerminal = () => setTab(canSplit ? "split" : "term");
   const agentLabel = agentName(agent);
-  const nameTitle = <span className="tname">{title}</span>;
 
   // Detail pages replace the whole session view.
   if (page === "plan" && d.plan && session.info?.planOpen)
@@ -364,10 +363,13 @@ export function SessionPage({
     ["term", "终端"],
     ...(canSplit ? ([["split", "并排"]] as [Tab, string][]) : []),
   ];
+  // Chat / terminal: a glass segmented control under the title on a phone
+  // (dark glass over the terminal), the toolbar's own on a wide window.
   const seg = (
     <div
-      className={"seg" + (tab !== "chat" && !wide ? " dark" : "")}
+      className={wide ? "seg" : "vseg glass" + (tab === "term" ? " dark" : "")}
       role="tablist"
+      aria-label="视图"
     >
       {tabs.map(([t, name]) => (
         <button
@@ -395,7 +397,6 @@ export function SessionPage({
   );
   const sub = (
     <>
-      <StateMark kind={st.tone} />
       {st.text}
       {modeTail}
     </>
@@ -472,28 +473,29 @@ export function SessionPage({
 
   const header = wide ? (
     <header className="dh">
-      <div className="r1">
-        {session.info?.taskOwned && <button className="schedule-run-back" aria-label="返回" title="返回任务" onClick={onBack}><ChevronLeft /></button>}
+      {session.info?.taskOwned && <button className="schedule-run-back" aria-label="返回" title="返回任务" onClick={onBack}><ChevronLeft /></button>}
+      <b>{title}</b>
+      <span className="st">
         <StateMark kind={st.tone} />
-        <b>{title}</b>
-        <span className="muted">
+        <span>
           {st.text}
           {modeTail}
         </span>
-        {seg}
-        <button
-          className={"mr" + (high ? " context-high" : "")}
-          onClick={openMenu}
-          aria-label={moreLabel}
-        >
-          <Ellipsis />
-        </button>
-      </div>
+      </span>
+      <span className="sp" />
+      {seg}
+      <button
+        className={"ib mr" + (high ? " context-high" : "")}
+        onClick={openMenu}
+        aria-label={moreLabel}
+      >
+        <Ellipsis />
+      </button>
     </header>
   ) : (
     <NavBar
       onBack={onBack}
-      title={nameTitle}
+      title={title}
       sub={sub}
       right={more}
       className={tab === "term" ? "dark" : ""}
@@ -627,8 +629,9 @@ export function SessionPage({
                 </span>
               </>
             }
+            // Three groups (design-system §6 弹层与对话框): the session's
+            // settings, what can be done to it, and ending it.
             actions={[
-              { label: "定时发送…", disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? "请更新电脑上的 remote-agent" : undefined, onClick: () => setScheduling(true) },
               ...(!inactive && mode
                 ? [
                     {
@@ -652,14 +655,14 @@ export function SessionPage({
                 ? [
                     {
                       label: "上下文",
-                      value: `${pct}%`,
+                      value: `已用 ${pct}%`,
                       warn: high,
                       onClick: () => setSheet("model"),
                     },
                   ]
                 : []),
               ...(machine?.online && remote.conn === "online"
-                ? [{ label: "重命名", onClick: () => setRenaming(true) }]
+                ? [{ label: "重命名", group: 1, onClick: () => setRenaming(true) }]
                 : []),
               ...(agentInfo(agent).forks && machine?.online && remote.conn === "online"
                 ? [
@@ -668,6 +671,7 @@ export function SessionPage({
                           label: "正在分叉…",
                           busy: true,
                           keep: true,
+                          group: 1,
                           onClick: () => undefined,
                         }
                       : forkWhy
@@ -675,6 +679,7 @@ export function SessionPage({
                             label: "分叉会话",
                             disabled: true,
                             note: forkWhy,
+                            group: 1,
                             onClick: () => undefined,
                           }
                         : forkUnknown === "expired"
@@ -683,6 +688,7 @@ export function SessionPage({
                               keep: true,
                               note: "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
                               noteRed: true,
+                              group: 1,
                               onClick: abandonFork,
                             }
                           : {
@@ -693,18 +699,27 @@ export function SessionPage({
                                 ? "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"
                                 : forkError && "没能分叉：" + forkError,
                               noteRed: true,
+                              group: 1,
                               onClick: () => void fork(),
                             },
                   ]
                 : []),
-              ...(!inactive && d.running
-                ? [{ label: "中断本轮", red: true, onClick: interrupt }]
+              { label: "定时发送…", group: 1, disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? "请更新电脑上的 remote-agent" : undefined, onClick: () => setScheduling(true) },
+              // Stopping the turn stays in its place while there is none,
+              // grayed, saying why.
+              ...(!inactive
+                ? [
+                    d.running
+                      ? { label: "中断本轮", red: true, group: 1, onClick: interrupt }
+                      : { label: "中断本轮", disabled: true, note: "现在没有在运行", group: 1, onClick: () => undefined },
+                  ]
                 : []),
               ...(!ended && machine?.online
                 ? [
                     {
                       label: "结束会话…",
                       red: true,
+                      group: 2,
                       onClick: () => setConfirmEnd(true),
                     },
                   ]
@@ -712,6 +727,7 @@ export function SessionPage({
             ].map((a) =>
               "busy" in a || !forking ? a : { ...a, disabled: true },
             )}
+            pop={wide}
             onClose={() => setMenu(false)}
           />
         )}

@@ -95,7 +95,7 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
     expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
     expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe("添加图片");
     expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
-    await fromMenu("上下文86%");
+    await fromMenu("上下文已用 86%");
     expect(host.textContent).toContain("会话设置");
   } finally {
     act(() => viewport.setViewport({ width: 1024, height: 768 }));
@@ -477,7 +477,7 @@ it("shows an approval's whole command before its description in the dock", () =>
   const scroll = host.querySelector(".pending-scroll")!;
   const cmd = scroll.querySelector("pre.cmd")!;
   expect(cmd.textContent!.split("\n")).toHaveLength(40);
-  expect(cmd.nextElementSibling?.classList.contains("desc")).toBe(true);
+  expect(cmd.nextElementSibling?.classList.contains("y")).toBe(true);
   // Nothing of it is cut away behind a page: it scrolls with the rest.
   expect(button("展开全文")).toBeUndefined();
 });
@@ -1348,7 +1348,7 @@ it("shows a running file edit in one line", async () => {
   push({ case: "turnStarted", value: {} });
   push({ case: "toolStarted", value: { title: "/Users/me/Code/foo/hello.txt", callId: "w", kind: ToolKind.FILE_CHANGE, itemType: "Write" } });
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  const line = host.querySelector(".tool.single")!;
+  const line = host.querySelector(".tool.now")!;
   expect(line.textContent).toContain("hello.txt");
   expect(host.querySelector(".tool-details")).toBeNull();
 });
@@ -2546,7 +2546,9 @@ describe("the client-v7 conversation", () => {
   it("shows a running tool as one line without details or a tool peek", async () => {
     const r = demo();
     mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
-    const tool = host.querySelector(".tool.single .spin")!.closest(".tool")!;
+    // The command running now is its own block at the end, with the ink ring.
+    const tool = host.querySelector(".tool.now")!;
+    expect(tool.querySelector(".mark.run")).toBeTruthy();
     expect(tool.querySelector("pre")).toBeNull();
     expect(tool.textContent).toContain("go test");
     // The time says what it is.
@@ -3161,8 +3163,8 @@ it("appends a restored message to the current draft", async () => {
 it("keeps an approval reason across dock and detail mounts", async () => {
   const r = demo();
   const a = derive(r.events("s-appr")).approvals.values().next().value!;
-  const { ApprovalActions } = await import("./Dock");
-  const actions = <ApprovalActions remote={r} sid="s-appr" a={a} agent={Agent.CODEX} />;
+  const { ApprovalCard } = await import("./ApprovalCard");
+  const actions = <ApprovalCard remote={r} sid="s-appr" a={a} docked />;
   mount(actions);
   await click(button("不允许"));
   await reviewType(host.querySelector("textarea")!, "reason");
@@ -3236,10 +3238,10 @@ it.each([['removed', 'high'], ['gpt-6-astra', 'removed']])("falls back from unav
 it("offers a retained refusal reason for copying after another client resolves the approval", async () => {
   const r = demo();
   const a = derive(r.events("s-appr")).approvals.values().next().value!;
-  const { ApprovalActions } = await import("./Dock");
-  mount(<ApprovalActions remote={r} sid="s-appr" a={a} agent={Agent.CODEX} />);
+  const { ApprovalCard } = await import("./ApprovalCard");
+  mount(<ApprovalCard remote={r} sid="s-appr" a={a} docked />);
   await click(button("不允许"));
-  await reviewType(host.querySelector<HTMLTextAreaElement>("textarea.reason")!, "retained reason");
+  await reviewType(host.querySelector<HTMLTextAreaElement>("textarea.inp")!, "retained reason");
   const writeText = vi.fn(async () => undefined);
   vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
   act(() => {

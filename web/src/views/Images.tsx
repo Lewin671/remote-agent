@@ -25,7 +25,7 @@ import {
   type SessionImage,
 } from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
-import { Exp, useRemote } from "../ui";
+import { Exp, GlassButton, useRemote } from "../ui";
 import { ChevronLeft, ChevronRight, X } from "../icons";
 
 /** Opens the viewer at a picture; provided by the session page. */
@@ -438,6 +438,7 @@ export function ImageViewer({
         .join(" · ")}
     </>
   );
+  // Dark in both themes, its buttons dark glass (design-system §2, §4).
   if (wide)
     return (
       <div
@@ -450,42 +451,33 @@ export function ImageViewer({
           <span>
             {i + 1} / {images.length} · {sourceText(img, agent)}
           </span>
-          <button onClick={onClose} aria-label="关闭">
+          <GlassButton label="关闭" onClick={onClose}>
             <X />
-          </button>
+          </GlassButton>
         </div>
-        <button
-          className="arr"
-          onClick={() => go(-1)}
-          disabled={i === 0}
-          aria-label="上一张"
-        >
-          <ChevronLeft />
-        </button>
-        <div className="lb-img">{picture}</div>
-        <button
-          className="arr"
-          onClick={() => go(1)}
-          disabled={i >= images.length - 1}
-          aria-label="下一张"
-        >
-          <ChevronRight />
-        </button>
+        <div className="lb-mid">
+          <GlassButton label="上一张" onClick={() => go(-1)} disabled={i === 0}>
+            <ChevronLeft />
+          </GlassButton>
+          <div className="lb-img">{picture}</div>
+          <GlassButton label="下一张" onClick={() => go(1)} disabled={i >= images.length - 1}>
+            <ChevronRight />
+          </GlassButton>
+        </div>
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
-          <span className="acts">
-            {note && <span className="muted">{note}</span>}
-            <button onClick={save} disabled={!full}>
-              保存
-            </button>
-            <button
-              onClick={() => void copy()}
-              disabled={!blob || typeof ClipboardItem === "undefined"}
-            >
-              复制
-            </button>
-            <button onClick={onClose}>回到消息</button>
-          </span>
+          {note && <span className="lb-note">{note}</span>}
+          <button className="glass" onClick={save} disabled={!full}>
+            保存
+          </button>
+          <button
+            className="glass"
+            onClick={() => void copy()}
+            disabled={!blob || typeof ClipboardItem === "undefined"}
+          >
+            复制
+          </button>
+          <button className="glass" onClick={onClose}>回到消息</button>
         </div>
       </div>
     );
@@ -497,12 +489,12 @@ export function ImageViewer({
       aria-label="查看图片"
     >
       <div className="vbar">
-        <button onClick={onClose} aria-label="关闭">
+        <GlassButton label="关闭" onClick={onClose}>
           <X />
-        </button>
-        <span className="small">
+        </GlassButton>
+        <b>
           {i + 1} / {images.length}
-        </span>
+        </b>
         <span />
       </div>
       {picture}
@@ -518,11 +510,11 @@ export function ImageViewer({
         {note && <div>{note}</div>}
       </div>
       <div className="vact">
-        <button onClick={save} disabled={!full}>
+        <button className="glass" onClick={save} disabled={!full}>
           保存
         </button>
-        {canShare && <button onClick={() => void share()}>分享</button>}
-        <button onClick={onClose}>回到消息</button>
+        {canShare && <button className="glass" onClick={() => void share()}>分享</button>}
+        <button className="glass" onClick={onClose}>回到消息</button>
       </div>
     </div>
   );

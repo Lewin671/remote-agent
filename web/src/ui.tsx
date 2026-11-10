@@ -152,15 +152,17 @@ export interface Action {
 /** A ⋯ menu: a sheet with what it is about in bold at the top, then the
  * actions as left-aligned rows in rounded groups, drawn as the project
  * picker is (design-system §6 弹层与对话框). A row with a value reads
- * 「名称 …… 值 ›」; red marks an action that stops or ends something. */
-export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; actions: Action[]; onClose: () => void }) {
+ * 「名称 …… 值 ›」; red marks an action that stops or ends something.
+ * `pop` (a wide window) shows the same menu by the ⋯ at the top right of
+ * the nearest positioned area instead of as a sheet. */
+export function ActionSheet({ info, actions, onClose, pop }: { info?: ReactNode; actions: Action[]; onClose: () => void; pop?: boolean }) {
   const groups: Action[][] = [];
   actions.forEach((a, i) => {
     if (i === 0 || (a.group ?? 0) !== (actions[i - 1].group ?? 0)) groups.push([]);
     groups[groups.length - 1].push(a);
   });
-  return (
-    <Sheet onClose={onClose} className="menu">
+  const content = (
+    <>
       {info && <div className="menu-info">{info}</div>}
       {groups.map((group, g) => (
       <div className="list" role="menu" key={g}>
@@ -190,7 +192,27 @@ export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; acti
         ))}
       </div>
       ))}
+    </>
+  );
+  if (pop) return <PopMenu onClose={onClose}>{content}</PopMenu>;
+  return (
+    <Sheet onClose={onClose} className="menu">
+      {content}
     </Sheet>
+  );
+}
+
+/** A menu by the button that opened it, on a wide window: what a phone
+ * shows as a bottom sheet. A click outside or Esc closes it. */
+function PopMenu({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  useEscape(onClose);
+  return (
+    <>
+      <div className="pop-back" onClick={onClose} />
+      <div className="pop menu menu-pop" role="dialog" aria-modal="true">
+        {children}
+      </div>
+    </>
   );
 }
 

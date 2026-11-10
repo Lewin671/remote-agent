@@ -1,10 +1,12 @@
-// Tool calls in the chat: one line per call, with finished runs folded.
+// Tool calls in the chat (design-system §6 工具调用): one line of 13 ink2
+// per call, with finished runs folded; the command running now is its own
+// gray block at the end of the chat, with how long it has run.
 import { useRowExpanded } from "./RowState";
 import type { ApprovalRequested, ToolCall } from "../gen/remoteagent/v1/event_pb";
 import { ToolKind, type ApprovalDecision } from "../gen/remoteagent/v1/event_pb";
 import { clock, decisionText, toolClock, toolsSummary, type Derived, type RunningTool } from "../model";
 import type { Remote } from "../remote";
-import { Exp, useNow } from "../ui";
+import { Exp, StateMark, useNow } from "../ui";
 import { ImageStrip } from "./Images";
 import { Check, LoaderCircle, X } from "../icons";
 
@@ -32,7 +34,10 @@ export function ActiveTool({ tool, d, unsettled, remote }: { tool: RunningTool; 
   // Says what the time is: how long it has been running.
   const ran = c ? `已运行 ${clock(c.ms)}` : "";
   const status = !online ? `${ran ? ran + " · " : ""}等待同步` : unsettled ? "后台运行" : awaitingApproval(tool, d.approvals.values()) ? "等待审批" : ran;
-  return <div className="tool single"><span className={online && !unsettled ? "sp" : "sp faint"} role="img" aria-label={!online ? "等待同步" : unsettled ? "后台运行" : "运行中"}><LoaderCircle /></span><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
+  // Gone to the background, it is a tool line like the others.
+  if (unsettled) return <div className="tool single"><span className="sp faint" role="img" aria-label="后台运行"><LoaderCircle /></span><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
+  // Running: the ink ring; with the clock stopped while offline, the still loader.
+  return <div className="tool now"><span className={online ? "sp" : "sp faint"} role="img" aria-label={online ? "运行中" : "等待同步"}>{online ? <StateMark kind="run" /> : <LoaderCircle />}</span><code>{commandOf(tool)}</code><span className="muted">{status}</span></div>;
 }
 export function ToolRow({ t, short, decision, by, resultText }: { t: ToolCall; short: Short; decision?: ApprovalDecision; by?: string; resultText?: string }) {
   const ok = t.status !== "failed" && (t.exitCode === undefined || t.exitCode === 0);

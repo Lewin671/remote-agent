@@ -1,4 +1,7 @@
-// The session composer: one growing input with ＋ for images on the left; its right button sends, or interrupts an empty running turn.
+// The session composer (design-system §6 输入框): a glass capsule floating
+// at the bottom, ＋ on the left, the draft growing from one line to about
+// six, and on the right one ink button that sends, or interrupts a running
+// turn while the draft is empty. Chosen images and files sit above the line.
 
 import { useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode, type RefObject } from "react";
 import type { Tray } from "../attach";
@@ -8,8 +11,9 @@ import type { Remote, SessionView } from "../remote";
 import { Alert, sendKeys, usePointerFine } from "../ui";
 import { ArrowUp, Square } from "../icons";
 
-/** The draft grows to about six lines, then scrolls inside. */
-const DRAFT_MAX = 132;
+/** The draft grows to about six lines (17 / 1.4, and its padding), then
+ * scrolls inside. */
+const DRAFT_MAX = 150;
 
 /** A textarea that grows with its text up to max pixels. field-sizing
  * does this where supported; the height set here covers the rest. */
@@ -98,31 +102,60 @@ export function Composer({
   const keys = sendKeys(fine);
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
   const canQueue = d.running;
+  const send = d.running && !t && !images ? (
+    <button className="snd stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮">
+      <Square />
+    </button>
+  ) : (
+    <div className="send-wrap">
+      <button
+        className={"snd" + (canSend ? "" : " off")}
+        disabled={!canSend}
+        onMouseDown={(e) => e.preventDefault()}
+        onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }}
+        onPointerUp={() => clearTimeout(hold.current)}
+        onPointerLeave={() => clearTimeout(hold.current)}
+        onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
+        onClick={() => { if (held.current) { held.current = false; return; } submit(); }}
+        aria-label="发送"
+      >
+        <ArrowUp />
+      </button>
+      {sendMenu && (
+        <div className="send-menu">
+          <button onClick={() => submit()}><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></button>
+          <button onClick={() => submit(false, SendMode.QUEUE)}><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></button>
+        </div>
+      )}
+    </div>
+  );
   return (
-    <div className={"compose-card" + (dropping ? " drop" : "")} {...cardProps}>
+    <div className={"cbar glass" + (dropping ? " drop" : "")} {...cardProps}>
       {trayView}
-      <div className="compose-menu">{attach}</div>
-      <textarea
-        ref={input}
-        className={"draft" + (t ? " typed" : "")}
-        value={text}
-        rows={1}
-        placeholder={placeholder}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          // Enter is a new line; ⌘/Ctrl+Enter sends, but never while an
-          // input method is still composing.
-          if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            submit();
-          } else if (e.key === "Enter" && e.altKey && canQueue && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            submit(false, SendMode.QUEUE);
-          }
-        }}
-        aria-label="消息"
-      />
-      {d.running && !t && !images ? <button className="go44 stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮"><Square /></button> : <div className="send-wrap"><button className={"go44" + (canSend ? "" : " off")} disabled={!canSend} onMouseDown={(e) => e.preventDefault()} onPointerDown={() => { if (canQueue) { held.current = false; hold.current = setTimeout(() => { held.current = true; setSendMenu(true); }, 450); } }} onPointerUp={() => clearTimeout(hold.current)} onPointerLeave={() => clearTimeout(hold.current)} onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }} onClick={() => { if (held.current) { held.current = false; return; } submit(); }} aria-label="发送"><ArrowUp /></button>{sendMenu && <div className="send-menu"><button onClick={() => submit()}><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></button><button onClick={() => submit(false, SendMode.QUEUE)}><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></button></div>}</div>}
+      <div className="cline">
+        {attach}
+        <textarea
+          ref={input}
+          className={"draft" + (t ? " typed" : "")}
+          value={text}
+          rows={1}
+          placeholder={placeholder}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            // Enter is a new line; ⌘/Ctrl+Enter sends, but never while an
+            // input method is still composing.
+            if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit();
+            } else if (e.key === "Enter" && e.altKey && canQueue && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              submit(false, SendMode.QUEUE);
+            }
+          }}
+          aria-label="消息"
+        />
+        {send}
+      </div>
       {slash !== undefined && (
         <Alert
           title="作为普通消息发送？"

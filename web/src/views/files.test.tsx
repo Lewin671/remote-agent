@@ -21,7 +21,7 @@ function tray() {
   const t = new Tray(async () => ({ bytes: new Uint8Array(1), format: "png", width: 1, height: 1 }), async (_m, p) => ({ imageId: p.format === "file" ? "" : "i", fileId: p.fileName, expiresMs: Number.MAX_SAFE_INTEGER }), () => undefined);
   t.machineId = "mac"; t.fileSupported = true; return t;
 }
-it("offers 图片/文件, and selecting an image under 文件 never compresses it", async () => {
+it("offers 图片 / 文件, and selecting an image under 文件 never compresses it", async () => {
   const t = tray(); const prepare = vi.spyOn(t as unknown as { prepare: () => Promise<unknown> }, "prepare");
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
@@ -162,3 +162,4 @@ it("keeps original queued content when a held live snapshot carries truncated te
   expect(d.accepted.get("r")).toMatchObject({ text: "complete original message", files: [file], origin: { deviceId: "other" }, mode: SendMode.STEER });
   expect(historical.accepted.get("r")?.mode).toBe(SendMode.QUEUE);
 });
+

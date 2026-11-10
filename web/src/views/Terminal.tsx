@@ -1,6 +1,5 @@
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
-import { DEFAULT_BG } from "../ansi";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
 import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
@@ -120,8 +119,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       // The reader owns scrolling; the live screen keeps no local scrollback
       // that a wheel could turn into arrow keys.
       scrollback: 0,
-      // The page's terminal surface (the term token), so no seam shows around the canvas.
-      theme: { background: getComputedStyle(document.documentElement).getPropertyValue("--term").trim() || DEFAULT_BG, foreground: "#c9d1d9", cursor: "#c9d1d9" },
+      // No background of its own: the view's terminal surface shows through,
+      // so no seam shows around the screen and nothing here follows the theme.
+      allowTransparency: true,
+      theme: { background: "rgba(0,0,0,0)", foreground: "#c9d1d9", cursor: "#c9d1d9" },
       allowProposedApi: false,
     });
     term.current = t;
@@ -370,11 +371,14 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const reading = history.phase === "reading";
   return (
     <div className={"termview" + (compact ? " compact" : "")}>
+      {/* The size capsule, dark glass over the terminal in either theme. */}
       <div className="ttool">
-        <span>
-          {reading ? "回看中 · 只读" : !live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
-        </span>
-        {live && !reading && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
+        <div className="tchip glass">
+          <span>
+            {reading ? "回看中 · 只读" : !live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
+          </span>
+          {live && !reading && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
+        </div>
       </div>
       <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
         <div className="tpan" ref={pan}>
@@ -384,7 +388,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
         {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
         {changed && state === "live" && !reading && (
-          <div className="tstate">
+          <div className="tstate glass">
             <b>远端尺寸已变化</b>
             <p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
             <div className="btns">
@@ -395,11 +399,11 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
           </div>
         )}
         {state === "closed" && (
-          <div className="tstate">
+          <div className="tstate glass">
             <b>终端连接断开了</b>
             <p>下面是断开前的画面。{running ? "会话还在运行，聊天照常更新。" : "会话已经结束。"}</p>
             <div className="btns">
-              <button className="btn" onClick={() => setAttempt((a) => a + 1)}>
+              <button className="btn pri" onClick={() => setAttempt((a) => a + 1)}>
                 重新连接
               </button>
             </div>
@@ -416,7 +420,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       </div>
       {/* A wide window with a mouse has a keyboard: the bar is for touch. */}
       {!compact && !(wide && fine) && (
-        <div className={"keys" + (live ? "" : " off")}>
+        <div className={"keys glass" + (live ? "" : " off")}>
           <div className="keyrow">
             {keys.map(([label, seq, name]) => (
               <button key={name} onClick={() => press(seq)} disabled={!live} aria-label={name}>
@@ -430,7 +434,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
                 {label}
               </button>
             ))}
-            <button onClick={openKeyboard} disabled={!live} aria-label="键盘">
+            <button className="kb" onClick={openKeyboard} disabled={!live} aria-label="键盘">
               <Keyboard /> 键盘
             </button>
           </div>

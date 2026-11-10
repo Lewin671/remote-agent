@@ -6,7 +6,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { Agent, ApprovalDecision, ApprovalMode, ApprovalRequestedSchema, EventSchema, InputStatus, SendMode, SessionStatus, ToolCallSchema, ToolKind } from "./gen/remoteagent/v1/event_pb";
 import { alwaysText, decisionText, derive, phaseOf, queuedIds } from "./model";
 import { DemoRemote, ANDROID, ME } from "./dev/demo";
-import { ApprovalActions } from "./views/Dock";
+import { ApprovalCard } from "./views/ApprovalCard";
 import { Home, Sidebar } from "./views/Home";
 import { SessionPage } from "./views/Session";
 import { useNewSession } from "./views/NewSession";
@@ -100,7 +100,7 @@ it("sends the CLI always choice and translates known resolved wording", async ()
   r.command = async (_sid, kind) => { seen.push(kind); return create((await import("./gen/remoteagent/v1/remote_pb")).CommandResultSchema); };
   const a = r.events("s-appr").find((e) => e.kind.case === "approvalRequested" && e.kind.value.approvalId === "a1")!.kind;
   if (a.case !== "approvalRequested") throw new Error("fixture");
-  mount(<ApprovalActions remote={r} sid="s-appr" a={a.value} agent={Agent.CODEX} />);
+  mount(<ApprovalCard remote={r} sid="s-appr" a={a.value} docked />);
   act(() => [...host.querySelectorAll("button")].find((b) => b.textContent?.includes("以后不再问"))!.click());
   await vi.waitFor(() => expect(seen).toHaveLength(1));
   expect(seen[0]).toMatchObject({ case: "resolveApproval", value: { allow: true, always: true } });

@@ -5,10 +5,20 @@ import { useEffect, useRef, useState } from "react";
 import { ApprovalMode, type Agent } from "./gen/remoteagent/v1/event_pb";
 import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_pb";
 import { agentInfo } from "./agents";
-import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf } from "./model";
+import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf, titleOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
 import { Alert, Banner, Segmented, Sheet, useEscape } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
+
+/** A session sheet's head: what it sets in bold, and whose session. */
+function SheetHead({ name, s }: { name: string; s: SessionView }) {
+  return (
+    <div className="menu-info">
+      <b>{name}</b>
+      {agentName(agentOf(s))} · {titleOf(s)}
+    </div>
+  );
+}
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
   const info = agentInfo(agent);
@@ -143,7 +153,7 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     );
   return (
     <Sheet onClose={onClose}>
-      <h4>审批模式</h4>
+      <SheetHead name="审批模式" s={s} />
       {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
@@ -239,16 +249,17 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const canSwitch = agentInfo(agent).switchesModelInSession;
   return (
     <Sheet onClose={onClose}>
-      <h4>会话设置</h4>
+      <SheetHead name="会话设置" s={s} />
       {pct !== undefined && (
         <div className="ctxbox">
-          <div>
-            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{pct}%</div>
+          <div className="ctxn">
+            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>已用 {pct}%</div>
             <div className="muted small">
               {compacting ? <><LoaderCircle /> 正在压缩…</> : `上下文 ${tokens(s.info!.contextTokens)} / ${tokens(s.info!.contextWindow)}`}
             </div>
+            <div className={"bar" + (pct > CONTEXT_WARN ? " warn" : "")}><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
           </div>
-          <button className="act" disabled={compacting || running || offline} onClick={() => void compact()}>
+          <button className="btn sm" disabled={compacting || running || offline} onClick={() => void compact()}>
             压缩
           </button>
         </div>

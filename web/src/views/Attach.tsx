@@ -8,7 +8,7 @@ import { machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
 import { FileChip } from "./Files";
-import { Plus, X } from "../icons";
+import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
 
 /** The tray of a draft (a session's input, or a project's new-session
  * card), kept on the Remote so it survives leaving the page. */
@@ -100,7 +100,13 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
   return <span className="attach-wrap" ref={wrap}>
     <button className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
       onMouseDown={(e) => e.preventDefault()} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
-    {open && <div className="attach-menu" role="menu"><button role="menuitem" onClick={() => pick(false)}>图片</button><button role="menuitem" onClick={() => pick(true)}>文件</button></div>}
+    {open && (
+      <div className="attach-menu glass" role="menu">
+        <button role="menuitem" onClick={() => pick(false)}><ImageIcon />图片</button>
+        <button role="menuitem" onClick={() => pick(true)}><FileIcon />文件</button>
+        <p>文件原样发送，包含其中的元数据。</p>
+      </div>
+    )}
     <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => { tray.add(imageFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
     <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
   </span>;
@@ -148,6 +154,7 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
   const images = tray.images();
   const files = tray.files();
   const failed = images.filter((i) => i.state === "failed");
+  const failedFiles = files.filter((i) => i.state === "failed");
   return (
     <div className="attachments">
       {images.length > 0 && (
@@ -166,7 +173,7 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
               title={tray.canSwitchOriginal() ? undefined : "放回的图片没有原始文件，不能切换原图"}
               onClick={() => tray.setOriginal(!tray.original)}
             >
-              <i />
+              <i>{tray.original && <Check />}</i>
               原图{tray.original && tray.totalBytes() > 0 ? ` · 共 ${mb(tray.totalBytes())}` : ""}
             </button>
             <span>
@@ -177,10 +184,10 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
       )}
       {tray.original && images.length > 0 && <div className="att-hint">原图保住画质；两个 CLI 仍会把过大的图缩到 2000px 左右。</div>}
       {files.length > 0 && <>
-        <div className="att-tray file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>
+        <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>
         <div className="att-hint">文件原样发送，包含其中的元数据。</div>
-        {files.some((i) => i.state === "failed") && <Banner kind="err">{files.find((i) => i.state === "failed")?.error}。点「重试」或移除后才能发送</Banner>}
       </>}
+      {failedFiles.length > 0 && <Banner kind="err">{failedFiles[0].error}。点「重试」或移除后才能发送</Banner>}
       {failed.length > 0 && (
         <Banner kind="err">
           {failed.length} 张图没能传到电脑：{failed[0].error}。点「重试」或移除后才能发送
