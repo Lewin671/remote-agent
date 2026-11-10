@@ -1,7 +1,7 @@
 // Small building blocks shared by the views.
 
 import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
-import { avatarClass, type Tone } from "./model";
+import type { Tone } from "./model";
 import type { Remote } from "./remote";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
 
@@ -28,22 +28,54 @@ export function useNow(ms: number, enabled = true) {
   return now;
 }
 
-export function Dot({ tone }: { tone: Tone }) {
-  return <span className={"dot " + tone} />;
+/** What a state graphic says (design-system §2): a session's tone, or a
+ * computer that is online, or a result not read yet. */
+export type Mark = Tone | "online" | "unread";
+
+/** A state graphic: the drawn shape at the head of a row, never an icon
+ * and never alone, as the state word beside it says the same. Running is
+ * an ink ring that turns (still when the system asks for less motion),
+ * idle a hollow gray ring, waiting an orange dot, not connected a faint
+ * dot, unread a blue dot, online a green one. */
+export function StateMark({ kind }: { kind: Mark }) {
+  return <i className={"mark " + kind} aria-hidden />;
 }
 
-export function Avatar({ name, size = "" }: { name: string; size?: "" | "sm" | "xs" | "lg" }) {
-  const letter = [...name].find((c) => /\p{L}|\p{N}/u.test(c)) ?? "?";
-  return <div className={`av ${size} ${avatarClass(name)}`}>{letter.toLowerCase()}</div>;
+/** A project's avatar: its name's first letter on a gray circle, the same
+ * for every project; 全 for all of them. */
+export function Avatar({ name, size = "", all }: { name: string; size?: "" | "sm" | "xs" | "lg"; all?: boolean }) {
+  const letter = all ? "全" : ([...name].find((c) => /\p{L}|\p{N}/u.test(c)) ?? "?").toLowerCase();
+  return <span className={"av" + (size ? " " + size : "")} aria-hidden>{letter}</span>;
 }
 
-export function Sheet({ onClose, children, className = "" }: { onClose: () => void; children: ReactNode; className?: string }) {
+/** A round glass button floating over the content (back, ⋯, the gear):
+ * 44×44, named for screen readers. */
+export function GlassButton({ label, onClick, children, disabled, className = "" }: { label: string; onClick: () => void; children: ReactNode; disabled?: boolean; className?: string }) {
+  return (
+    <button className={"gbtn glass " + className} aria-label={label} title={label} disabled={disabled} onClick={onClick}>
+      {children}
+    </button>
+  );
+}
+
+/** A bottom sheet: gray, with a grab handle that closes it as the dim does.
+ * A title, when given, is centered in a head with at most a 取消 or 完成 on
+ * the right, only where something is to be confirmed. On a wide window
+ * it is centered. */
+export function Sheet({ onClose, children, className = "", title, action }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void } }) {
   useEscape(onClose);
   return (
     <div className="overlay">
       <div className="dim" onClick={onClose} />
       <div className={"sheet " + className} role="dialog" aria-modal="true">
-        <div className="grab" />
+        <button className="grab" aria-label="关闭" onClick={onClose} />
+        {title !== undefined && (
+          <div className="sheet-head">
+            <span className="side-act" />
+            <b>{title}</b>
+            {action ? <button className="side-act" onClick={action.onClick}>{action.label}</button> : <span className="side-act" />}
+          </div>
+        )}
         {children}
       </div>
     </div>
@@ -77,7 +109,7 @@ export function Alert({
   return (
     <div className="overlay">
       <div className="dim" onClick={onCancel} />
-      <div className="alert" role="alertdialog" aria-modal="true">
+      <div className="dialog" role="alertdialog" aria-modal="true">
         {/* Danger shows on the button, never the title (design-system §2). */}
         <h5>{title}</h5>
         <p>{text}</p>
@@ -112,18 +144,27 @@ export interface Action {
   busy?: boolean;
   /** Clicking leaves the sheet open, for the action to report in it. */
   keep?: boolean;
+  /** Which rounded group the row is in: rows with the same number in a
+   * row share one group, as 设置项 / 操作 / 结束会话. */
+  group?: number;
 }
 
-/** A ⋯ menu: a sheet with what it is about at the top and one
- * left-aligned row per action, drawn as the project picker is
- * (design-system §6 弹层与对话框). A row with a value reads
+/** A ⋯ menu: a sheet with what it is about in bold at the top, then the
+ * actions as left-aligned rows in rounded groups, drawn as the project
+ * picker is (design-system §6 弹层与对话框). A row with a value reads
  * 「名称 …… 值 ›」; red marks an action that stops or ends something. */
 export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; actions: Action[]; onClose: () => void }) {
+  const groups: Action[][] = [];
+  actions.forEach((a, i) => {
+    if (i === 0 || (a.group ?? 0) !== (actions[i - 1].group ?? 0)) groups.push([]);
+    groups[groups.length - 1].push(a);
+  });
   return (
     <Sheet onClose={onClose} className="menu">
       {info && <div className="menu-info">{info}</div>}
-      <div className="list" role="menu">
-        {actions.map((a) => (
+      {groups.map((group, g) => (
+      <div className="list" role="menu" key={g}>
+        {group.map((a) => (
           <button
             key={a.label}
             role="menuitem"
@@ -148,10 +189,40 @@ export function ActionSheet({ info, actions, onClose }: { info?: ReactNode; acti
           </button>
         ))}
       </div>
+      ))}
     </Sheet>
   );
 }
 
+/** A segmented control: one setting's values, or a view, side by side in
+ * a gray capsule, the picked one on a light knob (never ink). */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  label,
+  className = "",
+}: {
+  options: { value: T; label: ReactNode; disabled?: boolean; aria?: string }[];
+  value: T | undefined;
+  onChange: (v: T) => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <div className={"seg " + className} role="group" aria-label={label}>
+      {options.map((o) => (
+        <button key={o.value} className={o.value === value ? "on" : ""} aria-pressed={o.value === value} aria-label={o.aria} disabled={o.disabled} onClick={() => o.value !== value && onChange(o.value)}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A page's banner: gray, a line of what is the matter and at most one
+ * text action. "err" writes it in red; "warn" is for what needs the user
+ * (orange-soft under orange-ink). */
 export function Banner({ kind = "", children, action, onAction }: { kind?: "" | "warn" | "err"; children: ReactNode; action?: string; onAction?: () => void }) {
   return (
     <div className={"banner " + kind}>
@@ -175,16 +246,17 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
   // Nothing kept from before to show: the bar says what the connection is for.
   const kept = remote.listed || remote.sessions.size > 0;
   if (link === "waiting" && !remote.showWaiting) return null;
-  if (link === "no-network") return <div className={className}><WifiOff /> 本机网络不通 · {kept ? "显示的是上次的内容" : "联网后才能读取会话"}</div>;
+  if (link === "no-network") return <div className={className}><WifiOff /><span>本机网络不通 · {kept ? "显示的是上次的内容" : "联网后才能读取会话"}</span></div>;
   if (link === "no-server")
     return (
       <div className={className + (kept ? "" : " err")}>
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
-        <span>{kept ? <CloudOff /> : <X />} 连不上服务器{details ? `：${remote.connError || "没有回应"}。也可能是这台设备的网络不通，会一直自动重试` : " · 正在重试"}</span>
+        {kept ? <CloudOff /> : <X />}
+        <span>连不上服务器{details ? `：${remote.connError || "没有回应"}。也可能是这台设备的网络不通，会一直自动重试` : " · 正在重试"}</span>
         {details ? <button onClick={() => remote.reconnectNow(true)}>重试</button> : <button onClick={() => setDetails(true)}>详情</button>}
       </div>
     );
-  return <div className={className}><LoaderCircle /> {remote.everOnline ? "正在重连…" : "连接中…"}</div>;
+  return <div className={className}><LoaderCircle /><span>{remote.everOnline ? "正在重连…" : "连接中…"}</span></div>;
 }
 
 export function Skeleton({ lines = 3 }: { lines?: number }) {
@@ -198,8 +270,9 @@ export function Skeleton({ lines = 3 }: { lines?: number }) {
   );
 }
 
-/** A navigation bar: back, a title with a second line, and a right
- * button, each at least 44×44. */
+/** The top of a page: a glass back button, a centered title with a second
+ * line, and a right button (a glass ⋯ when it has a class of "more"),
+ * each at least 44×44, over the page with no bar of its own. */
 export function NavBar({ onBack, title, sub, right, className = "" }: { onBack?: () => void; title?: ReactNode; sub?: ReactNode; right?: ReactNode; className?: string }) {
   return (
     <header className={"navbar " + className}>

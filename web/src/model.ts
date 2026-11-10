@@ -232,13 +232,6 @@ export function machineName(m?: MachineLike): string {
   );
 }
 
-/** Avatar color class, stable per project. */
-export function avatarClass(key: string): string {
-  let h = 0;
-  for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return "c" + ((h % 4) + 1);
-}
-
 // --- session state by priority ---
 
 export type Tone = "run" | "wait" | "idle" | "off";

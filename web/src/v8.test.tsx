@@ -174,14 +174,17 @@ it("shows background status without raw item types", () => {
 it("caps home running and other projects at five", () => {
   const r = demo("many=1");
   mount(<Home remote={r} go={() => undefined} />);
-  expect(host.textContent).toMatch(/还有 \d+ 个进行中/);
+  expect(host.querySelector(".more-row")?.textContent).toMatch(/^还有 \d+ 个$/);
+  expect(host.querySelectorAll(".sess")).toHaveLength(5);
+  // What waits: the dark card, then three rows at most before 还有 N 件.
+  expect(host.querySelectorAll(".pr:not(.all)").length).toBeLessThanOrEqual(3);
   expect(host.textContent).toContain("全部项目");
 });
 
 it("lists every running session in the wide sidebar, which scrolls as one column", () => {
   const r = demo("many=1");
   mount(<Sidebar remote={r} go={() => undefined} />);
-  expect(host.textContent).not.toMatch(/还有 \d+ (个进行中|项待处理)/);
+  expect(host.querySelector(".more-row, .pr.all")).toBeNull();
   expect(host.querySelector(".scroll")!.textContent).toContain("项目 7 的会话");
 });
 

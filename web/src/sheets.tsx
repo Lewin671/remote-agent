@@ -7,7 +7,7 @@ import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_p
 import { agentInfo } from "./agents";
 import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
-import { Alert, Banner, Sheet, useEscape } from "./ui";
+import { Alert, Banner, Segmented, Sheet, useEscape } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
 
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
@@ -72,7 +72,7 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
     <div className="overlay">
       <div className="dim" onClick={onClose} />
       <form
-        className="alert rename"
+        className="dialog rename"
         role="dialog"
         aria-modal="true"
         aria-label="重命名会话"
@@ -282,13 +282,13 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
           {noEffort ? (
             <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
           ) : (
-            <div className={"effort-grid" + (locked || !cur ? " dis" : "")}>
-              {offered.map((e) => (
-                <button key={e} className={e === effort ? "on" : ""} aria-pressed={e === effort} disabled={locked || !cur} onClick={() => cur && e !== effort && void set(cur, e)}>
-                  {e}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              className="full wrap efforts"
+              label="推理强度"
+              value={effort}
+              onChange={(e) => cur && void set(cur, e)}
+              options={offered.map((e) => ({ value: e, label: e, disabled: locked || !cur }))}
+            />
           )}
           {switching && <Banner>正在切换到 {switching}…</Banner>}
         </>

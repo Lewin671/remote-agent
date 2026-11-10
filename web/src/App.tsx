@@ -14,7 +14,7 @@ import { Remote, resumeRegistration, errorText } from "./remote";
 import { loadAccount, type StoredAccount, watchAccountLogout } from "./storage";
 import { securitySetupStatus } from "./device-security-store";
 import { NavBar, useRemote } from "./ui";
-import { Home, Sidebar, todoList, WideHome, type Go } from "./views/Home";
+import { BottomBar, Home, Sidebar, WideHome, type Go } from "./views/Home";
 import { ProjectPage } from "./views/Project";
 import { ManagePage } from "./views/Projects";
 import { SessionPage } from "./views/Session";
@@ -28,10 +28,9 @@ import {
 } from "./views/Settings";
 import { PairCodePage, SecurityPage } from "./views/Security";
 import { taskRoute } from "./schedules";
-import { ScheduleBadge } from "./views/ScheduleBadge";
 import { guardUpdateInput } from "./update";
 import { ScheduleCreate, hasScheduleDrafts, ScheduleDetail, SchedulesPage } from "./views/Schedules";
-import { Clock, MessageSquare, Settings as SettingsIcon } from "./icons";
+import { Plus } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
 const Setup = lazy(() =>
@@ -309,7 +308,7 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
   else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;
-  else if (kind === "settings") page = <Settings remote={remote} go={go} />;
+  else if (kind === "settings") page = <Settings remote={remote} go={go} onBack={wide ? undefined : () => go("")} />;
   else if (kind === "devices")
     page = <DevicesPage remote={remote} go={go} onBack={back} />;
   else if (kind === "q")
@@ -345,27 +344,14 @@ function Main({ remote }: { remote: Remote }) {
         <main className="dm">{page}</main>
       </div>
     );
-  const tabs = kind === "" || kind === "settings" && !arg || kind === "tasks" && !arg;
-  const todo = todoList(remote).length;
+  // The home draws its own bottom row; the task list gets the same one,
+  // with 新定时 on the right.
+  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
   return (
-    <div className={"phone" + (kind === "settings" ? " gray" : "")}>
+    <div className="phone">
       {page}
-      {tabs && (
-        <nav className="tabbar">
-          <button className={kind === "" ? "on" : ""} onClick={() => go("")}>
-            <MessageSquare />
-            会话
-            {todo > 0 && <span className="n">{todo}</span>}
-          </button>
-          <button className={kind === "tasks" ? "on" : ""} onClick={() => go("tasks")}><Clock />定时<ScheduleBadge remote={remote} /></button>
-          <button
-            className={kind === "settings" ? "on" : ""}
-            onClick={() => go("settings")}
-          >
-            <SettingsIcon />
-            设置
-          </button>
-        </nav>
+      {kind === "tasks" && !arg && (
+        <BottomBar remote={remote} go={go} active="tasks" action={{ label: "新定时", icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling || remote.unlinked }} />
       )}
     </div>
   );

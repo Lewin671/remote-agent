@@ -127,10 +127,11 @@ export function ProjectItem({
   );
 }
 
-/** The projects on the list, the same in every place that shows them:
- * 常用 then 其他 (the titles only when there are both), a search above more
- * than eight, and 新项目… at the end. `first` goes above the projects while
- * nothing is searched for; `children` after 新项目…. */
+/** The projects on the list, the same in every place that shows them, in
+ * rounded groups: 常用 then 其他 (the titles only when there are both), a
+ * search above more than eight, and 新项目… at the end. `first` goes in a
+ * group above the projects while nothing is searched for; `children` in
+ * the last group, after 新项目…. */
 export function ProjectList({ remote, item, first, onNew, children }: { remote: Remote; item: (p: P) => ReactNode; first?: ReactNode; onNew: () => void; children?: ReactNode }) {
   const [query, setQuery] = useState("");
   const g = useProjectGroups(remote);
@@ -143,16 +144,18 @@ export function ProjectList({ remote, item, first, onNew, children }: { remote: 
     <>
       {g.pinned.length + g.others.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
       <div className="plist" role={first ? "menu" : undefined}>
-        {!q && first}
+        {!q && first && <div className="grp">{first}</div>}
         {titled && <div className="fl">常用</div>}
-        {pinned.map(item)}
+        {pinned.length > 0 && <div className="grp">{pinned.map(item)}</div>}
         {titled && <div className="fl">其他</div>}
-        {others.map(item)}
+        {others.length > 0 && <div className="grp">{others.map(item)}</div>}
         {q && pinned.length + others.length === 0 && <div className="hint">没有名字或路径里有「{query.trim()}」的项目</div>}
-        <button className="pi add" onClick={onNew}>
-          <Plus /> 新项目…
-        </button>
-        {children}
+        <div className="grp">
+          <button className="pi add" onClick={onNew}>
+            <Plus /> 新项目…
+          </button>
+          {children}
+        </div>
       </div>
     </>
   );

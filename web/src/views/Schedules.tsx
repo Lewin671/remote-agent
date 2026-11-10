@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { agentById, agentInfo } from "../agents";
-import { Clock, Plus, ChevronRight, ChevronDown, ChevronUp, Ellipsis, LoaderCircle } from "../icons";
+import { Clock, ChevronRight, ChevronDown, ChevronUp, Ellipsis, LoaderCircle } from "../icons";
 import {
   agentName,
   agentOf,
@@ -191,9 +191,8 @@ export function SchedulesPage({ remote, go, sidebar = false, selected }: { remot
       <ConnBar remote={remote} />
       <div className="large">
         <h3>定时任务</h3>
-        <button className="nb" aria-label="新任务" title="新任务" disabled={!supported.length} onClick={() => go("tasks/new")}><Plus /></button>
       </div>
-      <div className="body schedule-body">
+      <div className={"body schedule-body" + (sidebar ? "" : " under-bar")}>
         <TaskOffline remote={remote} />
         {errors.map((id) => (
           <Banner
@@ -959,7 +958,7 @@ function TaskNameDialog({
     <div className="overlay">
       <div className="dim" onClick={onClose} />
       <form
-        className="alert rename"
+        className="dialog rename"
         role="dialog"
         aria-modal="true"
         aria-label="重命名任务"

@@ -82,7 +82,7 @@ import {
   Alert,
   Banner,
   ConnBar,
-  Dot,
+  StateMark,
   Exp,
   fromHere,
   NavBar,
@@ -395,7 +395,7 @@ export function SessionPage({
   );
   const sub = (
     <>
-      <Dot tone={st.tone} />
+      <StateMark kind={st.tone} />
       {st.text}
       {modeTail}
     </>
@@ -474,7 +474,7 @@ export function SessionPage({
     <header className="dh">
       <div className="r1">
         {session.info?.taskOwned && <button className="schedule-run-back" aria-label="返回" title="返回任务" onClick={onBack}><ChevronLeft /></button>}
-        <Dot tone={st.tone} />
+        <StateMark kind={st.tone} />
         <b>{title}</b>
         <span className="muted">
           {st.text}
@@ -1590,7 +1590,7 @@ function EndCard({
     return (
       <div className="endcard">
         <div className="h">
-          <Dot tone="off" />
+          <StateMark kind="off" />
           {mname} 不在线
         </div>
         <div className="d">
@@ -1617,7 +1617,7 @@ function EndCard({
     return (
       <div className="endcard">
         <div className="h">
-          <Dot tone="run" />
+          <StateMark kind="run" />
           正在恢复…
         </div>
         <div className="d">
@@ -1629,7 +1629,7 @@ function EndCard({
     return (
       <div className="endcard">
         <div className="h">
-          <Dot tone="off" />
+          <StateMark kind="off" />
           恢复失败
         </div>
         <div className="d">{error}</div>
@@ -1647,7 +1647,7 @@ function EndCard({
   return (
     <div className="endcard">
       <div className="h">
-        <Dot tone="off" />
+        <StateMark kind="off" />
         会话已结束
       </div>
       {remote.unlinked ? (

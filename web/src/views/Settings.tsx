@@ -32,7 +32,8 @@ import { applyUpdate, checkUpdate, useUpdate } from "../update";
 import {
   Alert,
   Banner,
-  Dot,
+  GlassButton,
+  StateMark,
   NavBar,
   Sheet,
   useNow,
@@ -50,16 +51,19 @@ import {
   type DeviceInfo,
 } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { Check, ChevronRight, Globe, Laptop, LoaderCircle, Smartphone, Tablet } from "../icons";
+import { Check, ChevronLeft, ChevronRight, Globe, Laptop, LoaderCircle, Smartphone, Tablet } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
 
 export function Settings({
   remote,
   go,
+  onBack,
 }: {
   remote: Remote;
   go: (r: string) => void;
+  /** Back to the home, on a phone; a wide window has the gear instead. */
+  onBack?: () => void;
 }) {
   useRemote(remote);
   useNow(30_000); // for the machines' quota lines
@@ -77,6 +81,13 @@ export function Settings({
   const others = clients.filter((d) => d.id !== me);
   return (
     <div className="body gray">
+      {onBack && (
+        <div className="tbar">
+          <GlassButton label="返回" onClick={onBack}>
+            <ChevronLeft />
+          </GlassButton>
+        </div>
+      )}
       <div className="large">
         <h3>设置</h3>
       </div>
@@ -95,7 +106,7 @@ export function Settings({
           const quota = quotaLine(m);
           const status = (
             <>
-              <Dot tone={m.online ? "idle" : "off"} />
+              <StateMark kind={m.online ? "online" : "off"} />
               {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
             </>
           );
@@ -182,7 +193,7 @@ export function Settings({
         <button className="row" onClick={() => setChecking(true)}>
           连接检测
           <span className="v">
-            {conn.text && <Dot tone={conn.tone} />}
+            {conn.text && <StateMark kind={conn.tone} />}
             {conn.text}
             <ChevronRight />
           </span>
@@ -467,7 +478,7 @@ export function DevicesPage({
               <span className="v">
                 {m.online ? (
                   <>
-                    <Dot tone="idle" />
+                    <StateMark kind="online" />
                     在线
                   </>
                 ) : (

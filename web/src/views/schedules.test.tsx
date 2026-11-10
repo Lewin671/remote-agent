@@ -937,14 +937,15 @@ it("counts unread notifications in the wide sidebar's schedules entry too", asyn
   tasks = [task({ runs: [run("new-notice", { notified: true })] })];
   await r.refreshSchedules("mac");
   await mount(<Sidebar remote={r} go={() => {}} />);
-  expect(host.querySelector('.side-tabs [aria-label="有新结果"]')).not.toBeNull();
+  expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
 });
 
-it("puts new task in the header and remembers the ended group on this device", async () => {
+it("leaves 新定时 to the bottom row and remembers the ended group on this device", async () => {
   const r = remote([task({id:"done",status:"completed"})]);
   const go = vi.fn();
   await mount(<SchedulesPage remote={r} go={go} />);
-  expect(host.querySelector(".large button")?.getAttribute("aria-label")).toBe("新任务");
+  // The page's head has no button of its own: the shell's ink 新定时 makes a task.
+  expect(host.querySelector(".large button")).toBeNull();
   expect(host.querySelector(".task-new")).toBeNull();
   expect(host.querySelectorAll(".sess")).toHaveLength(0);
   await click(/已结束/);
@@ -952,8 +953,6 @@ it("puts new task in the header and remembers the ended group on this device", a
   expect(localStorage.getItem("schedule-ended-open")).toBe("true");
   await act(async () => root!.render(<SchedulesPage key="remount" remote={r} go={go} />));
   expect(host.querySelectorAll(".sess")).toHaveLength(1);
-  await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="新任务"]')!.click());
-  expect(go).toHaveBeenCalledWith("tasks/new");
 });
 it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
   const r = remote(); r.machines.get("mac")!.online = false;
@@ -1018,8 +1017,9 @@ it("keeps manual pauses banner-free and places missing-target recovery beneath t
 it("replaces the wide session timeline with a task list and keeps navigation tabs", async () => {
   const r=remote(); await mount(<Sidebar remote={r} active="tasks" selectedTask="tasks/mac/task-1" go={()=>{}} />);
   expect(host.querySelector(".schedule-sidebar")).not.toBeNull(); expect(host.querySelector(".schedule-selected")).not.toBeNull();
-  expect(host.querySelector('[aria-label="新会话"]')).toBeNull(); expect(host.querySelector('[aria-label="新任务"]')).not.toBeNull();
-  expect(host.querySelector(".side-tabs")?.textContent).toContain("会话");
+  expect(host.querySelector(".side-top .mini")?.textContent).toBe("新定时");
+  expect(host.querySelector(".sfoot .seg")?.textContent).toContain("会话");
+  expect(host.querySelector(".sfoot .seg .on")?.textContent).toContain("定时");
 });
 
 it("renders scheduled queue metadata from the accepted event and keeps cancellation available", async () => {

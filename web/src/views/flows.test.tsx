@@ -10,7 +10,7 @@ import { create } from "@bufbuild/protobuf";
 import { MachineMetaSchema } from "../gen/remoteagent/v1/remote_pb";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { Agent, ApprovalDecision, ApprovalMode, EventSchema, InputStatus, OriginKind, PlanProposedSchema, SessionStatus, ToolKind } from "../gen/remoteagent/v1/event_pb";
-import { derive, dockItems, projects } from "../model";
+import { derive, dockItems, projects, stateOf } from "../model";
 import { DaemonSettingsSchema } from "../gen/remoteagent/v1/local_pb";
 import { CommandResultSchema, type CommandResult } from "../gen/remoteagent/v1/remote_pb";
 import { CommandError, type CommandKind, type RequestSlot } from "../remote";
@@ -105,10 +105,11 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
 it("lets the home card handle one approval after another", async () => {
   const r = demo();
   mount(<Home remote={r} go={() => undefined} />);
-  // s-appr waits on two approvals and is listed first.
-  const card = () => host.querySelector(".todo")!;
+  // s-appr waits on two approvals and is listed first: the dark card.
+  const card = () => host.querySelector(".tc")!;
   expect(card().textContent).toContain("rm -rf gen/remoteagent");
   await click(button("允许", card()));
+  // Submitted, the card is one line of where it stands until the next comes up.
   await vi.waitFor(() => expect(card().textContent).toContain("/etc/hosts"), { timeout: 3000 });
   // The second approval's buttons start fresh, not locked as "允许中…".
   const allow = button("允许", card());
@@ -397,7 +398,7 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
   expect(button("压缩")).toBeTruthy();
   expect(host.textContent).toContain("运行中不能换模型，新建会话时可选");
   expect(host.textContent).toContain("运行中不能换推理强度");
-  expect(host.querySelector(".effort-grid")).toBeNull();
+  expect(host.querySelector(".efforts")).toBeNull();
 
   // Session ⋯ menu omits 分叉会话 for Antigravity, and plan dock shows Antigravity's note.
   act(() => root!.render(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />));
@@ -481,34 +482,63 @@ it("shows an approval's whole command before its description in the dock", () =>
   expect(button("展开全文")).toBeUndefined();
 });
 
-it("puts a card's command first, six whole lines of it, and opens the rest in place", async () => {
+it("puts a card's command first, five whole lines of it, and allows only once it is seen whole", async () => {
   const r = createDemo(new URLSearchParams("longcmd=1"));
   r.start();
   mount(<Home remote={r} go={() => undefined} />);
-  const card = () => host.querySelector(".todo")!;
-  const cmd = card().querySelector("pre.card-cmd")!;
+  const card = () => host.querySelector(".tc")!;
+  const cmd = card().querySelector("pre.cmd")!;
   expect(cmd.textContent).toContain("set -euo pipefail");
-  // Head, then the command, then the description, then the buttons.
+  // Head, title, where, then the command, then the description, then the buttons.
   const order = [...card().children].map((e) => e.className || e.tagName);
-  expect(order.indexOf("card-cmd")).toBeLessThan(order.indexOf("desc"));
-  expect(order.indexOf("desc")).toBeLessThan(order.indexOf("btns decide"));
-  // No layout here: the count is the command's own 40 lines.
-  const more = button(/^还有 34 行 · 展开/, card())!;
-  expect(more).toBeTruthy();
-  expect(cmd.classList.contains("open")).toBe(false);
-  await click(more);
-  expect(cmd.classList.contains("open")).toBe(true);
-  await click(button(/^收起/, card()));
-  expect(cmd.classList.contains("open")).toBe(false);
+  expect(order.indexOf("cmd clamp")).toBeGreaterThan(order.indexOf("m"));
+  expect(order.indexOf("cmd clamp")).toBeLessThan(order.indexOf("y"));
+  expect(order.indexOf("y")).toBeLessThan(order.indexOf("btns decide"));
+  // No layout here: the count is the command's own 40 lines, five shown.
+  expect(card().querySelector(".ml")!.textContent).toBe("还有 35 行没显示");
+  // Not seen whole, it cannot be allowed: 不允许 and 看完整命令.
+  expect(button("允许", card())).toBeUndefined();
+  expect(button("不允许", card())).toBeTruthy();
+  await click(button("看完整命令", card()));
+  expect(cmd.classList.contains("clamp")).toBe(false);
+  expect(card().querySelector(".ml")!.textContent).toContain("共 40 行");
+  expect(button("允许", card())?.disabled).toBe(false);
+  await click(button("收起", card()));
+  expect(cmd.classList.contains("clamp")).toBe(true);
+  expect(button("允许", card())).toBeUndefined();
 });
 
-it("offers no 展开 under a card's command of six lines or fewer", () => {
+it("allows a card's command of five lines or fewer right away", () => {
   const r = demo();
   mount(<Home remote={r} go={() => undefined} />);
   // s-appr's first approval runs five lines.
-  const card = host.querySelector(".todo")!;
-  expect(card.querySelector("pre.card-cmd")!.textContent).toContain("rm -rf gen/remoteagent");
-  expect(card.querySelector(".cmd-more")).toBeNull();
+  const card = host.querySelector(".tc")!;
+  expect(card.querySelector("pre.cmd")!.textContent).toContain("rm -rf gen/remoteagent");
+  expect(card.querySelector("pre.cmd")!.classList.contains("clamp")).toBe(false);
+  expect(card.textContent).not.toContain("没显示");
+  expect(button("看完整命令", card)).toBeUndefined();
+  expect(button("允许", card)).toBeTruthy();
+});
+
+it("writes a reason in place on 不允许, then shrinks to a line once sent", async () => {
+  const r = demo();
+  const sent = barrier();
+  const command = r.command.bind(r);
+  r.command = async (...args) => { await sent.wait; return command(...args); };
+  mount(<Home remote={r} go={() => undefined} />);
+  const card = () => host.querySelector(".tc")!;
+  await click(button("不允许", card()));
+  const field = card().querySelector<HTMLTextAreaElement>("textarea.inp")!;
+  expect(field.placeholder).toBe("说说该怎么做，可以不填");
+  expect([...card().querySelectorAll(".btns button")].map((b) => b.textContent)).toEqual(["取消", "不允许"]);
+  await click(button("取消", card()));
+  expect(card().querySelector("textarea")).toBeNull();
+  await click(button("不允许", card()));
+  await click(button("不允许", card().querySelector(".btns")!));
+  expect(card().classList.contains("line")).toBe(true);
+  expect(card().textContent).toContain("已拒绝");
+  await act(async () => sent.release());
+  await vi.waitFor(() => expect(card().textContent).toContain("/etc/hosts"), { timeout: 3000 });
 });
 
 function ClaudeAsk({ r }: { r: DemoRemote }) {
@@ -1480,7 +1510,7 @@ describe("approvals whose answer was not confirmed (v2)", () => {
     mount(<Home remote={r} go={() => undefined} />);
     return calls;
   }
-  const card = () => host.querySelector(".todo")!;
+  const card = () => host.querySelector(".tc")!;
 
   it("locks both choices and retries only the one made, as the same request", async () => {
     const calls = setup(new CommandError("unknown", "连接超时"));
@@ -1707,7 +1737,7 @@ describe("project management (v2)", () => {
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
     await click(button("移除项目…"));
     // Nothing is removed until the dialog is confirmed.
-    expect(host.querySelector(".alert")?.textContent).toContain("移除 shop？");
+    expect(host.querySelector(".dialog")?.textContent).toContain("移除 shop？");
     await click(button("取消"));
     expect(names(".plist .pi b")).toContain("shop");
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
@@ -1719,7 +1749,7 @@ describe("project management (v2)", () => {
     expect(host.textContent).not.toContain("已移除");
     // Home leaves it out of the projects, but its plan still waits for the user.
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
-    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
     expect(names(".plist .pi b")).not.toContain("shop");
     expect(names(".plist .pi b")).toContain("foo");
     expect(todoList(r).map((x) => x.id)).toContain("s-plan");
@@ -1756,7 +1786,7 @@ describe("project management (v2)", () => {
     act(() => root!.render(<ProjectPicker remote={r} onPick={() => undefined} onNew={() => undefined} onClose={() => undefined} />));
     expect(seen()).toEqual(managed);
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
-    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
     expect(seen()).toEqual(managed);
     // 全部项目 counts the same way, over every project.
     const all = [...host.querySelectorAll(".plist .pi")].find((x) => x.querySelector("b")?.textContent === "全部项目")!;
@@ -1786,7 +1816,7 @@ describe("project management (v2)", () => {
     const went: string[] = [];
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={(to) => went.push(to)} onBack={() => undefined} />);
     await click(button("移除项目…"));
-    expect(host.querySelector(".alert")?.textContent).toContain("移除 foo？");
+    expect(host.querySelector(".dialog")?.textContent).toContain("移除 foo？");
     await click(button("移除"));
     await vi.waitFor(() => expect(r.projectPrefs().hidden.map((h) => h.path)).toContain("/Users/me/Code/foo"), { timeout: 3000 });
     await vi.waitFor(() => expect(went).toEqual([""]));
@@ -2664,7 +2694,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   const s = r.sessions.get("s-run")!;
   const was = s.info!.title;
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  const input = () => host.querySelector<HTMLInputElement>(".alert.rename input")!;
+  const input = () => host.querySelector<HTMLInputElement>(".dialog.rename input")!;
   const write = (text: string) =>
     act(() => {
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input(), text);
@@ -2680,12 +2710,12 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 不在线"));
   await click(button("保存"));
-  await vi.waitFor(() => expect(host.querySelector(".alert.rename")?.textContent).toContain("没能保存：MacBook 不在线"));
+  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")?.textContent).toContain("没能保存：MacBook 不在线"));
   expect(input().value).toBe("  登录超时：限流和重试 ");
 
   await click(button("保存"));
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "renameSession", value: { sessionId: s.id, title: "登录超时：限流和重试" } });
-  await vi.waitFor(() => expect(host.querySelector(".alert.rename")).toBeNull(), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")).toBeNull(), { timeout: 3000 });
   expect(r.sessions.get("s-run")!.info!.title).toBe("登录超时：限流和重试");
 
   // Saving the same title sends nothing; an empty one clears it.
@@ -2693,7 +2723,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   await fromMenu("重命名");
   await click(button("保存"));
   expect(command).not.toHaveBeenCalled();
-  expect(host.querySelector(".alert.rename")).toBeNull();
+  expect(host.querySelector(".dialog.rename")).toBeNull();
   await fromMenu("重命名");
   write("");
   await click(button("保存"));
@@ -2817,6 +2847,79 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   expect(link.getAttribute("href")).toBe("#/s/s-idle");
 });
 
+describe("the home's one sentence and its bottom row (client-v58)", () => {
+  const hl = () => host.querySelector(".hl")?.textContent;
+  const sub = () => host.querySelector(".hl-sub")?.textContent;
+  const drop = (r: DemoRemote, keep: (s: ReturnType<typeof todoList>[number]) => boolean) =>
+    act(() => {
+      for (const s of [...r.sessions.values()]) if (!keep(s)) r.sessions.delete(s.id);
+      r.touch();
+    });
+
+  it("says how many things wait, the number in orange, and counts running and idle apart", () => {
+    const r = demo();
+    mount(<Home remote={r} go={() => undefined} />);
+    const n = todoList(r).length;
+    expect(hl()).toBe(`${n} 件事等你`);
+    expect(host.querySelector(".hl em")?.textContent).toBe(String(n));
+    expect(sub()).toMatch(/^\d+ 个会话在运行，\d+ 个空闲$/);
+    // The tab's badge is the same count; 新任务 is the bottom right's ink button.
+    expect(host.querySelector(".tabs .on .count")?.textContent).toBe(String(n));
+    expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.textContent).toBe("新任务");
+    expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(false);
+    // No tab for settings: the gear on the top right.
+    expect([...host.querySelectorAll(".tabs button")].map((b) => b.textContent)).toEqual([`会话${n}`, "定时"]);
+    expect(host.querySelector('.tbar [aria-label="设置"]')).toBeTruthy();
+  });
+
+  it("says what runs once nothing waits, then that nothing waits, then that there is no session", () => {
+    const r = demo();
+    saveScope(ALL);
+    mount(<Home remote={r} go={() => undefined} />);
+    drop(r, (s) => !todoList(r).includes(s));
+    expect(hl()).toMatch(/^\d+ 个会话在运行$/);
+    expect(sub()).toMatch(/^另有 \d+ 个空闲$/);
+    expect(host.querySelector(".tc, .pl")).toBeNull();
+    drop(r, (s) => stateOf(s, r.machines.get(s.machineId)).tone !== "run");
+    expect(hl()).toBe("没有等你的事");
+    expect(sub()).toMatch(/^\d+ 个会话空闲$/);
+    drop(r, () => false);
+    expect(hl()).toBe("还没有会话");
+    expect(host.querySelector(".home-note")?.textContent).toContain("点右下角的「新任务」开始第一个会话");
+  });
+
+  it("names the stretch of the way that is down, keeps what waits, and grays its buttons", () => {
+    const r = createDemo(new URLSearchParams("conn=nonetwork"));
+    r.start();
+    mount(<Home remote={r} go={() => undefined} />);
+    expect(hl()).toBe("本机网络不通");
+    expect(sub()).toBe("下面是上次的内容");
+    // What waits stays on top, with its count on the tab, but cannot be handled now.
+    const card = host.querySelector(".tc")!;
+    expect(card.querySelector(".k span")?.textContent).toBe("未连接");
+    expect(button("不允许", card)?.disabled).toBe(true);
+    expect(button("允许", card)?.disabled).toBe(true);
+    expect(host.querySelector(".tabs .count")?.textContent).toBe(String(todoList(r).length));
+    expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(true);
+    // Sessions not ended are not said to run: a faint dot and 未连接.
+    for (const row of host.querySelectorAll(".sess")) {
+      expect(row.querySelector(".mark.off")).toBeTruthy();
+      expect(row.querySelector(".pv")?.textContent).toMatch(/^未连接/);
+    }
+  });
+
+  it("says the server is out of reach, with the reason behind 详情", async () => {
+    const r = createDemo(new URLSearchParams("conn=noserver"));
+    r.start();
+    mount(<Home remote={r} go={() => undefined} />);
+    expect(hl()).toBe("连不上服务器");
+    expect(sub()).toBe("正在重试，下面是上次的内容详情");
+    await click(button("详情"));
+    expect(sub()).toContain("连不上服务器：连接超时。也可能是这台设备的网络不通");
+    expect(button("重试")).toBeTruthy();
+  });
+});
+
 describe("the home timeline and its scope (client-v27)", () => {
   const texts = (sel: string) => [...host.querySelectorAll(sel)].map((e) => e.textContent ?? "");
   const foo = "/Users/me/Code/foo";
@@ -2829,38 +2932,38 @@ describe("the home timeline and its scope (client-v27)", () => {
   it("lists every project's sessions under all projects, naming the project on each row", () => {
     const r = demo();
     mount(<Home remote={r} go={() => undefined} />);
-    expect(host.querySelector(".large .scope b")?.textContent).toBe("全部项目");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("全部项目");
     expect(host.textContent).not.toContain("常用项目");
     // More than one project, CLI and machine: every live row has its third line.
     const live = [...host.querySelectorAll(".sess")];
     expect(live.length).toBeGreaterThan(0);
     for (const row of live) expect(row.querySelector(".mc")?.textContent).toMatch(/ · /);
     // Ended sessions are one line each, under a date group, with their project.
-    expect(texts(".old span:first-child")).toContain("补充 README");
-    expect(texts(".old span:last-child").every((x) => x.includes(" · "))).toBe(true);
-    expect(host.querySelector(".old .dot")).toBeNull();
+    expect(texts(".old .sm > span:first-child")).toContain("补充 README");
+    expect(texts(".old .sm > span:last-child").every((x) => x.includes(" · "))).toBe(true);
+    expect(host.querySelector(".old .mark")).toBeNull();
   });
 
   it("keeps a project's rows to what differs, and still shows what waits elsewhere", async () => {
     const r = demo();
     const went: string[] = [];
     mount(<Home remote={r} go={(x) => went.push(x)} />);
-    await click(host.querySelector<HTMLButtonElement>(".large .scope")!);
+    await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
     expect(document.querySelector(".sheet")?.textContent).toContain("看哪个项目");
     await click([...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("b")?.textContent === "foo"));
     expect(document.querySelector(".sheet")).toBeNull();
-    expect(host.querySelector(".large .scope b")?.textContent).toBe("foo");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("foo");
     // Live rows are foo's only, and do not name the project.
     const live = texts(".sess .row1 b");
     expect(live).toContain("修复登录超时");
     expect(live).not.toContain("整理错误码");
     expect(texts(".sess .mc").some((x) => x.includes("foo"))).toBe(false);
-    expect(texts(".old span:last-child").some((x) => x.includes("foo"))).toBe(false);
-    // 需要处理 is the account's: bar's question is there, with its project.
-    const bar = [...host.querySelectorAll(".todo")].find((c) => c.textContent?.includes("升级依赖"));
-    expect(bar?.querySelector(".m")?.textContent).toContain("bar");
-    // The new button goes straight to the project.
-    await click(host.querySelector<HTMLButtonElement>('button[aria-label="新会话"]')!);
+    expect(texts(".old .sm > span:last-child").some((x) => x.includes("foo"))).toBe(false);
+    // What waits is the account's: bar's question is there, with its project.
+    const bar = [...host.querySelectorAll(".pr")].find((c) => c.textContent?.includes("升级依赖"));
+    expect(bar?.querySelector(".nb > span")?.textContent).toContain("bar · ");
+    // 新任务 goes straight to the project.
+    await click(button("新任务"));
     expect(went).toEqual(["p/" + encodeURIComponent(foo)]);
     expect(r.focusProject).toBe(foo);
   });
@@ -2870,9 +2973,9 @@ describe("the home timeline and its scope (client-v27)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     saveScope("/Users/me/Code/shop");
     mount(<Home remote={r} go={() => undefined} />);
-    expect(host.querySelector(".large .scope b")?.textContent).toBe("shop");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("shop");
     await act(async () => { await r.changePrefs("hide", "/Users/me/Code/shop"); });
-    expect(host.querySelector(".large .scope b")?.textContent).toBe("全部项目");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("全部项目");
   });
 
   it("filters by title without regard to case, keeping the groups", async () => {
@@ -2882,8 +2985,8 @@ describe("the home timeline and its scope (client-v27)", () => {
     const box = host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!;
     expect(box).toBeTruthy();
     await type(box, "readme");
-    expect(texts(".old span:first-child")).toEqual(["补充 README"]);
-    expect(host.querySelectorAll(".sess, .todo")).toHaveLength(0);
+    expect(texts(".old .sm > span:first-child")).toEqual(["补充 README"]);
+    expect(host.querySelectorAll(".sess, .pr, .tc")).toHaveLength(0);
     expect(host.querySelector(".tail")?.textContent).toBe("1 个会话的标题里有「readme」");
     await type(box, "没有这个标题");
     expect(host.querySelector(".tail")?.textContent).toBe("没有标题里有「没有这个标题」的会话");
@@ -2897,13 +3000,13 @@ describe("the home timeline and its scope (client-v27)", () => {
     mount(<Sidebar remote={r} go={(x) => went.push(x)} selected="s-run" project="/Users/me/Code/bar" />);
     expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
     // Waiting sessions are rows here, not cards.
-    expect(host.querySelector(".todo")).toBeNull();
-    await click(host.querySelector<HTMLButtonElement>(".sh .scope")!);
+    expect(host.querySelector(".tc, .pr")).toBeNull();
+    await click(host.querySelector<HTMLButtonElement>(".wsc .scp")!);
     expect(host.querySelector(".pop")).toBeTruthy();
     await click([...host.querySelectorAll<HTMLButtonElement>(".pop .pi")].find((b) => b.querySelector("b")?.textContent === "billing"));
     expect(host.querySelector(".pop")).toBeNull();
     expect(went).toEqual([""]);
-    expect(host.querySelector(".sh .scope b")?.textContent).toBe("billing");
+    expect(host.querySelector(".wsc .scp b")?.textContent).toBe("billing");
     // The session on screen stays listed though it is not billing's.
     expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
     expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");
@@ -2942,7 +3045,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     await click(host.querySelector<HTMLButtonElement>('[aria-label="看 shop 的会话"]')!);
     expect(went).toEqual([""]);
     act(() => root!.render(<Home remote={r} go={() => undefined} />));
-    expect(host.querySelector(".large .scope b")?.textContent).toBe("shop");
+    expect(host.querySelector(".tbar .scope b")?.textContent).toBe("shop");
   });
 
   it("starts in the scope's project on the wide home, and names the project only under all projects", () => {

@@ -66,7 +66,7 @@ function startOf(remote: Remote, key: string): Start {
   if (!start) all.set(key, (start = new Start()));
   return start;
 }
-import { Avatar, Banner, Dot, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
+import { Avatar, Banner, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
@@ -737,7 +737,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               back2();
             }}
           >
-            <Dot tone={m.online ? "idle" : "off"} />
+            <StateMark kind={m.online ? "online" : "off"} />
             <div className="mt">
               {m.id === cfg.machineId || !m.online ? machineName(m) : <b>改用 {machineName(m)}</b>}
               {!m.online ? (
@@ -864,7 +864,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             <button className="sr" disabled={lockMachine} onClick={() => setPick("machine")}>
               <span className="lbl">机器</span>
               <span className="v">
-                <Dot tone={machine?.online ? "idle" : "off"} />
+                <StateMark kind={machine?.online ? "online" : "off"} />
                 <em>{machineName(machine)}</em>
                 <ChevronRight className="chev" />
               </span>
@@ -1056,7 +1056,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
         <small>机器</small>
         {machines.map((x) => (
           <button key={x.id} className={x.id === machineId ? "on" : ""} disabled={!x.online || !!fixedMachine} onClick={() => setMachineId(x.id)}>
-            <Dot tone={x.online ? "idle" : "off"} />
+            <StateMark kind={x.online ? "online" : "off"} />
             {machineName(x)}
           </button>
         ))}

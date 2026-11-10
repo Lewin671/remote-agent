@@ -1,5 +1,6 @@
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
+import { DEFAULT_BG } from "../ansi";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
 import { usePointerFine, useRemote } from "../ui";
 import { Terminal as XTerm } from "@xterm/xterm";
@@ -119,7 +120,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       // The reader owns scrolling; the live screen keeps no local scrollback
       // that a wheel could turn into arrow keys.
       scrollback: 0,
-      theme: { background: "#0d1117", foreground: "#c9d1d9", cursor: "#c9d1d9" },
+      // The page's terminal surface (the term token), so no seam shows around the canvas.
+      theme: { background: getComputedStyle(document.documentElement).getPropertyValue("--term").trim() || DEFAULT_BG, foreground: "#c9d1d9", cursor: "#c9d1d9" },
       allowProposedApi: false,
     });
     term.current = t;

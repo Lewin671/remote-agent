@@ -4,7 +4,7 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 // docked, as one line that opens in place; long content opens a full page,
 // and the buttons stay in view.
 
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { approvalTruncated, approvalTruncatedMessage, approvalDisplay } from "../approval-display";
@@ -24,59 +24,8 @@ export function approvalText(a: ApprovalRequested): string {
   return approvalDisplay(a.command || a.toolInputJson || a.toolName);
 }
 
-/** Lines a card's command shows before 还有 N 行 · 展开. */
-export const CARD_LINES = 6;
-
-/** A command on a card: its first CARD_LINES lines, whole lines only and
- * without a scroll of its own, the last ending in … when cut, then 还有 N
- * 行 · 展开, which shows all of it in place. N counts the lines as they
- * wrap on screen. */
-export function CardCommand({ text }: { text: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const [open, setOpen] = useState(false);
-  const [lines, setLines] = useState(() => text.split("\n").length);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Laid out, the text's full height says how many lines it wraps to;
-    // without layout (or before it) the text's own lines are the count.
-    const measure = () => {
-      const line = parseFloat(getComputedStyle(el).lineHeight);
-      const shown = line > 0 && el.scrollHeight > 0 ? Math.round(el.scrollHeight / line) : 0;
-      setLines(Math.max(shown, text.split("\n").length));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [text]);
-  const more = lines - CARD_LINES;
-  return (
-    <>
-      {/* The lines are clipped inside the padding, so no part line shows. */}
-      <pre className={"card-cmd" + (open ? " open" : "")}>
-        <span ref={ref}>{text}</span>
-      </pre>
-      {(more > 0 || open) && (
-        <button className="link cmd-more" aria-expanded={open} onClick={() => setOpen(!open)}>
-          {open ? (
-            <>
-              收起 <Exp up />
-            </>
-          ) : (
-            <>
-              还有 {more} 行 · 展开 <Exp />
-            </>
-          )}
-        </button>
-      )}
-    </>
-  );
-}
-
-/** Approval content shared by the dock, the home card and the detail
- * page: the reason field replaces the buttons while it is open. */
+/** Approval content shared by the dock and the detail page: the reason
+ * field replaces the buttons while it is open. */
 export function ApprovalActions({
   remote,
   sid,

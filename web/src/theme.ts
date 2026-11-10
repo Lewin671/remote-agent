@@ -9,11 +9,18 @@ export function getTheme(): Theme {
   return t === "light" || t === "dark" ? t : "auto";
 }
 
+/** The page's paper in each theme (the paper token); the browser's own
+ * bar takes it, so the page runs to the top with no colored band. */
+const PAPER = { light: "#ffffff", dark: "#000000" };
+
 /** Applies a theme; "auto" leaves it to prefers-color-scheme. */
 export function applyTheme(t: Theme = getTheme()) {
   const root = document.documentElement;
   if (t === "auto") delete root.dataset.theme;
   else root.dataset.theme = t;
+  // index.html has one theme-color per scheme; a theme picked here overrides both.
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]'))
+    meta.content = PAPER[t === "auto" ? (meta.media.includes("dark") ? "dark" : "light") : t];
 }
 
 export function setTheme(t: Theme) {

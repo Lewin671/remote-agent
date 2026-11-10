@@ -1,8 +1,10 @@
 import type { ReactNode } from "react";
 import type { Tone } from "../model";
-import { Dot } from "../ui";
+import { StateMark } from "../ui";
 
-/** Shared session row anatomy. */
+/** A session in a list (design-system §6 会话行): its state graphic in a
+ * column of its own, the title and time, then 「状态 · 内容」 in ink2 and a
+ * third line with what the list does not share. */
 export function SessionLine({
   tone,
   title,
@@ -27,13 +29,13 @@ export function SessionLine({
       className={`sess ${tone}${selected ? " sel" : ""}${last ? " last" : ""}`}
       onClick={onClick}
     >
-      <Dot tone={tone} />
+      <span className="gut"><StateMark kind={tone} /></span>
       <div className="sm">
         <div className="row1">
           <b>{title}</b>
           <span>{right}</span>
         </div>
-        {preview && <div className="preview-line"><div className="pv">{preview}</div></div>}
+        {preview && <div className="pv">{preview}</div>}
         {meta && <div className="mc">{meta}</div>}
       </div>
     </button>

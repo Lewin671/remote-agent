@@ -64,10 +64,19 @@ async function open(hash: string) {
   await act(async () => { location.hash = hash; window.dispatchEvent(new HashChangeEvent("hashchange")); });
 }
 
+it("makes a task from the phone's bottom row", async () => {
+  await mount();
+  const make = [...host.querySelectorAll<HTMLButtonElement>(".bbar .fab")];
+  expect(make.map((b) => b.textContent)).toEqual(["新定时"]);
+  expect(host.querySelector(".tabs .on")?.textContent).toContain("定时");
+  await act(async () => make[0].click());
+  expect(location.hash).toBe("#/tasks/new");
+});
+
 it("keeps tab unread, shares the badge across widths, and reads only the selected wide detail", async () => {
   const { remote } = await mount();
   expect(remote.scheduleNewResults()).toBe(true);
-  expect(host.querySelector('.tabbar [aria-label="有新结果"]')).not.toBeNull();
+  expect(host.querySelector('.tabs [aria-label="有新结果"]')).not.toBeNull();
   await act(async () => { wide = true; mediaListeners.forEach(listener => listener()); });
   // A wide window does not open a task by itself, so its notifications stay unread.
   expect(host.querySelector(".dm .schedule-unread-dot")).toBeNull();
@@ -75,16 +84,16 @@ it("keeps tab unread, shares the badge across widths, and reads only the selecte
   expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果");
   expect(host.querySelector(".dm textarea")).toBeNull();
   expect(remote.scheduleNewResults()).toBe(true);
-  expect(host.querySelector('.side-tabs [aria-label="有新结果"]')).not.toBeNull();
+  expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
   await open("#/tasks/mac/first");
   expect(host.querySelector(".dm .schedules-page .navbar .title b")?.textContent).toBe("检查更新");
   expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
   expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[1]).size).toBe(1);
-  expect(host.querySelector('.side-tabs [aria-label="有新结果"]')).not.toBeNull();
+  expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
   expect(host.querySelector(".dm .schedule-unread-dot")).not.toBeNull();
   await act(async () => { wide = false; mediaListeners.forEach(listener => listener()); });
   await open("#/tasks");
-  expect(host.querySelector('.tabbar [aria-label="有新结果"]')).not.toBeNull();
+  expect(host.querySelector('.tabs [aria-label="有新结果"]')).not.toBeNull();
 });
 
 it("retains the selected wide detail when another task receives a newer notification", async () => {
@@ -122,7 +131,7 @@ it("keeps the actual mobile badge accessible when its visible label is capped", 
   tasks.push(...Array.from({ length: 106 }, (_, i) => task({ id: `attention-${i}`, status: "failed" })));
   await act(async () => { await refresh(); });
   expect(remote.scheduleBadge()).toBe(106);
-  const badge = host.querySelector(".tabbar .schedule-attention-badge")!;
+  const badge = host.querySelector(".tabs .schedule-attention-badge")!;
   expect(badge.textContent).toBe("99+");
   expect(badge.getAttribute("aria-label")).toBe("106 件需要处理");
 });

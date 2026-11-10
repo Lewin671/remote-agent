@@ -62,15 +62,30 @@ it("keeps an approval's or a plan's buttons to 480 on a wide window", () => {
   expect(getComputedStyle(document.querySelector(".btns.decide")!).maxWidth).toBe("480px");
 });
 
-it("ends a cut card command's sixth line with an ellipsis, and none once opened", () => {
+it("cuts a dark card's command to whole lines with no scroll of its own, and none once opened", () => {
   // happy-dom drops line-clamp, so the rules are read as written.
   const css = readFileSync("src/styles.css", "utf8");
   const rule = (sel: string) => css.split("\n").find((l) => l.startsWith(sel + " {")) ?? "";
-  const cut = rule(".todo pre.card-cmd > span");
+  const cut = rule(".tc .cmd.clamp");
   expect(cut).toContain("display: -webkit-box;");
-  expect(cut).toContain("-webkit-line-clamp: 6;");
+  expect(cut).toContain("-webkit-line-clamp: var(--lines, 5);");
   expect(cut).toContain("overflow: hidden;");
-  const whole = rule(".todo pre.card-cmd.open > span");
-  expect(whole).toContain("-webkit-line-clamp: none;");
-  expect(whole).toContain("display: block;");
+  // The block itself wraps anywhere rather than widening the card.
+  const whole = rule(".tc .cmd");
+  expect(whole).toContain("white-space: pre-wrap;");
+  expect(whole).toContain("overflow-wrap: anywhere;");
+  expect(whole).not.toContain("overflow-y");
+});
+
+it("draws glass opaque when the system asks for less transparency", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  const reduced = css.split("\n").find((l) => l.startsWith("@media (prefers-reduced-transparency: reduce) { .glass {")) ?? "";
+  expect(reduced).toContain("background: var(--gbg);");
+  expect(reduced).toContain("backdrop-filter: none;");
+});
+
+it("keeps the running ring still when the system asks for less motion", () => {
+  const css = readFileSync("src/styles.css", "utf8");
+  expect(css).toContain("@media (prefers-reduced-motion: reduce) { .mark.run { animation: none; } }");
+  expect(css).toContain("@media (prefers-reduced-motion: reduce) { .ic.spin { animation: none; } }");
 });

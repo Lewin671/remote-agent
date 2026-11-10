@@ -4,9 +4,9 @@
 // or stuck; nothing is measured in the background.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { machineName, type Tone } from "../model";
+import { machineName } from "../model";
 import { errorText, type Remote } from "../remote";
-import { Dot, Sheet, useRemote } from "../ui";
+import { StateMark, Sheet, useRemote, type Mark } from "../ui";
 import { LoaderCircle } from "../icons";
 
 type Ping = { state: "wait" } | { state: "ok"; ms: number } | { state: "fail"; error: string } | { state: "skip" };
@@ -24,10 +24,10 @@ export function median(samples: number[]): number {
 
 /** The link to the server in a word, with its dot: what the sidebar's foot
  * and 设置 say before anything is measured. */
-export function connWord(remote: Remote, showWaiting = remote.showWaiting): { tone: Tone; text: string } {
-  if (remote.conn === "online") return { tone: "idle", text: "已连接" };
+export function connWord(remote: Remote, showWaiting = remote.showWaiting): { tone: Mark; text: string } {
+  if (remote.conn === "online") return { tone: "online", text: "已连接" };
   if (remote.link === "waiting" && !showWaiting) return { tone: "off", text: "" };
-  if (remote.everOnline) return { tone: "wait", text: "重连中" };
+  if (remote.everOnline) return { tone: "run", text: "重连中" };
   return { tone: "off", text: remote.failures >= 2 ? "连不上" : "连接中" };
 }
 
@@ -37,7 +37,7 @@ function Result({ p, slow }: { p?: Ping; slow: number }) {
   if (p.state === "fail") return <span className="v red">{p.error}</span>;
   return (
     <span className="v">
-      <Dot tone={p.ms >= slow ? "wait" : "idle"} />
+      <StateMark kind={p.ms >= slow ? "off" : "online"} />
       <em>{p.ms} ms{p.ms >= slow && " · 较慢"}</em>
     </span>
   );
@@ -105,12 +105,12 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
       <div className="setrows conn-check">
         <div className="sr">
           <span>实时推送</span>
-          <span className="v"><Dot tone={stream.tone} /><em>{stream.text}</em></span>
+          <span className="v"><StateMark kind={stream.tone} /><em>{stream.text}</em></span>
         </div>
         <div className="sr">
           <span>本机网络</span>
           <span className="v">
-            <Dot tone={remote.network ? "idle" : "off"} />
+            <StateMark kind={remote.network ? "online" : "off"} />
             <em>{remote.network ? "正常" : "不通"}</em>
           </span>
         </div>
@@ -123,7 +123,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         {list.map((m) => (
           <div key={m.id} className="sr">
             <span className="who">{machineName(m)}</span>
-            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="v muted"><Dot tone="off" /><em>不在线</em></span>}
+            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="v muted"><StateMark kind="off" /><em>不在线</em></span>}
           </div>
         ))}
       </div>

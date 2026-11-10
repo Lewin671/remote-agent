@@ -18,12 +18,17 @@ import {
   CornerDownLeft as LCornerDownLeft,
   Ellipsis as LEllipsis,
   Globe as LGlobe,
+  Bell as LBell,
+  Image as LImage,
+  Info as LInfo,
+  Lock as LLock,
+  Moon as LMoon,
   Keyboard as LKeyboard,
   Laptop as LLaptop,
   CloudOff as LCloudOff,
   LoaderCircle as LLoaderCircle,
   Maximize2 as LMaximize2,
-  MessageSquare as LMessageSquare,
+  MessageCircle as LMessageCircle,
   Minus as LMinus,
   Plus as LPlus,
   Search as LSearch,
@@ -39,11 +44,12 @@ import {
   WifiOff as LWifiOff,
 } from "lucide-react";
 
-/** An icon as tall as the text around it and in that text's color, hidden
- * from screen readers: the button or the words beside it carry the name. */
+/** An icon as tall as the text around it and in that text's color, drawn
+ * with 1.8 lines, hidden from screen readers: the button or the words
+ * beside it carry the name. */
 function icon(Icon: LucideIcon, base = "ic", fixed?: LucideProps) {
   return function I({ className, ...props }: LucideProps) {
-    return <Icon size="1em" aria-hidden {...fixed} {...props} className={className ? `${base} ${className}` : base} />;
+    return <Icon size="1em" strokeWidth={1.8} aria-hidden {...fixed} {...props} className={className ? `${base} ${className}` : base} />;
   };
 }
 
@@ -88,9 +94,17 @@ export const Minus = icon(LMinus);
 /** Filters a list. */
 export const Search = icon(LSearch);
 /** The sessions tab. */
-export const MessageSquare = icon(LMessageSquare);
-/** The settings tab. */
+export const MessageCircle = icon(LMessageCircle);
+/** Settings: the gear on the home and the wide sidebar. */
 export const Settings = icon(LSettings);
+/** A photo or video to add to a message. */
+export const ImageIcon = icon(LImage);
+/** Settings rows: account security, notifications, appearance, about;
+ * info also leads a stopped task's banner. */
+export const Lock = icon(LLock);
+export const Bell = icon(LBell);
+export const Moon = icon(LMoon);
+export const Info = icon(LInfo);
 /** A computer. */
 export const Laptop = icon(LLaptop);
 /** A client: a browser, a phone, a tablet. */
