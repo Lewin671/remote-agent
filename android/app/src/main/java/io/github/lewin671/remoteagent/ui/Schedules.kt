@@ -319,19 +319,13 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         }
     }
     if (task != null) {
-        if (menu) ActionSheet(info = {
-            Column {
-                Text(task.title, style = T.s15b, color = pal.ink)
-                Text(taskLocation(task, state) + " · " + scheduleCreation(task, t), style = T.s12, color = pal.ink2)
-            }
-        }, actions = buildList {
+        if (menu) ActionSheet(info = { SheetInfo(task.title, taskLocation(task, state) + " · " + scheduleCreation(task, t)) }, groups = listOf(buildList {
             add(SheetAction("立即运行一次", enabled = enabled && (scheduleRunAllowed(task) || scheduleFailedOnce(task))) { operate("run") })
             add(SheetAction("标为未读", enabled = task.latestNotification != null) { remote.schedules.markUnread(machine, id); nav.schedules() })
             if (taskGroup(task) != TaskGroup.ENDED && !onceFailed) add(SheetAction(if (task.status == "paused" || attention) "恢复" else "暂停", enabled = enabled) {
                 if (task.status == "paused" || attention) recover() else operate("pause")
             })
-            add(SheetAction("删除任务…", danger = true, enabled = enabled) { deleting = true })
-        }, onDismiss = { menu = false })
+        }, listOf(SheetAction("删除任务…", danger = true, enabled = enabled) { deleting = true })), onDismiss = { menu = false })
         val base = editBase ?: task
         if (edit == "name") ScheduleRenameDialog(base, { edit = "" }, enabled = scheduleRenameAllowed(writable, busy || uncertain)) { name ->
             check(scheduleRenameAllowed(writable, busy || uncertain)) { "当前任务不能单独改名" }
@@ -632,7 +626,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
 }
 
 @Composable
-fun SessionScheduleStrip(sid: String) {
+fun SessionScheduleStrip(sid: String, modifier: Modifier = Modifier) {
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val snapshots by remote.schedules.state.collectAsState()
@@ -646,11 +640,7 @@ fun SessionScheduleStrip(sid: String) {
         SheetHead("定时任务", "取消", { choosing = false })
         tasks.forEach { task -> GRow(task.title, onClick = { choosing = false; nav.task(task.machine, task.id) }, chevron = true, singleLineValue = true) }
     }
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(pal.gbg).clickable {
+    Strip(Lucide.Clock, text, modifier, action = "管理", onClick = {
         if (tasks.size == 1) nav.task(next.machine, next.id) else choosing = true
-    }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Ic(Lucide.Clock, 13.dp, pal.ink2)
-        Text(text, Modifier.weight(1f).padding(start = 6.dp), style = T.s12, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        ArrowText("管理", pal.blue, T.s12)
-    }
+    })
 }

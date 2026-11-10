@@ -230,7 +230,8 @@ class MainActivity : ComponentActivity() {
                 page("task/{machine}/{id}") { io.github.lewin671.remoteagent.ui.ScheduleDetailScreen(it.arguments?.getString("machine").orEmpty(), it.arguments?.getString("id").orEmpty()) }
                 page("newtask?session={session}") { io.github.lewin671.remoteagent.ui.NewScheduleScreen(it.arguments?.getString("session").orEmpty()) }
                 page("settings") { SettingsScreen() }
-                page("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
+                // Its own edges: the terminal is dark up to the screen's, under the system bars.
+                composable("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
                 page("project/{key}?focus={focus}") {
                     ProjectScreen(
                         routeValue(it.arguments?.getString("key")),

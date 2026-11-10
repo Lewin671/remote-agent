@@ -163,13 +163,6 @@ fun NavBar(
     }
 }
 
-/** A navigation bar with a status line for a session or tool page. */
-@Composable
-fun StatusNavBar(title: String, agent: String?, status: Status, rest: String, onBack: () -> Unit, more: (() -> Unit)?, dark: Boolean = false) {
-    val p = pal
-    NavBar(title, onBack, agent, status.text + if (rest.isNotEmpty()) " · $rest" else "", p.mark(status.tone), more, dark)
-}
-
 /** A first-level page title: 设置, 34 / 700 (design-system §6 大标题). */
 @Composable
 fun LargeTitle(text: String, modifier: Modifier = Modifier) {
@@ -506,35 +499,56 @@ class SheetAction(
     val onClick: () -> Unit,
 )
 
-/** The more menu uses the same scrollable, left-aligned sheet as project selection. */
+/**
+ * The ⋯ menu (design-system §6 弹层与对话框): a gbg bottom sheet with [info]
+ * at the top, what it is about, then each of [groups] as a rounded list of
+ * its own. No centred buttons and no separate 取消.
+ */
 @Composable
-fun ActionSheet(info: (@Composable () -> Unit)?, actions: List<SheetAction>, onDismiss: () -> Unit) {
-    val busy = actions.any { it.busy }
-    Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy) {
-        if (info != null) Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.CenterStart) { info() }
-        actions.forEach { a -> ActionSheetRow(a) { if (!a.keepOpen) onDismiss(); a.onClick() } }
+fun ActionSheet(info: (@Composable () -> Unit)?, groups: List<List<SheetAction>>, onDismiss: () -> Unit) {
+    val p = pal
+    val busy = groups.any { g -> g.any { it.busy } }
+    Sheet(onClose = { if (!busy) onDismiss() }, canDismiss = !busy, color = p.gbg) {
+        if (info != null) Box(Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp, bottom = 16.dp), contentAlignment = Alignment.CenterStart) { info() }
+        groups.filter { it.isNotEmpty() }.forEachIndexed { gi, g ->
+            Column(Modifier.fillMaxWidth().padding(top = if (gi > 0) 12.dp else 0.dp).clip(Radii.R20).background(p.raised)) {
+                g.forEachIndexed { i, a -> ActionSheetRow(a, first = i == 0) { if (!a.keepOpen) onDismiss(); a.onClick() } }
+            }
+        }
     }
 }
 
+/** The top of an [ActionSheet]: what it is about in bold, and a second line ([mono] for a path). */
 @Composable
-internal fun ActionSheetRow(a: SheetAction, onClick: () -> Unit) {
+fun SheetInfo(title: String, sub: String, mono: Boolean = false) {
+    val p = pal
+    Column(horizontalAlignment = Alignment.Start) {
+        Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (sub.isNotEmpty()) Text(sub, style = if (mono) T.mono12.copy(fontSize = 13.sp) else T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** One row of an [ActionSheet] group: 17, its value at the end in ink2 and a chevron; a thin line above all but the [first]. */
+@Composable
+internal fun ActionSheetRow(a: SheetAction, first: Boolean = true, onClick: () -> Unit) {
     val p = pal
     val on = a.enabled && !a.busy
     Column(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).bottomLine(p.sep)
-            .clickable(enabled = on, onClick = onClick).padding(vertical = 10.dp),
+        Modifier.fillMaxWidth().heightIn(min = 50.dp).then(if (first) Modifier else Modifier.topLine(p.sep, 18.dp))
+            .clickable(enabled = on, onClick = onClick).padding(start = 18.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
         horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.Center,
     ) {
-        Row(Modifier.fillMaxWidth().alpha(if (a.enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (a.busy) Mark(Lucide.LoaderCircle, p.ink2, 14.dp)
-            Text(a.text, style = T.s15, color = if (a.danger) p.red else p.ink, modifier = Modifier.weight(1f))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (a.busy) Spinner(p.ink2, size = 15.dp)
+            Text(a.text, style = T.s17, color = if (!a.enabled) p.ink3 else if (a.danger && a.value == null) p.red else p.ink, modifier = Modifier.weight(1f))
             if (a.value != null) {
-                Text(a.value, style = T.s13, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.ink2,
-                    textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(2f, fill = false))
+                Text(a.value, style = T.s17, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.ink2,
+                    textAlign = TextAlign.End, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(2f, fill = false))
                 Arrow(p.ink3, T.s15)
             }
         }
-        if (a.note.isNotEmpty()) Text(a.note, style = T.s12, color = if (a.noteError) p.red else p.ink2, modifier = Modifier.padding(top = 4.dp))
+        if (a.note.isNotEmpty()) Text(a.note, style = T.s13, color = if (a.noteError) p.red else p.ink2, modifier = Modifier.padding(top = 2.dp))
     }
 }
 

@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -220,8 +221,45 @@ fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> 
 @Composable
 fun ConnBanner(state: RemoteState) {
     val p = pal
-    if (state.link == Link.ONLINE) return
+    val line = connLine(state) ?: return
     var details by remember { mutableStateOf(false) }
+    val color = if (line.failed) p.red else p.ink2
+    Row(
+        Modifier.fillMaxWidth()
+            .background(p.gbg)
+            .then(if (line.details) Modifier.clickable { details = true } else Modifier)
+            .padding(horizontal = 16.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Mark(line.icon, color, 12.dp)
+        Spacer(Modifier.width(6.dp))
+        Text(line.text, Modifier.weight(1f), style = T.s12, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis)
+        if (line.details) Text("详情", Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
+    }
+    if (details && line.details) ServerDetails(state) { details = false }
+}
+
+/** The same sentence in a session, as the glass strip under its segmented control (design-system §6 连接状态). */
+@Composable
+fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
+    val line = connLine(state) ?: return
+    var details by remember { mutableStateOf(false) }
+    Strip(
+        line.icon, line.text, modifier,
+        action = if (line.details) "详情" else null,
+        onClick = if (line.details) ({ details = true }) else null,
+        error = line.failed,
+        spin = line.icon == Lucide.LoaderCircle,
+    )
+    if (details && line.details) ServerDetails(state) { details = false }
+}
+
+/** What the connection bar or strip says: the icon, the sentence, whether it is a failure in red, and whether 详情 opens. */
+class ConnLine(val icon: ImageVector, val text: String, val failed: Boolean, val details: Boolean)
+
+/** Nothing when online; otherwise the nearest stretch that is down (client-v30 「断线」). */
+fun connLine(state: RemoteState): ConnLine? {
+    if (state.link == Link.ONLINE) return null
     // Nothing kept from before to show: the bar says what the connection is needed for.
     val failed = state.link == Link.NO_SERVER && !state.loaded && state.error.isNotEmpty()
     val icon =
@@ -236,31 +274,7 @@ fun ConnBanner(state: RemoteState) {
             Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
             else -> if (state.synced) "正在重连…" else "连接中…"
         }
-    val color = if (failed) p.red else p.ink2
-    Row(
-        Modifier.fillMaxWidth()
-            .background(p.gbg)
-            .then(
-                if (state.link == Link.NO_SERVER) Modifier.clickable { details = true }
-                else Modifier,
-            )
-            .padding(horizontal = 16.dp, vertical = 5.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Mark(icon, color, 12.dp)
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text,
-            Modifier.weight(1f),
-            style = T.s12,
-            color = color,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (state.link == Link.NO_SERVER)
-            Text("详情", Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
-    }
-    if (details && state.link == Link.NO_SERVER) ServerDetails(state) { details = false }
+    return ConnLine(icon, text, failed, state.link == Link.NO_SERVER)
 }
 
 /** Why the server is out of reach: the judgement first, the failure in the system's words last. */
@@ -349,27 +363,6 @@ fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines
 fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
 fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
-
-/**
- * 聊天 / 终端 for a session: the terminal greys out once the session has ended and gets a dot when it
- * needs you.
- */
-@Composable
-fun SessionTabs(
-    selected: Int,
-    terminalEnabled: Boolean,
-    needsTerminal: Boolean,
-    dark: Boolean = false,
-    onSelect: (Int) -> Unit,
-) =
-    ViewTabs(
-        listOf("聊天", "终端"),
-        selected,
-        onSelect,
-        enabled = { it == 0 || terminalEnabled },
-        dot = if (needsTerminal) 1 else -1,
-        dark = dark,
-    )
 
 /** Incremental event state, with an immutable result per history snapshot. */
 @Composable

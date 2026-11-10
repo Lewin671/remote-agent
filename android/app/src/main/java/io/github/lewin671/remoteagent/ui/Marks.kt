@@ -56,7 +56,8 @@ fun markOf(status: Status): MarkKind? = when {
 
 /**
  * A status graphic at its size in a list (dot 9, ring 11, spinner 14);
- * [size] scales the dot for smaller places such as the dark card's head.
+ * [size] scales all three for smaller places such as a status line, and
+ * [color] replaces their colour, as on the dark terminal.
  * The spinner turns once a second, and stands still when the system's
  * animations are off.
  */
@@ -64,8 +65,8 @@ fun markOf(status: Status): MarkKind? = when {
 fun StatusMark(kind: MarkKind, modifier: Modifier = Modifier, size: Dp = 9.dp, color: Color? = null) {
     val p = pal
     when (kind) {
-        MarkKind.RUNNING -> Spinner(p.ink, modifier, 14.dp)
-        MarkKind.IDLE -> Box(modifier.size(11.dp).border(1.5.dp, p.ink3, CircleShape))
+        MarkKind.RUNNING -> Spinner(color ?: p.ink, modifier, size * 14 / 9)
+        MarkKind.IDLE -> Box(modifier.size(size * 11 / 9).border(1.5.dp, color ?: p.ink3, CircleShape))
         else -> Box(
             modifier.size(size).clip(CircleShape).background(
                 color ?: when (kind) {

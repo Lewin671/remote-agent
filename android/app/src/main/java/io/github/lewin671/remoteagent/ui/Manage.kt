@@ -261,15 +261,10 @@ fun ManageProjectsScreen() {
     menu?.let { pr ->
         val pinned = isPinned(state, pr.key)
         ActionSheet(
-            info = {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(pr.name, style = T.s15b, color = p.ink)
-                    Text(shortPath(pr.key), style = T.mono12, color = p.ink)
-                }
-            },
-            actions = listOf(
-                SheetAction(if (pinned) "取消常用" else "设为常用", enabled = blocked == null, note = blocked.orEmpty()) { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) },
-                SheetAction("移除项目…", danger = true, enabled = blocked == null) { removing = pr.key },
+            info = { SheetInfo(pr.name, shortPath(pr.key), mono = true) },
+            groups = listOf(
+                listOf(SheetAction(if (pinned) "取消常用" else "设为常用", enabled = blocked == null, note = blocked.orEmpty()) { PrefsChanges.run(remote, if (pinned) PrefsOp.Unpin(pr.key) else PrefsOp.Pin(pr.key)) }),
+                listOf(SheetAction("移除项目…", danger = true, enabled = blocked == null) { removing = pr.key }),
             ),
             onDismiss = { menu = null },
         )

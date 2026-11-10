@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -93,7 +96,7 @@ fun SessionScreen(sid: String) {
     val lookup = sessionLookup(sid, lookupAttempt)
     if (s == null) {
         Column(
-            Modifier.fillMaxSize().padding(24.dp),
+            Modifier.fillMaxSize().background(p.paper).windowInsetsPadding(WindowInsets.safeDrawing).padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -149,7 +152,11 @@ fun SessionScreen(sid: String) {
     val hasTerminal = terminalAvailable(status)
     val term = tab == 1 && hasTerminal
     BackHandler(enabled = term) { tab = 0 }
-    Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper)) {
+    // The terminal is dark in both themes, up to the screen's edges (design-system §6).
+    LightSystemBarIcons(term && !p.dark)
+    Column(
+        Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper).windowInsetsPadding(WindowInsets.safeDrawing),
+    ) {
         SessionTopBar(
             state,
             s,
@@ -158,12 +165,20 @@ fun SessionScreen(sid: String) {
             io.github.lewin671.remoteagent.core.sentMessage(s, events.events),
             dark = term,
         )
-        ConnBanner(state)
-        if (!term) SessionScheduleStrip(sid)
-        SessionTabs(if (term) 1 else 0, hasTerminal, status == Status.POPUP, dark = term) {
-            tab = it
-            viewPrefs.edit().putInt("tab", it).apply()
-        }
+        Segmented(
+            listOf("聊天", "终端"),
+            if (term) 1 else 0,
+            {
+                tab = it
+                viewPrefs.edit().putInt("tab", it).apply()
+            },
+            Modifier.align(Alignment.CenterHorizontally).padding(top = 8.dp).widthIn(min = 188.dp),
+            enabled = { it == 0 || hasTerminal },
+            dot = if (status == Status.POPUP) 1 else -1,
+            dark = term,
+        )
+        ConnStrip(state, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
+        if (!term) SessionScheduleStrip(sid, Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp))
         if (term) {
             TerminalPane(
                 remote,
@@ -172,10 +187,11 @@ fun SessionScreen(sid: String) {
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
         } else {
-            if (events.historyPartial) Hint("历史记录尚未读全。")
+            val note = Modifier.padding(horizontal = 20.dp)
+            if (events.historyPartial) Hint("历史记录尚未读全。", note)
             if (events.unavailableCount > 0)
-                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。")
-            events.liveError?.let { Hint(it) }
+                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。", note)
+            events.liveError?.let { Hint(it, note) }
             ChatPane(
                 state,
                 s,
@@ -188,6 +204,24 @@ fun SessionScreen(sid: String) {
                 Modifier.weight(1f),
                 onTerminal = { tab = 1 },
             )
+        }
+    }
+}
+
+/** Light status and navigation bar icons while [on]: over the terminal, which is dark in the light theme too. */
+@Composable
+private fun LightSystemBarIcons(on: Boolean) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    val dark = pal.dark
+    androidx.compose.runtime.DisposableEffect(on, dark) {
+        val window = generateSequence(view.context) { (it as? android.content.ContextWrapper)?.baseContext }
+            .filterIsInstance<android.app.Activity>().firstOrNull()?.window
+        val bars = window?.let { androidx.core.view.WindowCompat.getInsetsController(it, view) }
+        bars?.isAppearanceLightStatusBars = !on && !dark
+        bars?.isAppearanceLightNavigationBars = !on && !dark
+        onDispose {
+            bars?.isAppearanceLightStatusBars = !dark
+            bars?.isAppearanceLightNavigationBars = !dark
         }
     }
 }
@@ -266,34 +300,37 @@ private fun SessionTopBar(
             }
         else null
     BackHandler(enabled = s.info?.taskOwned == true && !dark) { nav.task(s.machineId, s.info!!.scheduledTaskId) }
-    NavBar(
-        titleOf(s),
-        { if (s.info?.taskOwned == true) nav.task(s.machineId, s.info!!.scheduledTaskId) else nav.back() },
-        subtitle = subtitle,
-        dot = p.mark(status.tone),
-        more = { menu = true },
-        dark = dark,
-        subtitleRich = rich,
-        moreDot = high,
-    )
+    val back = { if (s.info?.taskOwned == true) nav.task(s.machineId, s.info!!.scheduledTaskId) else nav.back() }
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        GlassButton(Lucide.ChevronLeft, "返回", back, dark = dark)
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(titleOf(s), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val sub = if (dark) CardColors.text2 else p.ink2
+                markOf(status)?.let {
+                    StatusMark(it, size = 7.dp, color = if (dark) CardColors.text2.takeIf { _ -> it != MarkKind.WAITING } else null)
+                    Spacer(Modifier.width(5.dp))
+                }
+                if (rich != null) Text(rich, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                else Text(subtitle, style = T.s12, color = sub, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        GlassButton(Lucide.Ellipsis, "更多", { menu = true }, dot = high, dark = dark)
+    }
     if (menu)
         ActionSheet(
             info = {
-                Column(horizontalAlignment = Alignment.Start) {
-                    Text(
-                        "${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}",
-                        style = T.s15b,
-                        color = p.ink,
-                    )
-                    Text(
-                        shortPath(s.info?.cwd.orEmpty()),
-                        style = T.s12,
-                        color = p.ink2,
-                        fontFamily = MonoFamily,
-                    )
-                }
+                SheetInfo(
+                    "${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}",
+                    shortPath(s.info?.cwd.orEmpty()),
+                    mono = true,
+                )
             },
-            actions =
+            groups = listOf(
                 buildList {
                     if (live) {
                         if (mode != null) add(
@@ -317,13 +354,14 @@ private fun SessionTopBar(
                         )
                         pc?.let {
                             add(
-                                SheetAction("上下文", value = "$it%", warn = high, enabled = !forking) {
+                                SheetAction("上下文", value = "已用 $it%", warn = high, enabled = !forking) {
                                     sheet = 2
                                 }
                             )
                         }
                     }
-                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
+                },
+                buildList {
                     add(SheetAction("项目设置", enabled = !forking && projectConfig(state, projectKey(s)) != null) {
                         sheet = 3
                     })
@@ -383,6 +421,9 @@ private fun SessionTopBar(
                                 })
                             }
                         )
+                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
+                },
+                buildList {
                     if (status != Status.EXITED && canRename)
                         add(
                             SheetAction("结束会话…", danger = true, enabled = !forking) {
@@ -390,6 +431,7 @@ private fun SessionTopBar(
                             }
                         )
                 },
+            ),
             onDismiss = {
                 menu = false
                 Forks.dismissError(fork)
@@ -408,7 +450,7 @@ private fun SessionTopBar(
         }
     }
     if (act.error.isNotEmpty())
-        Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.s12)
+        Text(act.error, Modifier.padding(horizontal = 20.dp), color = p.red, style = T.s12)
     if (confirmStop)
         Confirm(
             "结束这个会话？",

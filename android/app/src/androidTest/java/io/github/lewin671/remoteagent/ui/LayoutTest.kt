@@ -188,7 +188,7 @@ class LayoutTest {
             RaTheme(ThemeMode.DARK) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
                     Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
-                        SessionTabs(0, true, true) {}
+                        Segmented(listOf("聊天", "终端"), 0, {}, dot = 1)
                         Composer(state, session(), Derived(), Status.IDLE) {}
                     }
                 }
@@ -205,7 +205,7 @@ class LayoutTest {
     @Test fun terminalTabsExposeSelectionAndDisableEndedTerminal() {
         var selected by mutableIntStateOf(0)
         var enabled by mutableStateOf(true)
-        ui.setContent { RaTheme(ThemeMode.LIGHT) { SessionTabs(selected, enabled, false) { selected = it } } }
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { Segmented(listOf("聊天", "终端"), selected, { selected = it }, enabled = { it == 0 || enabled }) } }
         ui.onNodeWithText("聊天").assertIsSelected()
         ui.onNodeWithText("终端").performClick().assertIsSelected()
         ui.runOnIdle { selected = 0; enabled = false }

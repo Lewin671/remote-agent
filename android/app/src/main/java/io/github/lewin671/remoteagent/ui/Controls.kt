@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
@@ -19,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -231,4 +234,87 @@ fun FilterField(value: String, onChange: (String) -> Unit, modifier: Modifier = 
             }
         },
     )
+}
+
+/**
+ * The glass segmented control (design-system §6 分段控件), 38 tall: the
+ * chosen item is a light slider (paper, or mid grey on the dark terminal),
+ * never ink. [dot] puts an orange dot on that item; an item not [enabled]
+ * greys and cannot be chosen.
+ */
+@Composable
+fun Segmented(
+    items: List<String>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: (Int) -> Boolean = { true },
+    dot: Int = -1,
+    dark: Boolean = false,
+) {
+    val p = pal
+    Row(
+        modifier.heightIn(min = 38.dp).glass(p, Radii.Pill, dark = dark, onGrey = LocalOnSoft.current).padding(3.dp)
+            .selectableGroup(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        items.forEachIndexed { i, title ->
+            val on = i == selected
+            val ok = enabled(i)
+            val text = when {
+                dark && on -> Color.White
+                dark -> CardColors.text.copy(alpha = if (ok) .7f else .35f)
+                on -> p.ink
+                ok -> p.ink2
+                else -> p.ink3
+            }
+            Row(
+                Modifier.weight(1f).heightIn(min = 32.dp)
+                    .then(if (on) Modifier.shadow(2.dp, Radii.Pill, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow).clip(Radii.Pill).background(if (dark) Color(0xFF636366) else p.paper) else Modifier)
+                    .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Text(title, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = text, maxLines = 1)
+                if (i == dot) {
+                    Spacer(Modifier.width(5.dp))
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(p.orange))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A strip (design-system §6 提示条): a glass capsule under the session's
+ * segmented control, 13 ink2 with an icon at the left, one sentence, and at
+ * most one text action at the right. [warn] is the orange safety strip;
+ * [error] writes the sentence in red. The whole strip takes the tap.
+ */
+@Composable
+fun Strip(
+    icon: ImageVector,
+    text: String,
+    modifier: Modifier = Modifier,
+    action: String? = null,
+    onClick: (() -> Unit)? = null,
+    error: Boolean = false,
+    warn: Boolean = false,
+    spin: Boolean = false,
+) {
+    val p = pal
+    val color = if (error) p.red else if (warn) p.orangeInk else p.ink2
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 38.dp)
+            .then(if (warn) Modifier.clip(Radii.Pill).background(p.orangeSoft) else Modifier.glass(p, Radii.Pill, onGrey = LocalOnSoft.current))
+            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
+            .padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (spin) Spinner(color, size = 14.dp) else Ic(icon, 15.dp, color)
+        Text(text, style = T.s13, color = color, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (action != null) Text(action, style = T.s13, color = p.blue, maxLines = 1)
+    }
 }

@@ -65,15 +65,15 @@ fun Modifier.glass(p: Palette, shape: Shape, dark: Boolean = false, onGrey: Bool
 fun Modifier.floating(p: Palette, shape: Shape, enabled: Boolean = true): Modifier =
     if (enabled) shadow(FloatElevation, shape, clip = false, ambientColor = p.float, spotColor = p.float) else this
 
-/** A round glass button, 44 (design-system §4): back, ⋯, the gear. [label] is what a screen reader says. */
+/** A round glass button, 44 (design-system §4): back, ⋯, the gear. [label] is what a screen reader says; [dark] on the terminal. */
 @Composable
-fun GlassButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, dot: Boolean = false) {
+fun GlassButton(icon: ImageVector, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, dot: Boolean = false, dark: Boolean = false) {
     val p = pal
     Box(
-        modifier.size(44.dp).glass(p, CircleShape, onGrey = LocalOnSoft.current).tap(onClick = onClick).semantics { contentDescription = label },
+        modifier.size(44.dp).glass(p, CircleShape, dark = dark, onGrey = LocalOnSoft.current).tap(onClick = onClick).semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Ic(icon, 22.dp, p.ink)
+        Ic(icon, 22.dp, if (dark) CardColors.text else p.ink)
         if (dot) Box(Modifier.align(Alignment.TopEnd).padding(top = 9.dp, end = 9.dp).size(8.dp).clip(CircleShape).background(p.orange))
     }
 }

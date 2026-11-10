@@ -24,10 +24,12 @@ class ActionSheetTest {
             RaTheme(ThemeMode.LIGHT) {
                 ActionSheet(
                     info = { Column { Text("Codex · foo · MacBook"); Text("~/Code/foo") } },
-                    actions = listOf(
-                        SheetAction("审批模式", value = "询问") { calls += "mode" },
-                        SheetAction("分叉会话", enabled = false, note = "这一轮结束后可以分叉") {},
-                        SheetAction("中断本轮", danger = true) {},
+                    groups = listOf(
+                        listOf(SheetAction("审批模式", value = "询问") { calls += "mode" }),
+                        listOf(
+                            SheetAction("分叉会话", enabled = false, note = "这一轮结束后可以分叉") {},
+                            SheetAction("中断本轮", danger = true) {},
+                        ),
                     ),
                     onDismiss = { calls += "close" },
                 )
