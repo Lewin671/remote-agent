@@ -85,14 +85,13 @@ struct PendingDock<Content: View, Actions: View>: View {
             if open {
                 let count = more > 0 ? "还有 \(more) 项" : ""
                 let gap = !count.isEmpty && !note.text.isEmpty ? " · " : ""
-                (Text(count + gap).foregroundColor(Theme.muted)
-                    + Text(note.text).foregroundColor(note.urgent ? Theme.orangeInk : Theme.muted))
-                    .type(T.sm).lineLimit(1).frame(idealWidth: 0)
+                Text("\(Text(count + gap).foregroundStyle(DS.ink2))\(Text(note.text).foregroundStyle(note.urgent ? DS.orange : DS.ink2))")
+                    .font(.footnote).lineLimit(1).frame(idealWidth: 0)
             } else {
                 HStack(spacing: 0) {
-                    Text(brief).type(T.sm, Theme.muted).lineLimit(1).frame(idealWidth: 0)
+                    Text(brief).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).frame(idealWidth: 0)
                     if more > 0 {
-                        Text((brief.isEmpty ? "" : " · ") + "还有 \(more) 项").type(T.sm, Theme.muted).lineLimit(1).fixedSize()
+                        Text((brief.isEmpty ? "" : " · ") + "还有 \(more) 项").font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
                     }
                 }
             }
@@ -105,9 +104,10 @@ struct PendingDock<Content: View, Actions: View>: View {
     /// screen, the type takes a line of its own (two if it must) and the rest goes under it, the
     /// toggle at the right (design-system §6 「长内容、大量内容与大字号」).
     private func head(_ summary: (label: String, brief: String), withToggle: Bool = true) -> some View {
-        let dot = Dot(Theme.orange, size: 7)
+        let dot = StatusMark(.waiting)
         // Open, the summary is not there to say what the type leaves out: `title` says it whole.
-        let label = Text(open ? title ?? summary.label : summary.label).type(T.sm, Theme.fg2)
+        // Only the dot and the type word are orange (design-system §6 「等待事项」).
+        let label = Text(open ? title ?? summary.label : summary.label).font(.footnote.weight(.semibold)).foregroundStyle(DS.orange)
         let rest = rest(summary.brief)
         let toggle = Group { if withToggle { toggleText } }
         return ViewThatFits(in: .horizontal) {
@@ -148,7 +148,13 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 
     private var toggleText: some View {
-        ArrowText(open ? "收起" : "处理", style: T.sm, direction: open ? .up : .down).fixedSize()
+        HStack(spacing: 2) {
+            Text(open ? "收起" : "处理")
+            Image(systemName: open ? "chevron.up" : "chevron.down").imageScale(.small)
+        }
+        .font(.footnote)
+        .foregroundStyle(DS.blue)
+        .fixedSize()
     }
 
     private func toggle() {
@@ -157,8 +163,26 @@ struct PendingDock<Content: View, Actions: View>: View {
     }
 
     var body: some View {
+        // The dark card's shell, docked over the chat: open, the whole card; folded, one dark capsule.
+        Group {
+            if open {
+                DarkCard(floating: true) { card }
+            } else {
+                card
+                    .padding(.horizontal, 16)
+                    .background(DS.tc, in: Capsule())
+                    .overlay { Capsule().strokeBorder(DS.tcLine, lineWidth: 1) }
+                    .environment(\.colorScheme, .dark)
+                    .floatShadow()
+            }
+        }
+        .padding(.horizontal, DS.Space.m)
+        .padding(.bottom, 8)
+    }
+
+    private var card: some View {
         let summary = dockSummary(item, agent: agent)
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             if open, let extra {
                 // A link of its own sits between the line and 收起, so the line is two buttons around it.
                 HStack(spacing: 12) {
@@ -167,7 +191,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                             .frame(minHeight: Theme.minHit)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(PressStyle())
+                    .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
                     .accessibilityHint("收起")
                     extra
@@ -207,8 +231,6 @@ struct PendingDock<Content: View, Actions: View>: View {
                 .transition(.opacity)
             }
         }
-        .padding(.horizontal, chatMargin)
-        .topLine()
     }
 }
 
@@ -272,6 +294,8 @@ struct ApprovalDeadline: Equatable {
     }
 }
 
+/// An approval, docked: the whole command scrolls above the decision,
+/// which stays put; decided, the card is one line of where that stands.
 struct ApprovalDock: View {
     let session: SessionView
     let approval: PBApprovalRequested
@@ -279,132 +303,30 @@ struct ApprovalDock: View {
     @Binding var open: Bool
     var startReason = false
     let onOpen: () -> Void
-
-    var body: some View {
-        if isSkeleton(approval) { Text(skeletonMessage).type(T.sm, Theme.muted) } else { dock(approval) }
-    }
-
-    private func dock(_ a: PBApprovalRequested) -> some View {
-        Ticking(every: 15) { now in
-            let left = ApprovalDeadline(a, now: now)
-            PendingDock(
-                .approval(a), agent: agentName(session.agent), more: more, title: approvalHead(a),
-                note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
-            ) {
-                content(a)
-            } actions: {
-                ApprovalButtons(session: session, approval: a, startReason: startReason)
-            }
-        }
-    }
-
-    /// What it would run first, whole: it scrolls with the body. Then what the agent says it is for.
-    @ViewBuilder private func content(_ a: PBApprovalRequested) -> some View {
-        let text = approvalBody(a)
-        if !text.isEmpty { Code(text).padding(.top, 2).padding(.bottom, 8) }
-        if !a.description_p.isEmpty {
-            Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.bottom, 4)
-        }
-    }
-}
-
-/// 不允许 / 允许, and a reason for refusing, wherever an approval is drawn:
-/// the session's dock, the approval's page and the home page's card
-/// (Android's one `ApprovalButtons`). A tap locks both until the computer
-/// confirms; an unknown outcome only offers to send the same decision
-/// again. What was decided, and how far it got, is the account's
-/// (`SessionStore.Resolve`), not this view's: a decision made on one screen
-/// is locked on the others. `onCard`: on a grey card, where the buttons and
-/// the reason's field are white.
-struct ApprovalButtons: View {
-    let session: SessionView
-    let approval: PBApprovalRequested
-    var startReason = false
-    var onCard = false
-    @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var reasonOpen = false
-    @State private var started = false
-
-    private func resolve(_ allow: Bool, message: String = "", always: Bool = false) {
-        guard !isSkeleton(approval), !allow || !approvalTruncated(approval) else { return }
-        if allow { SessionHaptics.decide() } else { Haptics.destructive() }
-        let sent = context.sessionStore.decide(
-            context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
-            message: message, always: always)
-        // The computer has it: now it may be said to have gone through.
-        Task { if await sent.value == true { Haptics.confirm() } }
-    }
-
-    private func retry() {
-        guard !isSkeleton(approval), !approvalTruncated(approval) || !context.sessionStore.resolve(approval.approvalID).allow else { return }
-        context.sessionStore.retryDecision(
-            context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID)
-    }
+    @State private var denying = false
+    @State private var chosen: Bool?
 
     var body: some View {
-        let store = context.sessionStore
-        let id = approval.approvalID
-        let r = store.resolve(id)
-        let always = capabilities(model.state.machines[session.machineId])?.approvalAlways == true
-        let surface: Color? = onCard ? Theme.card : nil
-        let truncated = approvalTruncated(approval)
-        VStack(alignment: .leading, spacing: 0) {
-            if isSkeleton(approval) {
-                Text(skeletonMessage).type(T.sm, Theme.muted)
+        Ticking(every: 15) { now in
+            let left = ApprovalDeadline(approval, now: now)
+            if context.sessionStore.resolve(approval.approvalID).submitted {
+                ApprovalSubmitted(session: session, approval: approval, chosen: chosen)
+                    .padding(.horizontal, DS.Space.m).padding(.bottom, 8)
             } else {
-                if truncated { Text(approvalTruncatedMessage).type(T.sm, Theme.red) }
-                if r.running || r.frozen || r.decided {
-                    if r.running || (r.error.isEmpty && !r.frozen) {
-                        Text(r.running ? "正在送到电脑…" : "已提交，等待电脑确认").type(T.meta, Theme.muted)
-                            .frame(minHeight: 28)
-                            .accessibilityAddTraits(.updatesFrequently)
+                PendingDock(
+                    .approval(approval), agent: agentName(session.agent), more: more, title: approvalHead(approval),
+                    note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
+                ) {
+                    ApprovalContent(approval: approval, denying: denying)
+                } actions: {
+                    if !isSkeleton(approval) {
+                        ApprovalDecision(session: session, approval: approval, now: now, denying: $denying, chosen: $chosen)
                     }
-                } else if reasonOpen || (startReason && !started) {
-                    InputField(
-                        text: Binding(get: { store.reason(id) }, set: { store.setReason(id, $0) }), placeholder: "拒绝理由（可选）",
-                        lines: 1...4, background: surface, focusOnAppear: !startReason
-                    )
-                    .padding(.bottom, 8)
-                    Btns {
-                        Btn("取消", background: surface) {
-                            reasonOpen = false
-                            started = true
-                        }
-                        Btn("不允许", kind: .negative, background: surface) {
-                            resolve(false, message: store.reason(id).jvmTrim())
-                        }
-                    }
-                } else {
-                    Btns {
-                        Btn("不允许", kind: .negative, background: surface) { reasonOpen = true }
-                        Btn("允许", kind: .primary, enabled: !truncated) { resolve(true) }
-                    }
-                    if always && !truncated {
-                        TextAction("允许，这类请求以后不再问", alignment: .center) { resolve(true, always: true) }
-                            .frame(maxWidth: .infinity)
-                            // On a card its 44 pt to the finger reach into the card's own padding.
-                            .padding(.bottom, onCard ? -8 : 0)
-                    }
-                }
-                if !r.running && r.frozen {
-                    Banner(
-                        r.expired
-                            ? "不确定「\(r.allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-                            : "没送到电脑：\(r.error.isEmpty ? "结果未知" : r.error)",
-                        tone: .error, action: r.expired ? nil : "重试", onAction: retry
-                    )
-                    .padding(.top, 8)
-                } else if !r.running && !r.error.isEmpty {
-                    Banner("没送到电脑：\(r.error)", tone: .error, action: "重试", onAction: retry).padding(.top, 8)
                 }
             }
         }
-        // On a wide screen the row does not stretch past 480 (design-system §6 「审批」).
-        .frame(maxWidth: actionsWidth, alignment: .leading)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .debugSignal("session.allow") { resolve(true) }
-        .debugSignal("session.deny") { resolve(false, message: SessionDebug.text.jvmTrim()) }
+        .onAppear { if startReason { denying = true } }
     }
 }
 
@@ -511,7 +433,8 @@ struct QuestionBody: View {
         ForEach(Array(cur.options.enumerated()), id: \.offset) { i, option in
             let selected = cur.multiSelect ? store.multiPick[key]?.contains(i) == true : store.singlePick[key] == i
             QuestionOptionRow(
-                option: option, multi: cur.multiSelect, selected: selected, submitting: selected && act.running && !cur.multiSelect
+                option: option, multi: cur.multiSelect, selected: selected, submitting: selected && act.running && !cur.multiSelect,
+                dark: !full
             ) {
                 if cur.multiSelect {
                     var set = store.multiPick[key] ?? []
@@ -547,10 +470,17 @@ struct QuestionBody: View {
     @ViewBuilder private func actions(_ cur: PBQuestion) -> some View {
         if cur.multiSelect {
             let picked = store.multiPick["\(qid)#\(index)"] ?? []
-            Btn(
-                act.running ? "提交中…" : picked.isEmpty ? "选好后提交" : "提交 \(picked.count) 项", kind: .primary,
-                enabled: !act.running && !picked.isEmpty
-            ) { submit(picked.sorted(), cur) }
+            let label = act.running ? "提交中…" : picked.isEmpty ? "选好后提交" : "提交 \(picked.count) 项"
+            Group {
+                if full {
+                    Btn(label, kind: .primary, enabled: !act.running && !picked.isEmpty) { submit(picked.sorted(), cur) }
+                } else {
+                    // On the dark card the main button is white (design-system §6 「深色卡里的按钮」).
+                    Button(label) { submit(picked.sorted(), cur) }
+                        .buttonStyle(.darkCard(primary: true))
+                        .disabled(act.running || picked.isEmpty)
+                }
+            }
             .padding(.top, 6)
             DockFoot(picked.isEmpty ? "" : "已选 \(picked.count) 项", link: "其他回答：去终端", arrow: true, onLink: onTerminal)
         } else {
@@ -564,39 +494,38 @@ private struct QuestionOptionRow: View {
     let multi: Bool
     let selected: Bool
     let submitting: Bool
+    /// On the dark card: translucent rows, the chosen one white with black text (design-system §6 「等待事项」).
+    var dark = false
     let onTap: () -> Void
     @ScaledMetric(relativeTo: .footnote) private var box: CGFloat = 18
 
     var body: some View {
         let label = optionLabel(option.label)
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: dark ? 14 : Theme.Radius.sm, style: .continuous)
+        let ink: Color = dark ? (selected ? .black : .white) : Theme.fg
+        let second: Color = dark ? (selected ? Color.black.opacity(0.6) : DS.ink2) : Theme.muted
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 8) {
                 if multi {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(selected ? Theme.blueBg : Color.clear)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .strokeBorder(selected ? Theme.blueBg : Theme.muted, lineWidth: 1)
-                        }
-                        .overlay { if selected { Ic(Lucide.check, size: 12, color: Theme.onSolid, relativeTo: .footnote) } }
+                    Image(systemName: selected ? "checkmark.square.fill" : "square")
+                        .foregroundStyle(dark ? ink : (selected ? Theme.blueBg : Theme.muted))
                         .frame(width: box, height: box).padding(.top, 1)
                 } else if selected {
-                    Ic(Lucide.check, size: 13, color: Theme.blue, relativeTo: .footnote).padding(.top, 3)
+                    Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(dark ? ink : Theme.blue).padding(.top, 3)
                 }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(label.label).type(T.sm, Theme.fg)
-                    if !option.description_p.isEmpty { Text(option.description_p).type(T.meta, Theme.muted) }
-                    if submitting { Text("提交中…").type(T.meta, Theme.muted) }
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(label.label).font(dark ? .body : .footnote).foregroundStyle(ink)
+                    if !option.description_p.isEmpty { Text(option.description_p).font(dark ? .footnote : .caption).foregroundStyle(second) }
+                    if submitting { Text("提交中…").font(.caption).foregroundStyle(second) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if label.recommended { Text("推荐").type(T.metaB, Theme.blue) }
+                if label.recommended { Text("推荐").font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : Theme.blue) }
             }
             .multilineTextAlignment(.leading)
-            .padding(.horizontal, 11).padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading)
-            .background(selected ? Theme.blueSoft : Color.clear, in: shape)
-            .overlay { shape.strokeBorder(selected ? Theme.blue : Theme.line, lineWidth: 1) }
+            .padding(.horizontal, dark ? 14 : 11).padding(.vertical, dark ? 11 : 8)
+            .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
+            .background(dark ? (selected ? Color.white : Color.white.opacity(0.1)) : (selected ? Theme.blueSoft : Color.clear), in: shape)
+            .overlay { if !dark { shape.strokeBorder(selected ? Theme.blue : Theme.line, lineWidth: 1) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -658,10 +587,8 @@ struct PlanDock: View {
             extra: AnyView(TextAction("展开全文", style: T.sm, alignment: .trailing, arrow: true, action: onFull))
         ) {
             // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
-            Text(planPreview(text, lines: .max)).type(T.sm.with(lineHeight: 1.6), Theme.fg)
+            Text(planPreview(text, lines: .max)).font(.subheadline).lineSpacing(3).foregroundStyle(DS.ink)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 10).padding(.vertical, 7)
-                .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
                 .padding(.top, 4).padding(.bottom, 4)
         } actions: {
             PlanButtons(session: session, full: false, terminalOnly: isSkeleton(text))
@@ -703,9 +630,16 @@ struct PlanButtons: View {
     }
 
     @ViewBuilder private var choices: some View {
-        Btns {
-            Btn(agentInfo(session.agent).planKeepLabel, enabled: !act.running) { answer(.keepPlanning) }
-            Btn(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
+        if full {
+            Btns {
+                Btn(agentInfo(session.agent).planKeepLabel, enabled: !act.running) { answer(.keepPlanning) }
+                Btn(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
+            }
+        } else {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { darkChoices }
+                VStack(spacing: 8) { darkChoices }
+            }
         }
         if let note = agentInfo(session.agent).planNote {
             Text(note).type(T.meta, Theme.muted).padding(.top, 7)
@@ -715,6 +649,13 @@ struct PlanButtons: View {
                 .disabled(act.running)
         }
         if !act.error.isEmpty { Banner("没能提交：\(act.error)", tone: .error).padding(.top, 8) }
+    }
+
+    /// On the dark card: 批准 is the white one.
+    @ViewBuilder private var darkChoices: some View {
+        Button(agentInfo(session.agent).planKeepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(act.running)
+        Button(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel) { answer(.implement) }
+            .buttonStyle(.darkCard(primary: true)).disabled(act.running)
     }
 }
 
@@ -733,11 +674,11 @@ struct PopupDock: View {
         PendingDock(
             .popup(title: title), agent: agent, more: more, note: DockNote(text: "\(agent) 在等你"), open: $open, onOpen: onOpen
         ) {
-            if !title.isEmpty { Text(title).type(T.body.with(weight: .medium), Theme.fg).padding(.bottom, 6) }
+            if !title.isEmpty { Text(title).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
             let hint = popupHint(agent: session.agent, detail: title)
-            if !hint.isEmpty { Text(hint).type(T.sm, Theme.orangeInk) }
+            if !hint.isEmpty { Text(hint).font(.footnote).foregroundStyle(DS.orangeInk) }
         } actions: {
-            Btn("去终端处理", kind: .primary, action: onTerminal)
+            Button("去终端处理", action: onTerminal).buttonStyle(.darkCard(primary: true))
         }
     }
 }

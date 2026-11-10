@@ -96,7 +96,7 @@
 //   join.cancel         the join flow
 //   removed.retry       再试一次 on the 已被移出账户 notice
 //   home.scope          chooses the scope -homeScopeTarget names
-//   home.allow          允许 on the home page's dark card
+//   home.allow, home.deny   允许 / 不允许 on the home page's dark card (deny with debug.sessionText as its reason)
 //   project.start, project.agent                ↑ of the new-session box; the other CLI
 //   settings.apply      chooses what -settingsEdit names in 项目设置 and saves
 //   projects.pin, projects.remove, projects.remove.confirm   项目管理, on the project -projectsTarget names

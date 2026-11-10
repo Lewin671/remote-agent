@@ -19,6 +19,8 @@ struct ApprovalScreen: View {
     @Environment(AccountContext.self) private var context
     @State private var chat = SessionModel()
     @State private var finder = SessionFinder()
+    @State private var denying = false
+    @State private var chosen: Bool?
 
     var body: some View {
         let state = model.state
@@ -32,28 +34,25 @@ struct ApprovalScreen: View {
                     if let a, isSkeleton(a) {
                         PageNote(skeletonMessage)
                     } else if let s, let a {
+                        // The same dark card as the dock's: what it would run, whole, then the decision.
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 0) {
-                                if !a.toolName.isEmpty && a.command.isEmpty {
-                                    Text(approvalHead(a)).type(T.smB, Theme.fg2).padding(.bottom, 4)
-                                }
-                                // What it would run first, then what it is for (design-system §6 「审批」).
-                                Code(approvalBody(a)).textSelection(.enabled)
-                                if !a.description_p.isEmpty {
-                                    Text(approvalDisplay(a.description_p)).type(T.sm, Theme.fg2).padding(.top, 8)
+                            Group {
+                                if context.sessionStore.resolve(a.approvalID).submitted {
+                                    ApprovalSubmitted(session: s, approval: a, chosen: chosen, floating: false)
+                                } else {
+                                    DarkCard {
+                                        DarkCardHead(kind: approvalHead(a))
+                                        ApprovalContent(approval: a, denying: denying).textSelection(.enabled).padding(.top, 14)
+                                        ApprovalDecision(session: s, approval: a, now: now, denying: $denying, chosen: $chosen)
+                                            .padding(.top, 16)
+                                    }
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 12)
+                            .padding(.horizontal, DS.Space.card).padding(.vertical, 12)
                             .readableColumn()
                         }
                         .scrollDismissesKeyboard(.interactively)
-                        VStack(alignment: .leading, spacing: 0) {
-                            ApprovalButtons(session: s, approval: a, startReason: SessionDebug.shows("reason"))
-                        }
-                        .padding(.horizontal, 14).padding(.top, 8).padding(.bottom, 8)
-                        .readableColumn()
-                        .topLine()
+                        .onAppear { if SessionDebug.shows("reason") { denying = true } }
                     } else if let outcome = d.resolved[approval] {
                         handled(outcome, by: d.resolvedBy[approval], machine: s.map { machineLabel(state, id: $0.machineId) } ?? "")
                     } else {
