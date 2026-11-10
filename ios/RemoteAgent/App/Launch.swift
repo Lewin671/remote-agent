@@ -32,6 +32,7 @@
 // Home and projects, with -demo (UI/Home/HomeLaunch.swift)
 //   -homeScope <all|path>            the scope the home page opens on
 //   -homeScopeTarget <all|path>      the scope the signal home.scope chooses
+//   -newTask <project path>         新任务 open in that project
 //   -homeSheet <scope|browse|pick|pickBrowse|newSchedule>   看哪个项目, 新会话 · 选项目, either on 新项目 · 选目录, or 新定时
 //   -homeFilter <text>               something typed in the title filter
 //   -homeExpand                      what waits and 进行中 opened in full

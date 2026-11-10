@@ -19,12 +19,14 @@ struct ProjectPickList: View {
 }
 
 /// 新会话 · 选项目 from the new-session button on the home page, as a
-/// sheet; 新项目… turns it into 新项目 · 选目录. Choosing opens the project
-/// with its box focused.
+/// sheet; 新项目… turns it into 新项目 · 选目录. Choosing opens 新任务 in
+/// that project.
 struct PickProjectSheet: View {
     let state: RemoteState
     @Binding var browsing: Bool
     let onClose: () -> Void
+    /// The project chosen: 新任务 opens in it.
+    let onPick: (String) -> Void
     @Environment(Navigator.self) private var nav
 
     var body: some View {
@@ -38,10 +40,7 @@ struct PickProjectSheet: View {
             SheetHead("新会话 · 选项目", action: "取消", onAction: onClose)
             ProjectPickList(
                 state: state,
-                onPick: {
-                    onClose()
-                    nav.open(.project(key: $0, focusNew: true))
-                },
+                onPick: onPick,
                 onNew: { browsing = true })
         }
     }

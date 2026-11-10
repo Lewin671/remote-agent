@@ -309,6 +309,12 @@ struct ScheduleViewingObserver: ViewModifier {
     }
 }
 
+/// The project 新任务 opens in.
+struct NewTaskTarget: Identifiable {
+    let key: String
+    var id: String { key }
+}
+
 /// 会话 or 定时, under the bottom bar. Their titles are the pages' own
 /// sentences, and their buttons glass floating over them, so the system's
 /// bar is hidden here; a pushed page has it back.
@@ -319,6 +325,9 @@ private struct FirstLevel: View {
     @State private var pick = ["pick", "pickBrowse"].contains(HomeLaunch.value("-homeSheet"))
     @State private var pickBrowsing = HomeLaunch.value("-homeSheet") == "pickBrowse"
     @State private var newSchedule = HomeLaunch.value("-homeSheet") == "newSchedule"
+    /// The project 新任务 is open in, and the one chosen in the list of projects, opened once that list has gone.
+    @State private var newTask: NewTaskTarget? = HomeLaunch.value("-newTask").map(NewTaskTarget.init)
+    @State private var chosen: String?
 
     var body: some View {
         @Bindable var nav = nav
@@ -347,8 +356,25 @@ private struct FirstLevel: View {
         // The bar stays at the bottom when a dialog over the page brings the keyboard up.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
-        .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: { pickBrowsing = false }) {
-            PickProjectSheet(state: state, browsing: $pickBrowsing) { pick = false }
+        .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: {
+            pickBrowsing = false
+            if let key = chosen { newTask = NewTaskTarget(key: key) }
+            chosen = nil
+        }) {
+            PickProjectSheet(state: state, browsing: $pickBrowsing, onClose: { pick = false }) { key in
+                chosen = key
+                pick = false
+            }
+        }
+        .sheet(item: $newTask) { target in
+            NavigationStack {
+                NewTaskScreen(key: target.key, onClose: { newTask = nil }) { sid in
+                    newTask = nil
+                    nav.open(.session(id: sid))
+                }
+            }
+            .sheetSurface()
+            .presentationDetents([.large])
         }
         .sheet(isPresented: $newSchedule) {
             NavigationStack {
@@ -369,7 +395,7 @@ private struct FirstLevel: View {
             newSchedule = true
         case .home:
             if case .of(let key) = resolveScope(remembered: context.homeScopes.remembered(state), state: state) {
-                nav.open(.project(key: key, focusNew: true))
+                newTask = NewTaskTarget(key: key)
             } else {
                 pick = true
             }
