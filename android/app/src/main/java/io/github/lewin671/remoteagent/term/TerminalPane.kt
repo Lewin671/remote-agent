@@ -11,15 +11,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.sp
-import io.github.lewin671.remoteagent.ui.Btn
-import io.github.lewin671.remoteagent.ui.BtnKind
 import io.github.lewin671.remoteagent.ui.Ic
 import io.github.lewin671.remoteagent.ui.IconText
 import io.github.lewin671.remoteagent.ui.Lucide
 import io.github.lewin671.remoteagent.ui.Radii
 import io.github.lewin671.remoteagent.ui.T
 import io.github.lewin671.remoteagent.ui.TermColors
-import io.github.lewin671.remoteagent.ui.bottomLine
 import io.github.lewin671.remoteagent.ui.ts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -58,6 +55,15 @@ import com.termux.terminal.TerminalColors
 import com.termux.view.TerminalView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.ui.pal
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import io.github.lewin671.remoteagent.ui.CardButton
+import io.github.lewin671.remoteagent.ui.CardColors
+import io.github.lewin671.remoteagent.ui.Spinner
+import io.github.lewin671.remoteagent.ui.disabledAlpha
+import io.github.lewin671.remoteagent.ui.glass
 import kotlinx.coroutines.launch
 import kotlin.math.max
 
@@ -238,27 +244,29 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
     }
 
     Column(modifier) {
-        // The toolbar says the size, and that it changed; nothing pops up over the screen.
+        // The chips say the size, and that it changed; nothing pops up over the screen. Dark glass, as the whole terminal is dark.
         Row(
-            Modifier.fillMaxWidth().background(TermColors.bar).bottomLine(TermColors.rule).padding(start = 12.dp, end = 4.dp).heightIn(min = 44.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             val (cols, rows) = size
             val toolbar = terminalToolbar(state, history, fitted, resized, cols, rows)
-            Text(toolbar.text, style = T.s12, color = TermColors.tool, modifier = Modifier.weight(1f))
-            if (toolbar.fit) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.s12b, color = TermColors.link)
-                else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.s12b)
+            Row(
+                Modifier.weight(1f).heightIn(min = 38.dp).glass(p, Radii.Pill, dark = true).padding(start = 14.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(toolbar.text, style = T.s13, color = CardColors.text.copy(alpha = .75f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                if (toolbar.fit) Box(Modifier.heightIn(min = 44.dp).clickable(role = Role.Button) { term.toggleFit() }.padding(horizontal = 10.dp), contentAlignment = Alignment.Center) {
+                    if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.s13, color = CardColors.link)
+                    else IconText(Lucide.Maximize2, "适配我的屏幕", CardColors.link, T.s13)
+                }
             }
-        }
-        Row(
-            Modifier.fillMaxWidth().background(TermColors.bar).heightIn(min = 40.dp).padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            Text("字号", style = ts(14.sp), color = TermColors.dim, modifier = Modifier.weight(1f))
-            FontButton("A−", fontDp > FONT_MIN_DP) { changeFont(-1) }
-            Text("$fontDp", style = ts(14.sp), color = TermColors.dim)
-            FontButton("A+", fontDp < FONT_MAX_DP) { changeFont(1) }
+            Row(Modifier.heightIn(min = 38.dp).glass(p, Radii.Pill, dark = true).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                FontButton("A−", "字号减小", fontDp > FONT_MIN_DP) { changeFont(-1) }
+                Text("$fontDp", style = T.s13, color = CardColors.text.copy(alpha = .75f), modifier = Modifier.semantics { contentDescription = "字号 $fontDp" })
+                FontButton("A+", "字号增大", fontDp < FONT_MAX_DP) { changeFont(1) }
+            }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().background(TermColors.bg)) {
             val widthPx = constraints.maxWidth
@@ -354,23 +362,25 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
             if (state != RemoteTerminal.State.Live && !history.visible) {
                 Column(
-                    Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.R14).background(TermColors.bar)
-                        .border(1.dp, TermColors.line, Radii.R14).padding(12.dp),
+                    Modifier.align(Alignment.BottomCenter).padding(16.dp).fillMaxWidth().glass(p, Radii.R28, dark = true).padding(18.dp),
                 ) {
                     when (val s = state) {
-                        RemoteTerminal.State.Connecting -> IconText(Lucide.LoaderCircle, "连接终端…", TermColors.dim, T.s13)
+                        RemoteTerminal.State.Connecting -> Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spinner(CardColors.text2, size = 15.dp)
+                            Text("连接终端…", style = T.s15, color = CardColors.text2, modifier = Modifier.padding(start = 8.dp))
+                        }
                         is RemoteTerminal.State.Closed -> {
-                            Text("终端连接断开了", style = T.s15b, color = TermColors.fg)
+                            Text("终端连接断开了", style = T.s17b, color = CardColors.text)
                             Text(
                                 (if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "下面是断开前的画面。会话还在运行，聊天照常更新。" else "会话不在运行。"),
-                                style = T.s13, color = TermColors.dim, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                                style = T.s15, color = CardColors.text.copy(alpha = .7f), modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                             )
                             var details by remember { mutableIntStateOf(0) }
-                            Btn("重新连接", { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = online)
-                            Box(Modifier.heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.CenterStart) {
-                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.s12, color = TermColors.link)
+                            CardButton("重新连接", { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), primary = true, enabled = online)
+                            Box(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.Center) {
+                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.s13, color = CardColors.link)
                             }
-                            if (details % 2 == 1) Text(s.reason, style = T.mono12, color = TermColors.dim)
+                            if (details % 2 == 1) Text(s.reason, style = T.mono12, color = CardColors.text2)
                         }
                         else -> {}
                     }
@@ -400,36 +410,46 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
 }
 
 @Composable
-private fun FontButton(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(Modifier.size(44.dp).clickable(enabled = enabled, onClick = onClick), contentAlignment = Alignment.Center) {
-        Text(label, style = ts(14.sp, androidx.compose.ui.text.font.FontWeight.SemiBold), color = if (enabled) TermColors.link else TermColors.tool)
+private fun FontButton(label: String, said: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(Modifier.size(44.dp).disabledAlpha(enabled).clickable(enabled = enabled, role = Role.Button, onClick = onClick).semantics { contentDescription = said }, contentAlignment = Alignment.Center) {
+        Text(label, style = T.s15b, color = CardColors.text)
     }
 }
 
-/** The keys a phone keyboard lacks, two rows of 44 dp keys (client-v7). */
+/**
+ * The keys a phone keyboard lacks, on a dark glass bar (client-v58): Esc,
+ * the arrows and Enter on the first row; Tab, Ctrl+C and the white 键盘 on
+ * the second. Every key is at least 44 × 44.
+ */
 @Composable
 private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit) {
-    Column(Modifier.fillMaxWidth().background(TermColors.bar).padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    val p = pal
+    Column(
+        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
+            .glass(p, RoundedCornerShape(27.dp), dark = true).padding(7.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(Modifier.fillMaxWidth().disabledAlpha(enabled), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
-            KeyButton("键盘", true, Modifier.weight(1f), Lucide.Keyboard, named = true, onClick = onKeyboard)
+            for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f).disabledAlpha(enabled), k.icon) { onKey(k) }
+            KeyButton("键盘", true, Modifier.weight(1.5f), Lucide.Keyboard, named = true, white = true, onClick = onKeyboard)
         }
     }
 }
 
 @Composable
-private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, icon: ImageVector? = null, named: Boolean = false, onClick: () -> Unit) {
+private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, icon: ImageVector? = null, named: Boolean = false, white: Boolean = false, onClick: () -> Unit) {
     Box(
-        modifier.height(44.dp).clip(RoundedCornerShape(7.dp)).background(TermColors.key).clickable(enabled = enabled, onClick = onClick),
+        modifier.height(44.dp).clip(Radii.Pill).then(if (white) Modifier.background(CardColors.primary) else Modifier)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        val color = if (enabled) TermColors.fg else TermColors.tool
+        val color = if (white) CardColors.onPrimary else CardColors.text
         // An icon stands for the key by itself, or with [named] goes before its label.
-        if (icon == null) Text(label, style = T.s13, color = color, maxLines = 1)
-        else if (named) IconText(icon, label, color, T.s13)
+        if (icon == null) Text(label, style = T.mono13, color = color, maxLines = 1)
+        else if (named) IconText(icon, label, color, T.s15b)
         else Ic(icon, 20.dp, color, contentDescription = label)
     }
 }

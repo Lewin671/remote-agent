@@ -152,7 +152,6 @@ object Radii {
 /** The terminal keeps its own dark colors in either theme. */
 object TermColors {
     val bg = Color(0xFF0D1117)
-    val bar = Color(0xFF161B22)
     val key = Color(0xFF2D333B)
     val fg = Color(0xFFE6EDF3)
     val text = Color(0xFFC9D1D9)
@@ -160,7 +159,6 @@ object TermColors {
     val tool = Color(0xFF8B949E)
     val link = Color(0xFF79C0FF)
     val line = Color(0xFF30363D)
-    val rule = Color(0xFF21262D)
 }
 
 private val centered = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None)
