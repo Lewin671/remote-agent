@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -151,7 +152,10 @@ fun SessionScreen(sid: String) {
     }
 
     val hasTerminal = terminalAvailable(status)
+    // 并排 only in a wide window; elsewhere it shows the chat, and what was picked stays (design-system §6).
+    val wide = wideWindow()
     val term = tab == 1 && hasTerminal
+    val both = tab == 2 && wide && hasTerminal
     BackHandler(enabled = term) { tab = 0 }
     // The terminal is dark in both themes, up to the screen's edges (design-system §6).
     LightSystemBarIcons(term && !p.dark)
@@ -167,8 +171,8 @@ fun SessionScreen(sid: String) {
             dark = term,
         )
         Segmented(
-            listOf("聊天", "终端"),
-            if (term) 1 else 0,
+            if (wide) listOf("聊天", "终端", "并排") else listOf("聊天", "终端"),
+            if (term) 1 else if (both) 2 else 0,
             {
                 tab = it
                 viewPrefs.edit().putInt("tab", it).apply()
@@ -187,7 +191,8 @@ fun SessionScreen(sid: String) {
                 sessionRunning = true,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             )
-        } else {
+        } else Row(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f)) {
             val note = Modifier.padding(horizontal = 20.dp)
             if (events.historyPartial) Hint("历史记录尚未读全。", note)
             if (events.unavailableCount > 0)
@@ -204,6 +209,14 @@ fun SessionScreen(sid: String) {
                 events.fetchError,
                 Modifier.weight(1f),
                 onTerminal = { tab = 1 },
+            )
+            }
+            // 并排: the terminal on its dark panel beside the chat.
+            if (both) TerminalPane(
+                remote,
+                sid,
+                sessionRunning = true,
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(end = 8.dp, bottom = 8.dp).clip(Radii.R16).background(TermColors.bg),
             )
         }
     }

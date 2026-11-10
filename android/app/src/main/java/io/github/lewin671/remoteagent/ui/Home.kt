@@ -211,9 +211,9 @@ private fun HomeLine(
         is HomeItem.Attention -> PendingItem(state, item.session, scope, item.first, item.last)
         is HomeItem.MoreAttention -> MoreRow("还有 ${item.count} 件") { change { it.copy(allAttention = true) } }
         is HomeItem.Label -> GroupTitle(item.title, date = item.key != "running")
-        is HomeItem.Running -> SessionRow(state, item.session, t, meta, last = item.last)
+        is HomeItem.Running -> SessionRow(state, item.session, t, meta, last = item.last, selected = LocalSelectedSession.current == item.session.id)
         is HomeItem.MoreRunning -> ListMore("还有 ${item.count} 个", { change { it.copy(allRunning = true) } })
-        is HomeItem.Ended -> EndedRow(item.session, t, project = meta.project)
+        is HomeItem.Ended -> EndedRow(item.session, t, project = meta.project, selected = LocalSelectedSession.current == item.session.id)
         is HomeItem.Tail -> {
             // Reaching the end shows the next page, once the ones before it are all rendered.
             if (grows) LaunchedEffect(Unit) { change { it.copy(ended = it.ended + ENDED_PAGE) } }

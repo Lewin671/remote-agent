@@ -117,7 +117,7 @@ fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
 }
 
 /** Navigation actions shared by the screens. */
-class Nav(
+data class Nav(
     val back: () -> Unit,
     val session: (String) -> Unit,
     val project: (String) -> Unit,

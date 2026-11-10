@@ -225,7 +225,7 @@ class MainActivity : ComponentActivity() {
                 popEnterTransition = { pagePopEnter(initialState, targetState) },
                 popExitTransition = { pagePopExit(initialState, targetState) },
             ) {
-                composable("home") { HomeScreen() }
+                composable("home") { io.github.lewin671.remoteagent.ui.HomeOrWide() }
                 composable("schedules") { io.github.lewin671.remoteagent.ui.SchedulesScreen() }
                 page("task/{machine}/{id}") { io.github.lewin671.remoteagent.ui.ScheduleDetailScreen(it.arguments?.getString("machine").orEmpty(), it.arguments?.getString("id").orEmpty()) }
                 page("newtask?session={session}") { io.github.lewin671.remoteagent.ui.NewScheduleScreen(it.arguments?.getString("session").orEmpty()) }
