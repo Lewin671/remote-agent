@@ -226,7 +226,7 @@
                 Avatar.all(size: 28)
                 Avatar("/Users/me/Code/foo", size: 22)
                 Avatar("/Users/me/Code/foo", size: 16)
-                IconBadge("laptopcomputer", color: DS.blue)
+                DeviceIcon("laptopcomputer")
             }
             .padding(.horizontal, 16)
             HStack(spacing: 5) {
@@ -332,10 +332,10 @@
             GroupLabel("电脑", action: "管理") {}
             GroupCard {
                 GRow("MacBook", sub: "Codex · 5 小时已用 62%", value: "在线", chevron: true, onTap: {})
-                    .lead { IconBadge("laptopcomputer", color: DS.blue) }
+                    .lead { DeviceIcon("laptopcomputer") }
                     .valueLead { Dot(DS.green) }
                 GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
-                    .lead { IconBadge("laptopcomputer", color: DS.ink3) }
+                    .lead { DeviceIcon("laptopcomputer") }
             }
             GroupNote(AuthorityAccess(state: Demo.state(.everyday), me: Demo.me).addHint).padding(.top, 8)
             GroupLabel("通知")
@@ -373,7 +373,7 @@
                     "ip-10-0-12-231.ap-southeast-1.compute.internal", value: "在线", chevron: true,
                     onTap: {}
                 )
-                .lead { IconBadge("laptopcomputer", color: DS.blue) }
+                .lead { DeviceIcon("laptopcomputer") }
                 GRow("一个名字特别长的客户端，用来看一行放不下的时候怎么办", sub: "App · iOS 26.0 · iPhone", value: "当前")
                 GRow(
                     "我的手机", sub: "App · Android 16 · Pixel 9", value: "40 分钟前使用", chevron: true,

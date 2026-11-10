@@ -167,21 +167,18 @@ func projectName(_ key: String) -> String {
     key.split(separator: "/").last.map(String.init) ?? "未知项目"
 }
 
-/// A small coloured square with an icon, in front of a computer's row. It grows with the row's text.
-struct IconBadge: View {
-    private let icon: String
-    private let color: Color
-    @ScaledMetric(relativeTo: .subheadline) private var side: CGFloat = 26
+/// The icon at the head of a device's row (design-system §6 「设备行」): the
+/// SF Symbol in `ink2`, no coloured tile. It grows with the row's text.
+struct DeviceIcon: View {
+    private let symbol: String
 
-    init(_ icon: String, color: Color) {
-        self.icon = icon
-        self.color = color
-    }
+    init(_ symbol: String) { self.symbol = symbol }
 
     var body: some View {
-        SymbolImage(icon, size: 16, color: Color.white, relativeTo: .subheadline)
-            .frame(width: side, height: side)
-            .background(color, in: RoundedRectangle(cornerRadius: side * 7 / 26, style: .continuous))
+        Image(systemName: symbol)
+            .font(.body)
+            .foregroundStyle(DS.ink2)
+            .frame(minWidth: 26)
             .accessibilityHidden(true)
     }
 }

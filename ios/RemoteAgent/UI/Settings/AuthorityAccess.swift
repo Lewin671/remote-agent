@@ -27,7 +27,7 @@ struct AddDeviceEntry: View {
     var body: some View {
         let access = AuthorityAccess(state: app.state, me: context.me)
         if access.isAuthority {
-            if grouped { GroupCard { row } } else { row }
+            if grouped { GroupCard { row } } else { row.padding(.horizontal, DS.Space.l).padding(.bottom, 8) }
         } else { GroupNote(access.addHint) }
     }
     private var row: some View {

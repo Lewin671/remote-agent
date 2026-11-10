@@ -170,7 +170,7 @@ struct MachineRow: View {
             value: status?.text,
             chevron: true
         ) { nav.open(.machine(id: id)) }
-        .lead { IconBadge("laptopcomputer", color: DS.blue) }
+        .lead { DeviceIcon("laptopcomputer") }
         .valueLead { if let status { Dot(status.online ? DS.green : DS.ink3) } }
         .contextMenu {
             Button("账户额度") { nav.open(.quota(machine: id)) }
@@ -208,7 +208,7 @@ struct ClientRow: View {
             value: role,
             chevron: true
         ) { nav.open(.client(id: id)) }
-        .lead { IconBadge(clientIcon(client), color: DS.blue) }
+        .lead { DeviceIcon(clientIcon(client)) }
         .contextMenu {
             if let onRename { Button("重命名", action: onRename) }
             Button("复制设备 ID") { UIPasteboard.general.string = id }

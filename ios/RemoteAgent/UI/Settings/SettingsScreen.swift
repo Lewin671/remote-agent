@@ -31,7 +31,7 @@ struct SettingsScreen: View {
                         clients(state, now: now)
                     }
                     AccountSecurityGroup()
-                    GroupLabel("本客户端的通知")
+                    GroupLabel("通知")
                     NotificationsNote()
                     GroupLabel("本机存储")
                     GroupCard {
@@ -39,17 +39,22 @@ struct SettingsScreen: View {
                     }
                     GroupLabel("外观")
                     GroupCard { themeRow }
-                    GroupLabel("账户")
+                    GroupLabel("连接")
                     GroupCard {
                         GRow("服务器", value: hostOf(context.account.server))
                         GRow("连接检测", value: connWord(state), chevron: true) {
                             nav.open(.connectionCheck)
                         }
-                        .valueLead { Dot(state.conn == .online ? DS.green : DS.ink3) }
+                        .valueLead { StatusMark(state.conn == .online ? .online : .off) }
+                    }
+                    GroupLabel("关于")
+                    GroupCard {
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
                         GRow("隐私政策", chevron: true) { openURL(PublicInformation.privacy) }
                         GRow("支持与反馈", chevron: true) { openURL(PublicInformation.support) }
+                    }
+                    GroupCard {
                         GRow("删除整个账户…", danger: true) { deletingAccount = true }
                         // It asks first, as every row that ends in an ellipsis does (design-system §8).
                         GRow("退出并删除本机密钥…", danger: true) {
@@ -95,11 +100,9 @@ struct SettingsScreen: View {
     @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
         let machines = sortedMachines(state)
         GroupLabel("电脑", action: "全部设备") { nav.open(.devices) }
-        GroupCard {
-            for m in machines { MachineRow(machine: m, state: state, now: now) }
-            if AuthorityAccess(state: state, me: context.me).isAuthority { AddDeviceEntry(grouped: false) }
-        }
-        if !AuthorityAccess(state: state, me: context.me).isAuthority { AddDeviceEntry() }
+        ForEach(machines, id: \.id) { MachineCard(machine: $0, state: state, now: now) }
+        // A blue line after the cards, or where it is to be done when this client cannot.
+        AddDeviceEntry(grouped: false)
     }
 
     /// This client and the first few others, drawn and ordered as 设备 lists them.
