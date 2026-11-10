@@ -10,6 +10,7 @@
 // choice that cannot be made now is not hidden: it is greyed, with when it
 // can be under it.
 import RACore
+import RAMarkdownUI
 import RAProto
 import SwiftUI
 
@@ -160,7 +161,8 @@ private struct SessionPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background((term ? DS.term : DS.paper).ignoresSafeArea())
+        .background((term ? Theme.Term.bg : DS.paper).ignoresSafeArea())
+        .markdownTheme(DS.markdown)
         // Under the title: 聊天 / 终端 on glass, then the strips of what stands in the way, the content sliding under them.
         .floatingBar(.top) {
             VStack(spacing: 8) {

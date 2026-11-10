@@ -136,3 +136,25 @@ private struct FloatShadow: ViewModifier {
         content.shadow(color: .black.opacity(scheme == .dark ? 0.6 : 0.18), radius: 20, y: 16)
     }
 }
+
+import RAMarkdownUI
+
+extension DS {
+    /// A reply's Markdown in the design's tokens and design-system §7's
+    /// sizes: text 17, headings 20 / 17 / 15, inline code 15, code blocks
+    /// and tables 13. One theme for both: the colours resolve by the scheme.
+    static let markdown: MarkdownTheme = {
+        var t = MarkdownTheme(
+            text: DS.ink, secondary: DS.ink2, muted: DS.ink2, line: DS.sep, soft: DS.gbg, chip: DS.fill, track: DS.faint,
+            link: DS.blue, added: DS.green, removed: DS.red)
+        t.bodySize = 17
+        t.bodyLineHeight = 1.55
+        t.headingSizes = [20, 17, 15]
+        t.inlineCodeSize = 15
+        t.largeCodeSize = 17
+        t.codeSize = 13
+        t.tableHeadSize = 13
+        t.tableCellSize = 13
+        return t
+    }()
+}

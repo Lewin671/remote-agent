@@ -105,14 +105,14 @@ struct ChatRowView: View, Equatable {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(m.questions.enumerated()), id: \.offset) { _, q in
                     if !q.header.isEmpty {
-                        Text(verbatim: q.header).type(T.chat.with(weight: .semibold), Theme.fg)
+                        Text(verbatim: q.header).type(T.chat.with(weight: .semibold), DS.ink)
                     }
                     MarkdownView(q.text, bleed: chatMargin)
                     ForEach(Array(q.options.enumerated()), id: \.offset) { _, o in
                         HStack(alignment: .top, spacing: 8) {
-                            Text("•").type(T.chat, Theme.muted)
+                            Text("•").type(T.chat, DS.ink2)
                             (Text(verbatim: o.label).bold() + Text(verbatim: o.description_p.isEmpty ? "" : " · \(o.description_p)"))
-                                .type(T.chat, Theme.fg)
+                                .type(T.chat, DS.ink)
                         }
                     }
                 }
@@ -123,7 +123,7 @@ struct ChatRowView: View, Equatable {
             .accessibilityLabel("\(agentName(env.agent)) 的回复")
         case .thought(let t):
             ChatExpandable("思考过程", key: t.key) {
-                Text(t.text).type(T.sm, Theme.muted).padding(.bottom, 6)
+                Text(t.text).type(T.sm, DS.ink2).padding(.bottom, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, chatMargin)
@@ -149,12 +149,12 @@ struct ChatRowView: View, Equatable {
         case .note(let n):
             if let icon = n.icon {
                 ChatToolLine(
-                    icon == .check ? Lucide.check : Lucide.x, color: Theme.muted, title: n.text, meta: n.meta,
-                    metaColor: n.tone == 2 ? Theme.red : Theme.muted
+                    icon == .check ? Lucide.check : Lucide.x, color: DS.ink3, title: n.text, meta: n.meta,
+                    metaColor: n.tone == 2 ? DS.red : DS.ink2
                 )
                 .padding(.horizontal, chatMargin)
             } else {
-                Text(n.text).type(T.meta, Theme.muted).multilineTextAlignment(.center).lineLimit(2)
+                Text(n.text).type(T.meta, DS.ink2).multilineTextAlignment(.center).lineLimit(2)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, chatMargin).padding(.vertical, 10)
             }
@@ -162,7 +162,7 @@ struct ChatRowView: View, Equatable {
             PlanCard(key: p.key, text: p.text)
         case .unsent(let u):
             ChatBubble(
-                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? "一条排队的消息" : nil), caption: notSentText("会话已结束"), captionColor: Theme.red,
+                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? "一条排队的消息" : nil), caption: notSentText("会话已结束"), captionColor: DS.red,
                 links: u.text.map { text in [ChatLink("放回输入框") { actions.putBack(u.requestId, text, u.files) }] } ?? []) { FileChips(files: u.files) }
         case .turnEnd(let t):
             ChatSepLine(t.text)
@@ -250,7 +250,7 @@ struct ChatBubble<Top: View>: View {
 
     /// `pending`: not written yet, drawn as an outline; `lines` cuts a long one short.
     init(
-        _ text: String?, caption: String? = nil, captionColor: Color = Theme.muted, captionIcon: LucideIcon? = nil,
+        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: LucideIcon? = nil,
         failed: Bool = false, pending: Bool = false, lines: Int? = nil, links: [ChatLink] = [], padded: Bool = true,
         @ViewBuilder top: () -> Top
     ) {
@@ -267,21 +267,22 @@ struct ChatBubble<Top: View>: View {
     }
 
     var body: some View {
-        let shape = UnevenRoundedRectangle(
-            topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 5, topTrailingRadius: 18, style: .continuous)
+        // A capsule's corners, as every bubble of the design (design-system §4).
+        let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
         VStack(alignment: .trailing, spacing: 0) {
             top
             if let text {
                 TrailingFraction(fraction: 0.8, whole: typeSize.isAccessibilitySize) {
-                    Text(text).type(T.body, pending ? Theme.fg2 : Theme.fg)
+                    // Yours is the one text with a ground (`bubble`); one waiting to be sent is an outline (`faint`) with `ink2` text.
+                    Text(text).font(.body).foregroundStyle(pending ? DS.ink2 : DS.ink)
                         .lineLimit(lines)
-                        .padding(.horizontal, 12).padding(.vertical, 8)
-                        .background(pending ? Theme.card : failed ? Theme.chip : Theme.soft, in: shape)
+                        .padding(.horizontal, 14).padding(.vertical, 9)
+                        .background(pending ? Color.clear : DS.bubble, in: shape)
                         .overlay {
                             if failed {
-                                shape.strokeBorder(Theme.red, lineWidth: 1.5)
+                                shape.strokeBorder(DS.red, lineWidth: 1.5)
                             } else if pending {
-                                shape.strokeBorder(Theme.line, lineWidth: 1)
+                                shape.strokeBorder(DS.faint, lineWidth: 1)
                             }
                         }
                 }
@@ -312,7 +313,7 @@ extension ChatBubble {
         HStack(alignment: .firstTextBaseline, spacing: 0) {
             if let captionIcon { Mark(captionIcon, color: captionColor).padding(.trailing, 4) }
             if let caption {
-                Text(caption).type(T.meta, captionColor).multilineTextAlignment(.trailing)
+                Text(caption).font(.footnote).foregroundStyle(captionColor).multilineTextAlignment(.trailing)
             }
         }
     }
@@ -320,7 +321,7 @@ extension ChatBubble {
     @ViewBuilder fileprivate var actions: some View {
         ForEach(links) { link in
             Button(action: link.action) {
-                Text(link.label).type(T.metaB, Theme.blue).lineLimit(1).fixedSize()
+                Text(link.label).font(.footnote.weight(.semibold)).foregroundStyle(DS.blue).lineLimit(1).fixedSize()
                     // 44 pt to the finger without pushing the rows apart.
                     .padding(.leading, 6).padding(.vertical, 14)
                     .contentShape(Rectangle())
@@ -333,7 +334,7 @@ extension ChatBubble {
 
 extension ChatBubble where Top == EmptyView {
     init(
-        _ text: String?, caption: String? = nil, captionColor: Color = Theme.muted, captionIcon: LucideIcon? = nil,
+        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: LucideIcon? = nil,
         failed: Bool = false, pending: Bool = false, lines: Int? = nil, links: [ChatLink] = [], padded: Bool = true
     ) {
         self.init(
@@ -347,7 +348,7 @@ extension ChatBubble where Top == EmptyView {
 
 private struct Rule: View {
     var body: some View {
-        Rectangle().fill(Theme.line).frame(height: 1).accessibilityHidden(true)
+        RowSeparator()
     }
 }
 
@@ -361,7 +362,7 @@ struct ChatSepLine: View {
         HStack(spacing: 8) {
             Rule().frame(minWidth: 16)
             // The note keeps its line; the rules take what is left, down to a stub at each side.
-            Text(text).type(T.meta, Theme.muted).multilineTextAlignment(.center)
+            Text(text).font(.footnote).foregroundStyle(DS.ink2).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true).layoutPriority(1)
             Rule().frame(minWidth: 16)
         }
@@ -383,18 +384,18 @@ private struct ForkRow: View {
         HStack(spacing: 8) {
             Rule().frame(minWidth: 16)
             HStack(spacing: 4) {
-                Text("\(item.time) 分叉自").type(T.meta, Theme.muted).lineLimit(1).fixedSize()
+                Text("\(item.time) 分叉自").font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
                 if item.sourceId.isEmpty {
-                    Text(title).type(T.meta, Theme.muted).lineLimit(1)
+                    Text(title).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
                 } else {
                     Button {
                         actions.session(item.sourceId)
                     } label: {
                         HStack(spacing: 4) {
-                            Text(title).type(T.meta, Theme.blue).lineLimit(1)
-                            Arrow(Theme.blue, style: T.meta)
+                            Text(title).font(.footnote).foregroundStyle(DS.blue).lineLimit(1)
+                            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(DS.blue)
                         }
-                        .padding(.vertical, 12).frame(minHeight: Theme.minHit).contentShape(Rectangle())
+                        .padding(.vertical, 12).frame(minHeight: DS.minHit).contentShape(Rectangle())
                     }
                     .buttonStyle(PressStyle())
                 }
@@ -422,7 +423,7 @@ struct ChatToolLine<Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     init(
-        _ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = Theme.muted, bold: Bool = false,
+        _ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.mark = mark
@@ -435,7 +436,7 @@ struct ChatToolLine<Trailing: View>: View {
     }
 
     private var name: some View {
-        Text(title).type(bold ? T.sm.with(weight: .medium) : T.mono, bold ? Theme.muted : Theme.fg2)
+        Text(title).font(bold ? .footnote : .footnote.monospaced()).foregroundStyle(DS.ink2)
             .lineLimit(1).truncationMode(.tail)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -450,13 +451,13 @@ struct ChatToolLine<Trailing: View>: View {
                         name
                         trailing
                     }
-                    Text(meta).type(T.meta, metaColor).lineLimit(1)
+                    Text(meta).font(.footnote).foregroundStyle(metaColor).lineLimit(1)
                 }
             } else {
                 HStack(spacing: 8) {
                     Mark(mark, color: color)
                     name
-                    if !meta.isEmpty { Text(meta).type(T.meta, metaColor).lineLimit(1).fixedSize() }
+                    if !meta.isEmpty { Text(meta).font(.footnote).foregroundStyle(metaColor).lineLimit(1).fixedSize() }
                     trailing
                 }
             }
@@ -478,7 +479,7 @@ struct ChatToolLine<Trailing: View>: View {
 }
 
 extension ChatToolLine where Trailing == EmptyView {
-    init(_ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = Theme.muted, bold: Bool = false) {
+    init(_ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false) {
         self.init(mark, color: color, title: title, meta: meta, metaColor: metaColor, bold: bold) { EmptyView() }
     }
 }
@@ -495,9 +496,9 @@ private struct DoneToolRow: View {
         let parts = [!ok && call.hasExitCode ? "退出码 \(call.exitCode)" : "", decision].filter { !$0.isEmpty }
         let meta = parts.isEmpty ? (call.durationMs >= 1000 ? "\(call.durationMs / 1000)s" : "") : parts.joined(separator: " · ")
         ChatToolLine(
-            ok ? Lucide.check : Lucide.x, color: ok ? Theme.muted : Theme.red,
+            ok ? Lucide.check : Lucide.x, color: ok ? DS.ink3 : DS.red,
             title: firstLine(toolTitle(call, cwd: env.cwd, home: env.home)), meta: meta,
-            metaColor: !ok || !decisionOk ? Theme.red : Theme.muted)
+            metaColor: !ok || !decisionOk ? DS.red : DS.ink2)
     }
 }
 
@@ -512,7 +513,7 @@ private struct BackgroundToolRow: View {
     var body: some View {
         let generic = (call.title.isEmpty || raw(call.title)) && raw(call.itemType)
         ChatToolLine(
-            Lucide.loaderCircle, color: Theme.blue,
+            Lucide.loaderCircle, color: DS.ink,
             title: generic ? "后台运行" : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
             meta: generic ? "" : "后台运行")
     }
@@ -530,18 +531,21 @@ private struct RunningToolRow: View {
         let title = firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
         if item.unfinished && env.noResult.contains(tool.seq) {
             // The turn completed without this tool's result: say only that.
-            ChatToolLine(Lucide.loaderCircle, color: Theme.faint, title: title, meta: "等待同步")
+            ChatToolLine(Lucide.loaderCircle, color: DS.faint, title: title, meta: "等待同步")
         } else {
             let state = state
             if state == .running {
+                // The command that runs now stands apart: `gbg`, radius 18 (design-system §6 「工具调用」).
                 Ticking(every: 1) { now in
                     ChatToolLine(
-                        Lucide.loaderCircle, color: Theme.blue, title: title,
+                        Lucide.loaderCircle, color: DS.ink, title: title,
                         meta: toolTimer(tool, state: state, now: now, frozenAt: env.frozenAt))
                 }
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
             } else {
                 ChatToolLine(
-                    Lucide.loaderCircle, color: Theme.blue, title: title,
+                    Lucide.loaderCircle, color: DS.ink, title: title,
                     meta: state == .sync ? "等待同步" : item.unfinished ? "后台运行" : state.text)
             }
         }
@@ -570,8 +574,8 @@ private struct ToolGroupRow: View {
             Button {
                 open.toggle(group.key)
             } label: {
-                ChatToolLine(Lucide.check, color: Theme.muted, title: toolsSummary(group.calls), bold: true) {
-                    Arrow(Theme.muted, style: T.sm, direction: isOpen ? .up : .down)
+                ChatToolLine(Lucide.check, color: DS.ink3, title: toolsSummary(group.calls), bold: true) {
+                    Arrow(DS.ink2, style: T.sm, direction: isOpen ? .up : .down)
                 }
                 .frame(minHeight: 28)
                 // The line is 28 pt; to the finger it is 44.
@@ -583,7 +587,7 @@ private struct ToolGroupRow: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
                         Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
-                            .type(T.mono, Theme.fg2).lineLimit(1)
+                            .type(T.mono, DS.ink2).lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         // Each call's images stay under it when the group is open.
                         if !call.images.isEmpty {
@@ -628,7 +632,7 @@ struct ChatExpandable<Content: View>: View {
             Button {
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { open.toggle(key) }
             } label: {
-                ArrowText(isOpen ? "收起\(title)" : title, color: Theme.muted, style: T.sm, direction: isOpen ? .up : .down)
+                ArrowText(isOpen ? "收起\(title)" : title, color: DS.ink2, style: T.sm, direction: isOpen ? .up : .down)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6).contentShape(Rectangle()).padding(.vertical, -6)
@@ -650,12 +654,12 @@ private struct PlanCard: View {
     var body: some View {
         let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 0) {
-            Text("计划").type(T.smB, Theme.fg2).accessibilityAddTraits(.isHeader)
+            Text("计划").type(T.smB, DS.ink2).accessibilityAddTraits(.isHeader)
             Group {
                 if isOpen {
                     MarkdownView(text)
                 } else {
-                    CutText(planPreview(text, lines: 6), style: T.sm.with(lineHeight: 1.6), color: Theme.fg, lines: 6, cut: $cut)
+                    CutText(planPreview(text, lines: 6), style: T.sm.with(lineHeight: 1.6), color: DS.ink, lines: 6, cut: $cut)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -673,7 +677,7 @@ private struct PlanCard: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.code, style: .continuous))
         .padding(.horizontal, chatMargin).padding(.vertical, 8)
     }
 }
