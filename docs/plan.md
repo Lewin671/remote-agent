@@ -30,7 +30,7 @@ MVP（[scope.md](scope.md) 里「做」的全部内容）已经完成。**所有
 
 按顺序做；第一项是当前的主要工作。
 
-1. **三端按 [client-v58](design/client-v58.html) 实现新界面**。顺序是网页 → iOS → Android，规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
+1. **三端按 [client-v58](design/client-v58.html) 实现新界面**。网页已完成（[验收](acceptance-notes.md#网页按-client-v58-重画2026-11-11)），接下来是 iOS，再是 Android，规则见 [design-system.md](design-system.md)，功能和行为不变。iOS 的界面层改用系统组件重写（NavigationStack、系统弹层与菜单、系统材质、SF Symbols），不再自绘（[ios-client · 选型](ios-client.md#选型)）。验收标准：每端逐屏对照 v58 的亮色和暗色，按 design-system 第 9 节自查；现有自动测试通过；在隔离环境用真实 CLI 直接操作一遍新建、审批、提问、计划、定时和设置，未覆盖的流程标为未验证
 2. **相册里图片和视频一起选**。「＋」的相册入口同时列出图片和视频，视频按文件发送，规则见 [session-files.md](session-files.md#从相册选视频)。只改三端的选择器和草稿显示，不改协议。随新界面一起做。验收标准：三端各从相册选一段视频发给真实 CLI，CLI 收到文件路径；超过 100 MiB 的视频在选中时提示；电脑不能收文件时相册只列图片
 3. **agent 给客户端发文件**。让 agent 能把电脑上的一个文件交到你手上，在对话里显示成可下载的文件条目。范围、信任边界和做法还没有设计：先改 [scope.md](scope.md) 再定方案，涉及协议时按协议改动的流程评审。验收标准待方案定下后补
 4. **文件附件的三端联合验收**。按 [session-files.md](session-files.md) 和「待确认 › 文件附件」，在独立测试环境补真机、云文件提供器、大文件内存峰值及断连恢复。验收标准：逐项记录环境、直接界面操作与调试触发的区别、真实 CLI 结果及资源占用；修复确认的问题，未覆盖的流程继续明确标为未验证。
