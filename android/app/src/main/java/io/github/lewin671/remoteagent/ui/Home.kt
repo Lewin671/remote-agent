@@ -356,47 +356,47 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
         fun check(on: Boolean) = Box(Modifier.size(44.dp).semantics { if (on) contentDescription = "当前范围" }, contentAlignment = Alignment.Center) {
             if (on) Ic(Lucide.Check, 18.dp, p.blue)
         }
-        Column(Modifier.fillMaxWidth().clip(Radii.R20).background(p.raised).padding(start = 18.dp, end = 4.dp)) {
-            ProjectList(
-                state,
-                onNew = { browsing = true },
-                first = {
-                    // 全部项目, when there is more than one project to choose between.
-                    scopeRows(state, scope).firstOrNull { it.scope == HomeScope.All }?.let { all ->
-                        Row(
-                            Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.sep).clickable(role = Role.Button) {
-                                onPick(all.scope)
-                                onClose()
-                            }.padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            ProjectAvatar("", 28, all = true)
-                            Column(Modifier.weight(1f)) {
-                                Text(all.name, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(all.detail, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            }
-                            check(all.current)
+        ProjectList(
+            state,
+            onNew = { browsing = true },
+            // 全部项目, when there is more than one project to choose between.
+            first = scopeRows(state, scope).firstOrNull { it.scope == HomeScope.All }?.let { all ->
+                @Composable {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) {
+                            onPick(all.scope)
+                            onClose()
+                        }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        ProjectAvatar("", 28, all = true)
+                        Column(Modifier.weight(1f)) {
+                            Text(all.name, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(all.detail, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
+                        check(all.current)
                     }
-                },
-            ) { pr ->
-                ProjectRow(state, pr, onClick = {
-                    onPick(HomeScope.Of(pr.key))
-                    onClose()
-                }) { check(scope == HomeScope.Of(pr.key)) }
-            }
-        }
-        Row(
-            Modifier.padding(top = 12.dp).fillMaxWidth().clip(Radii.R20).background(p.raised).heightIn(min = 50.dp)
-                .clickable(role = Role.Button) {
-                    onClose()
-                    nav.manageProjects()
-                }.padding(start = 18.dp, end = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text("管理项目", style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
-            Ic(Lucide.ChevronRight, 18.dp, p.ink3)
+                }
+            },
+            foot = {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 50.dp)
+                        .clickable(role = Role.Button) {
+                            onClose()
+                            nav.manageProjects()
+                        }.padding(end = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("管理项目", style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
+                    Ic(Lucide.ChevronRight, 18.dp, p.ink3)
+                }
+            },
+        ) { pr ->
+            ProjectRow(state, pr, onClick = {
+                onPick(HomeScope.Of(pr.key))
+                onClose()
+            }) { check(scope == HomeScope.Of(pr.key)) }
         }
     }
 }

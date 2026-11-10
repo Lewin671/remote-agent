@@ -62,6 +62,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
@@ -1015,9 +1016,9 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
 
 /** The list of 新会话 · 选项目: the projects as every list shows them, each leading to its new-session box. */
 @Composable
-fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> Unit) {
+fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> Unit, card: Color = pal.raised) {
     val p = pal
-    ProjectList(state, onNew = onNew) { pr ->
+    ProjectList(state, onNew = onNew, card = card) { pr ->
         ProjectRow(state, pr, onClick = { onPick(pr.key) }) { Arrow(p.ink3, ts(18.sp)) }
     }
 }
@@ -1030,7 +1031,7 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
 fun PickProjectSheet(state: RemoteState, onClose: () -> Unit) {
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
-    Sheet(onClose) {
+    Sheet(onClose, color = pal.gbg) {
         if (!browsing) {
             SheetHead("新会话 · 选项目", "取消", onClose)
             ProjectPickList(state, onPick = { onClose(); nav.projectNew(it) }, onNew = { browsing = true })
@@ -1049,7 +1050,7 @@ fun PickProjectScreen() {
     val state by remote.state.collectAsState()
     PageScaffold("新会话 · 选项目") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            ProjectPickList(state, onPick = { nav.projectNew(it) }, onNew = { nav.newProject() })
+            ProjectPickList(state, onPick = { nav.projectNew(it) }, onNew = { nav.newProject() }, card = pal.gbg)
         }
     }
 }

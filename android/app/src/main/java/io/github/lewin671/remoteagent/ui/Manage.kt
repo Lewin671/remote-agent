@@ -38,6 +38,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.RaApp
@@ -159,7 +161,7 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
     val p = pal
     val remote = LocalRemote.current
     val change = PrefsChanges.states[pr.key]
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.sep), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).heightIn(min = 52.dp).clickable(onClickLabel = clickLabel, onClick = onClick).padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -183,12 +185,20 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
 }
 
 /**
- * The projects on the list, the same in every place that shows them (client-v34): 常用 then
- * 其他, titled only when there are both, a search above more than eight, and 新项目… at the
- * end. [first] goes above the projects while nothing is searched for.
+ * The projects on the list, the same in every place that shows them (client-v34, design-system §6
+ * 项目行): 常用 then 其他, each a rounded card of its own in [card] and titled only when there are
+ * both, a search above more than eight, and a last card with 新项目… and [foot]. [first] is a card
+ * above the projects while nothing is searched for.
  */
 @Composable
-fun ProjectList(state: RemoteState, onNew: () -> Unit, first: (@Composable () -> Unit)? = null, row: @Composable (Project) -> Unit) {
+fun ProjectList(
+    state: RemoteState,
+    onNew: () -> Unit,
+    card: Color = pal.raised,
+    first: (@Composable () -> Unit)? = null,
+    foot: (@Composable () -> Unit)? = null,
+    row: @Composable (Project) -> Unit,
+) {
     val p = pal
     val g = projectGroups(state)
     var search by remember { mutableStateOf("") }
@@ -197,18 +207,28 @@ fun ProjectList(state: RemoteState, onNew: () -> Unit, first: (@Composable () ->
     val pinned = g.pinned.filter(match)
     val others = g.others.filter(match)
     val titled = pinned.isNotEmpty() && others.isNotEmpty()
-    if (g.pinned.size + g.others.size > 8) OutlinedTextField(search, { search = it }, label = { Text("搜索项目") }, singleLine = true,
-        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp))
-    if (q.isEmpty()) first?.invoke()
-    if (titled) FieldLabel("常用")
-    pinned.forEach { row(it) }
-    if (titled) FieldLabel("其他")
-    others.forEach { row(it) }
-    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(bottom = 8.dp))
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
-        Text("新项目…", style = T.s17, color = p.blue)
+    @Composable
+    fun Card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().padding(bottom = 12.dp).clip(Radii.R20).background(card).padding(start = 18.dp, end = 4.dp)) {
+        rows.forEachIndexed { i, r -> Box(if (i > 0) Modifier.topLine(p.sep) else Modifier) { r() } }
     }
+    @Composable
+    fun Title(text: String) = Text(text, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, top = 2.dp, bottom = 6.dp))
+    if (g.pinned.size + g.others.size > 8) FilterField(search, { search = it }, Modifier.padding(bottom = 12.dp), placeholder = "搜索项目")
+    if (q.isEmpty() && first != null) Card(listOf(first))
+    if (titled) Title("常用")
+    if (pinned.isNotEmpty()) Card(pinned.map { pr -> @Composable { row(pr) } })
+    if (titled) Title("其他")
+    if (others.isNotEmpty()) Card(others.map { pr -> @Composable { row(pr) } })
+    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(start = 12.dp, bottom = 12.dp))
+    Card(listOfNotNull(
+        @Composable {
+            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
+                Text("新项目…", style = T.s17, color = p.blue)
+            }
+        },
+        foot,
+    ))
 }
 
 /** Asks before a project leaves the list: there is no undo, only adding it again. */
@@ -247,7 +267,7 @@ fun ManageProjectsScreen() {
     PageScaffold("项目管理") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
             if (elsewhere) Banner("项目列表已在另一客户端更新", Modifier.padding(vertical = 4.dp), action = "知道了", onAction = { elsewhere = false })
-            ProjectList(state, onNew = { adding = true }) { pr ->
+            ProjectList(state, onNew = { adding = true }, card = p.gbg) { pr ->
                 // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
                 ProjectRow(state, pr, onClick = { HomeScopes.choose(context, remote.account.localKey, HomeScope.Of(pr.key)); nav.home() }, clickLabel = "在主页看这个项目") {
                     Box(Modifier.size(44.dp).clickable(enabled = PrefsChanges.states[pr.key] != PrefsChanges.State.Saving) { menu = pr }, contentAlignment = Alignment.Center) {
