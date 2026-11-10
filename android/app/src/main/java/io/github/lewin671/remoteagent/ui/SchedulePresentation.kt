@@ -102,3 +102,13 @@ fun scheduleNotificationTask(session: String, tasks: List<ScheduledTask>, view: 
     return view?.takeIf { it.info?.taskOwned == true && it.info?.scheduledTaskId?.isNotEmpty() == true }
         ?.let { ScheduleTaskKey(it.machineId, it.info!!.scheduledTaskId) }
 }
+
+/** The schedules page's sentence (design-system §6 大标题): an orange [count] before [text] when tasks stopped, and the other kind under it. */
+data class ScheduleHeadline(val count: Int?, val text: String, val sub: String)
+
+fun scheduleHeadline(stopped: Int, fresh: Int, empty: Boolean, loading: Boolean): ScheduleHeadline = when {
+    empty -> ScheduleHeadline(null, if (loading) "正在读取任务…" else "还没有定时任务", "")
+    stopped > 0 -> ScheduleHeadline(stopped, "个任务停下了", if (fresh > 0) "另有 $fresh 个新结果" else "")
+    fresh > 0 -> ScheduleHeadline(null, "$fresh 个新结果", "")
+    else -> ScheduleHeadline(null, "没有新结果", "")
+}

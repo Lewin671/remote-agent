@@ -36,11 +36,11 @@ class ScheduleComponentsTest {
             put("id", "task"); put("status", "scheduled"); put("runs", JsonArray(listOf(run)))
             put("spec", buildJsonObject { put("title", "很长的任务名".repeat(30)) })
         })
-        var fg = androidx.compose.ui.graphics.Color.Unspecified
+        var sub = androidx.compose.ui.graphics.Color.Unspecified
         ui.setContent {
             val density = androidx.compose.ui.platform.LocalDensity.current
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, 2f)) {
-                RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { fg = pal.ink; TaskRow(task, RemoteState(), hasNew = true) {} }
+                RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.DARK) { sub = pal.ink2; TaskRow(task, RemoteState(), hasNew = true) {} }
             }
         }
         ui.onNodeWithText("99+").assertDoesNotExist()
@@ -51,10 +51,10 @@ class ScheduleComponentsTest {
             return layouts.single()
         }
         val preview = layout(run.text("notification_text"))
-        assertEquals(fg, preview.layoutInput.style.color)
+        assertEquals(sub, preview.layoutInput.style.color)
         assertEquals(2, preview.layoutInput.maxLines)
         assertTrue(preview.lineCount <= 2)
-        assertEquals(T.s15b.fontWeight, layout(task.title).layoutInput.style.fontWeight)
+        assertEquals(T.s17b.fontWeight, layout(task.title).layoutInput.style.fontWeight)
         assertEquals(1, layout(task.title).lineCount)
         ui.onNodeWithText(SCHEDULE_OFFLINE_ROW, substring = true, useUnmergedTree = true).assertExists()
     }

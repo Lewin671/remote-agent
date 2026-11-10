@@ -116,4 +116,11 @@ class SchedulePresentationTest {
         assertEquals(ScheduleTaskKey("m", "t"), scheduleNotificationTask("s", emptyList(), view))
     }
 
+
+    @Test fun thePageSaysWhatStoppedFirstAndTheOtherKindUnderIt() {
+        org.junit.Assert.assertEquals(ScheduleHeadline(1, "个任务停下了", "另有 2 个新结果"), scheduleHeadline(1, 2, empty = false, loading = false))
+        org.junit.Assert.assertEquals(ScheduleHeadline(null, "2 个新结果", ""), scheduleHeadline(0, 2, empty = false, loading = false))
+        org.junit.Assert.assertEquals(ScheduleHeadline(null, "没有新结果", ""), scheduleHeadline(0, 0, empty = false, loading = false))
+        org.junit.Assert.assertEquals(ScheduleHeadline(null, "还没有定时任务", ""), scheduleHeadline(0, 0, empty = true, loading = false))
+    }
 }

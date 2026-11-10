@@ -132,7 +132,7 @@ class ScheduleDetailEditsTest {
         ui.onNodeWithText(original.title).assertDoesNotExist()
         ui.onNodeWithText("新定时").performClick()
         ui.runOnIdle { assertEquals(1,newTasks) }
-        ui.onNodeWithText("已结束").performClick()
+        ui.onNodeWithText("已结束", substring = true).performClick()
         ui.onNodeWithText(original.title).assertExists()
         ui.runOnIdle { showing=false };ui.waitForIdle();ui.runOnIdle { showing=true }
         ui.onNodeWithText(original.title).assertExists()

@@ -39,6 +39,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -72,102 +73,163 @@ fun SchedulesScreen() {
     val context = LocalContext.current
     val preferences = remember(context) { context.getSharedPreferences("schedule-display", android.content.Context.MODE_PRIVATE) }
     var endedOpen by remember { mutableStateOf(preferences.getBoolean("ended-open", false)) }
-    // In the shell (client-v58): the bottom tabs and 新定时 float over the page; the page itself is
-    // redrawn on client-v58 later.
+    val loading = snapshots.values.any { it.loading }
+    val isNew = { task: ScheduledTask -> unread[ScheduleTaskKey(task.machine, task.id)] == true }
+    val stopped = scheduleSorted(tasks, ScheduleInboxGroup.ATTENTION, isNew)
+    val recent = scheduleSorted(tasks, ScheduleInboxGroup.RECENT, isNew)
+    val fresh = recent.filter(isNew)
+    val others = recent.filterNot(isNew)
+    val ended = scheduleSorted(tasks, ScheduleInboxGroup.ENDED, isNew)
+    val headline = scheduleHeadline(stopped.size, fresh.size, tasks.isEmpty(), loading)
+    // In the shell (client-v58): the bottom tabs and 新定时 float over the page, and 新定时 is the only way to start one.
     ShellPage(
         Modifier.fillMaxSize(),
         bottom = { ShellBottom(ShellTab.SCHEDULES, "新定时", Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
     ) {
-    Column(Modifier.fillMaxSize().padding(shellPadding(top = false)).readableColumn()) {
-        LargeTitle("定时任务")
-        if (!state.loaded) ConnBanner(state) else ScheduleOffline(state, tasks)
-        LazyColumn(Modifier.weight(1f)) {
-            snapshots.forEach { (machine, snapshot) ->
-                if (snapshot.error.isNotEmpty()) item("error-$machine") { Notice(snapshot.error, action = "重试", onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } }) }
-            }
-            if (tasks.isEmpty()) item {
-                Column(Modifier.padding(horizontal = 32.dp, vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (snapshots.values.any { it.loading }) "正在读取任务…" else "还没有定时任务", style = T.s17b, color = pal.ink)
-                    Text(SCHEDULE_EMPTY, style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 12.dp))
+        LazyColumn(Modifier.fillMaxSize().readableColumn(), contentPadding = shellPadding()) {
+            item("headline") {
+                Text(
+                    buildAnnotatedString {
+                        headline.count?.let { withStyle(SpanStyle(color = pal.orange)) { append("$it") }; append(" ") }
+                        append(headline.text)
+                    },
+                    style = T.title, color = pal.ink, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp),
+                )
+                if (headline.sub.isNotEmpty()) Text(headline.sub, style = T.s17, color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 7.dp))
+                Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (!state.loaded) ConnStrip(state) else ScheduleOffline(state, tasks)
+                    snapshots.forEach { (machine, snapshot) ->
+                        if (snapshot.error.isNotEmpty()) Notice(snapshot.error, action = "重试", onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } })
+                    }
                 }
+                if (tasks.isEmpty() && !loading) Text(SCHEDULE_EMPTY, style = T.s17, color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             }
-            ScheduleInboxGroup.entries.forEach { group ->
-                val rows = scheduleSorted(tasks, group) { unread[ScheduleTaskKey(it.machine, it.id)] == true }
-                if (rows.isNotEmpty()) {
-                    item("group-$group") {
-                        if (group == ScheduleInboxGroup.ENDED) Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
-                            endedOpen = !endedOpen
-                            preferences.edit().putBoolean("ended-open", endedOpen).apply()
-                        }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("已结束", Modifier.weight(1f), style = T.s13b, color = pal.ink2)
-                            Text("${rows.size}", style = T.s13, color = pal.ink2)
-                            Ic(if (endedOpen) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.ink2)
-                        }
-                        else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(group.label, Modifier.weight(1f), style = T.s13b, color = if (group == ScheduleInboxGroup.ATTENTION) pal.orangeInk else pal.ink2)
-                            if (group == ScheduleInboxGroup.ATTENTION) Text("${rows.size}", style = T.s13, color = pal.ink2)
-                            else if (rows.any { unread[ScheduleTaskKey(it.machine, it.id)] == true }) TextAction("全部标为已读", { remote.schedules.markRead(rows) }, style = T.s13)
-                        }
+            items(stopped, key = { "stop/${it.machine}/${it.id}" }) { task ->
+                ScheduleCard(task, state, t, warn = true, hasNew = isNew(task), tasks = tasks,
+                    onMark = { if (isNew(task)) remote.schedules.markRead(listOf(task)) else remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
+            }
+            if (fresh.isNotEmpty()) item("fresh") {
+                ScheduleSection("新结果", if (fresh.size > 1) "全部标为已读" else null) { remote.schedules.markRead(fresh) }
+            }
+            items(fresh, key = { "new/${it.machine}/${it.id}" }) { task ->
+                ScheduleCard(task, state, t, warn = false, hasNew = true, tasks = tasks, onMark = { remote.schedules.markRead(listOf(task)) }) { nav.task(task.machine, task.id) }
+            }
+            if (others.isNotEmpty()) item("others") { ScheduleSection(if (stopped.isEmpty() && fresh.isEmpty()) "任务" else "其他任务") }
+            items(others, key = { "row/${it.machine}/${it.id}" }) { task ->
+                TaskRow(task, state, t, last = task == others.last(), tasks = tasks, onMark = { remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
+            }
+            if (ended.isNotEmpty()) {
+                item("ended") {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable {
+                        endedOpen = !endedOpen
+                        preferences.edit().putBoolean("ended-open", endedOpen).apply()
+                    }.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+                        ArrowText("已结束 ${ended.size}", pal.ink2, T.s15, down = !endedOpen, up = endedOpen)
                     }
-                    if (group != ScheduleInboxGroup.ENDED || endedOpen) items(rows, key = { "${it.machine}/${it.id}" }) { task ->
-                        val hasNew = unread[ScheduleTaskKey(task.machine, task.id)] == true
-                        TaskRow(task, state, t, last = task == rows.last(), hasNew = hasNew, tasks = tasks,
-                            onMark = { if (hasNew) remote.schedules.markRead(listOf(task)) else remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
-                    }
+                }
+                if (endedOpen) items(ended, key = { "end/${it.machine}/${it.id}" }) { task ->
+                    TaskRow(task, state, t, last = task == ended.last(), tasks = tasks, onMark = { remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
                 }
             }
         }
     }
+}
+
+/** A section title on the schedules page, 15 / 600, with at most one link at the right. */
+@Composable
+private fun ScheduleSection(text: String, action: String? = null, onAction: () -> Unit = {}) {
+    Row(Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.s15b, color = pal.ink, modifier = Modifier.weight(1f))
+        if (action != null) TextAction(action, onAction, style = T.s15, alignment = Alignment.Center, modifier = Modifier.padding(horizontal = 12.dp))
     }
 }
 
-/** One leading slot: attention wins over new-result blue, otherwise it stays empty. */
+/**
+ * A task that stopped ([warn]: the orange dot and why, two lines) or has a
+ * new result (the blue dot and its summary, four lines), as a gbg card,
+ * radius 28 (design-system §6 定时任务). Swiped left it is marked read.
+ */
 @Composable
-fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, hasNew: Boolean = false,
-    tasks: List<ScheduledTask> = listOf(task), onMark: () -> Unit = {}, onClick: () -> Unit) {
-    val attention = taskGroup(task) == TaskGroup.ATTENTION
-    val running = scheduleInProgress(task)
-    val canMark = scheduleCanMark(task, hasNew)
-    val action = if (hasNew) "标为已读" else "标为未读"
-    var offset by remember(task.machine, task.id, hasNew, canMark) { mutableFloatStateOf(0f) }
+fun ScheduleCard(task: ScheduledTask, state: RemoteState, now: Instant, warn: Boolean, hasNew: Boolean, tasks: List<ScheduledTask>, onMark: () -> Unit, onClick: () -> Unit) {
+    val p = pal
+    SwipeToMark(scheduleCanMark(task, hasNew), hasNew, onMark, onClick, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp).clip(Radii.R28)) {
+        Column(Modifier.fillMaxWidth().background(p.gbg).padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ScheduleResultDot(if (warn) p.orange else p.blue, if (warn) "需要你处理" else "有新结果")
+                Text(task.title, Modifier.weight(1f), style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(scheduleNotificationTime(task, now), style = T.s13, color = p.ink2, maxLines = 1)
+            }
+            val preview = schedulePreview(task, now)
+            if (warn) {
+                val word = scheduleAttentionWord(task)
+                Text(
+                    buildAnnotatedString {
+                        if (!scheduleInProgress(task)) {
+                            withStyle(SpanStyle(color = p.orangeInk, fontWeight = T.s15b.fontWeight)) { append(word) }
+                            append(preview.removePrefix(word))
+                        } else append(preview)
+                    },
+                    style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp),
+                )
+            } else Text(preview, style = T.s17.copy(lineHeight = 25.5.sp), color = p.ink, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
+            Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(scheduleRowMetadata(task, state, tasks), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                ArrowText(if (warn) "去处理" else "看全文", p.blue, T.s15)
+            }
+        }
+    }
+}
+
+/**
+ * Swiped left, a task shows a blue 已读 (or 未读) and, swiped far, does it
+ * ([canMark]); a tap opens it. A screen reader has the same as an action.
+ */
+@Composable
+private fun SwipeToMark(canMark: Boolean, hasNew: Boolean, onMark: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    var offset by remember(canMark, hasNew) { mutableFloatStateOf(0f) }
     var width by remember { mutableIntStateOf(1) }
     val reveal = with(LocalDensity.current) { 88.dp.toPx() }
-    Box(Modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
+    val action = if (hasNew) "标为已读" else "标为未读"
+    Box(modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
         if (canMark && offset < 0) Row(Modifier.matchParentSize().background(pal.blue).padding(end = 16.dp),
             horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.width(72.dp).fillMaxHeight().clickable { offset = 0f; onMark() }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 if (hasNew) { Ic(Lucide.Check, 16.dp, Color.White); Spacer(Modifier.width(4.dp)) }
-                Text(if (hasNew) "已读" else "未读", style = T.s13b, color = Color.White)
+                Text(if (hasNew) "已读" else "未读", style = T.s15b, color = Color.White)
             }
         }
-        Row(Modifier.offset { IntOffset(offset.roundToInt(), 0) }.fillMaxWidth().background(pal.paper)
+        Box(Modifier.offset { IntOffset(offset.roundToInt(), 0) }.fillMaxWidth().background(pal.paper)
             .then(if (canMark) Modifier.draggable(rememberDraggableState { delta -> offset = (offset + delta).coerceIn(-width.toFloat(), 0f) }, Orientation.Horizontal,
                 onDragStopped = {
                     if (-offset >= width * .65f) { offset = 0f; onMark() }
                     else offset = if (-offset >= reveal / 2) -reveal else 0f
                 }) else Modifier)
             .semantics { if (canMark) customActions = listOf(CustomAccessibilityAction(action) { onMark(); true }) }
-            .clickable { if (offset != 0f) offset = 0f else onClick() }.padding(start = 6.dp, end = 16.dp, top = 10.dp), verticalAlignment = Alignment.Top) {
-            Box(Modifier.width(22.dp).padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
-                if (attention || hasNew) ScheduleResultDot(if (attention) pal.orange else pal.blue, if (attention) "需要你处理" else "有新结果")
-            }
-            Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.sep)).padding(bottom = 10.dp)) {
+            .clickable { if (offset != 0f) offset = 0f else onClick() }) { content() }
+    }
+}
+
+/** A task in 其他任务 or 已结束, one row (design-system §6 会话行): title and time, two lines of summary, then how often and where. */
+@Composable
+fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, hasNew: Boolean = false,
+    tasks: List<ScheduledTask> = listOf(task), onMark: () -> Unit = {}, onClick: () -> Unit) {
+    val p = pal
+    val attention = taskGroup(task) == TaskGroup.ATTENTION
+    val running = scheduleInProgress(task)
+    val paused = task.status == "paused"
+    SwipeToMark(scheduleCanMark(task, hasNew), hasNew, onMark, onClick) {
+        Row(Modifier.fillMaxWidth().padding(start = 24.dp), verticalAlignment = Alignment.Top) {
+            if (attention || hasNew) Box(Modifier.width(26.dp).padding(top = 20.dp)) { ScheduleResultDot(if (attention) p.orange else p.blue, if (attention) "需要你处理" else "有新结果") }
+            Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).padding(end = 24.dp, top = 13.dp, bottom = 13.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(task.title, Modifier.weight(1f), style = if (attention || hasNew) T.s15b else T.s15.copy(fontWeight = platformWeight(FontWeight.Medium)),
-                        color = if (task.status == "paused") pal.ink else pal.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(scheduleNotificationTime(task, now), style = T.s12, color = pal.ink2, maxLines = 1)
+                    Text(task.title, Modifier.weight(1f), style = T.s17b, color = if (paused) p.ink3 else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(scheduleNotificationTime(task, now), style = T.s13, color = p.ink2, maxLines = 1)
                 }
                 val preview = schedulePreview(task, now)
-                val summary = buildAnnotatedString {
-                    if (attention && !running) {
-                        withStyle(SpanStyle(color = pal.orangeInk, fontWeight = T.s13b.fontWeight)) { append(scheduleAttentionWord(task)) }
-                        append(preview.removePrefix(scheduleAttentionWord(task)))
-                    } else append(preview)
-                }
-                Text(summary, modifier = Modifier.padding(top = 1.dp), style = T.s13, color = if (hasNew) pal.ink else pal.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (preview.isNotEmpty()) Text(preview, modifier = Modifier.padding(top = 2.dp), style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (running) { Mark(Lucide.LoaderCircle, pal.ink2, 12.dp); Text("正在运行 ·", style = T.s12, color = pal.ink2) }
-                    Text(scheduleRowMetadata(task, state, tasks), style = T.s12, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (running) { Spinner(p.ink2, size = 12.dp); Text("正在运行 ·", style = T.s13, color = p.ink2) }
+                    Text(scheduleRowMetadata(task, state, tasks), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }

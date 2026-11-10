@@ -116,7 +116,9 @@ class ScheduleReadStateTest {
     @Test fun markingRecentGroupReadLeavesAttentionResultsUnread() {
         tasks = listOf(tasks[0].copy(json = JsonObject(tasks[0].json + mapOf("status" to JsonPrimitive("failed"), "reason" to JsonPrimitive("execution_failed")))), tasks[1])
         prepare()
-        ui.onNodeWithText("全部标为已读").performClick()
+        // One new result: no 全部标为已读; its card is marked read as a swipe would, by its action.
+        val card = ui.onNode(hasAnyDescendant(hasText(tasks[1].title)) and SemanticsMatcher("can mark") { androidx.compose.ui.semantics.SemanticsActions.CustomActions in it.config }, useUnmergedTree = true)
+        ui.runOnIdle { card.fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.CustomActions].single { it.label == "标为已读" }.action() }
         ui.runOnIdle {
             assertEquals(1, repository.badge.value)
             assertTrue(repository.unread.value.getValue(ScheduleTaskKey("computer", "first")))
