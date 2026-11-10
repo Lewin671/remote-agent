@@ -18,7 +18,6 @@ import {
   CornerDownLeft as LCornerDownLeft,
   Ellipsis as LEllipsis,
   Globe as LGlobe,
-  Bell as LBell,
   Image as LImage,
   Info as LInfo,
   Lock as LLock,
@@ -99,10 +98,9 @@ export const MessageCircle = icon(LMessageCircle);
 export const Settings = icon(LSettings);
 /** A photo or video to add to a message. */
 export const ImageIcon = icon(LImage);
-/** Settings rows: account security, notifications, appearance, about;
+/** Settings rows: account security, appearance, about;
  * info also leads a stopped task's banner. */
 export const Lock = icon(LLock);
-export const Bell = icon(LBell);
 export const Moon = icon(LMoon);
 export const Info = icon(LInfo);
 /** A computer. */

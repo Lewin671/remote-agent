@@ -98,7 +98,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .pad { padding: 0 16px; }
 /* A whole-page state: its title at 22, what to do under it. */
 .et { font-size: 22px; font-weight: var(--w7); letter-spacing: -.02em; }
-.ed { font-size: 15px; line-height: 1.5; color: var(--ink2); margin: 10px 0 24px; }
 .empty { color: var(--ink2); font-size: 13px; padding: 8px 16px; margin: 0; }
 /* A text action: blue, no fill (design-system §6 按钮); red when it destroys. */
 .link { color: var(--blue); min-height: 32px; }
@@ -577,7 +576,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .btn.pri { background: var(--btn); color: var(--btn-fg); }
 .btn.danger { background: var(--red); color: #fff; }
 /* Gray with red words: a secondary choice that removes or ends something. */
-.btn.neg { color: var(--red); }
 .btn.sm { min-height: 38px; font-size: 15px; padding: 6px 18px; }
 .btn:disabled, .btn.dis { opacity: .4; }
 /* An input field: a filled block, 18 round, 17 text. */
@@ -586,17 +584,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .field small { display: block; font-size: 13px; color: var(--ink2); margin-bottom: 2px; }
 .field input { border: 0; background: none; outline: none; width: 100%; padding: 0; font-size: 17px; }
 
-/* chips: the wide home's project pick and the like */
-.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; background: var(--fill); color: var(--ink2); border-radius: 14px; padding: 4px 9px; white-space: nowrap; min-width: 0; min-height: 28px; flex: none; }
-.chip.grow { flex: 0 1 auto; overflow: hidden; }
-.chip.grow em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
-.chip.warn { background: var(--orange-soft); color: var(--orange-ink); }
-.chip.dis { opacity: .5; }
-.ring { width: 14px; height: 14px; border-radius: 50%; flex: none; position: relative;
-  background: conic-gradient(var(--c, var(--ink)) calc(var(--p) * 1%), var(--fill2) 0); }
-.ring::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--fill); }
-.chip.warn .ring { --c: var(--orange); }
-.chip.warn .ring::after { background: var(--orange-soft); }
 /* ended or offline: a gray status card in the input's place, first why,
    then what can be done (§6 输入框, client-v58 #boundaries). */
 .endcard { flex: none; margin: 4px 12px max(12px, env(safe-area-inset-bottom)); background: var(--gbg); border-radius: 28px; padding: 18px; box-shadow: var(--float); }
@@ -681,17 +668,9 @@ h1, h2, h3 { font-weight: var(--w7); }
    Gray groups on a paper page; paper ones (a gray a level up in dark) in
    a gray sheet. Rows are 17, at least 50 high, with hairlines from where
    the text starts; a value sits at the end in ink2. */
-.grp, .list, .setrows { background: var(--gbg); border-radius: 20px; overflow: hidden; }
-.sheet :is(.grp, .list, .setrows), .pop :is(.grp, .list) { background: var(--lift); }
+.grp, .list { background: var(--gbg); border-radius: 20px; overflow: hidden; }
+.sheet :is(.grp, .list), .pop :is(.grp, .list) { background: var(--lift); }
 .list + .list, .grp + .grp { margin-top: 12px; }
-.setrows { margin-top: 0; }
-.sr { display: flex; align-items: center; gap: 10px; padding: 0 16px 0 18px; min-height: 50px; font-size: 17px; width: 100%; position: relative; text-align: left; }
-.sr + .sr::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; border-top: .5px solid var(--sep); }
-.sr .lbl { flex: none; color: var(--ink2); width: 34px; font-size: 15px; }
-.sr .v { margin-left: auto; color: var(--ink2); display: flex; align-items: center; gap: 6px; font-size: 15px; min-width: 0; white-space: nowrap; }
-.sr .v em { font-style: normal; overflow: hidden; text-overflow: ellipsis; }
-.sr .fixed { margin-left: auto; color: var(--ink2); font-size: 15px; text-align: right; }
-.sr:disabled { opacity: .4; }
 
 /* Projects, the same row wherever they are listed (§6 项目行): the avatar,
    the name, its path and counts, and one thing at the end. */
@@ -730,7 +709,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sheet > .gf { padding: 0 12px; margin: 8px 0 0; }
 .banner > span > .ic { width: 12px; height: 12px; margin-right: 6px; vertical-align: -1px; }
 .conn-again { margin-top: 12px; }
-.sheet .hint + .setrows { margin-top: 12px; }
 .manage > .hint { margin-top: 12px; }
 /* List pickers: modes, models, machines, folders; the picked one ends in a blue ✓. */
 .list .mi { display: flex; gap: 10px; align-items: center; padding: 0 16px 0 18px; min-height: 50px; font-size: 17px; width: 100%; text-align: left; position: relative; }
@@ -762,7 +740,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .list .mi.dis b, .list .mi:disabled b { color: var(--ink3); }
 .ck { margin-left: auto; color: var(--blue); }
 .ck > .ic { display: block; font-size: 20px; }
-.row .v > .ic, .sr .v > .ic { color: var(--ink3); margin-left: -4px; font-size: 16px; }
+.row .v > .ic { color: var(--ink3); margin-left: -4px; font-size: 16px; }
 .crumb { font: 13px var(--mono); color: var(--ink2); margin: 0 12px 8px; }
 .crumb b { color: var(--ink); }
 .ctxbox { display: flex; gap: 14px; align-items: center; background: var(--lift); border-radius: 20px; padding: 14px 16px; }
@@ -771,16 +749,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .ctxbox .ctxn { flex: 1; min-width: 0; }
 .ctxbox .btn { flex: none; }
 .ctxbox .bar.warn i { background: var(--orange); }
-.slider { position: relative; height: 28px; margin: 4px 6px 0; }
-.slider.dis { opacity: .4; }
-.slider .track { position: absolute; left: 0; right: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--fill2); }
-.slider .fill { position: absolute; left: 0; top: 12px; height: 4px; border-radius: 2px; background: var(--ink); }
-.slider .tick { position: absolute; top: -8px; width: 44px; height: 44px; transform: translateX(-22px); display: flex; align-items: center; justify-content: center; }
-.slider .tick::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--faint); }
-.slider .knob { position: absolute; top: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.25); transform: translateX(-11px); pointer-events: none; }
-.slabels { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink2); margin: 2px 0 0; }
-.slabels button { min-height: 32px; }
-.slabels .on { color: var(--ink); font-weight: var(--w6); }
 /* A confirm dialog: centered, gray, 30 round and floating; the title in
    ink, never red; 取消 on the left, the confirming button on the right. */
 .dialog { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(340px, calc(100% - 64px)); background: var(--dialog); border-radius: 30px; padding: 22px 20px 16px; box-shadow: var(--float); }
@@ -886,10 +854,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sw.off { background: var(--fill2); }
 .sw.off::after { right: auto; left: 2px; }
 .sw:disabled { opacity: .4; }
-.glabel { font-size: 13px; color: var(--ink2); padding: 26px 28px 8px; }
 /* A note under a group, from where the rows' text starts. */
 .gf { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; overflow-wrap: anywhere; }
-/* A note under a group, as where devices are added. */
 /* A thin bar of what is left: ink on fill2, orange at 20% and below,
    gray once the reading is old. */
 .bar { display: block; height: 5px; border-radius: 3px; background: var(--fill2); overflow: hidden; margin-top: 6px; }
@@ -927,13 +893,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .qrow .l .n { font-size: 15px; color: var(--ink2); flex: none; }
 .qrow .rs { font-size: 13px; color: var(--ink2); margin-top: 6px; overflow-wrap: anywhere; }
 
-/* ---------- pairing ---------- */
-.pairing { background: var(--paper); }
-.qr { width: 188px; height: 188px; margin: 14px auto 10px; padding: 18px; border-radius: 28px; background: #fff; }
-.qrsvg { width: 100%; height: 100%; display: block; }
-.code { text-align: center; font: var(--w6) 22px var(--mono); letter-spacing: 4px; }
+/* ---------- pairing and first run ---------- */
 .emoji { display: flex; justify-content: center; gap: 12px; font-size: 40px; line-height: 1.2; margin: 8px 0 12px; }
-.req { background: var(--gbg); border-radius: 28px; padding: 18px; margin: 14px 16px; }
 .center-text { text-align: center; padding: 0 16px; }
 .setup { max-width: 460px; margin: 0 auto; padding: max(24px, env(safe-area-inset-top)) 0 24px; display: flex; flex-direction: column; min-height: 100%; }
 .setup > .hl { padding-top: 24px; }
@@ -1046,11 +1007,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .pop.menu-pop .list .mi { min-height: 44px; font-size: 15px; }
 .pop.menu-pop .list .mi .mv { font-size: 15px; }
 .pop.menu-pop .list + .list { margin-top: 8px; }
-.wpage { max-width: 760px; width: 100%; margin: 0 auto; padding: 20px 24px; }
-.wpage > .banner { margin-top: 8px; }
 
 /* ---------- v2 (docs/design/client-v2.html) ---------- */
-.navbar .title b .tname { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: var(--ink); font-weight: var(--w6); }
 
 
 /* In place of ▸: the design system's › turned down, or up once open. */
@@ -1066,13 +1024,6 @@ details[open] > summary .exp { transform: rotate(180deg); }
 .row.client small { font-size: 13px; color: var(--ink2); margin-top: 2px; }
 .row.client small:empty { display: none; }
 .row.client .v { flex: none; }
-.wpage .pad { padding: 0; }
-.wtitle { margin: 0; font-size: 22px; }
-.chip.linkchip { color: var(--blue); }
-.removed-note { padding: 4px 16px 8px; }
-.wpage .removed-note { padding: 4px 0 8px; }
-.removed-note .btns { margin-top: 8px; }
-.removed-note .banner { margin-top: 8px; }
 .body > .pad > .banner { margin: 4px 0; }
 
 /* Settings and devices. */
@@ -1104,7 +1055,6 @@ input.field { margin: 0; }
 @keyframes ringspin { to { transform: rotate(360deg); } }
 .ring.spin, .vimg .ring { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: none; border: 2.5px solid #fff; border-right-color: transparent; animation: ringspin 1s linear infinite; }
 .vimg .ring { width: 30px; height: 30px; margin: -15px 0 0 -15px; }
-.vimg .ring::after { display: none; }
 
 /* The viewer: dark on the whole screen in either theme, its buttons dark
    glass; over the session on a wide window. */
@@ -1193,10 +1143,6 @@ input.field { margin: 0; }
 
 
 /* v8: project settings, pending inputs, compact tools and large text. */
-.sr { flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
-.sr .lbl { white-space: nowrap; width: auto; min-width: 34px; }
-.sr .v { flex: 1; justify-content: flex-end; white-space: normal; overflow-wrap: anywhere; text-align: right; }
-@media (max-width: 360px) { .sr .v { flex-basis: 100%; } }
 .row.quota-line :is(.v, .nw) { white-space: normal; }
 .row.quota-line .v { flex: 1; justify-content: flex-end; text-align: right; overflow-wrap: anywhere; }
 .row.quota-line:is(.warn, .full) .v { color: var(--orange-ink); }
@@ -1284,11 +1230,11 @@ input.field { margin: 0; }
 /* The wide sidebar: the same groups as rows, the dot at their head. */
 .side .schedule-group > .sec { padding: 16px 12px 4px; min-height: 0; font-size: 12px; color: var(--ink2); }
 .side .sec .sec-act { font-size: 12px; min-height: 28px; }
-.side .schedule-list-empty, .side .schedule-sidebar > .home-note { padding: 8px 12px 0; }
+.side .schedule-sidebar > .home-note { padding: 8px 12px 0; }
 .side .schedule-sidebar > .banner { margin: 4px 4px 8px; }
 .side .sess.schedule-line .sm { padding: 0; }
 .side .schedule-ended { padding: 10px 12px; margin: 0; font-size: 12px; }
-.choices .sess, .schedule-choices .sess { padding-left: 12px; }
+.schedule-choices .sess { padding-left: 12px; }
 
 /* A task's page: the stop and its ink 恢复, what runs, the latest result,
    the earlier ones, what the agent is told and the settings, in one column
