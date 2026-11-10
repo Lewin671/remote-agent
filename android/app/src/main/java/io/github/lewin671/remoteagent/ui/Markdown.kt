@@ -709,6 +709,9 @@ private fun parseList(lines: List<String>, base: Int, depth: Int): Block {
 private const val CODE = "code"
 
 /** A paragraph's inline tree as styled text; [codeSize] is 15 in the two large headings. */
+/** Inline code in the chat's 17 text (design-system §7): 15. */
+val CHAT_CODE = 15.sp
+
 fun richText(spans: List<Span>, p: Palette, codeSize: TextUnit = 13.sp): AnnotatedString = buildAnnotatedString { appendSpans(spans, p, codeSize) }
 
 private fun AnnotatedString.Builder.appendSpans(spans: List<Span>, p: Palette, codeSize: TextUnit) {
@@ -858,14 +861,14 @@ private fun Blocks(blocks: List<Block>, color: Color, place: Place, level: Int =
         for ((gap, b) in rows) {
             if (gap > 0) Spacer(Modifier.height(gap.dp))
             when (b) {
-                is Block.Para -> RichText(remember(b, p) { richLines(b.text, p) }, T.chat.copy(color = color))
+                is Block.Para -> RichText(remember(b, p) { richLines(b.text, p, CHAT_CODE) }, T.chat.copy(color = color), codeSize = CHAT_CODE)
                 is Block.Heading -> {
                     val style = when {
-                        b.level <= 2 -> T.s17b.copy(color = color)
-                        b.level == 3 -> ts(15.sp, FontWeight.SemiBold, 1.35f).copy(color = color)
-                        else -> ts(13.sp, FontWeight.SemiBold, 1.35f).copy(color = p.ink2)
+                        b.level <= 2 -> ts(20.sp, FontWeight.SemiBold, 1.35f).copy(color = color)
+                        b.level == 3 -> ts(17.sp, FontWeight.SemiBold, 1.35f).copy(color = color)
+                        else -> ts(15.sp, FontWeight.SemiBold, 1.35f).copy(color = p.ink2)
                     }
-                    val codeSize = if (b.level <= 2) 15.sp else 13.sp
+                    val codeSize = if (b.level <= 2) 17.sp else 15.sp
                     RichText(remember(b, p) { richText(inlineSpans(b.text), p, codeSize) }, style, codeSize = codeSize)
                 }
                 is Block.Code -> ReplyCode(b)
@@ -982,20 +985,20 @@ private fun ReplyCode(b: Block.Code) {
     // Only a diff is colored: added and removed lines mean something.
     val diff = b.lang == "diff" || b.lang == "patch"
     val shown = remember(lines, open, diff, p) { codeText(if (long && !open) lines.take(FOLD_SHOWN) else lines, diff, p.green, p.red) }
-    Box(Modifier.fillMaxWidth().clip(Radii.R6).background(p.gbg)) {
+    Box(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
         Column {
             Text(
-                shown, style = T.mono12, color = p.ink, softWrap = false,
+                shown, style = T.mono13.copy(lineHeight = 19.5.sp), color = p.ink2, softWrap = false,
                 // Room at the end for the copy button: scrolled all the way, no code is left under it.
-                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 44.dp, top = 8.dp, bottom = 8.dp),
+                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 14.dp, end = 46.dp, top = 10.dp, bottom = 10.dp),
             )
             if (long) Row(
-                Modifier.fillMaxWidth().heightIn(min = 44.dp).tap { open = !open }.padding(horizontal = 12.dp),
+                Modifier.fillMaxWidth().heightIn(min = 44.dp).tap { open = !open }.padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ArrowText(if (open) "收起" else "展开全文", p.blue, T.s13b, down = !open, up = open)
                 Spacer(Modifier.weight(1f))
-                Text("共 ${lines.size} 行", style = T.s12, color = p.ink2, maxLines = 1)
+                Text("共 ${lines.size} 行", style = T.s13, color = p.ink2, maxLines = 1)
             }
         }
         // Over the corner without adding to the block's height: one line of code is lower than the button.

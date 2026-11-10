@@ -94,7 +94,12 @@ fun toolTimer(t: RunningTool, state: ToolState, now: Long, frozenAt: Long): Stri
     return "已运行 ${clock(ms)}" + if (state == ToolState.SYNC) " · 等待同步" else ""
 }
 
-/** A tool that started and has no result yet, where it started. */
+/**
+ * A tool that started and has no result yet, where it started: the running
+ * command on a grey row of its own (design-system §7 工具执行), turning, with
+ * how long it has run. Out of touch its clock stops at 等待同步; one the turn
+ * left behind is a plain line, 后台运行.
+ */
 @Composable
 fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     val p = pal
@@ -103,12 +108,25 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     val tool = item.tool
     val state = toolState(tool, item.unfinished, ctx.derived, ctx.frozenAt)
     val title = toolTitle(tool, cwd, home).lines().first()
+    val side = Modifier.padding(horizontal = ChatSide)
     // The turn completed without this tool's result: say only that.
-    if (item.unfinished && tool.seq in ctx.derived.noResult) {
-        io.github.lewin671.remoteagent.ui.ToolLine(Lucide.LoaderCircle, p.ink3, title, Modifier.padding(horizontal = 14.dp), meta = "等待同步")
-        return
-    }
+    if (item.unfinished && tool.seq in ctx.derived.noResult) return NowRow(title, "等待同步", spin = false)
+    if (item.unfinished) return ToolLine(Lucide.LoaderCircle, p.ink3, title, side, meta = "后台运行")
     val timer = toolTimer(tool, state, t, ctx.frozenAt)
-    ToolLine(Lucide.LoaderCircle, p.blue, title, Modifier.padding(horizontal = 14.dp),
-        meta = if (state == ToolState.SYNC) timer.ifEmpty { "等待同步" } else if (item.unfinished) "后台运行" else if (state == ToolState.APPROVAL) state.text else timer)
+    if (state == ToolState.SYNC) NowRow(title, timer.ifEmpty { "等待同步" }, spin = false)
+    else NowRow(title, if (state == ToolState.APPROVAL) state.text else timer, spin = true)
+}
+
+@Composable
+private fun NowRow(title: String, meta: String, spin: Boolean) {
+    val p = pal
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 6.dp).clip(Radii.R18).background(p.gbg).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        if (spin) Spinner(p.ink2, size = 15.dp) else Mark(Lucide.LoaderCircle, p.ink3, 15.dp)
+        Text(title, style = T.mono13, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (meta.isNotEmpty()) Text(meta, style = T.s13, color = p.ink2, maxLines = 1)
+    }
 }

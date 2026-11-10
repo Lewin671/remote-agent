@@ -138,6 +138,7 @@ object Radii {
     val R14 = RoundedCornerShape(14.dp)
     val R16 = RoundedCornerShape(16.dp)
     val R18 = RoundedCornerShape(18.dp)
+    val R22 = RoundedCornerShape(22.dp)
     val R20 = RoundedCornerShape(20.dp)
     val R24 = RoundedCornerShape(24.dp)
     val R28 = RoundedCornerShape(28.dp)
@@ -227,7 +228,7 @@ object T {
     /** Only the bottom tabs' labels. */
     val s10 = ts(10.sp, FontWeight.SemiBold, 1.2f)
     /** Conversation text until the session is redrawn on client-v58. */
-    val chat = ts(15.sp, lineHeight = 1.6f)
+    val chat = ts(17.sp, lineHeight = 1.55f)
     /** Code blocks, command blocks and tables. */
     val mono13 = mono(13.sp)
     val mono12 = mono(12.sp)

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.widthIn
@@ -634,7 +635,7 @@ private fun ChatPane(
                 LazyColumn(
                     state = list,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(top = 6.dp),
+                    contentPadding = PaddingValues(top = 12.dp),
                 ) {
                     if (!loaded && events.isEmpty() && startPrompt == null) item { Skeleton() }
                     if (startPrompt != null)
@@ -665,10 +666,10 @@ private fun ChatPane(
                     val shown = error ?: fetchError?.takeIf { state.conn == ConnState.ONLINE }
                     if (shown != null)
                         item {
-                            Banner(
+                            Notice(
                                 "后面的记录没读到：$shown",
-                                Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                Tone2.ERROR,
+                                Modifier.padding(horizontal = ChatSide, vertical = 8.dp),
+                                NoticeTone.ERROR,
                                 action = "重试",
                                 onAction = { remote.retryEvents(s.id) },
                             )
@@ -690,7 +691,7 @@ private fun ChatPane(
                     }
                     if (pendingInputs.size > 3 && !allPending)
                         item {
-                            TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true })
+                            TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true }, Modifier.padding(horizontal = ChatSide), style = T.s13)
                         }
                     // Messages from this device, until the chat shows them.
                     val pending = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
@@ -706,35 +707,22 @@ private fun ChatPane(
                     item { Spacer(Modifier.height(8.dp)) }
                 }
             }
+            // The chat fades out under the segmented control and strips, as the content does under glass.
+            Box(Modifier.fillMaxWidth().height(12.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(p.paper, p.paper.copy(alpha = 0f)))))
             val fresh = unseen.count(items.size)
             // Only for what came in while reading back; the list keeps following otherwise.
             if (!atBottom && fresh > 0) {
-                Box(
-                    Modifier.align(Alignment.BottomCenter)
-                        .padding(bottom = 8.dp)
-                        .heightIn(min = 44.dp)
-                        .shadow(
-                            10.dp,
-                            RoundedCornerShape(16.dp),
-                            ambientColor =
-                                androidx.compose.ui.graphics.Color.Black.copy(alpha = .15f),
-                        )
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(p.paper)
-                        .clickable {
-                            scope.launch {
-                                list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1)
-                            }
-                        }
-                        .padding(horizontal = 12.dp),
-                    contentAlignment = Alignment.Center,
+                GlassCapsule(
+                    { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } },
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
                 ) {
-                    IconText(Lucide.ArrowDown, "$fresh 条新消息", p.blue, T.s13b)
+                    Spacer(Modifier.width(6.dp))
+                    IconText(Lucide.ArrowDown, "$fresh 条新消息", p.ink, T.s13)
                 }
             }
         }
         androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
-            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = 16.dp))
+            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = ChatSide))
             Bottom(
                 state,
                 s,
@@ -762,7 +750,7 @@ private fun PendingBubble(
         io.github.lewin671.remoteagent.core.isSkeleton(pending.id) ||
             io.github.lewin671.remoteagent.core.isSkeleton(pending.text)
     ) {
-        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = pal.ink2)
+        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = ChatSide))
         return
     }
     val p = pal
@@ -778,38 +766,41 @@ private fun PendingBubble(
             remote.account.deviceId,
             "",
         )
+    // A message waiting its turn: a thin faint outline and no fill, its text in ink2 (design-system §6 输入框).
     Column(
-        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+        Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 6.dp),
         horizontalAlignment = Alignment.End,
     ) {
         Column(
-            Modifier.fillMaxWidth(.8f)
-                .clip(Radii.R14)
-                .background(p.paper)
-                .border(1.dp, p.sep, Radii.R14)
+            Modifier.fillMaxWidth(.84f).wrapContentWidth(Alignment.End)
+                .clip(Radii.R22)
+                .border(1.dp, p.faint, Radii.R22)
                 .clickable { expanded = !expanded }
-                .padding(10.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FileChips(pending.files)
             if (pending.text.isNotEmpty() || pending.files.isEmpty()) Text(
                 pending.text.ifEmpty { "（图片）" },
-                style = T.s15,
-                color = p.ink,
+                style = T.s17,
+                color = p.ink2,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis,
             )
+            FileChips(pending.files)
         }
         Row(
-            Modifier.fillMaxWidth(.8f).heightIn(min = 36.dp),
+            Modifier.fillMaxWidth(.84f).heightIn(min = 36.dp).padding(start = 8.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
         ) {
             Text(
                 scheduledPendingCaption(pending, events, label) ?: pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
-                style = T.s12,
+                style = T.s13,
                 color = if (cancel is Cancels.State.Failed) p.red else p.ink2,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                modifier = Modifier.weight(1f, fill = false),
             )
             if (pending.paused && cancel != Cancels.State.Canceling)
                 TextAction(
@@ -829,14 +820,16 @@ private fun PendingBubble(
                         })
                     },
                     enabled = online && !resume.running,
-                    style = T.s12b,
+                    style = T.s13,
+                    alignment = Alignment.Center,
                 )
             if (cancel != Cancels.State.Canceling)
                 TextAction(
                     if (cancel is Cancels.State.Failed) "重试" else "取消",
                     { Cancels.cancel(remote, sid, pending.id) },
                     enabled = online,
-                    style = T.s12b,
+                    style = T.s13,
+                    alignment = Alignment.Center,
                 )
         }
     }
@@ -913,7 +906,7 @@ private fun OutgoingView(
                 feedback.text to if (feedback.uncertain) p.orangeInk else p.red
             }
         }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = ChatSide)) {
         FileChips(o.images.filter { it.isFile }.map { io.github.lewin671.remoteagent.proto.SentFile.newBuilder().setFileId(it.fileId.orEmpty()).setName(it.fileName!!).setSizeBytes(it.fileBytes).build() })
         if (o.images.any { !it.isFile })
             Row(
@@ -924,7 +917,7 @@ private fun OutgoingView(
                     androidx.compose.foundation.Image(
                         it,
                         null,
-                        Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)),
+                        Modifier.size(64.dp).clip(Radii.R14),
                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                     )
                 }
@@ -957,7 +950,7 @@ private fun Bottom(
     if (status == Status.EXITED) {
         val act = rememberAction()
         EndCard(
-            "会话已结束",
+            if (act.running) "正在恢复…" else "会话已结束",
             buildString {
                 append(exitReason(s.info?.statusDetail.orEmpty(), d.scheduledClosed, d.idleClosed))
                 if (state.unlinked) append("连上服务器后才能恢复。")
@@ -965,11 +958,10 @@ private fun Bottom(
                     append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
                 else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
             },
-            dot = if (act.running) p.blue else p.faint,
-            title2 = if (act.running) "正在恢复…" else null,
+            running = act.running,
         ) {
             if (m?.online == true && !state.unlinked && !act.running)
-                Btn(
+                PillButton(
                     if (act.error.isNotEmpty()) "再试一次" else "恢复会话",
                     {
                         act.run({
@@ -982,16 +974,16 @@ private fun Bottom(
                             )
                         })
                     },
-                    Modifier.fillMaxWidth(),
-                    if (act.error.isNotEmpty()) BtnKind.SECONDARY else BtnKind.PRIMARY,
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
+                    if (act.error.isNotEmpty()) ButtonKind.SECONDARY else ButtonKind.INK,
                     enabled = state.conn == ConnState.ONLINE,
                 )
             if (act.error.isNotEmpty())
                 Text(
                     "恢复失败：${act.error}",
                     color = p.red,
-                    style = T.s12,
-                    modifier = Modifier.padding(top = 6.dp),
+                    style = T.s13,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
         }
         return
@@ -1025,36 +1017,33 @@ private fun Bottom(
 }
 
 /**
- * In place of the message box when nothing can be sent: the session ended, or its computer is away.
+ * In place of the message box when nothing can be sent: the session ended,
+ * or its computer is away. A gbg card, radius 28 (design-system §6 输入框):
+ * why first, then what can be done.
  */
 @Composable
 private fun EndCard(
     title: String,
     text: String,
-    dot: androidx.compose.ui.graphics.Color? = null,
-    title2: String? = null,
+    running: Boolean = false,
     actions: @Composable () -> Unit,
 ) {
     val p = pal
-    Column(
-        Modifier.fillMaxWidth()
-            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 20.dp)
-            .clip(Radii.R14)
-            .background(p.gbg)
-            .padding(horizontal = 14.dp, vertical = 12.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Dot(dot ?: p.faint)
-            Spacer(Modifier.width(8.dp))
-            Text(title2 ?: title, style = T.s15b, color = p.ink)
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Column(
+            Modifier.widthIn(max = ChatMax).fillMaxWidth()
+                .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 12.dp)
+                .clip(Radii.R28)
+                .background(p.gbg)
+                .padding(18.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (running) Spinner(p.ink2, size = 15.dp) else StatusMark(MarkKind.OFF)
+                Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(text, style = T.s15, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
+            actions()
         }
-        Text(
-            text,
-            style = T.s13,
-            color = p.ink2,
-            modifier = Modifier.padding(top = 3.dp, bottom = 10.dp),
-        )
-        actions()
     }
 }
 
@@ -1160,12 +1149,12 @@ internal fun Composer(
         top = { ImageStrip(images, remote, s.machineId, maxImg) },
     )
     if (interruptAction.error.isNotEmpty())
-        Banner("没能中断：${interruptAction.error}", Modifier.padding(horizontal = 12.dp), Tone2.ERROR)
+        Notice("没能中断：${interruptAction.error}", Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp), NoticeTone.ERROR)
     if (text.trimStart().startsWith("/"))
         Text(
             "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
-            Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp),
-            style = T.s12,
+            Modifier.padding(horizontal = ChatSide).padding(bottom = 8.dp),
+            style = T.s13,
             color = p.orangeInk,
         )
 }
@@ -1174,7 +1163,7 @@ internal fun Composer(
 @Composable
 fun Skeleton() {
     val p = pal
-    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
+    Column(Modifier.padding(horizontal = ChatSide, vertical = 8.dp)) {
         for (w in listOf(0.7f, 0.9f, 0.5f)) Box(
             Modifier.padding(vertical = 7.dp)
                 .fillMaxWidth(w)
