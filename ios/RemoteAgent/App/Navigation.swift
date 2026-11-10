@@ -4,13 +4,13 @@
 // NavHost and ui/Common.kt's `Nav`), plus the pages Android opens as sheets
 // or inner pages of 设置.
 //
-// One stack on every size of screen. The two first-level pages, 会话 and
-// 定时, are the stack's root with the bottom bar over them (UI/Shell);
-// anything pushed covers the bar. 设置 is pushed, from the gear on the home
-// page (client-v58). An iPad gets the same stack for now: the mockup's wide
-// layout (a sidebar of sessions beside the session) is a later step of the
-// v58 redraw, and until then settings-like pages keep a centred column
-// (design-system §6), which `Page(gray:)` does.
+// On a phone one stack: the two first-level pages, 会话 and 定时, are its
+// root with the bottom bar over them (UI/Shell); anything pushed covers the
+// bar. 设置 is pushed, from the gear on the home page (client-v58). A wide
+// window (an iPad, design-system §6 「宽屏」) splits: the first-level page
+// is a sidebar (UI/Shell/Sidebar.swift) and the stack is the main area
+// beside it, which what the sidebar chooses replaces; settings-like pages
+// keep a centred column there, which `Page(gray:)` does.
 import Observation
 import RACore
 import SwiftUI
