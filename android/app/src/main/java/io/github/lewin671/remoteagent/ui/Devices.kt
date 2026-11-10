@@ -102,8 +102,8 @@ fun DevicesScreen() {
                                                     whenText(m.lastSeenMs, t).ifEmpty {
                                                         "不在线"
                                                     }),
-                                                p.muted,
-                                                T.sm,
+                                                p.ink2,
+                                                T.s13,
                                             )
                                         }
                                     },
@@ -130,18 +130,18 @@ fun DevicesScreen() {
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(clientName(c, c.id, state.devices.values), style = T.body, color = p.fg)
+                                    Text(clientName(c, c.id, state.devices.values), style = T.s15, color = p.ink)
                                     Text(
                                         clientDetail(c),
-                                        style = T.sm,
-                                        color = p.muted,
+                                        style = T.s13,
+                                        color = p.ink2,
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
                                 if (c.id == state.authorityDeviceId)
-                                    Text("管理端", style = T.sm, color = p.muted)
-                                else if (c.id == me) Text("本机", style = T.sm, color = p.muted)
-                                else ArrowText(clientUsed(c, t), p.muted, T.sm)
+                                    Text("管理端", style = T.s13, color = p.ink2)
+                                else if (c.id == me) Text("本机", style = T.s13, color = p.ink2)
+                                else ArrowText(clientUsed(c, t), p.ink2, T.s13)
                             }
                         }
                     },
@@ -159,8 +159,8 @@ fun DevicesScreen() {
             }
             Text(
                 "右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。",
-                style = T.sm,
-                color = p.muted,
+                style = T.s13,
+                color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             if (state.isAuthority)
@@ -170,7 +170,7 @@ fun DevicesScreen() {
                         .clickable { nav.pair() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    IconText(Lucide.Plus, "添加设备", p.blue, T.body)
+                    IconText(Lucide.Plus, "添加设备", p.blue, T.s15)
                 }
             else
                 Hint(
@@ -274,7 +274,7 @@ fun ClientScreen(id: String) {
                             GRow(
                                 "设备 ID",
                                 trailing = {
-                                    Text("…" + shortId(id), style = T.mono13, color = p.muted)
+                                    Text("…" + shortId(id), style = T.mono13, color = p.ink2)
                                 },
                             )
                         },
@@ -289,8 +289,8 @@ fun ClientScreen(id: String) {
             Text(
                 if (id == me) "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"
                 else "名称只能由该客户端自己修改。通知开关也要在该设备上设置。",
-                style = T.sm,
-                color = p.muted,
+                style = T.s13,
+                color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
             if (id == me) {
@@ -300,14 +300,14 @@ fun ClientScreen(id: String) {
                         .clickable { nav.settings() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    ArrowText("退出并删除本机密钥在设置页", p.muted, T.body)
+                    ArrowText("退出并删除本机密钥在设置页", p.ink2, T.s15)
                 }
             } else if (state.isAuthority) {
                 if (id == state.authorityDeviceId) {
                     Text(
                         "管理端不能直接移除，请先交接管理权。",
-                        style = T.sm,
-                        color = p.muted,
+                        style = T.s13,
+                        color = p.ink2,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 } else {
@@ -321,12 +321,12 @@ fun ClientScreen(id: String) {
                             },
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text("移除这个客户端", style = T.body, color = p.red)
+                        Text("移除这个客户端", style = T.s15, color = p.red)
                     }
                     Text(
                         "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。",
-                        style = T.sm,
-                        color = p.muted,
+                        style = T.s13,
+                        color = p.ink2,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }

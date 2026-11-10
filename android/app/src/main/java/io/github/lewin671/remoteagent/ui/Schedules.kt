@@ -72,11 +72,14 @@ fun SchedulesScreen() {
     val context = LocalContext.current
     val preferences = remember(context) { context.getSharedPreferences("schedule-display", android.content.Context.MODE_PRIVATE) }
     var endedOpen by remember { mutableStateOf(preferences.getBoolean("ended-open", false)) }
-    Column(Modifier.fillMaxSize().readableColumn()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            LargeTitle("定时任务", Modifier.weight(1f))
-            Box(Modifier.padding(end = 12.dp).size(44.dp).clickable(role = Role.Button) { nav.newTask("") }.semantics { contentDescription = "新任务" }, contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 22.dp, pal.blue) }
-        }
+    // In the shell (client-v58): the bottom tabs and 新定时 float over the page; the page itself is
+    // redrawn on client-v58 later.
+    ShellPage(
+        Modifier.fillMaxSize(),
+        bottom = { ShellBottom(ShellTab.SCHEDULES, "新定时", Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
+    ) {
+    Column(Modifier.fillMaxSize().padding(shellPadding(top = false)).readableColumn()) {
+        LargeTitle("定时任务")
         if (!state.loaded) ConnBanner(state) else ScheduleOffline(state, tasks)
         LazyColumn(Modifier.weight(1f)) {
             snapshots.forEach { (machine, snapshot) ->
@@ -84,8 +87,8 @@ fun SchedulesScreen() {
             }
             if (tasks.isEmpty()) item {
                 Column(Modifier.padding(horizontal = 32.dp, vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (snapshots.values.any { it.loading }) "正在读取任务…" else "还没有定时任务", style = T.h17, color = pal.fg)
-                    Text(SCHEDULE_EMPTY, style = T.sm, color = pal.muted, modifier = Modifier.padding(top = 12.dp))
+                    Text(if (snapshots.values.any { it.loading }) "正在读取任务…" else "还没有定时任务", style = T.s17b, color = pal.ink)
+                    Text(SCHEDULE_EMPTY, style = T.s13, color = pal.ink2, modifier = Modifier.padding(top = 12.dp))
                 }
             }
             ScheduleInboxGroup.entries.forEach { group ->
@@ -96,14 +99,14 @@ fun SchedulesScreen() {
                             endedOpen = !endedOpen
                             preferences.edit().putBoolean("ended-open", endedOpen).apply()
                         }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("已结束", Modifier.weight(1f), style = T.smB, color = pal.muted)
-                            Text("${rows.size}", style = T.sm, color = pal.muted)
-                            Ic(if (endedOpen) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.muted)
+                            Text("已结束", Modifier.weight(1f), style = T.s13b, color = pal.ink2)
+                            Text("${rows.size}", style = T.s13, color = pal.ink2)
+                            Ic(if (endedOpen) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.ink2)
                         }
                         else Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text(group.label, Modifier.weight(1f), style = T.smB, color = if (group == ScheduleInboxGroup.ATTENTION) pal.orangeInk else pal.muted)
-                            if (group == ScheduleInboxGroup.ATTENTION) Text("${rows.size}", style = T.sm, color = pal.muted)
-                            else if (rows.any { unread[ScheduleTaskKey(it.machine, it.id)] == true }) TextAction("全部标为已读", { remote.schedules.markRead(rows) }, style = T.sm)
+                            Text(group.label, Modifier.weight(1f), style = T.s13b, color = if (group == ScheduleInboxGroup.ATTENTION) pal.orangeInk else pal.ink2)
+                            if (group == ScheduleInboxGroup.ATTENTION) Text("${rows.size}", style = T.s13, color = pal.ink2)
+                            else if (rows.any { unread[ScheduleTaskKey(it.machine, it.id)] == true }) TextAction("全部标为已读", { remote.schedules.markRead(rows) }, style = T.s13)
                         }
                     }
                     if (group != ScheduleInboxGroup.ENDED || endedOpen) items(rows, key = { "${it.machine}/${it.id}" }) { task ->
@@ -114,6 +117,7 @@ fun SchedulesScreen() {
                 }
             }
         }
+    }
     }
 }
 
@@ -129,14 +133,14 @@ fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(
     var width by remember { mutableIntStateOf(1) }
     val reveal = with(LocalDensity.current) { 88.dp.toPx() }
     Box(Modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
-        if (canMark && offset < 0) Row(Modifier.matchParentSize().background(pal.blueBg).padding(end = 16.dp),
+        if (canMark && offset < 0) Row(Modifier.matchParentSize().background(pal.blue).padding(end = 16.dp),
             horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.width(72.dp).fillMaxHeight().clickable { offset = 0f; onMark() }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 if (hasNew) { Ic(Lucide.Check, 16.dp, Color.White); Spacer(Modifier.width(4.dp)) }
-                Text(if (hasNew) "已读" else "未读", style = T.smB, color = Color.White)
+                Text(if (hasNew) "已读" else "未读", style = T.s13b, color = Color.White)
             }
         }
-        Row(Modifier.offset { IntOffset(offset.roundToInt(), 0) }.fillMaxWidth().background(pal.card)
+        Row(Modifier.offset { IntOffset(offset.roundToInt(), 0) }.fillMaxWidth().background(pal.paper)
             .then(if (canMark) Modifier.draggable(rememberDraggableState { delta -> offset = (offset + delta).coerceIn(-width.toFloat(), 0f) }, Orientation.Horizontal,
                 onDragStopped = {
                     if (-offset >= width * .65f) { offset = 0f; onMark() }
@@ -147,23 +151,23 @@ fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(
             Box(Modifier.width(22.dp).padding(top = 8.dp), contentAlignment = Alignment.TopCenter) {
                 if (attention || hasNew) ScheduleResultDot(if (attention) pal.orange else pal.blue, if (attention) "需要你处理" else "有新结果")
             }
-            Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.line)).padding(bottom = 10.dp)) {
+            Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.sep)).padding(bottom = 10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(task.title, Modifier.weight(1f), style = if (attention || hasNew) T.bodyB else T.body.copy(fontWeight = platformWeight(FontWeight.Medium)),
-                        color = if (task.status == "paused") pal.fg2 else pal.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(scheduleNotificationTime(task, now), style = T.meta, color = pal.muted, maxLines = 1)
+                    Text(task.title, Modifier.weight(1f), style = if (attention || hasNew) T.s15b else T.s15.copy(fontWeight = platformWeight(FontWeight.Medium)),
+                        color = if (task.status == "paused") pal.ink else pal.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(scheduleNotificationTime(task, now), style = T.s12, color = pal.ink2, maxLines = 1)
                 }
                 val preview = schedulePreview(task, now)
                 val summary = buildAnnotatedString {
                     if (attention && !running) {
-                        withStyle(SpanStyle(color = pal.orangeInk, fontWeight = T.smB.fontWeight)) { append(scheduleAttentionWord(task)) }
+                        withStyle(SpanStyle(color = pal.orangeInk, fontWeight = T.s13b.fontWeight)) { append(scheduleAttentionWord(task)) }
                         append(preview.removePrefix(scheduleAttentionWord(task)))
                     } else append(preview)
                 }
-                Text(summary, modifier = Modifier.padding(top = 1.dp), style = T.sm, color = if (hasNew) pal.fg else pal.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(summary, modifier = Modifier.padding(top = 1.dp), style = T.s13, color = if (hasNew) pal.ink else pal.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (running) { Mark(Lucide.LoaderCircle, pal.muted, 12.dp); Text("正在运行 ·", style = T.meta, color = pal.muted) }
-                    Text(scheduleRowMetadata(task, state, tasks), style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (running) { Mark(Lucide.LoaderCircle, pal.ink2, 12.dp); Text("正在运行 ·", style = T.s12, color = pal.ink2) }
+                    Text(scheduleRowMetadata(task, state, tasks), style = T.s12, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -237,7 +241,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     }
     val enabled = writable && !busy && !uncertain
     val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
-    Column(Modifier.fillMaxSize().background(pal.bg)) {
+    Column(Modifier.fillMaxSize().background(pal.gbg)) {
         NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t) }, more = { menu = true })
         if (!state.loaded) ConnBanner(state)
         if (task == null) {
@@ -252,14 +256,14 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 if (!targetMissing) Btn(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), BtnKind.PRIMARY, enabled)
             }
             if (resultCaptured && task.latestNotification?.id != selectedResult?.id && task.latestNotification != null) {
-                TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.sm)
+                TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
             }
             task.active?.let { run ->
                 Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Mark(Lucide.LoaderCircle, pal.blue, 14.dp)
-                        Text("正在运行 · ${scheduleClock(run.time)} 开始", Modifier.weight(1f), style = T.sm, color = pal.blue)
-                        if (run.session.isNotEmpty()) TextAction("对话", { nav.scheduledSession(run.session, run.seq) }, style = T.sm, arrow = true)
+                        Text("正在运行 · ${scheduleClock(run.time)} 开始", Modifier.weight(1f), style = T.s13, color = pal.blue)
+                        if (run.session.isNotEmpty()) TextAction("对话", { nav.scheduledSession(run.session, run.seq) }, style = T.s13, arrow = true)
                     }
                 }
             }
@@ -273,8 +277,8 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             var allRuns by remember(task.id) { mutableStateOf(false) }
             if (earlier.isNotEmpty()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("更早", Modifier.weight(1f), style = T.smB, color = pal.muted)
-                    Text("${earlier.size} 次", style = T.sm, color = pal.muted)
+                    Text("更早", Modifier.weight(1f), style = T.s13b, color = pal.ink2)
+                    Text("${earlier.size} 次", style = T.s13, color = pal.ink2)
                 }
                 Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Column {
@@ -285,9 +289,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             } else if (result == null && task.active == null) Hint("还没有运行", Modifier.padding(horizontal = 16.dp))
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
-                    Row(Modifier.fillMaxWidth().bottomLine(pal.line).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("让 agent 做什么", Modifier.weight(1f), style = T.body, color = pal.fg)
-                        TextAction("编辑", { beginEdit("message") }, enabled = definitionEnabled, style = T.sm)
+                    Row(Modifier.fillMaxWidth().bottomLine(pal.sep).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("让 agent 做什么", Modifier.weight(1f), style = T.s15, color = pal.ink)
+                        TextAction("编辑", { beginEdit("message") }, enabled = definitionEnabled, style = T.s13)
                     }
                     ScheduleDescription(task.message, Modifier.padding(horizontal = 14.dp, vertical = 12.dp))
                 }
@@ -302,7 +306,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                     if (task.target.text("type") == "resume_session") {
                         ScheduleSetting("发到", scheduleDestination(task, state), enabled && state.sessions[task.target.text("session")]?.info != null) { nav.session(task.target.text("session")) }
                     } else ScheduleSetting("在哪运行", taskLocation(task, state), definitionEnabled) { beginEdit("config") }
-                    Box(Modifier.bottomLine(pal.line)) {
+                    Box(Modifier.bottomLine(pal.sep)) {
                         GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session" && definitionEnabled) ({ beginEdit("mode") }) else null,
                             chevron = task.target.text("type") == "new_session" && definitionEnabled, enabled = definitionEnabled, singleLineValue = true)
                     }
@@ -317,8 +321,8 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     if (task != null) {
         if (menu) ActionSheet(info = {
             Column {
-                Text(task.title, style = T.bodyB, color = pal.fg)
-                Text(taskLocation(task, state) + " · " + scheduleCreation(task, t), style = T.meta, color = pal.muted)
+                Text(task.title, style = T.s15b, color = pal.ink)
+                Text(taskLocation(task, state) + " · " + scheduleCreation(task, t), style = T.s12, color = pal.ink2)
             }
         }, actions = buildList {
             add(SheetAction("立即运行一次", enabled = enabled && (scheduleRunAllowed(task) || scheduleFailedOnce(task))) { operate("run") })
@@ -354,8 +358,8 @@ fun ScheduleDetailScreen(machine: String, id: String) {
 @Composable
 internal fun ScheduleAttentionBanner(text: String, modifier: Modifier = Modifier) {
     Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).then(modifier)
-        .clip(Radii.SM).background(pal.soft).padding(horizontal = 14.dp, vertical = 12.dp)) {
-        Text(text, style = T.sm, color = pal.orangeInk)
+        .clip(Radii.R14).background(pal.gbg).padding(horizontal = 14.dp, vertical = 12.dp)) {
+        Text(text, style = T.s13, color = pal.orangeInk)
     }
 }
 
@@ -365,10 +369,10 @@ fun ScheduleDescription(message: String, modifier: Modifier = Modifier) {
     var expanded by remember(message) { mutableStateOf(false) }
     var overflow by remember(message) { mutableStateOf(false) }
     Column(modifier) {
-        Text(message, style = T.body, color = pal.fg, maxLines = if (expanded) Int.MAX_VALUE else 3,
+        Text(message, style = T.s15, color = pal.ink, maxLines = if (expanded) Int.MAX_VALUE else 3,
             overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) overflow = it.hasVisualOverflow })
         if (expanded || overflow) Row(Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
-            Text(if (expanded) "收起" else "展开全文", style = T.smB, color = pal.blue)
+            Text(if (expanded) "收起" else "展开全文", style = T.s13b, color = pal.blue)
             Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 14.dp, pal.blue)
         }
     }
@@ -381,22 +385,22 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
     fun cancel() { if (text != initial) discard = true else close() }
     Dialog({ if (!busy) cancel() }, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val view = LocalView.current
-        val light = pal.fg.luminance() < .5f
+        val light = pal.ink.luminance() < .5f
         SideEffect {
             (view.parent as? DialogWindowProvider)?.window?.let { window ->
                 WindowCompat.getInsetsController(window, view).apply { isAppearanceLightStatusBars = light; isAppearanceLightNavigationBars = light }
             }
         }
         BackHandler { if (!busy) cancel() }
-        Column(Modifier.fillMaxSize().background(pal.card).safeDrawingPadding().imePadding()) {
+        Column(Modifier.fillMaxSize().background(pal.paper).safeDrawingPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 TextAction("取消", { cancel() }, enabled = !busy)
-                Text("让 agent 做什么", Modifier.weight(1f), style = T.bodyB, color = pal.fg, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text("让 agent 做什么", Modifier.weight(1f), style = T.s15b, color = pal.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 TextAction(if (busy) "保存中…" else "保存", { save(text) }, enabled = !busy && writable && scheduleMessageValid(text))
             }
             if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
             BasicTextField(text, { text = it }, Modifier.weight(1f).fillMaxWidth().padding(16.dp),
-                textStyle = T.body.copy(color = pal.fg), cursorBrush = SolidColor(pal.blue), readOnly = busy || !writable)
+                textStyle = T.s15.copy(color = pal.ink), cursorBrush = SolidColor(pal.blue), readOnly = busy || !writable)
             if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB", Modifier.padding(16.dp))
         }
         if (discard) Confirm("放弃修改？", "修改还没有保存。", "放弃", true, { discard = false }) { discard = false; close() }
@@ -407,31 +411,31 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
 internal fun ScheduleRunGroup(group: RunGroup, now: Instant, entryUnread: Set<String> = emptySet(), open: (ScheduledRun) -> Unit) {
     var expanded by rememberSaveable(group.key) { mutableStateOf(false) }
     if (group.quiet && group.runs.size > 1) {
-        Box(Modifier.bottomLine(pal.line)) {
+        Box(Modifier.bottomLine(pal.sep)) {
             GRow("${scheduleWhen(group.runs.first().notificationTime, now).substringBefore(' ')} · ${group.runs.size} 次，都没有通知", singleLineValue = true, onClick = { expanded = !expanded }, trailing = {
-                Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.muted)
+                Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.ink2)
             })
         }
         val latest = group.runs.first()
-        Text("最近一次 ${scheduleClock(latest.notificationTime)}：${latest.foldedSummary}", style = T.meta, color = pal.muted, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
+        Text("最近一次 ${scheduleClock(latest.notificationTime)}：${latest.foldedSummary}", style = T.s12, color = pal.ink2, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
         if (!expanded) return
     }
     group.runs.forEach { run ->
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (run.session.isNotEmpty()) Modifier.clickable { open(run) } else Modifier)
-            .bottomLine(pal.line).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
+            .bottomLine(pal.sep).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
             Box(Modifier.width(22.dp).padding(top = 5.dp), contentAlignment = Alignment.TopCenter) { if (run.id in entryUnread) ScheduleResultDot() }
             Column(Modifier.weight(1f)) {
-                Text(scheduleWhen(run.notificationTime, now), style = T.sm, color = pal.muted)
-                Text(run.summary.ifEmpty { run.foldedSummary }, style = T.body, color = pal.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(scheduleWhen(run.notificationTime, now), style = T.s13, color = pal.ink2)
+                Text(run.summary.ifEmpty { run.foldedSummary }, style = T.s15, color = pal.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
-            if (run.session.isNotEmpty()) Ic(Lucide.ChevronRight, 16.dp, pal.faint)
+            if (run.session.isNotEmpty()) Ic(Lucide.ChevronRight, 16.dp, pal.ink3)
         }
     }
 }
 
 @Composable
 fun ScheduleSetting(label: String, value: String, enabled: Boolean = true, onClick: () -> Unit) {
-    Box(Modifier.bottomLine(pal.line)) {
+    Box(Modifier.bottomLine(pal.sep)) {
         GRow(label, value, onClick = onClick, chevron = enabled, enabled = enabled, singleLineValue = true)
     }
 }
@@ -440,7 +444,7 @@ fun ScheduleSetting(label: String, value: String, enabled: Boolean = true, onCli
 @Composable
 internal fun ScheduleAgentSetting(agents: List<Agent>, selected: Agent, enabled: Boolean, onSelect: (Agent) -> Unit) {
     if (agents.size < 2) return
-    Box(Modifier.bottomLine(pal.line)) {
+    Box(Modifier.bottomLine(pal.sep)) {
         GRow("CLI", trailing = {
             SegPick(agents.map(::agentName), agents.indexOf(selected), enabled) { onSelect(agents[it]) }
         })
@@ -501,7 +505,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val writable = machine != null && scheduleWritable(state, machine)
     val editable = frozen == null && !busy
     val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) SCHEDULE_OFFLINE else null }
-    Column(Modifier.fillMaxSize().background(pal.card)) {
+    Column(Modifier.fillMaxSize().background(pal.paper)) {
         if (current) SheetHead("定时发到这个对话", "取消", onClose) else NavBar("新任务", onClose)
         ConnBanner(state)
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
@@ -581,7 +585,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
     }
     Sheet(close) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("什么时候", Modifier.weight(1f), style = T.h17, color = pal.fg)
+            Text("什么时候", Modifier.weight(1f), style = T.s17b, color = pal.ink)
             TextAction("完成", {
                 try { done(if (keepTurnDelay || value == original && !replaced) initial else value.trigger()) } catch (e: Exception) { error = e.message ?: "请检查时间" }
             }, enabled = enabled && (keepTurnDelay || value.kind != 2 || value.weekdays.isNotEmpty()))
@@ -604,12 +608,12 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         }
         if (value.kind == 1) ToggleRow("只在工作日", "周一到周五", value.workdays) { value = value.copy(workdays = it) }
         if (value.kind == 2) {
-            Row(Modifier.fillMaxWidth().clip(Radii.SM).background(pal.chip).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(Modifier.fillMaxWidth().clip(Radii.R14).background(pal.fill2).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 (1..7).forEach { day ->
                     val selected = day in value.weekdays
-                    Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(Radii.SM).background(if (selected) (if (pal.card == androidx.compose.ui.graphics.Color.White) pal.card else pal.track) else androidx.compose.ui.graphics.Color.Transparent)
+                    Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(Radii.R14).background(if (selected) (if (pal.paper == androidx.compose.ui.graphics.Color.White) pal.paper else pal.fill2) else androidx.compose.ui.graphics.Color.Transparent)
                         .toggleable(value = selected, role = Role.Checkbox) { value = value.copy(weekdays = if (day in value.weekdays) value.weekdays - day else value.weekdays + day) }, contentAlignment = Alignment.Center) {
-                        Text(listOf("一", "二", "三", "四", "五", "六", "日")[day-1], style = if (selected) T.smB else T.sm, color = if (selected) pal.fg else pal.muted)
+                        Text(listOf("一", "二", "三", "四", "五", "六", "日")[day-1], style = if (selected) T.s13b else T.s13, color = if (selected) pal.ink else pal.ink2)
                     }
                 }
             }
@@ -642,11 +646,11 @@ fun SessionScheduleStrip(sid: String) {
         SheetHead("定时任务", "取消", { choosing = false })
         tasks.forEach { task -> GRow(task.title, onClick = { choosing = false; nav.task(task.machine, task.id) }, chevron = true, singleLineValue = true) }
     }
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(pal.soft).clickable {
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).background(pal.gbg).clickable {
         if (tasks.size == 1) nav.task(next.machine, next.id) else choosing = true
     }.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Ic(Lucide.Clock, 13.dp, pal.muted)
-        Text(text, Modifier.weight(1f).padding(start = 6.dp), style = T.meta, color = pal.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        ArrowText("管理", pal.blue, T.meta)
+        Ic(Lucide.Clock, 13.dp, pal.ink2)
+        Text(text, Modifier.weight(1f).padding(start = 6.dp), style = T.s12, color = pal.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        ArrowText("管理", pal.blue, T.s12)
     }
 }

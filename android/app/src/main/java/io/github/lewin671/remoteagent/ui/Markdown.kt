@@ -714,14 +714,14 @@ fun richText(spans: List<Span>, p: Palette, codeSize: TextUnit = 13.sp): Annotat
 private fun AnnotatedString.Builder.appendSpans(spans: List<Span>, p: Palette, codeSize: TextUnit) {
     for (s in spans) when (s) {
         is Span.Text -> append(s.v)
-        is Span.Math -> withStyle(SpanStyle(background = p.chip)) { append(s.v) }
+        is Span.Math -> withStyle(SpanStyle(background = p.fill2)) { append(s.v) }
         // The chip behind it is drawn by RichText, which finds it by this annotation.
         is Span.Code -> withAnnotation(CODE, "") { withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = codeSize)) { append(s.v) } }
         is Span.Bold -> withStyle(SpanStyle(fontWeight = platformWeight(FontWeight.SemiBold))) { appendSpans(s.c, p, codeSize) }
         is Span.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { appendSpans(s.c, p, codeSize) }
-        is Span.Strike -> withStyle(SpanStyle(color = p.muted, textDecoration = TextDecoration.LineThrough)) { appendSpans(s.c, p, codeSize) }
+        is Span.Strike -> withStyle(SpanStyle(color = p.ink2, textDecoration = TextDecoration.LineThrough)) { appendSpans(s.c, p, codeSize) }
         is Span.Link -> withLink(LinkAnnotation.Url(s.href, TextLinkStyles(SpanStyle(color = p.blue)))) { append(s.v) }
-        is Span.Ref -> withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp, color = p.fg2)) { append(s.v) }
+        is Span.Ref -> withStyle(SpanStyle(fontFamily = MonoFamily, fontSize = 13.sp, color = p.ink)) { append(s.v) }
     }
 }
 
@@ -783,7 +783,7 @@ internal fun spaced(blocks: List<Block>, place: Place, afterText: Boolean = fals
 @Composable
 fun Markdown(text: String, modifier: Modifier = Modifier, bleed: Dp = 0.dp) {
     val blocks = remember(text) { parseMarkdown(text) }
-    SelectionContainer(modifier) { Blocks(blocks, pal.fg, Place.REPLY, bleed = bleed) }
+    SelectionContainer(modifier) { Blocks(blocks, pal.ink, Place.REPLY, bleed = bleed) }
 }
 
 /** Keep whole blocks, except an oversize leading paragraph previews eight complete lines. */
@@ -792,7 +792,7 @@ internal fun ScheduleResultMarkdown(text: String) {
     val blocks = remember(text) { parseMarkdown(text) }
     val rows = remember(blocks) { spaced(blocks, Place.REPLY) }
     var expanded by remember(text) { mutableStateOf(false) }
-    val color = pal.fg
+    val color = pal.ink
     val density = androidx.compose.ui.platform.LocalDensity.current
     val limit = with(density) { (T.chat.lineHeight * 8).toPx() }.toInt()
     val windowWidth = with(density) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.width.toDp() }
@@ -834,7 +834,7 @@ internal fun ScheduleResultMarkdown(text: String) {
                 if (count < rows.size || clippedParagraph) {
                     val more = subcompose("expand") {
                         Row(Modifier.heightIn(min = 44.dp).clickable { expanded = true }, verticalAlignment = Alignment.CenterVertically) {
-                            Text("展开全文", style = T.sm, color = pal.blue)
+                            Text("展开全文", style = T.s13, color = pal.blue)
                             Ic(Lucide.ChevronDown, 14.dp, pal.blue)
                         }
                     }.single().measure(constraints.copy(minHeight = 0))
@@ -861,19 +861,19 @@ private fun Blocks(blocks: List<Block>, color: Color, place: Place, level: Int =
                 is Block.Para -> RichText(remember(b, p) { richLines(b.text, p) }, T.chat.copy(color = color))
                 is Block.Heading -> {
                     val style = when {
-                        b.level <= 2 -> T.h17.copy(color = color)
+                        b.level <= 2 -> T.s17b.copy(color = color)
                         b.level == 3 -> ts(15.sp, FontWeight.SemiBold, 1.35f).copy(color = color)
-                        else -> ts(13.sp, FontWeight.SemiBold, 1.35f).copy(color = p.muted)
+                        else -> ts(13.sp, FontWeight.SemiBold, 1.35f).copy(color = p.ink2)
                     }
                     val codeSize = if (b.level <= 2) 15.sp else 13.sp
                     RichText(remember(b, p) { richText(inlineSpans(b.text), p, codeSize) }, style, codeSize = codeSize)
                 }
                 is Block.Code -> ReplyCode(b)
                 is Block.Quote -> {
-                    val bar = p.track
+                    val bar = p.fill2
                     // The bar is drawn, not laid out, so it is as tall as what it quotes.
                     Box(Modifier.fillMaxWidth().drawBehind { drawRect(bar, size = Size(2.dp.toPx(), size.height)) }.padding(start = 14.dp)) {
-                        Blocks(b.blocks, p.fg2, Place.QUOTE, level)
+                        Blocks(b.blocks, p.ink, Place.QUOTE, level)
                     }
                 }
                 is Block.ItemList -> Items(b, color, level)
@@ -896,20 +896,20 @@ private fun Items(list: Block.ItemList, color: Color, level: Int) {
         list.items.forEachIndexed { n, item ->
             if (n > 0) Spacer(Modifier.height(between))
             // A finished task is muted with everything under it.
-            val ink = if (item.task == Task.DONE) p.muted else color
+            val ink = if (item.task == Task.DONE) p.ink2 else color
             Row {
                 DisableSelection {
                     Box(Modifier.width(gutter).height(line), contentAlignment = if (item.task != null) Alignment.CenterStart else Alignment.Center) {
                         when {
-                            item.task != null -> Ic(if (item.task == Task.DONE) Lucide.BoxChecked else Lucide.Box, iconSize(body), p.muted)
+                            item.task != null -> Ic(if (item.task == Task.DONE) Lucide.BoxChecked else Lucide.Box, iconSize(body), p.ink2)
                             list.ordered -> Text(
-                                "${list.start + n}.", style = body.copy(fontFeatureSettings = "tnum"), color = p.muted, softWrap = false, maxLines = 1,
+                                "${list.start + n}.", style = body.copy(fontFeatureSettings = "tnum"), color = p.ink2, softWrap = false, maxLines = 1,
                                 // At a large font the number grows to the left, away from the text.
                                 modifier = Modifier.fillMaxWidth().padding(end = 6.dp).wrapContentWidth(Alignment.End, unbounded = true),
                             )
                             // CJK fonts draw • as a small centered dot, so the disc is drawn; from the second level it is a ring.
-                            level == 0 -> Box(Modifier.size(5.dp).background(p.muted, CircleShape))
-                            else -> Box(Modifier.size(5.dp).border(1.dp, p.muted, CircleShape))
+                            level == 0 -> Box(Modifier.size(5.dp).background(p.ink2, CircleShape))
+                            else -> Box(Modifier.size(5.dp).border(1.dp, p.ink2, CircleShape))
                         }
                     }
                 }
@@ -930,7 +930,7 @@ private fun Items(list: Block.ItemList, color: Color, level: Int) {
  */
 @Composable
 fun RichText(text: AnnotatedString, style: TextStyle, modifier: Modifier = Modifier, codeSize: TextUnit = 13.sp, maxLines: Int = Int.MAX_VALUE) {
-    val bg = pal.chip
+    val bg = pal.fill
     val codes = remember(text) { text.getStringAnnotations(CODE, 0, text.length) }
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
@@ -981,11 +981,11 @@ private fun ReplyCode(b: Block.Code) {
     var open by rememberSaveable { mutableStateOf(false) }
     // Only a diff is colored: added and removed lines mean something.
     val diff = b.lang == "diff" || b.lang == "patch"
-    val shown = remember(lines, open, diff, p) { codeText(if (long && !open) lines.take(FOLD_SHOWN) else lines, diff, p.greenInk, p.red) }
-    Box(Modifier.fillMaxWidth().clip(Radii.XS).background(p.soft)) {
+    val shown = remember(lines, open, diff, p) { codeText(if (long && !open) lines.take(FOLD_SHOWN) else lines, diff, p.green, p.red) }
+    Box(Modifier.fillMaxWidth().clip(Radii.R6).background(p.gbg)) {
         Column {
             Text(
-                shown, style = T.mono, color = p.fg2, softWrap = false,
+                shown, style = T.mono12, color = p.ink, softWrap = false,
                 // Room at the end for the copy button: scrolled all the way, no code is left under it.
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(start = 12.dp, end = 44.dp, top = 8.dp, bottom = 8.dp),
             )
@@ -993,9 +993,9 @@ private fun ReplyCode(b: Block.Code) {
                 Modifier.fillMaxWidth().heightIn(min = 44.dp).tap { open = !open }.padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open)
+                ArrowText(if (open) "收起" else "展开全文", p.blue, T.s13b, down = !open, up = open)
                 Spacer(Modifier.weight(1f))
-                Text("共 ${lines.size} 行", style = T.meta, color = p.muted, maxLines = 1)
+                Text("共 ${lines.size} 行", style = T.s12, color = p.ink2, maxLines = 1)
             }
         }
         // Over the corner without adding to the block's height: one line of code is lower than the button.
@@ -1027,9 +1027,9 @@ private fun CopyButton(text: String) {
     }
     Box(Modifier.size(44.dp).tap { state = if (copyText(context, text)) Copied.OK else Copied.FAILED }, contentAlignment = Alignment.TopEnd) {
         // Code that runs under the icon fades out before it.
-        Box(Modifier.fillMaxWidth().height(34.dp).background(Brush.horizontalGradient(0f to p.soft.copy(alpha = 0f), 0.4f to p.soft)))
+        Box(Modifier.fillMaxWidth().height(34.dp).background(Brush.horizontalGradient(0f to p.gbg.copy(alpha = 0f), 0.4f to p.gbg)))
         Ic(
-            when (state) { Copied.OK -> Lucide.Check; Copied.FAILED -> Lucide.X; Copied.NO -> Lucide.Copy }, 16.dp, p.muted,
+            when (state) { Copied.OK -> Lucide.Check; Copied.FAILED -> Lucide.X; Copied.NO -> Lucide.Copy }, 16.dp, p.ink2,
             Modifier.padding(top = 9.dp, end = 12.dp),
             contentDescription = when (state) { Copied.OK -> "已复制"; Copied.FAILED -> "复制失败"; Copied.NO -> "复制代码" },
         )
@@ -1086,7 +1086,7 @@ private fun TableBlock(t: Block.Table, color: Color, bleed: Dp) {
     val numeric = remember(t) { List(columns) { k -> t.align.getOrNull(k) == null && numericColumn(t.rows.map { r -> r.getOrElse(k) { "" } }) } }
     var heights by remember(t) { mutableStateOf(emptyList<Int>()) }
     val scroll = rememberScrollState()
-    val headStyle = T.meta.copy(color = p.muted)
+    val headStyle = T.s12.copy(color = p.ink2)
     val cellStyle = ts(13.sp, lineHeight = 1.45f).copy(color = color)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val viewport = constraints.maxWidth
@@ -1095,7 +1095,7 @@ private fun TableBlock(t: Block.Table, color: Color, bleed: Dp) {
                 var y = 0f
                 for (h in heights.dropLast(1)) {
                     y += h
-                    drawLine(p.line, Offset(0f, y - 0.5.dp.toPx()), Offset(size.width, y - 0.5.dp.toPx()), 1.dp.toPx())
+                    drawLine(p.sep, Offset(0f, y - 0.5.dp.toPx()), Offset(size.width, y - 0.5.dp.toPx()), 1.dp.toPx())
                 }
             },
             content = {

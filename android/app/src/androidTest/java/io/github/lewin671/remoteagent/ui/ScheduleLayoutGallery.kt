@@ -103,7 +103,7 @@ class ScheduleLayoutGallery {
         ui.setContent { RaTheme(if(dark) ThemeMode.DARK else ThemeMode.LIGHT) {
             SideEffect { WindowCompat.getInsetsController(ui.activity.window,ui.activity.window.decorView).apply { isAppearanceLightStatusBars=!dark;isAppearanceLightNavigationBars=!dark } }
             CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) {
-                Column(Modifier.fillMaxSize().background(pal.card).safeDrawingPadding()) { screen() }
+                Column(Modifier.fillMaxSize().background(pal.paper).safeDrawingPadding()) { screen() }
             }
         } }
     }
@@ -127,9 +127,7 @@ class ScheduleLayoutGallery {
     }
     private fun both(name: String) { save("$name-light");ui.runOnIdle { dark=true };save("$name-dark");ui.runOnIdle { dark=false } }
     @Composable private fun TaskPage() {
-        val badge by remote.schedules.badge.collectAsState()
-        val hasNew by remote.schedules.hasNewResults.collectAsState()
-        Column(Modifier.fillMaxSize()) { Box(Modifier.weight(1f)) { SchedulesScreen() }; TabBar("schedules",0,badge,hasNew) {} }
+        SchedulesScreen()
     }
     @Test fun detail() { prepare();content { ScheduleDetailScreen(machine,task.id) };both("detail") }
     @Test fun foreignTimezone() {

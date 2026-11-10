@@ -245,10 +245,10 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
         ) {
             val (cols, rows) = size
             val toolbar = terminalToolbar(state, history, fitted, resized, cols, rows)
-            Text(toolbar.text, style = T.meta, color = TermColors.tool, modifier = Modifier.weight(1f))
+            Text(toolbar.text, style = T.s12, color = TermColors.tool, modifier = Modifier.weight(1f))
             if (toolbar.fit) Box(Modifier.heightIn(min = 44.dp).clickable { term.toggleFit() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-                if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.metaB, color = TermColors.link)
-                else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.metaB)
+                if (fitted || resized) Text(if (fitted) "还原" else "适配", style = T.s12b, color = TermColors.link)
+                else IconText(Lucide.Maximize2, "适配我的屏幕", TermColors.link, T.s12b)
             }
         }
         Row(
@@ -354,23 +354,23 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
             if (state != RemoteTerminal.State.Live && !history.visible) {
                 Column(
-                    Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.SM).background(TermColors.bar)
-                        .border(1.dp, TermColors.line, Radii.SM).padding(12.dp),
+                    Modifier.align(Alignment.TopCenter).padding(12.dp).fillMaxWidth().clip(Radii.R14).background(TermColors.bar)
+                        .border(1.dp, TermColors.line, Radii.R14).padding(12.dp),
                 ) {
                     when (val s = state) {
-                        RemoteTerminal.State.Connecting -> IconText(Lucide.LoaderCircle, "连接终端…", TermColors.dim, T.sm)
+                        RemoteTerminal.State.Connecting -> IconText(Lucide.LoaderCircle, "连接终端…", TermColors.dim, T.s13)
                         is RemoteTerminal.State.Closed -> {
-                            Text("终端连接断开了", style = T.bodyB, color = TermColors.fg)
+                            Text("终端连接断开了", style = T.s15b, color = TermColors.fg)
                             Text(
                                 (if (!online) "等待服务器连接恢复后，会重新获取终端画面。" else if (sessionRunning) "下面是断开前的画面。会话还在运行，聊天照常更新。" else "会话不在运行。"),
-                                style = T.sm, color = TermColors.dim, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
+                                style = T.s13, color = TermColors.dim, modifier = Modifier.padding(top = 6.dp, bottom = 14.dp),
                             )
                             var details by remember { mutableIntStateOf(0) }
                             Btn("重新连接", { if (remote.state.value.conn == io.github.lewin671.remoteagent.core.ConnState.ONLINE) term.connect() }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = online)
                             Box(Modifier.heightIn(min = 44.dp).clickable { details++ }, contentAlignment = Alignment.CenterStart) {
-                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.meta, color = TermColors.link)
+                                Text(if (details % 2 == 1) "收起详情" else "查看详情", style = T.s12, color = TermColors.link)
                             }
-                            if (details % 2 == 1) Text(s.reason, style = T.mono, color = TermColors.dim)
+                            if (details % 2 == 1) Text(s.reason, style = T.mono12, color = TermColors.dim)
                         }
                         else -> {}
                     }
@@ -428,8 +428,8 @@ private fun KeyButton(label: String, enabled: Boolean, modifier: Modifier, icon:
     ) {
         val color = if (enabled) TermColors.fg else TermColors.tool
         // An icon stands for the key by itself, or with [named] goes before its label.
-        if (icon == null) Text(label, style = T.sm, color = color, maxLines = 1)
-        else if (named) IconText(icon, label, color, T.sm)
+        if (icon == null) Text(label, style = T.s13, color = color, maxLines = 1)
+        else if (named) IconText(icon, label, color, T.s13)
         else Ic(icon, 20.dp, color, contentDescription = label)
     }
 }

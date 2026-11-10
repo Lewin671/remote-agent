@@ -129,9 +129,9 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(base.density, 2f)) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.soft)) {
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.gbg)) {
                         GLabel("本客户端的通知")
-                        Group(rows = listOf { Text("等我处理时", Modifier.padding(14.dp), color = pal.fg, style = T.body) })
+                        Group(rows = listOf { Text("等我处理时", Modifier.padding(14.dp), color = pal.ink, style = T.s15) })
                         PushNotice(io.github.lewin671.remoteagent.push.PushStatus(problem, "重试")) { retries++ }
                     }
                 }
@@ -187,7 +187,7 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(ThemeMode.DARK) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.card)) {
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
                         SessionTabs(0, true, true) {}
                         Composer(state, session(), Derived(), Status.IDLE) {}
                     }
@@ -216,8 +216,8 @@ class LayoutTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.card)) {
-                        SectionHeader("最近结束", 3)
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
+                        GroupTitle("今天", date = true)
                         SessionRow(state, session(ended = true), System.currentTimeMillis())
                         NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name", mode = Mode.ASK), "remote-agent-with-a-very-long-project-name", false)
                     }
@@ -255,7 +255,7 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 1.3f)) {
-                    Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.card)) {
+                    Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.paper)) {
                         Spacer(Modifier.weight(1f))
                         CompositionLocalProvider(LocalDockMax provides 384.dp) { ApprovalDock(session(), a, 1) }
                     }
@@ -298,7 +298,7 @@ class LayoutTest {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.testTag("frame").width(360.dp).height(640.dp).background(pal.card)) {
+                    Column(Modifier.testTag("frame").width(360.dp).height(640.dp).background(pal.paper)) {
                         Spacer(Modifier.weight(1f))
                         PlanDock(session(), plan, 0) { full++ }
                     }
@@ -323,42 +323,65 @@ class LayoutTest {
         DockFolds.clear()
     }
 
-    @Test fun aCardCutsACommandAtWholeLinesAndOpensItInPlace() {
-        var dark by mutableStateOf(false)
+    /** The home's dark card for [a], online with the computer there unless [unlinked]. */
+    private fun showCard(a: ApprovalRequested, dark: Boolean = false, unlinked: Boolean = false) {
+        val online = RemoteState(machines = mapOf(machineId to MachineView(machineId, true, 0)), conn = ConnState.ONLINE, link = Link.ONLINE, synced = true, loaded = true)
+        val st = if (unlinked) online.copy(conn = ConnState.OFFLINE, link = Link.NO_NETWORK) else online
+        val t = System.currentTimeMillis()
         ui.setContent {
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
-                Column(Modifier.testTag("frame").width(320.dp).background(pal.soft).padding(12.dp)) {
-                    CommandPreview((1..20).joinToString("\n") { "echo step-$it" }, "k")
+                CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
+                    Column(Modifier.testTag("frame").width(360.dp).background(pal.paper).padding(16.dp)) {
+                        ApprovalCard(st, session(), a, approvalCardText(st, session(), a, timeoutNote = true, now = t), t, onOpen = {})
+                    }
                 }
             }
         }
-        ui.onNodeWithText("还有 14 行 · 展开", substring = true).assertIsDisplayed()
-        // Six whole lines, the last ending in …, so the cut shows.
-        val cut = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-        ui.onNodeWithText("echo step-1", substring = true)
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(cut) }
-        assertEquals(6, cut.single().lineCount)
-        assertTrue("last line ellipsized", cut.single().isLineEllipsized(5))
-        screenshot("card-command-cut-light")
-        ui.runOnIdle { dark = true }
-        screenshot("card-command-cut-dark")
-        ui.onNodeWithText("还有 14 行 · 展开", substring = true).performClick()
-        ui.onNodeWithText("收起", substring = true).assertIsDisplayed()
-        ui.onNodeWithText("收起", substring = true).performClick()
-        ui.onNodeWithText("还有 14 行 · 展开", substring = true).assertIsDisplayed()
     }
 
-    @Test fun aShortCommandHasNoMoreLine() {
-        ui.setContent { RaTheme(ThemeMode.LIGHT) { Column(Modifier.width(320.dp)) { CommandPreview("go test ./...", "k2") } } }
-        ui.onNodeWithText("go test ./...").assertIsDisplayed()
-        ui.onNodeWithText("展开", substring = true).assertDoesNotExist()
+    @Test fun aCardCutsACommandAtWholeLinesAndOffersNoAllowUntilItIsOpen() {
+        showCard(approval(20))
+        ui.onNodeWithText("还有 15 行没显示").assertIsDisplayed()
+        ui.onNodeWithText("允许").assertDoesNotExist()
+        // Five whole lines, the last ending in …, so the cut shows.
+        val cut = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        ui.onNodeWithTag("command", useUnmergedTree = true)
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(cut) }
+        assertEquals(CARD_LINES, cut.single().lineCount)
+        assertTrue("last line ellipsized", cut.single().isLineEllipsized(CARD_LINES - 1))
+        screenshot("card-command-cut-light")
+        ui.onNodeWithText("看完整命令").performClick()
+        ui.onNodeWithText("共 20 行").assertIsDisplayed()
+        ui.onNodeWithText("允许").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("收起").performClick()
+        ui.onNodeWithText("还有 15 行没显示").assertIsDisplayed()
+    }
+
+    @Test fun aShortCommandCanBeAllowedAndDenyingAsksForAReasonInPlace() {
+        showCard(approval(2), dark = true)
+        ui.onNodeWithText("没显示", substring = true).assertDoesNotExist()
+        ui.onNodeWithText("允许").assertIsDisplayed().assertIsEnabled()
+        ui.onNodeWithText("不允许").performClick()
+        ui.onNodeWithContentDescription("不允许的理由").assertIsDisplayed()
+        ui.onNodeWithText("取消").assertIsDisplayed()
+        ui.onNodeWithText("允许").assertDoesNotExist()
+        screenshot("card-deny-dark")
+        ui.onNodeWithText("取消").performClick()
+        ui.onNodeWithText("允许").assertIsDisplayed()
+    }
+
+    @Test fun outOfReachTheCardStaysButCannotBeDecided() {
+        showCard(approval(2), unlinked = true)
+        ui.onNodeWithText("未连接").assertIsDisplayed()
+        ui.onNodeWithText("允许").assertIsNotEnabled()
+        ui.onNodeWithText("不允许").assertIsNotEnabled()
     }
 
     @Test fun approvalButtonsKeepTo480OnATablet() {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.card)) {
+                    Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.paper)) {
                         ApprovalButtons(session(), approval(1), compact = false)
                         PlanButtons(session(), full = true)
                     }
@@ -378,7 +401,7 @@ class LayoutTest {
         ui.setContent {
             RaTheme(ThemeMode.DARK) {
                 // Wider than the emulator's screen: laid out, if not all drawn.
-                Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.soft)) {
+                Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.gbg)) {
                     Column(Modifier.fillMaxWidth().readableColumn()) {
                         GLabel("外观")
                         Group(Modifier.testTag("group"), rows = listOf {

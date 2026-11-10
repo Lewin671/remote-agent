@@ -116,7 +116,7 @@ fun SessionScreen(sid: String) {
                 CircularProgressIndicator()
                 Text(
                     if (state.conn == ConnState.ONLINE) "读取中…" else "连上服务器后读取这个会话",
-                    color = p.muted,
+                    color = p.ink2,
                     modifier = Modifier.padding(top = 12.dp),
                 )
             }
@@ -149,7 +149,7 @@ fun SessionScreen(sid: String) {
     val hasTerminal = terminalAvailable(status)
     val term = tab == 1 && hasTerminal
     BackHandler(enabled = term) { tab = 0 }
-    Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.card)) {
+    Column(Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper)) {
         SessionTopBar(
             state,
             s,
@@ -270,7 +270,7 @@ private fun SessionTopBar(
         titleOf(s),
         { if (s.info?.taskOwned == true) nav.task(s.machineId, s.info!!.scheduledTaskId) else nav.back() },
         subtitle = subtitle,
-        dot = p.tone(status.tone),
+        dot = p.mark(status.tone),
         more = { menu = true },
         dark = dark,
         subtitleRich = rich,
@@ -282,13 +282,13 @@ private fun SessionTopBar(
                 Column(horizontalAlignment = Alignment.Start) {
                     Text(
                         "${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}",
-                        style = T.bodyB,
-                        color = p.fg,
+                        style = T.s15b,
+                        color = p.ink,
                     )
                     Text(
                         shortPath(s.info?.cwd.orEmpty()),
-                        style = T.meta,
-                        color = p.muted,
+                        style = T.s12,
+                        color = p.ink2,
                         fontFamily = MonoFamily,
                     )
                 }
@@ -408,7 +408,7 @@ private fun SessionTopBar(
         }
     }
     if (act.error.isNotEmpty())
-        Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.meta)
+        Text(act.error, Modifier.padding(horizontal = 16.dp), color = p.red, style = T.s12)
     if (confirmStop)
         Confirm(
             "结束这个会话？",
@@ -600,7 +600,7 @@ private fun ChatPane(
                             MeBubble(
                                 startPrompt.text,
                                 caption = startPrompt.caption,
-                                captionColor = if (!startPrompt.warning) p.muted else if (startPrompt.uncertain) p.orangeInk else p.red,
+                                captionColor = if (!startPrompt.warning) p.ink2 else if (startPrompt.uncertain) p.orangeInk else p.red,
                                 failed = startPrompt.warning && !startPrompt.uncertain,
                             )
                         }
@@ -678,7 +678,7 @@ private fun ChatPane(
                                 androidx.compose.ui.graphics.Color.Black.copy(alpha = .15f),
                         )
                         .clip(RoundedCornerShape(16.dp))
-                        .background(p.card)
+                        .background(p.paper)
                         .clickable {
                             scope.launch {
                                 list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1)
@@ -687,7 +687,7 @@ private fun ChatPane(
                         .padding(horizontal = 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    IconText(Lucide.ArrowDown, "$fresh 条新消息", p.blue, T.smB)
+                    IconText(Lucide.ArrowDown, "$fresh 条新消息", p.blue, T.s13b)
                 }
             }
         }
@@ -720,7 +720,7 @@ private fun PendingBubble(
         io.github.lewin671.remoteagent.core.isSkeleton(pending.id) ||
             io.github.lewin671.remoteagent.core.isSkeleton(pending.text)
     ) {
-        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.sm, color = pal.muted)
+        Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val p = pal
@@ -742,17 +742,17 @@ private fun PendingBubble(
     ) {
         Column(
             Modifier.fillMaxWidth(.8f)
-                .clip(Radii.MD)
-                .background(p.card)
-                .border(1.dp, p.line, Radii.MD)
+                .clip(Radii.R14)
+                .background(p.paper)
+                .border(1.dp, p.sep, Radii.R14)
                 .clickable { expanded = !expanded }
                 .padding(10.dp)
         ) {
             FileChips(pending.files)
             if (pending.text.isNotEmpty() || pending.files.isEmpty()) Text(
                 pending.text.ifEmpty { "（图片）" },
-                style = T.body,
-                color = p.fg,
+                style = T.s15,
+                color = p.ink,
                 maxLines = if (expanded) Int.MAX_VALUE else 4,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -763,8 +763,8 @@ private fun PendingBubble(
         ) {
             Text(
                 scheduledPendingCaption(pending, events, label) ?: pendingInputCaption(label, index, total, origin, !pending.paused && !pending.held && cancel == null),
-                style = T.meta,
-                color = if (cancel is Cancels.State.Failed) p.red else p.muted,
+                style = T.s12,
+                color = if (cancel is Cancels.State.Failed) p.red else p.ink2,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
@@ -787,14 +787,14 @@ private fun PendingBubble(
                         })
                     },
                     enabled = online && !resume.running,
-                    style = T.metaB,
+                    style = T.s12b,
                 )
             if (cancel != Cancels.State.Canceling)
                 TextAction(
                     if (cancel is Cancels.State.Failed) "重试" else "取消",
                     { Cancels.cancel(remote, sid, pending.id) },
                     enabled = online,
-                    style = T.metaB,
+                    style = T.s12b,
                 )
         }
     }
@@ -849,9 +849,9 @@ private fun OutgoingView(
             }
             o.state == Outgoing.State.SENDING -> {
                 sending = true
-                "正在发送…" to p.muted
+                "正在发送…" to p.ink2
             }
-            o.state == Outgoing.State.SENT -> "已送达电脑" to p.muted
+            o.state == Outgoing.State.SENT -> "已送达电脑" to p.ink2
             else -> {
                 if (o.canPutBack)
                     links +=
@@ -923,7 +923,7 @@ private fun Bottom(
                     append("恢复会在 ${machineLabel(state, s.machineId)} 上用同样的设置重新打开它，聊天记录都在。")
                 else append("${machineLabel(state, s.machineId)} 不在线，连上后才能恢复。")
             },
-            dot = if (act.running) p.blueBg else p.gray,
+            dot = if (act.running) p.blue else p.faint,
             title2 = if (act.running) "正在恢复…" else null,
         ) {
             if (m?.online == true && !state.unlinked && !act.running)
@@ -948,7 +948,7 @@ private fun Bottom(
                 Text(
                     "恢复失败：${act.error}",
                     color = p.red,
-                    style = T.meta,
+                    style = T.s12,
                     modifier = Modifier.padding(top = 6.dp),
                 )
         }
@@ -997,19 +997,19 @@ private fun EndCard(
     Column(
         Modifier.fillMaxWidth()
             .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 20.dp)
-            .clip(Radii.MD)
-            .background(p.soft)
+            .clip(Radii.R14)
+            .background(p.gbg)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Dot(dot ?: p.gray)
+            Dot(dot ?: p.faint)
             Spacer(Modifier.width(8.dp))
-            Text(title2 ?: title, style = T.bodyB, color = p.fg)
+            Text(title2 ?: title, style = T.s15b, color = p.ink)
         }
         Text(
             text,
-            style = T.sm,
-            color = p.muted,
+            style = T.s13,
+            color = p.ink2,
             modifier = Modifier.padding(top = 3.dp, bottom = 10.dp),
         )
         actions()
@@ -1123,7 +1123,7 @@ internal fun Composer(
         Text(
             "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
             Modifier.padding(horizontal = 16.dp).padding(bottom = 6.dp),
-            style = T.meta,
+            style = T.s12,
             color = p.orangeInk,
         )
 }
@@ -1138,7 +1138,7 @@ fun Skeleton() {
                 .fillMaxWidth(w)
                 .height(12.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(p.chip)
+                .background(p.fill2)
         )
     }
 }

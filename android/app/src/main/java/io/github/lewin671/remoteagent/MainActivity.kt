@@ -15,9 +15,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.width
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,7 +42,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.Tone
 import io.github.lewin671.remoteagent.data.Settings
 import io.github.lewin671.remoteagent.push.Notifier
 import io.github.lewin671.remoteagent.push.VisiblePushSession
@@ -97,27 +93,27 @@ class MainActivity : ComponentActivity() {
                         isAppearanceLightNavigationBars = !dark
                     }
                 }
-                Surface(Modifier.fillMaxSize(), color = pal.card) {
-                    io.github.lewin671.remoteagent.ui.AppSafeArea {
-                        val loaded by app.loaded.collectAsState()
-                        val remote by app.remote.collectAsState()
-                        val accountError by app.accountError.collectAsState()
-                        val r = remote
-                        when {
-                            !loaded && accountError.isNotEmpty() ->
-                                io.github.lewin671.remoteagent.ui.AccountLoadFailure(
-                                    accountError,
-                                    { app.loadAccount() },
-                                    { app.discardAccount() },
-                                )
-                            !loaded ->
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator()
-                                }
-                            r == null -> JoinScreen(app)
-                            r.state.collectAsState().value.removed -> RemovedScreen(app, r)
-                            else -> Main(r)
+                Surface(Modifier.fillMaxSize(), color = pal.paper) {
+                    val loaded by app.loaded.collectAsState()
+                    val remote by app.remote.collectAsState()
+                    val accountError by app.accountError.collectAsState()
+                    val r = remote
+                    when {
+                        !loaded && accountError.isNotEmpty() -> io.github.lewin671.remoteagent.ui.AppSafeArea {
+                            io.github.lewin671.remoteagent.ui.AccountLoadFailure(
+                                accountError,
+                                { app.loadAccount() },
+                                { app.discardAccount() },
+                            )
                         }
+                        !loaded ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator(color = pal.ink2)
+                            }
+                        r == null -> io.github.lewin671.remoteagent.ui.AppSafeArea { JoinScreen(app) }
+                        r.state.collectAsState().value.removed -> io.github.lewin671.remoteagent.ui.AppSafeArea { RemovedScreen(app, r) }
+                        // The first-level pages run under the system bars; every other page keeps clear of them.
+                        else -> Main(r)
                     }
                 }
             }
@@ -220,7 +216,6 @@ class MainActivity : ComponentActivity() {
                 RaApp.instance,
                 entry?.takeIf { route == "session/{id}" }?.arguments?.getString("id"),
             )
-            val tabs = route in tabRoutes
             NavHost(
                 nav,
                 "home",
@@ -230,11 +225,11 @@ class MainActivity : ComponentActivity() {
                 popEnterTransition = { pagePopEnter(initialState, targetState) },
                 popExitTransition = { pagePopExit(initialState, targetState) },
             ) {
-                composable("home") { Tab(remote, nav, "home") { HomeScreen() } }
-                composable("schedules") { Tab(remote, nav, "schedules") { io.github.lewin671.remoteagent.ui.SchedulesScreen() } }
+                composable("home") { HomeScreen() }
+                composable("schedules") { io.github.lewin671.remoteagent.ui.SchedulesScreen() }
                 page("task/{machine}/{id}") { io.github.lewin671.remoteagent.ui.ScheduleDetailScreen(it.arguments?.getString("machine").orEmpty(), it.arguments?.getString("id").orEmpty()) }
                 page("newtask?session={session}") { io.github.lewin671.remoteagent.ui.NewScheduleScreen(it.arguments?.getString("session").orEmpty()) }
-                composable("settings") { Tab(remote, nav, "settings") { SettingsScreen() } }
+                page("settings") { SettingsScreen() }
                 page("session/{id}") { SessionScreen(it.arguments?.getString("id").orEmpty()) }
                 page("project/{key}?focus={focus}") {
                     ProjectScreen(
@@ -289,42 +284,6 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("id").orEmpty(),
                     )
                 }
-            }
-        }
-    }
-
-    /**
-     * A tab page with the tab bar under it, so the bar comes and goes with the page rather than
-     * ahead of it.
-     */
-    @Composable
-    private fun Tab(
-        remote: Remote,
-        nav: NavHostController,
-        route: String,
-        content: @Composable () -> Unit,
-    ) {
-        val state by remote.state.collectAsState()
-        val waiting =
-            state.sessions.values.count {
-                io.github.lewin671.remoteagent.core
-                    .statusOf(it, state.machines[it.machineId])
-                    .tone == Tone.WAIT
-            }
-        val attention by remote.schedules.badge.collectAsState()
-        val hasNewResults by remote.schedules.hasNewResults.collectAsState()
-        val select: (String) -> Unit = { r ->
-            if (r == "home") {
-                if (!nav.popBackStack("home", inclusive = false)) nav.navigate("home")
-            } else nav.navigate(r) { popUpTo("home"); launchSingleTop = true }
-        }
-        BoxWithConstraints(Modifier.fillMaxSize().background(pal.card)) {
-            if (maxWidth >= io.github.lewin671.remoteagent.ui.WIDE_WINDOW_MIN_WIDTH) Row {
-                io.github.lewin671.remoteagent.ui.SidebarTabs(route, waiting, attention, hasNewResults, select)
-                Box(Modifier.weight(1f)) { content() }
-            } else Column {
-                Box(Modifier.weight(1f)) { content() }
-                io.github.lewin671.remoteagent.ui.TabBar(route, waiting, attention, hasNewResults, select)
             }
         }
     }
@@ -420,16 +379,17 @@ fun routeValue(arg: String?): String = arg.orEmpty()
 private const val PAGE_MS = 300
 private val pageSlide = tween<IntOffset>(PAGE_MS, easing = FastOutSlowInEasing)
 private val viewerFade = tween<Float>(200)
-private val tabRoutes = setOf("home", "schedules", "settings")
+private val tabRoutes = setOf("home", "schedules")
 
 private fun tabSwitch(from: NavBackStackEntry, to: NavBackStackEntry) =
     from.destination.route in tabRoutes && to.destination.route in tabRoutes
 
 /**
- * Every page is drawn on the app's background, so one never shows through another as they slide.
+ * Every page is drawn on the app's background, so one never shows through another as they slide,
+ * and keeps clear of the system bars; the first-level pages run under them on their own.
  */
 private fun NavGraphBuilder.page(route: String, content: @Composable (NavBackStackEntry) -> Unit) =
-    composable(route) { Box(Modifier.fillMaxSize().background(pal.card)) { content(it) } }
+    composable(route) { Box(Modifier.fillMaxSize().background(pal.paper)) { io.github.lewin671.remoteagent.ui.AppSafeArea { content(it) } } }
 
 private fun viewer(e: NavBackStackEntry) = e.destination.route?.startsWith("image/") == true
 

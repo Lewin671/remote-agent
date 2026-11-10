@@ -38,11 +38,11 @@ internal fun ScheduleLatestResult(run: ScheduledRun, now: Instant, unreadOnEntry
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (unreadOnEntry) ScheduleResultDot()
-                Text(scheduleWhen(run.notificationTime, now), Modifier.weight(1f), style = T.meta, color = pal.muted)
-                if (showConversation && run.session.isNotEmpty()) TextAction("对话", open, style = T.sm, arrow = true)
+                Text(scheduleWhen(run.notificationTime, now), Modifier.weight(1f), style = T.s12, color = pal.ink2)
+                if (showConversation && run.session.isNotEmpty()) TextAction("对话", open, style = T.s13, arrow = true)
             }
             val heading = run.resultTitle
-            if (heading.isNotBlank()) Text(heading, style = T.bodyB, color = pal.fg, modifier = Modifier.padding(bottom = 8.dp))
+            if (heading.isNotBlank()) Text(heading, style = T.s15b, color = pal.ink, modifier = Modifier.padding(bottom = 8.dp))
             val body = answer ?: fallback
             if (body.isNotBlank()) ScheduleResultMarkdown(body)
         }

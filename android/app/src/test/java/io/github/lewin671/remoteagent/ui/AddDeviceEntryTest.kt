@@ -81,7 +81,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateKeepsItsButtonOnlyOnTheAuthority() {
-        show(empty.copy(isAuthority = true)) { EmptyAccount(it) }
+        show(empty.copy(isAuthority = true)) { EmptyAccount(it, accountEmpty(it)) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(noMachinesHint(empty)).assertDoesNotExist()
@@ -89,7 +89,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateOnAnotherClientSaysWhereToAdd() {
-        show(empty) { EmptyAccount(it) }
+        show(empty) { EmptyAccount(it, accountEmpty(it)) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
         ui.onNodeWithText(noMachinesHint(empty)).assertExists()
     }

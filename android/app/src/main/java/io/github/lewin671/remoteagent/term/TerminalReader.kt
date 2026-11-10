@@ -445,9 +445,9 @@ internal fun HistoryStatusLine(
 ) {
     val status = historyStatus(history, waiting) ?: return
     Row(modifier.padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(status, style = T.meta, color = TermColors.tool, softWrap = false, maxLines = 1)
+        Text(status, style = T.s12, color = TermColors.tool, softWrap = false, maxLines = 1)
         if (history.failed) Text(
-            "重试", style = T.metaB, color = TermColors.link,
+            "重试", style = T.s12b, color = TermColors.link,
             modifier = Modifier.clickable(onClick = onRetry).padding(start = 8.dp, top = 12.dp, bottom = 12.dp),
         )
     }

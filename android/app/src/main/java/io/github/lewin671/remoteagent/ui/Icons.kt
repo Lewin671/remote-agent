@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.dp
  * res/raw/isc_lucide.txt), one per meaning (docs/design-system.md §5);
  * nothing else draws an icon, and no font glyph stands in for one. The path
  * data is lucide-react's, so both clients draw the same shapes: a 24 grid,
- * a line of 2 with round caps and joins, nothing filled but the square that
+ * a line of 1.8 with round caps and joins (design-system §5), nothing filled but the square that
  * interrupts.
  */
 
@@ -29,7 +29,7 @@ private fun lucide(name: String, vararg paths: String, filled: Boolean = false):
     val b = ImageVector.Builder(name, 24.dp, 24.dp, 24f, 24f)
     for (d in paths) b.addPath(
         addPathNodes(d), fill = if (filled) SolidColor(Color.Black) else null, stroke = SolidColor(Color.Black),
-        strokeLineWidth = 2f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
+        strokeLineWidth = 1.8f, strokeLineCap = StrokeCap.Round, strokeLineJoin = StrokeJoin.Round,
     )
     return b.build()
 }
@@ -97,12 +97,9 @@ object Lucide {
     val Search = lucide("search", "m21 21-4.34-4.34", circle(11, 11, 8))
 
     /** The sessions tab. */
-    val MessageSquare = lucide(
-        "message-square",
-        "M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z",
-    )
+    val MessageCircle = lucide("message-circle", "M7.9 20A9 9 0 1 0 4 16.1L2 22Z")
 
-    /** The settings tab. */
+    /** Settings: the home's gear. */
     val Settings = lucide(
         "settings",
         "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
@@ -150,7 +147,7 @@ object Lucide {
 
 /**
  * An icon in the color of the text it is with. One that is a button by
- * itself is 20 to 22 dp, 22 in the tab bar, and says what it does in
+ * itself is 20 to 22 dp, 22 in a glass button and the tabs, and says what it does in
  * [contentDescription] unless its tap target already does; one beside its
  * words is decoration and leaves it null.
  */

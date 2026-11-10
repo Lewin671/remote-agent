@@ -73,7 +73,7 @@ fun UpdateNotice(modifier: Modifier = Modifier, onOpen: () -> Unit) {
     val settings by app.prefs.settings.collectAsState(Settings())
     val release = state.release ?: return
     if (release.versionCode <= settings.skippedUpdate) return
-    Banner("有新版本 ${release.version}", modifier, action = "更新", onAction = onOpen)
+    Notice("有新版本 ${release.version}", modifier, action = "更新", onAction = onOpen)
 }
 
 /** How handing the download to the system went, when there is something to say about it. */
@@ -154,9 +154,9 @@ fun UpdateSheet(onClose: () -> Unit) {
     Sheet(onClose) {
         if (release == null) {
             SheetHead("版本", "完成", onClose)
-            Text("remote-agent ${app.versionName}", style = T.body, color = p.fg)
-            if (state is UpdateState.Latest) Text("已是最新版本", style = T.sm, color = p.muted, modifier = Modifier.padding(top = 6.dp))
-            checkLine(check, releaseOnScreen = false)?.let { Text(it.text, style = T.sm, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
+            Text("remote-agent ${app.versionName}", style = T.s15, color = p.ink)
+            if (state is UpdateState.Latest) Text("已是最新版本", style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
+            checkLine(check, releaseOnScreen = false)?.let { Text(it.text, style = T.s13, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
             Btn(if (check.running) "正在检查更新…" else "检查更新", { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
             return@Sheet
         }
@@ -168,8 +168,8 @@ fun UpdateSheet(onClose: () -> Unit) {
         })
         ReleaseNotes(release, app.versionName)
         val step = updateStep(state) ?: return@Sheet
-        if (step.error.isNotEmpty()) Text("没能下载：${step.error}", style = T.sm, color = p.red, modifier = Modifier.padding(top = 10.dp))
-        shown?.let { Text(it.text, style = T.sm, color = if (it.error) p.red else p.orangeInk, modifier = Modifier.padding(top = 10.dp)) }
+        if (step.error.isNotEmpty()) Text("没能下载：${step.error}", style = T.s13, color = p.red, modifier = Modifier.padding(top = 10.dp))
+        shown?.let { Text(it.text, style = T.s13, color = if (it.error) p.red else p.orangeInk, modifier = Modifier.padding(top = 10.dp)) }
         Btn(if (shown == InstallNote.PERMISSION) "去允许" else step.label, {
             if (Updater.checking.value.running) return@Btn
             val s = Updater.state.value
@@ -178,13 +178,13 @@ fun UpdateSheet(onClose: () -> Unit) {
         Hint("下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。")
         // How the look for a newer release went. Either way the release above stays, and stays actionable.
         checkLine(check, releaseOnScreen = true)?.let {
-            Text(it.text, style = T.sm, color = if (it.error) p.red else p.muted, modifier = Modifier.padding(top = 6.dp))
+            Text(it.text, style = T.s13, color = if (it.error) p.red else p.ink2, modifier = Modifier.padding(top = 6.dp))
         }
         TextAction(
             if (check.running) "正在检查更新…" else "检查更新",
             { Updater.check(app, manual = true) },
             Modifier.fillMaxWidth().padding(top = 8.dp),
-            style = T.bodyB,
+            style = T.s15b,
             enabled = !check.running && state !is UpdateState.Downloading,
             alignment = Alignment.Center,
         )
@@ -195,8 +195,8 @@ fun UpdateSheet(onClose: () -> Unit) {
 private fun ReleaseNotes(release: Release, installed: String) {
     val p = pal
     Column {
-        Text("当前版本 $installed", style = T.sm, color = p.muted)
-        if (release.notes.isNotEmpty()) Text(release.notes, style = T.body, color = p.fg2, modifier = Modifier.padding(top = 8.dp))
+        Text("当前版本 $installed", style = T.s13, color = p.ink2)
+        if (release.notes.isNotEmpty()) Text(release.notes, style = T.s15, color = p.ink, modifier = Modifier.padding(top = 8.dp))
         // Another protocol version: the computers must be upgraded too, or nothing connects.
         if (release.protocol != PROTOCOL_VERSION) Banner("这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。", Modifier.padding(top = 10.dp), tone = Tone2.WARN)
     }

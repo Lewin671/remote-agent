@@ -64,7 +64,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import io.github.lewin671.remoteagent.core.Status
-import io.github.lewin671.remoteagent.core.avatarIndex
 import io.github.lewin671.remoteagent.core.projectName
 
 /*
@@ -78,9 +77,9 @@ fun Modifier.bottomLine(color: Color, startInset: Dp = 0.dp): Modifier = drawBeh
     drawLine(color, Offset(startInset.toPx(), y), Offset(size.width, y), 1.dp.toPx())
 }
 
-/** 1dp line at the top, as a CSS border-top. */
-fun Modifier.topLine(color: Color): Modifier = drawBehind {
-    drawLine(color, Offset(0f, 0.5.dp.toPx()), Offset(size.width, 0.5.dp.toPx()), 1.dp.toPx())
+/** 1dp line at the top, as a CSS border-top, from [start] in. */
+fun Modifier.topLine(color: Color, start: Dp = 0.dp): Modifier = drawBehind {
+    drawLine(color, Offset(start.toPx(), 0.5.dp.toPx()), Offset(size.width, 0.5.dp.toPx()), 1.dp.toPx())
 }
 
 /** A tap target without ripple bounds changing the look; at least 44 dp in the caller. */
@@ -94,13 +93,13 @@ fun Dot(color: Color, size: Int = 8) {
 
 /** An arrow as tall as text in [style]: to the right it goes to another page; [down] / [up] open and close in place (design-system §5). */
 @Composable
-fun Arrow(color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
+fun Arrow(color: Color, style: TextStyle = T.s13, down: Boolean = false, up: Boolean = false) {
     Ic(if (down) Lucide.ChevronDown else if (up) Lucide.ChevronUp else Lucide.ChevronRight, iconSize(style), color)
 }
 
 /** Text with a trailing arrow, as 处理 with one down or 管理 with one to the right. */
 @Composable
-fun ArrowText(text: String, color: Color, style: TextStyle = T.sm, down: Boolean = false, up: Boolean = false) {
+fun ArrowText(text: String, color: Color, style: TextStyle = T.s13, down: Boolean = false, up: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(text, style = style, color = color, maxLines = 1)
         Spacer(Modifier.width(4.dp))
@@ -110,28 +109,11 @@ fun ArrowText(text: String, color: Color, style: TextStyle = T.sm, down: Boolean
 
 /** Text after an icon of its height, as the plus of 添加设备 or the turning circle of 正在连接…. */
 @Composable
-fun IconText(icon: ImageVector, text: String, color: Color, style: TextStyle = T.sm, modifier: Modifier = Modifier) {
+fun IconText(icon: ImageVector, text: String, color: Color, style: TextStyle = T.s13, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Mark(icon, color, iconSize(style))
         Spacer(Modifier.width(6.dp))
         Text(text, style = style, color = color)
-    }
-}
-
-/** A project's letter on a gradient picked by its name, as on the web: 40 on lists, 22 in sheets, 52 on the project page, 16 in chips. */
-@Composable
-fun Avatar(key: String, size: Int = 40) {
-    val (radius, font) = when {
-        size >= 52 -> 15 to 22
-        size >= 36 -> 11 to 17
-        size >= 22 -> 6 to 12
-        else -> 4 to 9
-    }
-    Box(
-        Modifier.size(size.dp).clip(RoundedCornerShape(radius.dp)).background(avatarGradients[avatarIndex(projectName(key)) % avatarGradients.size]),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(projectName(key).take(1).lowercase(), color = Color.White, style = ts(font.sp, FontWeight.Bold, 1.2f))
     }
 }
 
@@ -161,16 +143,16 @@ fun NavBar(
         }
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             if (title.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(title, style = T.bodyB, color = if (dark) TermColors.fg else p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                if (agent != null) Text(agent, style = ts(12.sp, FontWeight.Medium), color = if (dark) TermColors.dim else p.muted, maxLines = 1)
+                Text(title, style = T.s15b, color = if (dark) TermColors.fg else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (agent != null) Text(agent, style = ts(12.sp, FontWeight.Medium), color = if (dark) TermColors.dim else p.ink2, maxLines = 1)
             }
             if (subtitle != null) Row(verticalAlignment = Alignment.CenterVertically) {
                 if (dot != null) {
                     Dot(dot)
                     Spacer(Modifier.width(5.dp))
                 }
-                if (subtitleRich != null) Text(subtitleRich, style = T.meta, color = if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                else Text(subtitle, style = T.meta, color = subtitleColor ?: if (dark) TermColors.dim else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (subtitleRich != null) Text(subtitleRich, style = T.s12, color = if (dark) TermColors.dim else p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                else Text(subtitle, style = T.s12, color = subtitleColor ?: if (dark) TermColors.dim else p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Box(Modifier.size(44.dp).then(if (more != null) Modifier.tap { more() } else Modifier), contentAlignment = Alignment.Center) {
@@ -185,29 +167,13 @@ fun NavBar(
 @Composable
 fun StatusNavBar(title: String, agent: String?, status: Status, rest: String, onBack: () -> Unit, more: (() -> Unit)?, dark: Boolean = false) {
     val p = pal
-    NavBar(title, onBack, agent, status.text + if (rest.isNotEmpty()) " · $rest" else "", p.tone(status.tone), more, dark)
+    NavBar(title, onBack, agent, status.text + if (rest.isNotEmpty()) " · $rest" else "", p.mark(status.tone), more, dark)
 }
 
-/** A first-level page title: 设置. The home page's title is its scope (ScopeTitle in Home.kt). */
+/** A first-level page title: 设置, 34 / 700 (design-system §6 大标题). */
 @Composable
-fun LargeTitle(text: String, modifier: Modifier = Modifier, action: (() -> Unit)? = null, actionLabel: String = "新会话") {
-    val p = pal
-    Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 4.dp, bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = if (androidx.compose.ui.platform.LocalConfiguration.current.screenWidthDp >= 840) T.h22 else T.title30, color = p.fg, modifier = Modifier.weight(1f).padding(vertical = 3.dp))
-        if (action != null) NewSessionButton(action, actionLabel)
-    }
-}
-
-/** The new-session button at the right of a first-level title: a pencil on a sheet, 44 dp. */
-@Composable
-fun NewSessionButton(onClick: () -> Unit, label: String = "新会话") {
-    val p = pal
-    Box(
-        Modifier.size(44.dp).tap { onClick() }.semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) {
-        Ic(Lucide.SquarePen, 22.dp, p.blue)
-    }
+fun LargeTitle(text: String, modifier: Modifier = Modifier) {
+    Text(text, style = T.title, color = pal.ink, modifier = modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 6.dp, bottom = 6.dp))
 }
 
 /** A section label: 13 semibold muted, a count or one link at the right. */
@@ -216,8 +182,8 @@ fun Label(text: String, count: Int? = null, modifier: Modifier = Modifier, actio
     val p = pal
     if (action != null && onAction != null) return LabelWithLink(text, action, onAction)
     Row(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = T.smB, color = p.muted, modifier = Modifier.weight(1f))
-        if (count != null) Text("$count", style = T.sm, color = p.muted)
+        Text(text, style = T.s13b, color = p.ink2, modifier = Modifier.weight(1f))
+        if (count != null) Text("$count", style = T.s13, color = p.ink2)
     }
 }
 
@@ -230,8 +196,8 @@ fun LabelWithLink(text: String, action: String, onAction: () -> Unit) {
     val p = pal
     Box(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(text, style = T.smB, color = p.muted, modifier = Modifier.weight(1f))
-            ArrowText(action, p.blue, T.smB)
+            Text(text, style = T.s13b, color = p.ink2, modifier = Modifier.weight(1f))
+            ArrowText(action, p.blue, T.s13b)
         }
         Box(Modifier.align(Alignment.CenterEnd).width(88.dp).height(44.dp).tap { onAction() })
     }
@@ -245,12 +211,12 @@ fun LabelWithLink(text: String, action: String, onAction: () -> Unit) {
 @Composable
 fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enabled: (Int) -> Boolean = { true }, dot: Int = -1, dark: Boolean = false, modifier: Modifier = Modifier, inset: androidx.compose.ui.unit.Dp = 16.dp) {
     val p = pal
-    val line = if (dark) TermColors.line else p.line
+    val line = if (dark) TermColors.line else p.sep
     Row(modifier.fillMaxWidth().padding(start = inset, end = inset, bottom = 4.dp).bottomLine(line).selectableGroup()) {
         items.forEachIndexed { i, title ->
             val on = i == selected
             val ok = enabled(i)
-            val under = if (dark) TermColors.fg else p.fg2
+            val under = if (dark) TermColors.fg else p.ink
             Row(
                 Modifier.weight(1f).heightIn(min = 44.dp)
                     .then(if (on) Modifier.drawBehind { drawLine(under, Offset(0f, size.height - 1.dp.toPx()), Offset(size.width, size.height - 1.dp.toPx()), 2.dp.toPx()) } else Modifier)
@@ -258,7 +224,7 @@ fun ViewTabs(items: List<String>, selected: Int, onSelect: (Int) -> Unit, enable
                     .alpha(if (ok) 1f else .4f),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
             ) {
-                Text(title, style = if (on) T.smB else T.sm, color = if (dark) (if (on) TermColors.fg else TermColors.dim) else if (on) p.fg else p.muted)
+                Text(title, style = if (on) T.s13b else T.s13, color = if (dark) (if (on) TermColors.fg else TermColors.dim) else if (on) p.ink else p.ink2)
                 if (i == dot) {
                     Spacer(Modifier.width(3.dp))
                     Dot(p.orange)
@@ -275,17 +241,17 @@ enum class BtnKind { PRIMARY, SECONDARY, NEGATIVE, DANGER }
  * with red text (拒绝), danger red only in confirmations. 44 dp, radius 10.
  */
 @Composable
-fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: BtnKind = BtnKind.SECONDARY, enabled: Boolean = true, bg: Color? = null, style: TextStyle = T.bodyB) {
+fun Btn(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, kind: BtnKind = BtnKind.SECONDARY, enabled: Boolean = true, bg: Color? = null, style: TextStyle = T.s15b) {
     val p = pal
     val (back, fore) = when (kind) {
-        BtnKind.PRIMARY -> p.blueBg to Color.White
-        BtnKind.SECONDARY -> p.chip to p.fg
-        BtnKind.NEGATIVE -> p.chip to p.red
-        BtnKind.DANGER -> p.redBg to Color.White
+        BtnKind.PRIMARY -> p.btn to p.btnFg
+        BtnKind.SECONDARY -> p.fill2 to p.ink
+        BtnKind.NEGATIVE -> p.fill2 to p.red
+        BtnKind.DANGER -> p.red to Color.White
     }
     Box(
         // The whole button dims when it is not enabled (design-system §6), its surface with its text.
-        modifier.heightIn(min = 44.dp).alpha(if (enabled) 1f else .45f).clip(Radii.SM).background(bg ?: back)
+        modifier.heightIn(min = 44.dp).alpha(if (enabled) 1f else .45f).clip(Radii.R14).background(bg ?: back)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick).padding(10.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -309,23 +275,23 @@ val LocalOnSoft = androidx.compose.runtime.staticCompositionLocalOf { false }
 fun Banner(text: String, modifier: Modifier = Modifier, tone: Tone2 = Tone2.PLAIN, action: String? = null, onAction: (() -> Unit)? = null, lead: (@Composable () -> Unit)? = null) {
     val p = pal
     Row(
-        modifier.fillMaxWidth().clip(Radii.SM).background(if (LocalOnSoft.current) p.card else p.soft).heightIn(min = 38.dp).padding(start = 12.dp, end = if (action != null) 4.dp else 12.dp),
+        modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.paper else p.gbg).heightIn(min = 38.dp).padding(start = 12.dp, end = if (action != null) 4.dp else 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         lead?.invoke()
         Text(
-            text, style = T.sm, modifier = Modifier.weight(1f).padding(vertical = 9.dp),
-            color = when (tone) { Tone2.PLAIN -> p.fg2; Tone2.WARN -> p.orangeInk; Tone2.ERROR -> p.red },
+            text, style = T.s13, modifier = Modifier.weight(1f).padding(vertical = 9.dp),
+            color = when (tone) { Tone2.PLAIN -> p.ink; Tone2.WARN -> p.orangeInk; Tone2.ERROR -> p.red },
         )
         if (action != null) Box(Modifier.widthIn(min = 44.dp).heightIn(min = 44.dp).tap { onAction?.invoke() }.padding(horizontal = 8.dp), contentAlignment = Alignment.Center) {
-            Text(action, style = T.smB, color = p.blue, maxLines = 1)
+            Text(action, style = T.s13b, color = p.blue, maxLines = 1)
         }
     }
 }
 
 /** A text action: blue, or red for 中断; 44 dp tall. One that goes to another page ends in an [arrow]. */
 @Composable
-fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.smB, enabled: Boolean = true, alignment: Alignment = Alignment.CenterStart, arrow: Boolean = false) {
+fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, color: Color? = null, style: TextStyle = T.s13b, enabled: Boolean = true, alignment: Alignment = Alignment.CenterStart, arrow: Boolean = false) {
     Box(modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).clickable(enabled = enabled, role = Role.Button, onClick = onClick).alpha(if (enabled) 1f else .45f), contentAlignment = alignment) {
         if (arrow) ArrowText(text, color ?: pal.blue, style) else Text(text, style = style, color = color ?: pal.blue, maxLines = 1)
     }
@@ -335,9 +301,9 @@ fun TextAction(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
 @Composable
 fun Group(modifier: Modifier = Modifier, rows: List<@Composable () -> Unit>) {
     val p = pal
-    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.MD).background(p.card)) {
+    Column(modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp).clip(Radii.R14).background(p.paper)) {
         rows.forEachIndexed { i, r ->
-            if (i > 0) HorizontalDivider(color = p.line, thickness = 1.dp)
+            if (i > 0) HorizontalDivider(color = p.sep, thickness = 1.dp)
             r()
         }
     }
@@ -366,18 +332,18 @@ fun GRow(
     singleLineValue: Boolean = false,
 ) {
     val p = pal
-    val ink = if (danger) p.red else if (action) p.blue else if (enabled) p.fg else p.muted
+    val ink = if (danger) p.red else if (action) p.blue else if (enabled) p.ink else p.ink2
     if (value != null && !singleLineValue && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.8f) {
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier)
             .alpha(if (enabled) 1f else .6f).padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (lead != null) { lead(); Spacer(Modifier.width(10.dp)) }
-                Text(text, style = T.body, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                Text(text, style = T.s15, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 trailing?.invoke()
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End)) {
-                Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
-                if (chevron) Arrow(p.muted, T.sm)
+                Text(value, style = T.s13, color = valueColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false))
+                if (chevron) Arrow(p.ink2, T.s13)
             }
         }
         return
@@ -390,21 +356,21 @@ fun GRow(
         lead?.invoke()
         Row(Modifier.weight(1f).padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
             if (icon != null) {
-                Ic(icon, iconSize(T.body), ink)
+                Ic(icon, iconSize(T.s15), ink)
                 Spacer(Modifier.width(6.dp))
             }
-            Text(text, style = T.body, color = ink, maxLines = if (singleLineValue) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            Text(text, style = T.s15, color = ink, maxLines = if (singleLineValue) 1 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             if (chevron && action) {
                 Spacer(Modifier.width(4.dp))
-                Arrow(ink, T.body)
+                Arrow(ink, T.s15)
             }
         }
         if (value != null) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(value, style = T.sm, color = valueColor ?: p.muted, textAlign = TextAlign.End, maxLines = if (singleLineValue) 1 else 2, overflow = if (singleLineValue) TextOverflow.Ellipsis else TextOverflow.Clip, modifier = Modifier.widthIn(max = 200.dp))
-            if (chevron) Arrow(p.muted, T.sm)
+            Text(value, style = T.s13, color = valueColor ?: p.ink2, textAlign = TextAlign.End, maxLines = if (singleLineValue) 1 else 2, overflow = if (singleLineValue) TextOverflow.Ellipsis else TextOverflow.Clip, modifier = Modifier.widthIn(max = 200.dp))
+            if (chevron) Arrow(p.ink2, T.s13)
         }
         trailing?.invoke()
-        if (chevron && value == null && !action) Arrow(p.muted, T.sm)
+        if (chevron && value == null && !action) Arrow(p.ink2, T.s13)
     }
 }
 
@@ -413,8 +379,8 @@ fun GRow(
 fun GLabel(text: String, action: String? = null, onAction: (() -> Unit)? = null) {
     val p = pal
     Row(Modifier.fillMaxWidth().padding(start = 30.dp, end = 30.dp, top = 4.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(text, style = T.sm, color = p.muted, modifier = Modifier.weight(1f))
-        if (action != null) Box(Modifier.height(20.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { ArrowText(action, p.blue, T.sm) }
+        Text(text, style = T.s13, color = p.ink2, modifier = Modifier.weight(1f))
+        if (action != null) Box(Modifier.height(20.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { ArrowText(action, p.blue, T.s13) }
     }
 }
 
@@ -424,29 +390,29 @@ fun SheetHead(title: String, action: String? = null, onAction: (() -> Unit)? = n
     val p = pal
     Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         if (onBack != null) Box(Modifier.width(28.dp).height(44.dp).tap { onBack() }, contentAlignment = Alignment.CenterStart) { Ic(Lucide.ChevronLeft, 22.dp, p.blue, contentDescription = "返回") }
-        Text(title, style = T.h17, color = p.fg, modifier = Modifier.weight(1f))
+        Text(title, style = T.s17b, color = p.ink, modifier = Modifier.weight(1f))
         // As wide as its words: 完成 and 取消 fit in 44 dp, 以后再说 does not.
-        if (action != null) Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.body, color = p.blue, maxLines = 1) }
+        if (action != null) Box(Modifier.heightIn(min = 44.dp).widthIn(min = 44.dp).tap { onAction?.invoke() }, contentAlignment = Alignment.Center) { Text(action, style = T.s15, color = p.blue, maxLines = 1) }
     }
 }
 
 @Composable
 private fun Grab() {
     Box(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 12.dp), contentAlignment = Alignment.Center) {
-        Box(Modifier.width(36.dp).height(5.dp).clip(RoundedCornerShape(3.dp)).background(pal.track))
+        Box(Modifier.width(36.dp).height(5.dp).clip(RoundedCornerShape(3.dp)).background(pal.fill2))
     }
 }
 
 /** A bottom sheet: card, top corners 20, grab handle, 16 dp sides (design-system §6). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, content: @Composable ColumnScope.() -> Unit) {
+fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = true, color: Color? = null, content: @Composable ColumnScope.() -> Unit) {
     val p = pal
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { canDismiss || it != androidx.compose.material3.SheetValue.Hidden }),
-        containerColor = p.card,
-        shape = RoundedCornerShape(topStart = Radii.lg, topEnd = Radii.lg),
+        containerColor = color ?: p.paper,
+        shape = Radii.sheet,
         dragHandle = { Grab() },
         scrimColor = Color.Black.copy(alpha = .35f),
         tonalElevation = 0.dp,
@@ -461,35 +427,35 @@ fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = tru
 /** 12 grey caption under a sheet's content. */
 @Composable
 fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null) {
-    Text(text, style = T.meta, color = color ?: pal.muted, modifier = modifier.padding(top = 8.dp))
+    Text(text, style = T.s12, color = color ?: pal.ink2, modifier = modifier.padding(top = 8.dp))
 }
 
 /** A field title inside a sheet (模型, 推理强度). */
 @Composable
 fun FieldLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = T.metaB, color = pal.muted, modifier = modifier.padding(top = 12.dp, bottom = 6.dp))
+    Text(text, style = T.s12b, color = pal.ink2, modifier = modifier.padding(top = 12.dp, bottom = 6.dp))
 }
 
 /** A choice in a sheet's list: title, optional description, a check when chosen; [icon] goes before the title. */
 @Composable
 fun ListItem(title: String, desc: String? = null, checked: Boolean = false, onClick: (() -> Unit)?, enabled: Boolean = true, danger: Boolean = false, small: String? = null, last: Boolean = false, trailing: (@Composable () -> Unit)? = null, icon: ImageVector? = null) {
     val p = pal
-    val ink = if (!enabled) p.muted else if (danger) p.red else p.fg
+    val ink = if (!enabled) p.ink2 else if (danger) p.red else p.ink
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (!last) Modifier.bottomLine(p.line) else Modifier)
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (!last) Modifier.bottomLine(p.sep) else Modifier)
             .then(if (onClick != null) Modifier.clickable(enabled = enabled, onClick = onClick) else Modifier).padding(horizontal = 2.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.weight(1f).padding(vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (icon != null) {
-                    Ic(icon, iconSize(T.body), ink)
+                    Ic(icon, iconSize(T.s15), ink)
                     Spacer(Modifier.width(4.dp))
                 }
-                Text(title, style = if (desc != null) T.bodyB else T.body, color = ink)
-                if (small != null) Text(small, style = T.meta, color = p.muted, modifier = Modifier.padding(start = 4.dp))
+                Text(title, style = if (desc != null) T.s15b else T.s15, color = ink)
+                if (small != null) Text(small, style = T.s12, color = p.ink2, modifier = Modifier.padding(start = 4.dp))
             }
-            if (desc != null) Text(desc, style = ts(12.sp, lineHeight = 1.45f), color = p.muted)
+            if (desc != null) Text(desc, style = ts(12.sp, lineHeight = 1.45f), color = p.ink2)
         }
         trailing?.invoke()
         if (checked) Mark(Lucide.Check, p.blue, 16.dp)
@@ -506,11 +472,11 @@ fun Alert(title: String, text: String, confirm: String, danger: Boolean = false,
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp), contentAlignment = Alignment.Center) {
             Column(
-                Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
+                Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.R20).background(p.paper).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Text(title, style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 6.dp))
-                Text(text, style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 14.dp))
+                Text(title, style = T.s17b, color = p.ink, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 6.dp))
+                Text(text, style = T.s13, color = p.ink2, textAlign = TextAlign.Center, modifier = Modifier.padding(bottom = 14.dp))
                 Btns {
                     Btn("取消", onDismiss, Modifier.weight(1f))
                     Btn(confirm, { onDismiss(); onConfirm() }, Modifier.weight(1f), if (danger) BtnKind.DANGER else BtnKind.PRIMARY)
@@ -555,20 +521,20 @@ internal fun ActionSheetRow(a: SheetAction, onClick: () -> Unit) {
     val p = pal
     val on = a.enabled && !a.busy
     Column(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).bottomLine(p.line)
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).bottomLine(p.sep)
             .clickable(enabled = on, onClick = onClick).padding(vertical = 10.dp),
         horizontalAlignment = Alignment.Start,
     ) {
         Row(Modifier.fillMaxWidth().alpha(if (a.enabled) 1f else .4f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (a.busy) Mark(Lucide.LoaderCircle, p.muted, 14.dp)
-            Text(a.text, style = T.body, color = if (a.danger) p.red else p.fg, modifier = Modifier.weight(1f))
+            if (a.busy) Mark(Lucide.LoaderCircle, p.ink2, 14.dp)
+            Text(a.text, style = T.s15, color = if (a.danger) p.red else p.ink, modifier = Modifier.weight(1f))
             if (a.value != null) {
-                Text(a.value, style = T.sm, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.muted,
+                Text(a.value, style = T.s13, color = if (a.danger) p.red else if (a.warn) p.orangeInk else p.ink2,
                     textAlign = TextAlign.End, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(2f, fill = false))
-                Arrow(p.faint, T.body)
+                Arrow(p.ink3, T.s15)
             }
         }
-        if (a.note.isNotEmpty()) Text(a.note, style = T.meta, color = if (a.noteError) p.red else p.muted, modifier = Modifier.padding(top = 4.dp))
+        if (a.note.isNotEmpty()) Text(a.note, style = T.s12, color = if (a.noteError) p.red else p.ink2, modifier = Modifier.padding(top = 4.dp))
     }
 }
 
@@ -577,17 +543,17 @@ internal fun ActionSheetRow(a: SheetAction, onClick: () -> Unit) {
 fun Code(text: String, modifier: Modifier = Modifier, maxLines: Int = Int.MAX_VALUE, bg: Color? = null, border: Boolean = false) {
     val p = pal
     Box(
-        modifier.fillMaxWidth().clip(Radii.XS).background(bg ?: p.code).then(if (border) Modifier.border(1.dp, p.line, Radii.XS) else Modifier)
+        modifier.fillMaxWidth().clip(Radii.R6).background(bg ?: p.gbg).then(if (border) Modifier.border(1.dp, p.sep, Radii.R6) else Modifier)
             .padding(horizontal = 10.dp, vertical = 7.dp),
     ) {
-        Text(text, style = T.mono, color = p.fg2, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        Text(text, style = T.mono12, color = p.ink, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
     }
 }
 
 /** An input field on a soft surface. */
 @Composable
 fun FieldBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit) {
-    Box(modifier.fillMaxWidth().clip(Radii.SM).background(pal.soft).padding(horizontal = 14.dp, vertical = 11.dp), content = content)
+    Box(modifier.fillMaxWidth().clip(Radii.R14).background(pal.gbg).padding(horizontal = 14.dp, vertical = 11.dp), content = content)
 }
 
 /** A page: navigation bar and content; card background, or soft for grouped settings pages ([gray]). */
@@ -603,7 +569,7 @@ fun Page(
 ) {
     val p = pal
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
-        Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
+        Column(Modifier.fillMaxSize().background(if (gray) p.gbg else p.paper).imePadding()) {
             NavBar(title, onBack, subtitle = subtitle, more = more, right = right)
             content()
         }
@@ -612,42 +578,6 @@ fun Page(
 
 internal val WIDE_WINDOW_MIN_WIDTH = 840.dp
 
-/** 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count on 会话. */
-@Composable
-fun TabBar(route: String?, waiting: Int, scheduledAttention: Int = 0, hasNewResults: Boolean = false, onSelect: (String) -> Unit) {
-    val p = pal
-    Row(Modifier.fillMaxWidth().background(p.card).topLine(p.line).padding(top = 6.dp, bottom = 8.dp)) {
-        for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
-            val on = route == r
-            Column(Modifier.weight(1f).heightIn(min = 44.dp).clickable { if (!on) onSelect(r) }, horizontalAlignment = Alignment.CenterHorizontally) {
-                Box {
-                    Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, if (on) p.blue else p.muted)
-                    val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
-                    Box(Modifier.align(Alignment.TopStart).offset(x = 17.dp, y = (-4).dp)) {
-                        if (r == "schedules") NavigationBadge(count, hasNewResults)
-                        else if (count > 0) Text(
-                            "$count", style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
-                            modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(p.orange).padding(horizontal = 5.dp),
-                        )
-                    }
-                }
-                Text(label, style = T.tab, color = if (on) p.blue else p.muted, modifier = Modifier.padding(top = 2.dp))
-            }
-        }
-    }
-}
-
-/** Orange counts actions; blue only says that a result is available. */
-@Composable
-internal fun NavigationBadge(count: Int, hasNewResults: Boolean) {
-    if (count > 0) Text(
-        io.github.lewin671.remoteagent.core.scheduleBadgeText(count), style = T.tab.copy(fontWeight = platformWeight(FontWeight.Bold), lineHeight = 16.sp), color = Color.White,
-        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(pal.orange)
-            .semantics { contentDescription = "$count 件需要处理" }.padding(horizontal = 5.dp),
-    ) else if (hasNewResults) Box(Modifier.size(12.dp).border(2.dp, pal.card, CircleShape).padding(2.dp).background(pal.blue, CircleShape)
-        .semantics { contentDescription = "有新结果" })
-}
-
 /** A confirmation with one line of text to enter, such as a name. */
 @Composable
 fun InputAlert(title: String, initial: String, placeholder: String, confirm: String, onDismiss: () -> Unit, dismiss: String = "取消", text: String? = null, onConfirm: (String) -> Unit) {
@@ -655,10 +585,10 @@ fun InputAlert(title: String, initial: String, placeholder: String, confirm: Str
     var value by remember(initial) { androidx.compose.runtime.mutableStateOf(initial) }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).imePadding(), contentAlignment = Alignment.Center) {
-            Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.LG).background(p.card).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {
-                Text(title, style = T.h17, color = p.fg, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+            Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.R20).background(p.paper).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {
+                Text(title, style = T.s17b, color = p.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
                 ReasonField(value, { value = it.take(40) }, placeholder)
-                if (text != null) Text(text, style = T.sm, color = p.muted, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
+                if (text != null) Text(text, style = T.s13, color = p.ink2, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp))
                 Btns(Modifier.padding(top = 6.dp)) {
                     Btn(dismiss, onDismiss, Modifier.weight(1f))
                     Btn(confirm, { onDismiss(); onConfirm(value) }, Modifier.weight(1f), BtnKind.PRIMARY)
@@ -682,37 +612,4 @@ fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
         label = "rotation")
     Ic(icon, size, color, Modifier.rotate(angle))
-}
-
-/** Top-level destinations share the same labels, icons and badge counts on wide displays. */
-@Composable
-fun SidebarTabs(route: String?, waiting: Int, scheduledAttention: Int, hasNewResults: Boolean = false, onSelect: (String) -> Unit) {
-    Column(Modifier.width(200.dp).fillMaxHeight().background(pal.soft).padding(top = 16.dp)) {
-        Text("remote-agent", style = T.h17, color = pal.fg, modifier = Modifier.padding(16.dp))
-        for ((r, label) in listOf("home" to "会话", "schedules" to "定时", "settings" to "设置")) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(if (route == r) pal.blueSoft else Color.Transparent).clickable { onSelect(r) }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                val color = if (route == r) pal.blue else pal.muted
-                Ic(when(r) { "home" -> Lucide.MessageSquare; "schedules" -> Lucide.Clock; else -> Lucide.Settings }, 22.dp, color)
-                Text(label, Modifier.weight(1f).padding(start = 12.dp), style = T.body, color = color)
-                val count = if (r == "home") waiting else if (r == "schedules") scheduledAttention else 0
-                if (r == "schedules") NavigationBadge(count, hasNewResults)
-                else if (count > 0) Text("$count", style = T.metaB, color = pal.orangeInk)
-            }
-        }
-    }
-}
-
-/** Shared by conversations and scheduled tasks; the caller supplies the lower lines. */
-@Composable
-fun SessionListRow(title: String, time: String, tone: io.github.lewin671.remoteagent.core.Tone, last: Boolean = false, selected: Boolean = false, onClick: () -> Unit, titleStyle: TextStyle = T.bodyB, content: @Composable ColumnScope.() -> Unit) {
-    Row(Modifier.fillMaxWidth().background(if (selected) pal.blueSoft else Color.Transparent).clickable(onClick = onClick).padding(start = 16.dp, end = 16.dp, top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp), verticalAlignment = Alignment.Top) {
-        Box(Modifier.padding(top = 8.dp)) { Dot(pal.tone(tone)) }
-        Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(pal.line)).padding(bottom = 10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(title, style = titleStyle, color = pal.fg, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                Text(time, style = T.meta, color = pal.muted, maxLines = 1)
-            }
-            content()
-        }
-    }
 }

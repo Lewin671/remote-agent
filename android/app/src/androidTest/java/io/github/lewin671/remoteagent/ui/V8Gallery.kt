@@ -168,7 +168,7 @@ class V8Gallery {
         ui.setContent {
             RaTheme(if (dark) DarkPalette else LightPalette) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    Column(Modifier.fillMaxSize().background(pal.card).safeDrawingPadding()) { content() }
+                    Column(Modifier.fillMaxSize().background(pal.paper).safeDrawingPadding()) { content() }
                 }
             }
         }
@@ -236,14 +236,12 @@ class V8Gallery {
     @Test fun home() {
         shoot("01-home-attention", homeState(true), mapOf("api" to apiEvents, "dep" to depEvents)) {
             Column(Modifier.weight(1f)) { HomeScreen() }
-            TabBar("home", 4) {}
         }
     }
 
     @Test fun homeQuiet() {
         shoot("02-home", homeState(false)) {
             Column(Modifier.weight(1f)) { HomeScreen() }
-            TabBar("home", 0) {}
         }
     }
 
@@ -470,7 +468,6 @@ class V8Gallery {
     @Test fun settings() {
         shoot("30-settings", accountState()) {
             Column(Modifier.weight(1f)) { SettingsScreen() }
-            TabBar("settings", 0) {}
         }
     }
 

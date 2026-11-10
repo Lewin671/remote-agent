@@ -159,20 +159,20 @@ fun ProjectRow(state: RemoteState, pr: Project, onClick: () -> Unit, clickLabel:
     val p = pal
     val remote = LocalRemote.current
     val change = PrefsChanges.states[pr.key]
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.line), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).bottomLine(p.sep), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier.weight(1f).heightIn(min = 52.dp).clickable(onClickLabel = clickLabel, onClick = onClick).padding(vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Avatar(pr.key, 22)
+            ProjectAvatar(pr.key, 28)
             Column(Modifier.weight(1f)) {
-                Text(pr.name, style = T.bodyB, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(projectDetail(pr), style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(pr.name, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(projectDetail(pr), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 when (change) {
-                    PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, "正在同步…", p.muted, T.meta)
+                    PrefsChanges.State.Saving -> IconText(Lucide.LoaderCircle, "正在同步…", p.ink2, T.s12)
                     is PrefsChanges.State.Failed -> Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("没能保存，列表保持原样：${change.error}", style = T.meta, color = p.red, modifier = Modifier.weight(1f, fill = false))
-                        Text(" · 重试", style = T.metaB, color = p.blue, modifier = Modifier.clickable(enabled = prefsBlocked(state) == null) { PrefsChanges.run(remote, change.op) })
+                        Text("没能保存，列表保持原样：${change.error}", style = T.s12, color = p.red, modifier = Modifier.weight(1f, fill = false))
+                        Text(" · 重试", style = T.s12b, color = p.blue, modifier = Modifier.clickable(enabled = prefsBlocked(state) == null) { PrefsChanges.run(remote, change.op) })
                     }
                     null -> {}
                 }
@@ -206,8 +206,8 @@ fun ProjectList(state: RemoteState, onNew: () -> Unit, first: (@Composable () ->
     others.forEach { row(it) }
     if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(bottom = 8.dp))
     Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 18.dp, p.blue) }
-        Text("新项目…", style = T.bodyB, color = p.blue)
+        Box(Modifier.width(28.dp), contentAlignment = Alignment.Center) { Ic(Lucide.Plus, 20.dp, p.blue) }
+        Text("新项目…", style = T.s17, color = p.blue)
     }
 }
 
@@ -263,8 +263,8 @@ fun ManageProjectsScreen() {
         ActionSheet(
             info = {
                 Column(horizontalAlignment = Alignment.Start) {
-                    Text(pr.name, style = T.bodyB, color = p.fg)
-                    Text(shortPath(pr.key), style = T.mono, color = p.fg2)
+                    Text(pr.name, style = T.s15b, color = p.ink)
+                    Text(shortPath(pr.key), style = T.mono12, color = p.ink)
                 }
             },
             actions = listOf(

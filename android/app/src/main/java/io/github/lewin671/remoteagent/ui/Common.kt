@@ -102,8 +102,8 @@ fun EarlierTail(state: RemoteState, modifier: Modifier = Modifier) {
     val failed = state.conn == ConnState.ONLINE && state.sessionsError.isNotEmpty()
     Text(
         io.github.lewin671.remoteagent.core.earlierTail(state),
-        style = T.meta,
-        color = pal.muted,
+        style = T.s12,
+        color = pal.ink2,
         modifier =
             modifier.then(
                 if (failed)
@@ -170,21 +170,6 @@ fun now(periodMs: Long = 30_000): Long {
     return t
 }
 
-/** A status: a dot and a word, not color alone. */
-@Composable
-fun StatusLabel(status: Status, modifier: Modifier = Modifier) {
-    val p = pal
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Dot(p.tone(status.tone))
-        Spacer(Modifier.width(5.dp))
-        Text(status.text, style = T.meta, color = p.muted)
-    }
-}
-
-@Composable
-fun SectionHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) =
-    Label(title, count, modifier)
-
 /** A card on a grey page. */
 @Composable
 fun Card(
@@ -196,8 +181,8 @@ fun Card(
     Box(
         modifier
             .fillMaxWidth()
-            .clip(Radii.MD)
-            .background(p.card)
+            .clip(Radii.R14)
+            .background(p.paper)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
     ) {
         content()
@@ -215,13 +200,13 @@ fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> 
     ) {
         Text(
             text,
-            style = T.meta,
-            color = color ?: p.fg2,
+            style = T.s12,
+            color = color ?: p.ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier =
                 Modifier.clip(RoundedCornerShape(14.dp))
-                    .background(bg ?: p.chip)
+                    .background(bg ?: p.fill2)
                     .padding(horizontal = 9.dp, vertical = 4.dp),
         )
     }
@@ -251,10 +236,10 @@ fun ConnBanner(state: RemoteState) {
             Link.NO_SERVER -> if (failed) "连不上服务器：${state.error}" else "连不上服务器 · 正在重试"
             else -> if (state.synced) "正在重连…" else "连接中…"
         }
-    val color = if (failed) p.red else p.muted
+    val color = if (failed) p.red else p.ink2
     Row(
         Modifier.fillMaxWidth()
-            .background(p.soft)
+            .background(p.gbg)
             .then(
                 if (state.link == Link.NO_SERVER) Modifier.clickable { details = true }
                 else Modifier,
@@ -267,48 +252,48 @@ fun ConnBanner(state: RemoteState) {
         Text(
             text,
             Modifier.weight(1f),
-            style = T.meta,
+            style = T.s12,
             color = color,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
         if (state.link == Link.NO_SERVER)
-            Text("详情", Modifier.padding(start = 8.dp), style = T.metaB, color = p.blue)
+            Text("详情", Modifier.padding(start = 8.dp), style = T.s12b, color = p.blue)
     }
     if (details && state.link == Link.NO_SERVER) ServerDetails(state) { details = false }
 }
 
 /** Why the server is out of reach: the judgement first, the failure in the system's words last. */
 @Composable
-private fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
+internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     Sheet(onClose) {
         SheetHead("连不上服务器")
         Text(
             "本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。",
-            style = T.sm,
-            color = p.fg2,
+            style = T.s13,
+            color = p.ink,
         )
         Text(
             "服务器　${remote.account.server.substringAfter("://")}",
-            style = T.sm,
-            color = p.muted,
+            style = T.s13,
+            color = p.ink2,
             modifier = Modifier.padding(top = 10.dp),
         )
         // Since start nothing was reached: when it was last is not known here.
         if (state.synced)
             Text(
                 "断开于　${whenText(state.offlineSinceMs, now())}",
-                style = T.sm,
-                color = p.muted,
+                style = T.s13,
+                color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
         if (state.error.isNotEmpty())
             Text(
                 "原因　${state.error}",
-                style = T.sm,
-                color = p.muted,
+                style = T.s13,
+                color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
         if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error)
@@ -356,7 +341,7 @@ fun Row44(
 @Composable
 fun Bordered(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val p = pal
-    Box(modifier.border(1.dp, p.line, Radii.SM).padding(12.dp)) { content() }
+    Box(modifier.border(1.dp, p.sep, Radii.R14).padding(12.dp)) { content() }
 }
 
 fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines[s.machineId]

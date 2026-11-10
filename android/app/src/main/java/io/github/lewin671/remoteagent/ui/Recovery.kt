@@ -180,8 +180,8 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
             if (s == null) {
                 Text(
                     "输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty()) Banner(error, Modifier.padding(bottom = 10.dp), Tone2.ERROR)
@@ -525,8 +525,8 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
             if (c == null) {
                 Text(
                     "这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty()) Banner(error, Modifier.padding(bottom = 10.dp), Tone2.ERROR)
@@ -607,7 +607,7 @@ private fun RecoveryField(
         value,
         onValue,
         Modifier.fillMaxWidth().padding(bottom = 10.dp),
-        textStyle = (if (lines > 1) T.mono else T.body).copy(color = p.fg),
+        textStyle = (if (lines > 1) T.mono12 else T.s15).copy(color = p.ink),
         singleLine = lines == 1,
         minLines = lines,
         keyboardOptions =
@@ -618,12 +618,12 @@ private fun RecoveryField(
                 Column {
                     Text(
                         label,
-                        style = T.meta,
-                        color = p.muted,
+                        style = T.s12,
+                        color = p.ink2,
                         modifier = Modifier.padding(bottom = 2.dp),
                     )
                     androidx.compose.foundation.layout.Box {
-                        if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)
+                        if (value.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2)
                         inner()
                     }
                 }
@@ -666,8 +666,8 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
             if (c == null) {
                 Text(
                     "保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (existing == null || !existing.hasRoot)
@@ -782,8 +782,8 @@ internal fun RotateRecoveryContent(
             if (pv == null) {
                 Text(
                     "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty())

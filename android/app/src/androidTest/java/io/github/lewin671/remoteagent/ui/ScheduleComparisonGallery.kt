@@ -60,7 +60,7 @@ class ScheduleComparisonGallery {
     private fun content(screen:@Composable ()->Unit) {
         ui.setContent { RaTheme(ThemeMode.LIGHT) {
             SideEffect { WindowCompat.getInsetsController(ui.activity.window,ui.activity.window.decorView).apply { isAppearanceLightStatusBars=true;isAppearanceLightNavigationBars=true } }
-            CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { Column(Modifier.fillMaxSize().background(pal.card).safeDrawingPadding()) { screen() } }
+            CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { Column(Modifier.fillMaxSize().background(pal.paper).safeDrawingPadding()) { screen() } }
         } }
     }
     private fun save(name:String) {
@@ -82,7 +82,7 @@ class ScheduleComparisonGallery {
         val dir=File(i.targetContext.getExternalFilesDir(null),"schedule-layout").apply { mkdirs() }
         File(dir,"comparison-$name-light.png").outputStream().use { requireNotNull(i.uiAutomation.takeScreenshot()).compress(Bitmap.CompressFormat.PNG,100,it) }
     }
-    @Test fun list() { content { Column { Box(Modifier.weight(1f)) { SchedulesScreen() };TabBar("schedules",0,1) {} } };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();ui.onNodeWithText("网络不通",substring=true).assertDoesNotExist();save("tasks") }
+    @Test fun list() { content { SchedulesScreen() };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();ui.onNodeWithText("网络不通",substring=true).assertDoesNotExist();save("tasks") }
     @Test fun detail() { content { ScheduleDetailScreen(machine,"quiet") };ui.onAllNodesWithText("检查 PR 回复")[0].assertExists();save("detail") }
     @Test fun targetEditor() { content { ScheduleDetailScreen(machine,"quiet") };ui.onNodeWithText("在哪运行",useUnmergedTree=true).performClick();ui.onNodeWithText("机器").assertHasNoClickAction();ui.onNodeWithText("任务设置").assertIsDisplayed();save("target-editor") }
     @Test fun chat() { content { SessionScreen(sid) };ui.waitUntil(5000) { ui.onAllNodesWithText("定时 ·",substring=true).fetchSemanticsNodes().isNotEmpty() };save("chat-strip") }

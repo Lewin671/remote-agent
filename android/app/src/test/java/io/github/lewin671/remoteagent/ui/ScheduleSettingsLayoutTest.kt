@@ -119,7 +119,7 @@ class ScheduleSettingsLayoutTest {
             val layouts = mutableListOf<TextLayoutResult>()
             ui.onNodeWithText(reason).performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(layouts) }
             assertEquals(orangeInk, layouts.single().layoutInput.style.color)
-            assertEquals(T.sm.fontSize, layouts.single().layoutInput.style.fontSize)
+            assertEquals(T.s13.fontSize, layouts.single().layoutInput.style.fontSize)
         }
     }
 

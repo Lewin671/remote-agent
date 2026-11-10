@@ -91,7 +91,7 @@ fun Sw(on: Boolean) {
     Box(
         Modifier.size(width = 42.dp, height = 25.dp)
             .clip(RoundedCornerShape(13.dp))
-            .background(if (on) p.green else p.track)
+            .background(if (on) p.green else p.fill2)
             .padding(2.dp),
         contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
@@ -112,8 +112,8 @@ fun ToggleRow(title: String, sub: String, value: Boolean, enabled: Boolean = tru
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, style = T.body, color = p.fg)
-            if (sub.isNotEmpty()) Text(sub, style = T.meta, color = p.muted)
+            Text(title, style = T.s15, color = p.ink)
+            if (sub.isNotEmpty()) Text(sub, style = T.s12, color = p.ink2)
         }
         Sw(value)
     }
@@ -175,10 +175,11 @@ fun SettingsScreen() {
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
         Column(
             Modifier.fillMaxSize()
-                .background(p.soft)
+                .background(p.gbg)
                 .verticalScroll(rememberScrollState())
                 .readableColumn(),
         ) {
+            BackRow(nav.back)
             LargeTitle("设置")
             ConnBanner(state)
             if (state.clockWarning)
@@ -210,7 +211,7 @@ fun SettingsScreen() {
                                     state.devices.values,
                                 ),
                                 "当前",
-                                lead = { Ico(clientIcon(state.devices[me]?.meta), p.blueBg) },
+                                lead = { Ico(clientIcon(state.devices[me]?.meta), p.blue) },
                                 onClick = { nav.client(me) },
                             )
                         },
@@ -220,7 +221,7 @@ fun SettingsScreen() {
                                 GRow(
                                     io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values),
                                     "已配对",
-                                    lead = { Ico(clientIcon(c.meta), p.blueBg) },
+                                    lead = { Ico(clientIcon(c.meta), p.blue) },
                                     onClick = { nav.client(c.id) },
                                     chevron = true,
                                 )
@@ -301,8 +302,8 @@ fun SettingsScreen() {
                         ) {
                             Text(
                                 "主题",
-                                style = T.body,
-                                color = pal.fg,
+                                style = T.s15,
+                                color = pal.ink,
                                 modifier = Modifier.weight(1f),
                             )
                             SegPick(
@@ -382,12 +383,12 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Ico(Lucide.Laptop, p.blueBg)
+                        Ico(Lucide.Laptop, p.blue)
                         Column(Modifier.weight(1f)) {
                             Text(
                                 machineLabel(state, m.id),
-                                style = T.body,
-                                color = p.fg,
+                                style = T.s15,
+                                color = p.ink,
                                 maxLines = 1,
                                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                             )
@@ -405,8 +406,8 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                             if (q != null)
                                 Text(
                                     q,
-                                    style = T.sm,
-                                    color = p.muted,
+                                    style = T.s13,
+                                    color = p.ink2,
                                     modifier = Modifier.padding(top = 2.dp),
                                 )
                         }
@@ -414,15 +415,15 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                         ) {
-                            Dot(if (m.online) p.green else p.gray)
+                            Dot(if (m.online) p.green else p.faint)
                             Text(
                                 if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).ifEmpty { "离线" },
-                                style = T.sm,
-                                color = p.muted,
+                                style = T.s13,
+                                color = p.ink2,
                                 maxLines = 1,
                             )
                         }
-                        Arrow(p.muted, T.body)
+                        Arrow(p.ink2, T.s15)
                     }
                 }
             }
@@ -460,11 +461,11 @@ internal fun PushNotice(
 ) {
     if (push.problem.isEmpty()) return
     Column(Modifier.padding(horizontal = 20.dp).padding(top = 8.dp)) {
-        Text(push.problem, style = T.meta, color = pal.muted)
-        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.meta, color = pal.muted)
+        Text(push.problem, style = T.s12, color = pal.ink2)
+        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.s12, color = pal.ink2)
         if (push.action.isNotEmpty())
             TextButton(onClick = onAction) {
-                Text(push.action, style = T.meta, color = pal.blue)
+                Text(push.action, style = T.s12, color = pal.blue)
             }
     }
 }
@@ -476,7 +477,7 @@ internal fun PushNotice(
 fun SegPick(items: List<String>, selected: Int, enabled: Boolean = true, onSelect: (Int) -> Unit) {
     val p = pal
     Row(
-        Modifier.clip(Radii.SM).background(p.chip).padding(2.dp).selectableGroup().alpha(if (enabled) 1f else .45f),
+        Modifier.clip(Radii.R14).background(p.fill2).padding(2.dp).selectableGroup().alpha(if (enabled) 1f else .45f),
         horizontalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         items.forEachIndexed { i, s ->
@@ -486,14 +487,14 @@ fun SegPick(items: List<String>, selected: Int, enabled: Boolean = true, onSelec
                     .heightIn(min = 32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (on) (if (p.card == Color.White) p.card else p.track)
+                        if (on) (if (p.paper == Color.White) p.paper else p.fill2)
                         else Color.Transparent,
                     )
                     .selectable(selected = on, enabled = enabled, role = Role.RadioButton) { onSelect(i) }
                     .padding(horizontal = 10.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(s, style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted)
+                Text(s, style = if (on) T.s13b else T.s13, color = if (on) p.ink else p.ink2)
             }
         }
     }
@@ -620,13 +621,13 @@ fun DeviceScreen(id: String) {
                                         Text(
                                             androidx.compose.ui.text.buildAnnotatedString {
                                                 append(qline.substring(0, sepIdx))
-                                                pushStyle(androidx.compose.ui.text.SpanStyle(color = p.muted))
+                                                pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink2))
                                                 append(" · ")
                                                 append(qline.substring(sepIdx + 3))
                                                 pop()
                                             },
-                                            style = T.sm,
-                                            color = p.fg,
+                                            style = T.s13,
+                                            color = p.ink,
                                         )
                                     },
                                     onClick = { nav.quota(id) },
@@ -665,8 +666,8 @@ fun DeviceScreen(id: String) {
                                                 }
                                                 append(a.version.ifEmpty { "未知" })
                                             },
-                                            style = T.sm,
-                                            color = p.muted,
+                                            style = T.s13,
+                                            color = p.ink2,
                                         )
                                     },
                                 )
@@ -770,8 +771,8 @@ fun DeviceScreen(id: String) {
                     )
                     Text(
                         "会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
-                        style = T.sm,
-                        color = p.muted,
+                        style = T.s13,
+                        color = p.ink2,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
                     )
                 }
@@ -845,8 +846,8 @@ fun DeviceScreen(id: String) {
                 Text(
                     if (state.isAuthority) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
                     else "请在管理端（${state.authorityName}）上移除设备。",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
@@ -978,15 +979,15 @@ private fun QuotaRowView(
     val p = pal
     Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(r.label, style = T.body, color = p.fg, modifier = Modifier.weight(1f))
+            Text(r.label, style = T.s15, color = p.ink, modifier = Modifier.weight(1f))
             Text(
                 if (compact && r.reset.isNotEmpty()) "${r.used} · ${r.reset}" else r.used,
-                style = T.sm,
+                style = T.s13,
                 color =
                     when (r.tone) {
                         io.github.lewin671.remoteagent.core.QuotaTone.FULL,
                         io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
-                        else -> p.muted
+                        else -> p.ink2
                     },
             )
         }
@@ -996,7 +997,7 @@ private fun QuotaRowView(
                     .fillMaxWidth()
                     .height(6.dp)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(p.track),
+                    .background(p.fill2),
             ) {
                 Box(
                     Modifier.fillMaxWidth((pc / 100).toFloat().coerceIn(0f, 1f))
@@ -1004,8 +1005,8 @@ private fun QuotaRowView(
                         .clip(RoundedCornerShape(3.dp))
                         .background(
                             when (r.tone) {
-                                io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.gray
-                                io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blueBg
+                                io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.faint
+                                io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blue
                                 else -> p.orange
                             },
                         ),
@@ -1016,7 +1017,7 @@ private fun QuotaRowView(
             if (compact) ""
             else listOf(r.reset, r.note, received).filter { it.isNotEmpty() }.joinToString(" · ")
         if (sub.isNotEmpty())
-            Text(sub, style = T.meta, color = p.muted, modifier = Modifier.padding(top = 8.dp))
+            Text(sub, style = T.s12, color = p.ink2, modifier = Modifier.padding(top = 8.dp))
     }
 }
 
@@ -1061,8 +1062,8 @@ private fun DefaultModelSheet(
             ms == null ->
                 Text(
                     "读取中…",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             else -> {
@@ -1141,7 +1142,7 @@ fun QuotaScreen(id: String) {
             if (!m.online)
                 Text(
                     "机器离线，显示上次记录",
-                    style = T.sm,
+                    style = T.s13,
                     color = p.orangeInk,
                     modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
                 )
@@ -1150,7 +1151,7 @@ fun QuotaScreen(id: String) {
                     Text(
                         "没能读取 ${agentName(g.agent)} 额度" +
                             if (g.detail.isNotEmpty()) "：${g.detail}" else "",
-                        style = T.sm,
+                        style = T.s13,
                         color = p.red,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
                     )
@@ -1170,13 +1171,13 @@ fun QuotaScreen(id: String) {
                             rows +=
                                 @Composable {
                                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text("暂不支持读取额度", style = T.bodyB, color = p.fg)
+                                        Text("暂不支持读取额度", style = T.s15b, color = p.ink)
                                         Text(
                                             g.detail.ifEmpty {
                                                 "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。"
                                             } + agentInfo(g.agent).usageHint.orEmpty(),
-                                            style = T.meta,
-                                            color = p.muted,
+                                            style = T.s12,
+                                            color = p.ink2,
                                         )
                                     }
                                 }
@@ -1184,11 +1185,11 @@ fun QuotaScreen(id: String) {
                             rows +=
                                 @Composable {
                                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text("暂未获取额度", style = T.bodyB, color = p.fg)
+                                        Text("暂未获取额度", style = T.s15b, color = p.ink)
                                         Text(
                                             "等待 ${agentName(g.agent)} 返回额度数据",
-                                            style = T.meta,
-                                            color = p.muted,
+                                            style = T.s12,
+                                            color = p.ink2,
                                         )
                                     }
                                 }
@@ -1201,8 +1202,8 @@ fun QuotaScreen(id: String) {
                 if (g.rows.isNotEmpty() && g.received.isNotEmpty())
                     Text(
                         g.received,
-                        style = T.meta,
-                        color = p.muted,
+                        style = T.s12,
+                        color = p.ink2,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
                     )
                 // Used up or close to it; nothing switches CLI or model by itself.
@@ -1212,7 +1213,7 @@ fun QuotaScreen(id: String) {
                     ?.let {
                         Text(
                             "$it，不会自动切换 CLI 或模型",
-                            style = T.sm,
+                            style = T.s13,
                             color = p.orangeInk,
                             modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
                         )
@@ -1220,8 +1221,8 @@ fun QuotaScreen(id: String) {
             }
             Text(
                 "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",
-                style = T.sm,
-                color = p.muted,
+                style = T.s13,
+                color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
@@ -1275,8 +1276,8 @@ fun RecoveryCodeFigure(code: String) {
     }
     Text(
         code,
-        style = T.mono.copy(fontSize = 16.sp),
-        color = p.fg,
+        style = T.mono12.copy(fontSize = 16.sp),
+        color = p.ink,
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
     )
     Hint("请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。")
@@ -1349,20 +1350,20 @@ fun PairScreen(replacesDeviceId: String = "") {
                                 fontSize = 26.sp,
                                 letterSpacing = 4.sp,
                             ),
-                        color = p.fg,
+                        color = p.ink,
                     )
                     Text(
                         "有效期至 " + io.github.lewin671.remoteagent.core.securityTime(step.expiresMs, timeOnly = true),
-                        style = T.sm,
-                        color = p.muted,
+                        style = T.s13,
+                        color = p.ink2,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 10.dp),
                     )
                     IconText(
                         Lucide.LoaderCircle,
                         "等待新设备…",
-                        p.muted,
-                        T.sm,
+                        p.ink2,
+                        T.s13,
                         Modifier.padding(top = 10.dp),
                     )
                 }
@@ -1384,18 +1385,18 @@ fun PairScreen(replacesDeviceId: String = "") {
                     Column(
                         Modifier.padding(top = 14.dp)
                             .fillMaxWidth()
-                            .clip(Radii.MD)
-                            .background(p.soft)
+                            .clip(Radii.R14)
+                            .background(p.gbg)
                             .padding(14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Row(Modifier.fillMaxWidth()) {
                             Text(
                                 if (kind == DeviceKind.DEVICE_KIND_MACHINE) "新电脑" else "新设备",
-                                style = T.smB,
-                                color = p.fg,
+                                style = T.s13b,
+                                color = p.ink,
                             )
-                            Text(" 请求加入", style = T.sm, color = p.muted)
+                            Text(" 请求加入", style = T.s13, color = p.ink2)
                         }
                         Text(
                             emoji.joinToString("  "),
@@ -1405,8 +1406,8 @@ fun PairScreen(replacesDeviceId: String = "") {
                         Text(
                             if (sending) "请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"
                             else "核对新设备上的 4 个图案。先在新设备确认，再在这里允许。",
-                            style = T.sm,
-                            color = p.muted,
+                            style = T.s13,
+                            color = p.ink2,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
@@ -1420,7 +1421,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                                 Modifier.weight(1f),
                                 BtnKind.NEGATIVE,
                                 enabled = !sending,
-                                bg = p.card,
+                                bg = p.paper,
                             )
                             Btn(
                                 if (sending) "等新设备确认图案…" else "允许加入",
@@ -1438,7 +1439,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         Modifier.padding(top = 14.dp),
                         action = "完成",
                         onAction = nav.back,
-                        lead = { Mark(Lucide.Check, p.fg2, iconSize(T.sm)) },
+                        lead = { Mark(Lucide.Check, p.ink, iconSize(T.s13)) },
                     )
                 is PairingUiState.Failed ->
                     Banner(
@@ -1519,8 +1520,8 @@ private fun MachineImageStorage(
     )
     Text(
         "附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。",
-        style = T.sm,
-        color = pal.muted,
+        style = T.s13,
+        color = pal.ink2,
         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
     )
     if (limit) {
@@ -1586,7 +1587,7 @@ fun LicensesPage(onBack: () -> Unit) {
     val res = androidx.compose.ui.platform.LocalContext.current.resources
     var open by remember { mutableStateOf<Int?>(null) }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
-        Column(Modifier.fillMaxSize().background(p.soft)) {
+        Column(Modifier.fillMaxSize().background(p.gbg)) {
             NavBar("开源许可", onBack)
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 for ((label, items) in
@@ -1617,8 +1618,8 @@ fun LicensesPage(onBack: () -> Unit) {
                                 }
                             Text(
                                 text,
-                                style = T.meta,
-                                color = p.fg2,
+                                style = T.s12,
+                                color = p.ink,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             )
                         }
@@ -1645,7 +1646,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
         }
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
-        Column(Modifier.fillMaxSize().background(p.soft)) {
+        Column(Modifier.fillMaxSize().background(p.gbg)) {
             NavBar("设置", onBack)
             GLabel("附件存储 · 这台手机")
             Group(
@@ -1655,8 +1656,8 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                         {
                             Text(
                                 "图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。",
-                                style = T.meta,
-                                color = p.muted,
+                                style = T.s12,
+                                color = p.ink2,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             )
                         },

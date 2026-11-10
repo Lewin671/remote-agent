@@ -459,19 +459,19 @@ fun MeBubble(
         if (text != null) Box(Modifier.fillMaxWidth(0.8f), contentAlignment = Alignment.CenterEnd) {
             val shape = RoundedCornerShape(18.dp, 18.dp, 5.dp, 18.dp)
             Box(
-                Modifier.clip(shape).background(if (failed) p.chip else p.soft)
+                Modifier.clip(shape).background(if (failed) p.fill2 else p.gbg)
                     .then(if (failed) Modifier.border(1.5.dp, p.red, shape) else Modifier).padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
-                androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.body, color = p.fg, maxLines = if (foldScheduled && !expanded) 6 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) long = it.hasVisualOverflow }) }
+                androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.s15, color = p.ink, maxLines = if (foldScheduled && !expanded) 6 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) long = it.hasVisualOverflow }) }
             }
         }
         if (caption != null || links.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             if (captionIcon != null) {
-                Mark(captionIcon, captionColor ?: p.muted, iconSize(T.meta))
+                Mark(captionIcon, captionColor ?: p.ink2, iconSize(T.s12))
                 Spacer(Modifier.width(4.dp))
             }
-            if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.meta, color = captionColor ?: p.muted, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded } else Modifier))
-            for ((label, go) in links) Text(label, style = T.metaB, color = p.blue, modifier = Modifier.padding(start = 6.dp).clickable(onClick = go))
+            if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.s12, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded } else Modifier))
+            for ((label, go) in links) Text(label, style = T.s12b, color = p.blue, modifier = Modifier.padding(start = 6.dp).clickable(onClick = go))
         }
     }
 }
@@ -481,9 +481,9 @@ fun MeBubble(
 fun SepLine(text: String) {
     val p = pal
     Row(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f).height(1.dp).background(p.line))
-        Text(text, style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 8.dp))
-        Box(Modifier.weight(1f).height(1.dp).background(p.line))
+        Box(Modifier.weight(1f).height(1.dp).background(p.sep))
+        Text(text, style = T.s12, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp))
+        Box(Modifier.weight(1f).height(1.dp).background(p.sep))
     }
 }
 
@@ -499,22 +499,22 @@ fun ForkLine(time: String, title: String, onOpen: (() -> Unit)?) {
         // The rules give way to a long title, down to a stub at each side.
         val room = (maxWidth - 32.dp).coerceAtLeast(0.dp)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f).height(1.dp).background(p.line))
+            Box(Modifier.weight(1f).height(1.dp).background(p.sep))
             Row(Modifier.widthIn(max = room).padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("$time 分叉自", style = T.meta, color = p.muted, maxLines = 1, softWrap = false)
+                Text("$time 分叉自", style = T.s12, color = p.ink2, maxLines = 1, softWrap = false)
                 Spacer(Modifier.width(4.dp))
                 Row(
                     Modifier.weight(1f, fill = false).then(if (onOpen != null) Modifier.tap(onClick = onOpen) else Modifier).padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(title, style = T.meta, color = if (onOpen != null) p.blue else p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                    Text(title, style = T.s12, color = if (onOpen != null) p.blue else p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (onOpen != null) {
                         Spacer(Modifier.width(4.dp))
-                        Arrow(p.blue, T.meta)
+                        Arrow(p.blue, T.s12)
                     }
                 }
             }
-            Box(Modifier.weight(1f).height(1.dp).background(p.line))
+            Box(Modifier.weight(1f).height(1.dp).background(p.sep))
         }
     }
 }
@@ -528,9 +528,9 @@ fun ToolLine(mark: ImageVector, markColor: Color, title: String, modifier: Modif
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Mark(mark, markColor)
-        if (bold) Text(title, style = ts(13.sp, FontWeight.Medium), color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        else Text(title, style = T.mono, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        if (meta.isNotEmpty()) Text(meta, style = T.meta, color = metaColor ?: p.muted, maxLines = 1)
+        if (bold) Text(title, style = ts(13.sp, FontWeight.Medium), color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        else Text(title, style = T.mono12, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        if (meta.isNotEmpty()) Text(meta, style = T.s12, color = metaColor ?: p.ink2, maxLines = 1)
         trailing?.invoke()
     }
 }
@@ -543,8 +543,8 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.QuietScheduled -> {
             var expanded by rememberSaveable(item.key) { mutableStateOf(false) }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { expanded = !expanded }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(quietScheduledLabel(item.times), Modifier.weight(1f), style = T.sm, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Arrow(p.muted, T.sm, down = !expanded, up = expanded)
+                Text(quietScheduledLabel(item.times), Modifier.weight(1f), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Arrow(p.ink2, T.s13, down = !expanded, up = expanded)
             }
             if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack) }
         }
@@ -561,22 +561,22 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.AsyncQuestion -> SelectionContainer {
             Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (q in item.questions) {
-                    if (q.header.isNotEmpty()) Text(q.header, style = T.chat.copy(fontWeight = platformWeight(FontWeight.SemiBold)), color = p.fg)
+                    if (q.header.isNotEmpty()) Text(q.header, style = T.chat.copy(fontWeight = platformWeight(FontWeight.SemiBold)), color = p.ink)
                     Markdown(q.text, bleed = 14.dp)
                     for (o in q.optionsList) Row {
-                        Text("•  ", style = T.chat, color = p.muted)
+                        Text("•  ", style = T.chat, color = p.ink2)
                         Text(androidx.compose.ui.text.buildAnnotatedString {
                             pushStyle(androidx.compose.ui.text.SpanStyle(fontWeight = platformWeight(FontWeight.SemiBold)))
                             append(o.label)
                             pop()
                             if (o.description.isNotEmpty()) append(" · ${o.description}")
-                        }, style = T.chat, color = p.fg)
+                        }, style = T.chat, color = p.ink)
                     }
                 }
             }
         }
         is ChatItem.Thought -> Expandable("思考过程", Modifier.padding(horizontal = 14.dp)) {
-            Text(item.text, style = T.sm, color = p.muted, modifier = Modifier.padding(bottom = 6.dp))
+            Text(item.text, style = T.s13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp))
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = 14.dp)) {
             if (item.background) BackgroundRow(item.call, cwd, home, item.decision)
@@ -587,12 +587,12 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = 14.dp)) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
-            ToolLine(Lucide.Check, p.muted, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
-                Arrow(p.muted, T.sm, down = !open, up = open)
+            ToolLine(Lucide.Check, p.ink2, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
+                Arrow(p.ink2, T.s13, down = !open, up = open)
             }
             if (open) Column(Modifier.padding(start = 12.dp)) {
                 item.calls.forEachIndexed { ci, c ->
-                    Text(toolTitle(c, cwd, home).lines().first(), style = T.mono, color = p.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(toolTitle(c, cwd, home).lines().first(), style = T.mono12, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     // Each call's images stay under it when the group is open.
                     if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
                 }
@@ -611,10 +611,10 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         }
         is ChatItem.Generated -> GeneratedCard(item) { i -> chat?.onImage?.invoke(item.seq, i) }
         is ChatItem.Note ->
-            if (item.icon != null) ToolLine(item.icon, p.muted, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.muted)
-            else Text(noteText(item), style = T.meta, color = p.muted, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
-        is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp)) {
-            Text("计划", style = T.smB, color = p.fg2)
+            if (item.icon != null) ToolLine(item.icon, p.ink2, item.text, Modifier.padding(horizontal = 14.dp), meta = item.meta, metaColor = if (item.tone == 2) p.red else p.ink2)
+            else Text(noteText(item), style = T.s12, color = p.ink2, textAlign = TextAlign.Center, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp))
+        is ChatItem.Plan -> Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(12.dp)) {
+            Text("计划", style = T.s13b, color = p.ink)
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
             // The preview does not show all of its six lines: they wrap past the six it is drawn in.
             var cut by remember(item.key) { mutableStateOf(false) }
@@ -622,12 +622,12 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                 if (open) Markdown(item.text)
                 else Text(
                     item.text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.take(6).joinToString("\n"),
-                    style = ts(13.sp, lineHeight = 1.6f), color = p.fg, maxLines = 6, overflow = TextOverflow.Ellipsis,
+                    style = ts(13.sp, lineHeight = 1.6f), color = p.ink, maxLines = 6, overflow = TextOverflow.Ellipsis,
                     onTextLayout = { cut = it.hasVisualOverflow },
                 )
             }
             // Whatever the preview leaves out can be opened, and what was opened can be closed again.
-            if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.smB, down = !open, up = open) }
+            if (open || cut || planFolds(item.text, 6)) Box(Modifier.padding(top = 4.dp).clickable { open = !open }) { ArrowText(if (open) "收起" else "展开全文", p.blue, T.s13b, down = !open, up = open) }
         }
         is ChatItem.Unsent -> MeBubble(
             item.text ?: "一条排队的消息", caption = "没发出去：会话已结束", captionColor = p.red, failed = true,
@@ -653,7 +653,7 @@ fun Expandable(title: String, modifier: Modifier = Modifier, color: Color? = nul
     var open by rememberSaveable(title) { mutableStateOf(false) }
     Column(modifier.animateContentSize()) {
         Box(Modifier.fillMaxWidth().clickable { open = !open }.padding(vertical = 6.dp)) {
-            ArrowText(if (open) "收起$title" else title, color ?: p.muted, T.sm, down = !open, up = open)
+            ArrowText(if (open) "收起$title" else title, color ?: p.ink2, T.s13, down = !open, up = open)
         }
         if (open) content()
     }
@@ -668,8 +668,8 @@ private fun ToolRow(t: ToolCall, cwd: String, home: String, decision: String = "
         if (!ok && t.hasExitCode()) "退出码 ${t.exitCode}" else null,
         decision.takeIf { it.isNotEmpty() },
     ).joinToString(" · ").ifEmpty { if (t.durationMs >= 1000) "${t.durationMs / 1000}s" else "" }
-    ToolLine(if (ok) Lucide.Check else Lucide.X, if (ok) p.muted else p.red, toolTitle(t, cwd, home).lines().first(),
-        meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.muted)
+    ToolLine(if (ok) Lucide.Check else Lucide.X, if (ok) p.ink2 else p.red, toolTitle(t, cwd, home).lines().first(),
+        meta = meta, metaColor = if (!ok || !decisionOk) p.red else p.ink2)
 }
 
 /**

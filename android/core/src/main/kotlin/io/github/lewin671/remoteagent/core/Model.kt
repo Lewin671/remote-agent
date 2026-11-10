@@ -228,13 +228,6 @@ fun machineName(m: MachineView?, id: String = ""): String =
         ?: m?.id?.take(8)
         ?: id.take(8).ifEmpty { "未知电脑" }
 
-/** Avatar color index 0..3, stable per project. */
-fun avatarIndex(key: String): Int {
-    var h = 0L
-    for (c in key) h = (h * 31 + c.code) and 0xffffffffL
-    return (h % 4).toInt()
-}
-
 // A session that has not ended or is not waiting has no such timestamp and
 // falls back to creation time; incomplete metadata uses zero, never the
 // changing relay timestamp.

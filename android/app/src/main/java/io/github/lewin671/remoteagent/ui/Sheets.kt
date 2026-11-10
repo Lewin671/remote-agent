@@ -128,8 +128,8 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
         if (outside != null)
             Text(
                 "当前：${if (outside == "acceptEdits") "accept edits" else outside}（在终端设置）",
-                style = T.meta,
-                color = p.muted,
+                style = T.s12,
+                color = p.ink2,
                 modifier = Modifier.padding(bottom = 4.dp),
             )
         Mode.entries.forEachIndexed { i, m ->
@@ -221,15 +221,15 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
             Column(
                 Modifier.widthIn(max = 320.dp)
                     .fillMaxWidth()
-                    .clip(Radii.LG)
-                    .background(p.card)
+                    .clip(Radii.R20)
+                    .background(p.paper)
                     .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
                     "重命名会话",
-                    style = T.h17,
-                    color = p.fg,
+                    style = T.s17b,
+                    color = p.ink,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 12.dp),
                 )
@@ -237,7 +237,7 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                     value,
                     { value = it.copy(text = titleInput(it.text)) },
                     Modifier.fillMaxWidth().padding(bottom = 8.dp).focusRequester(focus),
-                    textStyle = T.body.copy(color = p.fg),
+                    textStyle = T.s15.copy(color = p.ink),
                     cursorBrush = SolidColor(p.blue),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -246,8 +246,8 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                 )
                 Text(
                     if (act.error.isNotEmpty()) "没能保存：${act.error}" else "留空保存会恢复自动标题",
-                    style = T.sm,
-                    color = if (act.error.isNotEmpty()) p.red else p.muted,
+                    style = T.s13,
+                    color = if (act.error.isNotEmpty()) p.red else p.ink2,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(bottom = 14.dp),
                 )
@@ -277,12 +277,12 @@ fun ContextBox(
 ) {
     val p = pal
     Row(
-        Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft).padding(12.dp),
+        Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text("$percent%", style = T.h22, color = if (percent > 80) p.orangeInk else p.fg)
-            Text(detail, style = T.sm, color = p.muted)
+            Text("$percent%", style = T.h22, color = if (percent > 80) p.orangeInk else p.ink)
+            Text(detail, style = T.s13, color = p.ink2)
         }
         if (action != null)
             Box(
@@ -291,7 +291,7 @@ fun ContextBox(
                     .padding(horizontal = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(action, style = T.bodyB, color = if (enabled) p.blue else p.muted)
+                Text(action, style = T.s15b, color = if (enabled) p.blue else p.ink2)
             }
     }
 }
@@ -307,16 +307,16 @@ fun ChoiceGrid(items: List<String>, selected: String?, enabled: Boolean, onPick:
                 Box(
                     Modifier.weight(1f)
                         .heightIn(min = 44.dp)
-                        .clip(Radii.SM)
-                        .background(if (on) p.blueSoft else p.soft)
-                        .then(if (on) Modifier.border(1.dp, p.blue, Radii.SM) else Modifier)
+                        .clip(Radii.R14)
+                        .background(if (on) p.fill else p.gbg)
+                        .then(if (on) Modifier.border(1.dp, p.blue, Radii.R14) else Modifier)
                         .clickable(enabled = enabled) { onPick(e) },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         e,
-                        style = T.sm,
-                        color = if (on) p.blue else if (enabled) p.fg else p.muted,
+                        style = T.s13,
+                        color = if (on) p.blue else if (enabled) p.ink else p.ink2,
                     )
                 }
             }
@@ -439,8 +439,8 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             ms == null ->
                 Text(
                     "读取中…",
-                    style = T.sm,
-                    color = p.muted,
+                    style = T.s13,
+                    color = p.ink2,
                     modifier = Modifier.padding(vertical = 12.dp),
                 )
             else -> {
@@ -532,8 +532,8 @@ fun ApprovalPage(sid: String, aid: String) {
             Text(
                 if (r != null) "这条审批已经处理了。"
                 else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
-                style = T.body,
-                color = p.muted,
+                style = T.s15,
+                color = p.ink2,
                 modifier = Modifier.padding(16.dp),
             )
             if (r != null && reason.isNotEmpty()) {
@@ -565,7 +565,7 @@ fun ApprovalPage(sid: String, aid: String) {
             return@PageScaffold
         }
         if (io.github.lewin671.remoteagent.core.isSkeleton(a)) {
-            Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.sm, color = p.muted)
+            Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = p.ink2)
             return@PageScaffold
         }
         Column(
@@ -574,23 +574,23 @@ fun ApprovalPage(sid: String, aid: String) {
             if (a.toolName.isNotEmpty() && a.command.isEmpty())
                 Text(
                     "请求权限 · ${approvalDisplay(a.toolName)}",
-                    style = T.smB,
-                    color = p.fg2,
+                    style = T.s13b,
+                    color = p.ink,
                     modifier = Modifier.padding(bottom = 4.dp),
                 )
             Code(approvalBody(a))
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
-                    style = T.sm,
-                    color = p.fg2,
+                    style = T.s13,
+                    color = p.ink,
                     modifier = Modifier.padding(top = 8.dp),
                 )
         }
         Column(
             Modifier.fillMaxWidth()
                 .padding(horizontal = 14.dp)
-                .topLine(p.line)
+                .topLine(p.sep)
                 .padding(top = 8.dp, bottom = 16.dp),
         ) {
             ApprovalButtons(s, a, compact = false)
@@ -612,8 +612,8 @@ fun PlanPage(sid: String) {
         if (s == null || plan == null) {
             Text(
                 io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
-                style = T.body,
-                color = pal.muted,
+                style = T.s15,
+                color = pal.ink2,
                 modifier = Modifier.padding(16.dp),
             )
             return@PageScaffold
@@ -621,8 +621,8 @@ fun PlanPage(sid: String) {
         if (io.github.lewin671.remoteagent.core.isSkeleton(plan.text)) {
             Text(
                 io.github.lewin671.remoteagent.core.skeletonMessage,
-                style = T.sm,
-                color = pal.muted,
+                style = T.s13,
+                color = pal.ink2,
             )
             return@PageScaffold
         }
@@ -634,7 +634,7 @@ fun PlanPage(sid: String) {
         if (s.info?.planOpen == true)
             Column(
                 Modifier.padding(horizontal = 14.dp)
-                    .topLine(pal.line)
+                    .topLine(pal.sep)
                     .padding(top = 8.dp, bottom = 16.dp),
             ) {
                 PlanButtons(
@@ -665,7 +665,7 @@ fun PageScaffold(
     if (onBack != null) androidx.activity.compose.BackHandler(onBack = onBack)
     val p = pal
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
-        Column(Modifier.fillMaxSize().background(if (gray) p.soft else p.card).imePadding()) {
+        Column(Modifier.fillMaxSize().background(if (gray) p.gbg else p.paper).imePadding()) {
             NavBar(title, back, subtitle = subtitle, right = action)
             if (gray) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
             else content()
@@ -685,8 +685,8 @@ fun Modifier.readableColumn(): Modifier =
 fun PageNote(text: String) {
     Text(
         text,
-        style = T.sm,
-        color = pal.muted,
+        style = T.s13,
+        color = pal.ink2,
         textAlign = TextAlign.Center,
         modifier = Modifier.fillMaxWidth().padding(24.dp),
     )
@@ -696,6 +696,6 @@ fun PageNote(text: String) {
 @Composable
 fun AllModels(onClick: () -> Unit) {
     Box(Modifier.heightIn(min = 44.dp).clickable(onClick = onClick), contentAlignment = Alignment.CenterStart) {
-        ArrowText("全部模型", pal.blue, T.body)
+        ArrowText("全部模型", pal.blue, T.s15)
     }
 }

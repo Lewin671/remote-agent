@@ -191,7 +191,7 @@ fun PendingDock(
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.line)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.sep)) {
         Row(
             Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(
                 role = Role.Button,
@@ -210,17 +210,17 @@ fun PendingDock(
             // One text, so a long type keeps its place first and the rest gives way.
             Text(
                 buildAnnotatedString {
-                    withStyle(SpanStyle(color = p.fg2)) { append(label) }
+                    withStyle(SpanStyle(color = p.ink)) { append(label) }
                     if (rest.isNotEmpty())
-                        withStyle(SpanStyle(color = p.muted)) { append("  $rest") }
+                        withStyle(SpanStyle(color = p.ink2)) { append("  $rest") }
                 },
-                style = T.sm,
+                style = T.s13,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
             if (open) headExtra?.invoke()
-            ArrowText(if (open) "收起" else "处理", p.blue, T.sm, down = !open, up = open)
+            ArrowText(if (open) "收起" else "处理", p.blue, T.s13, down = !open, up = open)
         }
         if (open) {
             Column(Modifier.heightIn(max = LocalDockMax.current)) {
@@ -256,13 +256,13 @@ fun DockFoot(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (left.isNotEmpty())
-            Text(left, style = T.meta, color = p.muted, modifier = Modifier.weight(1f))
+            Text(left, style = T.s12, color = p.ink2, modifier = Modifier.weight(1f))
         Box(
             Modifier.heightIn(min = 44.dp).clickable(onClick = onLink),
             contentAlignment = Alignment.CenterStart,
         ) {
-            if (arrow) ArrowText(link, if (danger) p.red else p.blue, T.metaB)
-            else Text(link, style = T.metaB, color = if (danger) p.red else p.blue)
+            if (arrow) ArrowText(link, if (danger) p.red else p.blue, T.s12b)
+            else Text(link, style = T.s12b, color = if (danger) p.red else p.blue)
         }
     }
 }
@@ -270,7 +270,7 @@ fun DockFoot(
 @Composable
 fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
     if (isSkeleton(a)) {
-        Text(skeletonMessage, style = T.sm, color = pal.muted)
+        Text(skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val p = pal
@@ -291,8 +291,8 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
             if (a.description.isNotEmpty())
                 Text(
                     approvalDisplay(a.description),
-                    style = T.sm,
-                    color = p.fg2,
+                    style = T.s13,
+                    color = p.ink,
                 )
         },
     ) {
@@ -388,7 +388,7 @@ fun ApprovalButtons(
     onCard: Boolean = false,
 ) {
     if (isSkeleton(a)) {
-        Text(skeletonMessage, style = T.sm, color = pal.muted)
+        Text(skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val p = pal
@@ -406,7 +406,7 @@ fun ApprovalButtons(
             ?.approvalAlways == true
     val stuck = r.attempt.frozen
     val truncated = approvalTruncated(a)
-    if (truncated) Text(approvalTruncatedMessage, style = T.sm, color = p.red)
+    if (truncated) Text(approvalTruncatedMessage, style = T.s13, color = p.red)
     fun resolve(allow: Boolean, message: String = "", always: Boolean = false) {
         which = allow
         act.run(
@@ -418,7 +418,7 @@ fun ApprovalButtons(
     }
     if (act.running || stuck || which != null) {
         if (act.running || (act.error.isEmpty() && !stuck))
-            Text(if (act.running) "正在送到电脑…" else "已提交，等待电脑确认", style = T.meta, color = p.muted)
+            Text(if (act.running) "正在送到电脑…" else "已提交，等待电脑确认", style = T.s12, color = p.ink2)
     } else if (opened || reasonOpen) {
         ReasonField(reason, { reason = it }, "拒绝理由（可选）", Modifier.widthIn(max = ActionRowMax))
         Btns(Modifier.widthIn(max = ActionRowMax)) {
@@ -443,7 +443,7 @@ fun ApprovalButtons(
                 },
                 Modifier.weight(1f),
                 BtnKind.NEGATIVE,
-                bg = if (onCard) p.card else null,
+                bg = if (onCard) p.paper else null,
             )
             Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !truncated)
         }
@@ -452,7 +452,7 @@ fun ApprovalButtons(
                 "允许，这类请求以后不再问",
                 { resolve(true, always = true) },
                 modifier = Modifier.widthIn(max = ActionRowMax).fillMaxWidth(),
-                style = T.smB,
+                style = T.s13b,
                 alignment = Alignment.Center,
             )
     }
@@ -498,13 +498,13 @@ fun ReasonField(
         value,
         onValue,
         modifier.fillMaxWidth().padding(bottom = 8.dp),
-        textStyle = T.body.copy(color = p.fg),
+        textStyle = T.s15.copy(color = p.ink),
         cursorBrush = SolidColor(p.blue),
         maxLines = if (singleLine) 1 else maxLines,
         singleLine = singleLine,
         decorationBox = { inner ->
             FieldBox {
-                if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)
+                if (value.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2)
                 inner()
             }
         },
@@ -596,7 +596,7 @@ fun QuestionBody(
     act: Action = rememberAction(),
 ) {
     if (isSkeleton(q)) {
-        if (part != 2) Text(skeletonMessage, style = T.sm, color = pal.muted)
+        if (part != 2) Text(skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val p = pal
@@ -654,14 +654,14 @@ fun QuestionBody(
         if (full)
             Text(
                 progress,
-                style = T.meta,
-                color = p.muted,
+                style = T.s12,
+                color = p.ink2,
                 modifier = Modifier.padding(top = 12.dp),
             )
         Text(
             cur.text,
-            style = if (full) T.h17 else T.bodyB,
-            color = p.fg,
+            style = if (full) T.s17b else T.s15b,
+            color = p.ink,
             maxLines = if (full) Int.MAX_VALUE else 4,
             overflow = TextOverflow.Ellipsis,
             modifier =
@@ -672,7 +672,7 @@ fun QuestionBody(
         )
         if (!full && longQuestion(cur))
             Box(Modifier.clickable(onClick = onLong).padding(bottom = 4.dp)) {
-                ArrowText("展开全文", p.blue, T.smB)
+                ArrowText("展开全文", p.blue, T.s13b)
             }
         cur.optionsList.forEachIndexed { i, o ->
             val (label, rec) = optionLabel(o.label)
@@ -683,11 +683,11 @@ fun QuestionBody(
                 Modifier.fillMaxWidth()
                     .padding(vertical = 3.dp)
                     .heightIn(min = 44.dp)
-                    .clip(Radii.SM)
+                    .clip(Radii.R14)
                     .background(
-                        if (sel) p.blueSoft else androidx.compose.ui.graphics.Color.Transparent,
+                        if (sel) p.fill else androidx.compose.ui.graphics.Color.Transparent,
                     )
-                    .border(1.dp, if (sel) p.blue else p.line, Radii.SM)
+                    .border(1.dp, if (sel) p.blue else p.sep, Radii.R14)
                     .clickable(enabled = !act.running) {
                         if (cur.multiSelect) {
                             val set = (QuestionPicks.multi[key] ?: emptySet()).toMutableSet()
@@ -708,10 +708,10 @@ fun QuestionBody(
                             .size(18.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .background(
-                                if (sel) p.blueBg
+                                if (sel) p.blue
                                 else androidx.compose.ui.graphics.Color.Transparent,
                             )
-                            .border(1.dp, if (sel) p.blueBg else p.muted, RoundedCornerShape(4.dp)),
+                            .border(1.dp, if (sel) p.blue else p.ink2, RoundedCornerShape(4.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (sel) Mark(Lucide.Check, androidx.compose.ui.graphics.Color.White, 12.dp)
@@ -719,13 +719,13 @@ fun QuestionBody(
                 else if (sel)
                     Box(Modifier.padding(top = 3.dp)) { Mark(Lucide.Check, p.blue, 13.dp) }
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = T.sm, color = p.fg)
+                    Text(label, style = T.s13, color = p.ink)
                     if (o.description.isNotEmpty())
-                        Text(o.description, style = T.meta, color = p.muted)
+                        Text(o.description, style = T.s12, color = p.ink2)
                     if (sel && act.running && !cur.multiSelect)
-                        Text("提交中…", style = T.meta, color = p.muted)
+                        Text("提交中…", style = T.s12, color = p.ink2)
                 }
-                if (rec) Text("推荐", style = T.metaB, color = p.blue)
+                if (rec) Text("推荐", style = T.s12b, color = p.blue)
             }
         }
         if (!act.running && answer.attempt.frozen) {
@@ -785,7 +785,7 @@ fun Steps(n: Int, at: Int) {
                 Modifier.width(16.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(2.dp))
-                    .background(if (i <= at) p.blue else p.track),
+                    .background(if (i <= at) p.blue else p.fill2),
             )
         }
     }
@@ -866,7 +866,7 @@ fun QuestionPage(sid: String, qid: String) {
         }
         Column(
             Modifier.padding(horizontal = 14.dp)
-                .topLine(pal.line)
+                .topLine(pal.sep)
                 .padding(top = 8.dp, bottom = 16.dp),
         ) {
             QuestionBody(
@@ -885,7 +885,7 @@ fun QuestionPage(sid: String, qid: String) {
 @Composable
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     if (isSkeleton(text)) {
-        Text(skeletonMessage, style = T.sm, color = pal.muted)
+        Text(skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val p = pal
@@ -902,7 +902,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
                     .padding(end = 6.dp),
                 contentAlignment = Alignment.CenterEnd,
             ) {
-                ArrowText("展开全文", p.blue, T.sm)
+                ArrowText("展开全文", p.blue, T.s13)
             }
         },
         body = {
@@ -914,12 +914,12 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
                     .filter { it.isNotBlank() }
                     .joinToString("\n"),
                 style = ts(13.sp, lineHeight = 1.6f),
-                color = p.fg,
+                color = p.ink,
                 modifier =
                     Modifier.padding(bottom = 4.dp)
                         .fillMaxWidth()
-                        .clip(Radii.XS)
-                        .background(p.soft)
+                        .clip(Radii.R6)
+                        .background(p.gbg)
                         .padding(horizontal = 10.dp, vertical = 7.dp),
             )
         },
@@ -929,8 +929,8 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
         if (!isSkeleton(text) && planNote != null)
             Text(
                 planNote,
-                style = T.meta,
-                color = p.muted,
+                style = T.s12,
+                color = p.ink2,
                 modifier = Modifier.padding(top = 7.dp),
             )
     }
@@ -948,7 +948,7 @@ fun PlanButtons(
     onDone: () -> Unit = {},
 ) {
     if (terminalOnly) {
-        Text(skeletonMessage, style = T.sm, color = pal.muted)
+        Text(skeletonMessage, style = T.s13, color = pal.ink2)
         return
     }
     val remote = LocalRemote.current
@@ -1057,11 +1057,11 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
                 Text(
                     title,
                     style = ts(15.sp, FontWeight.Medium),
-                    color = p.fg,
+                    color = p.ink,
                     modifier = Modifier.padding(bottom = 6.dp),
                 )
             val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
-            if (hint.isNotEmpty()) Text(hint, style = T.sm, color = p.orangeInk)
+            if (hint.isNotEmpty()) Text(hint, style = T.s13, color = p.orangeInk)
         },
     ) {
         Btn("去终端处理", onTerminal, Modifier.fillMaxWidth(), BtnKind.PRIMARY)

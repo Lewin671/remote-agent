@@ -58,15 +58,15 @@ private sealed interface JoinStep {
 fun RemovedScreen(app: RaApp, remote: Remote) {
     val p = pal
     Column(
-        Modifier.fillMaxSize().background(p.card).padding(horizontal = 24.dp),
+        Modifier.fillMaxSize().background(p.paper).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("服务器拒绝了这台设备的登录", style = T.h17, color = p.fg, textAlign = TextAlign.Center)
+        Text("服务器拒绝了这台设备的登录", style = T.s17b, color = p.ink, textAlign = TextAlign.Center)
         Text(
             "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。",
-            style = T.sm,
-            color = p.muted,
+            style = T.s13,
+            color = p.ink2,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
@@ -79,8 +79,8 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
         }
         Text(
             "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
-            style = T.sm,
-            color = p.muted,
+            style = T.s13,
+            color = p.ink2,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
         )
@@ -256,13 +256,13 @@ private fun JoinContent(app: RaApp) {
     }
 
     if (checkingIdentity) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("正在连接…", color = p.muted) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("正在连接…", color = p.ink2) }
         return
     }
     if (existingRemoved) {
-        Column(Modifier.fillMaxSize().background(p.card).padding(24.dp),
+        Column(Modifier.fillMaxSize().background(p.paper).padding(24.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("服务器不认识这台设备", style = T.h17, color = p.fg)
+            Text("服务器不认识这台设备", style = T.s17b, color = p.ink)
             Hint("可能已被移除，或服务已重建。电脑上的会话不受影响。")
             RejoinButton(app, "用配对码重新加入")
             Hint("会先删除这台手机上的账户密钥和缓存，再用配对码加入。")
@@ -271,7 +271,7 @@ private fun JoinContent(app: RaApp) {
     }
 
     if (mode == "entry") {
-        Column(Modifier.fillMaxSize().background(p.soft).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxSize().background(p.gbg).verticalScroll(rememberScrollState())) {
             LargeTitle("加入账户")
             Group(rows = listOf(
                 { GRow("新建账户", onClick = { mode = "create" }, chevron = true) },
@@ -321,7 +321,7 @@ private fun JoinContent(app: RaApp) {
         else ->
             Column(
                 Modifier.fillMaxSize()
-                    .background(p.card)
+                    .background(p.paper)
                     .imePadding()
                     .verticalScroll(rememberScrollState()),
             ) {
@@ -333,7 +333,7 @@ private fun JoinContent(app: RaApp) {
                             right = {
                                 Text(
                                     "取消",
-                                    style = T.body,
+                                    style = T.s15,
                                     color = p.blue,
                                     modifier = Modifier.clickable { cancel() },
                                 )
@@ -348,8 +348,8 @@ private fun JoinContent(app: RaApp) {
                         )
                         Text(
                             "核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。",
-                            style = T.sm,
-                            color = p.muted,
+                            style = T.s13,
+                            color = p.ink2,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
@@ -367,8 +367,8 @@ private fun JoinContent(app: RaApp) {
                         IconText(
                             Lucide.LoaderCircle,
                             if (comparison != null) "请先在本机确认图案" else "等待管理端批准并完成加入…",
-                            p.muted,
-                            T.sm,
+                            p.ink2,
+                            T.s13,
                             Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth(),
                         )
                         Btn(
@@ -386,8 +386,8 @@ private fun JoinContent(app: RaApp) {
                         IconText(
                             Lucide.LoaderCircle,
                             "正在连接…",
-                            p.muted,
-                            T.sm,
+                            p.ink2,
+                            T.s13,
                             Modifier.padding(horizontal = 16.dp),
                         )
                         if (error.isNotEmpty()) Hint(error, Modifier.padding(horizontal = 16.dp))
@@ -399,8 +399,8 @@ private fun JoinContent(app: RaApp) {
                             if (existing != null)
                                 "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
                             else "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
-                            style = T.sm,
-                            color = p.muted,
+                            style = T.s13,
+                            color = p.ink2,
                             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp),
                         )
                         if (error.isNotEmpty())
@@ -431,7 +431,7 @@ private fun JoinContent(app: RaApp) {
                                     fontSize = 22.sp,
                                     letterSpacing = 4.sp,
                                     textAlign = TextAlign.Center,
-                                    color = p.fg,
+                                    color = p.ink,
                                 ),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true,
@@ -441,8 +441,8 @@ private fun JoinContent(app: RaApp) {
                                     if (code.isEmpty())
                                         Text(
                                             "输入 8 位配对码",
-                                            style = T.body,
-                                            color = p.muted,
+                                            style = T.s15,
+                                            color = p.ink2,
                                             textAlign = TextAlign.Center,
                                             modifier = Modifier.fillMaxWidth(),
                                         )
@@ -494,8 +494,8 @@ private fun JoinContent(app: RaApp) {
 private fun JoinTitle(text: String) {
     Text(
         text,
-        style = T.title30,
-        color = pal.fg,
+        style = T.title,
+        color = pal.ink,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 8.dp),
     )
 }
@@ -506,7 +506,7 @@ private fun JoinLink(text: String, onClick: () -> Unit) {
         Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = T.sm, color = pal.blue)
+        Text(text, style = T.s13, color = pal.blue)
     }
 }
 
@@ -526,7 +526,7 @@ private fun JoinField(
         value,
         onValue,
         Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 10.dp),
-        textStyle = (if (mono) T.mono13 else T.body).copy(color = p.fg),
+        textStyle = (if (mono) T.mono13 else T.s15).copy(color = p.ink),
         singleLine = lines == 1,
         minLines = lines,
         keyboardOptions = KeyboardOptions(keyboardType = keyboard),
@@ -536,12 +536,12 @@ private fun JoinField(
                 Column {
                     Text(
                         label,
-                        style = T.meta,
-                        color = p.muted,
+                        style = T.s12,
+                        color = p.ink2,
                         modifier = Modifier.padding(bottom = 2.dp),
                     )
                     Box {
-                        if (value.isEmpty()) Text(placeholder, style = T.body, color = p.muted)
+                        if (value.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2)
                         inner()
                     }
                 }

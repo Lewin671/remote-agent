@@ -84,7 +84,7 @@ fun ComposeBox(
     var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
     Box(modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 12.dp)) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.card).border(1.dp, p.line, RoundedCornerShape(24.dp)).padding(3.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.paper).border(1.dp, p.sep, RoundedCornerShape(24.dp)).padding(3.dp)) {
             top?.invoke()
             Row(verticalAlignment = Alignment.Bottom) {
                 Box(
@@ -93,7 +93,7 @@ fun ComposeBox(
                         .semantics { contentDescription = if (onFile != null) "添加附件" else "添加图片" },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Ic(Lucide.Plus, 22.dp, p.muted)
+                    Ic(Lucide.Plus, 22.dp, p.ink2)
                     androidx.compose.material3.DropdownMenu(expanded = attachMenu && onFile != null, onDismissRequest = { attachMenu = false }) {
                         androidx.compose.material3.DropdownMenuItem(text = { Text("图片") }, onClick = { attachMenu = false; onPlus() })
                         androidx.compose.material3.DropdownMenuItem(text = { Text("文件") }, onClick = { attachMenu = false; onFile?.invoke() })
@@ -104,12 +104,12 @@ fun ComposeBox(
                     Modifier.weight(1f).heightIn(min = 44.dp).padding(horizontal = 4.dp, vertical = 10.dp)
                         .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
                         .onFocusChanged { onFocus(it.isFocused) },
-                    textStyle = T.body.copy(color = p.fg),
+                    textStyle = T.s15.copy(color = p.ink),
                     cursorBrush = SolidColor(p.blue),
                     maxLines = 6,
                     decorationBox = { inner ->
                         Box {
-                            if (text.isEmpty()) Text(placeholder, style = T.body, color = p.muted, maxLines = 1)
+                            if (text.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2, maxLines = 1)
                             inner()
                         }
                     },
@@ -123,21 +123,21 @@ fun ComposeBox(
                         .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Box(Modifier.size(32.dp).alpha(if (if (interrupt) canInterrupt else canSend) 1f else .4f).clip(CircleShape).background(if (interrupt) p.chip else p.blueBg), contentAlignment = Alignment.Center) {
-                        if (interrupt) Ic(Lucide.Square, 14.dp, p.red) else Ic(Lucide.ArrowUp, 20.dp, Color.White)
+                    Box(Modifier.size(32.dp).alpha(if (if (interrupt) canInterrupt else canSend) 1f else .4f).clip(CircleShape).background(if (interrupt) p.fill2 else p.btn), contentAlignment = Alignment.Center) {
+                        if (interrupt) Ic(Lucide.Square, 14.dp, p.red) else Ic(Lucide.ArrowUp, 20.dp, p.btnFg)
                     }
                 }
             }
         }
         if (sendMenu) Popup(popupPositionProvider = RightAboveProvider(gap), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
-            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 190.dp, max = 250.dp).shadow(8.dp, Radii.SM).clip(Radii.SM).background(p.card).border(1.dp, p.line, Radii.SM).padding(8.dp)) {
+            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 190.dp, max = 250.dp).shadow(8.dp, Radii.R14).clip(Radii.R14).background(p.paper).border(1.dp, p.sep, Radii.R14).padding(8.dp)) {
                 for ((label, detail, action) in listOf(
                     Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
                     Triple("这一轮结束后再发", "先排队，结束后按顺序发出", { onQueue?.invoke() }),
                 )) {
                     Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { sendMenu = false; action() }, verticalArrangement = Arrangement.Center) {
-                        Text(label, style = T.smB, color = p.fg)
-                        Text(detail, style = T.meta, color = p.muted)
+                        Text(label, style = T.s13b, color = p.ink)
+                        Text(detail, style = T.s12, color = p.ink2)
                     }
                 }
             }

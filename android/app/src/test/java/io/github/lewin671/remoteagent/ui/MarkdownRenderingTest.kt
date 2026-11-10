@@ -23,7 +23,7 @@ class MarkdownRenderingTest {
             val rendered = richLines(source, palette)
             assertEquals("a `b\nc` d\na **b\nc** d\nbefore `\nx₁ + y²\nafter `", rendered.text)
             assertTrue(rendered.getStringAnnotations("code", 0, rendered.length).isEmpty())
-            val formulas = rendered.spanStyles.filter { it.item.background == palette.chip }
+            val formulas = rendered.spanStyles.filter { it.item.background == palette.fill2 }
             assertEquals(1, formulas.size)
             val formula = formulas.single()
             assertEquals("x₁ + y²", rendered.text.substring(formula.start, formula.end))

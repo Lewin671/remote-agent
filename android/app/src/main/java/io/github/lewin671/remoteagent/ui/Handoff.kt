@@ -37,8 +37,8 @@ internal fun HandoffPreparationContent(
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
             Text(
                 "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
-                style = T.sm,
-                color = pal.muted,
+                style = T.s13,
+                color = pal.ink2,
             )
             val value = prepared
             if (value != null) {

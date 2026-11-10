@@ -407,19 +407,19 @@ fun ProjectScreen(key: String, focus: Boolean) {
         val cfg = launch ?: return@LaunchedEffect
         summaryModels = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
     }
-    Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
+    Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
         val folded = launch?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
         NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
         LazyColumn(Modifier.weight(1f), state = list) {
             item {
                 Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    Avatar(key, 52)
+                    ProjectAvatar(key, 52)
                     Column(Modifier.weight(1f)) {
-                        Text(projectName(key), style = T.h22, color = p.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                        Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.sm, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(projectName(key), style = T.h22, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text((listOf(shortPath(key)) + machines).joinToString(" · "), style = T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Text("${active.size} 个进行中 · ", style = T.sm, color = p.muted)
-                            Box(Modifier.clickable(enabled = endedTotal > 0) { showEnded = !showEnded }) { ArrowText("已结束 $endedTotal", p.blue, T.smB, down = showEnded) }
+                            Text("${active.size} 个进行中 · ", style = T.s13, color = p.ink2)
+                            Box(Modifier.clickable(enabled = endedTotal > 0) { showEnded = !showEnded }) { ArrowText("已结束 $endedTotal", p.blue, T.s13b, down = showEnded) }
                         }
                         if (launch != null) {
                             val full = launch.mode == Mode.FULL || (launch.mode == null && defaultModeOf(state.machines[launch.machineId], launch.agent).mode == Mode.FULL)
@@ -483,7 +483,7 @@ fun AgentSwitch(agents: List<Agent>, selected: Agent, modifier: Modifier = Modif
     val p = pal
     Row(modifier.fillMaxWidth()) {
         Row(
-            Modifier.drawBehind { drawRoundRect(p.chip, Offset(0f, 4.dp.toPx()), Size(size.width, size.height - 8.dp.toPx()), CornerRadius(10.dp.toPx())) }
+            Modifier.drawBehind { drawRoundRect(p.fill2, Offset(0f, 4.dp.toPx()), Size(size.width, size.height - 8.dp.toPx()), CornerRadius(10.dp.toPx())) }
                 .padding(horizontal = 2.dp).selectableGroup().semantics { contentDescription = "新会话使用的 CLI" },
             horizontalArrangement = Arrangement.spacedBy(2.dp),
         ) {
@@ -492,9 +492,9 @@ fun AgentSwitch(agents: List<Agent>, selected: Agent, modifier: Modifier = Modif
                 Box(Modifier.heightIn(min = 44.dp).selectable(selected = on, role = Role.RadioButton, onClick = { onSelect(a) }).padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
                     Box(
                         Modifier.widthIn(min = 56.dp).heightIn(min = 32.dp)
-                            .then(if (on) Modifier.shadow(1.dp, RoundedCornerShape(8.dp)).background(p.card, RoundedCornerShape(8.dp)) else Modifier).padding(horizontal = 10.dp),
+                            .then(if (on) Modifier.shadow(1.dp, RoundedCornerShape(8.dp)).background(p.paper, RoundedCornerShape(8.dp)) else Modifier).padding(horizontal = 10.dp),
                         contentAlignment = Alignment.Center,
-                    ) { Text(agentName(a), style = if (on) T.smB else T.sm, color = if (on) p.fg else p.muted, maxLines = 1) }
+                    ) { Text(agentName(a), style = if (on) T.s13b else T.s13, color = if (on) p.ink else p.ink2, maxLines = 1) }
                 }
             }
         }
@@ -513,10 +513,10 @@ private fun SummaryChip(summary: String, full: Boolean, modifier: Modifier = Mod
             append(summary.substring(start + Mode.FULL.text.length))
         } else append(summary)
     }
-    Row(modifier.clip(RoundedCornerShape(10.dp)).background(p.chip).clickable(onClick = onClick).heightIn(min = 32.dp).padding(horizontal = 10.dp, vertical = 4.dp),
+    Row(modifier.clip(RoundedCornerShape(10.dp)).background(p.fill2).clickable(onClick = onClick).heightIn(min = 32.dp).padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(shown, style = T.sm, color = p.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-        Arrow(p.faint)
+        Text(shown, style = T.s13, color = p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+        Arrow(p.ink3)
     }
 }
 
@@ -690,7 +690,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
         Column(Modifier.padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             // Why nothing can start yet; a page that failed says so, with the tap that tries again.
             if (!settled && (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty())) EarlierTail(state, Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
-            else if (!settled) Text("正在读取这个项目上次的设置…", style = T.meta, color = p.muted, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
+            else if (!settled) Text("正在读取这个项目上次的设置…", style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
             else if (c != null && state.machines[c.machineId]?.online != true) Banner("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = Tone2.WARN)
             if (c != null && missing != null) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
@@ -757,9 +757,9 @@ fun machineSubtitle(installed: List<Agent>, missing: Agent? = null, fallback: Ag
 private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoose: (NewConfig) -> Unit) {
     val p = pal
     val others = projectMachines(state, c.cwd).filter { it != c.machineId && state.machines[it]?.online == true }
-    Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft).padding(horizontal = 12.dp, vertical = 9.dp)) {
-        Text("${machineLabel(state, c.machineId)} 已离线，任务尚未开始", style = T.sm, color = p.orangeInk)
-        Text("草稿已保留，请选择在线机器；不自动换机器或 CLI。", style = T.meta, color = p.muted)
+    Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg).padding(horizontal = 12.dp, vertical = 9.dp)) {
+        Text("${machineLabel(state, c.machineId)} 已离线，任务尚未开始", style = T.s13, color = p.orangeInk)
+        Text("草稿已保留，请选择在线机器；不自动换机器或 CLI。", style = T.s12, color = p.ink2)
         for (id in others) {
             val agents = machineAgents(state.machines[id])
             val cliNote = when {
@@ -768,13 +768,13 @@ private fun OfflineChoice(state: RemoteState, c: NewConfig, name: String, onChoo
             }
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { onChoose(switchMachine(c, id, agents)) }, verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("改用 ${machineLabel(state, id)}", style = T.bodyB, color = p.fg)
-                    Text(cliNote, style = T.meta, color = p.muted)
+                    Text("改用 ${machineLabel(state, id)}", style = T.s15b, color = p.ink)
+                    Text(cliNote, style = T.s12, color = p.ink2)
                 }
-                Arrow(p.muted, T.body)
+                Arrow(p.ink2, T.s15)
             }
         }
-        if (others.isEmpty()) Text("$name 用过的其他电脑也都不在线。", style = T.meta, color = p.muted)
+        if (others.isEmpty()) Text("$name 用过的其他电脑也都不在线。", style = T.s12, color = p.ink2)
     }
 }
 
@@ -784,13 +784,13 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
     val p = pal
     if (LocalDensity.current.fontScale >= 1.8f) {
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp)) {
-            Text(label, style = T.sm, color = p.muted, maxLines = 1)
+            Text(label, style = T.s13, color = p.ink2, maxLines = 1)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                 if (dot != null) Dot(dot)
-                Text(value, style = T.sm, color = valueColor ?: p.fg2, textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                Text(value, style = T.s13, color = valueColor ?: p.ink, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                     modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false))
                 Spacer(Modifier.width(8.dp))
-                Arrow(p.faint, ts(18.sp))
+                Arrow(p.ink3, ts(18.sp))
             }
         }
         return
@@ -799,10 +799,10 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
         Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(label, style = T.sm, color = p.muted, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
+        Text(label, style = T.s13, color = p.ink2, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
         if (dot != null) Dot(dot)
-        Text(value, style = T.sm, color = valueColor ?: p.fg2, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.widthIn(max = 200.dp))
-        Arrow(p.faint, ts(18.sp))
+        Text(value, style = T.s13, color = valueColor ?: p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.widthIn(max = 200.dp))
+        Arrow(p.ink3, ts(18.sp))
     }
 }
 
@@ -874,15 +874,15 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 SheetHead(if (lockMachine) "任务设置" else "项目设置", if (blockedPrefs == null) "完成" else null, { done() })
                 if (blockedPrefs != null) Banner(blockedPrefs)
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Avatar(cwd, 22)
+                    ProjectAvatar(cwd, 28)
                     Column(Modifier.weight(1f)) {
-                        Text(name, style = T.bodyB, color = p.fg)
-                        Text(shortPath(cwd), style = T.mono, color = p.muted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        Text(name, style = T.s15b, color = p.ink)
+                        Text(shortPath(cwd), style = T.mono12, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     }
                 }
                 FieldLabel("新会话")
                 val machineRow: @Composable () -> Unit =
-                    { SetRow("机器", machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.gray) }
+                    { SetRow("机器", machineLabel(state, machine), if (lockMachine) null else ({ page = "machine" }), dot = if (state.machines[machine]?.online == true) p.green else p.faint) }
                 val rows = listOf<@Composable () -> Unit>(
                     {
                         SetRow("模型", listOf(shownModel?.displayName?.ifEmpty { null } ?: c.model, c.effort).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { "默认模型" }, { page = "model" })
@@ -895,15 +895,15 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     { SetRow(if (lockMachine) "权限" else "审批", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null) },
                 )
                 @Composable
-                fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
+                fun card(rows: List<@Composable () -> Unit>) = Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
                     rows.forEachIndexed { i, r ->
-                        if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.line, thickness = 1.dp)
+                        if (i > 0) androidx.compose.material3.HorizontalDivider(color = p.sep, thickness = 1.dp)
                         r()
                     }
                 }
                 val reading: @Composable () -> Unit = {
                     if (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(14.dp))
-                    else Text("正在读取 ${agentName(cur)} 上次的设置…", style = T.sm, color = p.muted, modifier = Modifier.fillMaxWidth().padding(14.dp))
+                    else Text("正在读取 ${agentName(cur)} 上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(14.dp))
                 }
                 if (unread && agents.size > 1) {
                     card(listOf(machineRow))
@@ -953,7 +953,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                             }
                             page = ""
                         },
-                        trailing = { Dot(if (online) p.green else p.gray) },
+                        trailing = { Dot(if (online) p.green else p.faint) },
                     )
                 }
                 Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
@@ -963,7 +963,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 val ms = models
                 when {
                     modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
-                    ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
+                    ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
                         val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
                         ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
@@ -1018,7 +1018,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
 fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> Unit) {
     val p = pal
     ProjectList(state, onNew = onNew) { pr ->
-        ProjectRow(state, pr, onClick = { onPick(pr.key) }) { Arrow(p.faint, ts(18.sp)) }
+        ProjectRow(state, pr, onClick = { onPick(pr.key) }) { Arrow(p.ink3, ts(18.sp)) }
     }
 }
 
@@ -1079,7 +1079,7 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
         }
     }
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("机器", style = T.meta, color = p.muted)
+        Text("机器", style = T.s12, color = p.ink2)
         for (m in state.machines.values) {
             val on = machine == m.id
             Row(
@@ -1087,12 +1087,12 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
-                    Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.blueSoft else p.chip).then(if (on) Modifier.border(1.5.dp, p.blue, RoundedCornerShape(14.dp)) else Modifier)
+                    Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.fill else p.fill2).then(if (on) Modifier.border(1.5.dp, p.blue, RoundedCornerShape(14.dp)) else Modifier)
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Dot(if (m.online) p.green else p.gray)
-                    Text(machineLabel(state, m.id), style = T.sm, color = if (on) p.blue else p.fg2)
+                    Dot(if (m.online) p.green else p.faint)
+                    Text(machineLabel(state, m.id), style = T.s13, color = if (on) p.blue else p.ink)
                 }
             }
         }
@@ -1101,22 +1101,22 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
     when {
         machine.isEmpty() -> Banner("没有在线的电脑", tone = Tone2.WARN)
         error.isNotEmpty() -> Banner("读不了这个目录：$error", tone = Tone2.ERROR, action = "重试", onAction = { attempt++ })
-        d == null -> Text("读取中…", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 12.dp))
+        d == null -> Text("读取中…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
         else -> {
             val parts = shortPath(d.path).split("/").filter { it.isNotEmpty() }
             Text(
                 androidx.compose.ui.text.buildAnnotatedString {
                     parts.forEachIndexed { i, part ->
                         if (i > 0) append(" / ")
-                        if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.fg, fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.SemiBold))); append(part); pop() } else append(part)
+                        if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink, fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.SemiBold))); append(part); pop() } else append(part)
                     }
                 },
-                style = T.mono13, color = p.muted, modifier = Modifier.padding(bottom = 6.dp),
+                style = T.mono13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp),
             )
-            if (d.dirsList.isEmpty()) Text("没有子目录", style = T.sm, color = p.muted, modifier = Modifier.padding(vertical = 8.dp))
+            if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
             if (d.parent.isNotEmpty()) ListItem("上一级", last = d.dirsList.isEmpty(), onClick = { path = d.parent }, icon = Lucide.ChevronLeft)
             d.dirsList.forEachIndexed { i, name ->
-                ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.muted, T.body) })
+                ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.ink2, T.s15) })
             }
             Btn("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), BtnKind.PRIMARY)
         }
@@ -1161,10 +1161,10 @@ fun NewProjectAtScreen(machine: String, path: String) {
         summaryModels = runCatching { remote.listModels(selected.machineId, selected.agent) }.getOrNull()
     }
     var settingsOpen by remember { mutableStateOf<String?>(null) }
-    Column(Modifier.fillMaxSize().background(p.card).imePadding()) {
+    Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
         NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
         SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
-        Text("这个项目还没有会话。", style = T.sm, color = p.muted, modifier = Modifier.padding(16.dp).weight(1f))
+        Text("这个项目还没有会话。", style = T.s13, color = p.ink2, modifier = Modifier.padding(16.dp).weight(1f))
         NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)
     }
     val open = settingsOpen

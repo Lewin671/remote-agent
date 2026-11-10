@@ -38,7 +38,7 @@ class MarkdownTableLayoutTest {
             val base = LocalDensity.current
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(base.density, font)) {
-                    Column(Modifier.width(320.dp).background(pal.card).testTag("frame")) { Markdown(text) }
+                    Column(Modifier.width(320.dp).background(pal.paper).testTag("frame")) { Markdown(text) }
                 }
             }
         }
@@ -91,7 +91,7 @@ class MarkdownTableLayoutTest {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(base.density, scale.floatValue)) {
-                    Column(Modifier.width(320.dp).background(pal.card)) { Markdown(financial) }
+                    Column(Modifier.width(320.dp).background(pal.paper)) { Markdown(financial) }
                 }
             }
         }

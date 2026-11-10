@@ -98,32 +98,32 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
     }
     if (draft.restoring) {
-        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.muted)
+        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s12, color = p.ink2)
         return
     }
     FileStrip(draft, remote, machineId)
     if (draft.pictures.isEmpty()) {
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() }
-        if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.meta, color = p.orangeInk)
+        if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s12, color = p.orangeInk)
         return
     }
     Column(Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, top = 2.dp)) {
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (img in draft.pictures) {
-                Box(Modifier.size(56.dp).clip(Radii.SM).background(p.soft).border(1.dp, Color(0x1A000000), Radii.SM)) {
+                Box(Modifier.size(56.dp).clip(Radii.R14).background(p.gbg).border(1.dp, Color(0x1A000000), Radii.R14)) {
                     img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                     when (val st = img.state) {
                         PendingImage.State.Processing -> CircularProgressIndicator(Modifier.align(Alignment.Center).size(24.dp), color = Color.White, strokeWidth = 3.dp, trackColor = Color(0x59FFFFFF))
                         is PendingImage.State.Uploading -> {
                             CircularProgressIndicator(Modifier.align(Alignment.Center).size(24.dp), color = Color.White, strokeWidth = 3.dp, trackColor = Color(0x59FFFFFF))
                             if (draft.original) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Color(0x59000000))) {
-                                Box(Modifier.fillMaxWidth(st.progress).height(4.dp).background(p.blueBg))
+                                Box(Modifier.fillMaxWidth(st.progress).height(4.dp).background(p.blue))
                             }
                         }
                         is PendingImage.State.Failed -> Box(
                             Modifier.fillMaxSize().background(Color(0x99000000)).clickable { draft.retry(context, img, remote) { machineId } },
                             contentAlignment = Alignment.BottomCenter,
-                        ) { Text("重试", color = Color.White, style = T.tab, modifier = Modifier.padding(bottom = 4.dp)) }
+                        ) { Text("重试", color = Color.White, style = T.s10, modifier = Modifier.padding(bottom = 4.dp)) }
                         PendingImage.State.Ready -> {}
                     }
                     // 18 dp to see, 44 dp to tap.
@@ -137,17 +137,17 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
         Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.heightIn(min = 44.dp).clickable { draft.setOriginal(context, !draft.original, remote) { machineId } }, verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(14.dp).clip(CircleShape).border(if (draft.original) 4.dp else 1.5.dp, if (draft.original) p.blueBg else p.muted, CircleShape))
-                Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.meta, color = p.fg2)
+                Box(Modifier.size(14.dp).clip(CircleShape).border(if (draft.original) 4.dp else 1.5.dp, if (draft.original) p.blue else p.ink2, CircleShape))
+                Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.s12, color = p.ink)
             }
             Spacer(Modifier.weight(1f))
-            Text("${draft.pictures.size} / $max", style = T.meta, color = p.muted)
+            Text("${draft.pictures.size} / $max", style = T.s12, color = p.ink2)
         }
         val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() } ?: failed?.let { "有图没能传到电脑：$it，点按重试或移除" }
-        if (line != null) Text(line, style = T.meta, color = p.orangeInk, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
-        if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.meta, color = p.muted, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        if (line != null) Text(line, style = T.s12, color = p.orangeInk, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s12, color = p.ink2, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
     }
 }
 

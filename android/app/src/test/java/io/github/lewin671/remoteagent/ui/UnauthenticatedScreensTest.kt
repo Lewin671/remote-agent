@@ -39,7 +39,7 @@ class UnauthenticatedScreensTest {
     private fun show(content: @androidx.compose.runtime.Composable () -> Unit) {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
-                Surface(Modifier.fillMaxSize(), color = pal.card) { content() }
+                Surface(Modifier.fillMaxSize(), color = pal.paper) { content() }
             }
         }
     }

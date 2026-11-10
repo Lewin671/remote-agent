@@ -38,7 +38,7 @@ class ScheduleDetailEditsTest {
             (if(r.operation=="list") buildJsonObject { put("tasks",JsonArray(listOf(latest.json))) } else latest.json).toString().toByteArray()
         })
         remote.javaClass.getDeclaredField("scheduleRepository").apply { isAccessible=true }.set(remote,lazy { repository })
-        remote.showForTest(RemoteState(conn=ConnState.ONLINE,loaded=true,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build()))))
+        remote.showForTest(RemoteState(conn=ConnState.ONLINE,link=io.github.lewin671.remoteagent.core.Link.ONLINE,synced=true,loaded=true,machines=mapOf("computer" to MachineView("computer",true,0,MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build()))))
     }
     private fun render() { ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { ScheduleDetailScreen("computer","task") } } } }
     @After fun close() { scope.cancel();remote.close() }
@@ -130,7 +130,7 @@ class ScheduleDetailEditsTest {
         var newTasks=0
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides Nav({},{},{},{},{},{},{},{},{_,_->},{},{},{},newTask={newTasks++})) { if(showing) SchedulesScreen() } } }
         ui.onNodeWithText(original.title).assertDoesNotExist()
-        ui.onNodeWithContentDescription("新任务").performClick()
+        ui.onNodeWithText("新定时").performClick()
         ui.runOnIdle { assertEquals(1,newTasks) }
         ui.onNodeWithText("已结束").performClick()
         ui.onNodeWithText(original.title).assertExists()

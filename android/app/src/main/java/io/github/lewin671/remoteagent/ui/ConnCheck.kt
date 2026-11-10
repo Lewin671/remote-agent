@@ -113,39 +113,39 @@ internal fun ConnCheckSheet(
     fun line(name: String, sub: String? = null, value: @Composable () -> Unit) {
         Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 14.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
-                Text(name, style = T.body, color = p.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (sub != null) Text(sub, style = T.meta, color = p.muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(name, style = T.s15, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (sub != null) Text(sub, style = T.s12, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             value()
         }
     }
     @Composable
-    fun dotted(color: androidx.compose.ui.graphics.Color, text: String, ink: androidx.compose.ui.graphics.Color = p.fg2) =
+    fun dotted(color: androidx.compose.ui.graphics.Color, text: String, ink: androidx.compose.ui.graphics.Color = p.ink) =
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Dot(color)
-            Text(text, style = T.sm, color = ink)
+            Text(text, style = T.s13, color = ink)
         }
     @Composable
     fun result(ping: Ping?, slow: Long) = when (ping) {
-        null, Ping.Wait -> IconText(Lucide.LoaderCircle, "检测中…", p.muted, T.sm)
-        Ping.Skip -> Text("未检测", style = T.sm, color = p.muted)
-        is Ping.Fail -> Text(ping.error, style = T.sm, color = p.red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp))
+        null, Ping.Wait -> IconText(Lucide.LoaderCircle, "检测中…", p.ink2, T.s13)
+        Ping.Skip -> Text("未检测", style = T.s13, color = p.ink2)
+        is Ping.Fail -> Text(ping.error, style = T.s13, color = p.red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp))
         is Ping.Ok -> dotted(if (ping.ms >= slow) p.orange else p.green, "${ping.ms} ms" + if (ping.ms >= slow) " · 较慢" else "")
     }
     Sheet(onClose) {
         SheetHead("连接检测", "完成", onClose)
-        Column(Modifier.fillMaxWidth().clip(Radii.MD).background(p.soft)) {
+        Column(Modifier.fillMaxWidth().clip(Radii.R14).background(p.gbg)) {
             line("实时推送") {
-                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.gray, connWord(state))
+                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state))
             }
-            HorizontalDivider(color = p.line, thickness = 1.dp)
+            HorizontalDivider(color = p.sep, thickness = 1.dp)
             val network = state.link != Link.NO_NETWORK
-            line("本机网络") { dotted(if (network) p.green else p.gray, if (network) "正常" else "不通") }
-            HorizontalDivider(color = p.line, thickness = 1.dp)
+            line("本机网络") { dotted(if (network) p.green else p.faint, if (network) "正常" else "不通") }
+            HorizontalDivider(color = p.sep, thickness = 1.dp)
             line("服务器", serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
-                HorizontalDivider(color = p.line, thickness = 1.dp)
-                line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.gray, "不在线", p.muted) }
+                HorizontalDivider(color = p.sep, thickness = 1.dp)
+                line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, "不在线", p.ink2) }
             }
         }
         if (state.conn != ConnState.ONLINE) {
