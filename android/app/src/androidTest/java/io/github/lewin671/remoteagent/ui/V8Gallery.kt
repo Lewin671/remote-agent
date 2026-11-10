@@ -466,7 +466,7 @@ class V8Gallery {
     )
 
     @Test fun settings() {
-        shoot("30-settings", accountState()) {
+        shoot("30-settings", accountState().copy(authorityDeviceId = "b71c00000000b71c")) {
             Column(Modifier.weight(1f)) { SettingsScreen() }
         }
     }
@@ -484,6 +484,23 @@ class V8Gallery {
     @Test fun accountSecurityPending() {
         val state = accountState().copy(isAuthority = true, authorityDeviceId = remote.account.deviceId, leaseEndMs = now + 48 * 3600_000, recoveryPending = true, recoveryReadyMs = now + 24 * 3600_000)
         shoot("52-security-pending", state) { AccountSecurityContent(state, pending = true) }
+    }
+
+    @Test fun recoveryCode() {
+        val signer = io.github.lewin671.remoteagent.core.SigningKey(ByteArray(32) { 1 })
+        val member = io.github.lewin671.remoteagent.core.Authority.newMember(signer, ByteArray(32) { 2 }, 2u)
+        val head = io.github.lewin671.remoteagent.core.Authority.genesis("11111111111111111111111111111111", ByteArray(32) { 3 }, member,
+            io.github.lewin671.remoteagent.core.SigningKey(ByteArray(32) { 4 }).publicKey, ByteArray(32) { 5 }, signer, 1_700_000_000_000)
+        val prepared = io.github.lewin671.remoteagent.core.PreparedRecovery("synthetic-offline-code", head, ByteArray(32) { 4 })
+        val state = accountState().copy(isAuthority = true)
+        shoot("53-recovery-code", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) { RotateRecoveryContent(state, { prepared }, {}, {}) }
+    }
+
+    @Test fun takeover() {
+        val state = accountState().copy(authorityDeviceId = "b71c00000000b71c")
+        shoot("54-takeover", state, then = { ui.onNodeWithText("生成新的恢复码").performClick() }) {
+            HandoffPreparationContent(state, "self", { "synthetic-offline-code" to ByteArray(32) { 7 } }) {}
+        }
     }
 
     @Test fun devices() {

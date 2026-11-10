@@ -241,7 +241,7 @@ class ScheduleLayoutGallery {
     }
     @After fun close() {
         fixtureScope.cancel();remote.close();ScheduleJump.requested.clear()
-        shell("wm size 1080x1920");shell("wm density 420")
+        shell("wm size reset");shell("wm density reset")
     }
 
 }

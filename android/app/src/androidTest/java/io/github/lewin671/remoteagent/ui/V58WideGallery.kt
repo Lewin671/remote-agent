@@ -13,6 +13,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.test.platform.app.InstrumentationRegistry
@@ -253,6 +255,12 @@ class V58WideGallery {
     @Test fun wideHome() = shootWide("wide-01-home") {}
 
     @Test fun wideSession() = shootWide("wide-02-session") { ui.onNodeWithText("验证库存回滚").performClick() }
+
+    @Test fun wideNewTask() = shootWide("wide-04-new-task") {
+        ui.onNodeWithText("新任务").performClick()
+        ui.onAllNodesWithText("blog").onLast().performClick()
+        ui.onNodeWithText("要做什么？").assertExists()
+    }
 
     @Test fun wideSideBySide() = shootWide("wide-03-side-by-side") {
         ui.onNodeWithText("验证库存回滚").performClick()
