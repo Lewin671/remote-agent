@@ -86,14 +86,15 @@ fun SchedulesScreen() {
         Modifier.fillMaxSize(),
         bottom = { ShellBottom(ShellTab.SCHEDULES, "新定时", Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
     ) {
-        LazyColumn(Modifier.fillMaxSize().readableColumn(), contentPadding = shellPadding()) {
+        // No glass row on this page, so the title sits just under the status bar.
+        LazyColumn(Modifier.fillMaxSize().readableColumn(), contentPadding = shellPadding(top = false)) {
             item("headline") {
                 Text(
                     buildAnnotatedString {
                         headline.count?.let { withStyle(SpanStyle(color = pal.orange)) { append("$it") }; append(" ") }
                         append(headline.text)
                     },
-                    style = T.title, color = pal.ink, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 6.dp),
+                    style = T.title, color = pal.ink, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp),
                 )
                 if (headline.sub.isNotEmpty()) Text(headline.sub, style = T.s17, color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 7.dp))
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
