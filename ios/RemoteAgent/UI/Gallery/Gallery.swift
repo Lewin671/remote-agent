@@ -331,7 +331,7 @@
             LargeTitle("设置")
             GroupLabel("电脑", action: "管理") {}
             GroupCard {
-                GRow("MacBook", sub: "Codex · 5 小时已用 62%", value: "在线", chevron: true, onTap: {})
+                GRow("MacBook", sub: "Codex · 5 小时剩 38%", value: "在线", chevron: true, onTap: {})
                     .lead { DeviceIcon("laptopcomputer") }
                     .valueLead { Dot(DS.green) }
                 GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
