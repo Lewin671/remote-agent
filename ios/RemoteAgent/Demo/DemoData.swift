@@ -30,6 +30,7 @@ enum Demo {
 
     static let home = "/Users/me"
     static let foo = home + "/Code/foo"
+    static let billing = home + "/Code/billing"
 
     @MainActor static func remote() -> Remote {
         // The zero keys are valid keys; nothing else can fail here.
@@ -37,11 +38,14 @@ enum Demo {
     }
 
     static func state(_ set: DemoSet, now: Int64 = nowMs()) -> RemoteState {
-        switch set {
+        var s: RemoteState = switch set {
         case .everyday: everyday(now)
         case .crowded: crowded(now)
         case .empty: empty(now)
         }
+        // Every sample computer is one the account trusts now.
+        s.currentMachines = Set(s.machines.keys)
+        return s
     }
 
     static func events(_ set: DemoSet, now: Int64 = nowMs()) -> [String: [PBEvent]] {
@@ -153,7 +157,7 @@ enum Demo {
                 meta.home = home
                 meta.os = "darwin"
                 meta.protocolVersion = protocolVersion
-                meta.capabilities = .with { $0.approvalAlways = true }
+                meta.capabilities = .with { $0.approvalAlways = true; $0.scheduledTasks = true }
                 meta.agents = agents.map { agent in
                     .with {
                         $0.agent = agent

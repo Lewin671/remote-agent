@@ -32,7 +32,7 @@
 // Home and projects, with -demo (UI/Home/HomeLaunch.swift)
 //   -homeScope <all|path>            the scope the home page opens on
 //   -homeScopeTarget <all|path>      the scope the signal home.scope chooses
-//   -homeSheet <scope|browse|pick|pickBrowse>   看哪个项目, 新会话 · 选项目, or either on 新项目 · 选目录
+//   -homeSheet <scope|browse|pick|pickBrowse|newSchedule>   看哪个项目, 新会话 · 选项目, either on 新项目 · 选目录, or 新定时
 //   -homeFilter <text>               something typed in the title filter
 //   -homeExpand                      what waits and 进行中 opened in full
 //   -homeEnd                         the home page scrolled to its end
@@ -192,6 +192,14 @@ enum LaunchDriver {
             // The first frame has the data; the feed is followed once the Remote shows it too.
             model.showDemo(account: Demo.account, remote: remote, initial: shown) {
                 await remote.showForTest(state: shown, events: events, modelLists: Demo.models, live: true)
+            }
+            // The 定时 page's sample tasks, answered from here: nothing is asked of a computer.
+            if let schedules = model.context?.schedules {
+                let sample = Demo.schedules(demo, now: nowMs())
+                let of = { (machine: String) in sample.tasks.filter { $0.machineID == machine }.map(\.task) }
+                schedules.configure(.init(cached: { of($0) }, list: { of($0) }))
+                schedules.show(sample.tasks, state: shown)
+                for e in sample.tasks where sample.unread.contains(e.task.id) { schedules.markUnread(e) }
             }
         }
         DebugSignals.on("app.logout") { Task { await model.logout() } }
