@@ -99,9 +99,9 @@ import UIKit
     @Test func theDockLineIsOneLineWhereItFits() async throws {
         let brief = "换成哪一种缓存？Redis 已经在用，内存 LRU 最简单，Memcached 要多一台机器"
         let took = try await fitted(dock(more: 2, size: .large, brief: brief), width: 390)
-        // The summary gives way; the line does not grow past the 44 pt it is to the finger.
-        #expect(took.width <= 390.5 && took.height < 50)
-        #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 50)
+        // The summary gives way; the line does not grow past the 44 pt it is to the finger (and the 8 under the capsule).
+        #expect(took.width <= 390.5 && took.height < 58)
+        #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 58)
     }
 
     @Test func aCardsCommandKeepsFiveWholeLinesAndSaysHowManyMore() async throws {
