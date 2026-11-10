@@ -65,16 +65,16 @@ fun DevicesScreen() {
     PageScaffold("设备") {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             if (state.clockWarning)
-                Banner(
+                Notice(
                     "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    Tone2.WARN,
+                    NoticeTone.WARN,
                 )
             if (state.isAuthority && state.recoveryPending)
-                Banner(
+                Notice(
                     "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    Tone2.ERROR,
+                    NoticeTone.ERROR,
                     action = "查看",
                     onAction = { nav.recovery() },
                 )
@@ -95,7 +95,7 @@ fun DevicesScreen() {
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                                         ) {
-                                            if (m.online) Dot(p.green)
+                                            if (m.online) StatusMark(MarkKind.ONLINE)
                                             ArrowText(
                                                 (if (m.online) "在线"
                                                 else
@@ -281,10 +281,10 @@ fun ClientScreen(id: String) {
                     ),
             )
             if (save.error.isNotEmpty())
-                Banner(
+                Notice(
                     "没能保存名称：${save.error}",
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
-                    Tone2.ERROR,
+                    NoticeTone.ERROR,
                 )
             Text(
                 if (id == me) "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"
@@ -331,7 +331,7 @@ fun ClientScreen(id: String) {
                     )
                 }
                 if (remove.error.isNotEmpty())
-                    Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
+                    Notice(remove.error, Modifier.padding(16.dp), NoticeTone.ERROR)
             } else {
                 Hint(
                     "请在管理端（${state.authorityName}）上移除设备。",

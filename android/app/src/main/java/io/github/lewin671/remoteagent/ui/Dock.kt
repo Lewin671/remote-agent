@@ -377,34 +377,6 @@ suspend fun resolveApproval(
     }
 }
 
-/** A text box on a soft field, for a reason or another short answer. */
-@Composable
-fun ReasonField(
-    value: String,
-    onValue: (String) -> Unit,
-    placeholder: String,
-    modifier: Modifier = Modifier,
-    singleLine: Boolean = false,
-    maxLines: Int = 4,
-) {
-    val p = pal
-    BasicTextField(
-        value,
-        onValue,
-        modifier.fillMaxWidth().padding(bottom = 8.dp),
-        textStyle = T.s15.copy(color = p.ink),
-        cursorBrush = SolidColor(p.blue),
-        maxLines = if (singleLine) 1 else maxLines,
-        singleLine = singleLine,
-        decorationBox = { inner ->
-            FieldBox {
-                if (value.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2)
-                inner()
-            }
-        },
-    )
-}
-
 /**
  * Answers to questions, per question and index, for this run. One whose outcome is unknown is sent
  * again unchanged, under its request ID, so the daemon answers from its log (architecture §10): a

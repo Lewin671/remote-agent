@@ -122,7 +122,7 @@ internal fun ConnCheckSheet(
     @Composable
     fun dotted(color: androidx.compose.ui.graphics.Color, text: String, ink: androidx.compose.ui.graphics.Color = p.ink) =
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Dot(color)
+            StatusMark(MarkKind.ONLINE, color = color)
             Text(text, style = T.s13, color = ink)
         }
     @Composable
@@ -162,8 +162,8 @@ internal fun ConnCheckSheet(
         }
         Hint("延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。")
         Btns(Modifier.padding(top = 12.dp)) {
-            if (state.conn != ConnState.ONLINE) Btn("立即重连", reconnectNow, Modifier.weight(1f))
-            Btn("再测一次", { run++ }, Modifier.weight(1f), enabled = !busy)
+            if (state.conn != ConnState.ONLINE) PillButton("立即重连", reconnectNow, Modifier.weight(1f))
+            PillButton("再测一次", { run++ }, Modifier.weight(1f), enabled = !busy)
         }
     }
 }

@@ -327,7 +327,7 @@ private fun JoinContent(app: RaApp) {
             ) {
                 when (s) {
                     is JoinStep.Emoji -> {
-                        NavBar(
+                        PageBar(
                             "核对图案",
                             null,
                             right = {
@@ -354,7 +354,7 @@ private fun JoinContent(app: RaApp) {
                             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
                         if (comparison != null)
-                            Btn(
+                            PillButton(
                                 "图案一致，信任并继续",
                                 {
                                     registering = true
@@ -362,7 +362,7 @@ private fun JoinContent(app: RaApp) {
                                     comparison = null
                                 },
                                 Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                                BtnKind.PRIMARY,
+                                ButtonKind.INK,
                             )
                         IconText(
                             Lucide.LoaderCircle,
@@ -371,7 +371,7 @@ private fun JoinContent(app: RaApp) {
                             T.s13,
                             Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth(),
                         )
-                        Btn(
+                        PillButton(
                             "图案不一致，返回填码",
                             { cancel() },
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -404,10 +404,10 @@ private fun JoinContent(app: RaApp) {
                             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp),
                         )
                         if (error.isNotEmpty())
-                            Banner(
+                            Notice(
                                 error,
                                 Modifier.padding(horizontal = 16.dp).padding(bottom = 10.dp),
-                                Tone2.PLAIN,
+                                NoticeTone.PLAIN,
                             )
                         if (error.isNotEmpty())
                             DiscardSetup(app) {
@@ -457,7 +457,7 @@ private fun JoinContent(app: RaApp) {
                             "https://",
                             keyboard = KeyboardType.Uri,
                         )
-                        Btn(
+                        PillButton(
                             "加入",
                             {
                                 try {
@@ -473,7 +473,7 @@ private fun JoinContent(app: RaApp) {
                                 }
                             },
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                            BtnKind.PRIMARY,
+                            ButtonKind.INK,
                             enabled = code.count { it.isDigit() } == 8 && server.length > 8,
                         )
                         JoinLink("扫描二维码") {
@@ -573,7 +573,7 @@ private fun RejoinButton(app: RaApp, title: String) {
             finally { busy = false }
         }
     }
-    Btn(title, { leave(false) }, Modifier.fillMaxWidth(), BtnKind.PRIMARY, enabled = !busy)
+    PillButton(title, { leave(false) }, Modifier.fillMaxWidth(), ButtonKind.INK, enabled = !busy)
     if (error.isNotEmpty()) Hint(error)
     advice?.let { message ->
         Confirm("删除本机密钥并重新加入？", message, "重新加入", danger = true,

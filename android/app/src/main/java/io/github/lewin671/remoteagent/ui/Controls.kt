@@ -318,3 +318,35 @@ fun Strip(
         if (action != null) Text(action, style = T.s13, color = p.blue, maxLines = 1)
     }
 }
+
+/**
+ * A text box (design-system §2 fill): fill, radius 14, 17 text, the blue
+ * caret; [placeholder] in ink3. One line with [singleLine], else up to
+ * [maxLines].
+ */
+@Composable
+fun InputField(
+    value: String,
+    onValue: (String) -> Unit,
+    placeholder: String,
+    modifier: Modifier = Modifier,
+    singleLine: Boolean = false,
+    maxLines: Int = 4,
+) {
+    val p = pal
+    BasicTextField(
+        value,
+        onValue,
+        modifier.fillMaxWidth().padding(bottom = 8.dp),
+        textStyle = T.s17.copy(color = p.ink),
+        cursorBrush = SolidColor(p.blue),
+        maxLines = if (singleLine) 1 else maxLines,
+        singleLine = singleLine,
+        decorationBox = { inner ->
+            FieldBox {
+                if (value.isEmpty()) Text(placeholder, style = T.s17, color = p.ink3)
+                inner()
+            }
+        },
+    )
+}

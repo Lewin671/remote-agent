@@ -57,8 +57,8 @@ fun ScheduleRenameDialog(task: ScheduledTask, onClose: () -> Unit, enabled: Bool
                     decorationBox = { inner -> FieldBox { inner() } })
                 Text(if (error.isEmpty()) "留空保存会用消息的第一句" else error, style = T.s13, color = if (error.isEmpty()) pal.ink2 else pal.red, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp))
                 Btns {
-                    Btn("取消", onClose, Modifier.weight(1f), enabled = !saving)
-                    Btn(if (saving) "保存中…" else "保存", { save() }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = enabled && !saving && !unknown)
+                    PillButton("取消", onClose, Modifier.weight(1f), enabled = !saving)
+                    PillButton(if (saving) "保存中…" else "保存", { save() }, Modifier.weight(1f), ButtonKind.INK, enabled = enabled && !saving && !unknown)
                 }
             }
         }

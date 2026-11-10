@@ -69,7 +69,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
         "pending" -> PageScaffold("未完成的安全操作", onBack = { page = "overview" }) {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
                 Hint("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
-                Btn("继续原操作", {
+                PillButton("继续原操作", {
                     busy = true
                     scope.launch {
                         try {
@@ -83,7 +83,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                         finally { busy = false }
                     }
                 }, enabled = !busy)
-                if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+                if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             }
         }
         else -> AccountSecurityContent(state, pending != null, { page = "pending" }, { page = "recovery" }, { page = "handoff" }, {
@@ -106,12 +106,12 @@ internal fun AccountSecurityContent(
     val self = LocalRemote.current.account.deviceId
     PageScaffold("账户安全", gray = true) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
-            if (state.recoveryPending) Banner(
+            if (state.recoveryPending) Notice(
                 "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
-                Modifier.padding(horizontal = 16.dp, vertical = 6.dp), Tone2.WARN,
+                Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
                 action = if (state.isAuthority) "否决" else null, onAction = onRecovery,
             )
-            if (error.isNotEmpty()) Banner(error, Modifier.padding(16.dp), Tone2.ERROR)
+            if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
             if (pending) Group(rows = listOf({ GRow("未完成的安全操作", chevron = true, onClick = onPending) }))
             Group(rows = listOf<@Composable () -> Unit>(
                 { GRow("当前管理端", if (state.isAuthority) "本机" else state.authorityName) },
@@ -184,10 +184,10 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty()) Banner(error, Modifier.padding(bottom = 10.dp), Tone2.ERROR)
+                if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
                 RecoveryField("恢复码", code, { code = it }, "XXXX-XXXX-…", lines = 3)
                 RecoveryField("服务器", server, { server = it.trim() }, "https://")
-                Btn(
+                PillButton(
                     if (busy) "正在提交…" else "提交恢复",
                     {
                         busy = true
@@ -312,7 +312,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy && code.isNotBlank() && server.length > 8,
                 )
                 TextAction(
@@ -336,7 +336,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                 }
                 val computers = chain?.head?.core?.members?.filter { it.kind == 1u }.orEmpty()
                 if (!rejected && s.newCode.isNotEmpty() && !codeSaved)
-                    Btn(
+                    PillButton(
                         "我已离线保存新恢复码",
                         {
                             try {
@@ -347,7 +347,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                             }
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
-                        BtnKind.SECONDARY,
+                        ButtonKind.SECONDARY,
                     )
                 GLabel("恢复码保存状态")
                 Hint(
@@ -478,23 +478,23 @@ internal fun RecoveryStatus(
         GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint("这次恢复已经完成。", Modifier)
         else -> {}
     }
-    if (error.isNotEmpty()) Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+    if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
     if (recoveryNextAction(phase) == RecoveryNextAction.COMPLETE) {
-        Btn(
+        PillButton(
             if (busy) "正在完成…" else "完成恢复",
             onComplete,
             Modifier.fillMaxWidth().padding(top = 10.dp),
-            BtnKind.PRIMARY,
+            ButtonKind.INK,
             enabled = !busy,
         )
         Hint("如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
     } else {
         Hint("这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。", Modifier)
-        Btn(
+        PillButton(
             if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
             onRestart,
             Modifier.fillMaxWidth().padding(top = 10.dp),
-            BtnKind.SECONDARY,
+            ButtonKind.SECONDARY,
             enabled = !busy,
         )
     }
@@ -529,10 +529,10 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
-                if (error.isNotEmpty()) Banner(error, Modifier.padding(bottom = 10.dp), Tone2.ERROR)
+                if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
                 RecoveryField("服务器", server, { server = it.trim() }, "https://")
                 RecoveryField("Setup token（服务器要求时）", setupToken, { setupToken = it }, "可留空")
-                Btn(
+                PillButton(
                     if (busy) "正在创建…" else "创建账户",
                     {
                         busy = true
@@ -561,7 +561,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy && server.length > 8,
                 )
                 TextAction("返回", { onBack() }, alignment = Alignment.CenterStart)
@@ -570,8 +570,8 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                 RecoveryCodeFigure(c.recoveryCode)
                 Hint("管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。", Modifier)
                 if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
+                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                PillButton(
                     "我已保存，开始使用",
                     {
                         busy = true
@@ -586,7 +586,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy,
                 )
             }
@@ -673,13 +673,13 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                 if (existing == null || !existing.hasRoot)
                     Hint("这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。", Modifier)
                 if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
+                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                PillButton(
                     if (busy) "正在重建…" else "重建安全域并成为管理端",
                     {
                         if (existing == null) {
                             error = "没有可升级的账户"
-                            return@Btn
+                            return@PillButton
                         }
                         busy = true
                         error = ""
@@ -704,7 +704,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 10.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy && existing != null && existing.hasRoot,
                 )
                 TextAction("返回", onBack, alignment = Alignment.CenterStart)
@@ -714,10 +714,10 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                 else Hint("这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。", Modifier)
                 Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。", Modifier)
                 if (c.needsOfflinePin)
-                    Banner(
+                    Notice(
                         "中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。",
                         Modifier.padding(top = 10.dp),
-                        Tone2.WARN,
+                        NoticeTone.WARN,
                     )
                 if (c.needsOfflinePin)
                     TextAction(
@@ -725,8 +725,8 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                         { shareGenesis(ctx, DeviceSecurity.stateBytes(c.record.chain.first())) },
                         alignment = Alignment.CenterStart,
                     )
-                if (error.isNotEmpty()) Banner(error, Modifier.padding(top = 8.dp), Tone2.ERROR)
-                Btn(
+                if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 8.dp), NoticeTone.ERROR)
+                PillButton(
                     if (busy) "正在保存…" else "我已保存，开始使用",
                     {
                         busy = true
@@ -742,7 +742,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy,
                 )
                 TextAction("返回", onBack, alignment = Alignment.CenterStart)
@@ -787,8 +787,8 @@ internal fun RotateRecoveryContent(
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
+                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                PillButton(
                     if (busy) "正在生成…" else "生成新的恢复码",
                     {
                         busy = true
@@ -804,7 +804,7 @@ internal fun RotateRecoveryContent(
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 8.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy,
                 )
                 TextAction("返回", onBack, alignment = Alignment.CenterStart)
@@ -813,8 +813,8 @@ internal fun RotateRecoveryContent(
                 RecoveryCodeFigure(pv.code)
                 Hint("先抄下来或拍照保存，再发布。发布成功后旧码立即作废。", Modifier)
                 if (error.isNotEmpty())
-                    Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
-                Btn(
+                    Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
+                PillButton(
                     if (busy) "正在发布…" else "我已保存，发布换码",
                     {
                         busy = true
@@ -831,14 +831,14 @@ internal fun RotateRecoveryContent(
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy,
                 )
-                Btn(
+                PillButton(
                     "先不发布",
                     { prepared = null },
                     Modifier.fillMaxWidth().padding(top = 6.dp),
-                    BtnKind.SECONDARY,
+                    ButtonKind.SECONDARY,
                     enabled = !busy,
                 )
             }

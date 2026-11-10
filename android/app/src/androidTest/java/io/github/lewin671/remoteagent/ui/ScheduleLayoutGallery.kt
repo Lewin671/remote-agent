@@ -227,7 +227,7 @@ class ScheduleLayoutGallery {
         ui.onAllNodes(hasSetTextAction())[0].performTextReplacement(longMessage);ui.onAllNodes(hasSetTextAction())[0].performTextInputSelection(androidx.compose.ui.text.TextRange.Zero);ui.runOnIdle { clear() };ui.onNodeWithText("选择项目").performClick();ui.onNodeWithText("project",useUnmergedTree=true).performClick();both("new-long")
     }
     @Test fun longChatMessage() {
-        prepare();content { Column { NavBar("修复登录超时",{});MeBubble(longMessage,caption="定时任务 · 08:00",foldScheduled=true) } };both("chat-long-scheduled")
+        prepare();content { Column { PageBar("修复登录超时",{});MeBubble(longMessage,caption="定时任务 · 08:00",foldScheduled=true) } };both("chat-long-scheduled")
     }
     @Test fun queuedMessage() {
         prepare();val origin=Origin.newBuilder().setScheduledTaskId(current.id).build()

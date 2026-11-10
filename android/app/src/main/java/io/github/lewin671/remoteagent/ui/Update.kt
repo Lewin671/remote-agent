@@ -157,7 +157,7 @@ fun UpdateSheet(onClose: () -> Unit) {
             Text("remote-agent ${app.versionName}", style = T.s15, color = p.ink)
             if (state is UpdateState.Latest) Text("已是最新版本", style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
             checkLine(check, releaseOnScreen = false)?.let { Text(it.text, style = T.s13, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
-            Btn(if (check.running) "正在检查更新…" else "检查更新", { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
+            PillButton(if (check.running) "正在检查更新…" else "检查更新", { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
             return@Sheet
         }
         SheetHead("新版本 ${release.version}", "以后再说", {
@@ -170,11 +170,11 @@ fun UpdateSheet(onClose: () -> Unit) {
         val step = updateStep(state) ?: return@Sheet
         if (step.error.isNotEmpty()) Text("没能下载：${step.error}", style = T.s13, color = p.red, modifier = Modifier.padding(top = 10.dp))
         shown?.let { Text(it.text, style = T.s13, color = if (it.error) p.red else p.orangeInk, modifier = Modifier.padding(top = 10.dp)) }
-        Btn(if (shown == InstallNote.PERMISSION) "去允许" else step.label, {
-            if (Updater.checking.value.running) return@Btn
+        PillButton(if (shown == InstallNote.PERMISSION) "去允许" else step.label, {
+            if (Updater.checking.value.running) return@PillButton
             val s = Updater.state.value
             if (s is UpdateState.Ready) install(s.release.versionCode, s.file) else Updater.download(app)
-        }, Modifier.fillMaxWidth().padding(top = 14.dp), BtnKind.PRIMARY, enabled = step.enabled && !check.running)
+        }, Modifier.fillMaxWidth().padding(top = 14.dp), ButtonKind.INK, enabled = step.enabled && !check.running)
         Hint("下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。")
         // How the look for a newer release went. Either way the release above stays, and stays actionable.
         checkLine(check, releaseOnScreen = true)?.let {
@@ -198,6 +198,6 @@ private fun ReleaseNotes(release: Release, installed: String) {
         Text("当前版本 $installed", style = T.s13, color = p.ink2)
         if (release.notes.isNotEmpty()) Text(release.notes, style = T.s15, color = p.ink, modifier = Modifier.padding(top = 8.dp))
         // Another protocol version: the computers must be upgraded too, or nothing connects.
-        if (release.protocol != PROTOCOL_VERSION) Banner("这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。", Modifier.padding(top = 10.dp), tone = Tone2.WARN)
+        if (release.protocol != PROTOCOL_VERSION) Notice("这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。", Modifier.padding(top = 10.dp), tone = NoticeTone.WARN)
     }
 }

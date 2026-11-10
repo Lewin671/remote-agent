@@ -22,7 +22,6 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.lewin671.remoteagent.R
-import io.github.lewin671.remoteagent.core.Tone
 import io.github.lewin671.remoteagent.data.ThemeMode
 
 /**
@@ -70,18 +69,7 @@ data class Palette(
     val float: Color,
     val raised: Color,
     val dark: Boolean,
-) {
-    /**
-     * The colour of a status graphic (design-system §2 状态图形) where an old
-     * screen still draws it as a plain dot; [StatusMark] draws the real one.
-     */
-    fun mark(t: Tone): Color = when (t) {
-        Tone.RUN -> ink
-        Tone.WAIT -> orange
-        Tone.IDLE -> ink3
-        Tone.OFF -> faint
-    }
-}
+)
 
 val LightPalette = Palette(
     paper = Color(0xFFFFFFFF), gbg = Color(0xFFF5F5F7), ink = Color(0xFF1D1D1F), ink2 = Color(0xFF6E6E73), ink3 = Color(0xFFA1A1A6),

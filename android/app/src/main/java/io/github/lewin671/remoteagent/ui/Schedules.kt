@@ -83,7 +83,7 @@ fun SchedulesScreen() {
         if (!state.loaded) ConnBanner(state) else ScheduleOffline(state, tasks)
         LazyColumn(Modifier.weight(1f)) {
             snapshots.forEach { (machine, snapshot) ->
-                if (snapshot.error.isNotEmpty()) item("error-$machine") { Banner(snapshot.error, action = "重试", onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } }) }
+                if (snapshot.error.isNotEmpty()) item("error-$machine") { Notice(snapshot.error, action = "重试", onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } }) }
             }
             if (tasks.isEmpty()) item {
                 Column(Modifier.padding(horizontal = 32.dp, vertical = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -184,7 +184,7 @@ private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
     // The connection bar speaks for a lost relay; this names the computers that are away.
     val away = tasks.map { it.machine }.distinct().filter { state.machines[it]?.online != true }
     if (state.conn == ConnState.ONLINE && away.isNotEmpty())
-        Banner(away.joinToString("、") { machineLabel(state, it) } + " " + SCHEDULE_OFFLINE)
+        Notice(away.joinToString("、") { machineLabel(state, it) } + " " + SCHEDULE_OFFLINE)
 }
 
 @Composable
@@ -242,18 +242,18 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val enabled = writable && !busy && !uncertain
     val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
     Column(Modifier.fillMaxSize().background(pal.gbg)) {
-        NavBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t) }, more = { menu = true })
+        PageBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t) }, more = { menu = true })
         if (!state.loaded) ConnBanner(state)
         if (task == null) {
-            Banner(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
+            Notice(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
             return@Column
         }
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScroll(rememberScrollState())) {
-            if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+            if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (uncertain) TextAction("重新读取", { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
             if (attention) {
                 ScheduleAttentionBanner(scheduleAttentionText(task, t))
-                if (!targetMissing) Btn(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), BtnKind.PRIMARY, enabled)
+                if (!targetMissing) PillButton(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, enabled)
             }
             if (resultCaptured && task.latestNotification?.id != selectedResult?.id && task.latestNotification != null) {
                 TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
@@ -392,7 +392,7 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
                 Text("让 agent 做什么", Modifier.weight(1f), style = T.s15b, color = pal.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 TextAction(if (busy) "保存中…" else "保存", { save(text) }, enabled = !busy && writable && scheduleMessageValid(text))
             }
-            if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+            if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             BasicTextField(text, { text = it }, Modifier.weight(1f).fillMaxWidth().padding(16.dp),
                 textStyle = T.s15.copy(color = pal.ink), cursorBrush = SolidColor(pal.blue), readOnly = busy || !writable)
             if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB", Modifier.padding(16.dp))
@@ -500,16 +500,16 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val editable = frozen == null && !busy
     val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) SCHEDULE_OFFLINE else null }
     Column(Modifier.fillMaxSize().background(pal.paper)) {
-        if (current) SheetHead("定时发到这个对话", "取消", onClose) else NavBar("新任务", onClose)
+        if (current) SheetHead("定时发到这个对话", "取消", onClose) else PageBar("新任务", onClose)
         ConnBanner(state)
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
-            if (blocked != null) Banner(blocked, tone = Tone2.WARN)
+            if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
+            if (blocked != null) Notice(blocked, tone = NoticeTone.WARN)
             FieldLabel("让 agent 做什么")
-            ReasonField(message, { if (editable) message = it }, "检查项目的更新，有值得注意的变化再通知我。", maxLines = if (current) 4 else 8)
+            InputField(message, { if (editable) message = it }, "检查项目的更新，有值得注意的变化再通知我。", maxLines = if (current) 4 else 8)
             if (message.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB")
             FieldLabel("任务名")
-            ReasonField(title, { if (editable) title = scheduleNameInput(it) }, if (message.isBlank()) "留空就用消息的第一句" else "留空会用：${scheduleName("", message)}", singleLine = true)
+            InputField(title, { if (editable) title = scheduleNameInput(it) }, if (message.isBlank()) "留空就用消息的第一句" else "留空会用：${scheduleName("", message)}", singleLine = true)
             ToggleRow("完成后通知", "", notifyFinish, enabled = editable) { notifyFinish = it }
             ScheduleSetting("什么时候", scheduleTiming(trigger), editable) { timeOpen = true }
             if (!current) {
@@ -528,8 +528,8 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
             if (plan) Hint("计划模式不能创建执行任务，请先选择其他权限")
             if (!current && cfg != null && resolvedScheduleConfig(cfg, state).mode == null) Hint("请选择明确的权限，再创建定时任务。")
             val ready = !plan && (current || cfg?.let { resolvedScheduleConfig(it, state).mode != null } == true) && writable && !busy && (scheduleMessageValid(message) || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
-            Btn(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
-                if (!ready) return@Btn
+            PillButton(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
+                if (!ready) return@PillButton
                 val spec = frozen?.let { Json.parseToJsonElement(it).jsonObject } ?: taskSpec(scheduleName(title, message), message, trigger,
                     if (current) buildJsonObject { put("type", "resume_session"); put("session", session) } else scheduleTarget(resolvedScheduleConfig(cfg!!, state))).let { JsonObject(it + ("notify" to JsonPrimitive(if (notifyFinish) "finish" else "agent_only"))) }.also { frozen = it.toString() }
                 busy = true; error = ""
@@ -542,7 +542,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
                     catch (e: Exception) { error = errorText(e); if (e is CommandException && e.fromDaemon && !e.unknown) frozen = null }
                     finally { busy = false }
                 }
-            }, Modifier.fillMaxWidth().padding(vertical = 16.dp), BtnKind.PRIMARY, ready)
+            }, Modifier.fillMaxWidth().padding(vertical = 16.dp), ButtonKind.INK, ready)
             if (frozen != null) Hint("创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。")
         }
     }
@@ -588,7 +588,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         if (keepTurnDelay) {
             Hint("当前是「${scheduleFrequency(initial)}」。直接完成会保留原规则；选择上面的时间类型后再更改。")
         } else {
-        if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+        if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
         if (value.kind == 0) ScheduleSetting("日期", value.date) { date(value.date) { value = value.copy(date = it) } }
         if (value.kind != 3) {
             ScheduleSetting("时间", value.time) {
@@ -597,7 +597,7 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
             }
         } else {
             FieldLabel("间隔")
-            ReasonField(value.interval, { value = value.copy(interval = it) }, "正整数")
+            InputField(value.interval, { value = value.copy(interval = it) }, "正整数")
             GRow("单位", trailing = { SegPick(listOf("分钟", "小时", "天", "秒"), value.unit) { value = value.copy(unit = it) } })
         }
         if (value.kind == 1) ToggleRow("只在工作日", "周一到周五", value.workdays) { value = value.copy(workdays = it) }
@@ -614,12 +614,12 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
         }
         if (value.kind != 0) {
             GRow("结束", trailing = { SegPick(listOf("不结束", "运行指定次数", "截止日期"), value.end) { value = value.copy(end = it) } })
-            if (value.end == 1) ReasonField(value.count, { value = value.copy(count = it) }, "自动运行次数")
+            if (value.end == 1) InputField(value.count, { value = value.copy(count = it) }, "自动运行次数")
             if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
         if (value.kind != 3) {
             FieldLabel("时区")
-            ReasonField(value.zone, { value = value.inZone(it.trim()) }, "例如 Asia/Shanghai")
+            InputField(value.zone, { value = value.inZone(it.trim()) }, "例如 Asia/Shanghai")
         } else Hint(SCHEDULE_INTERVAL_HINT)
         }
     }

@@ -253,12 +253,12 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                     modifier = Modifier.padding(bottom = 14.dp),
                 )
                 Btns {
-                    Btn("取消", onClose, Modifier.weight(1f), enabled = !act.running)
-                    Btn(
+                    PillButton("取消", onClose, Modifier.weight(1f), enabled = !act.running)
+                    PillButton(
                         "保存",
                         { save() },
                         Modifier.weight(1f),
-                        BtnKind.PRIMARY,
+                        ButtonKind.INK,
                         enabled = !act.running,
                     )
                 }
@@ -431,9 +431,9 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 )
             }
             loadError.isNotEmpty() ->
-                Banner(
+                Notice(
                     "没能读取模型列表：$loadError",
-                    tone = Tone2.ERROR,
+                    tone = NoticeTone.ERROR,
                     action = "重试",
                     onAction = { attempt++ },
                 )
@@ -647,7 +647,7 @@ fun PageScaffold(
     val p = pal
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
         Column(Modifier.fillMaxSize().background(if (gray) p.gbg else p.paper).imePadding()) {
-            NavBar(title, back, subtitle = subtitle, right = action)
+            PageBar(title, back, subtitle = subtitle, right = action)
             if (gray) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
             else content()
         }

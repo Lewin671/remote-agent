@@ -43,7 +43,7 @@ internal fun HandoffPreparationContent(
             val value = prepared
             if (value != null) {
                 RecoveryCodeFigure(value.first)
-                Btn(
+                PillButton(
                     "我已保存，通知管理端",
                     {
                         busy = true
@@ -60,7 +60,7 @@ internal fun HandoffPreparationContent(
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.PRIMARY,
+                    ButtonKind.INK,
                     enabled = !busy,
                 )
             } else {
@@ -68,7 +68,7 @@ internal fun HandoffPreparationContent(
                     state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32
                 if (offered)
                     Hint("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。", Modifier.padding(vertical = 12.dp))
-                Btn(
+                PillButton(
                     if (offered) "重新生成恢复码" else "生成新的恢复码",
                     {
                         error = ""
@@ -79,11 +79,11 @@ internal fun HandoffPreparationContent(
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    BtnKind.SECONDARY,
+                    ButtonKind.SECONDARY,
                     enabled = !busy,
                 )
             }
-            if (error.isNotEmpty()) Banner(error, Modifier.padding(top = 12.dp), Tone2.ERROR)
+            if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 12.dp), NoticeTone.ERROR)
         }
     }
 }
@@ -105,15 +105,15 @@ fun HandoffControls() {
         }
     GLabel("交接管理权")
     Hint("在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。", Modifier)
-    for (d in candidates) Btn(
+    for (d in candidates) PillButton(
         "交接给 " + clientName(d, d.id, state.devices.values),
         { target = d.id },
         Modifier.fillMaxWidth().padding(top = 8.dp),
-        BtnKind.SECONDARY,
+        ButtonKind.SECONDARY,
         enabled = !busy,
     )
     if (candidates.isEmpty()) Hint("等待接任设备生成并保存恢复码", Modifier.padding(vertical = 8.dp))
-    if (error.isNotEmpty()) Banner(error, Modifier.padding(vertical = 8.dp), Tone2.ERROR)
+    if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
     target?.let { id ->
         Alert(
             "交接管理权",
@@ -155,7 +155,7 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
                 },
             ),
     )
-    if (error.isNotEmpty()) Banner(error, Modifier.padding(16.dp), Tone2.ERROR)
+    if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
     if (confirm)
         Alert(
             "删除这台电脑的记录",

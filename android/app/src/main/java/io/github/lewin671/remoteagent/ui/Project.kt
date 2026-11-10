@@ -410,7 +410,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     }
     Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
         val folded = launch?.let { listOf(agentName(it.agent), effectiveModeText(it.mode, defaultModeOf(state.machines[it.machineId], it.agent)), summaryMachine(state, it.machineId)).filter { it.isNotEmpty() }.joinToString(" · ") }
-        NavBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
+        PageBar(if (compact) projectName(key) else "", nav.back, subtitle = if (compact) folded ?: shortPath(key) else null, more = { settingsOpen = "" })
         LazyColumn(Modifier.weight(1f), state = list) {
             item {
                 Row(Modifier.padding(horizontal = 16.dp).padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -430,8 +430,8 @@ fun ProjectScreen(key: String, focus: Boolean) {
                 }
             }
             when (val change = PrefsChanges.states[key]) {
-                PrefsChanges.State.Saving -> item { Banner("正在保存项目设置…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
-                is PrefsChanges.State.Failed -> item { Banner("项目设置没能保存：${change.error}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), tone = Tone2.ERROR,
+                PrefsChanges.State.Saving -> item { Notice("正在保存项目设置…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) }
+                is PrefsChanges.State.Failed -> item { Notice("项目设置没能保存：${change.error}", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), tone = NoticeTone.ERROR,
                     action = "重试", onAction = { PrefsChanges.run(remote, change.op) }) }
                 else -> {}
             }
@@ -547,7 +547,7 @@ private fun HiddenBanner(state: RemoteState, key: String) {
     val change = PrefsChanges.states[key]
     val blocked = prefsBlocked(state)
     Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Banner(
+        Notice(
             if (change == PrefsChanges.State.Saving) "正在添加到项目列表…" else "这个项目已从列表移除",
             action = if (blocked == null && change != PrefsChanges.State.Saving) "重新添加" else null,
             onAction = { PrefsChanges.run(remote, PrefsOp.Unhide(key)) },
@@ -693,19 +693,19 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
             if (!settled && (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty())) EarlierTail(state, Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             else if (!settled) Text("正在读取这个项目上次的设置…", style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
-            else if (c != null && state.machines[c.machineId]?.online != true) Banner("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = Tone2.WARN)
-            if (c != null && missing != null) Banner("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
-            if (act.running) Banner("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
+            else if (c != null && state.machines[c.machineId]?.online != true) Notice("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = NoticeTone.WARN)
+            if (c != null && missing != null) Notice("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
+            if (act.running) Notice("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
             val frozen = Starts.of(key)
             // An unknown start has its own notice below.
             // 重试 is ↑ again: it is offered when ↑ is.
-            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Banner("启动失败：${act.error}", tone = Tone2.ERROR, action = "重试".takeIf { canStart }, onAction = { start() })
+            if (act.error.isNotEmpty() && !frozen.attempt.frozen) Notice("启动失败：${act.error}", tone = NoticeTone.ERROR, action = "重试".takeIf { canStart }, onAction = { start() })
             if (!act.running && frozen.attempt.frozen) {
                 var gaveUp by remember { mutableStateOf(0) }
-                Banner(
+                Notice(
                     if (frozen.attempt.expired) "不确定「${frozen.prompt.take(40)}」有没有启动，它已过期，不会再重发。请先看看进行中的会话"
                     else "上次的启动结果不确定。再点 ↑ 会重发同一个请求，电脑收到过就不会再启动一次",
-                    tone = Tone2.WARN, action = "放弃", onAction = { frozen.attempt.abandon(); act.error = ""; gaveUp++ },
+                    tone = NoticeTone.WARN, action = "放弃", onAction = { frozen.attempt.abandon(); act.error = ""; gaveUp++ },
                 )
             }
         }
@@ -783,7 +783,7 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
         Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(horizontal = 14.dp, vertical = 8.dp)) {
             Text(label, style = T.s13, color = p.ink2, maxLines = 1)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                if (dot != null) Dot(dot)
+                if (dot != null) StatusMark(MarkKind.ONLINE, color = dot)
                 Text(value, style = T.s13, color = valueColor ?: p.ink, textAlign = androidx.compose.ui.text.style.TextAlign.End,
                     modifier = Modifier.padding(start = 8.dp).weight(1f, fill = false))
                 Spacer(Modifier.width(8.dp))
@@ -797,7 +797,7 @@ private fun SetRow(label: String, value: String, onClick: (() -> Unit)?, dot: an
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(label, style = T.s13, color = p.ink2, maxLines = 1, modifier = Modifier.widthIn(min = 36.dp).weight(1f))
-        if (dot != null) Dot(dot)
+        if (dot != null) StatusMark(MarkKind.ONLINE, color = dot)
         Text(value, style = T.s13, color = valueColor ?: p.ink, maxLines = 2, overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.End, modifier = Modifier.widthIn(max = 200.dp))
         Arrow(p.ink3, ts(18.sp))
     }
@@ -869,7 +869,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
         when (page) {
             "" -> {
                 SheetHead(if (lockMachine) "任务设置" else "项目设置", if (blockedPrefs == null) "完成" else null, { done() })
-                if (blockedPrefs != null) Banner(blockedPrefs)
+                if (blockedPrefs != null) Notice(blockedPrefs)
                 Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ProjectAvatar(cwd, 28)
                     Column(Modifier.weight(1f)) {
@@ -904,14 +904,14 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 if (unread && agents.size > 1) {
                     card(listOf(machineRow))
-                    ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                    Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth())
                     card(listOf(reading))
                 } else if (unread) {
                     card(listOf(machineRow, reading))
                 } else if (agents.size > 1) {
                     // The machine is shared; each CLI has its own set, seen under its tab.
                     card(listOf(machineRow))
-                    ViewTabs(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, inset = 0.dp, modifier = Modifier.padding(top = 6.dp, bottom = 4.dp))
+                    Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth())
                     card(rows)
                     Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 } else {
@@ -950,7 +950,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                             }
                             page = ""
                         },
-                        trailing = { Dot(if (online) p.green else p.faint) },
+                        trailing = { StatusMark(if (online) MarkKind.ONLINE else MarkKind.OFF) },
                     )
                 }
                 Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
@@ -959,7 +959,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 SheetHead("模型", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
                 val ms = models
                 when {
-                    modelsError.isNotEmpty() -> Banner("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = Tone2.WARN)
+                    modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
                     ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
                     else -> {
                         val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
@@ -1088,7 +1088,7 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
                 ) {
-                    Dot(if (m.online) p.green else p.faint)
+                    StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF)
                     Text(machineLabel(state, m.id), style = T.s13, color = if (on) p.blue else p.ink)
                 }
             }
@@ -1096,8 +1096,8 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
     }
     val d = dirs
     when {
-        machine.isEmpty() -> Banner("没有在线的电脑", tone = Tone2.WARN)
-        error.isNotEmpty() -> Banner("读不了这个目录：$error", tone = Tone2.ERROR, action = "重试", onAction = { attempt++ })
+        machine.isEmpty() -> Notice("没有在线的电脑", tone = NoticeTone.WARN)
+        error.isNotEmpty() -> Notice("读不了这个目录：$error", tone = NoticeTone.ERROR, action = "重试", onAction = { attempt++ })
         d == null -> Text("读取中…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
         else -> {
             val parts = shortPath(d.path).split("/").filter { it.isNotEmpty() }
@@ -1115,7 +1115,7 @@ fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> U
             d.dirsList.forEachIndexed { i, name ->
                 ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.ink2, T.s15) })
             }
-            Btn("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), BtnKind.PRIMARY)
+            PillButton("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), ButtonKind.INK)
         }
     }
 }
@@ -1159,7 +1159,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
     }
     var settingsOpen by remember { mutableStateOf<String?>(null) }
     Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
-        NavBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
+        PageBar(projectName(path), nav.back, subtitle = shortPath(path), more = { settingsOpen = "" })
         SummaryChip(projectSummary(state, selected, summaryModels), selected.mode == Mode.FULL, Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { settingsOpen = "" }
         Text("这个项目还没有会话。", style = T.s13, color = p.ink2, modifier = Modifier.padding(16.dp).weight(1f))
         NewSessionBox(state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false)

@@ -41,7 +41,7 @@ internal fun AccountExitAction(
         danger = true,
         enabled = !busy,
     )
-    if (error.isNotEmpty()) Banner(error, tone = Tone2.ERROR)
+    if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
     advice?.let { message ->
         Confirm(
             "退出并删除本机密钥？",

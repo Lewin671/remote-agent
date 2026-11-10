@@ -289,7 +289,7 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
             )
         if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error)
             Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
-        Btn(
+        PillButton(
             "立即重试",
             {
                 remote.reconnectNow()

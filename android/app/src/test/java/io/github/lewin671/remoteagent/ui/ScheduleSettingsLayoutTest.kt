@@ -102,7 +102,7 @@ class ScheduleSettingsLayoutTest {
                 CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                     Column(Modifier.fillMaxWidth().readableColumn()) {
                         ScheduleAttentionBanner(reason, Modifier.testTag("attention-banner"))
-                        Btn("恢复", {}, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("attention-button"), BtnKind.PRIMARY)
+                        PillButton("恢复", {}, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag("attention-button"), ButtonKind.INK)
                         Card(Modifier.padding(horizontal = 16.dp).testTag("attention-card")) { Text("结果内容") }
                     }
                 }

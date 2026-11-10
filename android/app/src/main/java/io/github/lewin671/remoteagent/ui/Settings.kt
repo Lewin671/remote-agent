@@ -183,10 +183,10 @@ fun SettingsScreen() {
             LargeTitle("设置")
             ConnBanner(state)
             if (state.clockWarning)
-                Banner(
+                Notice(
                     "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                    Tone2.WARN,
+                    NoticeTone.WARN,
                 )
             MachinesGroup(state, t)
             GLabel("客户端")
@@ -241,7 +241,7 @@ fun SettingsScreen() {
             GLabel("账户安全")
             Group(rows = listOf({ GRow("账户安全", if (state.isAuthority) "本机是管理端" else state.authorityName, onClick = { nav.recovery() }, chevron = true) }))
             if (state.isAuthority && state.recoveryPending)
-                Banner("恢复申请待处理 · 可生效时间：${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)}", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), Tone2.WARN, action = "处理", onAction = { nav.recovery() })
+                Notice("恢复申请待处理 · 可生效时间：${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)}", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN, action = "处理", onAction = { nav.recovery() })
             GLabel("本客户端的通知")
             Group(
                 rows =
@@ -415,7 +415,7 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(5.dp),
                         ) {
-                            Dot(if (m.online) p.green else p.faint)
+                            StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF)
                             Text(
                                 if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).ifEmpty { "离线" },
                                 style = T.s13,
@@ -594,12 +594,12 @@ fun DeviceScreen(id: String) {
         }
         Column(Modifier.verticalScroll(rememberScrollState())) {
             if (!member)
-                Banner(
+                Notice(
                     "已移除 · 保留的会话档案",
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
             else if (!m.online)
-                Banner(
+                Notice(
                     "不在线 · 最后在线 ${whenText(m.lastSeenMs)}",
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
@@ -688,10 +688,10 @@ fun DeviceScreen(id: String) {
                         Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
                     )
                 loadError.isNotEmpty() ->
-                    Banner(
+                    Notice(
                         "没能读取设置：$loadError",
                         Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
-                        Tone2.ERROR,
+                        NoticeTone.ERROR,
                         action = "重试",
                         onAction = { attempt++ },
                     )
@@ -705,12 +705,11 @@ fun DeviceScreen(id: String) {
                         else "新项目默认设置 · ${agentName(currentAgent)}"
                     )
                     if (mAgents.size > 1) {
-                        ViewTabs(
+                        Segmented(
                             mAgents.map { agentName(it) },
                             mAgents.indexOf(currentAgent),
                             { activeAgent = mAgents[it] },
-                            inset = 16.dp,
-                            modifier = Modifier.padding(bottom = 6.dp),
+                            Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp).fillMaxWidth(),
                         )
                     }
                     val d = defaultsFor(s, currentAgent)
@@ -778,10 +777,10 @@ fun DeviceScreen(id: String) {
                 }
             }
             if (save.error.isNotEmpty())
-                Banner(
+                Notice(
                     "没能保存：${save.error}",
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
-                    Tone2.ERROR,
+                    NoticeTone.ERROR,
                 )
             settings?.let { s ->
                 MachineImageStorage(
@@ -852,7 +851,7 @@ fun DeviceScreen(id: String) {
                 )
             }
             if (remove.error.isNotEmpty())
-                Banner(remove.error, Modifier.padding(16.dp), Tone2.ERROR)
+                Notice(remove.error, Modifier.padding(16.dp), NoticeTone.ERROR)
             Spacer(Modifier.height(24.dp))
         }
     }
@@ -1058,7 +1057,7 @@ private fun DefaultModelSheet(
         SheetHead("${agentName(agent)} · 新会话默认模型")
         val ms = models
         when {
-            error.isNotEmpty() -> Banner("没能读取模型列表：$error", tone = Tone2.ERROR)
+            error.isNotEmpty() -> Notice("没能读取模型列表：$error", tone = NoticeTone.ERROR)
             ms == null ->
                 Text(
                     "读取中…",
@@ -1412,40 +1411,39 @@ fun PairScreen(replacesDeviceId: String = "") {
                             modifier = Modifier.padding(bottom = 10.dp),
                         )
                         Btns {
-                            Btn(
+                            PillButton(
                                 "拒绝",
                                 {
                                     model.leave()
                                     nav.back()
                                 },
                                 Modifier.weight(1f),
-                                BtnKind.NEGATIVE,
+                                ButtonKind.SECONDARY,
                                 enabled = !sending,
-                                bg = p.paper,
                             )
-                            Btn(
+                            PillButton(
                                 if (sending) "等新设备确认图案…" else "允许加入",
                                 model::approve,
                                 Modifier.weight(1f),
-                                BtnKind.PRIMARY,
+                                ButtonKind.INK,
                                 enabled = !sending,
                             )
                         }
                     }
                 }
                 PairingUiState.Done ->
-                    Banner(
+                    Notice(
                         "新设备已加入",
                         Modifier.padding(top = 14.dp),
                         action = "完成",
                         onAction = nav.back,
-                        lead = { Mark(Lucide.Check, p.ink, iconSize(T.s13)) },
+                        icon = Lucide.Check,
                     )
                 is PairingUiState.Failed ->
-                    Banner(
+                    Notice(
                         step.message,
                         Modifier.padding(top = 14.dp),
-                        if (step.uncertain) Tone2.PLAIN else Tone2.ERROR,
+                        if (step.uncertain) NoticeTone.PLAIN else NoticeTone.ERROR,
                         action = if (step.canRetry) "重试" else "重新开始",
                         onAction = model::retry,
                     )
@@ -1588,7 +1586,7 @@ fun LicensesPage(onBack: () -> Unit) {
     var open by remember { mutableStateOf<Int?>(null) }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
         Column(Modifier.fillMaxSize().background(p.gbg)) {
-            NavBar("开源许可", onBack)
+            PageBar("开源许可", onBack)
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 for ((label, items) in
                     listOf(
@@ -1647,7 +1645,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
         Column(Modifier.fillMaxSize().background(p.gbg)) {
-            NavBar("设置", onBack)
+            PageBar("设置", onBack)
             GLabel("附件存储 · 这台手机")
             Group(
                 rows =
@@ -1684,7 +1682,7 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
                     ),
             )
             if (action.error.isNotEmpty())
-                Banner(action.error, Modifier.padding(horizontal = 16.dp), Tone2.ERROR)
+                Notice(action.error, Modifier.padding(horizontal = 16.dp), NoticeTone.ERROR)
         }
     }
 }
