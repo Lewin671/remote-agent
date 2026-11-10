@@ -4,16 +4,14 @@ import SwiftUI
 struct SchedulesScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @Environment(Navigator.self) private var nav
     @AppStorage("schedules.endedExpanded") private var endedExpanded = false
     var body: some View {
         let store = context.schedules
         Page {
             VStack(spacing: 0) {
-                HStack(spacing: 8) {
-                    Text("定时任务").type(T.title30, Theme.fg).padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
-                    IconButton(Lucide.plus, label: "新任务") { nav.open(.newSchedule()) }
-                }.padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
+                // 新定时 is the ink button of the bottom bar (UI/Shell); the page has no second way to it.
+                Text("定时任务").type(T.title30, Theme.fg).padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
                 ConnectionBar()
                 Ticking { now in
                     List {
