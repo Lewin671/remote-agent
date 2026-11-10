@@ -1749,7 +1749,7 @@ describe("project management (v2)", () => {
 
   it("removes a project only after asking, and keeps its waiting sessions", async () => {
     const r = demo();
-    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
     await click(button("移除项目…"));
@@ -1777,7 +1777,7 @@ describe("project management (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     const shop = "/Users/me/Code/shop";
     await r.changePrefs("hide", shop);
-    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     expect(names(".plist .pi b")).not.toContain("shop");
     await click(button(/新项目…/));
     for (const dir of ["Code", "shop"]) {
@@ -1795,7 +1795,7 @@ describe("project management (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     const { ProjectPicker } = await import("./NewSession");
     const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== "全部项目" && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
-    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     const managed = seen();
     // Counted as the home's sections are: waiting, then running.
     expect(managed.slice(0, 3)).toEqual(["常用", "foo", "~/Code/foo · 2 个待处理 · 4 个进行中"]);
@@ -1853,7 +1853,7 @@ describe("project management (v2)", () => {
     });
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     await click(button("设为常用"));
     await vi.waitFor(() => expect(host.textContent).toContain("没能保存，列表保持原样"), { timeout: 5000 });
@@ -1871,7 +1871,7 @@ describe("project management (v2)", () => {
     const r = createDemo(new URLSearchParams("conn=reconnecting"));
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 bar"]')!);
     expect(button(/设为常用/)!.disabled).toBe(true);
     expect(button(/设为常用/)!.textContent).toContain("连上服务器后才能修改");
@@ -3073,7 +3073,7 @@ describe("the home timeline and its scope (client-v27)", () => {
   it("makes a project the scope from project management", async () => {
     const r = demo();
     const went: string[] = [];
-    mount(<ManagePage remote={r} go={(x) => went.push(x)} onBack={() => undefined} wide={false} />);
+    mount(<ManagePage remote={r} go={(x) => went.push(x)} onBack={() => undefined} />);
     await click(host.querySelector<HTMLButtonElement>('[aria-label="看 shop 的会话"]')!);
     expect(went).toEqual([""]);
     act(() => root!.render(<Home remote={r} go={() => undefined} />));

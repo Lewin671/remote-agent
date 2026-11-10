@@ -700,6 +700,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .plist .fl { margin: 14px 12px 6px; }
 .plist .pi { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 6px 16px 6px 14px; width: 100%; text-align: left; position: relative; font-size: 17px; }
 .plist .pi + .pi::before { content: ""; position: absolute; top: 0; left: 52px; right: 0; border-top: .5px solid var(--sep); }
+.plist .pi.split + .pi::before, .plist .pi + .pi.split::before { left: 52px; }
 .plist .pi > div:not(.av) { flex: 1; min-width: 0; }
 .plist .pi b { font-size: 17px; font-weight: var(--w6); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .plist .pi small { font-size: 13px; color: var(--ink2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
@@ -713,9 +714,14 @@ h1, h2, h3 { font-weight: var(--w7); }
 .plist .pi.split.busy { opacity: .6; }
 .plist .pi .pm { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 52px; text-align: left; }
 .plist .pi .pm > div:not(.av) { flex: 1; min-width: 0; }
-.plist .pi .dots { width: 44px; height: 44px; margin-right: -12px; display: flex; align-items: center; justify-content: center; color: var(--ink2); flex: none; font-size: 20px; }
+.plist .pi .dots { width: 44px; height: 44px; margin-right: -12px; display: flex; align-items: center; justify-content: center; color: var(--ink3); flex: none; font-size: 20px; }
 .plist .pi .dots:disabled { opacity: .4; }
-.manage > .banner { margin-bottom: 8px; }
+.manage > .banner { margin: 0 16px 8px; }
+.manage .plist > .fl { margin: 14px 28px 6px; }
+.manage .plist > .hint { padding: 0 28px 12px; }
+/* In a sheet or a menu the rounded lists run to the sheet's own padding. */
+:is(.sheet, .pop) .grp { margin-left: 0; margin-right: 0; }
+:is(.sheet, .pop) .find { margin: 0 0 12px; }
 .conn-check .sr { gap: 12px; }
 .conn-check .who { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .conn-check .who small { display: block; font-size: 13px; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; }
@@ -879,6 +885,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sw.off::after { right: auto; left: 2px; }
 .sw:disabled { opacity: .4; }
 .glabel { font-size: 13px; color: var(--ink2); padding: 26px 28px 8px; }
+/* A note under a group, from where the rows' text starts. */
+.gf { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; overflow-wrap: anywhere; }
 /* A note under a group, as where devices are added. */
 .manage-hint { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; }
 .gwarn { margin: 0 16px 12px; background: var(--orange-soft); color: var(--orange-ink); border-radius: 18px; padding: 4px 6px 4px 14px; font-size: 13px; display: flex; gap: 10px; align-items: center; min-height: 44px; }
@@ -1167,9 +1175,10 @@ input.field { margin: 0; }
 /* One setting's values: the segmented control, at the row's end. */
 .pick { margin-left: auto; display: flex; }
 .pick button { min-width: 56px; }
-/* Wide: settings pages keep a readable column instead of rows as wide as the window. */
-.desk .body.gray, .desk .page.gray > .body { padding-inline: max(0px, calc((100% - 640px) / 2)); }
-.desk .body.gray { padding-top: 12px; }
+/* Settings-type pages (设置, 设备, 电脑, 客户端, 额度, 项目管理): on a wide
+   window their content keeps to one middle column of about 640. */
+.desk .body.set, .desk .page.set > .body { padding-inline: max(0px, calc((100% - 640px) / 2)); }
+.desk .body.set { padding-top: 12px; }
 
 /* Row margins must participate in virtual height measurement. Browser scroll
  * anchoring would compete with the virtualizer's measured corrections. */

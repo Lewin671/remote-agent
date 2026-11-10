@@ -80,7 +80,7 @@ export function Settings({
   );
   const others = clients.filter((d) => d.id !== me);
   return (
-    <div className="body gray">
+    <div className="body set">
       {onBack && (
         <div className="tbar">
           <GlassButton label="返回" onClick={onBack}>
@@ -333,7 +333,7 @@ export function QuotaPage({
     );
   const views = machineQuotaViews(m.meta, machineAgents(m), clock, m.online);
   return (
-    <div className="page gray">
+    <div className="page set">
       <NavBar
         onBack={onBack}
         title={<span className="tname">账户额度</span>}
@@ -1099,7 +1099,7 @@ export function MachinePage({
   }
 
   return (
-    <div className="page gray">
+    <div className="page set">
       <NavBar onBack={onBack} title={name} />
       <div className="body">
         <QuotaSummary m={m} go={go} />

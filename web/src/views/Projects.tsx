@@ -15,7 +15,7 @@ import { ActionSheet, Alert, Avatar, Banner, fromHere, NavBar, useNow, useRemote
 import type { Go } from "./NewSession";
 import { NewProjectSheet } from "./NewSession";
 import { saveScope } from "../scope";
-import { Ellipsis, LoaderCircle, Plus } from "../icons";
+import { Ellipsis, LoaderCircle, Plus, Search, X } from "../icons";
 
 type P = Project<SessionView>;
 
@@ -142,7 +142,17 @@ export function ProjectList({ remote, item, first, onNew, children }: { remote: 
   const titled = pinned.length > 0 && others.length > 0;
   return (
     <>
-      {g.pinned.length + g.others.length > 8 && <input className="field project-search" aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} />}
+      {g.pinned.length + g.others.length > 8 && (
+        <label className="find">
+          <Search />
+          <input aria-label="搜索项目" placeholder="搜索项目" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Escape" && setQuery("")} />
+          {query && (
+            <button className="x" aria-label="清空搜索" onClick={() => setQuery("")}>
+              <X />
+            </button>
+          )}
+        </label>
+      )}
       <div className="plist" role={first ? "menu" : undefined}>
         {!q && first && <div className="grp">{first}</div>}
         {titled && <div className="fl">常用</div>}
@@ -199,9 +209,9 @@ export function RemoveProjectAlert({ remote, path, onDone, onCancel }: { remote:
   );
 }
 
-/** 项目管理: the list, with ⋯ on each project for 常用 and 移除. On a wide
- * window it is the main area's page; on a phone, a page of its own. */
-export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: Go; onBack: () => void; wide: boolean }) {
+/** 项目管理: the list, with ⋯ on each project for 常用 and 移除; on a
+ * wide window in the main area's middle column of about 640. */
+export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onBack: () => void }) {
   useRemote(remote);
   const [menu, setMenu] = useState<P>();
   const [removing, setRemoving] = useState("");
@@ -209,32 +219,33 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
   const blocked = prefsBlocked(remote);
   const pending = remote.prefs.pending;
   const pin = menu && pinAction(remote, menu.key);
-  const body = (
-    <>
-      <PrefsBanner remote={remote} />
-      <ProjectList
-        remote={remote}
-        onNew={() => setAdding(true)}
-        item={(p) => (
-          <ProjectItem
-            key={p.key}
+  return (
+    <div className="page set">
+      <NavBar onBack={onBack} title="项目管理" />
+      <div className="body">
+        <div className="manage">
+          <PrefsBanner remote={remote} />
+          <ProjectList
             remote={remote}
-            p={p}
-            busy={pending.has(p.key)}
-            label={`看 ${p.name} 的会话`}
-            onClick={() => {
-              saveScope(p.key);
-              go("");
-            }}
-            onMore={() => setMenu(p)}
+            onNew={() => setAdding(true)}
+            item={(p) => (
+              <ProjectItem
+                key={p.key}
+                remote={remote}
+                p={p}
+                busy={pending.has(p.key)}
+                label={`看 ${p.name} 的会话`}
+                onClick={() => {
+                  saveScope(p.key);
+                  go("");
+                }}
+                onMore={() => setMenu(p)}
+              />
+            )}
           />
-        )}
-      />
-      <div className="hint">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div>
-    </>
-  );
-  const layers = (
-    <>
+          <div className="gf">移除只是不再列出这个项目，会话和电脑上的目录都不动。</div>
+        </div>
+      </div>
       {menu && pin && (
         <ActionSheet
           info={
@@ -245,7 +256,7 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           }
           actions={[
             { label: pin.label, onClick: pin.run, disabled: !!blocked, note: blocked || undefined },
-            { label: "移除项目…", red: true, onClick: () => setRemoving(menu.key), disabled: !!blocked },
+            { label: "移除项目…", red: true, onClick: () => setRemoving(menu.key), disabled: !!blocked, group: 1 },
           ]}
           onClose={() => setMenu(undefined)}
         />
@@ -261,25 +272,6 @@ export function ManagePage({ remote, go, onBack, wide }: { remote: Remote; go: G
           }}
         />
       )}
-    </>
-  );
-  if (wide)
-    return (
-      <div className="body">
-        <div className="wpage manage">
-          <h3 className="wtitle">项目管理</h3>
-          {body}
-        </div>
-        {layers}
-      </div>
-    );
-  return (
-    <div className="page">
-      <NavBar onBack={onBack} title={<span className="tname">项目管理</span>} />
-      <div className="body">
-        <div className="pad manage">{body}</div>
-      </div>
-      {layers}
     </div>
   );
 }

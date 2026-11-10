@@ -304,7 +304,7 @@ function Main({ remote }: { remote: Remote }) {
       <ProjectPage key={arg} remote={remote} pkey={arg} go={go} onBack={back} />
     );
   else if (kind === "projects")
-    page = <ManagePage remote={remote} go={go} onBack={back} wide={wide} />;
+    page = <ManagePage remote={remote} go={go} onBack={back} />;
   else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
   else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;

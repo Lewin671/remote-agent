@@ -187,7 +187,7 @@ export function SecurityPage({
   const localClient =
     remote.devices.get(remote.account.deviceId)?.kind === DeviceKind.CLIENT;
   return (
-    <div className="page gray" data-route="account-security">
+    <div className="page set" data-route="account-security">
       {abandonOffer && <Alert title="放弃此接任准备？"
         text="公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
         ok="放弃" danger onCancel={() => setAbandonOffer(false)} onOk={() => {
