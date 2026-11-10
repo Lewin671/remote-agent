@@ -736,10 +736,6 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
 fun startable(text: String, images: List<PendingImage>, machineId: String): Boolean =
     (text.isNotBlank() || images.isNotEmpty()) && images.all { it.readyFor(machineId) }
 
-/** The old name, for pages that start a session in a folder of their own. */
-@Composable
-fun NewSessionCard(state: RemoteState, initial: NewConfig?, name: String, focus: Boolean) = NewSessionBox(state, initial, name, focus)
-
 fun machineSubtitle(installed: List<Agent>, missing: Agent? = null, fallback: Agent? = null): String {
     val names = installed.joinToString("、") { agentName(it) }
     return if (missing != null && fallback != null) {

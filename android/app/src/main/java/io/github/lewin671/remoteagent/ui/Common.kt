@@ -190,29 +190,6 @@ fun Card(
     }
 }
 
-/** A small grey pill; 44 dp tall when it can be tapped. */
-@Composable
-fun Chip(text: String, color: Color? = null, bg: Color? = null, onClick: (() -> Unit)? = null) {
-    val p = pal
-    Box(
-        Modifier.heightIn(min = if (onClick != null) 44.dp else 26.dp)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text,
-            style = T.s12,
-            color = color ?: p.ink,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier.clip(RoundedCornerShape(14.dp))
-                    .background(bg ?: p.fill2)
-                    .padding(horizontal = 9.dp, vertical = 4.dp),
-        )
-    }
-}
-
 /**
  * The way to the server, under the navigation bar and apart from the session's state; nothing when
  * online. It names the nearest stretch that is down (client-v30 「断线」): this device's network, or
@@ -332,31 +309,6 @@ fun Confirm(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) = Alert(title, text, confirm, danger, onDismiss, onConfirm)
-
-/** A 44 dp row with the page's side padding. */
-@Composable
-fun Row44(
-    modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
-    content: @Composable RowScope.() -> Unit,
-) {
-    Row(
-        modifier
-            .fillMaxWidth()
-            .heightIn(min = 44.dp)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        content = content,
-    )
-}
-
-@Composable
-fun Bordered(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val p = pal
-    Box(modifier.border(1.dp, p.sep, Radii.R14).padding(12.dp)) { content() }
-}
 
 fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines[s.machineId]
 
