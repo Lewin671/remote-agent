@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.approvalDisplay
+import io.github.lewin671.remoteagent.core.approvalHead
+import io.github.lewin671.remoteagent.core.approvalBody
+
 import io.github.lewin671.remoteagent.core.text
 
 import android.content.Context

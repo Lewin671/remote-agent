@@ -1,5 +1,11 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.approvalDisplay
+import io.github.lewin671.remoteagent.core.approvalHead
+import io.github.lewin671.remoteagent.core.approvalBody
+import io.github.lewin671.remoteagent.core.approvalTruncated
+import io.github.lewin671.remoteagent.core.approvalTruncatedMessage
+
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import io.github.lewin671.remoteagent.proto.NotifyApproval
 import io.github.lewin671.remoteagent.push.Notifier

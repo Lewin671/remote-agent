@@ -1,5 +1,8 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.approvalDisplay
+import io.github.lewin671.remoteagent.core.approvalBody
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable

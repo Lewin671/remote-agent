@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.core.approvalDisplay
+
 import android.app.KeyguardManager
 import android.app.Notification
 import android.app.NotificationManager
@@ -38,7 +40,6 @@ import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.NotifyContent
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import io.github.lewin671.remoteagent.proto.ResolveApprovalRequest
-import io.github.lewin671.remoteagent.ui.approvalDisplay
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first

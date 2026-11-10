@@ -1,4 +1,4 @@
-package io.github.lewin671.remoteagent.ui
+package io.github.lewin671.remoteagent.core
 
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 
