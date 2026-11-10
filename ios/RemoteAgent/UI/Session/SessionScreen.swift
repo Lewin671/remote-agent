@@ -194,7 +194,8 @@ private struct SessionPage: View {
         .toolbarRole(.editor)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                SessionTitle(title: titleOf(s), status: subtitle.status, mode: subtitle.mode, danger: subtitle.danger)
+                SessionTitle(
+                    title: titleOf(s), mark: StatusKind(status), status: subtitle.status, mode: subtitle.mode, danger: subtitle.danger)
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button { menu = true } label: {
@@ -246,7 +247,7 @@ private struct SessionPage: View {
                     scheduleSending = false; nav.open(route, from: page)
                 })
                 .toolbar { ToolbarItem(placement: .topBarLeading) { TextAction("取消") { scheduleSending = false } } }
-            }.presentationDetents([.large]).presentationDragIndicator(.visible)
+            }.sheetSurface().presentationDetents([.large])
         }
         .sessionRename(isPresented: $rename, session: s)
         .confirm(
@@ -359,18 +360,25 @@ private struct SessionPage: View {
 
 /// The middle of the bar: the title on one line, and under it the state and
 /// the approval mode (12, `ink2`), the mode red only when it is full access.
+/// The title, and under it the status's mark before its word, then the
+/// mode: both lines start at the same left edge, next to the back button.
 private struct SessionTitle: View {
     let title: String
+    let mark: StatusKind?
     let status: String
     let mode: String
     let danger: Bool
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(alignment: .leading, spacing: 1) {
             Text(title).font(.headline).foregroundStyle(DS.ink).lineLimit(1)
-            Text("\(Text(status).foregroundStyle(DS.ink2))\(Text(mode.isEmpty ? "" : " · ").foregroundStyle(DS.ink2))\(Text(mode).foregroundStyle(danger ? DS.red : DS.ink2))")
-                .font(.caption).lineLimit(1)
+            HStack(spacing: 5) {
+                if let mark { StatusMark(mark).scaleEffect(0.8) }
+                Text("\(Text(status).foregroundStyle(DS.ink2))\(Text(mode.isEmpty ? "" : " · ").foregroundStyle(DS.ink2))\(Text(mode).foregroundStyle(danger ? DS.red : DS.ink2))")
+                    .font(.caption).lineLimit(1)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         // The bar has one line's room at the largest sizes; a long press shows it large.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .accessibilityElement(children: .combine)
