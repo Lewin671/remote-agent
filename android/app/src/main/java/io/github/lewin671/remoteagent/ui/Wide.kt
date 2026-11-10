@@ -31,27 +31,42 @@ fun wideWindow(): Boolean = LocalConfiguration.current.screenWidthDp.dp >= WIDE_
 
 /**
  * The home page, or in a wide window (a tablet, a phone on its side) the
- * sidebar with the home list and the chosen session in the main area on a
- * sheet of paper. A session chosen from the list opens there instead of on
- * a page of its own; going back from it empties the main area.
+ * sidebar with the home list and, on a sheet of paper beside it, the main
+ * area: the chosen session, or a new task (design-system §6: in a wide window
+ * 新任务 is the main area itself, not a sheet). Going back from either
+ * empties the main area.
  */
 @Composable
 fun HomeOrWide() {
     if (!wideWindow()) return HomeScreen()
     val nav = LocalNav.current
     val p = pal
-    var selected by rememberSaveable { mutableStateOf<String?>(null) }
+    // "s" + a session ID, "n" + a project key, or "p" + machine, newline, folder.
+    var main by rememberSaveable { mutableStateOf<String?>(null) }
+    val here = nav.copy(
+        session = { main = "s$it" },
+        sessionTerminal = { OpenTerminal.requested[it] = true; main = "s$it" },
+        project = { main = "n$it" },
+        projectNew = { main = "n$it" },
+        newProjectAt = { machine, path -> main = "p$machine\n$path" },
+    )
     Row(Modifier.fillMaxSize().background(p.gbg)) {
-        CompositionLocalProvider(
-            LocalNav provides nav.copy(session = { selected = it }, sessionTerminal = { OpenTerminal.requested[it] = true; selected = it }),
-            LocalSelectedSession provides selected,
-        ) {
+        CompositionLocalProvider(LocalNav provides here, LocalSelectedSession provides main?.takeIf { it.startsWith("s") }?.drop(1)) {
             Box(Modifier.width(380.dp).fillMaxHeight()) { HomeScreen() }
         }
         Box(Modifier.weight(1f).fillMaxHeight().padding(top = 8.dp, end = 8.dp, bottom = 8.dp).clip(Radii.R24).background(p.paper)) {
-            val sid = selected
-            if (sid == null) Text("选一个会话，在这里看", style = T.s15, color = p.ink2, modifier = Modifier.align(Alignment.Center))
-            else CompositionLocalProvider(LocalNav provides nav.copy(back = { selected = null })) { key(sid) { SessionScreen(sid) } }
+            val m = main
+            CompositionLocalProvider(LocalNav provides here.copy(back = { main = null })) {
+                key(m) {
+                    val arg = m?.drop(1).orEmpty()
+                    when (m?.firstOrNull()) {
+                        's' -> SessionScreen(arg)
+                        'n' -> AppSafeArea { ProjectScreen(arg, focus = true) }
+                        'p' -> arg.split('\n', limit = 2).let { AppSafeArea { NewProjectAtScreen(it[0], it.getOrElse(1) { "" }) } }
+                        else -> Text("选一个会话，在这里看", style = T.s15, color = p.ink2, modifier = Modifier.align(Alignment.Center))
+                    }
+                }
+            }
         }
     }
 }

@@ -13,7 +13,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
@@ -380,6 +382,7 @@ fun routeValue(arg: String?): String = arg.orEmpty()
 private const val PAGE_MS = 300
 private val pageSlide = tween<IntOffset>(PAGE_MS, easing = FastOutSlowInEasing)
 private val viewerFade = tween<Float>(200)
+private val pageFade = tween<Float>(PAGE_MS)
 private val tabRoutes = setOf("home", "schedules")
 
 private fun tabSwitch(from: NavBackStackEntry, to: NavBackStackEntry) =
@@ -394,10 +397,16 @@ private fun NavGraphBuilder.page(route: String, content: @Composable (NavBackSta
 
 private fun viewer(e: NavBackStackEntry) = e.destination.route?.startsWith("image/") == true
 
+/** The whole-page sheets (design-system §6: 新任务, 新定时) rise from the bottom over the page they leave. */
+private fun rises(e: NavBackStackEntry) = e.destination.route.let {
+    it != null && (it.startsWith("project/") || it.startsWith("newproject/") || it.startsWith("newtask"))
+}
+
 private fun pageEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     when {
         tabSwitch(from, to) -> EnterTransition.None
         viewer(to) -> fadeIn(viewerFade)
+        rises(to) -> slideInVertically(pageSlide) { it }
         else -> slideInHorizontally(pageSlide) { it }
     }
 
@@ -406,12 +415,13 @@ private fun pageExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransi
         tabSwitch(from, to) -> ExitTransition.None
         // Stays as it is under the viewer fading in.
         viewer(to) -> fadeOut(viewerFade, targetAlpha = 1f)
+        rises(to) -> fadeOut(pageFade, targetAlpha = 1f)
         else -> slideOutHorizontally(pageSlide) { -it / 4 }
     }
 
 private fun pagePopEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     when {
-        tabSwitch(from, to) || viewer(from) -> EnterTransition.None
+        tabSwitch(from, to) || viewer(from) || rises(from) -> EnterTransition.None
         else -> slideInHorizontally(pageSlide) { -it / 4 }
     }
 
@@ -419,5 +429,6 @@ private fun pagePopExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTra
     when {
         tabSwitch(from, to) -> ExitTransition.None
         viewer(from) -> fadeOut(viewerFade)
+        rises(from) -> slideOutVertically(pageSlide) { it }
         else -> slideOutHorizontally(pageSlide) { it }
     }
