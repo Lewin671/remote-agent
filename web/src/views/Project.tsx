@@ -1,105 +1,51 @@
-// A project on a phone: its live sessions, the recently ended ones, and
-// the box to start a new session in it. A wide window has no such page:
-// the sidebar lists the project and the home starts a session in it.
+// 新任务 on a phone (design-system §6 新任务, client-v58 #new): the
+// whole-page sheet that rises from the bottom, for a project. Its close is
+// the way back; picking another project in the sentence opens that one's
+// sheet in its place. A wide window has no such page: the main area is the
+// new task.
 
-import { useEffect, useRef, useState } from "react";
-import { compareLive, compareEnded, exited, machineName, projectName, shortPath } from "../model";
+import { useEffect, useState } from "react";
+import { projectName } from "../model";
 import type { Remote } from "../remote";
-import { Avatar, NavBar, useNow, useRemote } from "../ui";
-import { colsOf, EndedRow, SessionRow } from "./Home";
-import { ConfigSheet, ConfigSummary, NewBox, useNewSession, type Go } from "./NewSession";
+import { useRemote } from "../ui";
+import { NewBox, NewFlow, useNewSession, type Go } from "./NewSession";
 import { RemovedNotice } from "./Projects";
-import { isHidden } from "../prefs";
-import { ChevronRight, Ellipsis } from "../icons";
-
-const PAGE = 20;
 
 export function ProjectPage({ remote, pkey, go, onBack }: { remote: Remote; pkey: string; go: Go; onBack: () => void }) {
   useRemote(remote);
-  useNow(30_000);
   const ns = useNewSession(remote, pkey, go);
-  const p = ns.p;
-  const name = p?.name ?? projectName(pkey);
-  const live = p?.sessions.filter((s) => !exited(s)).sort(compareLive) ?? [];
-  const ended = p?.sessions.filter(exited).sort(compareEnded) ?? [];
-  const machines = (p?.machines.length ? p.machines : [ns.cfg.machineId]).filter(Boolean).map((id) => machineName(remote.machines.get(id)));
-  const [shownEnded, setShownEnded] = useState(3);
-  // Ended sessions come a page at a time; the project's machines say how
-  // many there are until every page is here.
-  const totalEnded = remote.sessionsOpen ? Math.max(p?.ended ?? 0, ended.length) : ended.length;
-  useEffect(() => {
-    if ((shownEnded > ended.length && ended.length < totalEnded) || ended.slice(0, shownEnded).some((s) => remote.pastPages(s))) void remote.loadMoreSessions();
-  });
-  const cols = colsOf(remote, p?.sessions ?? [], false);
-  const [scrolled, setScrolled] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(() => remote.demoFlag("project-settings"));
-  const endedRef = useRef<HTMLDivElement>(null);
+  const name = ns.p?.name ?? projectName(pkey);
+  const [settings] = useState(() => remote.demoFlag("project-settings"));
+  const [picking, setPicking] = useState(false);
+  // Opened from 新任务 or a project just picked: the keyboard is up.
   const [focus] = useState(() => remote.focusProject === pkey);
   useEffect(() => {
     if (remote.focusProject === pkey) remote.focusProject = "";
   }, [remote, pkey]);
-  const head = (
-    <div className="phead">
-      <Avatar name={name} size="lg" />
-      <div>
-        <div className="pname" title={name}>{name}</div>
-        <div className="muted small ppath">{shortPath(pkey)}{machines.length > 0 && ` · ${machines.join(" · ")}`}</div>
-        <div className="small pmore">
-          <span className="muted">{live.length} 个进行中 · </span>
-          <button
-            className="link"
-            onClick={() => {
-              setShownEnded(Math.max(ended.length, PAGE));
-              setTimeout(() => endedRef.current?.scrollIntoView({ behavior: "smooth" }));
-            }}
-          >
-            已结束 {totalEnded}<ChevronRight />
-          </button>
-        </div>
-        <ConfigSummary summary={ns.summary} chip onClick={() => setSettingsOpen(true)} />
-      </div>
-    </div>
-  );
-  // A removed project is still there to see; new sessions wait until it
-  // is restored.
-  const hidden = isHidden(remote.projectPrefs(), pkey);
-  const lists = (
-    <>
-      <RemovedNotice remote={remote} pkey={pkey} />
-      {live.length > 0 && (
-        <div className="label">
-          进行中 <span>{live.length}</span>
-        </div>
-      )}
-      {live.map((s, i) => (
-        <SessionRow key={s.id} remote={remote} s={s} go={go} cols={cols} last={i === live.length - 1} />
-      ))}
-      {ended.length > 0 && (
-        <div className="label" ref={endedRef}>
-          最近结束
-        </div>
-      )}
-      {ended.slice(0, shownEnded).map((s) => (
-        <EndedRow key={s.id} s={s} go={go} />
-      ))}
-      {totalEnded > Math.min(shownEnded, ended.length) && (
-        <button className="more-row" onClick={() => setShownEnded((n) => Math.min(n, ended.length) + PAGE)}>
-          {shownEnded > ended.length ? "正在加载更早的会话…" : <>全部 {totalEnded} 个已结束的会话<ChevronRight /></>}
-        </button>
-      )}
-      {live.length === 0 && totalEnded === 0 && !hidden && <p className="empty">这个项目还没有会话。</p>}
-    </>
-  );
   return (
-    <div className="page">
-      {/* Scrolled away, the project's head folds into the bar; the keyboard moves nothing. */}
-      <NavBar onBack={onBack} title={scrolled ? name : undefined} sub={scrolled ? <ConfigSummary summary={ns.summary} onClick={() => setSettingsOpen(true)} /> : undefined} right={<button className="more" onClick={() => setSettingsOpen(true)} aria-label="项目设置"><Ellipsis /></button>} />
-      <div className="body" onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 64)}>
-        <div className="pad">{head}</div>
-        {lists}
-      </div>
-      {!hidden && <NewBox ns={ns} name={name} autoFocus={focus} />}
-      {settingsOpen && <ConfigSheet ns={ns} onClose={() => setSettingsOpen(false)} />}
+    <div className="page rise">
+      <NewBox
+        ns={ns}
+        name={name}
+        autoFocus={focus}
+        settings={settings}
+        onClose={onBack}
+        onPickProject={() => setPicking(true)}
+        notice={<RemovedNotice remote={remote} pkey={pkey} />}
+      />
+      {picking && (
+        <NewFlow
+          remote={remote}
+          go={go}
+          onClose={() => setPicking(false)}
+          onPicked={(key) => {
+            if (key === pkey) return;
+            // Another project's sheet takes this one's place: closing it still goes back.
+            remote.focusProject = key;
+            location.replace("#/p/" + encodeURIComponent(key));
+          }}
+        />
+      )}
     </div>
   );
 }

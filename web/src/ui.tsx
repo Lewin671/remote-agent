@@ -60,9 +60,9 @@ export function GlassButton({ label, onClick, children, disabled, className = ""
 
 /** A bottom sheet: gray, with a grab handle that closes it as the dim does.
  * A title, when given, is centered in a head with at most a 取消 or 完成 on
- * the right, only where something is to be confirmed. On a wide window
- * it is centered. */
-export function Sheet({ onClose, children, className = "", title, action }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void } }) {
+ * the right, only where something is to be confirmed, and a round back
+ * button on the left a level down. On a wide window it is centered. */
+export function Sheet({ onClose, children, className = "", title, action, back }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void; disabled?: boolean }; back?: () => void }) {
   useEscape(onClose);
   return (
     <div className="overlay">
@@ -71,9 +71,17 @@ export function Sheet({ onClose, children, className = "", title, action }: { on
         <button className="grab" aria-label="关闭" onClick={onClose} />
         {title !== undefined && (
           <div className="sheet-head">
-            <span className="side-act" />
+            {back ? (
+              <span className="side-act">
+                <button className="fbtn" aria-label="返回" onClick={back}>
+                  <ChevronLeft />
+                </button>
+              </span>
+            ) : (
+              <span className="side-act" />
+            )}
             <b>{title}</b>
-            {action ? <button className="side-act" onClick={action.onClick}>{action.label}</button> : <span className="side-act" />}
+            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : <span className="side-act" />}
           </div>
         )}
         {children}

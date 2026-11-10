@@ -290,12 +290,12 @@ export function RemovedNotice({ remote, pkey }: { remote: Remote; pkey: string }
   if (!isHidden(remote.projectPrefs(), pkey)) return null;
   const busy = remote.prefs.pending.has(pkey);
   return (
-    <div className="removed-note">
+    <>
       {/* A rare state: a line with its action, not the page's main button. */}
       <Banner action={busy ? "正在添加…" : "重新添加"} onAction={prefsBlocked(remote) || busy ? undefined : () => void remote.changePrefs("unhide", pkey)}>
         这个项目已从列表移除
       </Banner>
       <PrefsBanner remote={remote} quiet />
-    </div>
+    </>
   );
 }

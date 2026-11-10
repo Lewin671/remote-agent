@@ -81,7 +81,21 @@ async function fromMenu(item: string | RegExp, within: ParentNode = host) {
 
 /** A row's value in the new-session settings. */
 const setting = (name: string) =>
-  [...document.querySelectorAll(".sr")].find((r) => r.querySelector(".lbl")?.textContent === name)?.querySelector(".v")?.textContent ?? "";
+  [...document.querySelectorAll(".sheet .mi")].find((r) => r.querySelector(".mt")?.textContent === name)?.querySelector(".mv")?.textContent ?? "";
+
+/** The CLI the new task's sentence names, and picking another there. */
+const cliPicked = () => host.querySelector(".sent .tok.cli")?.textContent;
+async function pickCli(name: string) {
+  await click(host.querySelector<HTMLButtonElement>(".sent .tok.cli")!);
+  await click(button(name, document.querySelector(".sheet")!));
+}
+function pickCliNow(name: string) {
+  act(() => host.querySelector<HTMLButtonElement>(".sent .tok.cli")!.click());
+  act(() => button(name, document.querySelector(".sheet")!)!.click());
+}
+
+/** The project the wide new task names, and the start's sentence there. */
+const startProject = () => host.querySelector(".wstart .sent .tok.p")?.textContent;
 
 it("keeps the context warning and the settings behind ⋯ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
@@ -225,15 +239,15 @@ const savedSet = (r: DemoRemote, path: string, agent = Agent.CODEX) => r.project
 it("keeps saved project settings as sessions change", () => {
   const r = demo();
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  // The remembered CLI is the one picked next to the box and the one the summary names.
-  const line = () => `${host.querySelector(".launch .pick .on")?.textContent} / ${host.querySelector(".phead .project-summary")?.textContent}`;
-  expect(line()).toMatch(/^Codex \/ Codex · /);
+  // The remembered CLI is the one the sentence names; the summary does not name it again.
+  const line = () => `${cliPicked()} / ${host.querySelector(".acc .project-summary")?.textContent}`;
+  expect(line()).toMatch(/^Codex \/ 询问 · /);
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
     r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
-  expect(line()).toMatch(/^Codex \/ Codex · /);
+  expect(line()).toMatch(/^Codex \/ 询问 · /);
 });
 
 it("leaves an unknown approval mode unsaid in the navbar and follows the CLI in a new session", async () => {
@@ -247,7 +261,7 @@ it("leaves an unknown approval mode unsaid in the navbar and follows the CLI in 
   for (const a of r.machines.get("mac")!.meta!.agents) a.defaultModeSource = 0;
   savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.UNSPECIFIED;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · 跟随 CLI 设置/));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^跟随 CLI 设置/));
   await fromMenu("新会话设置");
   expect(setting("审批")).toBe("跟随 CLI 设置");
   expect(document.body.textContent).not.toContain("未读到");
@@ -1129,13 +1143,13 @@ it("keeps a project's model and effort after the page remounts", async () => {
   mount(page(r));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((r) => r.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((r) => r.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6-Sol", document)).toBeDefined());
   await click(button("GPT-6-Sol", document));
   await click(button("low", document));
   // Finish directly on the model page, without returning to project settings.
   await click(button("完成", document));
-  expect(document.querySelector(".ns-head")).toBeNull();
+  expect(document.querySelector(".sheet")).toBeNull();
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
   // Rebuild the page with the saved account preference.
   act(() => root!.unmount());
@@ -1189,7 +1203,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await click(button(/^默认模型/, document));
   await vi.waitFor(() => expect(button("high", document)).toBeDefined());
   await click(button("high", document));
@@ -1197,7 +1211,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
   await vi.waitFor(() => expect(button("high", document)?.className).toBe("on"));
 });
@@ -1213,7 +1227,7 @@ it("keeps the effort in sight under a long model list", async () => {
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy(), { timeout: 3000 });
   // The default row, three models and the link: the effort follows right after.
   expect(document.querySelectorAll(".list .mi")).toHaveLength(5);
@@ -1223,7 +1237,7 @@ it("keeps the effort in sight under a long model list", async () => {
   await click(button("Old 7", document));
   await click(button("完成", document));
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   // Collapsed again, the picked model is still listed and checked.
   await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy());
   expect(button("Old 7", document)?.querySelector(".ck")).toBeTruthy();
@@ -1237,7 +1251,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await fromMenu("新会话设置");
   await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
 });
 
@@ -1285,7 +1299,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent === "~/Code");
   expect(row?.querySelector("b")?.textContent).toBe("Code");
   remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
-  expect(host.textContent).toContain("这个项目还没有会话");
+  expect(host.querySelector(".sent .tok.p > span:not(.av)")?.textContent).toBe("Code");
   // Choosing an existing folder on its current machine keeps its settings.
   const foo = "/Users/me/Code/foo";
   await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
@@ -1313,7 +1327,7 @@ it("shows the effective approval mode in project settings while keeping the defa
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("自动"));
   await fromMenu("新会话设置");
   expect(setting("审批")).toBe("自动");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("审批")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("审批")));
   const defaultOption = [...document.querySelectorAll<HTMLButtonElement>(".mi")].find((b) => b.textContent?.includes("跟随 Codex 自己的配置"));
   expect(defaultOption?.textContent).toContain("默认");
   expect(defaultOption?.querySelector(".ck svg")).toBeTruthy();
@@ -1451,13 +1465,13 @@ describe("a new-session draft", () => {
     r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
     const sent = capture(r);
     mount(<WideHome remote={r} go={() => undefined} />);
-    await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
-    const before = host.querySelector(".wide-start-title .chip")!.textContent;
+    await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
+    const before = startProject();
     await type("加限流");
     // Another project gets a newer session meanwhile.
     act(() => { r.sessions.get("s-plan")!.info!.createdAt = timestampFromMs(Date.now() + 172_800_000); });
     bump(r, "s-plan");
-    expect(host.querySelector(".wide-start-title .chip")!.textContent).toBe(before);
+    expect(startProject()).toBe(before);
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -1596,12 +1610,12 @@ describe("switching a new session's CLI (v2)", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    // The switch is next to the box; project settings have no CLI row.
-    await click(cliSwitch("Claude Code"));
-    expect(host.querySelector(".launch .pick .on")?.textContent).toBe("Claude Code");
+    // The CLI is picked in the sentence; project settings have no CLI row.
+    await pickCli("Claude Code");
+    expect(cliPicked()).toBe("Claude Code");
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
     // Nothing is stored for Claude Code here: the project's latest Claude Code session says how it starts, not Codex's set.
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Claude Code · 询问 · MacBook · Sonnet/), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook · Sonnet/), { timeout: 3000 });
     await fromMenu("新会话设置");
     expect(setting("CLI")).toBe("");
     await click(button("完成", document));
@@ -1624,7 +1638,7 @@ describe("switching a new session's CLI (v2)", () => {
     const page = () => <ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />;
     mount(page());
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    await click(cliSwitch("Claude Code"));
+    await pickCli("Claude Code");
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "梳理登录流程");
@@ -1641,10 +1655,11 @@ describe("switching a new session's CLI (v2)", () => {
     act(() => root!.unmount());
     host.remove();
     mount(page());
-    expect(host.querySelector(".launch .pick .on")?.textContent).toBe("Claude Code");
+    expect(cliPicked()).toBe("Claude Code");
     // Back on Codex, its stored model is what starts.
-    await click(cliSwitch("Codex"));
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · 询问/));
+    await pickCli("Codex");
+    expect(cliPicked()).toBe("Codex");
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook · GPT-6-Astra/));
   });
 
   it("edits one CLI's set under its tab and picks nothing by looking", async () => {
@@ -1654,17 +1669,17 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await fromMenu("新会话设置");
     const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) => b.textContent === name);
-    expect(tab("Codex")?.className).toBe("on");
+    expect(tab("Codex")?.getAttribute("aria-pressed")).toBe("true");
     expect(setting("上下文")).toBe("");
     await click(tab("Claude Code"));
     expect(document.querySelector('[aria-label="上下文窗口"]')).not.toBeNull();
-    await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("审批")));
+    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("审批")));
     await click(button(/^自动/, document));
     await click(button("完成", document));
     await vi.waitFor(() => expect(savedSet(r, foo, Agent.CLAUDE)).toMatchObject({ mode: ApprovalMode.AUTO }), { timeout: 3000 });
     expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-astra", mode: ApprovalMode.ASK });
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CODEX);
-    expect(host.querySelector(".launch .pick .on")?.textContent).toBe("Codex");
+    expect(cliPicked()).toBe("Codex");
   });
 
   it("shows no switch on a machine with one CLI, and says which CLI runs when the remembered one is missing", async () => {
@@ -1673,7 +1688,7 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await r.changePrefs("settings", foo, { id: "t1", kind: "settings", path: foo, at: Date.now(), settings: { machineId: "vps", agent: Agent.CLAUDE } });
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
-    expect(host.querySelector(".launch")).toBeNull();
+    expect(host.querySelector(".sent .tok.cli")).toBeNull();
     expect(host.textContent).toContain("VPS-dev 没有 Claude Code，这次用 Codex");
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
     // The project still remembers Claude Code.
@@ -1682,50 +1697,52 @@ describe("switching a new session's CLI (v2)", () => {
     expect(document.querySelector(".cli-tabs")).toBeNull();
   });
 
-  it("puts the switch and the rest of the summary under the box on a wide page", async () => {
+  it("puts the sentence above the task and the summary under it on a wide page", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    expect(host.querySelector(".wide-start-title")?.textContent).toBe("开始一个任务");
-    const row = host.querySelector(".launch")!;
-    expect(row.previousElementSibling?.className).toContain("compose-card");
-    expect(row.querySelector(".pick .on")?.textContent).toBe("Codex");
+    // The project is the page's own, so the sentence names it as words.
+    expect(host.querySelector(".wstart .sent")?.textContent).toBe("在foo用Codex");
+    expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
+    const ask = host.querySelector(".wstart textarea.ask")!;
+    expect(ask.getAttribute("placeholder")).toBe("要做什么？");
+    expect(ask.previousElementSibling?.className).toBe("sent");
+    const row = host.querySelector(".wstart .acc")!;
     expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
+    expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
   });
 
   it("shows what was read before at once when coming back to a CLI", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    const text = () => host.querySelector(".launch .project-summary")!.textContent;
+    const text = () => host.querySelector(".acc .project-summary")!.textContent;
     await vi.waitFor(() => expect(text()).toMatch(/GPT-6-Astra$/));
-    await click(button("Claude Code", host.querySelector(".launch")!));
+    await pickCli("Claude Code");
     await vi.waitFor(() => expect(text()).not.toMatch(/GPT|读取/));
     const claude = text();
     // No 读取设置… and no raw model id on the way back, in either direction.
-    act(() => button("Codex", host.querySelector(".launch")!)!.click());
+    pickCliNow("Codex");
     expect(text()).toMatch(/GPT-6-Astra$/);
-    act(() => button("Claude Code", host.querySelector(".launch")!)!.click());
+    pickCliNow("Claude Code");
     expect(text()).toBe(claude);
   });
 
   it("names the machine in the summary only when there is more than one", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    const summary = () => host.querySelector(".launch .project-summary")!;
+    const summary = () => host.querySelector(".acc .project-summary")!;
     // The name is its own part, the one that gives way on a long line.
-    expect(summary().querySelector(".machine")?.textContent).toBe("MacBook");
+    expect(summary().querySelector(".mach")?.textContent).toBe("MacBook");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
-    expect(summary().querySelector(".machine")).toBeNull();
+    expect(summary().querySelector(".mach")).toBeNull();
     // Mode and model; the effort and the window are in the settings.
     expect(summary().textContent).toMatch(/^询问 · gpt-6-astra$/i);
     expect(summary().getAttribute("aria-label")).toBe(`新会话设置：${summary().textContent}`);
   });
 });
 
-/** A CLI in the switch next to the new-session box. */
-const cliSwitch = (name: string) => [...host.querySelectorAll<HTMLButtonElement>(".launch .pick button")].find((b) => b.textContent === name);
 
 describe("project management (v2)", () => {
   const names = (sel: string) => [...host.querySelectorAll(sel)].map((e) => e.firstChild?.textContent ?? "");
@@ -1802,11 +1819,17 @@ describe("project management (v2)", () => {
     expect(host.textContent).not.toContain("~/Code/shop");
     act(() => root!.render(<ProjectPage remote={r} pkey="/Users/me/Code/shop" go={() => undefined} onBack={() => undefined} />));
     expect(host.textContent).toContain("这个项目已从列表移除");
-    expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeNull();
+    // The draft can be written, but nothing starts until the project is listed again.
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(sendButton()?.disabled).toBe(true);
     // Its sessions are all still there.
-    expect(host.textContent).toContain("拆分订单服务");
+    expect([...r.sessions.values()].some((s) => s.info?.title === "拆分订单服务")).toBe(true);
     await click(button("重新添加"));
-    await vi.waitFor(() => expect(host.querySelector("textarea[aria-label=新会话的第一句话]")).toBeTruthy(), { timeout: 3000 });
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false), { timeout: 3000 });
   });
 
   it("asks before removing from the project's settings too, then leaves the project", async () => {
@@ -2218,11 +2241,11 @@ describe("an image-only new-session draft (review B8)", () => {
     const r = demo();
     stub(r);
     mount(<WideHome remote={r} go={() => undefined} />);
-    await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
-    const before = host.querySelector(".wide-start-title .chip")!.textContent;
+    await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
+    const before = startProject();
     await pick();
     bump(r, "s-plan");
-    expect(host.querySelector(".wide-start-title .chip")!.textContent).toBe(before);
+    expect(startProject()).toBe(before);
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
   });
 });
@@ -2249,7 +2272,7 @@ it("asks to add a project again when it is removed while its draft is on the wid
   r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
   mount(<WideHome remote={r} go={() => undefined} />);
-  await vi.waitFor(() => expect(host.textContent).toContain("开始一个任务"));
+  await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
@@ -2434,7 +2457,7 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   const r = demo();
   const { ProjectPage } = await import("./Project");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  await click(button("Antigravity"));
+  await pickCli("Antigravity");
   await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
   await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
   await click(button(/^机器/, document));
@@ -2462,7 +2485,7 @@ it("retries a start with a launch override whose reply was lost as the same requ
   await click(button(/^模型/));
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
-  await click(host.querySelector<HTMLButtonElement>('.sheet .back2')!);
+  await click(host.querySelector<HTMLButtonElement>('.sheet-head button[aria-label="返回"]')!);
   await click(button("完成"));
   void ns;
   await act(async () => {
@@ -2496,12 +2519,12 @@ it("does not put another client's images into this input (review W3)", async () 
 it("keeps the wide home default project across background uploads before a draft starts", async () => {
   const r = demo();
   mount(<WideHome remote={r} go={() => undefined} />);
-  const before = host.querySelector(".wide-start-title .chip")!.textContent;
+  const before = startProject();
   act(() => {
     r.sessions.get("s-plan")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
-  expect(host.querySelector(".wide-start-title .chip")!.textContent).toBe(before);
+  expect(startProject()).toBe(before);
 });
 
 describe("the client-v7 conversation", () => {
@@ -2567,7 +2590,7 @@ describe("the client-v7 conversation", () => {
     const s = r.sessions.get("s-idle")!;
     s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-    expect(host.querySelector(".compose-card .access-warning")).toBeNull();
+    expect(host.querySelector(".cbar .access-warning")).toBeNull();
     expect(host.querySelector(".navbar .title")?.textContent).toContain("完全放行");
     await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
     // A list sheet: settings read 「名称 …… 值 ›」, with no session ID and no 取消 card.
@@ -2582,19 +2605,26 @@ describe("the client-v7 conversation", () => {
     expect(rows.find((x) => x.textContent === "结束会话…")?.classList.contains("danger")).toBe(true);
   });
 
-  it("starts sessions only with a first message, and keeps the project head in place while typing", async () => {
+  it("starts sessions only with a first message, in a sheet that stays as it is while typing", async () => {
     const r = demo();
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    let closed = 0;
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => closed++} />);
     expect(host.textContent).not.toContain("只打开终端");
-    expect(host.querySelector(".phead")).toBeTruthy();
-    await act(async () => host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.focus());
-    expect(host.querySelector(".phead")).toBeTruthy();
-    expect(host.querySelector(".navbar .title")?.textContent ?? "").not.toContain("foo");
-    // Scrolled away, the head folds into the bar.
-    const body = host.querySelector<HTMLElement>(".body")!;
-    body.scrollTop = 200;
-    await act(async () => void body.dispatchEvent(new Event("scroll", { bubbles: true })));
-    expect(host.querySelector(".navbar .title")!.textContent).toContain("foo");
+    // Close at the top left, send at the top right, gray with nothing written.
+    const head = host.querySelector(".nt-hd")!;
+    expect(head.firstElementChild?.getAttribute("aria-label")).toBe("关闭");
+    expect(head.lastElementChild?.getAttribute("aria-label")).toBe("开始新会话");
+    expect(head.lastElementChild?.classList.contains("off")).toBe(true);
+    expect(host.querySelector(".sent .tok.p > span:not(.av)")?.textContent).toBe("foo");
+    expect(cliPicked()).toBe("Codex");
+    const ask = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    expect(ask.placeholder).toBe("要做什么？");
+    await act(async () => ask.focus());
+    expect(host.querySelector(".sent")).toBeTruthy();
+    // ＋ and the summary sit in the row over the keyboard.
+    expect([...host.querySelector(".acc")!.children].map((c) => c.className)).toEqual(["attach-wrap", "tok project-summary"]);
+    await click(head.firstElementChild as HTMLButtonElement);
+    expect(closed).toBe(1);
   });
 });
 
@@ -2675,7 +2705,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6.1-Sol", document)).toBeDefined());
   expect(button(/^默认模型/, document)).toBeDefined();
   await click(button(/^默认模型/, document));
@@ -2687,7 +2717,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
   const before = reads;
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sr")].find((b) => b.textContent?.startsWith("模型")));
+  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
 });
 
@@ -3053,9 +3083,10 @@ describe("the home timeline and its scope (client-v27)", () => {
   it("starts in the scope's project on the wide home, and names the project only under all projects", () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} />);
-    expect(host.querySelector(".wide-start-title")?.textContent).toMatch(/^在 .+ 里开始一个任务$/);
+    expect(startProject()).toBeTruthy();
     act(() => saveScope(foo));
-    expect(host.querySelector(".wide-start-title")?.textContent).toBe("开始一个任务");
+    expect(startProject()).toBeUndefined();
+    expect(host.querySelector(".wstart .sent b")?.textContent).toBe("foo");
   });
 });
 
@@ -3082,7 +3113,7 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   expect(pages).toBe(0);
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
   // Claude Code has no session held, and there are ended ones not fetched.
-  await click(cliSwitch("Claude Code"));
+  await pickCli("Claude Code");
   expect(pages).toBeGreaterThan(0);
   expect(start().disabled).toBe(true);
   expect(host.textContent).toContain("正在读取这个项目上次的设置…");

@@ -482,8 +482,10 @@ h1, h2, h3 { font-weight: var(--w7); }
 .cbar:has(.attachments) { border-radius: 28px; padding: 8px; }
 .cline { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
 .cline > .attach-wrap { flex: none; }
-.cbar .cm-plus { width: 40px; height: 40px; border-radius: 50%; background: var(--fill); color: var(--ink); font-size: 22px; display: flex; align-items: center; justify-content: center; position: relative; }
-.cbar .cm-plus[aria-expanded="true"] { background: var(--fill2); }
+.cm-plus { width: 40px; height: 40px; border-radius: 50%; background: var(--fill); color: var(--ink); font-size: 22px; display: flex; align-items: center; justify-content: center; position: relative; flex: none; }
+.cm-plus::before { content: ""; position: absolute; inset: -2px; }
+.cm-plus[aria-expanded="true"] { background: var(--fill2); }
+.cm-plus.off { opacity: .4; }
 .cbar .draft { flex: 1; min-width: 0; border: 0; background: none; outline: none; resize: none; font-size: 17px; line-height: 1.4; padding: 8px 4px; min-height: 40px; max-height: 150px; overflow-y: auto; color: var(--ink); field-sizing: content; overflow-wrap: anywhere; white-space: pre-wrap; }
 .cbar .draft::placeholder { color: var(--ink3); }
 /* Send: ink, or gray with nothing to send; ■ in its place while a turn
@@ -668,14 +670,13 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sheet-head > b { flex: 1; text-align: center; font-size: 17px; font-weight: var(--w6); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sheet-head > .side-act { width: 64px; flex: none; color: var(--blue); min-height: 44px; display: flex; align-items: center; justify-content: flex-end; }
 .sheet-head > .side-act:first-child { justify-content: flex-start; }
+.sheet-head > .side-act:disabled { opacity: .4; }
+/* A round button on a sheet: close, or back a level. */
+.fbtn { width: 44px; height: 44px; border-radius: 50%; background: var(--fill); color: var(--ink); display: flex; align-items: center; justify-content: center; font-size: 22px; flex: none; }
 .fl { font-size: 13px; color: var(--ink2); margin: 14px 12px 6px; font-weight: 400; }
 .hint { font-size: 13px; color: var(--ink2); margin-top: 8px; line-height: 1.45; }
 .sheet .hint { margin-left: 12px; margin-right: 12px; }
 .sheet .banner { margin-top: 8px; }
-.ns-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; min-height: 44px; }
-.ns-head b { font-size: 17px; font-weight: var(--w6); flex: 1; }
-.ns-head .link { font-size: 17px; min-height: 44px; padding: 0 2px; }
-.back2 { color: var(--blue); font-size: 24px; width: 32px; min-height: 44px; display: flex; align-items: center; }
 
 /* ---------- grouped rounded lists (design-system §6 列表行) ----------
    Gray groups on a paper page; paper ones (a gray a level up in dark) in
@@ -723,11 +724,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .conn-again { margin-top: 12px; }
 .sheet .hint + .setrows { margin-top: 12px; }
 .manage > .hint { margin-top: 12px; }
-.recent { display: flex; gap: 6px; flex-wrap: nowrap; overflow-x: auto; margin: 0 0 10px; align-items: center; scrollbar-width: none; }
-.recent small { font-size: 13px; color: var(--ink2); flex: none; }
-.recent button { font-size: 15px; background: var(--fill); border-radius: 18px; padding: 4px 12px; color: var(--ink); display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; min-height: 36px; }
-.recent button.on { background: var(--fill2); font-weight: var(--w6); }
-.recent button:disabled { opacity: .4; }
 /* List pickers: modes, models, machines, folders; the picked one ends in a blue ✓. */
 .list .mi { display: flex; gap: 10px; align-items: center; padding: 0 16px 0 18px; min-height: 50px; font-size: 17px; width: 100%; text-align: left; position: relative; }
 .list .mi + .mi::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; border-top: .5px solid var(--sep); }
@@ -737,6 +733,21 @@ h1, h2, h3 { font-weight: var(--w7); }
 .list .mi small { color: var(--ink2); font-size: 13px; margin-left: 4px; }
 .list .mi.danger, .list .mi.danger b { color: var(--red); }
 .list .mi.link-row { color: var(--blue); }
+/* A value at the row's end, in ink2: 「名称 …… 值 ›」. */
+.list .mi .mv { margin-left: auto; color: var(--ink2); font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%; display: flex; align-items: center; gap: 6px; }
+.list .mi .mv.red { color: var(--red); }
+.list .mi .mv.warn-text { color: var(--orange-ink); }
+.list .mi > .chev { margin-left: -4px; }
+.list .mi > .lead { color: var(--ink2); font-size: 18px; }
+.list .mi.note { font-size: 13px; color: var(--ink2); min-height: 44px; }
+.list .mi.pid { gap: 12px; }
+.list .mi .md.mono { font: 13px var(--mono); overflow-wrap: anywhere; }
+.list .mi > .seg { margin-left: auto; }
+/* Segmented controls in a sheet, a setting's values in full width. */
+.sheet .seg.full { margin: 0 0 12px; }
+.sheet .fl + .seg.full { margin-top: 0; }
+.seg.machines .mark { width: 7px; height: 7px; }
+.sheet-foot { margin-top: 12px; }
 .list.dirs { max-height: 44vh; overflow-y: auto; }
 /* Not possible now: the words grayed, why on the line below in ink2. */
 .list .mi.dis, .list .mi:disabled { color: var(--ink3); }
@@ -776,9 +787,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .menu .list .mi.danger { color: var(--red); }
 .menu .list .mi .md.err { color: var(--red); }
 .menu .list .mi.busy { color: var(--ink2); }
-.menu .list .mi .mv { margin-left: auto; color: var(--ink2); font-size: 17px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%; }
-.menu .list .mi .mv.red { color: var(--red); }
-.menu .list .mi .mv.warn-text { color: var(--orange-ink); }
 .menu .list .mi .chev { margin-left: -4px; }
 
 /* ---------- banners (design-system §6 提示条) ----------
@@ -794,11 +802,57 @@ h1, h2, h3 { font-weight: var(--w7); }
 .skel { height: 12px; border-radius: 6px; background: var(--fill); margin: 7px 0; animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
 
-/* ---------- new sessions ---------- */
-.phead { display: flex; gap: 14px; align-items: center; margin-bottom: 2px; }
-.phead .pname { font-size: 22px; font-weight: var(--w7); letter-spacing: -.3px; }
-.phead .link { font-size: 13px; min-height: 44px; margin: -12px 0; }
-.phead .pmore { margin-top: 2px; }
+/* ---------- 新任务 (design-system §6 新任务, client-v58 #new) ----------
+   One sentence of where and with which CLI, its capsules opening what
+   they pick; the task, its placeholder 24 bold ink3 and what is typed 17;
+   ＋ and the summary of the settings in a row over the keyboard. */
+.page.rise { animation: rise .3s cubic-bezier(.2, .8, .2, 1); }
+@keyframes rise { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .page.rise { animation: none; } }
+.ntask { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.nt-hd { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px 0; min-height: 56px; }
+.nt-hd > b { flex: 1; text-align: center; font-size: 17px; font-weight: var(--w6); }
+.nt-hd > .snd::before { content: ""; position: absolute; inset: -2px; }
+.nt-body { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
+.nt-banners { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
+.nt-banners:empty { display: none; }
+.sent { padding: 20px 24px 0; font-size: 17px; color: var(--ink2); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.sent .g { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.sent b { color: var(--ink); font-weight: var(--w6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* A capsule that picks: fill, 15 / 600, a › turned down at its end. */
+.tok { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 18px; background: var(--fill); color: var(--ink); font-size: 15px; font-weight: var(--w6); min-width: 0; max-width: 100%; position: relative; text-align: left; }
+.tok::before { content: ""; position: absolute; inset: -4px 0; }
+.tok > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.tok > .ic { color: var(--ink3); font-size: 14px; flex: none; }
+.tok.p { padding-left: 5px; }
+.tok:disabled { opacity: .4; }
+@media (hover: hover) { .tok:hover:not(:disabled) { background: var(--fill2); } }
+.ask { display: block; width: 100%; border: 0; outline: none; resize: none; background: none; padding: 20px 24px 0; font-size: 17px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.ask:placeholder-shown { font-size: 24px; font-weight: var(--w7); line-height: 1.3; letter-spacing: -.02em; }
+.ntask .attachments { padding: 12px 20px 0; }
+.nt-note { padding: 12px 24px 0; font-size: 13px; color: var(--ink2); }
+.acc { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); min-width: 0; }
+/* The summary: the machine's name gives way first, down to three letters. */
+.acc .project-summary { flex: 1; height: 40px; border-radius: 20px; font-weight: var(--w5); gap: 0; }
+.project-summary > span { flex: 0 1 auto; white-space: pre; }
+.project-summary > .mach { flex-shrink: 1000; min-width: 3em; }
+.project-summary em { font-style: normal; color: var(--red); font-weight: var(--w6); }
+.project-summary > .ic { margin-left: auto; padding-left: 6px; box-sizing: content-box; }
+/* Wide: the main area itself, the sentence and the task in its middle. */
+.wnew { display: flex; flex-direction: column; }
+.wstart { margin: auto; width: min(560px, calc(100% - 48px)); padding: 32px 0; }
+.wstart .sent { padding: 0; }
+.wstart .ask { padding: 14px 0 0; }
+.wstart .nt-banners { padding: 0 0 16px; }
+.wstart .attachments { padding: 12px 0 0; }
+.wstart .acc { padding: 22px 0 0; }
+.wstart .acc .project-summary { flex: 0 1 auto; }
+.wstart .acc > .snd { margin-left: auto; }
+.wstart .kh { margin-left: auto; font-size: 13px; color: var(--ink2); flex: none; white-space: nowrap; }
+.wstart .kh + .snd { margin-left: 0; }
+.wstart .nt-note { padding: 12px 0 0; }
+.wstart > .et { margin: 0 0 10px; }
+.wstart > .home-note { padding: 0; }
 
 /* ---------- settings: grouped lists on a paper page ---------- */
 .grp { margin: 0 16px 12px; }
@@ -951,46 +1005,17 @@ h1, h2, h3 { font-weight: var(--w7); }
 .pop.menu-pop .list .mi { min-height: 44px; font-size: 15px; }
 .pop.menu-pop .list .mi .mv { font-size: 15px; }
 .pop.menu-pop .list + .list { margin-top: 8px; }
-.start { max-width: 560px; margin: 56px auto 24px; width: 100%; padding: 0 24px; }
-.start h3 { font-size: 22px; margin: 0 0 14px; letter-spacing: -.3px; }
-.start .opts { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
-.start .opts .cfg { flex: 1; }
-.start .label, .wpage .label { padding: 22px 0 8px; }
-.start .banner { margin-top: 8px; }
 .wpage { max-width: 760px; width: 100%; margin: 0 auto; padding: 20px 24px; }
 .wpage > .banner { margin-top: 8px; }
 
 /* ---------- v2 (docs/design/client-v2.html) ---------- */
 .navbar .title b .tname { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: var(--ink); font-weight: var(--w6); }
 
-/* The input (client-v7): one row that grows with the draft, the ＋ menu on
-   its left and send on its right, images in rows above. */
-.compose-card { flex: none; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; background: var(--paper); border: 1px solid var(--sep); border-radius: 24px;
-  padding: 3px; margin: 4px 10px max(12px, env(safe-area-inset-bottom)); position: relative; min-width: 0; }
-.compose-card .draft { grid-column: 2; grid-row: 1; display: block; width: 100%; border: 0; background: none; outline: none; resize: none; min-height: 24px; max-height: 132px; overflow-y: auto;
-  font-size: 15px; line-height: 1.5; padding: 8px 4px; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--ink); field-sizing: content; }
-.compose-card .draft::placeholder { color: var(--ink2); }
-.compose-menu { grid-column: 1; grid-row: 1; align-self: end; position: static; }
-.cm-plus { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 22px; color: var(--ink2); position: relative; }
-.cm-plus.off { opacity: .4; }
-.go44 { grid-column: 3; grid-row: 1; align-self: end; width: 44px; height: 44px; border-radius: 50%; background: var(--btn); color: var(--btn-fg); border: 6px solid var(--paper);
-  display: flex; align-items: center; justify-content: center; flex: none; font-size: 20px; }
-.go44.off, .go44:disabled { opacity: .4; }
-.compose-card .att-tray, .compose-card .att-meta, .compose-card > .banner { grid-column: 1 / -1; }
-.compose-card:has(.attachments) .draft, .compose-card:has(.attachments) .compose-menu, .compose-card:has(.attachments) .go44 { grid-row: 2; }
-.compose-card .att-tray { grid-row: 1; padding: 6px 6px 8px; }
-.compose-card .att-meta { grid-row: 2; padding: 0 8px 6px; }
-.desk .compose-card { margin-bottom: 12px; }
-.start > .banner, .wpage > .banner { margin-bottom: 8px; }
 
 /* In place of ▸: the design system's › turned down, or up once open. */
 details[open] > summary .exp { transform: rotate(180deg); }
 
 .hint.top { margin: -4px 0 8px; }
-
-/* The new-session card: CLI picked on the card, configuration in two lines. */
-.startnote { padding: 2px 0; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-.startnote .link { font-weight: 400; min-height: 44px; }
 
 /* Project management. */
 .pin { font-size: 12px; color: var(--blue); margin-left: 5px; font-weight: var(--w5); }
@@ -1133,40 +1158,7 @@ input.field { margin: 0; }
 .row.quota.stale .bar i { background: var(--faint); }
 .row.col .hint { margin-top: 4px; }
 
-/* v5: grouped creation, quiet history, bounded identity and input controls. */
-.phead > div:last-child { flex: 1; min-width: 0; }
-.phead .pname { overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.5; }
-.phead .muted.small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* v8: project settings, pending inputs, compact tools and large text. */
-.project-summary { display: block; color: var(--ink2); font-size: 13px; max-width: 100%; min-height: 32px; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project-summary .red { color: var(--red); }
-/* Too long for the line: the machine's name gives way first, down to a few letters; the rest only after it. */
-.project-summary > span { display: flex; min-width: 0; }
-.project-summary > span > span { flex: 0 1 auto; min-width: 0; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.project-summary > span > .machine { flex-shrink: 1000; min-width: 3em; }
-.project-summary.chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 0 12px; background: var(--fill); color: var(--ink); border-radius: 20px; font-size: 15px; font-weight: var(--w5); }
-@media (hover: hover) { .project-summary.chip:hover { background: var(--fill2); } }
-.phead > div:last-child { min-width: 0; }
-.phead .ppath { font-size: 13px; }
-.ps-id { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
-.ps-id .ps-text { min-width: 0; }
-.ps-id small { display: block; color: var(--ink2); font: 12px var(--mono); overflow-wrap: anywhere; }
-.project-search { display: block; width: 100%; margin: 4px 0 8px; }
-.start { margin-top: max(56px, calc((100vh - 320px) / 3)); }
-.wide-start-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
-.wide-start-title .chip { font-size: inherit; font-weight: inherit; color: var(--blue); }
-/* Next to the new-session box: the CLI switch, and on a wide page the summary of the CLI picked. */
-/* It lines up with the page's text (16), not with the box's rounded edge; a wide page has one edge for the head, the box, this row and the lists. */
-.launch { flex: none; display: flex; align-items: center; gap: 8px; min-height: 44px; min-width: 0; margin: 0 16px; }
-.launch .pick { margin-left: 0; }
-.launch .pick button { white-space: nowrap; }
-.launch .project-summary.chip { flex: 0 1 auto; min-width: 0; min-height: 36px; margin: 0 0 0 auto; }
-.start .launch, .wpage .launch { margin: -6px 0 0; }
-.start .compose-card, .wpage .compose-card { margin-left: 0; margin-right: 0; }
-.setrows + .cli-tabs { margin-top: 10px; }
-.cli-tabs + .setrows { margin-top: 8px; }
-.glabel + .cli-tabs { margin: 0 16px 8px; }
 .sr { flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
 .sr .lbl { white-space: nowrap; width: auto; min-width: 34px; }
 .sr .v { flex: 1; justify-content: flex-end; white-space: normal; overflow-wrap: anywhere; text-align: right; }
@@ -1266,8 +1258,6 @@ input.field { margin: 0; }
 .schedule-name { display: block; margin: 8px 16px 0; font-size: 13px; color: var(--ink2); }
 .schedule-name input { display: block; width: 100%; min-height: 44px; padding: 8px 0; border: 0; border-bottom: 1px solid var(--sep); background: transparent; color: var(--ink); font-size: 15px; }
 
-/* The new-session card keeps its chosen images on the first row. */
-.compose-card > .attachments { grid-column: 1 / -1; grid-row: 1; min-width: 0; }
 
 /* v52: task content precedes settings; long prompts remain readable in place. */
 .schedules-page .large { display: flex; align-items: center; justify-content: space-between; }

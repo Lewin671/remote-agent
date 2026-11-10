@@ -968,40 +968,29 @@ export function WideHome({
   if (focus) remote.focusProject = "";
   const name = projectName(pkey);
   return (
-    <div className="body">
-      <div className="start">
-        {!remote.listed && !pkey ? (
-          remote.listError ? <ListError remote={remote} /> : <Skeleton />
-        ) : !pkey ? (
-          <>
-            <h3>还没有会话</h3>
-            <Empty remote={remote} onStart={() => setPicking("new")} />
-          </>
-        ) : (
-          <>
-            <RemovedNotice remote={remote} pkey={pkey} />
-            <NewBox
-              ns={ns}
-              name={name}
-              autoFocus={focus}
-              variant="start"
-              // With no project picked, the box follows project ordering;
-              // once a draft begins it stays on that one, whatever other
-              // projects do meanwhile.
-              onDraft={() => setKey((k) => k ?? pkey)}
-              lead={
-                fixed === undefined && (
-                  <button className="chip" onClick={() => setPicking("pick")}>
-                    <Avatar name={name} size="xs" />
-                    {name}
-                    <ChevronDown />
-                  </button>
-                )
-              }
-            />
-          </>
-        )}
-      </div>
+    <div className="body wnew">
+      {!remote.listed && !pkey ? (
+        <div className="wstart">{remote.listError ? <ListError remote={remote} /> : <Skeleton />}</div>
+      ) : !pkey ? (
+        <div className="wstart">
+          <h3 className="et">还没有会话</h3>
+          <Empty remote={remote} onStart={() => setPicking("new")} />
+        </div>
+      ) : (
+        <NewBox
+          ns={ns}
+          name={name}
+          autoFocus={focus}
+          variant="start"
+          fixed={fixed !== undefined}
+          onPickProject={() => setPicking("pick")}
+          notice={<RemovedNotice remote={remote} pkey={pkey} />}
+          // With no project picked, the box follows project ordering;
+          // once a draft begins it stays on that one, whatever other
+          // projects do meanwhile.
+          onDraft={() => setKey((k) => k ?? pkey)}
+        />
+      )}
       {picking && (
         <NewFlow
           key={picking}

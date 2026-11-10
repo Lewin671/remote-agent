@@ -847,7 +847,7 @@ it("creates with the new computer's displayed defaults after switching without e
   await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
   await input(host.querySelector("textarea")!,"检查回复");
   await click(/^机器和模型/);
-  const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".lbl")?.textContent==="机器");
+  const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".mt")?.textContent==="机器");
   expect(machineRow,host.textContent??"").toBeTruthy();await act(async()=>machineRow!.click());
   expect(button(/改用 新电脑/),host.textContent??"").toBeTruthy();await click(/改用 新电脑/);
   await click("完成");

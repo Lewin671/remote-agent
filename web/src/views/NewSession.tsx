@@ -66,12 +66,12 @@ function startOf(remote: Remote, key: string): Start {
   if (!start) all.set(key, (start = new Start()));
   return start;
 }
-import { Avatar, Banner, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
+import { Avatar, Banner, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
-import { ArrowUp, Check, ChevronLeft, ChevronRight } from "../icons";
+import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, X } from "../icons";
 
 export type Go = (route: string) => void;
 
@@ -440,7 +440,8 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const modeText = modeTextOf(cfg, machine);
   const parts = describeParts(cfg, machine, info);
   // The machine is named only where there is more than one to mean.
-  const summary: Summary = { agent: agentName(cfg.agent), mode: modeText, machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label };
+  // The model only once one is known: a CLI with none chosen yet says nothing of it.
+  const summary: Summary = { agent: agentName(cfg.agent), mode: modeText, machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.slug || info.loading ? parts.label : "" };
   return {
     remote,
     go,
@@ -482,28 +483,44 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
 
 export type NewSession = ReturnType<typeof useNewSession>;
 
-/** The first message starts a session. Next to the box is the CLI it
- * starts on, where the machine has more than one; the project summary
- * opens its settings; the composer's ＋ only adds images. */
+/** 新任务 (design-system §6 新任务): a sentence of where and with which
+ * CLI, 「在 [项目] 用 [CLI]」, the capsules opening what they pick (the CLI
+ * one only where the machine has more than one); the task under it; and
+ * a row of ＋ and the summary of the settings, which opens the project's
+ * settings. On a phone it is the whole-page sheet, its close at the top
+ * left and send at the top right; on a wide window it is the main area,
+ * the summary and send under the task. */
 export function NewBox({
   ns,
   name,
   autoFocus,
-  variant = "box",
-  lead,
+  variant = "sheet",
+  fixed,
+  onPickProject,
+  onClose,
+  notice,
+  settings = false,
   onDraft,
 }: {
   ns: NewSession;
   name: string;
   autoFocus?: boolean;
-  variant?: "box" | "prompt" | "start";
-  lead?: ReactNode;
+  variant?: "sheet" | "start";
+  /** The project is set by the scope: the sentence names it as words. */
+  fixed?: boolean;
+  onPickProject?: () => void;
+  onClose?: () => void;
+  /** A banner of the project's own, above the sentence. */
+  notice?: ReactNode;
+  /** Opened with the project's settings showing. */
+  settings?: boolean;
   onDraft?: () => void;
 }) {
   const { text, setText } = ns;
-  const [config, setConfig] = useState<"" | "main" | Pick>("");
+  const [config, setConfig] = useState<"" | "main" | Pick>(settings ? "main" : "");
+  const [choosing, setChoosing] = useState(false);
   const input = useRef<HTMLTextAreaElement>(null);
-  useAutoGrow(input, text, 132);
+  useAutoGrow(input, text, variant === "sheet" ? 4000 : 240);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
@@ -520,13 +537,7 @@ export function NewBox({
     // Retrying an unknown start sends it as it was.
     await ns.create(prompt.trim());
   };
-  const status = ns.busy ? `正在 ${machineName(ns.machine)} 上启动…` : "";
   const keys = sendKeys(usePointerFine());
-  const placeholder = {
-    box: "描述任务…",
-    prompt: "描述任务…",
-    start: keys ? `描述任务，${keys} 开始` : "描述任务…",
-  }[variant];
   const tray = ns.tray;
   tray.onAdd = () => {
     ns.latch();
@@ -561,10 +572,10 @@ export function NewBox({
   const field = (
     <textarea
       ref={input}
-      className={"draft" + (text ? " typed" : "")}
+      className={"ask" + (text ? " typed" : "")}
       rows={1}
       value={text}
-      placeholder={placeholder}
+      placeholder="要做什么？"
       onChange={(e) => {
         // A draft begun holds its project and launch settings.
         if (!text && e.target.value) {
@@ -597,8 +608,8 @@ export function NewBox({
   const notes = (
     <>
       {offline && ns.machine && (
-        <Banner kind="warn" action="换机器" onAction={() => setConfig("machine")}>
-          {machineName(ns.machine)} {text ? "已离线，任务尚未开始。草稿和配置保留，不会自动换机器或 CLI" : "不在线"}
+        <Banner kind={text ? "warn" : ""} action="换机器" onAction={() => setConfig("machine")}>
+          {machineName(ns.machine)} {text ? "已离线，任务还没开始。草稿已保留，换一台在线的机器吧。" : "不在线"}
         </Banner>
       )}
       {ns.reading && !offline && <Banner>正在读取这个项目上次的设置…</Banner>}
@@ -614,67 +625,111 @@ export function NewBox({
         </Banner>
       )}
       {ns.configError && <Banner kind="warn" action="重试保存" onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
-
     </>
   );
-  const go = (
-    <button className={"go44" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
+  const banners = (notice || error || notes) && (
+    <div className="nt-banners">
+      {notice}
+      {error}
+      {notes}
+    </div>
+  );
+  const send = (
+    <button className={"snd" + (disabled ? " off" : "")} disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">
       <ArrowUp />
     </button>
   );
-  // One row, as in a session: ＋ adds images, the task starts a session.
-  const card = (
-    <div className={"compose-card new-compose" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
-      {trayView}
-      <div className="compose-menu">
-        <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />
-      </div>
-      {field}
-      {go}
-    </div>
-  );
-  const busyNote = status && <div className="small muted startnote">{status}</div>;
   // The draft stays when the CLI is switched.
-  const cli = ns.agents.length > 1 && (
-    <div className="pick" role="group" aria-label="新会话使用的 CLI">
-      {ns.agents.map((a) => (
-        <button key={a} className={a === ns.cfg.agent ? "on" : ""} aria-pressed={a === ns.cfg.agent} disabled={ns.busy} onClick={() => ns.setAgent(a)}>
-          {agentName(a)}
-        </button>
-      ))}
+  const many = ns.agents.length > 1;
+  const sentence = (
+    <div className="sent">
+      <span className="g">
+        在
+        {fixed || !onPickProject ? (
+          <b>{name}</b>
+        ) : (
+          <button className="tok p" onClick={onPickProject} aria-label={`项目：${name}`}>
+            <Avatar name={name} size="sm" />
+            <span>{name}</span>
+            <ChevronDown />
+          </button>
+        )}
+      </span>
+      {many && (
+        <span className="g">
+          用
+          <button className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+            <span>{agentName(ns.cfg.agent)}</span>
+            <ChevronDown />
+          </button>
+        </span>
+      )}
     </div>
   );
-  let body;
-  if (variant === "box")
-    // A phone: the switch has its own row above the box and stays with it
-    // when the keyboard is up; the summary is under the project's title.
-    body = (
-      <>
-        {error}
-        {notes}
-        {cli && <div className="launch">{cli}</div>}
-        {card}
-        {busyNote}
-      </>
-    );
-  else
-    // Wide: the switch and the summary of the CLI picked, under the box.
-    body = (
-      <>
-        {variant === "start" && <h3 className="wide-start-title">{lead ? <>在 {lead} 里开始一个任务</> : "开始一个任务"}</h3>}
-        {error}
-        {notes}
-        {card}
-        <div className="launch">
-          {cli}
-          <ConfigSummary summary={ns.summary} bare={!!cli} chip onClick={() => setConfig("main")} />
+  const busyNote = ns.busy && <div className="nt-note">正在 {machineName(ns.machine)} 上启动…</div>;
+  const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={() => setConfig("main")} />;
+  const attach = <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />;
+  const body =
+    variant === "sheet" ? (
+      <div className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+        <header className="nt-hd">
+          <button className="fbtn" aria-label="关闭" onClick={onClose}>
+            <X />
+          </button>
+          <b>新任务</b>
+          {send}
+        </header>
+        <div className="nt-body">
+          {banners}
+          {sentence}
+          {field}
+          {trayView}
+          {busyNote}
+        </div>
+        <div className="acc">
+          {attach}
+          {summary}
+        </div>
+      </div>
+    ) : (
+      <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+        {banners}
+        {sentence}
+        {field}
+        {trayView}
+        <div className="acc">
+          {attach}
+          {summary}
+          {keys && <span className="kh">{keys} 开始</span>}
+          {send}
         </div>
         {busyNote}
-      </>
+      </div>
     );
   return (
     <>
       {body}
+      {choosing && (
+        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI">
+          <div className="list" role="menu">
+            {ns.agents.map((a) => (
+              <button
+                key={a}
+                className="mi"
+                role="menuitemradio"
+                aria-checked={a === ns.cfg.agent}
+                onClick={() => {
+                  setChoosing(false);
+                  if (a !== ns.cfg.agent) ns.setAgent(a);
+                }}
+              >
+                <span className="mt">{agentName(a)}</span>
+                {a === ns.cfg.agent && <span className="ck"><Check /></span>}
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
       {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
     </>
   );
@@ -718,11 +773,6 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   }, [pick]); // Refresh the native CLI list each time the model page opens.
   // Machines this project has used; a new project can use any.
   const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
-  const back = (
-    <button className="back2" onClick={back2} aria-label="返回">
-      <ChevronLeft />
-    </button>
-  );
   let body;
   if (pick === "machine")
     body = (
@@ -771,7 +821,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
           </Banner>
         )}
-        {!info.models && !info.error && <div className="hint">读取 {machineName(machine)} 的设置…</div>}
+        {!info.models && !info.error && <div className="hint top">读取 {machineName(machine)} 的设置…</div>}
         <div className="list">
           <button className="mi" onClick={() => set({ model: "", effort: "" })}>
             <div className="mt">
@@ -790,20 +840,21 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
           ))}
           {!few && (
             <button className="mi link-row" onClick={() => setAllModels(true)}>
-              全部模型<ChevronRight />
+              <span className="mt">全部模型</span>
+              <ChevronRight className="chev" />
             </button>
           )}
         </div>
         {chosen && chosen.efforts.length > 0 && (
           <>
             <div className="fl">推理强度</div>
-            <div className="seg wrap">
-              {chosen.efforts.map((e) => (
-                <button key={e} className={e === (cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)) ? "on" : ""} onClick={() => set({ effort: e })}>
-                  {e}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              className="full wrap"
+              label="推理强度"
+              value={cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)}
+              onChange={(e) => set({ effort: e })}
+              options={chosen.efforts.map((e) => ({ value: e, label: e }))}
+            />
           </>
         )}
       </>
@@ -835,7 +886,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             }}
           >
             <div className="mt">
-              <b>{m.name}</b>
+              {m.name}
               <div className="md">{m.desc}</div>
             </div>
             {m.mode === cfg.mode && <span className="ck"><Check /></span>}
@@ -844,71 +895,67 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: "机器", model: "模型", mode: taskEditing ? "权限" : "审批" };
-  const modelLine = parts.model;
+  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: "机器", model: "模型", mode: taskEditing ? "权限" : "审批模式" };
   const many = ns.agents.length > 1;
-  if (open && pick && pick !== "machine") body = <div className="hint">正在读取这个项目上次的设置…</div>;
+  if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
   return (
-    <Sheet onClose={onClose}>
-      <div className="ns-head">
-        {pick && back}
-        <b>{titles[pick]}</b>
-        <button className="link" onClick={onClose}>
-          完成
-        </button>
-      </div>
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined}>
       {body ?? (
         <>
-          <div className="ps-id"><Avatar name={projectName(cfg.cwd)} size="sm" /><div className="ps-text"><b>{projectName(cfg.cwd)}</b><small>{shortPath(cfg.cwd)}</small></div></div>
-          <div className="setrows">
-            <button className="sr" disabled={lockMachine} onClick={() => setPick("machine")}>
-              <span className="lbl">机器</span>
-              <span className="v">
+          <div className="list">
+            <div className="mi pid">
+              <Avatar name={projectName(cfg.cwd)} size="sm" />
+              <div className="mt">
+                {projectName(cfg.cwd)}
+                <div className="md mono">{shortPath(cfg.cwd)}</div>
+              </div>
+            </div>
+          </div>
+          <div className="fl">新会话</div>
+          <div className="list">
+            <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
+              <span className="mt">机器</span>
+              <span className="mv">
                 <StateMark kind={machine?.online ? "online" : "off"} />
-                <em>{machineName(machine)}</em>
-                <ChevronRight className="chev" />
+                {machineName(machine)}
               </span>
+              <ChevronRight className="chev" />
             </button>
           </div>
           {many && (
-            <div className="seg cli-tabs" role="tablist" aria-label="按 CLI 的设置">
-              {ns.agents.map((a) => (
-                <button key={a} role="tab" aria-selected={a === agent} className={a === agent ? "on" : ""} onClick={() => setTab(a)}>
-                  {agentName(a)}
-                </button>
-              ))}
-            </div>
+            <Segmented className="cli-tabs full" label="按 CLI 的设置" value={String(agent)} onChange={(v) => setTab(Number(v) as Agent)} options={ns.agents.map((a) => ({ value: String(a), label: agentName(a) }))} />
           )}
           {open ? (
-            <div className="hint">正在读取这个项目上次的设置…</div>
+            <div className="hint top">正在读取这个项目上次的设置…</div>
           ) : (
-            <div className="setrows">
-              <button className="sr" onClick={() => setPick("model")}>
-                <span className="lbl">模型</span>
-                <span className={"v" + (info.loading ? " muted" : "")}>
-                  <em>{info.loading ? `读取 ${machineName(machine)} 的设置…` : modelLine}</em>
-                  <ChevronRight className="chev" />
-                </span>
+            <div className="list">
+              <button className="mi" onClick={() => setPick("model")}>
+                <span className="mt">模型</span>
+                <span className="mv">{info.loading ? `读取 ${machineName(machine)} 的设置…` : parts.model}</span>
+                <ChevronRight className="chev" />
               </button>
               {agentInfo(cfg.agent).standardContextOption && !scheduled && (
-                <div className="sr">
-                  <span className="lbl">上下文</span>
+                <div className="mi">
+                  <span className="mt">上下文</span>
                   {parts.fixedWindow ? (
-                    <span className="fixed">标准 200k · 这个模型只有标准窗口</span>
+                    <span className="mv">标准 200k · 这个模型只有标准窗口</span>
                   ) : (
-                    <div className="pick" role="group" aria-label="上下文窗口">
-                      <button className={cfg.standardContext ? "" : "on"} onClick={() => set({ standardContext: false })}>1M</button>
-                      <button className={cfg.standardContext ? "on" : ""} onClick={() => set({ standardContext: true })}>标准 200k</button>
-                    </div>
+                    <Segmented
+                      label="上下文窗口"
+                      value={cfg.standardContext ? "std" : "1m"}
+                      onChange={(v) => set({ standardContext: v === "std" })}
+                      options={[
+                        { value: "1m", label: "1M" },
+                        { value: "std", label: "标准 200k" },
+                      ]}
+                    />
                   )}
                 </div>
               )}
-              <button className="sr" onClick={() => setPick("mode")}>
-                <span className="lbl">{taskEditing ? "权限" : "审批"}</span>
-                <span className="v">
-                  <em>{modeTextOf(cfg, machine)}</em>
-                  <ChevronRight className="chev" />
-                </span>
+              <button className="mi" onClick={() => setPick("mode")}>
+                <span className="mt">{taskEditing ? "权限" : "审批"}</span>
+                <span className={"mv" + (modeTextOf(cfg, machine) === modeName(ApprovalMode.FULL_ACCESS) ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
+                <ChevronRight className="chev" />
               </button>
             </div>
           )}
@@ -917,11 +964,17 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "各 CLI 独立保存一套，新建时用哪个在输入框旁选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
-          {!taskEditing && <div className="setrows">
-            <button className="sr" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>{pinAction(remote, cfg.cwd).label}</button>
-            <button className="sr red" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>移除项目…</button>
-          </div>}
+          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在句子里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
+          {!taskEditing && (
+            <div className="list">
+              <button className="mi link-row" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>
+                <span className="mt">{pinAction(remote, cfg.cwd).label}</span>
+              </button>
+              <button className="mi danger" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>
+                <span className="mt">移除项目…</span>
+              </button>
+            </div>
+          )}
           {!taskEditing && removing && (
             <RemoveProjectAlert
               remote={remote}
@@ -998,7 +1051,8 @@ export function DirBrowser({
       <div className="list dirs">
         {dir?.parent && (
           <button className="mi" disabled={!!loading} onClick={() => void open(dir.parent)}>
-            <div className="mt"><ChevronLeft /> 上一级</div>
+            <ChevronLeft className="lead" />
+            <div className="mt">上一级</div>
           </button>
         )}
         {dir?.dirs.map((d) => (
@@ -1007,10 +1061,10 @@ export function DirBrowser({
             <ChevronRight className="chev" />
           </button>
         ))}
-        {dir && dir.dirs.length === 0 && <div className="hint">没有子目录</div>}
-        {!dir && !error && <div className="hint">读取中…</div>}
+        {dir && dir.dirs.length === 0 && <div className="mi note">没有子目录</div>}
+        {!dir && !error && <div className="mi note">读取中…</div>}
       </div>
-      <div className="btns" style={{ marginTop: 10 }}>
+      <div className="btns sheet-foot">
         <button className="btn pri" disabled={!dir || !!loading} onClick={() => dir && onPick(dir.path)}>
           {label(name)}
         </button>
@@ -1019,16 +1073,10 @@ export function DirBrowser({
   );
 }
 
-/** From the home page's ＋: pick a project first, or a new one. */
-export function ProjectPicker({ remote, onPick, onNew, onClose, title = "新会话 · 选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
+/** 选项目: the project list, each row ending in ›, 新项目… at the end. */
+export function ProjectPicker({ remote, onPick, onNew, onClose, title = "选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   return (
-    <Sheet onClose={onClose}>
-      <div className="ns-head">
-        <b>{title}</b>
-        <button className="link" onClick={onClose}>
-          取消
-        </button>
-      </div>
+    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }}>
       <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
@@ -1040,27 +1088,23 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
   const [machineId, setMachineId] = useState(machines.find((m) => m.online)?.id ?? "");
   const m = remote.machines.get(machineId);
   return (
-    <Sheet onClose={onClose}>
-      <div className="ns-head">
-        {onBack && (
-          <button className="back2" onClick={onBack} aria-label="返回">
-            <ChevronLeft />
-          </button>
-        )}
-        <b>{fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"}</b>
-        <button className="link" onClick={onClose}>
-          取消
-        </button>
-      </div>
-      <div className="recent">
-        <small>机器</small>
-        {machines.map((x) => (
-          <button key={x.id} className={x.id === machineId ? "on" : ""} disabled={!x.online || !!fixedMachine} onClick={() => setMachineId(x.id)}>
-            <StateMark kind={x.online ? "online" : "off"} />
-            {machineName(x)}
-          </button>
-        ))}
-      </div>
+    <Sheet onClose={onClose} title={fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"} action={{ label: "取消", onClick: onClose }} back={onBack}>
+      <Segmented
+        className="full machines"
+        label="机器"
+        value={machineId || undefined}
+        onChange={setMachineId}
+        options={machines.map((x) => ({
+          value: x.id,
+          disabled: !x.online || !!fixedMachine,
+          label: (
+            <>
+              <StateMark kind={x.online ? "online" : "off"} />
+              {machineName(x)}
+            </>
+          ),
+        }))}
+      />
       {!machineId ? (
         <div className="hint">没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。</div>
       ) : (
@@ -1094,33 +1138,39 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
         }}
       />
     );
-  return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} title={onPicked ? "选项目" : undefined} />;
+  return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} />;
 }
 
 /** What the summary of the new-session settings says. */
 export type Summary = { agent: string; mode: string; machine: string; model: string };
 
-/** The new-session settings in one line, opening the project's settings:
- * the mode, the machine and the model; the effort and the window are in
- * the settings. Only 完全放行 is red. bare: next to the CLI switch, which already names
- * the CLI. The machine's name is what gives way when the line is long. */
-export function ConfigSummary({ summary, bare, chip, onClick }: { summary: Summary; bare?: boolean; chip?: boolean; onClick: () => void }) {
-  const { agent, mode, machine, model: rest } = summary;
+/** The settings of a new session in one capsule, opening the project's
+ * settings (design-system §6 新任务): the CLI, the mode, the machine and
+ * the model; the effort and the window are in the settings. bare: the
+ * sentence already names the CLI, so it is not written again. Only
+ * 完全放行 is red, and it comes first. The machine's name gives way first
+ * when the line is long, down to three letters; the mode and the model
+ * only after it. */
+export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; bare?: boolean; onClick: () => void }) {
+  const { agent, mode, machine, model } = summary;
   const full = mode === modeName(ApprovalMode.FULL_ACCESS);
   const sep = " · ";
-  const line = [!bare && agent, mode, machine, rest].filter(Boolean).join(sep);
+  const head = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
+  const line = [...head, machine, model].filter(Boolean).join(sep);
   return (
-    <button className={"project-summary" + (chip ? " chip" : "")} onClick={onClick} aria-label={`新会话设置：${line}`}>
-      <span>
-        <span>
-          {!bare && agent + sep}
-          {full ? <span className="red">{mode}</span> : mode}
-          {(machine || rest) && sep}
-        </span>
-        {machine && <span className="machine">{machine}</span>}
-        {rest && <span>{(machine ? sep : "") + rest}</span>}
+    <button className="tok project-summary" onClick={onClick} aria-label={`新会话设置：${line}`}>
+      <span className="fx">
+        {head.map((h, i) => (
+          <span key={i}>
+            {i > 0 && sep}
+            {full && i === 0 ? <em>{h}</em> : h}
+          </span>
+        ))}
+        {(machine || model) && head.length > 0 && sep}
       </span>
-      {chip && <ChevronRight className="chev" />}
+      {machine && <span className="mach">{machine}</span>}
+      {model && <span className="mdl">{(machine ? sep : "") + model}</span>}
+      <ChevronRight />
     </button>
   );
 }
