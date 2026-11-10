@@ -36,7 +36,7 @@ struct SectionLabel: View {
     }
 }
 
-/// A label above a group on a grey page.
+/// A label above a group (13, `ink2`): room above it apart from what is over it, a large title or the group before.
 struct GroupLabel: View {
     private let count: Int?
     private let text: String
@@ -57,7 +57,7 @@ struct GroupLabel: View {
             if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
             if let action, onAction != nil { ArrowText(action, style: .subheadline).lineLimit(1).fixedSize() }
         }
-        .padding(.init(top: 4, leading: 30, bottom: 6, trailing: 30))
+        .padding(.init(top: 18, leading: 30, bottom: 8, trailing: 30))
         .overlay(alignment: .trailing) {
             if let action, let onAction {
                 Button(action: onAction) { Color.clear.frame(width: 104, height: DS.minHit).contentShape(Rectangle()) }

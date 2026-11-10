@@ -143,6 +143,6 @@ struct LargeTitle: View {
         Text(text).font(.largeTitle.bold()).ink(DS.ink).padding(.vertical, 3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
-            .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
+            .padding(.init(top: 6, leading: DS.Space.page, bottom: 4, trailing: 12))
     }
 }
