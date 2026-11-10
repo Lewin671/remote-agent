@@ -32,14 +32,10 @@ struct SessionScheduleBar: View {
     var body: some View {
         let tasks = sessionSchedules(context.schedules.tasks, session: session)
         if !tasks.isEmpty {
-            HStack(spacing: 8) {
-                Ic(Lucide.clock, style: T.meta, color: Theme.muted)
-                Text(scheduleBarText(tasks, online: context.schedules.online(session.machineId))).type(T.meta, Theme.muted).lineLimit(2)
-                Spacer(minLength: 0)
-                TextAction("管理", arrow: true) {
-                    if let task = tasks.first, tasks.count == 1 { open(task) } else { picking = true }
-                }.fixedSize()
-            }.padding(.horizontal, 16).background(Theme.soft)
+            // A strip of glass under the session's title (design-system §6 「提示条」).
+            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(session.machineId)), symbol: "clock", action: "管理") {
+                if let task = tasks.first, tasks.count == 1 { open(task) } else { picking = true }
+            }
                 .kitSheet(isPresented: $picking) {
                     SheetHead("管理定时任务")
                     ForEach(tasks) { entry in ListItem(entry.task.spec.title, desc: entry.task.stateText(online: context.schedules.online(entry.machineID))) { picking = false; open(entry) } }

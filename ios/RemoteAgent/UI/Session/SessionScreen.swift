@@ -86,6 +86,7 @@ private struct SessionPage: View {
     @Environment(AccountContext.self) private var context
     @Environment(Navigator.self) private var nav
     @Environment(\.page) private var page
+    @Environment(\.colorScheme) private var colorScheme
     @State private var chat = SessionModel()
     @State private var tab: Int
     @State private var menu = false
@@ -151,18 +152,7 @@ private struct SessionPage: View {
         let high = (percent ?? 0) > 80
         let refusal = protocolMismatch(state.machines[s.machineId])
         let subtitle = sessionSubtitle(status: status, mode: mode)
-        VStack(spacing: 0) {
-            ConnectionBar()
-            if let refusal {
-                Banner(refusal, tone: .warn).padding(.horizontal, 12).padding(.vertical, 6)
-            }
-            if !act.error.isEmpty {
-                Banner(act.error, tone: .error).padding(.horizontal, 12).padding(.vertical, 6)
-            }
-            SessionScheduleBar(session: s)
-            ViewTabs(
-                ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
-                enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil, dark: term)
+        Group {
             if term {
                 TerminalPane(sessionId: sid, running: true)
             } else {
@@ -170,24 +160,54 @@ private struct SessionPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background((term ? Theme.Term.bg : Theme.card).ignoresSafeArea())
-        .tint(Theme.blue)
-        // The page's to do, not the chat's or its message box's: it may open on the terminal, and an ended
-        // session or one on an offline computer has no box.
+        .background((term ? DS.term : DS.paper).ignoresSafeArea())
+        // Under the title: 聊天 / 终端 on glass, then the strips of what stands in the way, the content sliding under them.
+        .floatingBar(.top) {
+            VStack(spacing: 8) {
+                GlassSegmented(
+                    items: ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
+                    enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
+                    .accessibilityIdentifier("session-view")
+                SessionLinkStrip()
+                if let refusal { GlassStrip(text: refusal, symbol: "exclamationmark.triangle", tone: .attention) }
+                if !act.error.isEmpty { GlassStrip(text: act.error, symbol: "xmark", tone: .error) }
+                SessionScheduleBar(session: s)
+            }
+            .padding(.horizontal, DS.Space.m)
+            .padding(.top, 4).padding(.bottom, 8)
+            .frame(maxWidth: DS.column)
+            .environment(\.colorScheme, term ? .dark : colorScheme)
+        }
+        .tint(DS.blue)
         .task(id: s.info?.scheduledTaskID) {
             guard s.info?.taskOwned == true, let task = s.info?.scheduledTaskID, !task.isEmpty,
                   nav.path.last == page, !nav.path.dropLast().contains(.schedule(machine: s.machineId, id: task)) else { return }
             nav.path.insert(.schedule(machine: s.machineId, id: task), at: max(0, nav.path.count - 1))
         }
         .task(id: sid) { SessionImages.restore(session: sid, remote: context.remote, store: context.sessionStore) }
-        // The second line is the state and the mode, which is red only when it is full access.
-        .navBar(
-            titleOf(s), subtitle: subtitle.danger || subtitle.mode.isEmpty ? subtitle.status : "\(subtitle.status) · \(subtitle.mode)",
-            danger: subtitle.danger ? subtitle.mode : nil, dot: Theme.dot(StatusTone(status.tone)), dark: term,
-            // Something in the menu wants a look: a context that is nearly full.
-            moreDot: high, onMore: { menu = true })
-        .toolbarBackground(term ? Theme.Term.bg : Theme.card, for: .navigationBar)
-        .toolbarBackground(term ? .visible : .automatic, for: .navigationBar)
+        // The system's bar, with nothing drawn under it: the back button, the title with its line of state,
+        // and ⋯; from iOS 26 they are on glass, and the content runs under them.
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(titleOf(s))
+        .toolbarRole(.editor)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                SessionTitle(title: titleOf(s), status: subtitle.status, mode: subtitle.mode, danger: subtitle.danger)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { menu = true } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(DS.ink)
+                        .overlay(alignment: .topTrailing) {
+                            // Something in the menu wants a look: a context that is nearly full.
+                            if high { Circle().fill(DS.orange).frame(width: 7, height: 7).offset(x: 5, y: -5) }
+                        }
+                }
+                .accessibilityLabel("更多")
+                .accessibilityValue(high ? "有需要注意的项" : "")
+            }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbarColorScheme(term ? .dark : nil, for: .navigationBar)
         .actionMenu(isPresented: $menu, actions: actions(status: status, running: running, live: live, mode: mode, percent: percent)) {
             VStack(alignment: .leading, spacing: 2) {
@@ -328,5 +348,58 @@ private struct SessionPage: View {
             list.append(SheetAction("结束会话…", danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
         }
         return list
+    }
+}
+
+/// The middle of the bar: the title on one line, and under it the state and
+/// the approval mode (12, `ink2`), the mode red only when it is full access.
+private struct SessionTitle: View {
+    let title: String
+    let status: String
+    let mode: String
+    let danger: Bool
+
+    var body: some View {
+        VStack(spacing: 1) {
+            Text(title).font(.headline).foregroundStyle(DS.ink).lineLimit(1)
+            Text("\(Text(status).foregroundStyle(DS.ink2))\(Text(mode.isEmpty ? "" : " · ").foregroundStyle(DS.ink2))\(Text(mode).foregroundStyle(danger ? DS.red : DS.ink2))")
+                .font(.caption).lineLimit(1)
+        }
+        // The bar has one line's room at the largest sizes; a long press shows it large.
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// How the way to the server stands, as a strip under the session's title
+/// (design-system §6 「连接状态」); nothing when connected. 详情 says why the
+/// server is out of reach.
+struct SessionLinkStrip: View {
+    @Environment(AppModel.self) private var model
+    @State private var details = false
+
+    var body: some View {
+        let state = model.state
+        Group {
+            switch state.link {
+            case .online:
+                if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
+            case .noNetwork:
+                GlassStrip(text: "本机网络不通 · " + (state.loaded ? "显示的是上次的内容" : "联网后才能读取会话"), symbol: "wifi.slash")
+            case .waiting:
+                GlassStrip(text: state.synced ? "正在重连…" : "连接中…", spinning: true)
+            case .noServer:
+                // Nothing kept to show: the reason is the whole of what can be said, in red.
+                if !state.loaded && !state.error.isEmpty {
+                    GlassStrip(text: "连不上服务器：\(state.error)", symbol: "xmark", tone: .error, action: "详情") { details = true }
+                } else {
+                    GlassStrip(text: "连不上服务器 · 正在重试", symbol: "icloud.slash", action: "详情") { details = true }
+                }
+            }
+        }
+        .kitSheet(isPresented: $details) {
+            ServerDetails(state: state) { details = false }
+        }
     }
 }
