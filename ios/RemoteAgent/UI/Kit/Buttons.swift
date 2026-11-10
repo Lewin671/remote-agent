@@ -124,16 +124,3 @@ struct IconButton: View {
             .accessibilityLabel(label)
     }
 }
-
-/// The new-session button at the right of a first-level title: a pencil on a sheet.
-struct NewSessionButton: View {
-    private let label: String
-    private let action: () -> Void
-
-    init(label: String = "新会话", action: @escaping () -> Void) {
-        self.label = label
-        self.action = action
-    }
-
-    var body: some View { IconButton(Lucide.squarePen, label: label, action: action) }
-}

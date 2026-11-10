@@ -1,5 +1,5 @@
 // The small shared pieces of docs/design/client-v38.html, sized as the
-// mockup's CSS (1 CSS px = 1 pt): lines, tap targets, dots, arrows, avatars,
+// mockup's CSS (1 CSS px = 1 pt): lines, tap targets, dots, arrows,
 // chips. What each is for is in docs/design-system.md §6; the Android
 // counterparts are in ui/Kit.kt and ui/Common.kt.
 import RACore
@@ -210,49 +210,6 @@ func projectName(_ key: String) -> String {
     key.split(separator: "/").last.map(String.init) ?? "未知项目"
 }
 
-/// Avatar colour index 0...3, stable per project and the same as on the web and on Android.
-func avatarIndex(_ key: String) -> Int {
-    var h: UInt64 = 0
-    for c in key.utf16 { h = (h &* 31 &+ UInt64(c)) & 0xffff_ffff }
-    return Int(h % 4)
-}
-
-/// A project's letter on a gradient picked by its name: 40 on lists, 28 in the home page's scope title, 22 in sheets, 52 on the project page, 16 in chips.
-struct Avatar: View {
-    private let letter: String
-    private let gradient: LinearGradient
-    private let size: CGFloat
-
-    /// `key` is the project's path.
-    init(_ key: String, size: CGFloat = 40) {
-        let name = projectName(key)
-        letter = name.prefix(1).lowercased()
-        gradient = Theme.avatarGradients[avatarIndex(name) % Theme.avatarGradients.count]
-        self.size = size
-    }
-
-    /// The grey 全 of 全部项目.
-    static func all(size: CGFloat = 40) -> Avatar { Avatar(letter: "全", gradient: Theme.avatarAll, size: size) }
-
-    private init(letter: String, gradient: LinearGradient, size: CGFloat) {
-        self.letter = letter
-        self.gradient = gradient
-        self.size = size
-    }
-
-    var body: some View {
-        let (radius, font): (CGFloat, CGFloat) =
-            size >= 52 ? (15, 22) : size >= 36 ? (11, 17) : size >= 28 ? (8, 15) : size >= 22 ? (6, 12) : (4, 9)
-        // A badge of a fixed size: its letter does not grow with the text around it.
-        Text(letter)
-            .font(.system(size: font, weight: .bold))
-            .foregroundStyle(Theme.onSolid)
-            .frame(width: size, height: size)
-            .background(gradient, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .accessibilityHidden(true)
-    }
-}
-
 /// A small coloured square with an icon, in front of a computer's row. It grows with the row's text.
 struct IconBadge: View {
     private let icon: LucideIcon
@@ -361,71 +318,6 @@ struct Code: View {
             .padding(.horizontal, 10).padding(.vertical, 7)
             .background(background ?? (onSoft ? Theme.card : Theme.soft), in: shape)
             .overlay { if border { shape.strokeBorder(Theme.line, lineWidth: 1) } }
-    }
-}
-
-/// How many lines of a block `whole` tall lie past the first `lines`, where the same block is `one` tall
-/// with one line and `two` with two.
-func linesPast(_ lines: Int, whole: CGFloat, one: CGFloat, two: CGFloat) -> Int {
-    let step = two - one
-    guard step > 0, whole > one else { return 0 }
-    return max(0, Int(((whole - one) / step).rounded()) + 1 - lines)
-}
-
-/// A code block held to whole lines, `lines` of them as laid out, for a card where nothing scrolls
-/// inside: under it 「还有 N 行 · 展开」 shows the rest in place, and 「收起」 holds it again. How many
-/// lines it takes is only known once laid out: one long command is one line to count and many to draw.
-struct ClampedCode: View {
-    private let text: String
-    private let lines: Int
-    private let background: Color?
-    private let border: Bool
-    @State private var open = false
-    @Environment(\.chatDiagnosticEntity) private var diagnosticEntity
-    @State private var shown: CGFloat = 0
-    @State private var whole: CGFloat = 0
-    @State private var one: CGFloat = 0
-    @State private var two: CGFloat = 0
-
-    init(_ text: String, lines: Int, background: Color? = nil, border: Bool = false) {
-        self.text = text
-        self.lines = lines
-        self.background = background
-        self.border = border
-    }
-
-    var body: some View {
-        let entity = diagnosticEntity
-        let more = whole > shown + 0.5 ? linesPast(lines, whole: whole, one: one, two: two) : 0
-        VStack(alignment: .leading, spacing: 0) {
-            Code(text, maxLines: open ? nil : lines, background: background, border: border)
-                .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeShown, entity: entity) { g.size.height } } action: {
-                    ChatDiagnosticRing.shared.record(.codeShown, entity: entity, Double($0)); if !open { shown = $0 }
-                }
-                .background {
-                    // The whole text, one line and two, at the same width, measured and not drawn.
-                    ZStack {
-                        Code(text, background: background, border: border).fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeWhole, entity: entity) { g.size.height } } action: {
-                        ChatDiagnosticRing.shared.record(.codeWhole, entity: entity, Double($0)); whole = $0
-                    }
-                        Code("x").fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeOne, entity: entity) { g.size.height } } action: {
-                                ChatDiagnosticRing.shared.record(.codeOne, entity: entity, Double($0)); one = $0
-                            }
-                        Code("x\nx").fixedSize(horizontal: false, vertical: true)
-                            .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.codeTwo, entity: entity) { g.size.height } } action: {
-                                ChatDiagnosticRing.shared.record(.codeTwo, entity: entity, Double($0)); two = $0
-                            }
-                    }
-                    .hidden()
-                    .accessibilityHidden(true)
-                }
-            if open || more > 0 {
-                TextAction(open ? "收起" : "还有 \(more) 行 · 展开", style: T.sm) { open.toggle() }
-                    .padding(.vertical, -6)
-            }
-        }
     }
 }
 

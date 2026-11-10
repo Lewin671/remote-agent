@@ -23,7 +23,7 @@ struct ConnectionBar: View {
 }
 
 /// Why the server is out of reach: the judgement first, the failure in the system's words last.
-private struct ServerDetails: View {
+struct ServerDetails: View {
     let state: RemoteState
     let onClose: () -> Void
     @Environment(AppModel.self) private var model

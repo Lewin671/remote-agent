@@ -34,7 +34,9 @@
 //   -homeScopeTarget <all|path>      the scope the signal home.scope chooses
 //   -homeSheet <scope|browse|pick|pickBrowse>   看哪个项目, 新会话 · 选项目, or either on 新项目 · 选目录
 //   -homeFilter <text>               something typed in the title filter
-//   -homeExpand                      需要处理 and 进行中 opened in full
+//   -homeExpand                      what waits and 进行中 opened in full
+//   -homeEnd                         the home page scrolled to its end
+//   -homeCard <full|deny>            the home page's dark card with its command opened, or writing why not
 //   -projectSheet <main|machine|model|context|mode>   项目设置 on a page
 //   -projectDraft <text>             something written in the new-session box
 //   -projectStart <running|failed|unknown|expired>   how a start stands
@@ -94,6 +96,7 @@
 //   join.cancel         the join flow
 //   removed.retry       再试一次 on the 已被移出账户 notice
 //   home.scope          chooses the scope -homeScopeTarget names
+//   home.allow          允许 on the home page's dark card
 //   project.start, project.agent                ↑ of the new-session box; the other CLI
 //   settings.apply      chooses what -settingsEdit names in 项目设置 and saves
 //   projects.pin, projects.remove, projects.remove.confirm   项目管理, on the project -projectsTarget names

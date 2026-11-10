@@ -23,10 +23,10 @@ public enum HomeScope: Hashable, Sendable {
     }
 }
 
-/// 需要处理 shows this many cards before 「还有 N 项待处理」.
+/// What waits shows this many rows under its dark card before 「还有 N 件」.
 public let attentionMax = 3
 
-/// 进行中 shows this many rows before 「还有 N 个进行中」.
+/// 进行中 shows this many rows before 「还有 N 个」.
 public let runningMax = 5
 
 /// Ended sessions are rendered this many at a time.

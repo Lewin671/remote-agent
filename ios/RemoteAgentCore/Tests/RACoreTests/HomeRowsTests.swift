@@ -57,18 +57,20 @@ import Testing
         ])
         let l = list(st)
         #expect(l.items.map(\.id) == [
-            "h:attention", "s:wait", "h:running", "s:run", "s:idle", "h:today", "s:today", "h:yesterday", "s:yesterday",
+            "s:wait", "h:running", "s:run", "s:idle", "h:today", "s:today", "h:yesterday", "s:yesterday",
             "h:week", "s:week", "h:month:2026-9", "s:month", "h:month:2025-12", "s:lastYear",
         ])
         let titles = l.items.compactMap { item -> String? in
             if case .label(_, let title, let count) = item { return title + (count.map { " \($0)" } ?? "") }
             return nil
         }
-        #expect(titles == ["需要处理 1", "进行中 2", "今天", "昨天", "近 7 天", "9 月", "2025 年 12 月"])
+        #expect(titles == ["进行中", "今天", "昨天", "近 7 天", "9 月", "2025 年 12 月"])
         #expect(l.empty == nil && !l.showFilter && !l.wantAll && !l.wantPage && !l.grows)
+        // The approval that waits is the dark card.
+        #expect(l.items[0] == .attentionCard(st.sessions["wait"]!))
         // The last running row draws no line under it.
-        #expect(l.items[3] == .running(st.sessions["run"]!, last: false))
-        #expect(l.items[4] == .running(st.sessions["idle"]!, last: true))
+        #expect(l.items[2] == .running(st.sessions["run"]!, last: false))
+        #expect(l.items[3] == .running(st.sessions["idle"]!, last: true))
     }
 
     @Test func aSessionKeepsItsLineWhenItMovesBetweenParts() {
@@ -82,14 +84,27 @@ import Testing
     @Test func onlyTheFirstFewWaitAndRunUntilTheRestIsAskedFor() {
         let st = state((0..<5).map { session("a\($0)", created: now - Int64($0) * 1000, approvals: 1) } + (0..<8).map { session("r\($0)", created: now - Int64($0) * 1000) })
         let l = list(st)
-        #expect(l.items.filter { if case .attention = $0 { true } else { false } }.count == attentionMax)
-        #expect(l.items.contains(.moreAttention(2)))
+        // One dark card, then three rows, then 还有 1 件 closes the grey list.
+        #expect(l.items.filter { if case .attentionCard = $0 { true } else { false } }.count == 1)
+        let rows = l.items.compactMap { item -> (Bool, Bool)? in if case .attention(_, let first, let last) = item { (first, last) } else { nil } }
+        #expect(rows.count == attentionMax && rows.map(\.0) == [true, false, false] && rows.map(\.1) == [false, false, false])
+        #expect(l.items.contains(.moreAttention(1)))
         #expect(l.items.filter { if case .running = $0 { true } else { false } }.count == runningMax)
         #expect(l.items.contains(.moreRunning(3)))
         let all = list(st, shown: HomeShown(allAttention: true, allRunning: true))
-        #expect(all.items.count == 2 + 5 + 8)
+        #expect(all.items.count == 5 + 1 + 8)
+        #expect(all.items.contains { if case .attention(_, _, true) = $0 { true } else { false } })
         // A filter shows every match.
         #expect(list(st, query: "r").items.filter { if case .running = $0 { true } else { false } }.count == 8)
+    }
+
+    @Test func onlyAnApprovalIsTheDarkCard() {
+        // Questions, plans and popups are rows, the most urgent of them too.
+        let st = state([session("q", questions: 1), session("p", plan: true)])
+        let l = list(st)
+        #expect(!l.items.contains { if case .attentionCard = $0 { true } else { false } })
+        #expect(l.items.first == .attention(st.sessions["q"]!, first: true, last: false))
+        #expect(l.items[1] == .attention(st.sessions["p"]!, first: false, last: true))
     }
 
     @Test func endedSessionsComeThirtyAtATimeAndTheLastLineCountsThem() {
@@ -184,34 +199,97 @@ import Testing
         #expect(endedRowText(session("w", ended: at(2026, 9, 29, 10, 0)), project: false, now: now, zone: zone).right == "周二")
     }
 
-    @Test func aCardSaysWhatWaitsAndWhereItIsFrom() {
+    @Test func aRowOfWhatWaitsSaysItsTypeAndWhatAbout() {
         let st = state([], machines: ["m", "n"])
         let api = session("api", "/p/foo", title: "重构 API 层", approvals: 1)
         let request = PBApprovalRequested.with {
             $0.approvalID = "A1"
+            $0.command = "go test ./... \\\n  -count=1"
+        }
+        let row = pendingRowText(st, api, scope: .all, approval: request, question: nil, zone: zone)
+        #expect(row == PendingRowText(title: "重构 API 层", kind: "请求执行", summary: "go test ./... \\ -count=1"))
+        // Before the approval is read the status says what waits.
+        #expect(pendingRowText(st, api, scope: .all, approval: nil, question: nil, zone: zone).kind == "等待审批")
+        let dep = session("dep", "/p/bar", title: "升级依赖", agent: .claude, questions: 1)
+        // In another project's scope the row names its project.
+        let asked = pendingRowText(st, dep, scope: .of(key: "/p/foo"), approval: nil, question: "大版本也一起升吗？", zone: zone)
+        #expect(asked.kind == "Claude Code 在问你" && asked.summary == "bar · 大版本也一起升吗？")
+        #expect(asked.spoken == "升级依赖，Claude Code 在问你，bar，大版本也一起升吗？")
+        #expect(pendingRowText(st, dep, scope: .of(key: "/p/bar"), approval: nil, question: "x", zone: zone).summary == "x")
+        let plan = pendingRowText(st, session("p", plan: true), scope: .all, approval: nil, question: nil, zone: zone)
+        #expect(plan.kind == "计划待批准" && plan.summary.isEmpty)
+        var popup = session("t", status: .blocked)
+        popup.info?.statusDetail = "Trust this folder?"
+        #expect(pendingRowText(st, popup, scope: .all, approval: nil, question: nil, zone: zone) == PendingRowText(title: "t", kind: "终端里有弹窗", summary: "Trust this folder?"))
+    }
+
+    @Test func theDarkCardSaysWhatAndUntilWhenAndWhere() {
+        var st = state([], machines: ["m", "n"])
+        let api = session("api", "/p/foo", title: "重构 API 层", approvals: 1)
+        var request = PBApprovalRequested.with {
+            $0.approvalID = "A1"
             $0.command = "go test ./..."
             $0.deadline = ts(now + 8 * 60_000 - 20_000)
         }
-        let card = attentionCardText(st, api, scope: .all, approval: request, question: nil, now: now, zone: zone)
-        #expect(card.kind == "请求执行" && card.right == "剩 8 分钟，超时拒绝" && card.action == "查看会话" && card.meta == "foo · m")
-        #expect(attentionCardText(st, api, scope: .all, approval: .with { $0.approvalID = "A2" }, question: nil, now: now, zone: zone).kind == "请求权限")
-        // A tool that is not a shell command is named, as in the session's dock: the card offers 允许 too.
+        let card = approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone)
+        #expect(card == ApprovalCardText(kind: "请求执行", time: "剩 8 分钟，超时拒绝", hot: false, title: "重构 API 层", place: "foo · m"))
+        #expect(approvalCardText(st, api, approval: request, timeoutNote: false, now: now, zone: zone).time == "剩 8 分钟")
+        // The last minute is orange.
+        request.deadline = ts(now + 30_000)
+        #expect(approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone).hot)
+        // A tool that is not a shell command is named, and no deadline says nothing.
         let write = PBApprovalRequested.with {
             $0.approvalID = "A3"
             $0.toolName = "Write"
             $0.toolInputJson = "{\"file_path\":\"/p/foo/a.go\"}"
         }
-        #expect(attentionCardText(st, api, scope: .all, approval: write, question: nil, now: now, zone: zone).kind == "请求权限 · Write")
+        let w = approvalCardText(st, api, approval: write, timeoutNote: true, now: now, zone: zone)
+        #expect(w.kind == "请求权限 · Write" && w.time.isEmpty && !w.hot)
         #expect(approvalBody(write) == "{\"file_path\":\"/p/foo/a.go\"}")
-        #expect(approvalBody(request) == "go test ./...")
-        // In its own project's scope the card does not repeat the project; from another one it does.
-        #expect(attentionCardText(st, api, scope: .of(key: "/p/foo"), approval: nil, question: nil, now: now, zone: zone).meta == "m")
-        #expect(attentionCardText(st, api, scope: .of(key: "/p/bar"), approval: nil, question: nil, now: now, zone: zone).meta == "foo · m")
-        let dep = session("dep", "/p/bar", title: "升级依赖", agent: .claude, questions: 1)
-        let asked = attentionCardText(st, dep, scope: .all, approval: nil, question: "大版本也一起升吗？", now: now, zone: zone)
-        #expect(asked.kind == "Claude Code 在问你" && asked.action == "去回答" && asked.meta == "bar · m · 大版本也一起升吗？")
-        let plan = attentionCardText(st, session("p", plan: true), scope: .all, approval: nil, question: nil, now: now, zone: zone)
-        #expect(plan.kind == "计划待批准" && plan.action == "去处理")
+        // Out of reach of the server it cannot be decided: 未连接.
+        st.link = .noNetwork
+        let cut = approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone)
+        #expect(cut.time == "未连接" && !cut.hot)
+    }
+
+    @Test func theSentenceAtTheTopSaysHowThingsStand() {
+        let wait = session("w", "/p/bar", approvals: 1)
+        let run = session("r", status: .running)
+        let idle = session("i")
+        let idle2 = session("i2")
+        func head(_ st: RemoteState, _ scope: HomeScope = .all) -> HomeHeadline? { homeHeadline(st, scope: scope) }
+        #expect(head(state([wait, run, idle, idle2])) == HomeHeadline(kind: .waiting(count: 1), title: "1 件事等你", sub: "1 个会话在运行，2 个空闲"))
+        #expect(head(state([wait, idle]))?.sub == "1 个会话空闲")
+        // What waits is the account's; what runs is the scope's.
+        #expect(head(state([wait, run]), .of(key: "/p/bar")) == HomeHeadline(kind: .waiting(count: 1), title: "1 件事等你"))
+        #expect(head(state([run, idle, idle2])) == HomeHeadline(kind: .running, title: "1 个会话在运行", sub: "另有 2 个空闲"))
+        #expect(head(state([idle])) == HomeHeadline(kind: .nothingWaits, title: "没有等你的事", sub: "1 个会话空闲"))
+        #expect(head(state([session("e", ended: now - 1000)])) == HomeHeadline(kind: .nothingWaits, title: "没有等你的事"))
+        #expect(head(state([])) == HomeHeadline(kind: .noSessions, title: "还没有会话"))
+        #expect(head(state([]) { $0.sessionsListed = false; $0.sessionsError = "超时" })?.kind == .unreadable)
+        #expect(head(state([idle]), .of(key: "/p/new")) == HomeHeadline(kind: .emptyProject, title: "这个项目还没有会话", sub: "/p/new", subPath: true))
+        // Connected and nothing read yet: no sentence; not connected yet, 连接中….
+        var fresh = RemoteState()
+        #expect(head(fresh)?.kind == .connecting)
+        fresh.link = .online
+        #expect(head(fresh) == nil)
+        // Out of reach the connection is the sentence, the nearest stretch that is down.
+        let kept = state([wait, run])
+        var cut = kept
+        cut.link = .noNetwork
+        #expect(head(cut) == HomeHeadline(kind: .noNetwork, title: "本机网络不通", sub: "下面是上次的内容"))
+        cut.link = .waiting
+        #expect(head(cut) == HomeHeadline(kind: .reconnecting, title: "正在重连…", sub: "下面是上次的内容"))
+        cut.synced = false
+        #expect(head(cut)?.title == "连接中…" && head(cut)?.unlinked == true)
+        cut.link = .noServer
+        #expect(head(cut) == HomeHeadline(kind: .noServer, title: "连不上服务器", sub: "正在重试，下面是上次的内容", details: true))
+        var empty = RemoteState()
+        empty.link = .noNetwork
+        #expect(head(empty)?.sub == "联网后才能读取会话")
+        empty.link = .noServer
+        empty.error = "证书无效"
+        #expect(head(empty) == HomeHeadline(kind: .noServer, title: "连不上服务器", sub: "证书无效", subError: true, details: true))
     }
 
     @Test func anAnswerToAnApprovalNamesItAndTheDecision() {

@@ -636,13 +636,14 @@ import UIKit
         await eventually("leaving detail removes entry dots") { store.detailUnread.isEmpty }
     }
     @Test func tabBadgeCapsCountsAndWholeBlocksFitWithoutClipping() {
-        let conversation = TabBarItem(id: "home", label: "会话", icon: Lucide.messageSquare, badge: 100)
-        let schedules = TabBarItem(id: "schedules", label: "定时", icon: Lucide.clock, badge: 100, scheduleBadge: true)
-        let newResult = TabBarItem(id: "schedules", label: "定时", icon: Lucide.clock, dot: true, scheduleBadge: true)
-        #expect(conversation.badgeText == "100" && conversation.badgeAccessibilityValue == "100 个需要处理")
-        #expect(schedules.badgeText == "99+" && schedules.badgeAccessibilityValue == "100 件需要处理")
-        #expect(newResult.badgeAccessibilityValue == "有新结果")
-        #expect(tabBadgeText(99) == "99")
+        // Both tabs write 99+ past 99 (design-system §6 「底部」); VoiceOver hears the whole count.
+        let conversation = TabBadge(count: 100)
+        let schedules = TabBadge(count: 100, unit: "件")
+        let newResult = TabBadge(dot: true, unit: "件")
+        #expect(conversation.text == "99+" && conversation.spoken == "100 个需要处理")
+        #expect(schedules.text == "99+" && schedules.spoken == "100 件需要处理")
+        #expect(newResult.spoken == "有新结果" && TabBadge().spoken.isEmpty)
+        #expect(TabBadge(count: 99).text == "99")
         #expect(scheduleResultBlockCount([24, 48, 96], budget: 192) == 2)
         #expect(scheduleResultBlockCount([240], budget: 192) == 1)
         #expect(scheduleResultBlockCount([193, 193], budget: 192) == 1) // Still show the first block before measurement.

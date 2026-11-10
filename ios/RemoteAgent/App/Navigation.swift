@@ -4,13 +4,13 @@
 // NavHost and ui/Common.kt's `Nav`), plus the pages Android opens as sheets
 // or inner pages of 设置.
 //
-// One stack on every size of screen. The first-level pages, 会话、定时 and
-// 设置, are the stack's root with the tab bar under them; anything pushed
-// covers the bar, as on Android. An iPad gets the same stack: the mockup's
-// wide layout (a sidebar of sessions beside the session) is a different
-// set of screens, which Android has not taken on either (docs/plan.md
-// 「待确认」), and until it is decided the design asks only that settings-like
-// pages keep a centred column (design-system §6), which `Page(gray:)` does.
+// One stack on every size of screen. The two first-level pages, 会话 and
+// 定时, are the stack's root with the bottom bar over them (UI/Shell);
+// anything pushed covers the bar. 设置 is pushed, from the gear on the home
+// page (client-v58). An iPad gets the same stack for now: the mockup's wide
+// layout (a sidebar of sessions beside the session) is a later step of the
+// v58 redraw, and until then settings-like pages keep a centred column
+// (design-system §6), which `Page(gray:)` does.
 import Observation
 import RACore
 import SwiftUI
@@ -23,7 +23,7 @@ enum Route: Hashable, Sendable {
     case schedules
     case schedule(machine: String, id: String)
     case newSchedule(session: String = "")
-    /// 设置. A first-level page.
+    /// 设置, from the home page's gear.
     case settings
     /// A session; `terminal` opens it on its terminal.
     case session(id: String, terminal: Bool = false)
@@ -156,9 +156,9 @@ enum Route: Hashable, Sendable {
     }
 }
 
-/// The three first-level pages.
+/// The two first-level pages, the tabs of the bottom bar.
 enum MainTab: String, Sendable {
-    case home, schedules, settings
+    case home, schedules
 }
 
 /// Where the app is: a first-level page and what is pushed over it. Screens
@@ -180,9 +180,6 @@ final class Navigator {
         case .home:
             path.removeAll()
             tab = .home
-        case .settings:
-            path.removeAll()
-            tab = .settings
         case .schedule, .newSchedule:
             if path.isEmpty { tab = .schedules }
             if path.last != route { path.append(route) }
@@ -287,7 +284,7 @@ struct MainView: View {
             FirstLevel()
                 .navigationDestination(for: Route.self) { $0.destination.environment(\.page, $0) }
         }
-        .tint(Theme.blue)
+        .tint(DS.blue)
         // Goes where a tap would, for a script: to the route written to `debug.route` (debug builds).
         .debugSignal("app.open") {
             if let route = Route(path: UserDefaults.standard.string(forKey: "debug.route") ?? "") { nav.open(route) }
@@ -312,36 +309,59 @@ struct ScheduleViewingObserver: ViewModifier {
     }
 }
 
-/// 会话、定时 or 设置, over the tab bar. Their titles are the pages' own large titles, so the system's bar is hidden here.
+/// 会话 or 定时, under the bottom bar. Their titles are the pages' own
+/// sentences, and their buttons glass floating over them, so the system's
+/// bar is hidden here; a pushed page has it back.
 private struct FirstLevel: View {
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
+    @State private var pick = ["pick", "pickBrowse"].contains(HomeLaunch.value("-homeSheet"))
+    @State private var pickBrowsing = HomeLaunch.value("-homeSheet") == "pickBrowse"
 
     var body: some View {
         @Bindable var nav = nav
         let state = model.state
-        // What the user is waiting to be asked about, on the 会话 tab.
+        // What waits for the user, on the 会话 tab; it stays while the server is out of reach.
         let waiting = state.sessions.values.reduce(0) { $0 + (needsAttention($1, machine: state.machines[$1.machineId]) ? 1 : 0) }
+        let schedules = context.schedules
         Group {
             switch nav.tab {
             case .home: HomeScreen()
             case .schedules: SchedulesScreen()
-            case .settings: SettingsScreen()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            TabBar(
-                [
-                    TabBarItem(id: MainTab.home.rawValue, label: "会话", icon: Lucide.messageSquare, badge: waiting),
-                    TabBarItem(id: MainTab.schedules.rawValue, label: "定时", icon: Lucide.clock, badge: context.schedules.badgeCount, dot: context.schedules.hasNewResults, scheduleBadge: true),
-                    TabBarItem(id: MainTab.settings.rawValue, label: "设置", icon: Lucide.settings),
+        .floatingBar(.bottom) {
+            BottomBar(
+                tab: $nav.tab,
+                badges: [
+                    .home: TabBadge(count: waiting),
+                    .schedules: TabBadge(count: schedules.badgeCount, dot: schedules.hasNewResults, unit: "件"),
                 ],
-                selected: Binding(get: { nav.tab.rawValue }, set: { nav.tab = MainTab(rawValue: $0) ?? .home }))
+                // Nothing can be started out of reach of the server, nor without a computer to run it.
+                canCreate: !state.unlinked && !state.machines.isEmpty,
+                onCreate: { create(state) })
         }
         // The bar stays at the bottom when a dialog over the page brings the keyboard up.
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
+        .kitSheet(isPresented: $pick, size: pickBrowsing || listedProjects(state).count > filterOver ? .large : .fit, onDismiss: { pickBrowsing = false }) {
+            PickProjectSheet(state: state, browsing: $pickBrowsing) { pick = false }
+        }
+    }
+
+    /// 新定时 opens its page. 新任务 starts in the scope's project; under every project it asks which first.
+    private func create(_ state: RemoteState) {
+        switch nav.tab {
+        case .schedules:
+            nav.open(.newSchedule())
+        case .home:
+            if case .of(let key) = resolveScope(remembered: context.homeScopes.remembered(state), state: state) {
+                nav.open(.project(key: key, focusNew: true))
+            } else {
+                pick = true
+            }
+        }
     }
 }

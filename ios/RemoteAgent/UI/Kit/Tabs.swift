@@ -104,85 +104,6 @@ struct SegPick: View {
     }
 }
 
-/// One first-level page in the tab bar; `badge` is the count of sessions waiting for you.
-struct TabBarItem: Identifiable, Sendable {
-    let id: String
-    let label: String
-    let icon: LucideIcon
-    var badge = 0
-    var dot = false
-    var scheduleBadge = false
-
-    init(id: String, label: String, icon: LucideIcon, badge: Int = 0, dot: Bool = false, scheduleBadge: Bool = false) {
-        self.id = id
-        self.label = label
-        self.icon = icon
-        self.badge = badge
-        self.dot = dot
-        self.scheduleBadge = scheduleBadge
-    }
-    var badgeText: String { scheduleBadge ? tabBadgeText(badge) : String(badge) }
-    var badgeAccessibilityValue: String {
-        if badge > 0 { return "\(badge) " + (scheduleBadge ? "件需要处理" : "个需要处理") }
-        return scheduleBadge && dot ? "有新结果" : ""
-    }
-}
-
-/// 会话 and 设置 at the bottom of the two first-level pages: 11 labels, blue when chosen, the waiting count in orange.
-struct TabBar: View {
-    private let items: [TabBarItem]
-    @Binding private var selected: String
-    /// The icon's side as `Ic` scales it, for placing the count on its corner.
-    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 22
-
-    init(_ items: [TabBarItem], selected: Binding<String>) {
-        self.items = items
-        _selected = selected
-    }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(items) { item in
-                let on = item.id == selected
-                Button {
-                    if !on { selected = item.id }
-                } label: {
-                    VStack(spacing: 2) {
-                        Ic(item.icon, size: 22, color: on ? Theme.blue : Theme.muted, relativeTo: .body)
-                            // The count sits on the icon's top right corner, 5 pt in and 4 pt up, at any text size.
-                            .overlay(alignment: .topLeading) {
-                                if item.badge > 0 {
-                                    Text(item.badgeText).type(T.tab.with(weight: .bold), Theme.onSolid)
-                                        .padding(.horizontal, 5).frame(minHeight: 16)
-                                        .background(Theme.orange, in: Capsule())
-                                        .fixedSize()
-                                        .offset(x: iconSize - 5, y: -4)
-                                } else if item.scheduleBadge && item.dot {
-                                    Circle().fill(Theme.blue).frame(width: 8, height: 8)
-                                        .padding(2).background(Theme.card, in: Circle())
-                                        .offset(x: iconSize - 5, y: -4)
-                                }
-                            }
-                        Text(item.label).type(T.tab, on ? Theme.blue : Theme.muted)
-                    }
-                    // Room above for the count, which stands 4 pt over the icon.
-                    .padding(.top, 2)
-                    .frame(maxWidth: .infinity, minHeight: Theme.minHit)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(PressStyle())
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(item.label)
-                .accessibilityValue(item.badgeAccessibilityValue)
-                .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
-            }
-        }
-        .padding(.top, 6)
-        .background(Theme.card.ignoresSafeArea(edges: .bottom))
-        .topLine()
-    }
-}
-
 /// Choices laid out three to a row (推理强度); one to a row at accessibility text sizes.
 struct ChoiceGrid: View {
     private let items: [String]
@@ -258,4 +179,3 @@ struct ContextBox: View {
     }
 }
 
-func tabBadgeText(_ count: Int) -> String { count > 99 ? "99+" : String(count) }

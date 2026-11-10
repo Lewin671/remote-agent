@@ -303,7 +303,6 @@
                 TextAction("中断", color: Theme.red) {}
                 TextAction("撤销", enabled: false) {}
                 Spacer(minLength: 0)
-                NewSessionButton {}
                 IconButton(Lucide.ellipsis, label: "更多") {}
             }
             .padding(.horizontal, 16)
@@ -427,7 +426,6 @@
         @State private var darkTab = 1
         @State private var seg = 0
         @State private var effort: String? = "medium"
-        @State private var route = "home"
 
         var body: some View {
             SectionLabel("视图切换")
@@ -471,13 +469,8 @@
                     small: "1M 上下文 · 无推理强度", last: true, onTap: {})
             }
             .padding(.horizontal, 16)
-            SectionLabel("标签栏")
-            TabBar(
-                [
-                    TabBarItem(id: "home", label: "会话", icon: Lucide.messageSquare, badge: 2),
-                    TabBarItem(id: "settings", label: "设置", icon: Lucide.settings),
-                ],
-                selected: $route)
+            SectionLabel("底部")
+            BottomBar(tab: .constant(.home), badges: [.home: TabBadge(count: 2), .schedules: TabBadge(dot: true)], canCreate: true) {}
         }
     }
 

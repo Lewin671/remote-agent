@@ -104,20 +104,46 @@ import UIKit
         #expect(try await fitted(dock(more: 0, size: .large, brief: ""), width: 390).height < 50)
     }
 
-    @Test func aCardsCommandKeepsSixWholeLinesAndSaysHowManyMore() async throws {
-        #expect(linesPast(6, whole: 14 + 10 * 18 - 4, one: 14 + 14, two: 14 + 32) == 4)
-        #expect(linesPast(6, whole: 14 + 14, one: 14 + 14, two: 14 + 32) == 0)
-        #expect(linesPast(6, whole: 100, one: 20, two: 20) == 0)
+    @Test func aCardsCommandKeepsFiveWholeLinesAndSaysHowManyMore() async throws {
+        #expect(linesPast(5, whole: 14 + 10 * 18 - 4, one: 14 + 14, two: 14 + 32) == 5)
+        #expect(linesPast(5, whole: 14 + 14, one: 14 + 14, two: 14 + 32) == 0)
+        #expect(linesPast(5, whole: 100, one: 20, two: 20) == 0)
         let long = (1...10).map { "echo \($0)" }.joined(separator: "\n")
         let short = (1...4).map { "echo \($0)" }.joined(separator: "\n")
-        let clamped = try await fitted(ClampedCode(long, lines: 6), width: 320, settle: true)
-        let whole = try await fitted(Code(long).fixedSize(horizontal: false, vertical: true), width: 320)
-        let six = try await fitted(Code((1...6).map { "echo \($0)" }.joined(separator: "\n")).fixedSize(horizontal: false, vertical: true), width: 320)
-        // Six lines and the line that opens the rest: shorter than all ten, taller than six alone.
-        #expect(clamped.height < whole.height && clamped.height > six.height)
-        // What fits has nothing under it.
-        let fits = try await fitted(ClampedCode(short, lines: 6), width: 320, settle: true)
-        #expect(abs(fits.height - (try await fitted(Code(short).fixedSize(horizontal: false, vertical: true), width: 320)).height) < 0.5)
+        let counts = Counts()
+        let held = try await fitted(CountedCommand(text: long, lines: 5, counts: counts), width: 320, settle: true)
+        #expect(counts.more == 5 && counts.total == 10)
+        let whole = try await fitted(CommandBlock(long), width: 320)
+        let five = try await fitted(CommandBlock((1...5).map { "echo \($0)" }.joined(separator: "\n")), width: 320)
+        // Five whole lines: as tall as a command of five, shorter than all ten.
+        #expect(held.height < whole.height && abs(held.height - five.height) < 0.5)
+        // What fits is whole, with nothing past it.
+        let fits = Counts()
+        _ = try await fitted(CountedCommand(text: short, lines: 5, counts: fits), width: 320, settle: true)
+        #expect(fits.more == 0 && fits.total == 4)
+        // One long command is one line to count and several on the screen.
+        let wide = Counts()
+        _ = try await fitted(CountedCommand(text: String(repeating: "x", count: 400), lines: 5, counts: wide), width: 320, settle: true)
+        #expect(wide.total > 5 && wide.more == wide.total - 5)
+    }
+
+    @MainActor private final class Counts {
+        var more = 0
+        var total = 0
+    }
+
+    private struct CountedCommand: View {
+        let text: String
+        let lines: Int
+        let counts: Counts
+        @State private var more = 0
+        @State private var total = 0
+
+        var body: some View {
+            CommandBlock(text, lines: lines, more: $more, total: $total)
+                .onChange(of: more, initial: true) { _, n in counts.more = n }
+                .onChange(of: total, initial: true) { _, n in counts.total = n }
+        }
     }
 
     @Test func anOpenItemSaysItsTypeOnceOnOneLine() async throws {

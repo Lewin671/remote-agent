@@ -164,19 +164,6 @@ enum Theme {
         static let line = Color(uiColor: RGBA(0x30363D).uiColor)
         static let rule = Color(uiColor: RGBA(0x21262D).uiColor)
     }
-
-    /// Project avatars: one fixed gradient per project, the same in both themes.
-    static let avatarGradients: [LinearGradient] = [
-        (0x5B8DEF, 0x3A63D8), (0xF0A35A, 0xE0772B), (0x6CC28A, 0x34A061), (0xB28BE8, 0x8A5FD6),
-    ].map { pair in
-        LinearGradient(
-            colors: [Color(uiColor: RGBA(UInt32(pair.0)).uiColor), Color(uiColor: RGBA(UInt32(pair.1)).uiColor)],
-            startPoint: .topLeading, endPoint: .bottomTrailing)
-    }
-    /// The grey avatar of 全部项目.
-    static let avatarAll = LinearGradient(
-        colors: [Color(uiColor: RGBA(0x8E99A6).uiColor), Color(uiColor: RGBA(0x66717E).uiColor)],
-        startPoint: .topLeading, endPoint: .bottomTrailing)
 }
 
 /// Set on grey (soft) pages, where notices and code use the card surface instead (design-system §2).

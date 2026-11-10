@@ -131,25 +131,18 @@ extension View {
     }
 }
 
-/// A first-level page's title: 设置, 加入账户, with the new-session button at its right on the home page.
+/// A first-level page's title: 设置, 加入账户.
 struct LargeTitle: View {
     private let text: String
-    private let actionLabel: String
-    private let action: (() -> Void)?
 
-    init(_ text: String, actionLabel: String = "新会话", action: (() -> Void)? = nil) {
+    init(_ text: String) {
         self.text = text
-        self.actionLabel = actionLabel
-        self.action = action
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(text).type(T.title30, Theme.fg).padding(.vertical, 3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityAddTraits(.isHeader)
-            if let action { NewSessionButton(label: actionLabel, action: action) }
-        }
-        .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
+        Text(text).type(T.title30, Theme.fg).padding(.vertical, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityAddTraits(.isHeader)
+            .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
     }
 }
