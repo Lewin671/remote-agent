@@ -263,6 +263,9 @@ import Testing
         let launch = try #require(launchConfig(draft: draft.value, project: now, hidden: false))
         #expect(launch == draft.value)
         #expect(projectSummary(ask, launch) == "Codex · 完全放行 · mac · astra" && isFullAccess(ask, launch))
+        // 新任务 names the CLI in its sentence; the summary beside ＋ does not say it again.
+        #expect(newTaskSummary(ask, launch, cliInSentence: true) == "完全放行 · mac · astra")
+        #expect(newTaskSummary(ask, launch, cliInSentence: false) == "Codex · 完全放行 · mac · astra")
         // A machine picked for this start only is the one named.
         draft.choose(config("vps", .codex))
         #expect(launchConfig(draft: draft.value, project: now, hidden: false)?.machineId == "vps")

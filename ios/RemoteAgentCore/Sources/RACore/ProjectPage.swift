@@ -364,6 +364,15 @@ public func projectSummary(_ state: RemoteState, _ c: NewConfig, models: PBListM
     return [agentName(c.agent), mode, summaryMachine(state, id: c.machineId), model].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
+/// 新任务's summary beside ＋ (design-system §6 「新任务」): the project
+/// summary, without the CLI when the sentence above it already names it.
+public func newTaskSummary(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil, cliInSentence: Bool) -> String {
+    let all = projectSummary(state, c, models: models)
+    guard cliInSentence else { return all }
+    let name = agentName(c.agent) + " · "
+    return all.hasPrefix(name) ? String(all.dropFirst(name.count)) : all
+}
+
 public func effectiveModeText(chosen: Mode?, default d: DefaultMode) -> String {
     if let chosen { return chosen.text }
     if !d.known { return unknownModeText }
