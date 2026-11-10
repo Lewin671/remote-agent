@@ -363,8 +363,11 @@ final class ImageCenter {
             let d = draft(key)
             Task {
                 await restoredDraft(key)
+                // A video's copy that does not make it into the draft is deleted at once.
+                var left = urls[...]
+                defer { left.forEach { LibraryVideos.discard($0) } }
                 guard !closed else { return }
-                for url in urls {
+                while let url = left.first {
                     guard !closed else { return }
                     if d.documents.count >= limit {
                         say(key, "一条消息最多 \(limit) 个文件，多选的文件没有加入")
@@ -377,16 +380,21 @@ final class ImageCenter {
                             say(key, "一条消息最多 \(limit) 个文件")
                             break
                         }
+                        left.removeFirst()
                         let item = PendingImage(id: newRequestId(), uri: nil)
                         item.file = file
                         item.state = .failed(error: "需要重新传到电脑")
                         d.append([item])
                         if let target = self.machine(key)(), d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
-                    } catch { say(key, errorText(error)) }
+                    } catch {
+                        say(key, errorText(error))
+                        LibraryVideos.discard(left.removeFirst())
+                    }
                 }
             }
             return
         }
+        urls.forEach { LibraryVideos.discard($0) }
         say(key, blocked)
     }
 
@@ -406,7 +414,7 @@ final class ImageCenter {
                     say(key, "读不到这段视频，请重新选择")
                 }
             }
-            guard !closed, !urls.isEmpty else { return }
+            guard !closed, !urls.isEmpty else { return urls.forEach { LibraryVideos.discard($0) } }
             addFiles(key, urls, machine: machine, online: online)
         }
     }
@@ -457,6 +465,7 @@ final class ImageCenter {
     /// Lets go of what is held for images that are gone for good.
     private func forget(_ images: [PendingImage]) {
         for img in images {
+            if img.isFile { LibraryVideos.discard(img.file) }
             thumbs[img.id] = nil
             if let uri = img.uri { sources[uri] = nil }
         }
@@ -783,20 +792,53 @@ final class ImageCenter {
 
 /// A video chosen in the library, as a file of this app's: the picker hands
 /// over a copy that lives only while it is read, so it is copied again into
-/// a folder of its own under the temporary directory, named as it was.
+/// a folder of its own (`LibraryVideos`), named as it was.
 struct LibraryVideo: Transferable {
     let url: URL
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(importedContentType: .movie) { received in
-            let folder = FileManager.default.temporaryDirectory
-                .appendingPathComponent("library-videos", isDirectory: true)
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let copy = folder.appendingPathComponent(received.file.lastPathComponent)
-            try FileManager.default.copyItem(at: received.file, to: copy)
-            return LibraryVideo(url: copy)
+            LibraryVideo(url: try LibraryVideos.copy(received.file))
         }
+    }
+}
+
+/// The copies of videos from the library, one folder each under the
+/// temporary directory. A copy lives as long as the draft or the message
+/// that holds it: it is deleted when the video is taken out of the draft,
+/// once the message that carried it is settled or dropped, when it could
+/// not be added, and with the account's drafts.
+enum LibraryVideos {
+    static let root = FileManager.default.temporaryDirectory.appendingPathComponent("library-videos", isDirectory: true)
+
+    static func copy(_ file: URL, root: URL = root) throws -> URL {
+        let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let copy = folder.appendingPathComponent(file.lastPathComponent)
+        do { try FileManager.default.copyItem(at: file, to: copy) } catch {
+            try? FileManager.default.removeItem(at: folder)
+            throw error
+        }
+        return copy
+    }
+
+    /// Deletes the copy at `url` and its folder; a file that is not one of these copies is left alone.
+    static func discard(_ url: URL, root: URL = root) {
+        let folder = url.standardizedFileURL.resolvingSymlinksInPath().deletingLastPathComponent()
+        let base = root.standardizedFileURL.resolvingSymlinksInPath()
+        guard folder.deletingLastPathComponent().path == base.path else { return }
+        try? FileManager.default.removeItem(at: folder)
+    }
+
+    /// The copy a picked file stands for, if it is one: its bookmark resolved.
+    static func discard(_ file: PickedFile?, root: URL = root) {
+        guard let file, file.hasSource, let url = try? PickedFile.resolve(file.bookmark).url else { return }
+        discard(url, root: root)
+    }
+
+    /// Every copy, as the account's drafts go.
+    static func discardAll(root: URL = root) {
+        try? FileManager.default.removeItem(at: root)
     }
 }
 

@@ -13,6 +13,67 @@ import Testing
         p.state = .ready; p.machineId = "mac"; p.imageId = "uploaded-file"; p.expiresMs = Int64.max
         return (url, p)
     }
+    /// A video copied out of the library, in a draft of a fresh account.
+    private func video() throws -> (URL, PendingImage) {
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        try Data(repeating: 7, count: 64).write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let copy = try LibraryVideos.copy(source)
+        let p = PendingImage(id: newRequestId(), uri: nil)
+        p.file = try PickedFile(url: copy)
+        return (copy, p)
+    }
+
+    private func center() throws -> (Remote, ImageCenter) {
+        let account = Account(server: "http://127.0.0.1:1", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff")
+        let remote = try Remote(account: account, http: AppModel.http)
+        ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
+        return (remote, ImageCenter.of(remote))
+    }
+
+    @Test func aVideosCopyGoesWithItsFolderAndNothingElseIsTouched() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let source = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
+        try Data("v".utf8).write(to: source)
+        defer { try? FileManager.default.removeItem(at: source) }
+        let a = try LibraryVideos.copy(source, root: root)
+        let b = try LibraryVideos.copy(source, root: root)
+        #expect(a.lastPathComponent == source.lastPathComponent && a != b)
+        LibraryVideos.discard(a, root: root)
+        #expect(!FileManager.default.fileExists(atPath: a.deletingLastPathComponent().path))
+        #expect(FileManager.default.fileExists(atPath: b.path))
+        // A document picked from elsewhere is the user's own: never deleted.
+        LibraryVideos.discard(source, root: root)
+        #expect(FileManager.default.fileExists(atPath: source.path))
+        LibraryVideos.discardAll(root: root)
+        #expect(!FileManager.default.fileExists(atPath: root.path))
+    }
+
+    @Test func aVideoTakenOutOfTheDraftOrCarriedByAStartedSessionIsDeleted() async throws {
+        let (remote, center) = try center()
+        defer { ImageCenter.remove(remote) }
+        let key = "session:video"
+        await center.restoredDraft(key)
+        let (removed, r) = try video()
+        let (used, u) = try video()
+        center.draft(key).append([r, u])
+        center.remove(key, r)
+        #expect(!FileManager.default.fileExists(atPath: removed.path))
+        #expect(FileManager.default.fileExists(atPath: used.path))
+        center.used(key, [u])
+        #expect(!FileManager.default.fileExists(atPath: used.path))
+    }
+
+    @Test func aVideoThatCannotBeAddedIsDeletedAtOnce() async throws {
+        let (remote, center) = try center()
+        defer { ImageCenter.remove(remote) }
+        let (copy, _) = try video()
+        let offline = MachineView(id: "mac", online: false, lastSeenMs: 0, meta: .with { $0.capabilities.fileUpload = true })
+        center.addFiles("session:video", [copy], machine: offline, online: true)
+        #expect(!FileManager.default.fileExists(atPath: copy.path))
+    }
+
     @Test func losingFileSupportCancelsEvenAnAlreadyReadyFilesRefresh() async throws {
         let (url, p) = try document()
         defer { try? FileManager.default.removeItem(at: url) }

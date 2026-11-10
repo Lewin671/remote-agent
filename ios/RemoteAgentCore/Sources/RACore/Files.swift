@@ -100,7 +100,7 @@ public struct PickedFile: Codable, Equatable, Sendable {
         return try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
         #endif
     }
-    static func resolve(_ bookmark: Data) throws -> (url: URL, stale: Bool) {
+    public static func resolve(_ bookmark: Data) throws -> (url: URL, stale: Bool) {
         var stale = false
         #if os(macOS)
         let url = try URL(resolvingBookmarkData: bookmark, options: [.withSecurityScope, .withoutUI], relativeTo: nil, bookmarkDataIsStale: &stale)

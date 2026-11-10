@@ -591,8 +591,9 @@ final class AppModel {
         closeTerminals()
         engine?.close()
         engine = nil
-        // Drafts, thumbnails and viewed images held in memory go with the account.
+        // Drafts, thumbnails and viewed images held in memory go with the account, and the videos copied for its drafts.
         if let remote { ImageCenter.remove(remote) }
+        LibraryVideos.discardAll()
         context?.prefsChanges.close()
         context = nil
         state = RemoteState()
