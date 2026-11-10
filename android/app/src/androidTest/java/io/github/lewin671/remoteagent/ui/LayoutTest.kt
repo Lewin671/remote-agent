@@ -377,13 +377,13 @@ class LayoutTest {
         ui.onNodeWithText("不允许").assertIsNotEnabled()
     }
 
-    @Test fun approvalButtonsKeepTo480OnATablet() {
+    @Test fun theDockKeepsToTheChatWidthOnATablet() {
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
                     Column(Modifier.testTag("frame").requiredWidth(1000.dp).background(pal.paper)) {
-                        ApprovalButtons(session(), approval(1), compact = false)
-                        PlanButtons(session(), full = true)
+                        ApprovalDock(session(), approval(1), 0)
+                        PlanDock(session(), "## Plan\n1. step", 0) {}
                     }
                 }
             }
@@ -392,7 +392,8 @@ class LayoutTest {
         with(ui.density) {
             for (label in listOf("允许", "批准执行")) {
                 val b = ui.onNodeWithText(label).fetchSemanticsNode().boundsInRoot
-                assertTrue("$label ${(b.right - frame.left).toDp()}", (b.right - frame.left).toDp() <= 481.dp)
+                assertTrue("$label ${(b.right - frame.left).toDp()}", (b.right - frame.left).toDp() <= (1000.dp + ChatMax) / 2)
+                assertTrue("$label ${(b.left - frame.left).toDp()}", (b.left - frame.left).toDp() >= (1000.dp - ChatMax) / 2)
             }
         }
     }

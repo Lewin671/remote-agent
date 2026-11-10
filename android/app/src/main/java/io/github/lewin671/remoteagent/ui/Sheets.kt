@@ -2,6 +2,7 @@ package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.approvalDisplay
 import io.github.lewin671.remoteagent.core.approvalBody
+import io.github.lewin671.remoteagent.core.approvalHead
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -564,36 +565,22 @@ fun ApprovalPage(sid: String, aid: String) {
             }
             return@PageScaffold
         }
-        if (io.github.lewin671.remoteagent.core.isSkeleton(a)) {
-            Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s13, color = p.ink2)
+        val decision = rememberApprovalReply(s, a)
+        val card = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)
+        if (decision.submitted) {
+            ApprovalSubmitted(approvalHead(a), decision, card)
             return@PageScaffold
         }
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-        ) {
-            if (a.toolName.isNotEmpty() && a.command.isEmpty())
-                Text(
-                    "请求权限 · ${approvalDisplay(a.toolName)}",
-                    style = T.s13b,
-                    color = p.ink,
-                    modifier = Modifier.padding(bottom = 4.dp),
-                )
-            Code(approvalBody(a))
-            if (a.description.isNotEmpty())
-                Text(
-                    approvalDisplay(a.description),
-                    style = T.s13,
-                    color = p.ink,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-        }
-        Column(
-            Modifier.fillMaxWidth()
-                .padding(horizontal = 14.dp)
-                .topLine(p.sep)
-                .padding(top = 8.dp, bottom = 16.dp),
-        ) {
-            ApprovalButtons(s, a, compact = false)
+        var denying by androidx.compose.runtime.saveable.rememberSaveable(aid) { mutableStateOf(false) }
+        // The command first, then why, scrolling in the card; the buttons and a reason stay above the keyboard.
+        DarkCard(Modifier.weight(1f, fill = false).then(card)) {
+            DarkCardHead(approvalHead(a))
+            if (io.github.lewin671.remoteagent.core.isSkeleton(a)) {
+                Text(io.github.lewin671.remoteagent.core.skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
+                return@DarkCard
+            }
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) { ApprovalContent(a) }
+            ApprovalButtons(state, s, a, decision, denying, { denying = it }, approvalLocked(state, a, t))
         }
     }
 }
@@ -637,13 +624,7 @@ fun PlanPage(sid: String) {
                     .topLine(pal.sep)
                     .padding(top = 8.dp, bottom = 16.dp),
             ) {
-                PlanButtons(
-                    s,
-                    full = true,
-                    terminalOnly = io.github.lewin671.remoteagent.core.isSkeleton(plan.text),
-                ) {
-                    nav.back()
-                }
+                PlanButtons(s, full = true, onCard = false) { nav.back() }
             }
     }
 }

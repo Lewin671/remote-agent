@@ -195,14 +195,108 @@ fun DarkCardLine(kind: String, status: String, modifier: Modifier = Modifier, er
 }
 
 /**
+ * A decision on an approval sent from here: which way it went, whether it is
+ * on its way or its outcome unknown ([Resolves]). [submitted] once the user
+ * chose; the card is then one line.
+ */
+class ApprovalReply internal constructor(
+    val act: Action,
+    val r: Resolves.Resolve,
+    private val which: androidx.compose.runtime.MutableState<Boolean?>,
+    private val send: (allow: Boolean, message: String, always: Boolean) -> Unit,
+) {
+    val submitted: Boolean get() = act.running || r.attempt.frozen || which.value != null
+
+    fun resolve(allow: Boolean, message: String = "", always: Boolean = false) = send(allow, message, always)
+
+    internal val said: String get() = if (which.value ?: r.allow) "已允许" else "已拒绝"
+}
+
+@Composable
+fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply {
+    val remote = LocalRemote.current
+    val act = rememberAction(a.approvalId)
+    val r = Resolves.of(a.approvalId)
+    val which = remember(a.approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
+    return ApprovalReply(act, r, which) { allow, message, always ->
+        which.value = allow
+        act.run({
+            resolveApproval(remote, s, a, allow, message, always)
+            null
+        })
+    }
+}
+
+/**
+ * The one line a submitted approval shrinks to: 已允许 / 已拒绝, or, when it
+ * did not reach the computer, why in red with 重试. One whose outcome is
+ * unknown is only ever sent again as it was.
+ */
+@Composable
+fun ApprovalSubmitted(kind: String, d: ApprovalReply, modifier: Modifier = Modifier) {
+    val failed = !d.act.running && (d.r.attempt.frozen || d.act.error.isNotEmpty())
+    when {
+        !failed -> DarkCardLine(kind, d.said, modifier)
+        d.r.attempt.expired -> DarkCardLine(kind, "不确定「${if (d.r.allow) "允许" else "拒绝"}」有没有送到，它已过期，不会再重发", modifier, error = true)
+        else -> DarkCardLine(kind, "没送到电脑：${d.act.error.ifEmpty { "结果未知" }}", modifier, error = true) { d.resolve(d.r.allow, d.r.message, d.r.always) }
+    }
+}
+
+/**
+ * An approval's buttons on the dark card, the same on the home page, in the
+ * dock and on its page: 不允许 and 允许, and under them 「允许，这类请求以后
+ * 不再问」 where the computer offers it. A command not shown whole ([cut])
+ * offers 看完整命令 in place of 允许. 不允许 asks for an optional reason in
+ * place ([denying]). [locked]: out of reach of the server, or past the
+ * deadline; nothing can be decided.
+ */
+@Composable
+fun ApprovalButtons(
+    state: RemoteState,
+    s: SessionView,
+    a: ApprovalRequested,
+    d: ApprovalReply,
+    denying: Boolean,
+    onDenying: (Boolean) -> Unit,
+    locked: Boolean,
+    cut: Boolean = false,
+    onFull: () -> Unit = {},
+) {
+    var reason by Drafts.of("deny:${a.approvalId}")
+    val truncated = approvalTruncated(a)
+    val always = capabilities(state.machines[s.machineId])?.approvalAlways == true
+    if (denying) {
+        CardField(reason, { reason = it }, "说说该怎么做，可以不填", Modifier.padding(top = 12.dp), label = "不允许的理由")
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CardButton("取消", { onDenying(false) }, Modifier.weight(1f))
+            CardButton("不允许", { d.resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
+        }
+        return
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        CardButton("不允许", { onDenying(true) }, Modifier.weight(1f), enabled = !locked)
+        if (cut) CardButton("看完整命令", onFull, Modifier.weight(1f), primary = true)
+        else CardButton("允许", { d.resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
+    }
+    if (always && !cut && !locked && !truncated) Box(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { d.resolve(true, always = true) },
+        contentAlignment = Alignment.Center,
+    ) { Text("允许，这类请求以后不再问", style = T.s15, color = CardColors.link) }
+}
+
+/** Whether an approval can be decided now: not out of reach of the server, and not past its deadline. */
+fun approvalLocked(state: RemoteState, a: ApprovalRequested, now: Long): Boolean {
+    val deadline = if (a.hasDeadline()) a.deadline.seconds * 1000 else 0
+    return state.unlinked || (deadline > 0 && now >= deadline)
+}
+
+/**
  * The home page's dark card for the most urgent approval (design-system §6
  * 终端卡): head, title (which opens the session), 「项目 · 机器」, the
  * command, why, the buttons. A command not shown whole cannot be allowed:
  * the card offers 不允许 and 看完整命令 until it is opened in place. 不允许
  * asks for an optional reason right on the card. Once answered the card is
- * one line; an answer whose outcome is unknown is only ever retried as it
- * was. Out of reach of the server, or past its deadline, nothing can be
- * decided and the buttons are greyed.
+ * one line.
  */
 @Composable
 fun ApprovalCard(
@@ -214,43 +308,19 @@ fun ApprovalCard(
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val remote = LocalRemote.current
-    val act = rememberAction(a.approvalId)
-    val r = Resolves.of(a.approvalId)
-    var which by remember(a.approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
-    var reason by Drafts.of("deny:${a.approvalId}")
+    val d = rememberApprovalReply(s, a)
     var full by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     var lines by remember(a.approvalId) { mutableIntStateOf(0) }
-    fun resolve(allow: Boolean, message: String = "", always: Boolean = false) {
-        which = allow
-        act.run({
-            resolveApproval(remote, s, a, allow, message, always)
-            null
-        })
-    }
     if (isSkeleton(a)) return DarkCard(modifier) {
         DarkCardHead(text.kind, text.time, text.hot)
         Text(skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
     }
     // Submitted: one line of where it stands; the next item comes up when this one is gone from the session.
-    val decided = which
-    if (act.running || r.attempt.frozen || decided != null) {
-        val said = if (decided ?: r.allow) "已允许" else "已拒绝"
-        val failed = !act.running && (r.attempt.frozen || act.error.isNotEmpty())
-        return when {
-            !failed -> DarkCardLine(text.kind, said, modifier)
-            r.attempt.expired -> DarkCardLine(text.kind, "不确定「${if (r.allow) "允许" else "拒绝"}」有没有送到，它已过期，不会再重发", modifier, error = true)
-            else -> DarkCardLine(text.kind, "没送到电脑：${act.error.ifEmpty { "结果未知" }}", modifier, error = true) { resolve(r.allow, r.message, r.always) }
-        }
-    }
-    val deadline = if (a.hasDeadline()) a.deadline.seconds * 1000 else 0
-    val locked = state.unlinked || (deadline > 0 && now >= deadline)
-    val truncated = approvalTruncated(a)
+    if (d.submitted) return ApprovalSubmitted(text.kind, d, modifier)
     val command = approvalBody(a)
     val more = lines - CARD_LINES
     val cut = command.isNotEmpty() && more > 0 && !full
-    val always = capabilities(state.machines[s.machineId])?.approvalAlways == true
     DarkCard(modifier.semantics(mergeDescendants = false) {}) {
         DarkCardHead(text.kind, text.time, text.hot)
         Row(
@@ -276,26 +346,10 @@ fun ApprovalCard(
                 }
             }
         }
-        if (truncated) Text(approvalTruncatedMessage, style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+        if (approvalTruncated(a)) Text(approvalTruncatedMessage, style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
         if (!denying && a.description.isNotEmpty())
             Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 12.dp))
-        if (denying) {
-            CardField(reason, { reason = it }, "说说该怎么做，可以不填", Modifier.padding(top = 12.dp), label = "不允许的理由")
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CardButton("取消", { denying = false }, Modifier.weight(1f))
-                CardButton("不允许", { resolve(false, reason.trim()) }, Modifier.weight(1f), primary = true, enabled = !locked)
-            }
-        } else {
-            Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CardButton("不允许", { denying = true }, Modifier.weight(1f), enabled = !locked)
-                if (cut) CardButton("看完整命令", { full = true }, Modifier.weight(1f), primary = true)
-                else CardButton("允许", { resolve(true) }, Modifier.weight(1f), primary = true, enabled = !locked && !truncated)
-            }
-            if (always && !cut && !locked && !truncated) Box(
-                Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(top = 4.dp).clickable(role = Role.Button) { resolve(true, always = true) },
-                contentAlignment = Alignment.Center,
-            ) { Text("允许，这类请求以后不再问", style = T.s15, color = CardColors.link) }
-        }
+        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, now), cut = cut) { full = true }
     }
 }
 

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -168,10 +170,12 @@ fun hasDraft(sid: String): Boolean =
 val LocalDockMax = androidx.compose.runtime.compositionLocalOf { 240.dp }
 
 /**
- * What waits for the user, docked above the message box. It opens by itself, unless it comes while
- * the box holds a draft ([DockFolds]); open, its one head line carries the type and the meta, and
- * the body scrolls within [LocalDockMax] while the actions stay put. Folded by the user, it stays
- * one line until the next item. [more] others wait behind it.
+ * What waits for the user, docked above the message box (design-system §6
+ * 等待事项): the dark card, floating. It opens by itself, unless it comes
+ * while the box holds a draft ([DockFolds]); open, its head is one line,
+ * 「● 类型　元信息　收起」, and the body scrolls within [LocalDockMax] while
+ * the actions stay put. Folded, it is one dark line 「● 类型 · 摘要 · 处理」
+ * until the next item. [more] others wait behind it.
  */
 @Composable
 fun PendingDock(
@@ -186,124 +190,124 @@ fun PendingDock(
     body: @Composable ColumnScope.(close: () -> Unit) -> Unit,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
-    val p = pal
     val open = DockFolds.isOpen(sid, item.id) { hasDraft(sid) }
     val keyboard = LocalSoftwareKeyboardController.current
     val focus = LocalFocusManager.current
     val (label, rest) = dockHeadLine(item, agent, open, more, meta, left, openLabel)
-    Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp).topLine(p.sep)) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(
-                role = Role.Button,
-                onClickLabel = if (open) "收起" else "处理",
-            ) {
-                if (!open) {
-                    keyboard?.hide()
-                    focus.clearFocus()
-                }
-                DockFolds.set(sid, item.id, !open)
-            },
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Dot(p.orangeInk, 7)
-            // One text, so a long type keeps its place first and the rest gives way.
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = p.ink)) { append(label) }
-                    if (rest.isNotEmpty())
-                        withStyle(SpanStyle(color = p.ink2)) { append("  $rest") }
-                },
-                style = T.s13,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
-            if (open) headExtra?.invoke()
-            ArrowText(if (open) "收起" else "处理", p.blue, T.s13, down = !open, up = open)
+    val toggle = {
+        if (!open) {
+            keyboard?.hide()
+            focus.clearFocus()
         }
-        if (open) {
+        DockFolds.set(sid, item.id, !open)
+    }
+    if (!open) return DockLine(label, rest, toggle)
+    DockShell {
+        DarkCard(float = true) {
+            DarkCardHead(label, rest, trailing = {
+                headExtra?.invoke()
+                CardLink("收起", toggle, up = true)
+            })
             Column(Modifier.heightIn(max = LocalDockMax.current)) {
-                Column(
-                    Modifier.weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState())
-                        .padding(bottom = 6.dp),
-                ) {
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     body { DockFolds.set(sid, item.id, false) }
                 }
-                Column(Modifier.padding(top = 4.dp, bottom = 10.dp)) { actions() }
+                Column { actions() }
             }
         }
     }
 }
 
-/**
- * The grey line under a dock's buttons: a question at the left, one link at the right, with an
- * [arrow] when it goes somewhere else.
- */
+/** Where the dock sits: 12 in from the sides, just above the message box, and no wider than the chat ([ChatMax]). */
 @Composable
-fun DockFoot(
-    left: String,
-    link: String,
-    danger: Boolean = false,
-    arrow: Boolean = false,
-    onLink: () -> Unit,
-) {
+fun DockShell(content: @Composable () -> Unit) {
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) { content() }
+    }
+}
+
+/** How wide the chat, the dock and the message box grow on a wide screen (design-system §5): 760. */
+val ChatMax = 760.dp
+
+/** The folded dock: one dark capsule, 「● 类型 · 摘要」 and 处理 with a down arrow. */
+@Composable
+private fun DockLine(label: String, rest: String, onOpen: () -> Unit) {
     val p = pal
-    // With nothing at the left the link starts the line.
-    Row(
-        Modifier.fillMaxWidth().padding(top = 7.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (left.isNotEmpty())
-            Text(left, style = T.s12, color = p.ink2, modifier = Modifier.weight(1f))
-        Box(
-            Modifier.heightIn(min = 44.dp).clickable(onClick = onLink),
-            contentAlignment = Alignment.CenterStart,
+    val shape = RoundedCornerShape(22.dp)
+    DockShell {
+        Row(
+            Modifier.fillMaxWidth().floating(p, shape).clip(shape).background(p.tc).border(0.5.dp, p.tcLine, shape)
+                .heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "处理", onClick = onOpen)
+                .padding(start = 16.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            if (arrow) ArrowText(link, if (danger) p.red else p.blue, T.s12b)
-            else Text(link, style = T.s12b, color = if (danger) p.red else p.blue)
+            Box(Modifier.size(8.dp).clip(CircleShape).background(CardColors.orange))
+            // One text, so a long type keeps its place first and the summary gives way.
+            Text(
+                buildAnnotatedString {
+                    withStyle(SpanStyle(color = CardColors.orange, fontWeight = T.s13b.fontWeight)) { append(label) }
+                    if (rest.isNotEmpty()) withStyle(SpanStyle(color = CardColors.text2)) { append(" · $rest") }
+                },
+                style = T.s13, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+            )
+            ArrowText("处理", CardColors.link, T.s13, down = true)
         }
     }
 }
 
+/** A blue text action on the dark card, 44 tall, with an arrow to the right, or [up] / [down] for one that folds. */
+@Composable
+fun CardLink(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, up: Boolean = false, down: Boolean = false, arrow: Boolean = true, lead: androidx.compose.ui.unit.Dp = 12.dp) {
+    Box(modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onClick).padding(start = lead), contentAlignment = Alignment.CenterEnd) {
+        if (arrow) ArrowText(text, CardColors.link, T.s13, down = down, up = up) else Text(text, style = T.s13, color = CardColors.link)
+    }
+}
+
+/** A line on the dark card that something went wrong, in red, with at most one action. */
+@Composable
+fun CardNote(text: String, modifier: Modifier = Modifier, action: String? = null, onAction: () -> Unit = {}) {
+    Row(modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(text, style = T.s13, color = CardColors.red, modifier = Modifier.weight(1f))
+        if (action != null) CardLink(action, onAction, arrow = false)
+    }
+}
+
+/** A waiting item that cannot be read yet, on the same card. */
+@Composable
+private fun DockSkeleton() = DockShell {
+    DarkCard(float = true) { Text(skeletonMessage, style = T.s15, color = CardColors.text2) }
+}
+
 @Composable
 fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
-    if (isSkeleton(a)) {
-        Text(skeletonMessage, style = T.s13, color = pal.ink2)
-        return
-    }
-    val p = pal
+    if (isSkeleton(a)) return DockSkeleton()
+    val state by LocalRemote.current.state.collectAsState()
+    val d = rememberApprovalReply(s, a)
+    if (d.submitted) return DockShell { ApprovalSubmitted(approvalHead(a), d) }
     val t = now(15_000)
-    val agent = agentName(s.agent())
-    var reasonOpen by rememberSaveable(a.approvalId) { mutableStateOf(false) }
+    var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
     PendingDock(
         s.id,
         DockItem.Approval(a),
-        agent,
+        agentName(s.agent()),
         more,
         left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
         openLabel = approvalHead(a),
-        body = {
-            // What would run comes first, whole, scrolling with the dock; then why.
-            val body = approvalBody(a)
-            if (body.isNotEmpty()) Code(body, Modifier.padding(bottom = 8.dp))
-            if (a.description.isNotEmpty())
-                Text(
-                    approvalDisplay(a.description),
-                    style = T.s13,
-                    color = p.ink,
-                )
-        },
+        body = { ApprovalContent(a) },
     ) {
-        ApprovalButtons(
-            s,
-            a,
-            compact = false,
-            reasonOpen = reasonOpen,
-            onReason = { reasonOpen = it },
-        )
+        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, t))
     }
+}
+
+/** What an approval would run, whole, then why: the dock's and the page's body. */
+@Composable
+fun ApprovalContent(a: ApprovalRequested) {
+    val body = approvalBody(a)
+    if (body.isNotEmpty()) CommandBlock(body, Modifier.padding(top = 14.dp))
+    if (approvalTruncated(a)) Text(approvalTruncatedMessage, style = T.s13, color = CardColors.red, modifier = Modifier.padding(top = 8.dp))
+    if (a.description.isNotEmpty())
+        Text(approvalDisplay(a.description), style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
 }
 
 /**
@@ -372,116 +376,6 @@ suspend fun resolveApproval(
         throw r.attempt.settle(e) ?: e
     }
 }
-
-/**
- * 拒绝 / 允许, and 附理由拒绝. A tap locks both until the computer confirms; a definite failure lets the
- * user choose again, while an unknown outcome only offers to retry the same decision. [onCard]: on
- * a grey card, where the buttons are white.
- */
-@Composable
-fun ApprovalButtons(
-    s: SessionView,
-    a: ApprovalRequested,
-    compact: Boolean,
-    reasonOpen: Boolean = false,
-    onReason: (Boolean) -> Unit = {},
-    onCard: Boolean = false,
-) {
-    if (isSkeleton(a)) {
-        Text(skeletonMessage, style = T.s13, color = pal.ink2)
-        return
-    }
-    val p = pal
-    val remote = LocalRemote.current
-    val state by remote.state.collectAsState()
-    val act = rememberAction(a.approvalId)
-    val r = Resolves.of(a.approvalId)
-    var which by
-        remember(a.approvalId) { mutableStateOf<Boolean?>(if (r.attempt.frozen) r.allow else null) }
-    var reason by Drafts.of("deny:${a.approvalId}")
-    var opened by remember(a.approvalId) { mutableStateOf(false) }
-    val alwaysAvailable =
-        io.github.lewin671.remoteagent.core
-            .capabilities(state.machines[s.machineId])
-            ?.approvalAlways == true
-    val stuck = r.attempt.frozen
-    val truncated = approvalTruncated(a)
-    if (truncated) Text(approvalTruncatedMessage, style = T.s13, color = p.red)
-    fun resolve(allow: Boolean, message: String = "", always: Boolean = false) {
-        which = allow
-        act.run(
-            {
-                resolveApproval(remote, s, a, allow, message, always)
-                null
-            },
-        )
-    }
-    if (act.running || stuck || which != null) {
-        if (act.running || (act.error.isEmpty() && !stuck))
-            Text(if (act.running) "正在送到电脑…" else "已提交，等待电脑确认", style = T.s12, color = p.ink2)
-    } else if (opened || reasonOpen) {
-        ReasonField(reason, { reason = it }, "拒绝理由（可选）", Modifier.widthIn(max = ActionRowMax))
-        Btns(Modifier.widthIn(max = ActionRowMax)) {
-            Btn(
-                "取消",
-                {
-                    opened = false
-                    onReason(false)
-                },
-                Modifier.weight(1f),
-                BtnKind.SECONDARY,
-            )
-            Btn("不允许", { resolve(false, reason.trim()) }, Modifier.weight(1f), BtnKind.NEGATIVE)
-        }
-    } else {
-        Btns(Modifier.widthIn(max = ActionRowMax)) {
-            Btn(
-                "不允许",
-                {
-                    opened = true
-                    onReason(true)
-                },
-                Modifier.weight(1f),
-                BtnKind.NEGATIVE,
-                bg = if (onCard) p.paper else null,
-            )
-            Btn("允许", { resolve(true) }, Modifier.weight(1f), BtnKind.PRIMARY, enabled = !truncated)
-        }
-        if (alwaysAvailable && !truncated)
-            TextAction(
-                "允许，这类请求以后不再问",
-                { resolve(true, always = true) },
-                modifier = Modifier.widthIn(max = ActionRowMax).fillMaxWidth(),
-                style = T.s13b,
-                alignment = Alignment.Center,
-            )
-    }
-    if (!act.running && stuck) {
-        val what = if (r.allow) "允许" else "拒绝"
-        Banner(
-            if (r.attempt.expired) "不确定「$what」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-            else "没送到电脑：${act.error.ifEmpty { "结果未知" }}",
-            Modifier.padding(top = 8.dp),
-            Tone2.ERROR,
-            action = if (!r.attempt.expired) "重试" else null,
-            onAction = { resolve(r.allow, r.message, r.always) },
-        )
-    } else if (act.error.isNotEmpty()) {
-        Banner(
-            "没送到电脑：${act.error}",
-            Modifier.padding(top = 8.dp),
-            Tone2.ERROR,
-            action = "重试",
-            onAction = { resolve(r.allow, r.message, r.always) },
-        )
-    }
-}
-
-/**
- * How wide the buttons of an approval or a plan grow: on a tablet they keep to the left instead of
- * stretching across the screen; a phone is narrower anyway.
- */
-val ActionRowMax = 480.dp
 
 /** A text box on a soft field, for a reason or another short answer. */
 @Composable
@@ -580,9 +474,10 @@ fun longQuestion(q: io.github.lewin671.remoteagent.proto.Question): Boolean =
         q.optionsList.sumOf { it.label.length + it.description.length } > 400
 
 /**
- * Answers the current question by option; several questions go one by one. One choice answers at a
- * tap; a multiple choice ticks, then 提交 N 项. The dock shows it in [body]; the page ([full]) as a
- * whole.
+ * Answers the current question by option, on the dark card; several
+ * questions go one by one. One choice answers at a tap; a multiple choice
+ * ticks, then 提交 N 项. The dock shows it in [body] ([full] false, the
+ * question cut at four lines with 展开全文 to its page); the page as a whole.
  */
 @Composable
 fun QuestionBody(
@@ -596,10 +491,9 @@ fun QuestionBody(
     act: Action = rememberAction(),
 ) {
     if (isSkeleton(q)) {
-        if (part != 2) Text(skeletonMessage, style = T.s13, color = pal.ink2)
+        if (part != 2) Text(skeletonMessage, style = T.s15, color = CardColors.text2, modifier = Modifier.padding(top = 12.dp))
         return
     }
-    val p = pal
     val remote = LocalRemote.current
     val qid = q.questionId
     val index = QuestionPicks.index[qid] ?: 0
@@ -649,46 +543,29 @@ fun QuestionBody(
     }
     // part 0: everything; 1: the scrolling body; 2: the fixed actions.
     if (part != 2) {
-        val progress = questionProgress(q)
-        // In the dock the head line carries the progress.
-        if (full)
-            Text(
-                progress,
-                style = T.s12,
-                color = p.ink2,
-                modifier = Modifier.padding(top = 12.dp),
-            )
         Text(
             cur.text,
-            style = if (full) T.s17b else T.s15b,
-            color = p.ink,
+            style = T.s17.copy(lineHeight = 24.6.sp),
+            color = CardColors.text,
             maxLines = if (full) Int.MAX_VALUE else 4,
             overflow = TextOverflow.Ellipsis,
-            modifier =
-                Modifier.padding(
-                    top = if (full) 8.dp else 0.dp,
-                    bottom = if (full) 12.dp else 6.dp,
-                ),
+            modifier = Modifier.padding(top = 12.dp),
         )
-        if (!full && longQuestion(cur))
-            Box(Modifier.clickable(onClick = onLong).padding(bottom = 4.dp)) {
-                ArrowText("展开全文", p.blue, T.s13b)
-            }
+        if (!full && longQuestion(cur)) CardLink("展开全文", onLong, lead = 0.dp)
         cur.optionsList.forEachIndexed { i, o ->
             val (label, rec) = optionLabel(o.label)
             val sel =
                 if (cur.multiSelect) i in (QuestionPicks.multi[key] ?: emptySet())
                 else QuestionPicks.single[key] == i
+            val ink = if (sel) CardColors.onPrimary else CardColors.text
+            val ink2 = if (sel) CardColors.onPrimary.copy(alpha = .6f) else CardColors.text2
             Row(
                 Modifier.fillMaxWidth()
-                    .padding(vertical = 3.dp)
-                    .heightIn(min = 44.dp)
+                    .padding(top = 8.dp)
+                    .heightIn(min = 46.dp)
                     .clip(Radii.R14)
-                    .background(
-                        if (sel) p.fill else androidx.compose.ui.graphics.Color.Transparent,
-                    )
-                    .border(1.dp, if (sel) p.blue else p.sep, Radii.R14)
-                    .clickable(enabled = !act.running) {
+                    .background(if (sel) CardColors.primary else CardColors.field)
+                    .clickable(enabled = !act.running, role = if (cur.multiSelect) Role.Checkbox else Role.Button) {
                         if (cur.multiSelect) {
                             val set = (QuestionPicks.multi[key] ?: emptySet()).toMutableSet()
                             if (!set.add(i)) set.remove(i)
@@ -698,34 +575,26 @@ fun QuestionBody(
                             submit(listOf(i))
                         }
                     }
-                    .padding(horizontal = 11.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.Top,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 if (cur.multiSelect)
                     Box(
-                        Modifier.padding(top = 1.dp)
-                            .size(18.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                if (sel) p.blue
-                                else androidx.compose.ui.graphics.Color.Transparent,
-                            )
-                            .border(1.dp, if (sel) p.blue else p.ink2, RoundedCornerShape(4.dp)),
+                        Modifier.size(20.dp).clip(RoundedCornerShape(5.dp)).border(1.5.dp, ink2, RoundedCornerShape(5.dp)),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (sel) Mark(Lucide.Check, androidx.compose.ui.graphics.Color.White, 12.dp)
+                        if (sel) Mark(Lucide.Check, ink, 14.dp)
                     }
-                else if (sel)
-                    Box(Modifier.padding(top = 3.dp)) { Mark(Lucide.Check, p.blue, 13.dp) }
                 Column(Modifier.weight(1f)) {
-                    Text(label, style = T.s13, color = p.ink)
-                    if (o.description.isNotEmpty())
-                        Text(o.description, style = T.s12, color = p.ink2)
-                    if (sel && act.running && !cur.multiSelect)
-                        Text("提交中…", style = T.s12, color = p.ink2)
+                    Text(label, style = T.s17.copy(lineHeight = 23.sp), color = ink)
+                    if (o.description.isNotEmpty()) Text(o.description, style = T.s13, color = ink2)
+                    if (sel && act.running && !cur.multiSelect) Text("提交中…", style = T.s13, color = ink2)
                 }
-                if (rec) Text("推荐", style = T.s12b, color = p.blue)
+                if (rec) Text(
+                    "推荐", style = T.s12b, color = if (sel) ink2 else CardColors.text.copy(alpha = .8f),
+                    modifier = Modifier.clip(Radii.Pill).background(if (sel) Color(0x14000000) else Color(0x24FFFFFF)).padding(horizontal = 8.dp, vertical = 2.dp),
+                )
             }
         }
         if (!act.running && answer.attempt.frozen) {
@@ -733,33 +602,32 @@ fun QuestionBody(
                 answer.options.joinToString("、") { i ->
                     cur.optionsList.getOrNull(i)?.let { optionLabel(it.label).first } ?: "${i + 1}"
                 }
-            Banner(
+            CardNote(
                 if (answer.attempt.expired) "不确定「$shown」有没有提交，它已过期，不会再重发。请去终端看看"
                 else "上次的回答「$shown」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
-                Modifier.padding(top = 6.dp),
-                Tone2.ERROR,
                 action = if (answer.attempt.expired) "放弃" else null,
-                onAction = {
-                    answer.attempt.abandon()
-                    act.error = ""
-                },
-            )
+            ) {
+                answer.attempt.abandon()
+                act.error = ""
+            }
         } else if (act.error.isNotEmpty()) {
-            Banner("没能提交，终端里的问题可能已经变了：${act.error}", Modifier.padding(top = 6.dp), Tone2.ERROR)
+            CardNote("没能提交，终端里的问题可能已经变了：${act.error}")
         }
     }
     if (part != 1) {
-        if (cur.multiSelect) {
-            val n = QuestionPicks.multi[key]?.size ?: 0
-            Btn(
+        val n = QuestionPicks.multi[key]?.size ?: 0
+        if (cur.multiSelect)
+            CardButton(
                 if (act.running) "提交中…" else if (n == 0) "选好后提交" else "提交 $n 项",
                 { submit((QuestionPicks.multi[key] ?: emptySet()).sorted()) },
-                Modifier.fillMaxWidth().padding(top = 6.dp),
-                BtnKind.PRIMARY,
+                Modifier.fillMaxWidth().padding(top = 16.dp),
+                primary = true,
                 enabled = !act.running && n > 0,
             )
-            DockFoot(if (n > 0) "已选 $n 项" else "", "其他回答：去终端", arrow = true, onLink = onTerminal)
-        } else DockFoot("都不合适？", "其他回答：去终端", arrow = true, onLink = onTerminal)
+        Row(Modifier.fillMaxWidth().padding(top = if (cur.multiSelect) 4.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (cur.multiSelect && n > 0) "已选 $n 项" else "都不合适？", style = T.s13, color = CardColors.text2)
+            CardLink("其他回答：去终端", onTerminal)
+        }
     }
 }
 
@@ -775,55 +643,27 @@ fun questionProgress(q: QuestionAsked): String {
         .joinToString(" · ")
 }
 
-/** 第 1 题 of several, as short bars. */
-@Composable
-fun Steps(n: Int, at: Int) {
-    val p = pal
-    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        repeat(n) { i ->
-            Box(
-                Modifier.width(16.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(if (i <= at) p.blue else p.fill2),
-            )
-        }
-    }
-}
-
 @Composable
 fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> Unit) {
+    if (isSkeleton(q)) return DockSkeleton()
     val nav = LocalNav.current
     // One submission for both halves, which the dock lays out apart.
     val act = rememberAction()
-    val qs = q.questionsList
     PendingDock(
         s.id,
         DockItem.Question(q),
         agentName(s.agent()),
         more,
-        meta = if (isSkeleton(q)) "" else questionProgress(q),
-        headExtra =
-            if (qs.size > 1 && !isSkeleton(q))
-                ({ Steps(qs.size, minOf(QuestionPicks.index[q.questionId] ?: 0, qs.size - 1)) })
-            else null,
+        meta = questionProgress(q),
         body = {
-            QuestionBody(
-                s,
-                q,
-                onTerminal,
-                full = false,
-                onLong = { nav.question(s.id, q.questionId) },
-                part = 1,
-                act = act,
-            )
+            QuestionBody(s, q, onTerminal, full = false, onLong = { nav.question(s.id, q.questionId) }, part = 1, act = act)
         },
     ) {
         QuestionBody(s, q, onTerminal, full = false, part = 2, act = act)
     }
 }
 
-/** 回答提问: a long question on a page of its own; the answer button stays at hand. */
+/** 回答提问: a long question on a page of its own, on the same card; the answer stays at hand. */
 @Composable
 fun QuestionPage(sid: String, qid: String) {
     val remote = LocalRemote.current
@@ -851,106 +691,56 @@ fun QuestionPage(sid: String, qid: String) {
             nav.back()
             nav.sessionTerminal(sid)
         }
-        Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp),
-        ) {
-            QuestionBody(
-                s,
-                q,
-                toTerminal,
-                full = true,
-                onAnswered = { nav.back() },
-                part = 1,
-                act = act,
-            )
-        }
-        Column(
-            Modifier.padding(horizontal = 14.dp)
-                .topLine(pal.sep)
-                .padding(top = 8.dp, bottom = 16.dp),
-        ) {
-            QuestionBody(
-                s,
-                q,
-                toTerminal,
-                full = true,
-                onAnswered = { nav.back() },
-                part = 2,
-                act = act,
-            )
+        DarkCard(Modifier.weight(1f, fill = false).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
+            DarkCardHead("${agentName(s.agent())} 在问你", questionProgress(q))
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 1, act = act)
+            }
+            QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 2, act = act)
         }
     }
 }
 
 @Composable
 fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
-    if (isSkeleton(text)) {
-        Text(skeletonMessage, style = T.s13, color = pal.ink2)
-        return
-    }
-    val p = pal
+    if (isSkeleton(text)) return DockSkeleton()
     PendingDock(
         s.id,
         DockItem.Plan(text),
         agentName(s.agent()),
         more,
         // In the open line before 收起, as on the web (design-system §6).
-        headExtra = {
-            Box(
-                Modifier.heightIn(min = 44.dp)
-                    .clickable(role = Role.Button, onClick = onFull)
-                    .padding(end = 6.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                ArrowText("展开全文", p.blue, T.s13)
-            }
-        },
+        headExtra = { CardLink("展开全文", onFull) },
         body = {
             // The whole plan, scrolling with the dock; 展开全文 in its line opens it as a page.
             Text(
-                text
-                    .lines()
-                    .map { io.github.lewin671.remoteagent.core.plain(it) }
-                    .filter { it.isNotBlank() }
-                    .joinToString("\n"),
-                style = ts(13.sp, lineHeight = 1.6f),
-                color = p.ink,
-                modifier =
-                    Modifier.padding(bottom = 4.dp)
-                        .fillMaxWidth()
-                        .clip(Radii.R6)
-                        .background(p.gbg)
-                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                text.lines().map { io.github.lewin671.remoteagent.core.plain(it) }.filter { it.isNotBlank() }.joinToString("\n"),
+                style = T.s15,
+                color = CardColors.text,
+                modifier = Modifier.padding(top = 12.dp),
             )
         },
     ) {
-        PlanButtons(s, full = false, terminalOnly = isSkeleton(text))
-        val planNote = agentInfo(s.agent()).planNote
-        if (!isSkeleton(text) && planNote != null)
-            Text(
-                planNote,
-                style = T.s12,
-                color = p.ink2,
-                modifier = Modifier.padding(top = 7.dp),
-            )
+        PlanButtons(s, full = false)
+        agentInfo(s.agent()).planNote?.let {
+            Text(it, style = T.s13, color = CardColors.text2, modifier = Modifier.padding(top = 8.dp))
+        }
     }
 }
 
 /**
- * 继续规划… / 批准执行. A reply whose outcome is unknown takes their place: it can only be sent again as it
- * was, by a button that names its choice, or given up ([Plans]).
+ * 修改计划… / 批准, on the dark card ([onCard]) or at the foot of the plan's
+ * page. A reply whose outcome is unknown takes their place: it can only be
+ * sent again as it was, by a button that names its choice, or given up
+ * ([Plans]).
  */
 @Composable
 fun PlanButtons(
     s: SessionView,
     full: Boolean,
-    terminalOnly: Boolean = false,
+    onCard: Boolean = true,
     onDone: () -> Unit = {},
 ) {
-    if (terminalOnly) {
-        Text(skeletonMessage, style = T.s13, color = pal.ink2)
-        return
-    }
     val remote = LocalRemote.current
     val act = rememberAction()
     val reply = Plans.of(s.id)
@@ -993,11 +783,18 @@ fun PlanButtons(
         ) {
             onDone()
         }
+    @Composable
+    fun Choice(text: String, onClick: () -> Unit, modifier: Modifier, primary: Boolean = false, enabled: Boolean = true) =
+        if (onCard) CardButton(text, onClick, modifier, primary, enabled)
+        else PillButton(text, onClick, modifier, if (primary) ButtonKind.INK else ButtonKind.SECONDARY, enabled)
+    @Composable
+    fun Note(text: String) =
+        if (onCard) CardNote(text) else Notice(text, Modifier.padding(top = 10.dp), NoticeTone.ERROR)
     if (!offer.choices) {
-        Banner(offer.note, Modifier.padding(bottom = 8.dp), Tone2.ERROR)
-        Btns(Modifier.widthIn(max = ActionRowMax)) {
+        Note(offer.note)
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (offer.abandon)
-                Btn(
+                Choice(
                     "放弃",
                     {
                         Plans.abandon(reply)
@@ -1007,45 +804,32 @@ fun PlanButtons(
                     enabled = !act.running,
                 )
             offer.retry?.let {
-                Btn(
-                    if (act.running) "提交中…" else it,
-                    { retry() },
-                    Modifier.weight(1f),
-                    BtnKind.PRIMARY,
-                    enabled = !act.running,
-                )
+                Choice(if (act.running) "提交中…" else it, { retry() }, Modifier.weight(1f), primary = true, enabled = !act.running)
             }
         }
         return
     }
-    Btns(Modifier.widthIn(max = ActionRowMax)) {
-        Btn(
-            agentInfo(s.agent()).planKeepLabel,
-            { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) },
-            Modifier.weight(1f),
-            enabled = !act.running,
-        )
-        Btn(
+    Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Choice(agentInfo(s.agent()).planKeepLabel, { answer(PlanChoice.PLAN_CHOICE_KEEP_PLANNING) }, Modifier.weight(1f), enabled = !act.running)
+        Choice(
             if (act.running) "提交中…" else agentInfo(s.agent()).planApproveLabel,
             { answer(PlanChoice.PLAN_CHOICE_IMPLEMENT) },
             Modifier.weight(1f),
-            BtnKind.PRIMARY,
+            primary = true,
             enabled = !act.running,
         )
     }
     // Claude Code has no such choice.
-    if (
-        full && !act.running && agentInfo(s.agent()).planClearContext
-    ) {
-        DockFoot("", "清空上下文后执行") { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
+    if (full && !act.running && agentInfo(s.agent()).planClearContext) {
+        val clear = { answer(PlanChoice.PLAN_CHOICE_CLEAR_AND_IMPLEMENT) }
+        if (onCard) CardLink("清空上下文后执行", clear, Modifier.fillMaxWidth(), arrow = false)
+        else TextLink("清空上下文后执行", clear, Modifier.fillMaxWidth())
     }
-    if (act.error.isNotEmpty())
-        Banner("没能提交：${act.error}", Modifier.padding(top = 8.dp), Tone2.ERROR)
+    if (act.error.isNotEmpty()) Note("没能提交：${act.error}")
 }
 
 @Composable
 fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) {
-    val p = pal
     PendingDock(
         s.id,
         DockItem.Popup(title),
@@ -1054,16 +838,11 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
         meta = "${agentName(s.agent())} 在等你",
         body = {
             if (title.isNotEmpty())
-                Text(
-                    title,
-                    style = ts(15.sp, FontWeight.Medium),
-                    color = p.ink,
-                    modifier = Modifier.padding(bottom = 6.dp),
-                )
+                Text(title, style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))
             val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
-            if (hint.isNotEmpty()) Text(hint, style = T.s13, color = p.orangeInk)
+            if (hint.isNotEmpty()) Text(hint, style = T.s13, color = CardColors.orange, modifier = Modifier.padding(top = 8.dp))
         },
     ) {
-        Btn("去终端处理", onTerminal, Modifier.fillMaxWidth(), BtnKind.PRIMARY)
+        CardButton("去终端处理", onTerminal, Modifier.fillMaxWidth().padding(top = 16.dp), primary = true)
     }
 }
