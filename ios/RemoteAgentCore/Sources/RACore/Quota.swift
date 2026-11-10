@@ -6,20 +6,21 @@ import RAProto
 
 public enum QuotaTone: Sendable { case normal, warn, full, stale }
 
-/// One window as shown: 5 小时 · 已用 62% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted.
+/// One window as shown: 5 小时 · 剩 38% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted.
 public struct QuotaRow: Equatable, Sendable {
     public var label: String
     public var windowName: String
-    public var used: String
+    /// What is left: 剩 38%, 已用尽, 上次剩 38%, 等待更新, 未获取 (design-system §6 「电脑卡与额度」).
+    public var left: String
     public var percent: Double?
     public var reset: String
     public var tone: QuotaTone
     public var note: String
 
-    public init(label: String, windowName: String = "", used: String, percent: Double?, reset: String, tone: QuotaTone, note: String) {
+    public init(label: String, windowName: String = "", left: String, percent: Double?, reset: String, tone: QuotaTone, note: String) {
         self.label = label
         self.windowName = windowName.isEmpty ? label : windowName
-        self.used = used
+        self.left = left
         self.percent = percent
         self.reset = reset
         self.tone = tone
@@ -117,7 +118,36 @@ public func resetText(resetMs: Int64, now: Int64) -> String {
     return "\(left) · \(day) \(t.hhmm)"
 }
 
-/// One window: used share, reset time, and whether the reading can still be trusted.
+/// What is left of a window used `pct` percent: 剩 38%, or 已用尽.
+public func quotaLeft(_ pct: Double) -> String {
+    pct >= 100 ? "已用尽" : "剩 \(100 - jvmInt(pct.rounded(.down)))%"
+}
+
+/// A CLI's line on a computer's card in settings: its tightest window's
+/// 剩 N% and how long until it resets, the share left for the thin bar, and
+/// whether that is little enough to look at (20 % or less left); or, with
+/// no numbers, what stands in their place and no bar.
+public struct QuotaCardLine: Equatable, Sendable {
+    public var text: String
+    public var reset: String
+    /// What is left, 0–1; nil draws no bar.
+    public var left: Double?
+    public var low: Bool
+    public var stale: Bool
+}
+
+public func quotaCardLine(_ groups: [QuotaGroup]) -> QuotaCardLine {
+    let rows = groups.compactMap(quotaSummaryRow)
+    guard let r = rows.max(by: { ($0.percent ?? -1) < ($1.percent ?? -1) }), let pct = r.percent else {
+        let word = groups.first.map(quotaLine) ?? "暂未获取额度"
+        return QuotaCardLine(text: word, reset: "", left: nil, low: false, stale: false)
+    }
+    let reset = r.reset.components(separatedBy: " · ").first ?? ""
+    let left = max(0, min(100, 100 - pct)) / 100
+    return QuotaCardLine(text: r.left, reset: reset, left: left, low: r.tone != .stale && left <= 0.2, stale: r.tone == .stale)
+}
+
+/// One window: what is left, reset time, and whether the reading can still be trusted.
 public func quotaRow(_ w: PBQuotaWindow, now: Int64, lastRecord: Bool) -> QuotaRow {
     quotaRow(w, agent: .codex, now: now, lastRecord: lastRecord)
 }
@@ -129,17 +159,17 @@ public func quotaRow(_ w: PBQuotaWindow, agent: PBAgent, now: Int64, lastRecord:
     let label = (useMinutes && w.windowMinutes > 0) ? windowLabel(minutes: w.windowMinutes) : desc.label
     let windowName = w.windowMinutes > 0 ? windowLabel(minutes: w.windowMinutes) : label
     if !w.hasUsedPercent {
-        return QuotaRow(label: label, windowName: windowName, used: "未获取", percent: nil, reset: "", tone: .normal, note: "没有收到这项额度数据")
+        return QuotaRow(label: label, windowName: windowName, left: "未获取", percent: nil, reset: "", tone: .normal, note: "没有收到这项额度数据")
     }
     let pct = w.usedPercent
-    let used = pct >= 100 ? "已用尽" : "已用 \(jvmInt(pct.rounded(.down)))%"
+    let left = quotaLeft(pct)
     let passed = w.resetsAtMs >= 1 && w.resetsAtMs <= now
     let reset = w.resetsAtMs > 0 && !passed ? resetText(resetMs: w.resetsAtMs, now: now) : ""
     if passed {
-        return QuotaRow(label: label, windowName: windowName, used: "等待更新", percent: pct, reset: "", tone: .stale, note: "上次\(used)；重置时间已过，不能据此确认额度已经恢复")
+        return QuotaRow(label: label, windowName: windowName, left: "等待更新", percent: pct, reset: "", tone: .stale, note: "上次\(left)；重置时间已过，不能据此确认额度已经恢复")
     }
-    if lastRecord { return QuotaRow(label: label, windowName: windowName, used: used, percent: pct, reset: reset, tone: .stale, note: "") }
-    return QuotaRow(label: label, windowName: windowName, used: used, percent: pct, reset: reset, tone: pct >= 100 ? .full : pct >= 80 ? .warn : .normal, note: "")
+    if lastRecord { return QuotaRow(label: label, windowName: windowName, left: "上次" + left, percent: pct, reset: reset, tone: .stale, note: "") }
+    return QuotaRow(label: label, windowName: windowName, left: left, percent: pct, reset: reset, tone: pct >= 100 ? .full : pct >= 80 ? .warn : .normal, note: "")
 }
 
 /// Each installed CLI's quota on `m`, one group per account the daemon could
@@ -245,15 +275,14 @@ public func quotaLine(_ g: QuotaGroup) -> String {
             return "暂未获取额度" + (g.lastRecord ? "（上次记录）" : "")
         }
         let win = tightest.windowName.ifEmpty(tightest.label)
-        let staleSuffix = g.lastRecord && !tightest.used.contains("上次") ? "（上次记录）" : ""
-        return "\(tightest.used) · \(win)\(staleSuffix)"
+        return "\(tightest.left) · \(win)"
     }
 }
 
 /// The summary uses the first most-used reported window, preserving daemon order on ties.
 public func quotaSummaryRow(_ g: QuotaGroup) -> QuotaRow? {
     guard g.status == .ok || g.status == .failed else { return nil }
-    return g.rows.filter { $0.used != "未获取" && $0.percent != nil }.reduce(nil) { best, row in
+    return g.rows.filter { $0.left != "未获取" && $0.percent != nil }.reduce(nil) { best, row in
         guard let best else { return row }
         return (row.percent ?? -1) > (best.percent ?? -1) ? row : best
     }

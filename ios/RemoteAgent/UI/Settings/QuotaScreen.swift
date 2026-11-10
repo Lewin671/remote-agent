@@ -112,7 +112,7 @@ private struct QuotaWindow: View {
         VStack(alignment: .leading, spacing: 0) {
             head {
                 Text(row.label).font(.body).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
-                Text(row.used).font(.subheadline).ink(ink)
+                Text(row.left).font(.subheadline).ink(ink)
             }
             if let percent = row.percent {
                 GeometryReader { geo in

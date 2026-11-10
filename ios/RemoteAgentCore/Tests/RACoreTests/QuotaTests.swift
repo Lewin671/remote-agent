@@ -75,10 +75,10 @@ import Testing
         #expect(g.title == "Claude Code · Max")
         #expect(quotaBanner(g) == "5 小时额度即将用尽")
         #expect(g.status == .ok)
-        #expect(g.rows[0].used == "已用 92%")
+        #expect(g.rows[0].left == "剩 8%")
         #expect(g.rows[0].tone == .warn)
         // A window without a number is unknown, never 0%.
-        #expect(g.rows[1].used == "未获取")
+        #expect(g.rows[1].left == "未获取")
         #expect(g.rows[1].percent == nil)
         // Codex has no entry: this daemon does not read it.
         #expect(quotaGroups(m, now: now).filter { $0.agent == .codex }.map(\.status) == [.unsupported])
@@ -89,16 +89,16 @@ import Testing
         let failed = quota(.claude, .failed, [w("five_hour", 28.0)]) { $0.detail = "状态栏输入读不出来"; $0.observedMs = now - 3_600_000 }
         let g = try claude(machine(true, failed))
         #expect(g.lastRecord)
-        #expect(g.rows[0].used == "已用 28%")
+        #expect(g.rows[0].left == "上次剩 72%")
         #expect(g.rows[0].tone == .stale)
-        #expect(quotaLine(g) == "已用 28% · 5 小时（上次记录）")
+        #expect(quotaLine(g) == "上次剩 72% · 5 小时")
         #expect(g.received.hasPrefix("最近成功收到"))
         #expect(try claude(machine(false, quota(.claude, .ok, [w("five_hour", 28.0)]))).rows[0].tone == .stale)
     }
 
     @Test func aPassedResetOnlyWaitsForAnUpdate() throws {
         let r = try claude(machine(true, quota(.claude, .ok, [w("five_hour", 100.0, resetIn: -60_000)]))).rows[0]
-        #expect(r.used == "等待更新")
+        #expect(r.left == "等待更新")
         #expect(r.note.contains("不能据此确认额度已经恢复"))
     }
 
@@ -114,7 +114,7 @@ import Testing
             let gs = quotaGroups(machine(true, quota(agent, .ok, [w(name, 99.6, minutes: 120)])), now: now).filter { $0.agent == agent }
             let g = try #require(gs.first)
             #expect(g.rows[0].label == "2 小时")
-            #expect(g.rows[0].used == "已用 99%")
+            #expect(g.rows[0].left == "剩 1%")
             #expect(g.rows[0].tone == .warn)
             #expect(quotaBanner(g) == "2 小时额度即将用尽")
             // A window the account does not have is not shown as missing.
@@ -138,11 +138,11 @@ import Testing
         #expect(planName("business  plan_x") == "Business Plan X")
         // A number that is not one is no reason to stop: Kotlin's toInt gives 0.
         let odd = PBQuotaWindow.with { $0.name = "primary"; $0.usedPercent = .nan }
-        #expect(quotaRow(odd, now: now, lastRecord: false).used == "已用 0%")
+        #expect(quotaRow(odd, now: now, lastRecord: false).left == "剩 100%")
         // The usual windows first, whatever order they came in; others after.
         let g = try claude(machine(true, quota(.claude, .ok, [w("opus", 1), w("seven_day", 2), w("five_hour", 3)])))
         #expect(g.rows.map(\.label) == ["5 小时", "7 天", "opus"])
-        #expect(quotaLine(g) == "已用 3% · 5 小时")
+        #expect(quotaLine(g) == "剩 97% · 5 小时")
     }
 
     @Test func summariesKeepTheFirstWindowOnTiesAndDoNotWarnOnStaleValues() throws {
@@ -150,10 +150,10 @@ import Testing
         let live = try claude(machine(true, report))
         #expect(quotaSummaryRow(live)?.label == "5 小时")
         #expect(quotaSummaryRow(live)?.tone == .warn)
-        #expect(quotaLine(live) == "已用 90% · 5 小时")
+        #expect(quotaLine(live) == "剩 10% · 5 小时")
         let offline = try claude(machine(false, report))
         #expect(quotaSummaryRow(offline)?.tone == .stale)
-        #expect(quotaLine(offline) == "已用 90% · 5 小时（上次记录）")
+        #expect(quotaLine(offline) == "上次剩 10% · 5 小时")
     }
 
     @Test func groupedQuotaFailuresRetainTheirReasonAndLastSuccessfulWindows() throws {
@@ -191,20 +191,41 @@ import Testing
         #expect(v.title == "Antigravity · Google AI Pro")
         #expect(v.subgroups.count == 3)
         #expect(v.subgroups[0].title == "Antigravity · Google AI Pro · Gemini")
-        #expect(v.subgroups[0].rows.map { [$0.label, $0.used] } == [
-            ["Gemini · 5 小时", "已用 18%"],
-            ["Gemini · 7 天", "已用 12%"],
-            ["Gemini 4 Argon · 7 天", "已用 35%"],
+        #expect(v.subgroups[0].rows.map { [$0.label, $0.left] } == [
+            ["Gemini · 5 小时", "剩 82%"],
+            ["Gemini · 7 天", "剩 88%"],
+            ["Gemini 4 Argon · 7 天", "剩 65%"],
         ])
         #expect(v.subgroups[1].title == "第三方模型（Claude、GPT-OSS）")
-        #expect(v.subgroups[1].rows.map { [$0.label, $0.used] } == [
-            ["第三方模型 · 5 小时", "已用 40%"],
-            ["第三方模型 · 7 天", "已用 26%"],
+        #expect(v.subgroups[1].rows.map { [$0.label, $0.left] } == [
+            ["第三方模型 · 5 小时", "剩 60%"],
+            ["第三方模型 · 7 天", "剩 74%"],
         ])
         #expect(v.subgroups[2].title == "custom-bucket")
-        #expect(v.subgroups[2].rows.map { [$0.label, $0.used] } == [
-            ["custom-bucket", "已用 5%"],
+        #expect(v.subgroups[2].rows.map { [$0.label, $0.left] } == [
+            ["custom-bucket", "剩 95%"],
         ])
-        #expect(quotaLine(v) == "已用 40% · 5 小时")
+        #expect(quotaLine(v) == "剩 60% · 5 小时")
+    }
+}
+
+@Suite struct QuotaCardLineTests {
+    private let now: Int64 = 1_700_000_000_000
+
+    private func group(_ pct: Double?, stale: Bool = false, reset: String = "") -> QuotaGroup {
+        let row = QuotaRow(label: "5 小时", left: pct.map { (stale ? "上次" : "") + quotaLeft($0) } ?? "未获取", percent: pct, reset: reset, tone: stale ? .stale : .normal, note: "")
+        return QuotaGroup(agent: .codex, title: "Codex", status: .ok, rows: [row], received: "", detail: "", lastRecord: stale)
+    }
+
+    @Test func aCardSaysWhatIsLeftOfTheTightestWindowAndWhenItResets() {
+        let line = quotaCardLine([group(62, reset: "4 小时 29 分后重置 · 今天 14:10")])
+        #expect(line.text == "剩 38%" && line.reset == "4 小时 29 分后重置")
+        #expect(line.left == 0.38 && !line.low)
+        // Twenty percent left or less is worth a look.
+        #expect(quotaCardLine([group(80)]).low && quotaCardLine([group(100)]).text == "已用尽")
+        // An old record is not a warning, and no number is no bar.
+        #expect(!quotaCardLine([group(95, stale: true)]).low && quotaCardLine([group(95, stale: true)]).stale)
+        #expect(quotaCardLine([group(nil)]).left == nil)
+        #expect(quotaLeft(37.6) == "剩 63%")
     }
 }
