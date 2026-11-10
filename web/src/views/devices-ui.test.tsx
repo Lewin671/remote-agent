@@ -46,7 +46,7 @@ it.each(["authority", "member", "machine"])(
       root.render(<DeviceActions remote={r} id="mini" machine go={go} />),
     );
     expect(!!button("重新加入并接续会话")).toBe(role === "authority");
-    expect(!!button("删除这台电脑的记录")).toBe(role === "authority");
+    expect(!!button("删除这台电脑的记录…")).toBe(role === "authority");
   },
 );
 it("shows a QR code and waits for explicit candidate-first SAS confirmation", async () => {

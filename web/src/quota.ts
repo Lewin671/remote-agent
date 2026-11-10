@@ -1,5 +1,6 @@
 // Account quota windows as the device pages show them (architecture 账户
-// 额度): used share, reset time, and whether the reading can still be
+// 额度): what is left (剩 N%, design-system §6 电脑卡与额度), reset time,
+// and whether the reading can still be
 // trusted. A missing value is never shown as 0%, and a reset time that
 // passed does not mean the quota is back.
 
@@ -10,7 +11,8 @@ import { agentInfo, normalizePlanName } from "./agents";
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
   windowName?: string; // 5 小时, 7 天 (duration / short name for summary line)
-  used: string; // 已用 62%, 已用尽, 未获取
+  left: string; // 剩 38%, 已用尽, 未获取
+  /** The share used, 0–100; the bar draws what is left of it. */
   percent?: number;
   reset: string; // 4 小时 29 分后重置 · 今天 14:10
   tone: "" | "warn" | "full" | "stale";
@@ -43,6 +45,11 @@ function resetTime(ms: number, now: number): string {
   return `${untilReset(ms - now)} · ${day} ${clock(d)}`;
 }
 
+/** What is left of a window used pct: 剩 38%, or 已用尽. */
+function leftText(pct: number): string {
+  return pct >= 100 ? "已用尽" : `剩 ${100 - Math.floor(pct)}%`;
+}
+
 export function windowLabel(minutes: number): string {
   if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return `${minutes / (24 * 60)} 天`;
   if (minutes >= 60) return `${Math.round(minutes / 60)} 小时`;
@@ -52,7 +59,7 @@ export function windowLabel(minutes: number): string {
 /** One window of a CLI account's quota. online: the machine that reported
  * it is connected now. */
 export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: number, online: boolean): QuotaRow {
-  if (!l) return { label: fallbackLabel, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
+  if (!l) return { label: fallbackLabel, left: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
   const label = l.windowMinutes > 0n ? windowLabel(Number(l.windowMinutes)) : fallbackLabel;
   const pct = l.usedPercent;
   const resetMs = Number(l.resetsAt) * 1000;
@@ -61,10 +68,10 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
   if (resetMs > 0 && !passed) {
     reset = resetTime(resetMs, now);
   }
-  const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
-  if (passed) return { label, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${used}；重置时间已过，不能据此确认额度已经恢复` };
-  if (!online) return { label, used, percent: pct, reset, tone: "stale", note: "上次记录：电脑离线，可能已变化" };
-  return { label, used, percent: pct, reset, tone: pct >= 100 ? "full" : pct >= 80 ? "warn" : "", note: "" };
+  const left = leftText(pct);
+  if (passed) return { label, left: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${left}；重置时间已过，不能据此确认额度已经恢复` };
+  if (!online) return { label, left, percent: pct, reset, tone: "stale", note: "上次记录：电脑离线，可能已变化" };
+  return { label, left, percent: pct, reset, tone: pct >= 100 ? "full" : pct >= 80 ? "warn" : "", note: "" };
 }
 
 // --- MachineMeta.quotas (daemons since ed1a14d) ---
@@ -111,19 +118,19 @@ function windowRow(
   const key = w.name;
   const windowName = w.windowMinutes > 0n ? windowLabel(Number(w.windowMinutes)) : label;
   if (useWindowMinutes && w.windowMinutes > 0n) label = windowName;
-  if (w.usedPercent === undefined) return { key, label, windowName, used: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
+  if (w.usedPercent === undefined) return { key, label, windowName, left: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
   const pct = w.usedPercent;
-  const used = pct >= 100 ? "已用尽" : `已用 ${Math.floor(pct)}%`;
+  const left = leftText(pct);
   const resetMs = Number(w.resetsAtMs);
   if (resetMs > 0 && resetMs <= now)
-    return { key, label, windowName, used: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${used}；重置时间已过，不能据此确认额度已经恢复` };
+    return { key, label, windowName, left: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${left}；重置时间已过，不能据此确认额度已经恢复` };
   let reset = "";
   if (resetMs > 0) reset = resetTime(resetMs, now);
   return {
     key,
     label,
     windowName,
-    used: stale ? `上次${used}` : used,
+    left: stale ? `上次${left}` : left,
     percent: pct,
     reset,
     tone: stale ? "stale" : pct >= 100 ? "full" : pct >= 80 ? "warn" : "",
@@ -223,12 +230,12 @@ export function quotaSummary(views: QuotaView[]): string {
   return views
     .map((v) => {
       if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || "暂未获取额度";
-      const got = v.rows.filter((r) => r.used !== "未获取" && r.percent !== undefined);
+      const got = v.rows.filter((r) => r.left !== "未获取" && r.percent !== undefined);
       if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
       const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
       const win = tightest.windowName || tightest.label;
-      const staleSuffix = v.stale && !tightest.used.includes("上次") ? "（上次记录）" : "";
-      return `${tightest.used} · ${win}${staleSuffix}`;
+      const staleSuffix = v.stale && !tightest.left.includes("上次") ? "（上次记录）" : "";
+      return `${tightest.left} · ${win}${staleSuffix}`;
     })
     .join("；");
 }

@@ -33,6 +33,7 @@ import {
   Alert,
   Banner,
   GlassButton,
+  Segmented,
   StateMark,
   NavBar,
   Sheet,
@@ -51,7 +52,7 @@ import {
   type DeviceInfo,
 } from "../devices";
 import { DeviceKind } from "../gen/remoteagent/v1/relay_pb";
-import { Check, ChevronLeft, ChevronRight, Globe, Laptop, LoaderCircle, Smartphone, Tablet } from "../icons";
+import { Check, ChevronLeft, ChevronRight, Globe, Info, Laptop, LoaderCircle, Moon, Smartphone, Tablet } from "../icons";
 
 import { ConnCheck, connWord } from "./ConnCheck";
 
@@ -80,7 +81,7 @@ export function Settings({
   );
   const others = clients.filter((d) => d.id !== me);
   return (
-    <div className="body set">
+    <div className="body set settings">
       {onBack && (
         <div className="tbar">
           <GlassButton label="返回" onClick={onBack}>
@@ -91,90 +92,64 @@ export function Settings({
       <div className="large">
         <h3>设置</h3>
       </div>
-      {push.top}
-      <RecoveryNotice remote={remote} go={go} />
-      <ClockBanner remote={remote} />
-      <div className="glabel with-link">
+      <div className="set-banners">
+        {push.top}
+        <RecoveryNotice remote={remote} go={go} />
+        <ClockBanner remote={remote} />
+      </div>
+      <div className="label">
         电脑
         <button className="link" onClick={() => go("devices")}>
           全部设备
           <ChevronRight />
         </button>
       </div>
-      <div className="grp">
-        {machines.map((m) => {
-          const quota = quotaLine(m);
-          const status = (
-            <>
-              <StateMark kind={m.online ? "online" : "off"} />
-              {m.online ? "在线" : ago(m.lastSeenMs) || "离线"}
-            </>
-          );
-          // The status always ends the row; a quota, when there is one, is
-          // a second line under the name.
-          return (
-            <button
-              key={m.id}
-              className={"row" + (quota ? " machine-summary" : "")}
-              onClick={() => go("m/" + m.id)}
-            >
-              <span className="ico">
-                <Laptop />
-              </span>
-              <span className="row-name">
-                {machineName(m)}
-                {quota && <small>{quota}</small>}
-              </span>
-              <span className="v">
-                {status}
-                <ChevronRight />
-              </span>
-            </button>
-          );
-        })}
-        {machines.length === 0 && <div className="row help">还没有电脑。</div>}
-        {remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
-      </div>
-      {!remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
-      <div className="glabel">客户端</div>
+      {machines.map((m) => (
+        <MachineCard key={m.id} m={m} go={go} />
+      ))}
+      {machines.length === 0 && <p className="gf">还没有电脑。</p>}
+      <ManagementEntry remote={remote} go={go} />
+      <div className="label">客户端</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
           <ClientIcon d={remote.devices.get(me)} />
           <span className="row-name">{clientName(remote.devices.get(me), remote.devices, me)}</span>
-          <span className="v">
-            当前
-            <ChevronRight />
-          </span>
+          <span className="v">当前</span>
+          <ChevronRight className="chev" />
         </button>
         {others.slice(0, 3).map((d) => (
           <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
             <ClientIcon d={d} />
             <span className="row-name">{clientName(d, remote.devices)}</span>
-            <span className="v">
-              已配对
-              <ChevronRight />
-            </span>
+            <span className="v">已配对</span>
+            <ChevronRight className="chev" />
           </button>
         ))}
         {others.length > 3 && (
-          <button className="row add" onClick={() => go("devices")}>
+          <button className="row act" onClick={() => go("devices")}>
             全部客户端
-            <ChevronRight />
+            <ChevronRight className="chev" />
           </button>
         )}
       </div>
       <SecurityGroup remote={remote} go={go} />
       {push.group}
-      <div className="glabel">外观</div>
+      <div className="label">外观</div>
       <div className="grp">
         <div className="row">
+          <span className="ico">
+            <Moon />
+          </span>
           主题
           <ThemePicker />
         </div>
       </div>
-      <div className="glabel">版本</div>
+      <div className="label">关于</div>
       <div className="grp">
         <div className="row">
+          <span className="ico">
+            <Info />
+          </span>
           remote-agent
           <span className="v">
             {versionText(
@@ -185,7 +160,7 @@ export function Settings({
         </div>
         <UpdateRow />
       </div>
-      <div className="glabel">账户</div>
+      <div className="label">账户</div>
       <div className="grp">
         <div className="row">
           服务器<span className="v">{new URL(remote.account.server).host}</span>
@@ -195,11 +170,11 @@ export function Settings({
           <span className="v">
             {conn.text && <StateMark kind={conn.tone} />}
             {conn.text}
-            <ChevronRight />
           </span>
+          <ChevronRight className="chev" />
         </button>
         <button className="row danger" onClick={() => setLeaving(true)}>
-          退出并删除本机密钥
+          退出并删除本机密钥…
         </button>
       </div>
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
@@ -210,6 +185,57 @@ export function Settings({
   );
 }
 
+/** A computer in settings (design-system §6 电脑卡与额度): a gray card of
+ * its name, whether it is online, and for each CLI it has one line of
+ * quota, 「剩 N%」 of the tightest window, when it resets and a thin bar of
+ * what is left, orange at 20% and below. One that is not online is only
+ * an outline with when it was last seen. */
+function MachineCard({ m, go }: { m: MachineView; go: (r: string) => void }) {
+  const now = useNow(30_000);
+  const agents = machineAgents(m);
+  const views = machineQuotaViews(m.meta, agents, now, m.online);
+  return (
+    <div className={"mc" + (m.online ? "" : " offl")}>
+      <button className="mc-head" onClick={() => go("m/" + m.id)}>
+        <span className="mc-name">
+          <b>{machineName(m)}</b>
+          <ChevronRight className="chev" />
+        </span>
+        <span className="s">
+          <StateMark kind={m.online ? "online" : "off"} />
+          {m.online ? "在线" : m.lastSeenMs ? `${ago(m.lastSeenMs)}在线` : "离线"}
+        </span>
+      </button>
+      {m.online &&
+        agents.map((a) => {
+          const q = tightest(views.filter((v) => v.agent === agentInfo(a).agent));
+          return (
+            <button key={a} className={"qt" + (q.tone ? " " + q.tone : "")} onClick={() => go("q/" + m.id)}>
+              <span className="l">
+                <b>{agentName(a)}</b>
+                <span className="n">{q.left}</span>
+                {q.reset && <span>{q.reset}</span>}
+              </span>
+              {q.percent !== undefined && (
+                <span className="bar">
+                  <i style={{ width: `${Math.max(0, 100 - Math.min(100, q.percent))}%` }} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+    </div>
+  );
+}
+
+/** A CLI's tightest window for its card line, or what stands in its place. */
+function tightest(views: ReturnType<typeof machineQuotaViews>): { left: string; reset: string; percent?: number; tone: string } {
+  const rows = views.flatMap((v) => v.rows).filter((r) => r.percent !== undefined && r.left !== "未获取");
+  if (!rows.length) return { left: quotaSummary(views) || "暂未获取额度", reset: "", tone: "" };
+  const r = rows.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
+  return { left: r.left, reset: r.reset.split(" · ")[0], percent: r.percent, tone: r.tone };
+}
+
 /** Checking for a newer build of this page, and moving on to it. */
 function UpdateRow() {
   const update = useUpdate();
@@ -217,15 +243,13 @@ function UpdateRow() {
     return (
       <button className="row" onClick={applyUpdate}>
         新版本已下载
-        <span className="v">
-          重新加载
-          <ChevronRight />
-        </span>
+        <span className="v">重新加载</span>
+        <ChevronRight className="chev" />
       </button>
     );
   return (
     <button
-      className="row"
+      className="row act"
       disabled={update === "checking"}
       onClick={() => void checkUpdate(true)}
     >
@@ -245,30 +269,11 @@ function UpdateRow() {
   );
 }
 
-function renderQuotaSummary(text: string) {
-  const idx = text.indexOf(" · ");
-  if (idx !== -1) {
-    return (
-      <>
-        {text.slice(0, idx)} <span className="muted">· {text.slice(idx + 3)}</span>
-      </>
-    );
-  }
-  return text;
-}
-
-/** The tightest window of a machine, for its row: "Codex · 已用 62% · 5 小时". */
-function quotaLine(m: MachineView): string {
-  const views = machineQuotaViews(
-    m.meta,
-    machineAgents(m),
-    Date.now(),
-    m.online,
-  ).filter((v) => v.rows.some((r) => r.percent !== undefined));
-  const v = views[0];
-  if (!v) return "";
-  const s = quotaSummary([v]);
-  return s ? `${agentName(v.agent)} · ${s}` : "";
+/** Every window of a CLI, one after another: 「5 小时 剩 82% · 7 天 剩 88%」;
+ * what stands in their place when there are no numbers. */
+function windowsLine(views: ReturnType<typeof machineQuotaViews>): string {
+  const rows = views.flatMap((v) => v.rows).filter((r) => r.percent !== undefined && r.left !== "未获取");
+  return rows.length ? rows.map((r) => `${r.label} ${r.left}`).join(" · ") : quotaSummary(views);
 }
 
 /** On a machine's page: a line for each CLI's quota, leading to all of it. */
@@ -279,7 +284,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const views = machineQuotaViews(m.meta, agents, now, m.online);
   return (
     <>
-      <div className="glabel">账户额度</div>
+      <div className="label">账户额度</div>
       <div className="grp">
         {agents.map((a) => {
           const mine = views.filter((v) => v.agent === agentInfo(a).agent);
@@ -295,10 +300,8 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
               onClick={() => go("q/" + m.id)}
             >
               <span className="nw">{agentName(a)}</span>
-              <span className="v">
-                {renderQuotaSummary(quotaSummary(mine))}
-                <ChevronRight />
-              </span>
+              <span className="v">{windowsLine(mine)}</span>
+              <ChevronRight className="chev" />
             </button>
           );
         })}
@@ -336,19 +339,19 @@ export function QuotaPage({
     <div className="page set">
       <NavBar
         onBack={onBack}
-        title={<span className="tname">账户额度</span>}
+        title="账户额度"
         sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`}
       />
       <div className="body">
         {!m.online && (
-          <div className="gbanner">
+          <div className="set-banners">
             <Banner kind="warn">机器离线，显示上次记录</Banner>
           </div>
         )}
         {views.map((v, i) => (
           <div key={i}>
             {v.error && (
-              <div className="gbanner">
+              <div className="set-banners">
                 <Banner kind="err">{v.error}</Banner>
               </div>
             )}
@@ -356,11 +359,11 @@ export function QuotaPage({
             v.kind === "unsupported" ||
             !v.rows.length ? (
               <>
-                <div className="glabel">{v.title}</div>
+                <div className="label">{v.title}</div>
                 <div className="grp">
-                  <div className="row col">
+                  <div className="qrow">
                     <b>{v.head}</b>
-                    <div className="hint">
+                    <div className="rs">
                       {v.detail ||
                         (v.kind === "unsupported"
                           ? (agentInfo(v.agent).usageHint ?? "可在本机 CLI 中查看用量")
@@ -372,21 +375,21 @@ export function QuotaPage({
             ) : (
               (v.groups.length ? v.groups : [{ title: v.title, rows: v.rows }]).map((g) => (
                 <div key={g.title}>
-                  <div className="glabel">{g.title}</div>
+                  <div className="label">{g.title}</div>
                   <div className="grp">
                     {g.rows.map((r) => (
-                      <div className={"row col quota " + r.tone} key={r.key}>
-                        <div className="line">
-                          <span>{r.label}</span>
-                          <span className="v">{r.used}</span>
+                      <div className={"qrow " + r.tone} key={r.key}>
+                        <div className="l">
+                          <b>{r.label}</b>
+                          <span className="n">{r.left}</span>
                         </div>
                         {r.percent !== undefined && (
                           <div className="bar">
-                            <i style={{ width: `${Math.min(100, r.percent)}%` }} />
+                            <i style={{ width: `${Math.max(0, 100 - Math.min(100, r.percent))}%` }} />
                           </div>
                         )}
-                        {r.reset && <div className="hint">{r.reset}</div>}
-                        {r.note && <div className="hint">{r.note}</div>}
+                        {r.reset && <div className="rs">{r.reset}</div>}
+                        {r.note && <div className="rs">{r.note}</div>}
                       </div>
                     ))}
                   </div>
@@ -394,16 +397,16 @@ export function QuotaPage({
               ))
             )}
             {v.seen && v.rows.length > 0 && (
-              <div className="manage-hint">{v.seen}</div>
+              <div className="gf">{v.seen}</div>
             )}
             {v.banner && (
-              <div className="gbanner">
+              <div className="set-banners">
                 <Banner kind="warn">{v.banner}，不会自动切换 CLI 或模型</Banner>
               </div>
             )}
           </div>
         ))}
-        <div className="manage-hint">
+        <div className="gf">
           时间按北京时间显示。额度属于 CLI
           登录账户，该账户的其他使用也可能计入。
         </div>
@@ -467,14 +470,17 @@ export function DevicesPage({
     void remote.loadDevices();
   }, [remote]);
   return (
-    <div className="page">
-      <NavBar onBack={onBack} title={<span className="tname">设备</span>} />
+    <div className="page set">
+      <NavBar onBack={onBack} title="设备" />
       <div className="body">
-        <div className="glabel">电脑 · 运行 CLI</div>
+        <div className="label">电脑 · 运行 CLI</div>
         <div className="grp">
           {machines.map((m) => (
             <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
-              {machineName(m)}
+              <span className="ico">
+                <Laptop />
+              </span>
+              <span className="row-name">{machineName(m)}</span>
               <span className="v">
                 {m.online ? (
                   <>
@@ -484,17 +490,17 @@ export function DevicesPage({
                 ) : (
                   ago(m.lastSeenMs) || "离线"
                 )}
-                <ChevronRight />
               </span>
+              <ChevronRight className="chev" />
             </button>
           ))}
           {machines.length === 0 && (
             <div className="row help">还没有电脑。</div>
           )}
-          {remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
+          {remote.isAuthority && <ManagementEntry remote={remote} go={go} row />}
         </div>
         {!remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
-        <div className="glabel">客户端 · 操作会话</div>
+        <div className="label">客户端 · 操作会话</div>
         <div className="grp">
           {remote.devicesStatus === "error" && (
             <div className="row help">
@@ -514,27 +520,20 @@ export function DevicesPage({
                 className="row client"
                 onClick={() => go("c/" + d.id)}
               >
+                <ClientIcon d={d} />
                 <span className="client-info">
                   {clientName(d, remote.devices, d.id)}
                   <small>{clientDetail(d)}</small>
                 </span>
                 <span className="v">
-                  {d.id === me ? (
-                    "当前客户端"
-                  ) : (
-                    <>
-                      {d.id === remote.authorityDeviceId
-                        ? "管理端"
-                        : clientUsed(d)}
-                      <ChevronRight />
-                    </>
-                  )}
+                  {d.id === me ? "当前客户端" : d.id === remote.authorityDeviceId ? "管理端" : clientUsed(d)}
                 </span>
+                {d.id !== me && <ChevronRight className="chev" />}
               </button>
             ),
           )}
         </div>
-        <div className="manage-hint">
+        <div className="gf">
           右边是上次使用的时间。名称只能在那台设备上修改。
         </div>
       </div>
@@ -588,10 +587,10 @@ export function ClientPage({
     }
   };
   return (
-    <div className="page">
+    <div className="page set">
       <NavBar
         onBack={onBack}
-        title={<span className="tname">{clientName(d, remote.devices, id)}</span>}
+        title={clientName(d, remote.devices, id)}
         sub={
           current
             ? "当前客户端"
@@ -601,7 +600,7 @@ export function ClientPage({
         }
       />
       <div className="body">
-        <div className="glabel">客户端</div>
+        <div className="label">客户端</div>
         <div className="grp">
           <button
             className="row"
@@ -612,10 +611,8 @@ export function ClientPage({
             }}
           >
             名称
-            <span className="v">
-              {d?.meta?.name || "未命名"}
-              <ChevronRight />
-            </span>
+            <span className="v">{d?.meta?.name || "未命名"}</span>
+            {canEdit && <ChevronRight className="chev" />}
           </button>
           {d?.meta?.name && (
             <button
@@ -647,29 +644,28 @@ export function ClientPage({
             设备 ID<span className="v mono">…{shortId(id)}</span>
           </div>
         </div>
-        <div className="manage-hint">
+        <div className="gf">
           {current
             ? "修改名称同步到其他客户端。"
             : "名称和通知开关要在那台设备上设置。"}
         </div>
         {error && (
-          <div className="gbanner">
+          <div className="set-banners">
             <Banner kind="err">没能保存名称：{error}</Banner>
           </div>
         )}
-        <div className="grp">
-          {current ? (
+        {current ? (
+          <div className="grp">
             <button className="row danger" onClick={() => setLeaving(true)}>
-              退出并删除本机密钥
+              退出并删除本机密钥…
             </button>
-          ) : (
-            <DeviceActions remote={remote} id={id} onRemoved={onBack} />
-          )}
-        </div>
+          </div>
+        ) : (
+          <DeviceActions remote={remote} id={id} onRemoved={onBack} />
+        )}
       </div>
       {renaming && (
-        <Sheet onClose={() => setRenaming(false)}>
-          <h4>客户端名称</h4>
+        <Sheet onClose={() => setRenaming(false)} title="客户端名称">
           <input
             className="field"
             autoFocus
@@ -682,7 +678,7 @@ export function ClientPage({
           <div className="hint">
             名称加密后同步，服务器看不到。留空就用默认名称。
           </div>
-          <div className="btns" style={{ marginTop: 12 }}>
+          <div className="btns sheet-foot">
             <button
               className="btn pri"
               disabled={busy}
@@ -738,7 +734,7 @@ function usePush(remote: Remote) {
   let warn;
   if (st === "ios-browser")
     warn = (
-      <div className="gbanner">
+      <div className="set-banners">
         <Banner
           action={help ? undefined : "说明"}
           onAction={() => setHelp(true)}
@@ -751,31 +747,26 @@ function usePush(remote: Remote) {
     );
   else if (st === "unsupported")
     warn = (
-      <div className="gbanner">
+      <div className="set-banners">
         <Banner>这个浏览器不支持推送</Banner>
       </div>
     );
   else if (st === "denied")
     warn = (
-      <div className="gwarn">
-        <span>
+      <div className="set-banners">
+        <Banner kind="warn" action={help ? undefined : "怎么打开"} onAction={() => setHelp(true)}>
           浏览器拒绝了通知权限
           {help &&
             "。在地址栏左边的网站设置里把「通知」改成允许，再回来打开开关。"}
-        </span>
-        {!help && <button onClick={() => setHelp(true)}>怎么打开</button>}
+        </Banner>
       </div>
     );
   else if (!prefs.attention && !prefs.turns)
     warn = (
-      <div className="gwarn">
-        <span>会话提醒没开，审批来了不会提醒你</span>
-        <button
-          disabled={busy}
-          onClick={() => void change({ ...prefs, attention: true })}
-        >
-          开启
-        </button>
+      <div className="set-banners">
+        <Banner kind="warn" action="开启" onAction={busy ? undefined : () => void change({ ...prefs, attention: true })}>
+          会话提醒没开，审批来了不会提醒你
+        </Banner>
       </div>
     );
   const usable = st === "ok" || st === "default";
@@ -783,7 +774,7 @@ function usePush(remote: Remote) {
     <>
       {warn}
       {error && (
-        <div className="gbanner">
+        <div className="set-banners">
           <Banner
             kind="err"
             action="重试"
@@ -797,7 +788,7 @@ function usePush(remote: Remote) {
   );
   const group = (
     <>
-      <div className="glabel">本客户端的通知</div>
+      <div className="label">本客户端的通知</div>
       <div className="grp">
         <div className="row">
           安全通知
@@ -826,7 +817,7 @@ function usePush(remote: Remote) {
           <Switch label="定时任务结果" on={prefs.scheduled !== false} disabled={busy || !usable} onChange={(v) => void change({ ...prefs, scheduled: v })} />
         </div>
       </div>
-      <div className="manage-hint">安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。</div>
+      <div className="gf">安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。</div>
     </>
   );
   return { top, group };
@@ -936,8 +927,7 @@ export function MachinePage({
   if (pick && st) {
     if (pick.what === "timeout")
       sheet = (
-        <Sheet onClose={() => setPick(undefined)}>
-          <h4>审批超时</h4>
+        <Sheet onClose={() => setPick(undefined)} title="审批超时">
           <div className="list">
             {timeouts.map((t) => (
               <button
@@ -959,8 +949,7 @@ export function MachinePage({
       );
     else if (pick.what === "idleClose")
       sheet = (
-        <Sheet onClose={() => setPick(undefined)}>
-          <h4>空闲自动结束会话</h4>
+        <Sheet onClose={() => setPick(undefined)} title="空闲自动结束会话">
           <div className="list">
             {idleCloseChoices(st.idleCloseMinutes).map((t) => (
               <button
@@ -1059,19 +1048,12 @@ export function MachinePage({
                 next: withDefaults(st, a, { mode: x }),
               }));
       sheet = (
-        <Sheet onClose={() => setPick(undefined)}>
-          <h4>
-            {agents.length > 1 ? agentName(a) + " · " : ""}
-            {
-              {
-                model: "默认模型",
-                effort: "默认推理强度",
-                mode: "默认审批模式",
-              }[pick.what]
-            }
-          </h4>
+        <Sheet
+          onClose={() => setPick(undefined)}
+          title={(agents.length > 1 ? agentName(a) + " · " : "") + { model: "默认模型", effort: "默认推理强度", mode: "默认审批模式" }[pick.what]}
+        >
           {pick.what === "model" && !list && (
-            <div className="hint">读取模型列表…</div>
+            <div className="hint top">读取模型列表…</div>
           )}
           <div className="list">
             {opts.map((o) => (
@@ -1100,7 +1082,7 @@ export function MachinePage({
 
   return (
     <div className="page set">
-      <NavBar onBack={onBack} title={name} />
+      <NavBar onBack={onBack} title={name} sub={m.online ? "在线" : ago(m.lastSeenMs) ? `${ago(m.lastSeenMs)}在线` : "离线"} />
       <div className="body">
         <QuotaSummary m={m} go={go} />
         {versions.length > 0 && (
@@ -1109,7 +1091,7 @@ export function MachinePage({
               <div className="row" key={v.agent}>
                 {agentName(v.agent)} 版本
                 <span className="v">
-                  {!v.verified && <span className="warn-text">未验证 ·</span>}{" "}
+                  {!v.verified && "未验证 · "}
                   {v.version}
                 </span>
               </div>
@@ -1123,10 +1105,10 @@ export function MachinePage({
           </div>
         )}
         {!m.online && (
-          <div className="glabel">{name} 不在线，暂时看不到它的设置。</div>
+          <div className="label">{name} 不在线，暂时看不到它的设置。</div>
         )}
         {error && (
-          <div className="gbanner">
+          <div className="set-banners">
             <Banner
               kind="err"
               action="重试"
@@ -1137,7 +1119,7 @@ export function MachinePage({
           </div>
         )}
         {saveError && (
-          <div className="gbanner">
+          <div className="set-banners">
             <Banner
               kind="err"
               action="重试"
@@ -1155,29 +1137,19 @@ export function MachinePage({
             const follow = "跟随配置";
             return (
               <>
-                <div className="glabel">
+                <div className="label">
                   {agents.length > 1
                     ? "新项目默认设置"
                     : `新项目默认设置 · ${agentName(a)}`}
                 </div>
                 {agents.length > 1 && (
-                  <div
-                    className="seg cli-tabs"
-                    role="tablist"
-                    aria-label="按 CLI 的新项目默认设置"
-                  >
-                    {agents.map((x) => (
-                      <button
-                        key={x}
-                        role="tab"
-                        aria-selected={x === a}
-                        className={x === a ? "on" : ""}
-                        onClick={() => setDefaultAgent(x)}
-                      >
-                        {agentName(x)}
-                      </button>
-                    ))}
-                  </div>
+                  <Segmented
+                    className="cli-tabs full"
+                    label="按 CLI 的新项目默认设置"
+                    value={String(a)}
+                    onChange={(v) => setDefaultAgent(Number(v) as Agent)}
+                    options={agents.map((x) => ({ value: String(x), label: agentName(x) }))}
+                  />
                 )}
                 <div className="grp">
                   <button
@@ -1187,8 +1159,8 @@ export function MachinePage({
                     模型
                     <span className="v">
                       {def.model ? modelName(a, def.model) : follow}
-                      <ChevronRight />
                     </span>
+                    <ChevronRight className="chev" />
                   </button>
                   <button
                     className="row"
@@ -1197,8 +1169,8 @@ export function MachinePage({
                     推理强度
                     <span className="v">
                       {def.effort || follow}
-                      <ChevronRight />
                     </span>
+                    <ChevronRight className="chev" />
                   </button>
                   <button
                     className="row"
@@ -1207,8 +1179,8 @@ export function MachinePage({
                     审批模式
                     <span className="v">
                       {modeName(def.mode) || follow}
-                      <ChevronRight />
                     </span>
+                    <ChevronRight className="chev" />
                   </button>
                   {!def.mode && (
                     <div className="row help">
@@ -1233,8 +1205,8 @@ export function MachinePage({
               审批超时
               <span className="v">
                 {Math.round(st.approvalTimeoutSeconds / 60)} 分钟
-                <ChevronRight />
               </span>
+              <ChevronRight className="chev" />
             </button>
             <button
               className="row"
@@ -1243,8 +1215,8 @@ export function MachinePage({
               空闲自动结束会话
               <span className="v">
                 {idleCloseLabel(st.idleCloseMinutes)}
-                <ChevronRight />
               </span>
+              <ChevronRight className="chev" />
             </button>
           </div>
         )}
@@ -1259,7 +1231,7 @@ export function MachinePage({
         )}
         {projs.length > 0 && (
           <>
-            <div className="glabel">项目</div>
+            <div className="label">项目</div>
             <div className="grp">
               {projs.map((p) => (
                 <button
@@ -1274,9 +1246,7 @@ export function MachinePage({
             </div>
           </>
         )}
-        <div className="grp">
-          <DeviceActions remote={remote} id={id} machine go={go} onRemoved={onBack} />
-        </div>
+        <DeviceActions remote={remote} id={id} machine go={go} onRemoved={onBack} />
       </div>
       {sheet}
     </div>
@@ -1298,7 +1268,7 @@ function ThemePicker() {
     ["dark", "暗色"],
   ];
   return (
-    <div className="pick" role="radiogroup" aria-label="外观">
+    <div className="seg" role="radiogroup" aria-label="外观">
       {opts.map(([t, name]) => (
         <button
           key={t}
@@ -1367,7 +1337,7 @@ function ImageStorageSettings({
     : "";
   return (
     <>
-      <div className="glabel">附件存储</div>
+      <div className="label">附件存储</div>
       <div className="grp">
         <div className="row col">
           <div className="line">
@@ -1428,12 +1398,12 @@ function ImageStorageSettings({
           </span>
         </button>
       </div>
-      <div className="manage-hint">
+      <div className="gf">
         附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多
         150 MiB，自动回收。
       </div>
       {error && (
-        <div className="gbanner">
+        <div className="set-banners">
           <Banner kind="err">{error}</Banner>
         </div>
       )}

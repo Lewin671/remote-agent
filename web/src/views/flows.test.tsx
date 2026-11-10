@@ -2341,7 +2341,7 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   expect(host.textContent).not.toContain("暂不支持读取额度");
-  expect(host.textContent).toContain("已用 28%");
+  expect(host.textContent).toContain("剩 72%");
   expect(host.textContent).toContain("暂未获取额度");
   expect(host.textContent).not.toContain("7 天");
   expect(host.textContent).toContain("最近收到");
@@ -2372,14 +2372,18 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
   ];
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-  const labels = [...host.querySelectorAll(".glabel")].map((el) => el.textContent);
+  const labels = [...host.querySelectorAll(".label")].map((el) => el.textContent);
   expect(labels).toContain("Antigravity · Google AI Pro · Gemini");
   expect(labels).toContain("第三方模型（Claude、GPT-OSS）");
   expect(host.textContent).toContain("Gemini · 5 小时");
   expect(host.textContent).toContain("Gemini 4 Argon · 7 天");
   expect(host.textContent).toContain("第三方模型 · 5 小时");
   expect(host.textContent).not.toContain("gemini-argon-wtu-weekly");
-  expect([...host.querySelectorAll(".manage-hint")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
+  expect([...host.querySelectorAll(".gf")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
+  // What is left of each window, the bar drawing what is left.
+  expect(host.textContent).toContain("剩 82%");
+  const bar = [...host.querySelectorAll<HTMLElement>(".qrow")].find((q) => q.textContent?.includes("Gemini · 5 小时"))!.querySelector<HTMLElement>(".bar i")!;
+  expect(bar.style.width).toBe("82%");
 });
 
 it("switches new-project defaults by CLI tab on multi-CLI machines and omits tabs on single-CLI machines", async () => {
@@ -2407,8 +2411,10 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   };
   const { MachinePage } = await import("./Settings");
   mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-  expect(host.querySelector(".quota-line .muted")?.textContent).toBe("· 5 小时");
-  expect(host.textContent).toContain("Antigravity已用 40% · 5 小时");
+  // The machine's page lists every window, each with what is left.
+  expect([...host.querySelectorAll(".quota-line")].find((r) => r.textContent?.startsWith("Antigravity"))?.querySelector(".v")?.textContent).toBe(
+    "Gemini · 5 小时 剩 82% · Gemini · 7 天 剩 88% · Gemini 4 Argon · 7 天 剩 65% · 第三方模型 · 5 小时 剩 60% · 第三方模型 · 7 天 剩 74%",
+  );
   await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
   expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
   await click(button("Antigravity", host.querySelector(".cli-tabs")!));
@@ -3466,11 +3472,11 @@ describe("devices in settings", () => {
     mount(<Settings remote={r} go={() => undefined} />);
     const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row")].filter((x) => x.querySelector(".ico"));
     const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
-    // MacBook has a quota: on a second line, with 在线 still at the end.
-    const mac = named("MacBook");
-    expect(mac.querySelector(".row-name small")!.textContent).toContain("Codex");
-    expect(mac.querySelector(".row-name")!.textContent).not.toContain("在线");
-    expect(mac.querySelector(".v")!.textContent).toBe("在线");
+    // A computer is a card: its name, then 在线 under it, then a quota line for each CLI.
+    const mac = [...host.querySelectorAll(".mc")].find((x) => x.querySelector(".mc-name b")?.textContent === "MacBook")!;
+    expect(mac.querySelector(".s")!.textContent).toBe("在线");
+    const codex = [...mac.querySelectorAll(".qt")].find((x) => x.querySelector("b")?.textContent === "Codex")!;
+    expect(codex.querySelector(".n")!.textContent).toMatch(/^剩 \d+%$|^已用尽$|^暂未获取额度$/);
     expect(named("Chrome · macOS").querySelector(".ico svg")).toBeTruthy();
     expect(named("Android · Pixel 9").querySelector(".ico svg")).toBeTruthy();
   });

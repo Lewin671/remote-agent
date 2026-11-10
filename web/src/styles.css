@@ -208,7 +208,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* The banners under the title, in a column with the cards' edges. */
 .home-banners { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 0; }
 .home-banners:empty { display: none; }
-.home-banners .gbanner { margin: 0; }
 /* Section titles: 进行中 at 15 / 600, the date groups a step lighter. */
 .sec { display: flex; align-items: baseline; gap: 8px; padding: 30px 24px 4px; font-size: 15px; font-weight: var(--w6); }
 .sec > span { font-weight: 400; color: var(--ink2); }
@@ -864,7 +863,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .grp { margin: 0 16px 12px; }
 .row { display: flex; align-items: center; gap: 12px; padding: 0 16px 0 18px; min-height: 50px; font-size: 17px; width: 100%; position: relative; text-align: left; }
 .row + .row::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; border-top: .5px solid var(--sep); }
-.row .v { margin-left: auto; color: var(--ink2); font-size: 15px; display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; overflow: hidden; }
+.row .v { margin-left: auto; color: var(--ink2); font-size: 17px; display: flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; overflow: hidden; }
 /* A leading icon (a device, 通知, 外观): ink2, no color block. */
 .row .ico { width: 24px; display: flex; align-items: center; justify-content: center; color: var(--ink2); font-size: 20px; flex: none; }
 /* A device's name, and a second line under it (a computer's quota). */
@@ -888,13 +887,42 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* A note under a group, from where the rows' text starts. */
 .gf { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; overflow-wrap: anywhere; }
 /* A note under a group, as where devices are added. */
-.manage-hint { font-size: 13px; line-height: 1.45; color: var(--ink2); padding: 0 28px; margin: -4px 0 16px; }
-.gwarn { margin: 0 16px 12px; background: var(--orange-soft); color: var(--orange-ink); border-radius: 18px; padding: 4px 6px 4px 14px; font-size: 13px; display: flex; gap: 10px; align-items: center; min-height: 44px; }
-.gwarn span { flex: 1; padding: 8px 0; }
-.gwarn button { margin-left: auto; color: var(--blue); white-space: nowrap; min-height: 36px; padding: 0 8px; }
-.gbanner { margin: 0 16px 12px; }
-.bar { height: 5px; border-radius: 3px; background: var(--fill2); overflow: hidden; margin-top: 6px; }
+/* A thin bar of what is left: ink on fill2, orange at 20% and below,
+   gray once the reading is old. */
+.bar { display: block; height: 5px; border-radius: 3px; background: var(--fill2); overflow: hidden; margin-top: 6px; }
 .bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+:is(.qt, .qrow):is(.warn, .full) .bar i { background: var(--orange); }
+:is(.qt, .qrow).stale .bar i { background: var(--faint); }
+:is(.qt, .qrow):is(.warn, .full) .n { color: var(--orange-ink); font-weight: var(--w6); }
+/* Settings: banners under the title, a row's chevron after its value, a
+   value that is a segmented control. */
+.set-banners { display: flex; flex-direction: column; gap: 8px; margin: 10px 16px 0; }
+.set-banners:empty { display: none; }
+.row > .chev { margin-left: -4px; }
+.row > .seg { margin-left: auto; }
+.row.help .link { margin-left: 8px; font-size: 13px; }
+/* A computer (design-system §6 电脑卡与额度): a gray card, 28 round; one
+   not online is only an outline. Its quota, a line for each CLI. */
+.mc { margin: 0 16px 10px; background: var(--gbg); border-radius: 28px; padding: 6px 18px 18px; }
+.mc.offl { background: none; box-shadow: inset 0 0 0 .5px var(--sep); }
+.mc-head { display: block; width: 100%; padding-top: 12px; text-align: left; }
+.mc-name { display: flex; align-items: center; gap: 8px; }
+.mc-name b { flex: 1; min-width: 0; font-size: 20px; font-weight: var(--w7); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc .s { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink2); margin-top: 3px; }
+.mc .s .mark { width: 8px; height: 8px; }
+.qt { display: block; width: 100%; margin-top: 14px; text-align: left; }
+.qt .l, .qrow .l { display: flex; align-items: baseline; gap: 8px; font-size: 15px; min-width: 0; }
+.qt .l b, .qrow .l b { font-weight: var(--w6); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.qt .l span { color: var(--ink2); font-size: 13px; flex: none; }
+.qt .l .n { color: var(--ink); font-size: 15px; }
+.addrow { margin: 0 16px; width: calc(100% - 32px); height: 52px; border-radius: 26px; background: var(--gbg); display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--blue); font-size: 17px; font-weight: var(--w6); }
+.addrow > .ic { font-size: 20px; }
+/* 账户额度: a window a row, what is left, a bar of it, when it resets. */
+.qrow { padding: 12px 16px 12px 18px; position: relative; }
+.qrow + .qrow::before { content: ""; position: absolute; top: 0; left: 18px; right: 0; border-top: .5px solid var(--sep); }
+.qrow > b { font-size: 17px; font-weight: var(--w6); }
+.qrow .l .n { font-size: 15px; color: var(--ink2); flex: none; }
+.qrow .rs { font-size: 13px; color: var(--ink2); margin-top: 6px; overflow-wrap: anywhere; }
 
 /* ---------- pairing ---------- */
 .pairing { background: var(--paper); }
@@ -1027,7 +1055,7 @@ details[open] > summary .exp { transform: rotate(180deg); }
 
 /* Project management. */
 .pin { font-size: 12px; color: var(--blue); margin-left: 5px; font-weight: var(--w5); }
-.label .link { font-size: 13px; min-height: 32px; margin: -6px 0; }
+.label .link { font-size: 13px; min-height: 32px; margin: -6px 0; display: inline-flex; align-items: center; }
 .row.client { padding-top: 8px; padding-bottom: 8px; text-align: left; }
 .row.client .client-info { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; }
 .row.client small { font-size: 13px; color: var(--ink2); margin-top: 2px; }
@@ -1043,8 +1071,6 @@ details[open] > summary .exp { transform: rotate(180deg); }
 .body > .pad > .banner { margin: 4px 0; }
 
 /* Settings and devices. */
-.glabel.with-link { display: flex; justify-content: space-between; align-items: center; padding-right: 16px; }
-.glabel .link { font-size: 13px; font-weight: 400; min-height: 32px; }
 .row:disabled { opacity: .5; }
 .row.help .link { margin-left: 8px; font-size: 13px; }
 input.field { margin: 0; }
@@ -1160,18 +1186,15 @@ input.field { margin: 0; }
 .pair-wait-actions { padding: 24px 16px 16px; }
 .pair-wait-actions .btn { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 
-.row.machine-summary { padding-top: 10px; padding-bottom: 10px; }
-.row.quota.warn .v { color: var(--orange-ink); } .row.quota.warn .bar i { background: var(--orange); }
-.row.quota.full .v { color: var(--red); } .row.quota.full .bar i { background: var(--red); }
-.row.quota.stale .bar i { background: var(--faint); }
-.row.col .hint { margin-top: 4px; }
 
 /* v8: project settings, pending inputs, compact tools and large text. */
 .sr { flex-wrap: wrap; padding-top: 8px; padding-bottom: 8px; }
 .sr .lbl { white-space: nowrap; width: auto; min-width: 34px; }
 .sr .v { flex: 1; justify-content: flex-end; white-space: normal; overflow-wrap: anywhere; text-align: right; }
 @media (max-width: 360px) { .sr .v { flex-basis: 100%; } }
-.row.quota-line.warn .v { color: var(--orange-ink); } .row.quota-line.full .v { color: var(--red); }
+.row.quota-line :is(.v, .nw) { white-space: normal; }
+.row.quota-line .v { flex: 1; justify-content: flex-end; text-align: right; overflow-wrap: anywhere; }
+.row.quota-line:is(.warn, .full) .v { color: var(--orange-ink); }
 /* One setting's values: the segmented control, at the row's end. */
 .pick { margin-left: auto; display: flex; }
 .pick button { min-width: 56px; }

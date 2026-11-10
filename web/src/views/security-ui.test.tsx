@@ -113,10 +113,10 @@ it.each(["authority", "member", "machine"])(
         "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。",
       );
     if (role === "authority") {
+      // After the computers' cards: a line of blue words with ＋.
       const add = button("添加设备");
-      const group = add.closest(".grp")!;
-      expect(group.lastElementChild).toBe(add);
-      expect(add.classList.contains("add")).toBe(true);
+      expect(add.closest(".grp")).toBeNull();
+      expect(add.classList.contains("addrow")).toBe(true);
       expect(add.querySelector("svg")).toBeTruthy();
       await click("添加设备");
       expect(go).toHaveBeenCalledWith("settings/add-device");
@@ -139,7 +139,7 @@ it.each(["authority", "member", "machine"])(
     const r = demo(`role=${role}&archive=1`);
     await mount(<DeviceActions remote={r} id="mini" machine go={() => {}} />);
     expect(!!button("重新加入并接续会话")).toBe(role === "authority");
-    expect(!!button("删除这台电脑的记录")).toBe(role === "authority");
+    expect(!!button("删除这台电脑的记录…")).toBe(role === "authority");
     await act(async () =>
       root.render(<SecurityPage remote={r} onBack={() => {}} />),
     );

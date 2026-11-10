@@ -14,23 +14,28 @@ export function authorityName(remote: Remote) {
     remote.authorityDeviceId,
   );
 }
+/** 添加设备 on the current authority: a line of blue words with ＋ after
+ * the computers' cards, or the last row of a list of them (row); on any
+ * other device, where to do it instead. */
 export function ManagementEntry({
   remote,
   go,
+  row,
 }: {
   remote: Remote;
   go: (r: string) => void;
+  row?: boolean;
 }) {
   return remote.isAuthority ? (
-    <button className="row add" onClick={() => go("settings/add-device")}>
+    <button className={row ? "row add" : "addrow"} onClick={() => go("settings/add-device")}>
       <Plus />
       添加设备
     </button>
   ) : (
-    <div className="manage-hint">
+    <p className="gf">
       要添加电脑或客户端，在管理端（{authorityName(remote)}）上打开「设置 ›
       添加设备」。
-    </div>
+    </p>
   );
 }
 export function DeviceActions({
@@ -52,13 +57,13 @@ export function DeviceActions({
   const active = remote.devices.has(id);
   if (!remote.isAuthority)
     return (
-      <div className="manage-hint">
+      <p className="gf">
         设备管理请在管理端（{authorityName(remote)}）上操作。
-      </div>
+      </p>
     );
   if (id === remote.authorityDeviceId)
     return (
-      <div className="manage-hint">管理端不能直接移除，请先交接管理权。</div>
+      <p className="gf">管理端不能直接移除，请先交接管理权。</p>
     );
   return (
     <>
@@ -86,13 +91,13 @@ export function DeviceActions({
                 disabled={busy}
                 onClick={() => setConfirm("delete")}
               >
-                删除这台电脑的记录
+                删除这台电脑的记录…
               </button>
             </>
           )
         )}
       </div>
-      {error && <Banner kind="err">{error}</Banner>}
+      {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       {confirm && (
         <Alert
           title={confirm === "remove" ? "移除设备？" : "删除这台电脑的记录"}
