@@ -406,6 +406,7 @@ private fun SessionTopBar(
                             }
                         )
                     }
+                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
                     if (running && canRename)
                         add(
                             SheetAction("中断本轮", danger = true, enabled = !forking) {
@@ -422,7 +423,6 @@ private fun SessionTopBar(
                                 })
                             }
                         )
-                    add(SheetAction("定时发送…", enabled = canRename && io.github.lewin671.remoteagent.core.scheduleSupported(state.machines[s.machineId])) { nav.newTask(s.id) })
                 },
                 buildList {
                     if (status != Status.EXITED && canRename)

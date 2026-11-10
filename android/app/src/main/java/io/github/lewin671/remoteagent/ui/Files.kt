@@ -6,6 +6,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -44,8 +47,12 @@ internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId
 @Composable
 internal fun FileChip(name: String, size: Long, state: PendingImage.State? = null, onRetry: (() -> Unit)? = null, onRemove: (() -> Unit)? = null) {
     val p = pal
+    // One line is a capsule; once a reason or a large font makes it taller, a card's corners (design-system §5).
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    var tall by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 52.dp).clip(Radii.Pill).background(p.fill)
+        Modifier.fillMaxWidth().heightIn(min = 52.dp).onSizeChanged { tall = with(density) { it.height.toDp() } > 60.dp }
+            .clip(if (tall) Radii.R20 else Radii.Pill).background(p.fill)
             .padding(start = 14.dp, end = if (onRemove != null || onRetry != null) 6.dp else 14.dp, top = 6.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
