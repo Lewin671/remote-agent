@@ -76,10 +76,20 @@ func (s *securitySession) now() uint64 {
 // seal is local: the signed head and the content grant are already here, so
 // there is no authority round trip.
 func (s *securitySession) seal(h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+	return s.sealWith(s.endpoint.Prepare, h, purpose, seed, plain)
+}
+
+// sealRaw seals without compression, for payloads whose length must not
+// depend on their content.
+func (s *securitySession) sealRaw(h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
+	return s.sealWith(s.endpoint.PrepareUncompressed, h, purpose, seed, plain)
+}
+
+func (s *securitySession) sealWith(prepare func(deviceauth.Header, []byte, []byte) (deviceauth.Ciphertext, error), h *pb.Header, purpose deviceauth.Purpose, seed, plain []byte) (*pb.Envelope, error) {
 	if err := s.endpoint.CheckLease(s.now()); err != nil {
 		return nil, err
 	}
-	wire, err := s.endpoint.Prepare(securityHeader(h, purpose), seed, plain)
+	wire, err := prepare(securityHeader(h, purpose), seed, plain)
 	if err != nil {
 		return nil, err
 	}

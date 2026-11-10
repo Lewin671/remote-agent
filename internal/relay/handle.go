@@ -39,6 +39,9 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("invalid command scope")
 		return
 	}
+	// A shared file's block is sealed as is: compression would let the
+	// ciphertext's length show how the file ends and how it compresses.
+	raw := false
 	// An unknown state is fetched outside the acceptance gate and the gate is
 	// retried once; the endpoint re-verifies the exact state inside it.
 	result, err := c.security.accept(ctx, wire, nil, uint64(time.Now().UnixMilli()), func(h deviceauth.Header, plain []byte) ([]byte, error) {
@@ -61,6 +64,7 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 				origin.ObservedEventSeq = k.AnswerPlan.ObservedEventSeq
 				origin.ObservedScreenHash = k.AnswerPlan.ObservedScreenHash
 			}
+			_, raw = cmd.Kind.(*pb.Command_GetSharedFileChunk)
 			callCtx := agent.WithOrigin(ctx, origin)
 			cancel := func() {}
 			callCtx, cancel = context.WithDeadline(callCtx, time.UnixMilli(int64(h.Deadline)))
@@ -73,7 +77,11 @@ func (c *conn) handleCall(ctx context.Context, call *pb.ForwardCall) {
 		fail("the command was refused or its outcome is unknown; it was not repeated")
 		return
 	}
-	env, err := c.security.seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
+	seal := c.security.seal
+	if raw {
+		seal = c.security.sealRaw
+	}
+	env, err := seal(&pb.Header{Kind: pb.PayloadKind_PAYLOAD_KIND_COMMAND_RESULT, MachineId: c.acct.DeviceID, SessionId: header.Session, RequestId: header.Request, Sender: c.acct.DeviceID}, deviceauth.Result, nil, result)
 	if err != nil {
 		fail("cannot authorize the result")
 		return
@@ -252,6 +260,12 @@ func (c *conn) execute(ctx context.Context, sessionID string, cmd *pb.Command) *
 			return nil
 		})
 
+	case *pb.Command_GetSharedFileChunk:
+		err = on(k.GetSharedFileChunk.SessionId, func() error {
+			return call(ctx, l.GetSharedFileChunk, k.GetSharedFileChunk, func(m *pb.GetSharedFileChunkResponse) {
+				out.Kind = &pb.CommandResult_GetSharedFileChunk{GetSharedFileChunk: m}
+			})
+		})
 	case *pb.Command_Schedule:
 		err = machine(func() error {
 			return call(ctx, l.Schedule, k.Schedule, func(m *pb.ScheduleResponse) {

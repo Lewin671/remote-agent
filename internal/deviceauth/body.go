@@ -202,7 +202,7 @@ func readOnlyCommand(h Header, plain []byte) bool {
 		return false
 	}
 	switch k := cmd.Kind.(type) {
-	case *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus:
+	case *pb.Command_GetSettings, *pb.Command_ListModels, *pb.Command_ListDirectories, *pb.Command_GetLiveSnapshot, *pb.Command_GetImageUploadStatus, *pb.Command_GetSharedFileChunk:
 		return true
 	case *pb.Command_Schedule:
 		return k.Schedule.GetOperation() == "list" || k.Schedule.GetOperation() == "get"
