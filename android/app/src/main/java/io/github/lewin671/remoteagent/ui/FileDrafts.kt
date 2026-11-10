@@ -26,7 +26,8 @@ internal fun documentEntry(context: Context, uri: Uri): PendingImage {
     return PendingImage(newRequestId(), uri.toString(), name, size, retainSource = false)
 }
 
-internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: Remote, machine: String?) {
+/** Files from 文件, or ([videos]) videos from the library, which are turned away as they are picked when over the size limit. */
+internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: Remote, machine: String?, videos: Boolean = false) {
     if (restoring || readingFiles || uris.isEmpty()) return
     bindRemote(remote)
     readingFiles = true
@@ -39,6 +40,7 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
                     check(filesSupported(target)) { "这台电脑不支持发送文件，请更新电脑上的 remote-agent" }
                     if (documents.size >= maxFiles(target)) { notice = "一条消息最多 ${maxFiles(target)} 个文件，多选的文件没有加入"; break }
                     val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
+                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = it; continue }
                     if (AccountMemory.token !== accountToken) { PendingUris.release(entry); return@launch }
                     PendingUris.retain(entry)
                     val kept = runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess

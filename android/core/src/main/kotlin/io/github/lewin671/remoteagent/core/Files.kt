@@ -19,6 +19,36 @@ fun fileLimitError(size: Long, count: Int, max: Int, maxBytes: Long): String? = 
     size > maxBytes -> "文件过大，单个文件最多 ${fileSize(maxBytes)}"
     else -> null
 }
+/**
+ * Videos picked from the library go as files, beside the images
+ * (session-files 「从相册选视频」). A picked item is one by its type, or,
+ * when that is not known, by its name.
+ */
+fun isVideo(mime: String?, name: String): Boolean =
+    if (mime != null) mime.startsWith("video/") else name.substringAfterLast('.', "").lowercase() in VIDEO_EXTENSIONS
+
+private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "mov", "3gp", "3g2", "webm", "mkv", "avi", "mpg", "mpeg", "ts", "wmv", "flv")
+
+/** Why a video picked from the library is turned away as it is picked: it is over the size limit. Null when it is taken. */
+fun pickedVideoError(name: String, size: Long, maxBytes: Long): String? =
+    if (size > maxBytes) "「$name」超过单个文件 ${maxBytes / 1024 / 1024} MB 的上限" else null
+
+/**
+ * How many more items the library may give: images while they fit, and,
+ * when the computer takes files ([videos]), videos while files fit.
+ */
+fun libraryRoom(images: Int, maxImages: Int, files: Int, maxFiles: Int, videos: Boolean): Int =
+    (maxImages - images).coerceAtLeast(0) + if (videos) (maxFiles - files).coerceAtLeast(0) else 0
+
+/** A video's length in the corner of its thumbnail: 0:42, 12:05, 1:02:03. */
+fun videoLength(ms: Long): String {
+    val total = (ms.coerceAtLeast(0) + 500) / 1000
+    val h = total / 3600
+    val m = total / 60 % 60
+    val sec = total % 60
+    return if (h > 0) String.format(java.util.Locale.ROOT, "%d:%02d:%02d", h, m, sec) else String.format(java.util.Locale.ROOT, "%d:%02d", m, sec)
+}
+
 fun fileSize(bytes: Long): String = when {
     bytes < 1024 -> "$bytes B"
     bytes < 1024 * 1024 -> java.lang.String.format(java.util.Locale.ROOT, "%.1f KB", bytes / 1024.0)

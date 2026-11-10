@@ -1084,7 +1084,7 @@ internal fun Composer(
     val blocked = uploadBlocked(machine, online, machineLabel(state, s.machineId))
     // Images picked before the machine went away go there again once it is back.
     RefreshDraftUploads(images, remote, s.machineId, blocked)
-    val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg)
+    val pick = rememberImagePicker(images, remote, s.machineId, blocked, maxImg, videos = io.github.lewin671.remoteagent.core.filesSupported(machine))
     fun send(mode: SendMode = SendMode.SEND_MODE_STEER) {
         val msg = text.trim()
         if (images.restoring || images.readingFiles || fileDraftBlocked(images, machine) != null || (msg.isEmpty() && images.images.isEmpty())) return

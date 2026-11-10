@@ -44,7 +44,8 @@ class FilesLayoutTest {
         remove.performClick()
         ui.runOnIdle { assertEquals(1, removals) }
         ui.onNodeWithContentDescription("添加附件").performClick()
-        ui.onNodeWithText("图片", useUnmergedTree = true).assertIsDisplayed()
+        ui.onNodeWithText("照片和视频", useUnmergedTree = true).assertIsDisplayed()
+        ui.onNodeWithText(FILES_AS_THEY_ARE, useUnmergedTree = true).assertIsDisplayed()
         ui.onNodeWithText("文件", useUnmergedTree = true).performClick()
         ui.runOnIdle { assertEquals(1, filePicks); assertEquals(0, picturePicks) }
     }

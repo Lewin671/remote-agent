@@ -47,17 +47,21 @@ import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 
-/** Places the send menu above the composer, aligned with its send button. */
-private class RightAboveProvider(private val gap: Int) : PopupPositionProvider {
-    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset =
-        IntOffset((anchorBounds.right - popupContentSize.width).coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
-            (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
+/** Places a menu above the message box, at its left ([right] false: the ＋ menu) or its right (the send menu). */
+private class AboveProvider(private val gap: Int, private val right: Boolean) : PopupPositionProvider {
+    override fun calculatePosition(anchorBounds: IntRect, windowSize: IntSize, layoutDirection: LayoutDirection, popupContentSize: IntSize): IntOffset {
+        val x = if (right) anchorBounds.right - popupContentSize.width else anchorBounds.left
+        return IntOffset(x.coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)), (anchorBounds.top - popupContentSize.height - gap).coerceAtLeast(0))
+    }
 }
 
 /**
- * The shared message box: a plus to add images, one to six lines of text, and the
- * send position. In a running session that position becomes interrupt when
- * empty; long-press send offers queue when supported.
+ * The shared message box (design-system §6 输入框): a glass capsule with ＋
+ * at the left, one to six lines of 17 text, and one round ink button at the
+ * right. ＋ opens the library at once, or, when the computer takes files
+ * ([onFile]), a small menu above it: 照片和视频, 文件. In a running session
+ * the button is ■ interrupt while the box is empty; long-press send offers
+ * queue when supported.
  */
 @Composable
 fun ComposeBox(
@@ -83,64 +87,99 @@ fun ComposeBox(
     var attachMenu by remember { mutableStateOf(false) }
     var sendMenu by remember { mutableStateOf(false) }
     val gap = with(androidx.compose.ui.platform.LocalDensity.current) { 8.dp.roundToPx() }
-    Box(modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = 4.dp, bottom = 12.dp)) {
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(p.paper).border(1.dp, p.sep, RoundedCornerShape(24.dp)).padding(3.dp)) {
-            top?.invoke()
-            Row(verticalAlignment = Alignment.Bottom) {
-                Box(
-                    Modifier.size(44.dp).alpha(if (plusEnabled) 1f else .4f)
-                        .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = if (onFile != null) "添加附件" else "添加图片") { if (onFile != null) attachMenu = true else onPlus() }
-                        .semantics { contentDescription = if (onFile != null) "添加附件" else "添加图片" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Ic(Lucide.Plus, 22.dp, p.ink2)
-                    androidx.compose.material3.DropdownMenu(expanded = attachMenu && onFile != null, onDismissRequest = { attachMenu = false }) {
-                        androidx.compose.material3.DropdownMenuItem(text = { Text("图片") }, onClick = { attachMenu = false; onPlus() })
-                        androidx.compose.material3.DropdownMenuItem(text = { Text("文件") }, onClick = { attachMenu = false; onFile?.invoke() })
+    val shape = RoundedCornerShape(27.dp)
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
+            Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).padding(7.dp)) {
+                top?.invoke()
+                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val label = if (onFile != null) "添加附件" else "添加图片"
+                    Box(
+                        Modifier.size(40.dp).disabledAlpha(plusEnabled).clip(CircleShape).background(if (attachMenu) p.fill2 else p.fill)
+                            .clickable(enabled = plusEnabled, role = Role.Button, onClickLabel = label) { if (onFile != null) attachMenu = true else onPlus() }
+                            .semantics { contentDescription = label },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Ic(Lucide.Plus, 22.dp, p.ink)
                     }
-                }
-                BasicTextField(
-                    text, onText,
-                    Modifier.weight(1f).heightIn(min = 44.dp).padding(horizontal = 4.dp, vertical = 10.dp)
-                        .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                        .onFocusChanged { onFocus(it.isFocused) },
-                    textStyle = T.s15.copy(color = p.ink),
-                    cursorBrush = SolidColor(p.blue),
-                    maxLines = 6,
-                    decorationBox = { inner ->
-                        Box {
-                            if (text.isEmpty()) Text(placeholder, style = T.s15, color = p.ink2, maxLines = 1)
-                            inner()
-                        }
-                    },
-                )
-                val interrupt = !hasDraft && onInterrupt != null
-                Box(
-                    Modifier.size(44.dp).combinedClickable(enabled = if (interrupt) canInterrupt else canSend, role = Role.Button,
-                        onClickLabel = if (interrupt) "中断本轮" else sendLabel,
-                        onClick = { if (interrupt) onInterrupt?.invoke() else onSend() },
-                        onLongClick = if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
-                        .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Box(Modifier.size(32.dp).alpha(if (if (interrupt) canInterrupt else canSend) 1f else .4f).clip(CircleShape).background(if (interrupt) p.fill2 else p.btn), contentAlignment = Alignment.Center) {
-                        if (interrupt) Ic(Lucide.Square, 14.dp, p.red) else Ic(Lucide.ArrowUp, 20.dp, p.btnFg)
+                    BasicTextField(
+                        text, onText,
+                        Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
+                            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                            .onFocusChanged { onFocus(it.isFocused) },
+                        textStyle = T.s17.copy(color = p.ink),
+                        cursorBrush = SolidColor(p.blue),
+                        maxLines = 6,
+                        decorationBox = { inner ->
+                            Box {
+                                if (text.isEmpty()) Text(placeholder, style = T.s17, color = p.ink3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                inner()
+                            }
+                        },
+                    )
+                    val interrupt = !hasDraft && onInterrupt != null
+                    val on = if (interrupt) canInterrupt else canSend
+                    Box(
+                        Modifier.size(40.dp).clip(CircleShape)
+                            .background(if (interrupt) p.btn else if (on) p.btn else p.fill2)
+                            .disabledAlpha(!interrupt || on)
+                            .combinedClickable(enabled = on, role = Role.Button,
+                                onClickLabel = if (interrupt) "中断本轮" else sendLabel,
+                                onClick = { if (interrupt) onInterrupt?.invoke() else onSend() },
+                                onLongClick = if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
+                            .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (interrupt) Ic(Lucide.Square, 14.dp, p.btnFg) else Ic(Lucide.ArrowUp, 20.dp, if (on) p.btnFg else p.ink3)
                     }
                 }
             }
-        }
-        if (sendMenu) Popup(popupPositionProvider = RightAboveProvider(gap), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
-            Column(Modifier.width(IntrinsicSize.Max).widthIn(min = 190.dp, max = 250.dp).shadow(8.dp, Radii.R14).clip(Radii.R14).background(p.paper).border(1.dp, p.sep, Radii.R14).padding(8.dp)) {
-                for ((label, detail, action) in listOf(
-                    Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
-                    Triple("这一轮结束后再发", "先排队，结束后按顺序发出", { onQueue?.invoke() }),
-                )) {
-                    Column(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable { sendMenu = false; action() }, verticalArrangement = Arrangement.Center) {
-                        Text(label, style = T.s13b, color = p.ink)
-                        Text(detail, style = T.s12, color = p.ink2)
+            if (attachMenu && onFile != null) Popup(popupPositionProvider = AboveProvider(gap, right = false), onDismissRequest = { attachMenu = false }, properties = PopupProperties(focusable = true)) {
+                AttachMenu(
+                    onMedia = { attachMenu = false; onPlus() },
+                    onFile = { attachMenu = false; onFile() },
+                )
+            }
+            if (sendMenu) Popup(popupPositionProvider = AboveProvider(gap, right = true), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
+                Column(Modifier.padding(12.dp).width(IntrinsicSize.Max).widthIn(min = 200.dp, max = 260.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
+                    listOf(
+                        Triple("现在插入这一轮", "点 ↑ 就是这个", onSend),
+                        Triple("这一轮结束后再发", "先排队，结束后按顺序发出", { onQueue?.invoke() }),
+                    ).forEachIndexed { i, (label, detail, action) ->
+                        Column(
+                            Modifier.fillMaxWidth().heightIn(min = 52.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
+                                .clickable { sendMenu = false; action() }.padding(horizontal = 12.dp, vertical = 6.dp),
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(label, style = T.s17, color = p.ink)
+                            Text(detail, style = T.s13, color = p.ink2)
+                        }
                     }
                 }
             }
         }
     }
 }
+
+/** The ＋ menu when the computer takes files: 照片和视频, 文件, and that files go as they are. */
+@Composable
+private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
+    val p = pal
+    Column(Modifier.padding(12.dp).width(248.dp).floating(p, Radii.R24).glass(p, Radii.R24).padding(6.dp)) {
+        listOf(Triple(Lucide.Image, "照片和视频", onMedia), Triple(Lucide.File, "文件", onFile)).forEachIndexed { i, (icon, label, action) ->
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
+                    .clickable(role = Role.Button, onClick = action).padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Ic(icon, 22.dp, p.ink2)
+                Text(label, style = T.s17, color = p.ink)
+            }
+        }
+        Text(FILES_AS_THEY_ARE, style = T.s13, color = p.ink2, modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 8.dp))
+    }
+}
+
+/** Said wherever files are offered or waiting to go. */
+const val FILES_AS_THEY_ARE = "文件原样发送，包含其中的元数据。"

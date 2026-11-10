@@ -619,7 +619,7 @@ fun NewSessionBox(state: RemoteState, initial: NewConfig?, name: String, focus: 
     // Images go to the machine the session will start on; a new machine gets them again.
     val blocked = uploadBlocked(machine?.let { state.machines[it] }, online, machine?.let { machineLabel(state, it) }.orEmpty())
     RefreshDraftUploads(images, remote, machine, blocked)
-    val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }))
+    val pick = rememberImagePicker(images, remote, machine, blocked, maxImages(machine?.let { state.machines[it] }), videos = io.github.lewin671.remoteagent.core.filesSupported(machine?.let { state.machines[it] }))
     val act = rememberAction()
     // Whether a session can be started with the draft as it is: ↑ is drawn by it, and 重试 after a
     // failure is held to it too.

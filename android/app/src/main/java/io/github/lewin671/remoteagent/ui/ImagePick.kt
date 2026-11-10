@@ -43,30 +43,50 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.Remote
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.produceState
+import androidx.compose.foundation.layout.BoxScope
 
 /**
- * 添加图片 in the plus menu: the system's photo picker, asked for as many as
- * still fit. The picker's fallback may not honour the count, so the draft
- * takes only what fits and says how many were left out. When the machine
- * cannot take images it says why instead.
+ * The library (照片和视频): the system's photo picker, asked for as many as
+ * still fit. When the computer takes files ([videos]) it offers videos too,
+ * which go as files (session-files 「从相册选视频」); otherwise images only.
+ * The picker's fallback may not honour the count, so the draft takes only
+ * what fits and says how many were left out. When the machine cannot take
+ * images it says why instead, unless videos can still go.
  */
 @Composable
-fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int): () -> Unit {
+fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int, videos: Boolean = false): () -> Unit {
     val context = LocalContext.current
-    val room = (max - draft.pictures.size).coerceAtLeast(0)
+    val machine = remote.state.value.machines[machineId]
+    val images = blocked == null
+    val room = io.github.lewin671.remoteagent.core.libraryRoom(if (images) draft.pictures.size else max, max, draft.documents.size, io.github.lewin671.remoteagent.core.maxFiles(machine), videos)
+    val take = { uris: List<android.net.Uri> ->
+        val (moving, still) = uris.partition { io.github.lewin671.remoteagent.core.isVideo(context.contentResolver.getType(it), it.lastPathSegment.orEmpty()) }
+        if (still.isNotEmpty()) draft.add(context, still, max, remote) { machineId }
+        if (moving.isNotEmpty()) draft.addDocuments(context, moving, remote, machineId, videos = true)
+    }
     val many = rememberLauncherForActivityResult(ActivityResultContracts.PickMultipleVisualMedia(maxOf(2, room))) { uris ->
-        if (uris.isNotEmpty()) draft.add(context, uris, max, remote) { machineId }
+        if (uris.isNotEmpty()) take(uris)
     }
     val one = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) draft.add(context, listOf(uri), max, remote) { machineId }
+        if (uri != null) take(listOf(uri))
     }
     return {
         when {
             draft.restoring -> Unit
-            blocked != null -> ImageNotices.show(draft.key, blocked)
-            room == 0 -> ImageNotices.show(draft.key, "一条消息最多 $max 张")
+            blocked != null && !videos -> ImageNotices.show(draft.key, blocked)
+            room == 0 -> ImageNotices.show(draft.key, if (images) "一条消息最多 $max 张" else "一条消息最多 ${io.github.lewin671.remoteagent.core.maxFiles(machine)} 个文件")
             else -> {
-                val req = PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                val type = when {
+                    !images -> ActivityResultContracts.PickVisualMedia.VideoOnly
+                    videos -> ActivityResultContracts.PickVisualMedia.ImageAndVideo
+                    else -> ActivityResultContracts.PickVisualMedia.ImageOnly
+                }
+                val req = PickVisualMediaRequest(type)
                 if (room == 1) one.launch(req) else many.launch(req)
             }
         }
@@ -82,9 +102,11 @@ object ImageNotices {
 }
 
 /**
- * The picked images above the text: each removable, a spinner or progress
- * while it goes to the computer, a retry when it failed; 原图 for the whole
- * message and the count. Sending waits until all are on the computer.
+ * The picked images and videos above the text, in one row: each removable,
+ * a spinner or progress while it goes to the computer, a retry when it
+ * failed; a video has its length in a corner. 原图 for the whole message
+ * and the count when there are images. Sending waits until all are on the
+ * computer.
  */
 @Composable
 fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) {
@@ -98,56 +120,111 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
     }
     if (draft.restoring) {
-        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s12, color = p.ink2)
+        Text("正在恢复待发图片…", Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.ink2)
         return
     }
     FileStrip(draft, remote, machineId)
-    if (draft.pictures.isEmpty()) {
+    val thumbs = draft.images.filter { !it.isFile || isVideoDraft(it) }
+    if (thumbs.isEmpty()) {
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() }
-        if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s12, color = p.orangeInk)
+        if (line != null) Text(line, Modifier.padding(horizontal = 12.dp, vertical = 4.dp), style = T.s13, color = p.orangeInk)
         return
     }
-    Column(Modifier.fillMaxWidth().padding(start = 2.dp, end = 2.dp, top = 2.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (img in draft.pictures) {
-                Box(Modifier.size(56.dp).clip(Radii.R14).background(p.gbg).border(1.dp, Color(0x1A000000), Radii.R14)) {
-                    img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (img in thumbs) {
+                Box(Modifier.size(64.dp).clip(Radii.R14).background(p.fill)) {
+                    if (img.isFile) VideoFrame(img)
+                    else img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                     when (val st = img.state) {
                         PendingImage.State.Processing -> CircularProgressIndicator(Modifier.align(Alignment.Center).size(24.dp), color = Color.White, strokeWidth = 3.dp, trackColor = Color(0x59FFFFFF))
                         is PendingImage.State.Uploading -> {
                             CircularProgressIndicator(Modifier.align(Alignment.Center).size(24.dp), color = Color.White, strokeWidth = 3.dp, trackColor = Color(0x59FFFFFF))
-                            if (draft.original) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Color(0x59000000))) {
-                                Box(Modifier.fillMaxWidth(st.progress).height(4.dp).background(p.blue))
+                            if (draft.original || img.isFile) Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(4.dp).background(Color(0x59000000))) {
+                                Box(Modifier.fillMaxWidth(st.progress).height(4.dp).background(Color.White))
                             }
                         }
                         is PendingImage.State.Failed -> Box(
-                            Modifier.fillMaxSize().background(Color(0x99000000)).clickable { draft.retry(context, img, remote) { machineId } },
+                            Modifier.fillMaxSize().background(Color(0x99000000)).clickable {
+                                if (img.isFile) machineId?.let { draft.upload(remote, img, it, forceFresh = true) }
+                                else draft.retry(context, img, remote) { machineId }
+                            },
                             contentAlignment = Alignment.BottomCenter,
-                        ) { Text("重试", color = Color.White, style = T.s10, modifier = Modifier.padding(bottom = 4.dp)) }
+                        ) { Text("重试", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp)) }
                         PendingImage.State.Ready -> {}
                     }
-                    // 18 dp to see, 44 dp to tap.
+                    // 18 dp to see, 30 to tap within the thumbnail.
                     Box(Modifier.align(Alignment.TopEnd).size(30.dp).clickable { draft.remove(img) }, contentAlignment = Alignment.TopEnd) {
-                        Box(Modifier.padding(3.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = "移除图片")
+                        Box(Modifier.padding(4.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片")
                         }
                     }
                 }
             }
         }
-        Row(Modifier.fillMaxWidth().padding(horizontal = 2.dp).padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (draft.pictures.isNotEmpty()) Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.heightIn(min = 44.dp).clickable { draft.setOriginal(context, !draft.original, remote) { machineId } }, verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(14.dp).clip(CircleShape).border(if (draft.original) 4.dp else 1.5.dp, if (draft.original) p.blue else p.ink2, CircleShape))
-                Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.s12, color = p.ink)
+                Box(Modifier.size(16.dp).clip(CircleShape).border(if (draft.original) 5.dp else 1.5.dp, if (draft.original) p.blue else p.ink3, CircleShape))
+                Text(" 原图" + if (draft.original) " · 共 ${"%.1f".format(draft.totalBytes / 1024.0 / 1024.0)} MB" else "", style = T.s13, color = p.ink)
             }
             Spacer(Modifier.weight(1f))
-            Text("${draft.pictures.size} / $max", style = T.s12, color = p.ink2)
+            Text("${draft.pictures.size} / $max", style = T.s13, color = p.ink2)
         }
-        val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
+        val failed = thumbs.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val line = notice ?: draft.notice.takeIf { it.isNotEmpty() } ?: failed?.let { "有图没能传到电脑：$it，点按重试或移除" }
-        if (line != null) Text(line, style = T.s12, color = p.orangeInk, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
-        if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s12, color = p.ink2, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+        if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+    }
+}
+
+/** Whether a draft's file is a video from the library, which sits among the images. */
+internal fun isVideoDraft(img: PendingImage): Boolean =
+    img.isFile && io.github.lewin671.remoteagent.core.isVideo(null, img.fileName!!)
+
+/** A video's first frame with its length in a corner; when neither can be read, the file icon and its name. */
+@Composable
+private fun BoxScope.VideoFrame(img: PendingImage) {
+    val context = LocalContext.current
+    val frame by produceState(VideoFrames.cache[img.id], img.id, img.uri) {
+        if (value == null && img.uri != null) value = withContext(Dispatchers.IO) { VideoFrames.read(context, img) }
+    }
+    val f = frame
+    if (f?.image != null) Image(f.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+    else Column(Modifier.fillMaxSize().padding(6.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Ic(Lucide.File, 18.dp, pal.ink2)
+        Text(img.fileName.orEmpty(), style = T.s10, color = pal.ink2, maxLines = 2, overflow = TextOverflow.MiddleEllipsis)
+    }
+    if (f?.lengthMs != null) Text(
+        io.github.lewin671.remoteagent.core.videoLength(f.lengthMs), style = T.s10.copy(fontWeight = T.s12b.fontWeight), color = Color.White,
+        modifier = Modifier.align(Alignment.BottomStart).padding(4.dp).clip(Radii.R6).background(Color(0x8C000000)).padding(horizontal = 4.dp, vertical = 1.dp),
+    )
+}
+
+/** First frames and lengths of picked videos, read once each for this run. */
+private object VideoFrames {
+    class Frame(val image: androidx.compose.ui.graphics.ImageBitmap?, val lengthMs: Long?)
+
+    val cache = java.util.concurrent.ConcurrentHashMap<String, Frame>()
+
+    fun read(context: android.content.Context, img: PendingImage): Frame {
+        cache[img.id]?.let { return it }
+        val r = android.media.MediaMetadataRetriever()
+        val frame = try {
+            r.setDataSource(context, android.net.Uri.parse(img.uri))
+            val length = r.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+            val bitmap = runCatching { r.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC) }.getOrNull()?.let { b ->
+                val scale = 192f / maxOf(b.width, b.height)
+                if (scale >= 1f) b else android.graphics.Bitmap.createScaledBitmap(b, (b.width * scale).toInt().coerceAtLeast(1), (b.height * scale).toInt().coerceAtLeast(1), true).also { b.recycle() }
+            }
+            Frame(bitmap?.asImageBitmap(), length)
+        } catch (e: Exception) {
+            Frame(null, null)
+        } finally {
+            runCatching { r.release() }
+        }
+        cache[img.id] = frame
+        return frame
     }
 }
 
