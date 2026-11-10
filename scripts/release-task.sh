@@ -21,6 +21,16 @@ git fetch origin
 if ! git merge-base --is-ancestor origin/main HEAD; then
     git rebase origin/main
 fi
+# The daemon's built-in model catalog must match the one Claude Code publishes.
+# It is fetched only through a proxy on this machine (--proxy or HTTPS_PROXY);
+# when it is out of date, update and commit it first. RA_SKIP_CATALOG_CHECK=1
+# releases without the check.
+if [ "${RA_SKIP_CATALOG_CHECK:-}" != 1 ]; then
+    python3 scripts/model_catalog.py check || {
+        echo "Model catalog check failed: run python3 scripts/model_catalog.py update, commit it, and release again" >&2
+        exit 1
+    }
+fi
 result=$(python3 scripts/release.py prepare "$kind")
 if [ "$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["eligible"])')" = False ]; then
     printf '%s\n' "$result"
