@@ -107,6 +107,18 @@ public interface LocalServiceClientInterface {
 
   public suspend fun abortImageUpload(request: AbortImageUploadRequest, headers: Headers = emptyMap()): ResponseMessage<AbortImageUploadResponse>
 
+  /**
+   *  SendFile is the session MCP's send_file: it copies a computer file
+   *  for the user to download. Local only; no client command reaches it.
+   */
+  public suspend fun sendFile(request: SendFileRequest, headers: Headers = emptyMap()): ResponseMessage<SendFileResponse>
+
+  /**
+   *  GetSharedFileChunk reads one fixed-size block of a file the agent
+   *  offered. Read-only, so clients may repeat it freely.
+   */
+  public suspend fun getSharedFileChunk(request: GetSharedFileChunkRequest, headers: Headers = emptyMap()): ResponseMessage<GetSharedFileChunkResponse>
+
   public suspend fun resolveApproval(request: ResolveApprovalRequest, headers: Headers = emptyMap()): ResponseMessage<ResolveApprovalResponse>
 
   public suspend fun answerQuestion(request: AnswerQuestionRequest, headers: Headers = emptyMap()): ResponseMessage<AnswerQuestionResponse>

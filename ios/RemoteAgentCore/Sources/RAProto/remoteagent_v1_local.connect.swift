@@ -110,6 +110,16 @@ public protocol PBLocalServiceClientInterface: Sendable {
     @available(iOS 13, *)
     func `abortImageUpload`(request: PBAbortImageUploadRequest, headers: Connect.Headers) async -> ResponseMessage<PBAbortImageUploadResponse>
 
+    /// SendFile is the session MCP's send_file: it copies a computer file
+    /// for the user to download. Local only; no client command reaches it.
+    @available(iOS 13, *)
+    func `sendFile`(request: PBSendFileRequest, headers: Connect.Headers) async -> ResponseMessage<PBSendFileResponse>
+
+    /// GetSharedFileChunk reads one fixed-size block of a file the agent
+    /// offered. Read-only, so clients may repeat it freely.
+    @available(iOS 13, *)
+    func `getSharedFileChunk`(request: PBGetSharedFileChunkRequest, headers: Connect.Headers) async -> ResponseMessage<PBGetSharedFileChunkResponse>
+
     @available(iOS 13, *)
     func `resolveApproval`(request: PBResolveApprovalRequest, headers: Connect.Headers) async -> ResponseMessage<PBResolveApprovalResponse>
 
@@ -259,6 +269,16 @@ public final class PBLocalServiceClient: PBLocalServiceClientInterface, Sendable
     }
 
     @available(iOS 13, *)
+    public func `sendFile`(request: PBSendFileRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBSendFileResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.LocalService/SendFile", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
+    public func `getSharedFileChunk`(request: PBGetSharedFileChunkRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBGetSharedFileChunkResponse> {
+        return await self.client.unary(path: "/remoteagent.v1.LocalService/GetSharedFileChunk", idempotencyLevel: .unknown, request: request, headers: headers)
+    }
+
+    @available(iOS 13, *)
     public func `resolveApproval`(request: PBResolveApprovalRequest, headers: Connect.Headers = [:]) async -> ResponseMessage<PBResolveApprovalResponse> {
         return await self.client.unary(path: "/remoteagent.v1.LocalService/ResolveApproval", idempotencyLevel: .unknown, request: request, headers: headers)
     }
@@ -305,6 +325,8 @@ public final class PBLocalServiceClient: PBLocalServiceClientInterface, Sendable
             public static let getImageUploadStatus = Connect.MethodSpec(name: "GetImageUploadStatus", service: "remoteagent.v1.LocalService", type: .unary)
             public static let completeImageUpload = Connect.MethodSpec(name: "CompleteImageUpload", service: "remoteagent.v1.LocalService", type: .unary)
             public static let abortImageUpload = Connect.MethodSpec(name: "AbortImageUpload", service: "remoteagent.v1.LocalService", type: .unary)
+            public static let sendFile = Connect.MethodSpec(name: "SendFile", service: "remoteagent.v1.LocalService", type: .unary)
+            public static let getSharedFileChunk = Connect.MethodSpec(name: "GetSharedFileChunk", service: "remoteagent.v1.LocalService", type: .unary)
             public static let resolveApproval = Connect.MethodSpec(name: "ResolveApproval", service: "remoteagent.v1.LocalService", type: .unary)
             public static let answerQuestion = Connect.MethodSpec(name: "AnswerQuestion", service: "remoteagent.v1.LocalService", type: .unary)
             public static let watchEvents = Connect.MethodSpec(name: "WatchEvents", service: "remoteagent.v1.LocalService", type: .serverStream)

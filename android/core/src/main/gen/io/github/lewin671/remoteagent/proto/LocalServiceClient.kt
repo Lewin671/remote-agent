@@ -362,6 +362,38 @@ public class LocalServiceClient(
   )
 
 
+  /**
+   *  SendFile is the session MCP's send_file: it copies a computer file
+   *  for the user to download. Local only; no client command reaches it.
+   */
+  override suspend fun sendFile(request: SendFileRequest, headers: Headers): ResponseMessage<SendFileResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/SendFile",
+      io.github.lewin671.remoteagent.proto.SendFileRequest::class,
+      io.github.lewin671.remoteagent.proto.SendFileResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
+  /**
+   *  GetSharedFileChunk reads one fixed-size block of a file the agent
+   *  offered. Read-only, so clients may repeat it freely.
+   */
+  override suspend fun getSharedFileChunk(request: GetSharedFileChunkRequest, headers: Headers): ResponseMessage<GetSharedFileChunkResponse> = client.unary(
+    request,
+    headers,
+    MethodSpec(
+    "remoteagent.v1.LocalService/GetSharedFileChunk",
+      io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest::class,
+      io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse::class,
+      StreamType.UNARY,
+    ),
+  )
+
+
   override suspend fun resolveApproval(request: ResolveApprovalRequest, headers: Headers): ResponseMessage<ResolveApprovalResponse> = client.unary(
     request,
     headers,

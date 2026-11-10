@@ -133,4 +133,31 @@ public interface MachineCapabilitiesOrBuilder extends
    * @return The maxFilesPerMessage.
    */
   int getMaxFilesPerMessage();
+
+  /**
+   * <pre>
+   * Files the agent offers (ToolCall.shared_files) can be fetched with
+   * GetSharedFileChunk.
+   * </pre>
+   *
+   * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+   * @return The sharedFiles.
+   */
+  boolean getSharedFiles();
+
+  /**
+   * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+   * @return The maxSharedFileBytes.
+   */
+  long getMaxSharedFileBytes();
+
+  /**
+   * <pre>
+   * Every GetSharedFileChunkResponse.data is exactly this long.
+   * </pre>
+   *
+   * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+   * @return The sharedFileChunkBytes.
+   */
+  int getSharedFileChunkBytes();
 }

@@ -53,6 +53,7 @@ public  final class CommandResult extends
     ABORT_IMAGE_UPLOAD(39),
     SCHEDULE(40),
     LIVE_SNAPSHOT(41),
+    GET_SHARED_FILE_CHUNK(42),
     KIND_NOT_SET(0);
     private final int value;
     private KindCase(int value) {
@@ -95,6 +96,7 @@ public  final class CommandResult extends
         case 39: return ABORT_IMAGE_UPLOAD;
         case 40: return SCHEDULE;
         case 41: return LIVE_SNAPSHOT;
+        case 42: return GET_SHARED_FILE_CHUNK;
         case 0: return KIND_NOT_SET;
         default: return null;
       }
@@ -1641,6 +1643,58 @@ public  final class CommandResult extends
     }
   }
 
+  public static final int GET_SHARED_FILE_CHUNK_FIELD_NUMBER = 42;
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   */
+  @java.lang.Override
+  public boolean hasGetSharedFileChunk() {
+    return kindCase_ == 42;
+  }
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse getGetSharedFileChunk() {
+    if (kindCase_ == 42) {
+       return (io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse) kind_;
+    }
+    return io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.getDefaultInstance();
+  }
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setGetSharedFileChunk(io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse value) {
+    value.getClass();  // minimal bytecode null check
+    kind_ = value;
+    kindCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void mergeGetSharedFileChunk(io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse value) {
+    value.getClass();  // minimal bytecode null check
+    if (kindCase_ == 42 &&
+        kind_ != io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.getDefaultInstance()) {
+      kind_ = io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.newBuilder((io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse) kind_)
+          .mergeFrom(value).buildPartial();
+    } else {
+      kind_ = value;
+    }
+    kindCase_ = 42;
+  }
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   */
+  private void clearGetSharedFileChunk() {
+    if (kindCase_ == 42) {
+      kindCase_ = 0;
+      kind_ = null;
+    }
+  }
+
   public static io.github.lewin671.remoteagent.proto.CommandResult parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -3174,6 +3228,54 @@ public  final class CommandResult extends
       return this;
     }
 
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    @java.lang.Override
+    public boolean hasGetSharedFileChunk() {
+      return instance.hasGetSharedFileChunk();
+    }
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse getGetSharedFileChunk() {
+      return instance.getGetSharedFileChunk();
+    }
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    public Builder setGetSharedFileChunk(io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse value) {
+      copyOnWrite();
+      instance.setGetSharedFileChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    public Builder setGetSharedFileChunk(
+        io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.Builder builderForValue) {
+      copyOnWrite();
+      instance.setGetSharedFileChunk(builderForValue.build());
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    public Builder mergeGetSharedFileChunk(io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse value) {
+      copyOnWrite();
+      instance.mergeGetSharedFileChunk(value);
+      return this;
+    }
+    /**
+     * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+     */
+    public Builder clearGetSharedFileChunk() {
+      copyOnWrite();
+      instance.clearGetSharedFileChunk();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.CommandResult)
   }
   @java.lang.Override
@@ -3221,13 +3323,14 @@ public  final class CommandResult extends
             io.github.lewin671.remoteagent.proto.AbortImageUploadResponse.class,
             io.github.lewin671.remoteagent.proto.ScheduleResponse.class,
             io.github.lewin671.remoteagent.proto.LiveSnapshot.class,
+            io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse.class,
           };
           java.lang.String info =
-              "\u0000\u001d\u0001\u0000\u0001)\u001d\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
+              "\u0000\u001e\u0001\u0000\u0001*\u001e\u0000\u0000\u0000\u0001\u0208\u0002\u0208\n" +
               "<\u0000\u000b<\u0000\f<\u0000\r<\u0000\u000e<\u0000\u000f<\u0000\u0010<\u0000\u0011" +
               "<\u0000\u0012<\u0000\u0013<\u0000\u0014<\u0000\u0015<\u0000\u0016<\u0000\u0017<\u0000" +
               "\u0018<\u0000\u001e<\u0000\u001f<\u0000 <\u0000!<\u0000\"<\u0000#<\u0000$<\u0000" +
-              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000";
+              "%<\u0000&<\u0000\'<\u0000(<\u0000)<\u0000*<\u0000";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

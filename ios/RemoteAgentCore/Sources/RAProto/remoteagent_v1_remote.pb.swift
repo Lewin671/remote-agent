@@ -368,6 +368,15 @@ public struct PBMachineCapabilities: Sendable {
 
   public var maxFilesPerMessage: Int32 = 0
 
+  /// Files the agent offers (ToolCall.shared_files) can be fetched with
+  /// GetSharedFileChunk.
+  public var sharedFiles: Bool = false
+
+  public var maxSharedFileBytes: Int64 = 0
+
+  /// Every GetSharedFileChunkResponse.data is exactly this long.
+  public var sharedFileChunkBytes: Int32 = 0
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
@@ -634,6 +643,15 @@ public struct PBCommand: Sendable {
     set {kind = .getLiveSnapshot(newValue)}
   }
 
+  /// A session command: its header names the session.
+  public var getSharedFileChunk: PBGetSharedFileChunkRequest {
+    get {
+      if case .getSharedFileChunk(let v)? = kind {return v}
+      return PBGetSharedFileChunkRequest()
+    }
+    set {kind = .getSharedFileChunk(newValue)}
+  }
+
   /// The protocol version the client speaks (internal/protocol). A daemon
   /// of another version refuses the command and says which side to update.
   public var protocolVersion: UInt32 = 0
@@ -670,6 +688,8 @@ public struct PBCommand: Sendable {
     case abortImageUpload(PBAbortImageUploadRequest)
     case schedule(PBScheduleRequest)
     case getLiveSnapshot(PBGetLiveSnapshotRequest)
+    /// A session command: its header names the session.
+    case getSharedFileChunk(PBGetSharedFileChunkRequest)
 
   }
 
@@ -907,6 +927,14 @@ public struct PBCommandResult: Sendable {
     set {kind = .liveSnapshot(newValue)}
   }
 
+  public var getSharedFileChunk: PBGetSharedFileChunkResponse {
+    get {
+      if case .getSharedFileChunk(let v)? = kind {return v}
+      return PBGetSharedFileChunkResponse()
+    }
+    set {kind = .getSharedFileChunk(newValue)}
+  }
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public enum OneOf_Kind: Equatable, Sendable {
@@ -937,6 +965,7 @@ public struct PBCommandResult: Sendable {
     case abortImageUpload(PBAbortImageUploadResponse)
     case schedule(PBScheduleResponse)
     case liveSnapshot(PBLiveSnapshot)
+    case getSharedFileChunk(PBGetSharedFileChunkResponse)
 
   }
 
@@ -1737,7 +1766,7 @@ extension PBQuotaWindow: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementa
 
 extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".MachineCapabilities"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{4}\u{2}image_upload\0\u{3}max_images_per_message\0\u{3}max_upload_bytes\0\u{3}max_chunk_bytes\0\u{3}upload_formats\0\u{4}\u{4}approval_always\0\u{4}\u{2}scheduled_tasks\0\u{3}file_upload\0\u{3}max_file_upload_bytes\0\u{3}max_files_per_message\0\u{3}shared_files\0\u{3}max_shared_file_bytes\0\u{3}shared_file_chunk_bytes\0\u{c}\u{1}\u{1}\u{c}\u{7}\u{1}\u{c}\u{8}\u{1}\u{c}\u{9}\u{1}\u{c}\u{b}\u{1}")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -1755,6 +1784,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
       case 13: try { try decoder.decodeSingularBoolField(value: &self.fileUpload) }()
       case 14: try { try decoder.decodeSingularInt64Field(value: &self.maxFileUploadBytes) }()
       case 15: try { try decoder.decodeSingularInt32Field(value: &self.maxFilesPerMessage) }()
+      case 16: try { try decoder.decodeSingularBoolField(value: &self.sharedFiles) }()
+      case 17: try { try decoder.decodeSingularInt64Field(value: &self.maxSharedFileBytes) }()
+      case 18: try { try decoder.decodeSingularInt32Field(value: &self.sharedFileChunkBytes) }()
       default: break
       }
     }
@@ -1791,6 +1823,15 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if self.maxFilesPerMessage != 0 {
       try visitor.visitSingularInt32Field(value: self.maxFilesPerMessage, fieldNumber: 15)
     }
+    if self.sharedFiles != false {
+      try visitor.visitSingularBoolField(value: self.sharedFiles, fieldNumber: 16)
+    }
+    if self.maxSharedFileBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.maxSharedFileBytes, fieldNumber: 17)
+    }
+    if self.sharedFileChunkBytes != 0 {
+      try visitor.visitSingularInt32Field(value: self.sharedFileChunkBytes, fieldNumber: 18)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -1805,6 +1846,9 @@ extension PBMachineCapabilities: SwiftProtobuf.Message, SwiftProtobuf._MessageIm
     if lhs.fileUpload != rhs.fileUpload {return false}
     if lhs.maxFileUploadBytes != rhs.maxFileUploadBytes {return false}
     if lhs.maxFilesPerMessage != rhs.maxFilesPerMessage {return false}
+    if lhs.sharedFiles != rhs.sharedFiles {return false}
+    if lhs.maxSharedFileBytes != rhs.maxSharedFileBytes {return false}
+    if lhs.sharedFileChunkBytes != rhs.sharedFileChunkBytes {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }
@@ -1867,7 +1911,7 @@ extension PBAgentInfo: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".Command"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{4}E\u{1}protocol_version\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{1}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{5}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}get_live_snapshot\0\u{3}get_shared_file_chunk\0\u{4}D\u{1}protocol_version\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2226,6 +2270,19 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
           self.kind = .getLiveSnapshot(v)
         }
       }()
+      case 32: try {
+        var v: PBGetSharedFileChunkRequest?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .getSharedFileChunk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .getSharedFileChunk(v)
+        }
+      }()
       case 100: try { try decoder.decodeSingularUInt32Field(value: &self.protocolVersion) }()
       default: break
       }
@@ -2346,6 +2403,10 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
       guard case .getLiveSnapshot(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 31)
     }()
+    case .getSharedFileChunk?: try {
+      guard case .getSharedFileChunk(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 32)
+    }()
     case nil: break
     }
     if self.protocolVersion != 0 {
@@ -2364,7 +2425,7 @@ extension PBCommand: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementation
 
 extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".CommandResult"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}error_code\0\u{3}error_message\0\u{2}\u{8}send\0\u{1}interrupt\0\u{3}resolve_approval\0\u{3}answer_question\0\u{3}stop_session\0\u{3}cancel_input\0\u{3}set_model\0\u{3}set_approval_mode\0\u{1}compact\0\u{3}answer_plan\0\u{3}open_terminal\0\u{3}resume_session\0\u{3}resume_input\0\u{3}rename_session\0\u{3}fork_session\0\u{4}\u{6}create_session\0\u{3}list_models\0\u{3}list_directories\0\u{3}get_settings\0\u{3}update_settings\0\u{3}begin_image_upload\0\u{3}put_image_chunk\0\u{3}get_image_upload_status\0\u{3}complete_image_upload\0\u{3}abort_image_upload\0\u{1}schedule\0\u{3}live_snapshot\0\u{3}get_shared_file_chunk\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2725,6 +2786,19 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
           self.kind = .liveSnapshot(v)
         }
       }()
+      case 42: try {
+        var v: PBGetSharedFileChunkResponse?
+        var hadOneofValue = false
+        if let current = self.kind {
+          hadOneofValue = true
+          if case .getSharedFileChunk(let m) = current {v = m}
+        }
+        try decoder.decodeSingularMessageField(value: &v)
+        if let v = v {
+          if hadOneofValue {try decoder.handleConflictingOneOf()}
+          self.kind = .getSharedFileChunk(v)
+        }
+      }()
       default: break
       }
     }
@@ -2849,6 +2923,10 @@ extension PBCommandResult: SwiftProtobuf.Message, SwiftProtobuf._MessageImplemen
     case .liveSnapshot?: try {
       guard case .liveSnapshot(let v)? = self.kind else { preconditionFailure() }
       try visitor.visitSingularMessageField(value: v, fieldNumber: 41)
+    }()
+    case .getSharedFileChunk?: try {
+      guard case .getSharedFileChunk(let v)? = self.kind else { preconditionFailure() }
+      try visitor.visitSingularMessageField(value: v, fieldNumber: 42)
     }()
     case nil: break
     }

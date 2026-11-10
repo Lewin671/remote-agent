@@ -277,6 +277,26 @@ message ToolCall {
   // The CLI's ID for the background work (Claude Code's task or agent
   // ID), when it gives one.
   string background_id = 14;
+  // Files the agent offered to the user with this call (the remote_agent
+  // MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+  // machine is online.
+  repeated SharedFile shared_files = 15;
+}
+
+// SharedFile is a copy of a computer file that the daemon keeps for the
+// user to download, until the session's uploads are cleaned up.
+message SharedFile {
+  // 128 random bits, hex; names the copy within its session.
+  string file_id = 1;
+  // The file's name as the agent gave it, made safe like an uploaded
+  // file's (session-files.md); clients clean it again before saving.
+  string name = 2;
+  int64 size_bytes = 3;
+  // SHA-256 of the copy. A client checks the downloaded bytes against it.
+  bytes sha256 = 4;
+  // The real path on the computer the copy was taken from, symlinks
+  // resolved, so the user can tell what it is before downloading.
+  string path = 5;
 }
 
 enum ToolBackground {

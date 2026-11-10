@@ -127,6 +127,12 @@ message MachineCapabilities {
   bool file_upload = 13;
   int64 max_file_upload_bytes = 14;
   int32 max_files_per_message = 15;
+  // Files the agent offers (ToolCall.shared_files) can be fetched with
+  // GetSharedFileChunk.
+  bool shared_files = 16;
+  int64 max_shared_file_bytes = 17;
+  // Every GetSharedFileChunkResponse.data is exactly this long.
+  int32 shared_file_chunk_bytes = 18;
 }
 
 message AgentInfo {
@@ -190,6 +196,8 @@ message Command {
     AbortImageUploadRequest abort_image_upload = 29;
     ScheduleRequest schedule = 30;
     GetLiveSnapshotRequest get_live_snapshot = 31;
+    // A session command: its header names the session.
+    GetSharedFileChunkRequest get_shared_file_chunk = 32;
   }
   // The protocol version the client speaks (internal/protocol). A daemon
   // of another version refuses the command and says which side to update.
@@ -232,6 +240,7 @@ message CommandResult {
     AbortImageUploadResponse abort_image_upload = 39;
     ScheduleResponse schedule = 40;
     LiveSnapshot live_snapshot = 41;
+    GetSharedFileChunkResponse get_shared_file_chunk = 42;
   }
 }
 

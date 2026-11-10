@@ -28,6 +28,7 @@ public  final class ToolCall extends
     inputDigest_ = "";
     images_ = emptyProtobufList();
     backgroundId_ = "";
+    sharedFiles_ = emptyProtobufList();
   }
   private int bitField0_;
   public static final int CALL_ID_FIELD_NUMBER = 1;
@@ -908,6 +909,169 @@ public  final class ToolCall extends
     checkByteStringIsUtf8(value);
     backgroundId_ = value.toStringUtf8();
 
+  }
+
+  public static final int SHARED_FILES_FIELD_NUMBER = 15;
+  private com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SharedFile> sharedFiles_;
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.Override
+  public java.util.List<io.github.lewin671.remoteagent.proto.SharedFile> getSharedFilesList() {
+    return sharedFiles_;
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  public java.util.List<? extends io.github.lewin671.remoteagent.proto.SharedFileOrBuilder> 
+      getSharedFilesOrBuilderList() {
+    return sharedFiles_;
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.Override
+  public int getSharedFilesCount() {
+    return sharedFiles_.size();
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.Override
+  public io.github.lewin671.remoteagent.proto.SharedFile getSharedFiles(int index) {
+    return sharedFiles_.get(index);
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  public io.github.lewin671.remoteagent.proto.SharedFileOrBuilder getSharedFilesOrBuilder(
+      int index) {
+    return sharedFiles_.get(index);
+  }
+  private void ensureSharedFilesIsMutable() {
+    com.google.protobuf.Internal.ProtobufList<io.github.lewin671.remoteagent.proto.SharedFile> tmp = sharedFiles_;
+    if (!tmp.isModifiable()) {
+      sharedFiles_ =
+          com.google.protobuf.GeneratedMessageLite.mutableCopy(tmp);
+     }
+  }
+
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void setSharedFiles(
+      int index, io.github.lewin671.remoteagent.proto.SharedFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSharedFilesIsMutable();
+    sharedFiles_.set(index, value);
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSharedFiles(io.github.lewin671.remoteagent.proto.SharedFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSharedFilesIsMutable();
+    sharedFiles_.add(value);
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  @java.lang.SuppressWarnings("ReturnValueIgnored")
+  private void addSharedFiles(
+      int index, io.github.lewin671.remoteagent.proto.SharedFile value) {
+    value.getClass();  // minimal bytecode null check
+    ensureSharedFilesIsMutable();
+    sharedFiles_.add(index, value);
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  private void addAllSharedFiles(
+      java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SharedFile> values) {
+    ensureSharedFilesIsMutable();
+    com.google.protobuf.AbstractMessageLite.addAll(
+        values, sharedFiles_);
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  private void clearSharedFiles() {
+    sharedFiles_ = emptyProtobufList();
+  }
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  private void removeSharedFiles(int index) {
+    ensureSharedFilesIsMutable();
+    sharedFiles_.remove(index);
   }
 
   public static io.github.lewin671.remoteagent.proto.ToolCall parseFrom(
@@ -1922,6 +2086,180 @@ public  final class ToolCall extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    @java.lang.Override
+    public java.util.List<io.github.lewin671.remoteagent.proto.SharedFile> getSharedFilesList() {
+      return java.util.Collections.unmodifiableList(
+          instance.getSharedFilesList());
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    @java.lang.Override
+    public int getSharedFilesCount() {
+      return instance.getSharedFilesCount();
+    }/**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    @java.lang.Override
+    public io.github.lewin671.remoteagent.proto.SharedFile getSharedFiles(int index) {
+      return instance.getSharedFiles(index);
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder setSharedFiles(
+        int index, io.github.lewin671.remoteagent.proto.SharedFile value) {
+      copyOnWrite();
+      instance.setSharedFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder setSharedFiles(
+        int index, io.github.lewin671.remoteagent.proto.SharedFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.setSharedFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder addSharedFiles(io.github.lewin671.remoteagent.proto.SharedFile value) {
+      copyOnWrite();
+      instance.addSharedFiles(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder addSharedFiles(
+        int index, io.github.lewin671.remoteagent.proto.SharedFile value) {
+      copyOnWrite();
+      instance.addSharedFiles(index, value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder addSharedFiles(
+        io.github.lewin671.remoteagent.proto.SharedFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSharedFiles(builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder addSharedFiles(
+        int index, io.github.lewin671.remoteagent.proto.SharedFile.Builder builderForValue) {
+      copyOnWrite();
+      instance.addSharedFiles(index,
+          builderForValue.build());
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder addAllSharedFiles(
+        java.lang.Iterable<? extends io.github.lewin671.remoteagent.proto.SharedFile> values) {
+      copyOnWrite();
+      instance.addAllSharedFiles(values);
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder clearSharedFiles() {
+      copyOnWrite();
+      instance.clearSharedFiles();
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offered to the user with this call (the remote_agent
+     * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+     * machine is online.
+     * </pre>
+     *
+     * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+     */
+    public Builder removeSharedFiles(int index) {
+      copyOnWrite();
+      instance.removeSharedFiles(index);
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.ToolCall)
   }
   @java.lang.Override
@@ -1954,11 +2292,13 @@ public  final class ToolCall extends
             io.github.lewin671.remoteagent.proto.ImageRef.class,
             "background_",
             "backgroundId_",
+            "sharedFiles_",
+            io.github.lewin671.remoteagent.proto.SharedFile.class,
           };
           java.lang.String info =
-              "\u0000\u000e\u0000\u0001\u0001\u000e\u000e\u0000\u0001\u0000\u0001\u0208\u0002\f" +
+              "\u0000\u000f\u0000\u0001\u0001\u000f\u000f\u0000\u0002\u0000\u0001\u0208\u0002\f" +
               "\u0003\u0208\u0004\u0208\u0005\u0208\u0006\u0007\u0007\u0208\b\u1004\u0000\t\u0002" +
-              "\n\u0208\u000b\u0208\f\u001b\r\f\u000e\u0208";
+              "\n\u0208\u000b\u0208\f\u001b\r\f\u000e\u0208\u000f\u001b";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

@@ -1376,11 +1376,44 @@ public struct PBToolCall: Sendable {
   /// ID), when it gives one.
   public var backgroundID: String = String()
 
+  /// Files the agent offered to the user with this call (the remote_agent
+  /// MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+  /// machine is online.
+  public var sharedFiles: [PBSharedFile] = []
+
   public var unknownFields = SwiftProtobuf.UnknownStorage()
 
   public init() {}
 
   fileprivate var _exitCode: Int32? = nil
+}
+
+/// SharedFile is a copy of a computer file that the daemon keeps for the
+/// user to download, until the session's uploads are cleaned up.
+public struct PBSharedFile: Sendable {
+  // SwiftProtobuf.Message conformance is added in an extension below. See the
+  // `Message` and `Message+*Additions` files in the SwiftProtobuf library for
+  // methods supported on all messages.
+
+  /// 128 random bits, hex; names the copy within its session.
+  public var fileID: String = String()
+
+  /// The file's name as the agent gave it, made safe like an uploaded
+  /// file's (session-files.md); clients clean it again before saving.
+  public var name: String = String()
+
+  public var sizeBytes: Int64 = 0
+
+  /// SHA-256 of the copy. A client checks the downloaded bytes against it.
+  public var sha256: Data = Data()
+
+  /// The real path on the computer the copy was taken from, symlinks
+  /// resolved, so the user can tell what it is before downloading.
+  public var path: String = String()
+
+  public var unknownFields = SwiftProtobuf.UnknownStorage()
+
+  public init() {}
 }
 
 public struct PBTurnStarted: Sendable {
@@ -2868,7 +2901,7 @@ extension PBReasoning: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementati
 
 extension PBToolCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
   public static let protoMessageName: String = _protobuf_package + ".ToolCall"
-  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}kind\0\u{1}title\0\u{1}input\0\u{1}output\0\u{3}output_truncated\0\u{1}status\0\u{3}exit_code\0\u{3}duration_ms\0\u{3}item_type\0\u{3}input_digest\0\u{1}images\0\u{1}background\0\u{3}background_id\0")
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}call_id\0\u{1}kind\0\u{1}title\0\u{1}input\0\u{1}output\0\u{3}output_truncated\0\u{1}status\0\u{3}exit_code\0\u{3}duration_ms\0\u{3}item_type\0\u{3}input_digest\0\u{1}images\0\u{1}background\0\u{3}background_id\0\u{3}shared_files\0")
 
   public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
     while let fieldNumber = try decoder.nextFieldNumber() {
@@ -2890,6 +2923,7 @@ extension PBToolCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
       case 12: try { try decoder.decodeRepeatedMessageField(value: &self.images) }()
       case 13: try { try decoder.decodeSingularEnumField(value: &self.background) }()
       case 14: try { try decoder.decodeSingularStringField(value: &self.backgroundID) }()
+      case 15: try { try decoder.decodeRepeatedMessageField(value: &self.sharedFiles) }()
       default: break
       }
     }
@@ -2942,6 +2976,9 @@ extension PBToolCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if !self.backgroundID.isEmpty {
       try visitor.visitSingularStringField(value: self.backgroundID, fieldNumber: 14)
     }
+    if !self.sharedFiles.isEmpty {
+      try visitor.visitRepeatedMessageField(value: self.sharedFiles, fieldNumber: 15)
+    }
     try unknownFields.traverse(visitor: &visitor)
   }
 
@@ -2960,6 +2997,57 @@ extension PBToolCall: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementatio
     if lhs.images != rhs.images {return false}
     if lhs.background != rhs.background {return false}
     if lhs.backgroundID != rhs.backgroundID {return false}
+    if lhs.sharedFiles != rhs.sharedFiles {return false}
+    if lhs.unknownFields != rhs.unknownFields {return false}
+    return true
+  }
+}
+
+extension PBSharedFile: SwiftProtobuf.Message, SwiftProtobuf._MessageImplementationBase, SwiftProtobuf._ProtoNameProviding {
+  public static let protoMessageName: String = _protobuf_package + ".SharedFile"
+  public static let _protobuf_nameMap = SwiftProtobuf._NameMap(bytecode: "\0\u{3}file_id\0\u{1}name\0\u{3}size_bytes\0\u{1}sha256\0\u{1}path\0")
+
+  public mutating func decodeMessage<D: SwiftProtobuf.Decoder>(decoder: inout D) throws {
+    while let fieldNumber = try decoder.nextFieldNumber() {
+      // The use of inline closures is to circumvent an issue where the compiler
+      // allocates stack space for every case branch when no optimizations are
+      // enabled. https://github.com/apple/swift-protobuf/issues/1034
+      switch fieldNumber {
+      case 1: try { try decoder.decodeSingularStringField(value: &self.fileID) }()
+      case 2: try { try decoder.decodeSingularStringField(value: &self.name) }()
+      case 3: try { try decoder.decodeSingularInt64Field(value: &self.sizeBytes) }()
+      case 4: try { try decoder.decodeSingularBytesField(value: &self.sha256) }()
+      case 5: try { try decoder.decodeSingularStringField(value: &self.path) }()
+      default: break
+      }
+    }
+  }
+
+  public func traverse<V: SwiftProtobuf.Visitor>(visitor: inout V) throws {
+    if !self.fileID.isEmpty {
+      try visitor.visitSingularStringField(value: self.fileID, fieldNumber: 1)
+    }
+    if !self.name.isEmpty {
+      try visitor.visitSingularStringField(value: self.name, fieldNumber: 2)
+    }
+    if self.sizeBytes != 0 {
+      try visitor.visitSingularInt64Field(value: self.sizeBytes, fieldNumber: 3)
+    }
+    if !self.sha256.isEmpty {
+      try visitor.visitSingularBytesField(value: self.sha256, fieldNumber: 4)
+    }
+    if !self.path.isEmpty {
+      try visitor.visitSingularStringField(value: self.path, fieldNumber: 5)
+    }
+    try unknownFields.traverse(visitor: &visitor)
+  }
+
+  public static func ==(lhs: PBSharedFile, rhs: PBSharedFile) -> Bool {
+    if lhs.fileID != rhs.fileID {return false}
+    if lhs.name != rhs.name {return false}
+    if lhs.sizeBytes != rhs.sizeBytes {return false}
+    if lhs.sha256 != rhs.sha256 {return false}
+    if lhs.path != rhs.path {return false}
     if lhs.unknownFields != rhs.unknownFields {return false}
     return true
   }

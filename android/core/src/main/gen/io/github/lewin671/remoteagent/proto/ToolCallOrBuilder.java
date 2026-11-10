@@ -250,4 +250,36 @@ public interface ToolCallOrBuilder extends
    */
   com.google.protobuf.ByteString
       getBackgroundIdBytes();
+
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  java.util.List<io.github.lewin671.remoteagent.proto.SharedFile> 
+      getSharedFilesList();
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  io.github.lewin671.remoteagent.proto.SharedFile getSharedFiles(int index);
+  /**
+   * <pre>
+   * Files the agent offered to the user with this call (the remote_agent
+   * MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+   * machine is online.
+   * </pre>
+   *
+   * <code>repeated .remoteagent.v1.SharedFile shared_files = 15 [json_name = "sharedFiles"];</code>
+   */
+  int getSharedFilesCount();
 }

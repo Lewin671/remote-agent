@@ -2120,7 +2120,11 @@ type ToolCall struct {
 	Background ToolBackground `protobuf:"varint,13,opt,name=background,proto3,enum=remoteagent.v1.ToolBackground" json:"background,omitempty"`
 	// The CLI's ID for the background work (Claude Code's task or agent
 	// ID), when it gives one.
-	BackgroundId  string `protobuf:"bytes,14,opt,name=background_id,json=backgroundId,proto3" json:"background_id,omitempty"`
+	BackgroundId string `protobuf:"bytes,14,opt,name=background_id,json=backgroundId,proto3" json:"background_id,omitempty"`
+	// Files the agent offered to the user with this call (the remote_agent
+	// MCP's send_file). Clients fetch them with GetSharedFileChunk while the
+	// machine is online.
+	SharedFiles   []*SharedFile `protobuf:"bytes,15,rep,name=shared_files,json=sharedFiles,proto3" json:"shared_files,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2253,6 +2257,97 @@ func (x *ToolCall) GetBackgroundId() string {
 	return ""
 }
 
+func (x *ToolCall) GetSharedFiles() []*SharedFile {
+	if x != nil {
+		return x.SharedFiles
+	}
+	return nil
+}
+
+// SharedFile is a copy of a computer file that the daemon keeps for the
+// user to download, until the session's uploads are cleaned up.
+type SharedFile struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 128 random bits, hex; names the copy within its session.
+	FileId string `protobuf:"bytes,1,opt,name=file_id,json=fileId,proto3" json:"file_id,omitempty"`
+	// The file's name as the agent gave it, made safe like an uploaded
+	// file's (session-files.md); clients clean it again before saving.
+	Name      string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	SizeBytes int64  `protobuf:"varint,3,opt,name=size_bytes,json=sizeBytes,proto3" json:"size_bytes,omitempty"`
+	// SHA-256 of the copy. A client checks the downloaded bytes against it.
+	Sha256 []byte `protobuf:"bytes,4,opt,name=sha256,proto3" json:"sha256,omitempty"`
+	// The real path on the computer the copy was taken from, symlinks
+	// resolved, so the user can tell what it is before downloading.
+	Path          string `protobuf:"bytes,5,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SharedFile) Reset() {
+	*x = SharedFile{}
+	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SharedFile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SharedFile) ProtoMessage() {}
+
+func (x *SharedFile) ProtoReflect() protoreflect.Message {
+	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SharedFile.ProtoReflect.Descriptor instead.
+func (*SharedFile) Descriptor() ([]byte, []int) {
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *SharedFile) GetFileId() string {
+	if x != nil {
+		return x.FileId
+	}
+	return ""
+}
+
+func (x *SharedFile) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SharedFile) GetSizeBytes() int64 {
+	if x != nil {
+		return x.SizeBytes
+	}
+	return 0
+}
+
+func (x *SharedFile) GetSha256() []byte {
+	if x != nil {
+		return x.Sha256
+	}
+	return nil
+}
+
+func (x *SharedFile) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 type TurnStarted struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -2261,7 +2356,7 @@ type TurnStarted struct {
 
 func (x *TurnStarted) Reset() {
 	*x = TurnStarted{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2273,7 +2368,7 @@ func (x *TurnStarted) String() string {
 func (*TurnStarted) ProtoMessage() {}
 
 func (x *TurnStarted) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[12]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2286,7 +2381,7 @@ func (x *TurnStarted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnStarted.ProtoReflect.Descriptor instead.
 func (*TurnStarted) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{12}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{13}
 }
 
 type TurnEnded struct {
@@ -2304,7 +2399,7 @@ type TurnEnded struct {
 
 func (x *TurnEnded) Reset() {
 	*x = TurnEnded{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2316,7 +2411,7 @@ func (x *TurnEnded) String() string {
 func (*TurnEnded) ProtoMessage() {}
 
 func (x *TurnEnded) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[13]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2329,7 +2424,7 @@ func (x *TurnEnded) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnEnded.ProtoReflect.Descriptor instead.
 func (*TurnEnded) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{13}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *TurnEnded) GetOutcome() TurnOutcome {
@@ -2397,7 +2492,7 @@ type TokenUsage struct {
 
 func (x *TokenUsage) Reset() {
 	*x = TokenUsage{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2409,7 +2504,7 @@ func (x *TokenUsage) String() string {
 func (*TokenUsage) ProtoMessage() {}
 
 func (x *TokenUsage) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[14]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2422,7 +2517,7 @@ func (x *TokenUsage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TokenUsage.ProtoReflect.Descriptor instead.
 func (*TokenUsage) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{14}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *TokenUsage) GetInputTokens() int64 {
@@ -2515,7 +2610,7 @@ type RateLimit struct {
 
 func (x *RateLimit) Reset() {
 	*x = RateLimit{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2527,7 +2622,7 @@ func (x *RateLimit) String() string {
 func (*RateLimit) ProtoMessage() {}
 
 func (x *RateLimit) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[15]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2540,7 +2635,7 @@ func (x *RateLimit) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateLimit.ProtoReflect.Descriptor instead.
 func (*RateLimit) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{15}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RateLimit) GetUsedPercent() float64 {
@@ -2578,7 +2673,7 @@ type PlanProposed struct {
 
 func (x *PlanProposed) Reset() {
 	*x = PlanProposed{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2590,7 +2685,7 @@ func (x *PlanProposed) String() string {
 func (*PlanProposed) ProtoMessage() {}
 
 func (x *PlanProposed) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[16]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2603,7 +2698,7 @@ func (x *PlanProposed) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PlanProposed.ProtoReflect.Descriptor instead.
 func (*PlanProposed) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{16}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PlanProposed) GetText() string {
@@ -2635,7 +2730,7 @@ type SettingsChanged struct {
 
 func (x *SettingsChanged) Reset() {
 	*x = SettingsChanged{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2647,7 +2742,7 @@ func (x *SettingsChanged) String() string {
 func (*SettingsChanged) ProtoMessage() {}
 
 func (x *SettingsChanged) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[17]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2660,7 +2755,7 @@ func (x *SettingsChanged) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsChanged.ProtoReflect.Descriptor instead.
 func (*SettingsChanged) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{17}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SettingsChanged) GetModel() string {
@@ -2714,7 +2809,7 @@ type TurnContext struct {
 
 func (x *TurnContext) Reset() {
 	*x = TurnContext{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2726,7 +2821,7 @@ func (x *TurnContext) String() string {
 func (*TurnContext) ProtoMessage() {}
 
 func (x *TurnContext) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[18]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2739,7 +2834,7 @@ func (x *TurnContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TurnContext.ProtoReflect.Descriptor instead.
 func (*TurnContext) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{18}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *TurnContext) GetModel() string {
@@ -2810,7 +2905,7 @@ type ApprovalRequested struct {
 
 func (x *ApprovalRequested) Reset() {
 	*x = ApprovalRequested{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2822,7 +2917,7 @@ func (x *ApprovalRequested) String() string {
 func (*ApprovalRequested) ProtoMessage() {}
 
 func (x *ApprovalRequested) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[19]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2835,7 +2930,7 @@ func (x *ApprovalRequested) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalRequested.ProtoReflect.Descriptor instead.
 func (*ApprovalRequested) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{19}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ApprovalRequested) GetApprovalId() string {
@@ -2898,7 +2993,7 @@ type ApprovalResolved struct {
 
 func (x *ApprovalResolved) Reset() {
 	*x = ApprovalResolved{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2910,7 +3005,7 @@ func (x *ApprovalResolved) String() string {
 func (*ApprovalResolved) ProtoMessage() {}
 
 func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[20]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2923,7 +3018,7 @@ func (x *ApprovalResolved) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ApprovalResolved.ProtoReflect.Descriptor instead.
 func (*ApprovalResolved) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{20}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ApprovalResolved) GetApprovalId() string {
@@ -2957,7 +3052,7 @@ type QuestionOption struct {
 
 func (x *QuestionOption) Reset() {
 	*x = QuestionOption{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[21]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2969,7 +3064,7 @@ func (x *QuestionOption) String() string {
 func (*QuestionOption) ProtoMessage() {}
 
 func (x *QuestionOption) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[21]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2982,7 +3077,7 @@ func (x *QuestionOption) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionOption.ProtoReflect.Descriptor instead.
 func (*QuestionOption) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{21}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *QuestionOption) GetLabel() string {
@@ -3016,7 +3111,7 @@ type Question struct {
 
 func (x *Question) Reset() {
 	*x = Question{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[22]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3028,7 +3123,7 @@ func (x *Question) String() string {
 func (*Question) ProtoMessage() {}
 
 func (x *Question) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[22]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3041,7 +3136,7 @@ func (x *Question) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Question.ProtoReflect.Descriptor instead.
 func (*Question) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{22}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *Question) GetId() string {
@@ -3092,7 +3187,7 @@ type QuestionAsked struct {
 
 func (x *QuestionAsked) Reset() {
 	*x = QuestionAsked{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[23]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3104,7 +3199,7 @@ func (x *QuestionAsked) String() string {
 func (*QuestionAsked) ProtoMessage() {}
 
 func (x *QuestionAsked) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[23]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3117,7 +3212,7 @@ func (x *QuestionAsked) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAsked.ProtoReflect.Descriptor instead.
 func (*QuestionAsked) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{23}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *QuestionAsked) GetQuestionId() string {
@@ -3151,7 +3246,7 @@ type QuestionAnswer struct {
 
 func (x *QuestionAnswer) Reset() {
 	*x = QuestionAnswer{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[24]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3163,7 +3258,7 @@ func (x *QuestionAnswer) String() string {
 func (*QuestionAnswer) ProtoMessage() {}
 
 func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[24]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3176,7 +3271,7 @@ func (x *QuestionAnswer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAnswer.ProtoReflect.Descriptor instead.
 func (*QuestionAnswer) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{24}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *QuestionAnswer) GetQuestionId() string {
@@ -3203,7 +3298,7 @@ type QuestionAnswered struct {
 
 func (x *QuestionAnswered) Reset() {
 	*x = QuestionAnswered{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[25]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3215,7 +3310,7 @@ func (x *QuestionAnswered) String() string {
 func (*QuestionAnswered) ProtoMessage() {}
 
 func (x *QuestionAnswered) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[25]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3228,7 +3323,7 @@ func (x *QuestionAnswered) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use QuestionAnswered.ProtoReflect.Descriptor instead.
 func (*QuestionAnswered) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{25}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *QuestionAnswered) GetQuestionId() string {
@@ -3265,7 +3360,7 @@ type SessionState struct {
 
 func (x *SessionState) Reset() {
 	*x = SessionState{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[26]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3277,7 +3372,7 @@ func (x *SessionState) String() string {
 func (*SessionState) ProtoMessage() {}
 
 func (x *SessionState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[26]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3290,7 +3385,7 @@ func (x *SessionState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SessionState.ProtoReflect.Descriptor instead.
 func (*SessionState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{26}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SessionState) GetStatus() SessionStatus {
@@ -3361,7 +3456,7 @@ type InputState struct {
 
 func (x *InputState) Reset() {
 	*x = InputState{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3373,7 +3468,7 @@ func (x *InputState) String() string {
 func (*InputState) ProtoMessage() {}
 
 func (x *InputState) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[27]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3386,7 +3481,7 @@ func (x *InputState) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InputState.ProtoReflect.Descriptor instead.
 func (*InputState) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{27}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *InputState) GetRequestId() string {
@@ -3465,7 +3560,7 @@ type ScheduledNotification struct {
 
 func (x *ScheduledNotification) Reset() {
 	*x = ScheduledNotification{}
-	mi := &file_remoteagent_v1_event_proto_msgTypes[28]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3477,7 +3572,7 @@ func (x *ScheduledNotification) String() string {
 func (*ScheduledNotification) ProtoMessage() {}
 
 func (x *ScheduledNotification) ProtoReflect() protoreflect.Message {
-	mi := &file_remoteagent_v1_event_proto_msgTypes[28]
+	mi := &file_remoteagent_v1_event_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3490,7 +3585,7 @@ func (x *ScheduledNotification) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ScheduledNotification.ProtoReflect.Descriptor instead.
 func (*ScheduledNotification) Descriptor() ([]byte, []int) {
-	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{28}
+	return file_remoteagent_v1_event_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ScheduledNotification) GetTaskId() string {
@@ -3620,7 +3715,7 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x14\n" +
 	"\x05phase\x18\x02 \x01(\tR\x05phase\"\x1f\n" +
 	"\tReasoning\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"\x80\x04\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\"\xbf\x04\n" +
 	"\bToolCall\x12\x17\n" +
 	"\acall_id\x18\x01 \x01(\tR\x06callId\x12,\n" +
 	"\x04kind\x18\x02 \x01(\x0e2\x18.remoteagent.v1.ToolKindR\x04kind\x12\x14\n" +
@@ -3639,9 +3734,18 @@ const file_remoteagent_v1_event_proto_rawDesc = "" +
 	"\n" +
 	"background\x18\r \x01(\x0e2\x1e.remoteagent.v1.ToolBackgroundR\n" +
 	"background\x12#\n" +
-	"\rbackground_id\x18\x0e \x01(\tR\fbackgroundIdB\f\n" +
+	"\rbackground_id\x18\x0e \x01(\tR\fbackgroundId\x12=\n" +
+	"\fshared_files\x18\x0f \x03(\v2\x1a.remoteagent.v1.SharedFileR\vsharedFilesB\f\n" +
 	"\n" +
-	"_exit_code\"\r\n" +
+	"_exit_code\"\x84\x01\n" +
+	"\n" +
+	"SharedFile\x12\x17\n" +
+	"\afile_id\x18\x01 \x01(\tR\x06fileId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x1d\n" +
+	"\n" +
+	"size_bytes\x18\x03 \x01(\x03R\tsizeBytes\x12\x16\n" +
+	"\x06sha256\x18\x04 \x01(\fR\x06sha256\x12\x12\n" +
+	"\x04path\x18\x05 \x01(\tR\x04path\"\r\n" +
 	"\vTurnStarted\"\x80\x02\n" +
 	"\tTurnEnded\x125\n" +
 	"\aoutcome\x18\x01 \x01(\x0e2\x1b.remoteagent.v1.TurnOutcomeR\aoutcome\x12\x16\n" +
@@ -3847,7 +3951,7 @@ func file_remoteagent_v1_event_proto_rawDescGZIP() []byte {
 }
 
 var file_remoteagent_v1_event_proto_enumTypes = make([]protoimpl.EnumInfo, 14)
-var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_remoteagent_v1_event_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_remoteagent_v1_event_proto_goTypes = []any{
 	(OriginKind)(0),               // 0: remoteagent.v1.OriginKind
 	(ImageFormat)(0),              // 1: remoteagent.v1.ImageFormat
@@ -3875,49 +3979,50 @@ var file_remoteagent_v1_event_proto_goTypes = []any{
 	(*AgentMessage)(nil),          // 23: remoteagent.v1.AgentMessage
 	(*Reasoning)(nil),             // 24: remoteagent.v1.Reasoning
 	(*ToolCall)(nil),              // 25: remoteagent.v1.ToolCall
-	(*TurnStarted)(nil),           // 26: remoteagent.v1.TurnStarted
-	(*TurnEnded)(nil),             // 27: remoteagent.v1.TurnEnded
-	(*TokenUsage)(nil),            // 28: remoteagent.v1.TokenUsage
-	(*RateLimit)(nil),             // 29: remoteagent.v1.RateLimit
-	(*PlanProposed)(nil),          // 30: remoteagent.v1.PlanProposed
-	(*SettingsChanged)(nil),       // 31: remoteagent.v1.SettingsChanged
-	(*TurnContext)(nil),           // 32: remoteagent.v1.TurnContext
-	(*ApprovalRequested)(nil),     // 33: remoteagent.v1.ApprovalRequested
-	(*ApprovalResolved)(nil),      // 34: remoteagent.v1.ApprovalResolved
-	(*QuestionOption)(nil),        // 35: remoteagent.v1.QuestionOption
-	(*Question)(nil),              // 36: remoteagent.v1.Question
-	(*QuestionAsked)(nil),         // 37: remoteagent.v1.QuestionAsked
-	(*QuestionAnswer)(nil),        // 38: remoteagent.v1.QuestionAnswer
-	(*QuestionAnswered)(nil),      // 39: remoteagent.v1.QuestionAnswered
-	(*SessionState)(nil),          // 40: remoteagent.v1.SessionState
-	(*InputState)(nil),            // 41: remoteagent.v1.InputState
-	(*ScheduledNotification)(nil), // 42: remoteagent.v1.ScheduledNotification
-	(*timestamppb.Timestamp)(nil), // 43: google.protobuf.Timestamp
+	(*SharedFile)(nil),            // 26: remoteagent.v1.SharedFile
+	(*TurnStarted)(nil),           // 27: remoteagent.v1.TurnStarted
+	(*TurnEnded)(nil),             // 28: remoteagent.v1.TurnEnded
+	(*TokenUsage)(nil),            // 29: remoteagent.v1.TokenUsage
+	(*RateLimit)(nil),             // 30: remoteagent.v1.RateLimit
+	(*PlanProposed)(nil),          // 31: remoteagent.v1.PlanProposed
+	(*SettingsChanged)(nil),       // 32: remoteagent.v1.SettingsChanged
+	(*TurnContext)(nil),           // 33: remoteagent.v1.TurnContext
+	(*ApprovalRequested)(nil),     // 34: remoteagent.v1.ApprovalRequested
+	(*ApprovalResolved)(nil),      // 35: remoteagent.v1.ApprovalResolved
+	(*QuestionOption)(nil),        // 36: remoteagent.v1.QuestionOption
+	(*Question)(nil),              // 37: remoteagent.v1.Question
+	(*QuestionAsked)(nil),         // 38: remoteagent.v1.QuestionAsked
+	(*QuestionAnswer)(nil),        // 39: remoteagent.v1.QuestionAnswer
+	(*QuestionAnswered)(nil),      // 40: remoteagent.v1.QuestionAnswered
+	(*SessionState)(nil),          // 41: remoteagent.v1.SessionState
+	(*InputState)(nil),            // 42: remoteagent.v1.InputState
+	(*ScheduledNotification)(nil), // 43: remoteagent.v1.ScheduledNotification
+	(*timestamppb.Timestamp)(nil), // 44: google.protobuf.Timestamp
 }
 var file_remoteagent_v1_event_proto_depIdxs = []int32{
-	43, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
+	44, // 0: remoteagent.v1.Event.time:type_name -> google.protobuf.Timestamp
 	15, // 1: remoteagent.v1.Event.origin:type_name -> remoteagent.v1.Origin
 	21, // 2: remoteagent.v1.Event.user_message:type_name -> remoteagent.v1.UserMessage
 	23, // 3: remoteagent.v1.Event.agent_message:type_name -> remoteagent.v1.AgentMessage
 	24, // 4: remoteagent.v1.Event.reasoning:type_name -> remoteagent.v1.Reasoning
 	25, // 5: remoteagent.v1.Event.tool_call:type_name -> remoteagent.v1.ToolCall
-	26, // 6: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
-	27, // 7: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
-	28, // 8: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
-	32, // 9: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
-	33, // 10: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
-	34, // 11: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
-	37, // 12: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
-	39, // 13: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
-	40, // 14: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
-	41, // 15: remoteagent.v1.Event.input_state:type_name -> remoteagent.v1.InputState
-	30, // 16: remoteagent.v1.Event.plan_proposed:type_name -> remoteagent.v1.PlanProposed
-	31, // 17: remoteagent.v1.Event.settings_changed:type_name -> remoteagent.v1.SettingsChanged
+	27, // 6: remoteagent.v1.Event.turn_started:type_name -> remoteagent.v1.TurnStarted
+	28, // 7: remoteagent.v1.Event.turn_ended:type_name -> remoteagent.v1.TurnEnded
+	29, // 8: remoteagent.v1.Event.token_usage:type_name -> remoteagent.v1.TokenUsage
+	33, // 9: remoteagent.v1.Event.turn_context:type_name -> remoteagent.v1.TurnContext
+	34, // 10: remoteagent.v1.Event.approval_requested:type_name -> remoteagent.v1.ApprovalRequested
+	35, // 11: remoteagent.v1.Event.approval_resolved:type_name -> remoteagent.v1.ApprovalResolved
+	38, // 12: remoteagent.v1.Event.question_asked:type_name -> remoteagent.v1.QuestionAsked
+	40, // 13: remoteagent.v1.Event.question_answered:type_name -> remoteagent.v1.QuestionAnswered
+	41, // 14: remoteagent.v1.Event.session_state:type_name -> remoteagent.v1.SessionState
+	42, // 15: remoteagent.v1.Event.input_state:type_name -> remoteagent.v1.InputState
+	31, // 16: remoteagent.v1.Event.plan_proposed:type_name -> remoteagent.v1.PlanProposed
+	32, // 17: remoteagent.v1.Event.settings_changed:type_name -> remoteagent.v1.SettingsChanged
 	20, // 18: remoteagent.v1.Event.tool_started:type_name -> remoteagent.v1.ToolStarted
 	17, // 19: remoteagent.v1.Event.image_generated:type_name -> remoteagent.v1.ImageGenerated
 	19, // 20: remoteagent.v1.Event.plan_answered:type_name -> remoteagent.v1.PlanAnswered
 	18, // 21: remoteagent.v1.Event.session_forked:type_name -> remoteagent.v1.SessionForked
-	42, // 22: remoteagent.v1.Event.scheduled_notification:type_name -> remoteagent.v1.ScheduledNotification
+	43, // 22: remoteagent.v1.Event.scheduled_notification:type_name -> remoteagent.v1.ScheduledNotification
 	0,  // 23: remoteagent.v1.Origin.kind:type_name -> remoteagent.v1.OriginKind
 	2,  // 24: remoteagent.v1.ImageRef.source:type_name -> remoteagent.v1.ImageSource
 	3,  // 25: remoteagent.v1.ImageRef.sync:type_name -> remoteagent.v1.ImageSync
@@ -3930,25 +4035,26 @@ var file_remoteagent_v1_event_proto_depIdxs = []int32{
 	5,  // 32: remoteagent.v1.ToolCall.kind:type_name -> remoteagent.v1.ToolKind
 	16, // 33: remoteagent.v1.ToolCall.images:type_name -> remoteagent.v1.ImageRef
 	6,  // 34: remoteagent.v1.ToolCall.background:type_name -> remoteagent.v1.ToolBackground
-	7,  // 35: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
-	29, // 36: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
-	29, // 37: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
-	8,  // 38: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
-	43, // 39: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
-	9,  // 40: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
-	35, // 41: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
-	36, // 42: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
-	38, // 43: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
-	10, // 44: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
-	11, // 45: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
-	13, // 46: remoteagent.v1.InputState.stage:type_name -> remoteagent.v1.InputStage
-	12, // 47: remoteagent.v1.InputState.mode:type_name -> remoteagent.v1.SendMode
-	22, // 48: remoteagent.v1.InputState.files:type_name -> remoteagent.v1.SentFile
-	49, // [49:49] is the sub-list for method output_type
-	49, // [49:49] is the sub-list for method input_type
-	49, // [49:49] is the sub-list for extension type_name
-	49, // [49:49] is the sub-list for extension extendee
-	0,  // [0:49] is the sub-list for field type_name
+	26, // 35: remoteagent.v1.ToolCall.shared_files:type_name -> remoteagent.v1.SharedFile
+	7,  // 36: remoteagent.v1.TurnEnded.outcome:type_name -> remoteagent.v1.TurnOutcome
+	30, // 37: remoteagent.v1.TokenUsage.primary_limit:type_name -> remoteagent.v1.RateLimit
+	30, // 38: remoteagent.v1.TokenUsage.secondary_limit:type_name -> remoteagent.v1.RateLimit
+	8,  // 39: remoteagent.v1.SettingsChanged.mode:type_name -> remoteagent.v1.ApprovalMode
+	44, // 40: remoteagent.v1.ApprovalRequested.deadline:type_name -> google.protobuf.Timestamp
+	9,  // 41: remoteagent.v1.ApprovalResolved.decision:type_name -> remoteagent.v1.ApprovalDecision
+	36, // 42: remoteagent.v1.Question.options:type_name -> remoteagent.v1.QuestionOption
+	37, // 43: remoteagent.v1.QuestionAsked.questions:type_name -> remoteagent.v1.Question
+	39, // 44: remoteagent.v1.QuestionAnswered.answers:type_name -> remoteagent.v1.QuestionAnswer
+	10, // 45: remoteagent.v1.SessionState.status:type_name -> remoteagent.v1.SessionStatus
+	11, // 46: remoteagent.v1.InputState.status:type_name -> remoteagent.v1.InputStatus
+	13, // 47: remoteagent.v1.InputState.stage:type_name -> remoteagent.v1.InputStage
+	12, // 48: remoteagent.v1.InputState.mode:type_name -> remoteagent.v1.SendMode
+	22, // 49: remoteagent.v1.InputState.files:type_name -> remoteagent.v1.SentFile
+	50, // [50:50] is the sub-list for method output_type
+	50, // [50:50] is the sub-list for method input_type
+	50, // [50:50] is the sub-list for extension type_name
+	50, // [50:50] is the sub-list for extension extendee
+	0,  // [0:50] is the sub-list for field type_name
 }
 
 func init() { file_remoteagent_v1_event_proto_init() }
@@ -3986,7 +4092,7 @@ func file_remoteagent_v1_event_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_remoteagent_v1_event_proto_rawDesc), len(file_remoteagent_v1_event_proto_rawDesc)),
 			NumEnums:      14,
-			NumMessages:   29,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -100,6 +100,11 @@ const (
 	// LocalServiceAbortImageUploadProcedure is the fully-qualified name of the LocalService's
 	// AbortImageUpload RPC.
 	LocalServiceAbortImageUploadProcedure = "/remoteagent.v1.LocalService/AbortImageUpload"
+	// LocalServiceSendFileProcedure is the fully-qualified name of the LocalService's SendFile RPC.
+	LocalServiceSendFileProcedure = "/remoteagent.v1.LocalService/SendFile"
+	// LocalServiceGetSharedFileChunkProcedure is the fully-qualified name of the LocalService's
+	// GetSharedFileChunk RPC.
+	LocalServiceGetSharedFileChunkProcedure = "/remoteagent.v1.LocalService/GetSharedFileChunk"
 	// LocalServiceResolveApprovalProcedure is the fully-qualified name of the LocalService's
 	// ResolveApproval RPC.
 	LocalServiceResolveApprovalProcedure = "/remoteagent.v1.LocalService/ResolveApproval"
@@ -161,6 +166,12 @@ type LocalServiceClient interface {
 	GetImageUploadStatus(context.Context, *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error)
 	CompleteImageUpload(context.Context, *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error)
 	AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error)
+	// SendFile is the session MCP's send_file: it copies a computer file
+	// for the user to download. Local only; no client command reaches it.
+	SendFile(context.Context, *connect.Request[v1.SendFileRequest]) (*connect.Response[v1.SendFileResponse], error)
+	// GetSharedFileChunk reads one fixed-size block of a file the agent
+	// offered. Read-only, so clients may repeat it freely.
+	GetSharedFileChunk(context.Context, *connect.Request[v1.GetSharedFileChunkRequest]) (*connect.Response[v1.GetSharedFileChunkResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest]) (*connect.ServerStreamForClient[v1.WatchEventsResponse], error)
@@ -330,6 +341,18 @@ func NewLocalServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(localServiceMethods.ByName("AbortImageUpload")),
 			connect.WithClientOptions(opts...),
 		),
+		sendFile: connect.NewClient[v1.SendFileRequest, v1.SendFileResponse](
+			httpClient,
+			baseURL+LocalServiceSendFileProcedure,
+			connect.WithSchema(localServiceMethods.ByName("SendFile")),
+			connect.WithClientOptions(opts...),
+		),
+		getSharedFileChunk: connect.NewClient[v1.GetSharedFileChunkRequest, v1.GetSharedFileChunkResponse](
+			httpClient,
+			baseURL+LocalServiceGetSharedFileChunkProcedure,
+			connect.WithSchema(localServiceMethods.ByName("GetSharedFileChunk")),
+			connect.WithClientOptions(opts...),
+		),
 		resolveApproval: connect.NewClient[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse](
 			httpClient,
 			baseURL+LocalServiceResolveApprovalProcedure,
@@ -384,6 +407,8 @@ type localServiceClient struct {
 	getImageUploadStatus *connect.Client[v1.GetImageUploadStatusRequest, v1.GetImageUploadStatusResponse]
 	completeImageUpload  *connect.Client[v1.CompleteImageUploadRequest, v1.CompleteImageUploadResponse]
 	abortImageUpload     *connect.Client[v1.AbortImageUploadRequest, v1.AbortImageUploadResponse]
+	sendFile             *connect.Client[v1.SendFileRequest, v1.SendFileResponse]
+	getSharedFileChunk   *connect.Client[v1.GetSharedFileChunkRequest, v1.GetSharedFileChunkResponse]
 	resolveApproval      *connect.Client[v1.ResolveApprovalRequest, v1.ResolveApprovalResponse]
 	answerQuestion       *connect.Client[v1.AnswerQuestionRequest, v1.AnswerQuestionResponse]
 	watchEvents          *connect.Client[v1.WatchEventsRequest, v1.WatchEventsResponse]
@@ -515,6 +540,16 @@ func (c *localServiceClient) AbortImageUpload(ctx context.Context, req *connect.
 	return c.abortImageUpload.CallUnary(ctx, req)
 }
 
+// SendFile calls remoteagent.v1.LocalService.SendFile.
+func (c *localServiceClient) SendFile(ctx context.Context, req *connect.Request[v1.SendFileRequest]) (*connect.Response[v1.SendFileResponse], error) {
+	return c.sendFile.CallUnary(ctx, req)
+}
+
+// GetSharedFileChunk calls remoteagent.v1.LocalService.GetSharedFileChunk.
+func (c *localServiceClient) GetSharedFileChunk(ctx context.Context, req *connect.Request[v1.GetSharedFileChunkRequest]) (*connect.Response[v1.GetSharedFileChunkResponse], error) {
+	return c.getSharedFileChunk.CallUnary(ctx, req)
+}
+
 // ResolveApproval calls remoteagent.v1.LocalService.ResolveApproval.
 func (c *localServiceClient) ResolveApproval(ctx context.Context, req *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {
 	return c.resolveApproval.CallUnary(ctx, req)
@@ -583,6 +618,12 @@ type LocalServiceHandler interface {
 	GetImageUploadStatus(context.Context, *connect.Request[v1.GetImageUploadStatusRequest]) (*connect.Response[v1.GetImageUploadStatusResponse], error)
 	CompleteImageUpload(context.Context, *connect.Request[v1.CompleteImageUploadRequest]) (*connect.Response[v1.CompleteImageUploadResponse], error)
 	AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error)
+	// SendFile is the session MCP's send_file: it copies a computer file
+	// for the user to download. Local only; no client command reaches it.
+	SendFile(context.Context, *connect.Request[v1.SendFileRequest]) (*connect.Response[v1.SendFileResponse], error)
+	// GetSharedFileChunk reads one fixed-size block of a file the agent
+	// offered. Read-only, so clients may repeat it freely.
+	GetSharedFileChunk(context.Context, *connect.Request[v1.GetSharedFileChunkRequest]) (*connect.Response[v1.GetSharedFileChunkResponse], error)
 	ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error)
 	AnswerQuestion(context.Context, *connect.Request[v1.AnswerQuestionRequest]) (*connect.Response[v1.AnswerQuestionResponse], error)
 	WatchEvents(context.Context, *connect.Request[v1.WatchEventsRequest], *connect.ServerStream[v1.WatchEventsResponse]) error
@@ -748,6 +789,18 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(localServiceMethods.ByName("AbortImageUpload")),
 		connect.WithHandlerOptions(opts...),
 	)
+	localServiceSendFileHandler := connect.NewUnaryHandler(
+		LocalServiceSendFileProcedure,
+		svc.SendFile,
+		connect.WithSchema(localServiceMethods.ByName("SendFile")),
+		connect.WithHandlerOptions(opts...),
+	)
+	localServiceGetSharedFileChunkHandler := connect.NewUnaryHandler(
+		LocalServiceGetSharedFileChunkProcedure,
+		svc.GetSharedFileChunk,
+		connect.WithSchema(localServiceMethods.ByName("GetSharedFileChunk")),
+		connect.WithHandlerOptions(opts...),
+	)
 	localServiceResolveApprovalHandler := connect.NewUnaryHandler(
 		LocalServiceResolveApprovalProcedure,
 		svc.ResolveApproval,
@@ -824,6 +877,10 @@ func NewLocalServiceHandler(svc LocalServiceHandler, opts ...connect.HandlerOpti
 			localServiceCompleteImageUploadHandler.ServeHTTP(w, r)
 		case LocalServiceAbortImageUploadProcedure:
 			localServiceAbortImageUploadHandler.ServeHTTP(w, r)
+		case LocalServiceSendFileProcedure:
+			localServiceSendFileHandler.ServeHTTP(w, r)
+		case LocalServiceGetSharedFileChunkProcedure:
+			localServiceGetSharedFileChunkHandler.ServeHTTP(w, r)
 		case LocalServiceResolveApprovalProcedure:
 			localServiceResolveApprovalHandler.ServeHTTP(w, r)
 		case LocalServiceAnswerQuestionProcedure:
@@ -939,6 +996,14 @@ func (UnimplementedLocalServiceHandler) CompleteImageUpload(context.Context, *co
 
 func (UnimplementedLocalServiceHandler) AbortImageUpload(context.Context, *connect.Request[v1.AbortImageUploadRequest]) (*connect.Response[v1.AbortImageUploadResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.AbortImageUpload is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) SendFile(context.Context, *connect.Request[v1.SendFileRequest]) (*connect.Response[v1.SendFileResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.SendFile is not implemented"))
+}
+
+func (UnimplementedLocalServiceHandler) GetSharedFileChunk(context.Context, *connect.Request[v1.GetSharedFileChunkRequest]) (*connect.Response[v1.GetSharedFileChunkResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("remoteagent.v1.LocalService.GetSharedFileChunk is not implemented"))
 }
 
 func (UnimplementedLocalServiceHandler) ResolveApproval(context.Context, *connect.Request[v1.ResolveApprovalRequest]) (*connect.Response[v1.ResolveApprovalResponse], error) {

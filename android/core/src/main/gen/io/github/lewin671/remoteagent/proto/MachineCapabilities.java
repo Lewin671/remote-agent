@@ -495,6 +495,111 @@ public  final class MachineCapabilities extends
     maxFilesPerMessage_ = 0;
   }
 
+  public static final int SHARED_FILES_FIELD_NUMBER = 16;
+  private boolean sharedFiles_;
+  /**
+   * <pre>
+   * Files the agent offers (ToolCall.shared_files) can be fetched with
+   * GetSharedFileChunk.
+   * </pre>
+   *
+   * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+   * @return The sharedFiles.
+   */
+  @java.lang.Override
+  public boolean getSharedFiles() {
+    return sharedFiles_;
+  }
+  /**
+   * <pre>
+   * Files the agent offers (ToolCall.shared_files) can be fetched with
+   * GetSharedFileChunk.
+   * </pre>
+   *
+   * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+   * @param value The sharedFiles to set.
+   */
+  private void setSharedFiles(boolean value) {
+    
+    sharedFiles_ = value;
+  }
+  /**
+   * <pre>
+   * Files the agent offers (ToolCall.shared_files) can be fetched with
+   * GetSharedFileChunk.
+   * </pre>
+   *
+   * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+   */
+  private void clearSharedFiles() {
+
+    sharedFiles_ = false;
+  }
+
+  public static final int MAX_SHARED_FILE_BYTES_FIELD_NUMBER = 17;
+  private long maxSharedFileBytes_;
+  /**
+   * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+   * @return The maxSharedFileBytes.
+   */
+  @java.lang.Override
+  public long getMaxSharedFileBytes() {
+    return maxSharedFileBytes_;
+  }
+  /**
+   * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+   * @param value The maxSharedFileBytes to set.
+   */
+  private void setMaxSharedFileBytes(long value) {
+    
+    maxSharedFileBytes_ = value;
+  }
+  /**
+   * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+   */
+  private void clearMaxSharedFileBytes() {
+
+    maxSharedFileBytes_ = 0L;
+  }
+
+  public static final int SHARED_FILE_CHUNK_BYTES_FIELD_NUMBER = 18;
+  private int sharedFileChunkBytes_;
+  /**
+   * <pre>
+   * Every GetSharedFileChunkResponse.data is exactly this long.
+   * </pre>
+   *
+   * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+   * @return The sharedFileChunkBytes.
+   */
+  @java.lang.Override
+  public int getSharedFileChunkBytes() {
+    return sharedFileChunkBytes_;
+  }
+  /**
+   * <pre>
+   * Every GetSharedFileChunkResponse.data is exactly this long.
+   * </pre>
+   *
+   * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+   * @param value The sharedFileChunkBytes to set.
+   */
+  private void setSharedFileChunkBytes(int value) {
+    
+    sharedFileChunkBytes_ = value;
+  }
+  /**
+   * <pre>
+   * Every GetSharedFileChunkResponse.data is exactly this long.
+   * </pre>
+   *
+   * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+   */
+  private void clearSharedFileChunkBytes() {
+
+    sharedFileChunkBytes_ = 0;
+  }
+
   public static io.github.lewin671.remoteagent.proto.MachineCapabilities parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -1074,6 +1179,117 @@ public  final class MachineCapabilities extends
       return this;
     }
 
+    /**
+     * <pre>
+     * Files the agent offers (ToolCall.shared_files) can be fetched with
+     * GetSharedFileChunk.
+     * </pre>
+     *
+     * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+     * @return The sharedFiles.
+     */
+    @java.lang.Override
+    public boolean getSharedFiles() {
+      return instance.getSharedFiles();
+    }
+    /**
+     * <pre>
+     * Files the agent offers (ToolCall.shared_files) can be fetched with
+     * GetSharedFileChunk.
+     * </pre>
+     *
+     * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+     * @param value The sharedFiles to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSharedFiles(boolean value) {
+      copyOnWrite();
+      instance.setSharedFiles(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Files the agent offers (ToolCall.shared_files) can be fetched with
+     * GetSharedFileChunk.
+     * </pre>
+     *
+     * <code>bool shared_files = 16 [json_name = "sharedFiles"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSharedFiles() {
+      copyOnWrite();
+      instance.clearSharedFiles();
+      return this;
+    }
+
+    /**
+     * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+     * @return The maxSharedFileBytes.
+     */
+    @java.lang.Override
+    public long getMaxSharedFileBytes() {
+      return instance.getMaxSharedFileBytes();
+    }
+    /**
+     * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+     * @param value The maxSharedFileBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setMaxSharedFileBytes(long value) {
+      copyOnWrite();
+      instance.setMaxSharedFileBytes(value);
+      return this;
+    }
+    /**
+     * <code>int64 max_shared_file_bytes = 17 [json_name = "maxSharedFileBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearMaxSharedFileBytes() {
+      copyOnWrite();
+      instance.clearMaxSharedFileBytes();
+      return this;
+    }
+
+    /**
+     * <pre>
+     * Every GetSharedFileChunkResponse.data is exactly this long.
+     * </pre>
+     *
+     * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+     * @return The sharedFileChunkBytes.
+     */
+    @java.lang.Override
+    public int getSharedFileChunkBytes() {
+      return instance.getSharedFileChunkBytes();
+    }
+    /**
+     * <pre>
+     * Every GetSharedFileChunkResponse.data is exactly this long.
+     * </pre>
+     *
+     * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+     * @param value The sharedFileChunkBytes to set.
+     * @return This builder for chaining.
+     */
+    public Builder setSharedFileChunkBytes(int value) {
+      copyOnWrite();
+      instance.setSharedFileChunkBytes(value);
+      return this;
+    }
+    /**
+     * <pre>
+     * Every GetSharedFileChunkResponse.data is exactly this long.
+     * </pre>
+     *
+     * <code>int32 shared_file_chunk_bytes = 18 [json_name = "sharedFileChunkBytes"];</code>
+     * @return This builder for chaining.
+     */
+    public Builder clearSharedFileChunkBytes() {
+      copyOnWrite();
+      instance.clearSharedFileChunkBytes();
+      return this;
+    }
+
     // @@protoc_insertion_point(builder_scope:remoteagent.v1.MachineCapabilities)
   }
   @java.lang.Override
@@ -1100,10 +1316,14 @@ public  final class MachineCapabilities extends
             "fileUpload_",
             "maxFileUploadBytes_",
             "maxFilesPerMessage_",
+            "sharedFiles_",
+            "maxSharedFileBytes_",
+            "sharedFileChunkBytes_",
           };
           java.lang.String info =
-              "\u0000\n\u0000\u0000\u0002\u000f\n\u0000\u0001\u0000\u0002\u0007\u0003\u0004\u0004" +
-              "\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004";
+              "\u0000\r\u0000\u0000\u0002\u0012\r\u0000\u0001\u0000\u0002\u0007\u0003\u0004\u0004" +
+              "\u0002\u0005\u0004\u0006,\n\u0007\f\u0007\r\u0007\u000e\u0002\u000f\u0004\u0010\u0007" +
+              "\u0011\u0002\u0012\u0004";
           return newMessageInfo(DEFAULT_INSTANCE, info, objects);
       }
       case GET_DEFAULT_INSTANCE: {

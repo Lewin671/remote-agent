@@ -341,5 +341,16 @@ public interface CommandResultOrBuilder extends
    */
   io.github.lewin671.remoteagent.proto.LiveSnapshot getLiveSnapshot();
 
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   * @return Whether the getSharedFileChunk field is set.
+   */
+  boolean hasGetSharedFileChunk();
+  /**
+   * <code>.remoteagent.v1.GetSharedFileChunkResponse get_shared_file_chunk = 42 [json_name = "getSharedFileChunk"];</code>
+   * @return The getSharedFileChunk.
+   */
+  io.github.lewin671.remoteagent.proto.GetSharedFileChunkResponse getGetSharedFileChunk();
+
   public io.github.lewin671.remoteagent.proto.CommandResult.KindCase getKindCase();
 }

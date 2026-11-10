@@ -319,6 +319,25 @@ public interface CommandOrBuilder extends
 
   /**
    * <pre>
+   * A session command: its header names the session.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.GetSharedFileChunkRequest get_shared_file_chunk = 32 [json_name = "getSharedFileChunk"];</code>
+   * @return Whether the getSharedFileChunk field is set.
+   */
+  boolean hasGetSharedFileChunk();
+  /**
+   * <pre>
+   * A session command: its header names the session.
+   * </pre>
+   *
+   * <code>.remoteagent.v1.GetSharedFileChunkRequest get_shared_file_chunk = 32 [json_name = "getSharedFileChunk"];</code>
+   * @return The getSharedFileChunk.
+   */
+  io.github.lewin671.remoteagent.proto.GetSharedFileChunkRequest getGetSharedFileChunk();
+
+  /**
+   * <pre>
    * The protocol version the client speaks (internal/protocol). A daemon
    * of another version refuses the command and says which side to update.
    * </pre>

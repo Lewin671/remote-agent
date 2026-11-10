@@ -55,6 +55,12 @@ service LocalService {
   rpc GetImageUploadStatus(GetImageUploadStatusRequest) returns (GetImageUploadStatusResponse);
   rpc CompleteImageUpload(CompleteImageUploadRequest) returns (CompleteImageUploadResponse);
   rpc AbortImageUpload(AbortImageUploadRequest) returns (AbortImageUploadResponse);
+  // SendFile is the session MCP's send_file: it copies a computer file
+  // for the user to download. Local only; no client command reaches it.
+  rpc SendFile(SendFileRequest) returns (SendFileResponse);
+  // GetSharedFileChunk reads one fixed-size block of a file the agent
+  // offered. Read-only, so clients may repeat it freely.
+  rpc GetSharedFileChunk(GetSharedFileChunkRequest) returns (GetSharedFileChunkResponse);
   rpc ResolveApproval(ResolveApprovalRequest) returns (ResolveApprovalResponse);
   rpc AnswerQuestion(AnswerQuestionRequest) returns (AnswerQuestionResponse);
   rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse);
@@ -528,6 +534,35 @@ message PutImageChunkResponse {
 
 message GetImageUploadStatusRequest {
   string transfer_id = 1;
+}
+
+// The bound MCP's session must match the request's (MCP scope header).
+message SendFileRequest {
+  string session_id = 1;
+  // Absolute, or relative to the session's working directory.
+  string path = 2;
+}
+
+message SendFileResponse {
+  SharedFile file = 1;
+}
+
+message GetSharedFileChunkRequest {
+  string session_id = 1;
+  string file_id = 2;
+  // A multiple of MachineCapabilities.shared_file_chunk_bytes, below the
+  // file's size (0 for an empty file).
+  int64 offset = 3;
+}
+
+// The result is sealed without compression, and data always has the same
+// length, so a block's ciphertext does not reveal where the file ends.
+message GetSharedFileChunkResponse {
+  // Exactly shared_file_chunk_bytes: the file's bytes from offset, then
+  // zeros past its end.
+  bytes data = 1;
+  // The file's size; fixed width so the result's length does not vary.
+  fixed64 total_bytes = 2;
 }
 
 message GetImageUploadStatusResponse {
