@@ -33,6 +33,10 @@ type NotifyInput struct {
 }
 type Empty struct{}
 
+// listScopeNote travels with every schedule_list result. The MCP sees only the
+// bound session's own tasks, so a bare empty list reads as "no tasks exist".
+const listScopeNote = "Only tasks this session created through this MCP are listed, not every scheduled task on this computer. Tasks created by the user, by other sessions or with the remote-agent command are not visible here; the user sees and manages them in a Remote Agent client or with `remote-agent schedule list`. If the task you are looking for is not listed, say it is outside this list rather than concluding it does not exist."
+
 // New binds "current" to the Remote Agent session that launched this MCP.
 // The MCP is merely a client; all persistence and timing belong to the daemon.
 func New(client remoteagentv1connect.LocalServiceClient, sessionID, version string) *mcp.Server {
@@ -68,8 +72,12 @@ func New(client remoteagentv1connect.LocalServiceClient, sessionID, version stri
 	mcp.AddTool(server, &mcp.Tool{Name: "schedule_create", Description: "Persist a future Agent message in Remote Agent, visible through its task API. Supports a timestamp, fixed interval (minimum 300 seconds), calendar time in an IANA timezone, or delay (repeating minimum 60 seconds) after the current turn ends. Resume only this conversation (target.type=resume_session, session=current) or start a fresh one in the same project and CLI with the exact same standard approval mode (new_session). Plan and unknown/custom permissions cannot delegate tasks. Tasks survive CLI exit and daemon restart; this computer must be running to execute. During a scheduled execution you cannot create, update, resume or run tasks. Recurrence may end at max_runs or until. notify=finish (the default when omitted) requests a completion notification from the daemon if this run has no notify_user call; notify=agent_only disables that fallback. Use notify_user for selected results or exceptional conditions, especially with agent_only. If the user runs, changes its execution definition or notification policy, or resumes the task in the client or local command line, it transfers to user management and MCP can no longer access or modify it; schedule_list still shows it as read-only. Only a successful result means the task was saved. After an ambiguous connection error, list tasks before retrying or reuse a stable request_id."}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "create", "", 0, &in.Task, in.RequestID)
 	})
-	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List this bound session's MCP-created Remote Agent scheduled tasks, including status, next execution time, revisions and execution history. Tasks taken over by the user remain listed with mcp_read_only=true and takeover.via=client/local; these receipts contain only id, title, status, next_run_at and takeover metadata, with no task definition or execution history. All other MCP operations on them are denied."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
-		return call(ctx, "list", "", 0, nil, "")
+	mcp.AddTool(server, &mcp.Tool{Name: "schedule_list", Description: "List only the Remote Agent scheduled tasks this bound session created through this MCP, not every task on this computer: an empty list does not mean none exist, and the result's scope_note says where the others are managed. Includes status, next execution time, revisions and execution history. Tasks taken over by the user remain listed with mcp_read_only=true and takeover.via=client/local; these receipts contain only id, title, status, next_run_at and takeover metadata, with no task definition or execution history. All other MCP operations on them are denied."}, func(ctx context.Context, _ *mcp.CallToolRequest, _ Empty) (*mcp.CallToolResult, map[string]any, error) {
+		res, result, err := call(ctx, "list", "", 0, nil, "")
+		if err == nil {
+			result["scope_note"] = listScopeNote
+		}
+		return res, result, err
 	})
 	mcp.AddTool(server, &mcp.Tool{Name: "schedule_update", Description: "Replace a Remote Agent scheduled task definition. Changing only title and/or notify preserves scheduling and execution state, including active runs; a notification-policy change applies only to future dispatches. Other replacements require the active execution to finish first. Use expected_revision to avoid overwriting concurrent edits."}, func(ctx context.Context, _ *mcp.CallToolRequest, in UpdateInput) (*mcp.CallToolResult, map[string]any, error) {
 		return call(ctx, "update", in.TaskID, in.ExpectedRevision, &in.Task, "")

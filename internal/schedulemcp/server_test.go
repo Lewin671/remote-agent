@@ -99,4 +99,19 @@ func TestToolDiscoveryAndCreate(t *testing.T) {
 	if q.Operation != "cancel" || q.TaskId != "created" || q.ExpectedRevision != 1 {
 		t.Fatal("wrong cancel")
 	}
+	// The list is scoped to this session; its result must say so, or an empty
+	// list reads as "no tasks exist". Other operations carry no such note.
+	if note, _ := res.StructuredContent.(map[string]any)["scope_note"]; note != nil {
+		t.Fatalf("scope note on a non-list result: %v", note)
+	}
+	res, err = cs.CallTool(ctx, &mcp.CallToolParams{Name: "schedule_list", Arguments: map[string]any{}})
+	if err != nil || res.IsError {
+		t.Fatalf("list %+v %v", res, err)
+	}
+	if q = <-b.requests; q.Operation != "list" {
+		t.Fatalf("wrong list: %+v", q)
+	}
+	if note, _ := res.StructuredContent.(map[string]any)["scope_note"].(string); note != listScopeNote {
+		t.Fatalf("list result lacks the scope note: %+v", res.StructuredContent)
+	}
 }
