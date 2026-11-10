@@ -1,8 +1,8 @@
 import { isSkeleton, skeletonMessage } from "../skeleton";
-// What a session waits for, docked above the input: approvals, questions,
-// plans and terminal popups (client-v7 停靠区). Only the first item is
-// docked, as one line that opens in place; long content opens a full page,
-// and the buttons stay in view.
+// What a session waits for, docked above the input (design-system §6 停靠区):
+// approvals, questions, plans and terminal popups, each in the dark card's
+// shell. Only the first item is docked, open or folded to one dark line;
+// what has no room opens as a page, and the buttons stay in view.
 
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
@@ -154,7 +154,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
   const ans = useAnswer(remote, sid, q.questionId, isSkeleton(q));
   const ticked = ans.ticked;
   const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
-  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage, busy: false, steps: null, progress: "", answers: null, actions: (_page: boolean) => null };
+  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage, busy: false, progress: "", answers: null, actions: (_page: boolean) => null };
   const n = q.questions.length;
   const index = Math.min(ans.index, n - 1);
   const item = q.questions[index];
@@ -244,7 +244,6 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
     label: askTitle(agent),
     text: item.text,
     busy: !!ans.busy,
-    steps: progress,
     progress,
     answers,
     actions: (page: boolean) => (
@@ -266,7 +265,7 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
       label={p.label}
       brief={p.text}
       busy={p.busy}
-      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, p.steps)}
+      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, p.progress)}
       body={
         <>
           <div className="q">{p.text}</div>
