@@ -273,3 +273,9 @@ File: @"<uploads>/<session>/files/<file4>/末尾.中文" (file)
 ```
 
 这里只替换动态路径根和 ID；引号、前缀及末尾标记都是实际输入和 user 记录的文字。产品组合形式由 [session-files.md](session-files.md) 维护。
+
+## send_file MCP 工具实测
+
+**2026-11-10，Claude Code 2.1.322、Haiku 5.5，询问模式（`--permission-mode default`），隔离状态目录、tmux socket 和本地中继，证据为加密客户端收到的事件。** 模型调用 `remote_agent` MCP 的 `send_file` 前，Claude 对这个 MCP 工具发起原生审批，经 PermissionRequest hook 到达客户端，`ApprovalRequested.tool_name` 是 `mcp__remote_agent__send_file`；终端显示「Allowed by PermissionRequest hook」。允许后调用完成，transcript 解析出的工具调用标题是 `remote_agent.send_file`，工具结果的文字内容里有 `file_id`，daemon 据此给事件挂上 `shared_files`。工具没有声明 `readOnlyHint`；声明后会不会跳过询问未测。自动和完全放行模式未测。
+
+同一版本的工作区信任对话框默认选中「No, exit」，直接按 Enter 会退出 CLI，会话随即结束；要先选「Yes, I trust this folder」。

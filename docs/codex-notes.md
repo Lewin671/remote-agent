@@ -249,3 +249,7 @@ File: <uploads>/<session>/files/<file1>/as-file.png
 ```
 
 两者事件分别为 images=0/files=1 和 images=1/files=1，均 SUBMITTED。`[Image #1]` 后的空格来自 Codex，确认规则按现有空白规范化比较；前缀和文件路径不会被当成图片。
+
+## send_file MCP 工具
+
+**未实测（2026-11-10，Codex CLI 0.166.0）**：隔离环境里 Codex 已启动并收到消息，但账户用量已到上限，模型没有回复，`send_file` 在询问模式下会不会弹原生审批、rollout 里 MCP 结果的格式都没有验证到。待测项见 [plan.md](plan.md) 的「待确认」。

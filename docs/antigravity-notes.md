@@ -582,3 +582,7 @@ Antigravity CLI 的所有运行时状态和会话数据均存放在 `~/.gemini/a
 - 独立审计捕获的 `/mcp` 在输入框后保留 `MCP Servers` 菜单和 Keyboard 导航；带后台任务的中断画面，在输入框下额外显示任务栏和第三条横线。对应脱敏样本为 `mcp-terminal.txt`、`interrupt-background-terminal.txt`；不能把最后两条横线固定当作输入框。
 - 同一审计的计划呈现后，空闲输入框上方为 `1 artifact · /artifact to review`；Ctrl-R 才出现绑定文件的 `Action required` 面板。`plan-terminal-before.txt`、`plan-terminal-after.txt` 是同一待审工件的前后画面。
 - API 计费信号仅做只读调查：实际 statusLine 字段、当前 settings 的字段名及 `strings` 中的状态栏/认证/内嵌帮助文字。binary 包含 API key 后端和认证类型字样，但未找到它们与当前会话 statusLine 的可靠对应；当前 settings 没有认证来源字段。没有更改登录、注入 API key 或发送 `/model`，也没有实测 API 登录。是否接入仍见 [plan.md](plan.md)。
+
+## 14. send_file MCP 工具（1.5.5，2026-11-10）
+
+隔离环境、询问模式、Gemini 3.8 Flash：`remote_agent` MCP 握手成功，`~/.gemini/antigravity-cli/mcp/remote_agent/` 下写入了 `send_file.json`（说明工具已发现）。但模型在这一次运行里没有调用它：思考摘要写着没有声明这样的工具，转而用 `ls`、`cat`、`find` 查找 MCP 配置，并请求读 `~/.gemini/config/mcp_config.json`（被拒绝后停止测试）。所以 `call_mcp_tool` 调 `send_file` 的标题、结果格式和询问模式下的审批都还没有实测。另见：第一条 `run_command` 的审批经 hook 到了客户端，紧接着的第二条只在终端里弹出、没有产生审批事件，在隔离终端里手动允许；这一点没有进一步排查。
