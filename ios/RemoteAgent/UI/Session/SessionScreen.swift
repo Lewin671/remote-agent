@@ -54,13 +54,13 @@ struct SessionAbsent: View {
                 ConnectionBar()
                 Spacer(minLength: 24)
                 if let note {
-                    Text(note).type(T.h17, DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                    Text(note).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                     // The server could not be asked: it is asked again by itself, and at once on a tap.
                     if case .failed = lookup { TextAction("重试", alignment: .center, action: onRetry) }
                     TextAction("返回", alignment: .center) { nav.back() }
                 } else {
-                    Mark(Lucide.loaderCircle, color: DS.ink2, size: 22, relativeTo: .body)
-                    Text(online ? "读取中…" : "连上服务器后读取这个会话").type(T.sm, DS.ink2).padding(.top, 12)
+                    Mark(Mark.progress, color: DS.ink2, size: 22, relativeTo: .body)
+                    Text(online ? "读取中…" : "连上服务器后读取这个会话").font(.subheadline).ink(DS.ink2).padding(.top, 12)
                         .multilineTextAlignment(.center)
                 }
                 Spacer(minLength: 24)
@@ -161,7 +161,7 @@ private struct SessionPage: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background((term ? Theme.Term.bg : DS.paper).ignoresSafeArea())
+        .background((term ? TermColors.bg : DS.paper).ignoresSafeArea())
         .markdownTheme(DS.markdown)
         // Under the title: 聊天 / 终端 on glass, then the strips of what stands in the way, the content sliding under them.
         .floatingBar(.top) {
@@ -170,7 +170,7 @@ private struct SessionPage: View {
                     items: ["聊天", "终端"], selected: Binding(get: { term ? 1 : 0 }, set: { pick($0) }),
                     enabled: { $0 == 0 || hasTerminal }, dot: status == .popup ? 1 : nil)
                     .accessibilityIdentifier("session-view")
-                SessionLinkStrip()
+                ConnectionStrip()
                 if let refusal { GlassStrip(text: refusal, symbol: "exclamationmark.triangle", tone: .attention) }
                 if !act.error.isEmpty { GlassStrip(text: act.error, symbol: "xmark", tone: .error) }
                 SessionScheduleBar(session: s)
@@ -386,34 +386,3 @@ private struct SessionTitle: View {
     }
 }
 
-/// How the way to the server stands, as a strip under the session's title
-/// (design-system §6 「连接状态」); nothing when connected. 详情 says why the
-/// server is out of reach.
-struct SessionLinkStrip: View {
-    @Environment(AppModel.self) private var model
-    @State private var details = false
-
-    var body: some View {
-        let state = model.state
-        Group {
-            switch state.link {
-            case .online:
-                if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
-            case .noNetwork:
-                GlassStrip(text: "本机网络不通 · " + (state.loaded ? "显示的是上次的内容" : "联网后才能读取会话"), symbol: "wifi.slash")
-            case .waiting:
-                GlassStrip(text: state.synced ? "正在重连…" : "连接中…", spinning: true)
-            case .noServer:
-                // Nothing kept to show: the reason is the whole of what can be said, in red.
-                if !state.loaded && !state.error.isEmpty {
-                    GlassStrip(text: "连不上服务器：\(state.error)", symbol: "xmark", tone: .error, action: "详情") { details = true }
-                } else {
-                    GlassStrip(text: "连不上服务器 · 正在重试", symbol: "icloud.slash", action: "详情") { details = true }
-                }
-            }
-        }
-        .kitSheet(isPresented: $details) {
-            ServerDetails(state: state) { details = false }
-        }
-    }
-}

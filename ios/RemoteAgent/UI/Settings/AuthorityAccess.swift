@@ -31,7 +31,7 @@ struct AddDeviceEntry: View {
         } else { GroupNote(access.addHint) }
     }
     private var row: some View {
-        GRow("添加设备", action: true, icon: Lucide.plus) { nav.open(.addDevice()) }
+        GRow("添加设备", action: true, icon: "plus") { nav.open(.addDevice()) }
     }
 
 }

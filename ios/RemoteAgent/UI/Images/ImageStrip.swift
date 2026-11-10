@@ -64,8 +64,8 @@ struct ImageStrip: View {
                                      retry: { center.retry(key, item) }, remove: { center.remove(key, item) })
                         }
                     }
-                    Text("文件原样发送，包含其中的元数据。").type(T.meta, DS.ink2)
-                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").type(T.meta, DS.ink2)
+                    Text("文件原样发送，包含其中的元数据。").font(.footnote).ink(DS.ink2)
+                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").font(.footnote).ink(DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
@@ -92,7 +92,7 @@ struct ImageStrip: View {
     }
 
     private func line(_ text: String, _ ink: Color) -> some View {
-        Text(text).type(T.meta, ink)
+        Text(text).font(.footnote).ink(ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10).padding(.vertical, 2)
     }
@@ -130,7 +130,7 @@ struct ImageStrip: View {
                 Circle()
                     .strokeBorder(draft.original ? DS.blue : DS.ink2, lineWidth: draft.original ? 4 : 1.5)
                     .frame(width: 14, height: 14)
-                Text(draft.original ? "原图 · 共 \(megabytes) MB" : "原图").type(T.meta, DS.ink2)
+                Text(draft.original ? "原图 · 共 \(megabytes) MB" : "原图").font(.footnote).ink(DS.ink2)
             }
             .frame(minHeight: DS.minHit)
             .contentShape(Rectangle())
@@ -143,7 +143,7 @@ struct ImageStrip: View {
         .accessibilityValue(draft.original ? "已选，共 \(megabytes) MB" : "未选")
         .accessibilityHint(canChange ? "只对这一条消息生效" : "这些图片是上次留下的，不能再换成原图或压缩图")
         .accessibilityAddTraits(.isToggle)
-        let count = Text("\(draft.photos.count) / \(max)").type(T.meta, DS.ink2)
+        let count = Text("\(draft.photos.count) / \(max)").font(.footnote).ink(DS.ink2)
             .accessibilityLabel("已选 \(draft.photos.count) 张，最多 \(max) 张")
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
@@ -187,7 +187,7 @@ private struct DraftThumb: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
         DS.fill
             .overlay { if let thumb { Image(uiImage: thumb).resizable().scaledToFill() } }
             .overlay { state }
@@ -199,7 +199,7 @@ private struct DraftThumb: View {
             .overlay(alignment: .topTrailing) {
                 // 18 pt to see, 44 pt to tap.
                 Button(action: onRemove) {
-                    Ic(Lucide.x, size: 12, color: Theme.onSolid)
+                    SymbolImage("xmark", size: 12, color: Color.white)
                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                         .frame(width: 18, height: 18)
                         .background(Color.black.opacity(0.6), in: Circle())
@@ -223,10 +223,10 @@ private struct DraftThumb: View {
         switch image.state {
         case .processing:
             Color.black.opacity(0.25)
-            Mark(Lucide.loaderCircle, color: Theme.onSolid, size: 24, relativeTo: .body).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            Mark(Mark.progress, color: Color.white, size: 24, relativeTo: .body).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         case .uploading(let progress):
             Color.black.opacity(0.25)
-            Mark(Lucide.loaderCircle, color: Theme.onSolid, size: 24, relativeTo: .body).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            Mark(Mark.progress, color: Color.white, size: 24, relativeTo: .body).dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             if showProgress {
                 VStack(spacing: 0) {
                     Spacer(minLength: 0)
@@ -240,7 +240,7 @@ private struct DraftThumb: View {
             Color.black.opacity(0.6)
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                Text("重试").type(T.tab, Theme.onSolid).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+                Text("重试").font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
             }
         case .ready:
             EmptyView()
@@ -339,11 +339,11 @@ struct OutgoingImageThumbs: View {
                         if let thumb = center.thumb(img) {
                             Image(uiImage: thumb).resizable().scaledToFill()
                         } else {
-                            Text("图片").type(T.meta, DS.ink2)
+                            Text("图片").font(.footnote).ink(DS.ink2)
                         }
                     }
                     .frame(width: 56, height: 56)
-                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
                 }
             }
             .padding(.bottom, 4)

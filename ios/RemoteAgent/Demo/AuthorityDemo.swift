@@ -44,8 +44,8 @@ struct AuthorityDemoPairCode: View {
         VStack(spacing: 12) {
             QRCodeView(text: PairLink(code: "12345678", server: server, commit: Data(repeating: 5, count: 32))
                 .url(web: "https://app.example.com"), label: "添加设备的配对二维码")
-            Text("1234 5678").type(T.code22, Theme.fg)
-            Text("有效期至 " + securityTime(UInt64(nowMs() + 5 * 60_000), timeOnly: true)).type(T.meta, Theme.muted)
+            Text("1234 5678").font(.title2.monospaced().weight(.semibold)).ink(DS.ink)
+            Text("有效期至 " + securityTime(UInt64(nowMs() + 5 * 60_000), timeOnly: true)).font(.footnote).ink(DS.ink2)
             Btn("复制配对码") {}
             Btn("取消配对") {}
         }.padding(16)

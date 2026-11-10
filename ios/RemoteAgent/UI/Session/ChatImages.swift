@@ -92,9 +92,9 @@ private struct ChatThumb: View {
     let onOpen: () -> Void
 
     private func badge(_ text: String) -> some View {
-        Text(text).type(T.tab, Theme.onSolid).lineLimit(1)
+        Text(text).font(.caption2).ink(Color.white).lineLimit(1)
             .padding(.horizontal, 5)
-            .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous))
+            .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: DS.Radius.inline, style: .continuous))
             .padding(4)
     }
 
@@ -108,8 +108,8 @@ private struct ChatThumb: View {
                     } else {
                         // Not even a preview: the file's name is all there is.
                         VStack(spacing: 0) {
-                            Text(ref.sync == .nameOnly ? "图片没有同步" : "没有预览").type(T.tab, DS.ink2)
-                            if !ref.path.isEmpty { Text(fileName(ref.path)).type(T.tab, DS.ink3).lineLimit(2) }
+                            Text(ref.sync == .nameOnly ? "图片没有同步" : "没有预览").font(.caption2).ink(DS.ink2)
+                            if !ref.path.isEmpty { Text(fileName(ref.path)).font(.caption2).ink(DS.ink3).lineLimit(2) }
                         }
                         .multilineTextAlignment(.center).padding(6)
                     }
@@ -126,10 +126,10 @@ private struct ChatThumb: View {
                 }
                 .overlay {
                     if more > 0 {
-                        Color.black.opacity(0.53).overlay { Text("+\(more)").type(T.h17, Theme.onSolid) }
+                        Color.black.opacity(0.53).overlay { Text("+\(more)").font(.headline).ink(Color.white) }
                     }
                 }
-                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -159,10 +159,10 @@ struct GeneratedCard: View {
                             if let preview {
                                 Image(uiImage: preview).resizable().scaledToFit()
                             } else {
-                                Text("没有预览").type(T.sm, DS.ink2)
+                                Text("没有预览").font(.subheadline).ink(DS.ink2)
                             }
                         }
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
                         // A picture taller than the screen would push the chat away.
                         .frame(maxHeight: 420)
                 }
@@ -173,18 +173,18 @@ struct GeneratedCard: View {
             HStack(spacing: 8) {
                 let first = item.images.first
                 let size = first.map { $0.width > 0 ? " · \($0.width) × \($0.height)" : "" } ?? ""
-                Text("生成的图片\(size)").type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
+                Text("生成的图片\(size)").font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
                 if !item.prompt.isEmpty {
                     Button {
                         open.toggle(item.key)
                     } label: {
-                        ArrowText("提示词", style: T.meta, direction: isOpen ? .up : .down)
+                        ArrowText("提示词", style: .footnote, direction: isOpen ? .up : .down)
                             .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
                     }
                     .buttonStyle(PressStyle())
                 }
             }
-            if isOpen { Text(item.prompt).type(T.sm, DS.ink2) }
+            if isOpen { Text(item.prompt).font(.subheadline).ink(DS.ink2) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, chatMargin).padding(.vertical, 8)

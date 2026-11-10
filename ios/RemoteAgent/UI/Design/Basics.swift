@@ -1,6 +1,5 @@
-// The small shared pieces of docs/design/client-v38.html, sized as the
-// mockup's CSS (1 CSS px = 1 pt): lines, tap targets, dots, arrows,
-// chips. What each is for is in docs/design-system.md §6; the Android
+// The small shared pieces of docs/design/client-v58.html: lines, tap
+// targets, dots, arrows, chips. What each is for is in docs/design-system.md §6; the Android
 // counterparts are in ui/Kit.kt and ui/Common.kt.
 import RACore
 import RAMarkdownUI
@@ -9,25 +8,25 @@ import UIKit
 
 extension View {
     /// A 1 pt line at the bottom of the element, as a CSS border-bottom.
-    func bottomLine(_ color: Color = Theme.line, startInset: CGFloat = 0) -> some View {
+    func bottomLine(_ color: Color = DS.sep, startInset: CGFloat = 0) -> some View {
         overlay(alignment: .bottom) {
             Rectangle().fill(color).frame(height: 1).padding(.leading, startInset).accessibilityHidden(true)
         }
     }
 
     /// A 1 pt line at the top, as a CSS border-top.
-    func topLine(_ color: Color = Theme.line) -> some View {
+    func topLine(_ color: Color = DS.sep) -> some View {
         overlay(alignment: .top) { Rectangle().fill(color).frame(height: 1).accessibilityHidden(true) }
     }
 
     /// Makes the element at least 44 × 44 to the finger without changing what is drawn (design-system §4).
-    func hitTarget(minWidth: CGFloat = Theme.minHit, minHeight: CGFloat = Theme.minHit, alignment: Alignment = .center) -> some View {
+    func hitTarget(minWidth: CGFloat = DS.minHit, minHeight: CGFloat = DS.minHit, alignment: Alignment = .center) -> some View {
         frame(minWidth: minWidth, minHeight: minHeight, alignment: alignment).contentShape(Rectangle())
     }
 
     /// On a wide screen (an iPad, a phone on its side) settings rows keep a centred column instead of stretching across the window.
     func readableColumn() -> some View {
-        frame(maxWidth: Theme.readableWidth).frame(maxWidth: .infinity)
+        frame(maxWidth: DS.column).frame(maxWidth: .infinity)
     }
 }
 
@@ -43,7 +42,7 @@ struct RowPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .contentShape(Rectangle())
-            .background(configuration.isPressed ? Theme.chip : Color.clear, ignoresSafeAreaEdges: [])
+            .background(configuration.isPressed ? DS.fill : Color.clear, ignoresSafeAreaEdges: [])
     }
 }
 
@@ -75,47 +74,28 @@ struct Dot: View {
     }
 }
 
-/// A status: a dot and a word, not colour alone.
-struct StatusLabel: View {
-    let text: String
-    let tone: StatusTone
-
-    init(_ text: String, tone: StatusTone) {
-        self.text = text
-        self.tone = tone
-    }
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Dot(Theme.dot(tone))
-            Text(text).type(T.meta, Theme.muted)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// Which way an arrow points: to the right it goes to another page; down and up open and close in place (design-system §5).
 enum ArrowDirection: Sendable { case right, down, up }
 
 /// An arrow as tall as text in `style`.
 struct Arrow: View {
     private let color: Color?
-    private let style: TypeStyle
+    private let style: Font
     private let direction: ArrowDirection
 
-    init(_ color: Color? = nil, style: TypeStyle = T.sm, direction: ArrowDirection = .right) {
+    init(_ color: Color? = nil, style: Font = .subheadline, direction: ArrowDirection = .right) {
         self.color = color
         self.style = style
         self.direction = direction
     }
 
     var body: some View {
-        let icon: LucideIcon = switch direction {
-        case .right: Lucide.chevronRight
-        case .down: Lucide.chevronDown
-        case .up: Lucide.chevronUp
+        let icon: String = switch direction {
+        case .right: "chevron.right"
+        case .down: "chevron.down"
+        case .up: "chevron.up"
         }
-        Ic(icon, style: style, color: color)
+        SymbolImage(icon, style: style, color: color)
     }
 }
 
@@ -123,10 +103,10 @@ struct Arrow: View {
 struct ArrowText: View {
     private let text: String
     private let color: Color
-    private let style: TypeStyle
+    private let style: Font
     private let direction: ArrowDirection
 
-    init(_ text: String, color: Color = Theme.blue, style: TypeStyle = T.sm, direction: ArrowDirection = .right) {
+    init(_ text: String, color: Color = DS.blue, style: Font = .subheadline, direction: ArrowDirection = .right) {
         self.text = text
         self.color = color
         self.style = style
@@ -135,7 +115,7 @@ struct ArrowText: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text(text).type(style, color)
+            Text(text).font(style).ink(color)
             Arrow(color, style: style, direction: direction)
         }
     }
@@ -146,7 +126,7 @@ struct ArrowText: View {
 /// paragraph is one line to count and many to draw.
 struct CutText: View {
     private let text: String
-    private let style: TypeStyle
+    private let style: Font
     private let color: Color
     private let lines: Int
     @Binding private var cut: Bool
@@ -154,7 +134,7 @@ struct CutText: View {
     @State private var shown: CGFloat = 0
     @State private var whole: CGFloat = 0
 
-    init(_ text: String, style: TypeStyle, color: Color, lines: Int, cut: Binding<Bool>) {
+    init(_ text: String, style: Font, color: Color, lines: Int, cut: Binding<Bool>) {
         self.text = text
         self.style = style
         self.color = color
@@ -164,13 +144,13 @@ struct CutText: View {
 
     var body: some View {
         let entity = diagnosticEntity
-        Text(text).type(style, color).lineLimit(lines)
+        Text(text).font(style).ink(color).lineLimit(lines)
             .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.cutShown, entity: entity) { g.size.height } } action: {
                 ChatDiagnosticRing.shared.record(.cutShown, entity: entity, Double($0)); shown = $0
             }
             .background {
                 // The same text at the same width with nothing held back, measured and not drawn.
-                Text(text).type(style, color).fixedSize(horizontal: false, vertical: true).hidden()
+                Text(text).font(style).ink(color).fixedSize(horizontal: false, vertical: true).hidden()
                     .onGeometryChange(for: CGFloat.self) { g in ChatDiagnosticRing.shared.measure(.cutWhole, entity: entity) { g.size.height } } action: {
                         ChatDiagnosticRing.shared.record(.cutWhole, entity: entity, Double($0)); whole = $0
                     }
@@ -182,29 +162,6 @@ struct CutText: View {
     }
 }
 
-/// Text after an icon of its height, as the plus of 添加设备 or the turning circle of 正在连接….
-struct IconText: View {
-    private let icon: LucideIcon
-    private let text: String
-    private let color: Color
-    private let style: TypeStyle
-
-    init(_ icon: LucideIcon, _ text: String, color: Color = Theme.muted, style: TypeStyle = T.sm) {
-        self.icon = icon
-        self.text = text
-        self.color = color
-        self.style = style
-    }
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Mark(icon, color: color, size: style.size, relativeTo: style.relativeTo)
-            Text(text).type(style, color)
-        }
-        .accessibilityElement(children: .combine)
-    }
-}
-
 /// A project's name: the last folder of its path.
 func projectName(_ key: String) -> String {
     key.split(separator: "/").last.map(String.init) ?? "未知项目"
@@ -212,17 +169,17 @@ func projectName(_ key: String) -> String {
 
 /// A small coloured square with an icon, in front of a computer's row. It grows with the row's text.
 struct IconBadge: View {
-    private let icon: LucideIcon
+    private let icon: String
     private let color: Color
     @ScaledMetric(relativeTo: .subheadline) private var side: CGFloat = 26
 
-    init(_ icon: LucideIcon, color: Color) {
+    init(_ icon: String, color: Color) {
         self.icon = icon
         self.color = color
     }
 
     var body: some View {
-        Ic(icon, size: 16, color: Theme.onSolid, relativeTo: .subheadline)
+        SymbolImage(icon, size: 16, color: Color.white, relativeTo: .subheadline)
             .frame(width: side, height: side)
             .background(color, in: RoundedRectangle(cornerRadius: side * 7 / 26, style: .continuous))
             .accessibilityHidden(true)
@@ -245,12 +202,12 @@ struct Chip: View {
 
     var body: some View {
         let (ink, back): (Color, Color) = switch tone {
-        case .plain: (Theme.fg2, Theme.chip)
-        case .warn: (Theme.orangeInk, Theme.orangeSoft)
-        case .auto: (Theme.blue, Theme.blueSoft)
-        case .danger: (Theme.red, Theme.redSoft)
+        case .plain: (DS.ink2, DS.fill)
+        case .warn: (DS.orangeInk, DS.orangeSoft)
+        case .auto: (DS.blue, DS.fill)
+        case .danger: (DS.red, DS.fill)
         }
-        let pill = Text(text).type(T.meta, ink).lineLimit(1)
+        let pill = Text(text).font(.footnote).ink(ink).lineLimit(1)
             .padding(.horizontal, 9).padding(.vertical, 4)
             .background(back, in: Capsule())
         if let action {
@@ -269,7 +226,7 @@ struct Bordered<Content: View>: View {
 
     var body: some View {
         content.padding(12)
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).strokeBorder(Theme.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous).strokeBorder(DS.sep, lineWidth: 1))
     }
 }
 
@@ -285,8 +242,8 @@ struct Row44<Content: View>: View {
 
     var body: some View {
         let row = HStack(spacing: 12) { content }
-            .padding(.horizontal, Theme.Space.page).padding(.vertical, 8)
-            .frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading)
+            .padding(.horizontal, DS.Space.l).padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
         if let action {
             Button(action: action) { row }.buttonStyle(RowPressStyle())
         } else {
@@ -295,13 +252,12 @@ struct Row44<Content: View>: View {
     }
 }
 
-/// A code or command block outside the terminal: one surface above the one it is on, radius 6, mono 12 (design-system §2, §6).
+/// A code or command block outside the terminal: `gbg`, radius 14, mono (design-system §2, §6).
 struct Code: View {
     private let text: String
     private let maxLines: Int?
     private let background: Color?
     private let border: Bool
-    @Environment(\.onSoft) private var onSoft
 
     init(_ text: String, maxLines: Int? = nil, background: Color? = nil, border: Bool = false) {
         self.text = text
@@ -311,13 +267,13 @@ struct Code: View {
     }
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
-        Text(text).type(T.mono, Theme.fg2)
+        let shape = RoundedRectangle(cornerRadius: DS.Radius.code, style: .continuous)
+        Text(text).font(.footnote.monospaced()).ink(DS.ink2)
             .lineLimit(maxLines)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 10).padding(.vertical, 7)
-            .background(background ?? (onSoft ? Theme.card : Theme.soft), in: shape)
-            .overlay { if border { shape.strokeBorder(Theme.line, lineWidth: 1) } }
+            .background(background ?? DS.gbg, in: shape)
+            .overlay { if border { shape.strokeBorder(DS.sep, lineWidth: 1) } }
     }
 }
 

@@ -55,7 +55,7 @@ struct ScheduleConfigSheet: View {
         case .model:
             modelChoices(c)
         }
-        if !error.isEmpty { Hint(error, color: Theme.red) }
+        if !error.isEmpty { Hint(error, color: DS.red) }
         if c == nil && page != .project { Hint("请先选择项目。") }
         Group { EmptyView() }.task(id: (c?.machineId ?? "") + "/" + String(c?.agent.rawValue ?? 0)) {
             guard let c, page == .model || page == .mode || page == .machine else { return }

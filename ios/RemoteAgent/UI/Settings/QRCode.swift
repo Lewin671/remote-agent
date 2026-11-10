@@ -32,7 +32,7 @@ struct QRCodeView: View {
         }
         .padding(12)
         .frame(width: 170, height: 170)
-        .background(.white, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        .background(.white, in: RoundedRectangle(cornerRadius: DS.Radius.darkCard, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 9, y: 4)
         .accessibilityElement()
         .accessibilityLabel(label)

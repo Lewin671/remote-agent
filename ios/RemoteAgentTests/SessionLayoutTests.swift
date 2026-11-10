@@ -31,7 +31,7 @@ import UIKit
 
     private func cut(_ text: String, width: CGFloat = 320) async throws -> Bool {
         let flag = Flag()
-        let view = CutText(text, style: T.sm.with(lineHeight: 1.6), color: Theme.fg, lines: 6, cut: Binding(get: { flag.on }, set: { flag.on = $0 }))
+        let view = CutText(text, style: .subheadline, color: DS.ink, lines: 6, cut: Binding(get: { flag.on }, set: { flag.on = $0 }))
             .frame(maxWidth: .infinity, alignment: .leading)
         try await show(view, width: width) { flag.on }
         return flag.on

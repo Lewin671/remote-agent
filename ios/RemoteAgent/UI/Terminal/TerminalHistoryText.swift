@@ -8,8 +8,8 @@
 // installed with — its `Color.terminalAppColors`, which this client never
 // replaces — and 16...255 are the xterm cube and grey ramp SwiftTerm derives
 // from them, so a coloured line looks the same before and after the switch.
-// A default foreground or background is the view's own (Theme.Term.text /
-// Theme.Term.bg). Dim is the live view's ~50% brightness, inverse swaps the
+// A default foreground or background is the view's own (TermColors.text /
+// TermColors.bg). Dim is the live view's ~50% brightness, inverse swaps the
 // two, and bold and italic come from the monospaced system font.
 //
 // A line is already the pane's width, so nothing wraps. East Asian wide
@@ -46,11 +46,11 @@ enum TerminalHistoryText {
         return colors
     }()
 
-    static let background = UIColor(Theme.Term.bg)
-    static let foreground = UIColor(Theme.Term.text)
+    static let background = UIColor(TermColors.bg)
+    static let foreground = UIColor(TermColors.text)
     /// The grey of the reader's one status line, under the terminal's own font.
-    static let status = UIColor(Theme.Term.tool)
-    static let link = UIColor(Theme.Term.link)
+    static let status = UIColor(TermColors.tool)
+    static let link = UIColor(TermColors.link)
     /// The tap target the 重试 link carries, so the delegate can tell it apart.
     static let retryURL = URL(string: "ra-retry://retry")!
 

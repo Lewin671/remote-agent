@@ -594,16 +594,16 @@ import UIKit
         #expect(current.latestNotification == nil)
     }
     @Test func recoveryNoticeFitsTheSameNarrowAndWideContentColumn() {
-        let minimumHeight: CGFloat = Theme.minHit + 32 + 12 + 28
+        let minimumHeight: CGFloat = DS.minHit + 32 + 12 + 28
         for offered in [320.0, 760, 1200] {
             for scheme in [ColorScheme.light, .dark] {
                 let notice = ScheduleRecoveryNotice(text: String(repeating: "创建任务时的权限已改变，任务已停下。", count: 4), recovery: "恢复", enabled: true, action: {})
-                    .environment(\.onSoft, true).environment(\.colorScheme, scheme)
+                    .environment(\.colorScheme, scheme)
                     .environment(\.dynamicTypeSize, .accessibility3)
-                    .frame(maxWidth: Theme.readableWidth)
+                    .frame(maxWidth: DS.column)
                 let host = UIHostingController(rootView: notice)
                 let size = host.sizeThatFits(in: CGSize(width: offered, height: 3000))
-                #expect(abs(size.width - min(offered, Theme.readableWidth)) <= 0.5)
+                #expect(abs(size.width - min(offered, DS.column)) <= 0.5)
                 #expect(size.height >= minimumHeight)
             }
         }
@@ -831,11 +831,11 @@ import UIKit
                 #expect(control.titleForSegment(at: 0) == "Codex" && control.titleForSegment(at: 1) == "Claude Code")
                 if agents.count > 2 { #expect(control.titleForSegment(at: 2) == "Antigravity") }
                 #expect(control.selectedSegmentIndex == 1)
-                #expect(control.selectedSegmentTintColor?.resolvedColor(with: control.traitCollection) == UIColor(Theme.card).resolvedColor(with: control.traitCollection))
+                #expect(control.selectedSegmentTintColor?.resolvedColor(with: control.traitCollection) == UIColor(DS.gbg).resolvedColor(with: control.traitCollection))
                 let normal = control.titleTextAttributes(for: .normal)?[.foregroundColor] as? UIColor
                 let selected = control.titleTextAttributes(for: .selected)?[.foregroundColor] as? UIColor
-                #expect(normal?.resolvedColor(with: control.traitCollection) == UIColor(Theme.muted).resolvedColor(with: control.traitCollection))
-                #expect(selected?.resolvedColor(with: control.traitCollection) == UIColor(Theme.fg).resolvedColor(with: control.traitCollection))
+                #expect(normal?.resolvedColor(with: control.traitCollection) == UIColor(DS.ink2).resolvedColor(with: control.traitCollection))
+                #expect(selected?.resolvedColor(with: control.traitCollection) == UIColor(DS.ink).resolvedColor(with: control.traitCollection))
                 control.selectedSegmentIndex = 0; control.sendActions(for: .valueChanged)
                 for _ in 0..<20 where draft.config?.agent != .codex { try await Task.sleep(for: .milliseconds(10)) }
                 #expect(draft.config?.agent == .codex && draft.config?.model == "")

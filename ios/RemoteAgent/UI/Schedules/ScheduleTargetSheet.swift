@@ -21,7 +21,7 @@ struct ScheduleTargetSheet: View {
             if let c = config {
                 GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
                 ScheduleAgentRow(state: model.state, config: $config, fixedMachine: machine)
-                GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? Theme.red : nil) { picker = .mode }
+                GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? DS.red : nil) { picker = .mode }
                 GRow("模型", value: c.model.isEmpty ? "默认" : c.model, chevron: true) { picker = .model }
             }
             Hint("任务保存在这台电脑上；更改只影响之后的运行。")

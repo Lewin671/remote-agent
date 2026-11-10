@@ -74,8 +74,8 @@ struct ApprovalScreen: View {
         let how = [decisionText(outcome.decision), who ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         let kept = context.sessionStore.reason(approval)
         VStack(spacing: 0) {
-            Text("这条审批已经处理了。").type(T.sm, DS.ink2).multilineTextAlignment(.center)
-            if !how.isEmpty { Text(how).type(T.meta, DS.ink2).multilineTextAlignment(.center).padding(.top, 4) }
+            Text("这条审批已经处理了。").font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
+            if !how.isEmpty { Text(how).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).padding(.top, 4) }
             if !kept.isEmpty {
                 // What was being typed is the user's: kept to be copied, not sent anywhere.
                 Code(kept).textSelection(.enabled).padding(.top, 16)

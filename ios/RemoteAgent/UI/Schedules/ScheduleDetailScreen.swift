@@ -61,7 +61,7 @@ struct ScheduleDetailScreen: View {
                         if let task {
                             content(task, mutation: mutation)
                         } else {
-                            Text(store.loading.contains(machine) ? "读取任务…" : "找不到这个任务").type(T.body, Theme.muted).padding(32)
+                            Text(store.loading.contains(machine) ? "读取任务…" : "找不到这个任务").font(.body).ink(DS.ink2).padding(32)
                         }
                         Color.clear.frame(height: 1).id("schedule-detail-end")
                     }
@@ -73,12 +73,12 @@ struct ScheduleDetailScreen: View {
             timing = false; targetEdit = false; permissions = false; rename = false; message = false
         })
         .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { detailSubtitle($0) }, onMore: { menu = true })
-        .actionMenu(isPresented: $menu, actions: task.map { menuActions($0, mutation: mutation) } ?? [], rowHeight: 44) {
+        .actionMenu(isPresented: $menu, actions: task.map { menuActions($0, mutation: mutation) } ?? []) {
             if let task {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(task.spec.title).type(T.bodyB, Theme.fg)
+                    Text(task.spec.title).font(.body.weight(.semibold)).ink(DS.ink)
                     Text(scheduleLocation(task, state: model.state, machine: machine) + " · " + task.creator +
-                         (scheduleDate(task.createdAt).map { " · " + scheduleDay($0) } ?? "")).type(T.meta, Theme.muted)
+                         (scheduleDate(task.createdAt).map { " · " + scheduleDay($0) } ?? "")).font(.footnote).ink(DS.ink2)
                 }
             }
         }
@@ -172,11 +172,11 @@ struct ScheduleDetailScreen: View {
             }
             if let running = task.running {
                 HStack(spacing: 6) {
-                    Ic(Lucide.loaderCircle, style: T.sm, color: Theme.blue)
-                    Text("正在运行 · " + scheduleTime(running.date) + " 开始").type(T.sm, Theme.blue)
+                    SymbolImage(Mark.progress, style: .subheadline, color: DS.blue)
+                    Text("正在运行 · " + scheduleTime(running.date) + " 开始").font(.subheadline).ink(DS.blue)
                     Spacer(minLength: 0)
                     if !(running.sessionID ?? "").isEmpty { TextAction("对话", arrow: true) { open(running) } }
-                }.padding(16).background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
+                }.padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
                     .padding(.horizontal, 16).padding(.top, 16)
             }
             if let result = displayedResult {
@@ -188,20 +188,20 @@ struct ScheduleDetailScreen: View {
             let earlier = task.earlierRuns(resultID: displayedResult?.id)
             if !earlier.isEmpty {
                 HStack {
-                    Text("更早").type(T.sm, Theme.muted)
+                    Text("更早").font(.subheadline).ink(DS.ink2)
                     Spacer()
-                    Text("\(earlier.count) 次").type(T.sm, Theme.muted)
+                    Text("\(earlier.count) 次").font(.subheadline).ink(DS.ink2)
                 }.padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 6)
                 history(task, runs: earlier)
             }
             GroupCard {
                 VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("让 agent 做什么").type(T.smB, Theme.fg)
+                    Text("让 agent 做什么").font(.subheadline.weight(.semibold)).ink(DS.ink)
                     Spacer()
                     TextAction("编辑", enabled: mutable) { editor.open(task); message = true }
                 }.padding(.horizontal, 14)
-                Text(task.spec.message).type(T.body, Theme.fg).lineLimit(3)
+                Text(task.spec.message).font(.body).ink(DS.ink).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(14)
                 }
             }.padding(.top, 16).padding(.bottom, 16)
@@ -213,12 +213,12 @@ struct ScheduleDetailScreen: View {
                 if !limits.isEmpty { GRow("结束", value: limits, chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
                 if task.spec.target.type == "new_session" {
                     GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
-                    GRow("权限", value: permission(task), chevron: mutable, valueColor: task.spec.target.mode == "full" ? Theme.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
+                    GRow("权限", value: permission(task), chevron: mutable, valueColor: task.spec.target.mode == "full" ? DS.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
                 } else {
                     GRow("发到", value: scheduleDestination(task, state: model.state), chevron: online && !task.missingTarget, onTap: online && !task.missingTarget ? {
                         if let sid = task.spec.target.session { nav.open(.session(id: sid)) }
                     } : nil)
-                    GRow("权限", value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? Theme.red : nil)
+                    GRow("权限", value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? DS.red : nil)
                 }
                 GRow("任务名", value: task.spec.title, chevron: access.rename, valueLines: 1, onTap: access.rename ? { editor.open(task); rename = true } : nil)
             }
@@ -249,7 +249,7 @@ struct ScheduleDetailScreen: View {
                     if group.folded {
                         GRow(scheduleDay(run.notificationTime) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.notificationTime))：\(run.foldedSummary)", chevron: false) {
                             if expanded.contains(group.id) { expanded.remove(group.id) } else { expanded.insert(group.id) }
-                        }.trailing { Arrow(Theme.muted, direction: expanded.contains(group.id) ? .up : .down) }
+                        }.trailing { Arrow(DS.ink2, direction: expanded.contains(group.id) ? .up : .down) }
                         if expanded.contains(group.id) { ForEach(group.runs) { record($0, task: task) } }
                     } else { record(run, task: task) }
                 }
@@ -265,15 +265,15 @@ struct ScheduleDetailScreen: View {
             HStack(alignment: .top, spacing: 0) {
                 ZStack {
                     if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
-                        Circle().fill(Theme.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读")
+                        Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读")
                     }
                 }.frame(width: 22, height: 20)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(scheduleMoment(run.notificationTime)).type(T.sm, Theme.muted)
-                    Text(scheduleRunSummary(run)).type(T.body, Theme.fg).lineLimit(2)
+                    Text(scheduleMoment(run.notificationTime)).font(.subheadline).ink(DS.ink2)
+                    Text(scheduleRunSummary(run)).font(.body).ink(DS.ink).lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                if !sid.isEmpty { Arrow(Theme.muted).padding(.leading, 8).padding(.top, 12) }
+                if !sid.isEmpty { Arrow(DS.ink2).padding(.leading, 8).padding(.top, 12) }
             }.padding(.horizontal, 14).padding(.vertical, 12).contentShape(Rectangle())
         }.buttonStyle(RowPressStyle()).disabled(sid.isEmpty).accessibilityElement(children: .combine)
     }
@@ -349,9 +349,9 @@ struct ScheduleRecoveryNotice: View {
     let action: () -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(text).type(T.sm, Theme.orangeInk)
+            Text(text).font(.subheadline).ink(DS.orangeInk)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(16)
-                .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm))
+                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             if let recovery { Btn(recovery, kind: .primary, enabled: enabled, action: action) }
         }.padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
     }

@@ -107,6 +107,10 @@ enum DS {
 
     /// Corner radii (design-system §4). A pill is a `Capsule`.
     enum Radius {
+        /// Inline code, an image's badge.
+        static let inline: CGFloat = 6
+        /// Choices on a list, small buttons.
+        static let small: CGFloat = 10
         static let code: CGFloat = 14
         static let command: CGFloat = 16
         static let notice: CGFloat = 18

@@ -72,7 +72,7 @@
                     GalleryPageView(page: page)
                 }
             }
-            .tint(Theme.blue)
+            .tint(DS.blue)
         }
     }
 
@@ -138,22 +138,15 @@
 
     private struct TokensPage: View {
         private let colors: [(String, Color)] = [
-            ("bg", Theme.bg), ("card", Theme.card), ("soft", Theme.soft), ("chip", Theme.chip),
-            ("seg", Theme.seg),
-            ("track", Theme.track), ("line", Theme.line), ("fg", Theme.fg), ("fg2", Theme.fg2),
-            ("muted", Theme.muted),
-            ("faint", Theme.faint), ("blue", Theme.blue), ("blue-bg", Theme.blueBg),
-            ("blue-soft", Theme.blueSoft),
-            ("orange", Theme.orange), ("orange-ink", Theme.orangeInk),
-            ("orange-soft", Theme.orangeSoft),
-            ("green", Theme.green), ("green-ink", Theme.greenInk), ("red", Theme.red),
-            ("red-bg", Theme.redBg),
-            ("red-soft", Theme.redSoft), ("gray", Theme.gray),
+            ("paper", DS.paper), ("gbg", DS.gbg), ("raised", DS.raised), ("fill", DS.fill), ("fill2", DS.fill2),
+            ("bubble", DS.bubble), ("ink", DS.ink), ("ink2", DS.ink2), ("ink3", DS.ink3), ("faint", DS.faint),
+            ("sep", DS.sep), ("btn", DS.btn), ("blue", DS.blue), ("orange", DS.orange), ("orangeInk", DS.orangeInk),
+            ("orangeSoft", DS.orangeSoft), ("green", DS.green), ("red", DS.red), ("tc", DS.tc), ("term", DS.term),
         ]
-        private let styles: [(String, TypeStyle)] = [
-            ("30 大标题", T.title30), ("22 范围标题", T.h22), ("17 弹层标题", T.h17), ("15 正文", T.body),
-            ("15 按钮", T.bodyB), ("13 第二行", T.sm), ("13 分组标题", T.smB), ("12 元信息", T.meta),
-            ("11 标签栏", T.tab), ("12 mono ~/Code/foo", T.mono), ("13 mono go test ./...", T.mono13),
+        private let styles: [(String, Font)] = [
+            ("大标题", .largeTitle.bold()), ("卡片标题", .title3.weight(.semibold)), ("弹层标题", .headline), ("正文", .body),
+            ("按钮", .body.weight(.semibold)), ("第二行", .subheadline), ("说明", .footnote), ("标签", .caption2),
+            ("mono go test ./...", .footnote.monospaced()),
         ]
 
         var body: some View {
@@ -163,34 +156,34 @@
             ) {
                 ForEach(colors, id: \.0) { name, color in
                     VStack(spacing: 3) {
-                        RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous).fill(
+                        RoundedRectangle(cornerRadius: DS.Radius.inline, style: .continuous).fill(
                             color
                         )
                         .frame(height: 30)
                         .overlay(
-                            RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous)
-                                .strokeBorder(Theme.line, lineWidth: 1))
-                        Text(name).type(T.tab, Theme.muted).lineLimit(1).minimumScaleFactor(0.7)
+                            RoundedRectangle(cornerRadius: DS.Radius.inline, style: .continuous)
+                                .strokeBorder(DS.sep, lineWidth: 1))
+                        Text(name).font(.caption2).ink(DS.ink2).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }
             }
             .padding(.horizontal, 16)
             SectionLabel("字号")
             VStack(alignment: .leading, spacing: 4) {
-                ForEach(styles, id: \.0) { name, style in Text(name).type(style, Theme.fg) }
+                ForEach(styles, id: \.0) { name, style in Text(name).font(style).ink(DS.ink) }
             }
             .padding(.horizontal, 16)
             SectionLabel("圆角")
             HStack(spacing: 10) {
                 ForEach(
                     [
-                        ("4", Theme.Radius.code), ("6", Theme.Radius.xs), ("10", Theme.Radius.sm),
-                        ("14", Theme.Radius.md), ("20", Theme.Radius.lg),
+                        ("6", DS.Radius.inline), ("14", DS.Radius.code), ("18", DS.Radius.notice),
+                        ("20", DS.Radius.group), ("28", DS.Radius.card),
                     ], id: \.0
                 ) { name, r in
-                    Text(name).type(T.meta, Theme.fg2).frame(width: 52, height: 44)
+                    Text(name).font(.footnote).ink(DS.ink2).frame(width: 52, height: 44)
                         .background(
-                            Theme.chip, in: RoundedRectangle(cornerRadius: r, style: .continuous))
+                            DS.fill, in: RoundedRectangle(cornerRadius: r, style: .continuous))
                 }
             }
             .padding(.horizontal, 16)
@@ -199,33 +192,21 @@
 
     private struct IconsPage: View {
         var body: some View {
-            SectionLabel("Lucide", count: Lucide.all.count)
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 4), spacing: 10
-            ) {
-                ForEach(Lucide.all.indices, id: \.self) { i in
-                    let icon = Lucide.all[i]
-                    VStack(spacing: 4) {
-                        Ic(icon, size: 22, color: Theme.fg)
-                        Text((icon.filled ? "■ " : "") + icon.name).type(T.tab, Theme.muted)
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                    }
-                }
-            }
-            .padding(.horizontal, 12)
             SectionLabel("状态")
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 14) {
-                    StatusLabel("运行中", tone: .run)
-                    StatusLabel("等待审批", tone: .wait)
-                    StatusLabel("空闲", tone: .idle)
-                    StatusLabel("已结束", tone: .off)
+                    StatusMark(.running)
+                    StatusMark(.waiting)
+                    StatusMark(.idle)
+                    StatusMark(.off)
+                    StatusMark(.unread)
+                    StatusMark(.online)
                 }
                 HStack(spacing: 14) {
-                    IconText(Lucide.loaderCircle, "正在连接…")
-                    IconText(Lucide.check, "完成", color: Theme.greenInk)
-                    IconText(Lucide.x, "失败", color: Theme.red)
-                    IconText(Lucide.minus, "已取消")
+                    IconText(Mark.progress, "正在连接…")
+                    IconText("checkmark", "完成", color: DS.green)
+                    IconText("xmark", "失败", color: DS.red)
+                    IconText("minus", "已取消")
                 }
                 HStack(spacing: 10) {
                     ArrowText("管理")
@@ -245,7 +226,7 @@
                 Avatar.all(size: 28)
                 Avatar("/Users/me/Code/foo", size: 22)
                 Avatar("/Users/me/Code/foo", size: 16)
-                IconBadge(Lucide.laptop, color: Theme.blueBg)
+                IconBadge("laptopcomputer", color: DS.blue)
             }
             .padding(.horizontal, 16)
             HStack(spacing: 5) {
@@ -257,8 +238,8 @@
             }
             .padding(.horizontal, 16).padding(.top, 8)
             HStack(spacing: 16) {
-                AppMark.view(size: 32, color: Theme.blueBg)
-                AppMark.view(size: 20, color: Theme.muted)
+                AppMark.view(size: 32, color: DS.blue)
+                AppMark.view(size: 20, color: DS.ink2)
             }
             .padding(.horizontal, 16).padding(.top, 8)
         }
@@ -288,50 +269,31 @@
             SectionLabel("灰底卡片里")
             VStack(spacing: 8) {
                 Btns {
-                    Btn("去终端", background: Theme.card) {}
+                    Btn("去终端", background: DS.gbg) {}
                     Btn("恢复会话", kind: .primary) {}
                 }
             }
             .padding(12)
             .background(
-                Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous)
             )
             .padding(.horizontal, 12)
             SectionLabel("文字操作")
             HStack(spacing: 20) {
                 TextAction("重试") {}
-                TextAction("中断", color: Theme.red) {}
+                TextAction("中断", color: DS.red) {}
                 TextAction("撤销", enabled: false) {}
                 Spacer(minLength: 0)
-                IconButton(Lucide.ellipsis, label: "更多") {}
+                IconButton("ellipsis", label: "更多") {}
             }
             .padding(.horizontal, 16)
-            TextAction("全部模型", style: T.body, arrow: true) {}.padding(.horizontal, 16)
+            TextAction("全部模型", style: .body, arrow: true) {}.padding(.horizontal, 16)
         }
     }
 
     private struct NoticesPage: View {
-        private func state(
-            _ link: RACore.Link, loaded: Bool = true, synced: Bool = true, error: String = ""
-        ) -> RemoteState {
-            var s = RemoteState()
-            s.link = link
-            s.loaded = loaded
-            s.synced = synced
-            s.error = error
-            return s
-        }
 
         var body: some View {
-            SectionLabel("连接提示条")
-            VStack(spacing: 6) {
-                ConnBanner(state(.noNetwork))
-                ConnBanner(state(.noNetwork, loaded: false))
-                ConnBanner(state(.waiting))
-                ConnBanner(state(.waiting, synced: false))
-                ConnBanner(state(.noServer)) {}
-                ConnBanner(state(.noServer, loaded: false, error: "服务器没有回应")) {}
-            }
             SectionLabel("会话顶部的玻璃条")
             VStack(spacing: 8) {
                 GlassStrip(text: "没有网络，连上后会自动同步", symbol: "wifi.slash")
@@ -347,7 +309,7 @@
                 Banner("通知没有开启，等你处理时收不到提醒", tone: .warn, action: "开启") {}
                 Banner("没能读取模型列表：MacBook 不在线", tone: .error, action: "重试") {}
                 Banner("这个项目已从列表移除", action: "恢复") {}
-                Banner("正在保存…", icon: Lucide.loaderCircle)
+                Banner("正在保存…", icon: Mark.progress)
             }
             .padding(.horizontal, 16)
             SectionLabel("代码")
@@ -370,10 +332,10 @@
             GroupLabel("电脑", action: "管理") {}
             GroupCard {
                 GRow("MacBook", sub: "Codex · 5 小时已用 62%", value: "在线", chevron: true, onTap: {})
-                    .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
-                    .valueLead { Dot(Theme.green) }
+                    .lead { IconBadge("laptopcomputer", color: DS.blue) }
+                    .valueLead { Dot(DS.green) }
                 GRow("VPS-dev", value: "2 小时前在线", chevron: true, onTap: {})
-                    .lead { IconBadge(Lucide.laptop, color: Theme.gray) }
+                    .lead { IconBadge("laptopcomputer", color: DS.ink3) }
             }
             GroupNote(AuthorityAccess(state: Demo.state(.everyday), me: Demo.me).addHint).padding(.top, 8)
             GroupLabel("通知")
@@ -395,11 +357,7 @@
             .contextMenu {
                 Button(role: .destructive) {
                 } label: {
-                    Label {
-                        Text("退出账户")
-                    } icon: {
-                        Lucide.x.image()
-                    }
+                    Label("退出账户", systemImage: "xmark")
                 }
             }
             // Rows handed over together: a `ForEach` and an array each give a row per element, with the lines between.
@@ -415,7 +373,7 @@
                     "ip-10-0-12-231.ap-southeast-1.compute.internal", value: "在线", chevron: true,
                     onTap: {}
                 )
-                .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
+                .lead { IconBadge("laptopcomputer", color: DS.blue) }
                 GRow("一个名字特别长的客户端，用来看一行放不下的时候怎么办", sub: "App · iOS 26.0 · iPhone", value: "当前")
                 GRow(
                     "我的手机", sub: "App · Android 16 · Pixel 9", value: "40 分钟前使用", chevron: true,
@@ -441,16 +399,16 @@
             GlassSegmented(items: ["聊天", "终端"], selected: $tab, dot: 1).padding(.vertical, 8)
             GlassSegmented(items: ["聊天", "终端", "并排"], selected: $tab, enabled: { $0 < 2 }).padding(.vertical, 8)
             GlassSegmented(items: ["聊天", "终端"], selected: $darkTab).padding(.vertical, 8)
-                .frame(maxWidth: .infinity).background(Theme.Term.bg).environment(\.colorScheme, .dark)
+                .frame(maxWidth: .infinity).background(TermColors.bg).environment(\.colorScheme, .dark)
             SectionLabel("分段按钮")
             ViewThatFits(in: .horizontal) {
                 HStack {
-                    Text("外观").type(T.body, Theme.fg)
+                    Text("外观").font(.body).ink(DS.ink)
                     Spacer()
                     SegPick(["自动", "亮色", "暗色"], selected: $seg)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("外观").type(T.body, Theme.fg)
+                    Text("外观").font(.body).ink(DS.ink)
                     SegPick(["自动", "亮色", "暗色"], selected: $seg)
                 }
             }
@@ -472,7 +430,7 @@
                 ListItem("询问", desc: "需要审批时由你确认，超时拒绝", checked: true, onTap: {})
                 ListItem("自动", desc: "由 Codex 自己判断，拿不准的在对话里问你", onTap: {})
                 ListItem("完全放行", desc: "本会话启动时未启用；需要时新建会话选择", enabled: false)
-                ListItem("gpt-6-astra", small: "最高 xhigh", icon: Lucide.check, onTap: {})
+                ListItem("gpt-6-astra", small: "最高 xhigh", icon: "checkmark", onTap: {})
                 ListItem(
                     "claude-opus-5-5-preview-20261001-extended", checked: true,
                     small: "1M 上下文 · 无推理强度", last: true, onTap: {})
@@ -499,7 +457,7 @@
         var body: some View {
             LargeTitle("加入账户")
             Text("在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
-                .type(T.sm, Theme.muted).padding(.horizontal, 16).padding(.bottom, 14)
+                .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16).padding(.bottom, 14)
             VStack(spacing: 10) {
                 InputField(text: $code, placeholder: "输入 8 位配对码", look: .code, keyboard: .numberPad)
                 InputField(
@@ -512,15 +470,15 @@
             // A field on a grey card takes the surface above it.
             VStack(spacing: 8) {
                 InputField(
-                    text: $reason, placeholder: "拒绝理由（可选）", lines: 1...4, background: Theme.card)
+                    text: $reason, placeholder: "拒绝理由（可选）", lines: 1...4, background: DS.gbg)
                 Btns {
-                    Btn("取消", background: Theme.card) {}
-                    Btn("不允许", kind: .negative, background: Theme.card) {}
+                    Btn("取消", background: DS.gbg) {}
+                    Btn("不允许", kind: .negative, background: DS.gbg) {}
                 }
             }
             .padding(12)
             .background(
-                Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous)
             )
             .padding(.horizontal, 12).padding(.top, 10)
             SectionLabel("筛选框")
@@ -554,7 +512,7 @@
             VStack(alignment: .leading, spacing: 0) {
                 FieldLabel("模型")
                 Hint("仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
-                Hint("没能切换：MacBook 不在线", color: Theme.red)
+                Hint("没能切换：MacBook 不在线", color: DS.red)
             }
             .padding(.horizontal, 16)
         }
@@ -577,7 +535,7 @@
             PageNote("这个项目还没有会话")
             EmptyState("还没有会话", text: "")
             EmptyState("还没有会话", text: "MacBook 在线，可以直接开始", action: "开始第一个会话", onAction: {})
-            Rectangle().fill(Theme.line).frame(height: 1).padding(.vertical, 8)
+            Rectangle().fill(DS.sep).frame(height: 1).padding(.vertical, 8)
             EmptyState(
                 "服务器拒绝了这台设备的登录",
                 text: "可能是设备被移除、服务重置或连接异常。这条消息不能证明安全撤销已经完成，请先重试或在管理电脑核实。",
@@ -593,24 +551,17 @@
         var body: some View {
             Page {
                 VStack(spacing: 0) {
-                    ConnBanner(
-                        {
-                            var s = RemoteState()
-                            s.link = .noServer
-                            s.loaded = true
-                            s.synced = true
-                            return s
-                        }()
-                    ) {}
+                    GlassStrip(text: "连不上服务器 · 正在重试", symbol: "icloud.slash", action: "详情") {}
+                        .padding(.horizontal, 16)
                     GlassSegmented(items: ["聊天", "终端"], selected: $tab, dot: 1).padding(.vertical, 8)
                     PageNote("导航栏是系统的：返回、边缘右滑和大字号都交给它。")
                     Row44(action: {}) {
-                        Dot(Theme.dot(.wait))
-                        Text("修复 relay 重连后丢事件的问题").type(T.bodyB, Theme.fg).lineLimit(1)
+                        StatusMark(.waiting)
+                        Text("修复 relay 重连后丢事件的问题").font(.body.weight(.semibold)).ink(DS.ink).lineLimit(1)
                         Spacer(minLength: 0)
-                        Text("14:02").type(T.meta, Theme.muted)
+                        Text("14:02").font(.footnote).ink(DS.ink2)
                     }
-                    Bordered { Text("边框卡片：r-sm、1 pt line").type(T.sm, Theme.fg2) }.padding(16)
+                    Bordered { Text("边框卡片：r-sm、1 pt line").font(.subheadline).ink(DS.ink2) }.padding(16)
                     Spacer()
                 }
             }
@@ -618,7 +569,7 @@
             .navBar(
                 "修复 relay 重连后丢事件的问题，并补上集成测试", agent: "Claude Code", subtitle: "等待审批",
                 danger: "完全放行",
-                dot: Theme.dot(.wait), moreDot: true, onMore: {})
+                dot: DS.orange, moreDot: true, onMore: {})
         }
     }
 
@@ -728,8 +679,8 @@
                 ]
             ) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Codex · remote-agent · MacBook").type(T.bodyB, Theme.fg)
-                    Text("~/Code/remote-agent").type(T.mono, Theme.fg2)
+                    Text("Codex · remote-agent · MacBook").font(.body.weight(.semibold)).ink(DS.ink)
+                    Text("~/Code/remote-agent").font(.footnote.monospaced()).ink(DS.ink2)
                 }
             }
         }

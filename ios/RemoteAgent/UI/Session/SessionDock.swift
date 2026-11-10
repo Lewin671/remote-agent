@@ -254,10 +254,10 @@ struct DockFoot: View {
             if typeSize.isAccessibilitySize {
                 // No room for both on a line: the link goes under the question, at the right.
                 VStack(alignment: .trailing, spacing: 0) {
-                    if !left.isEmpty { Text(left).type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
+                    if !left.isEmpty { Text(left).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
                     Button(action: onLink) {
                         Group {
-                            if arrow { ArrowText(link, style: T.metaB) } else { Text(link).type(T.metaB, DS.blue) }
+                            if arrow { ArrowText(link, style: .footnote.weight(.semibold)) } else { Text(link).font(.footnote.weight(.semibold)).ink(DS.blue) }
                         }
                         .multilineTextAlignment(.trailing).hitTarget(alignment: .trailing)
                     }
@@ -266,8 +266,8 @@ struct DockFoot: View {
             } else {
                 HStack(spacing: 8) {
                     // With nothing at the left the link starts the line.
-                    if !left.isEmpty { Text(left).type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
-                    TextAction(link, style: T.metaB, arrow: arrow, action: onLink)
+                    if !left.isEmpty { Text(left).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
+                    TextAction(link, style: .footnote.weight(.semibold), arrow: arrow, action: onLink)
                     if left.isEmpty { Spacer(minLength: 0) }
                 }
             }
@@ -400,7 +400,7 @@ struct QuestionBody: View {
 
     var body: some View {
         if isSkeleton(question) {
-            if part == .content { Text(skeletonMessage).type(T.sm, DS.ink2) }
+            if part == .content { Text(skeletonMessage).font(.subheadline).ink(DS.ink2) }
         } else if let cur = current {
             switch part {
             case .content: content(cur)
@@ -415,17 +415,17 @@ struct QuestionBody: View {
         let answer = store.answer(qid, index)
         let progress = questionProgress(count: count, at: index, multi: cur.multiSelect)
         if full {
-            if !progress.isEmpty { Text(progress).type(T.meta, DS.ink2).padding(.top, 12) }
+            if !progress.isEmpty { Text(progress).font(.footnote).ink(DS.ink2).padding(.top, 12) }
         } else if count > 1 {
             // The dock's line says which of them it is; the steps show it.
             QuestionSteps(count: count, at: index).padding(.top, 4)
         }
-        Text(cur.text).type(full ? T.h17 : T.bodyB, DS.ink).lineLimit(full ? nil : 4)
+        Text(cur.text).font(full ? .headline : .body.weight(.semibold)).ink(DS.ink).lineLimit(full ? nil : 4)
             .padding(.top, full ? 8 : 4).padding(.bottom, full ? 12 : 6)
             .accessibilityAddTraits(.isHeader)
         if !full && longQuestion(cur) {
             Button(action: onLong) {
-                ArrowText("展开全文", style: T.smB).padding(.bottom, 4)
+                ArrowText("展开全文", style: .subheadline.weight(.semibold)).padding(.bottom, 4)
                     .padding(.vertical, 12).contentShape(Rectangle()).padding(.vertical, -12)
             }
             .buttonStyle(PressStyle())
@@ -501,7 +501,7 @@ private struct QuestionOptionRow: View {
 
     var body: some View {
         let label = optionLabel(option.label)
-        let shape = RoundedRectangle(cornerRadius: dark ? 14 : Theme.Radius.sm, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: dark ? 14 : DS.Radius.small, style: .continuous)
         let ink: Color = dark ? (selected ? .black : .white) : DS.ink
         let second: Color = dark ? (selected ? Color.black.opacity(0.6) : DS.ink2) : DS.ink2
         Button(action: onTap) {
@@ -577,14 +577,14 @@ struct PlanDock: View {
     let onFull: () -> Void
 
     var body: some View {
-        if isSkeleton(text) { Text(skeletonMessage).type(T.sm, DS.ink2) } else { dock }
+        if isSkeleton(text) { Text(skeletonMessage).font(.subheadline).ink(DS.ink2) } else { dock }
     }
 
     private var dock: some View {
         PendingDock(
             .plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen,
             // In the open line before 收起, as on the web (design-system §6).
-            extra: AnyView(TextAction("展开全文", style: T.sm, alignment: .trailing, arrow: true, action: onFull))
+            extra: AnyView(TextAction("展开全文", style: .subheadline, alignment: .trailing, arrow: true, action: onFull))
         ) {
             // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
             Text(planPreview(text, lines: .max)).font(.subheadline).lineSpacing(3).foregroundStyle(DS.ink)
@@ -621,7 +621,7 @@ struct PlanButtons: View {
 
     var body: some View {
         if terminalOnly {
-            Text(skeletonMessage).type(T.sm, DS.ink2)
+            Text(skeletonMessage).font(.subheadline).ink(DS.ink2)
         } else {
             VStack(alignment: .leading, spacing: 0) { choices }
                 .frame(maxWidth: actionsWidth, alignment: .leading)
@@ -642,7 +642,7 @@ struct PlanButtons: View {
             }
         }
         if let note = agentInfo(session.agent).planNote {
-            Text(note).type(T.meta, DS.ink2).padding(.top, 7)
+            Text(note).font(.footnote).ink(DS.ink2).padding(.top, 7)
         }
         if full && agentInfo(session.agent).planClearContext {
             DockFoot("", link: "清空上下文后执行") { answer(.clearAndImplement) }

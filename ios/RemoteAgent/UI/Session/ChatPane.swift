@@ -512,13 +512,13 @@ struct ChatPane: View {
         }
         if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
             items.append(ChatCollectionItem("chat-history") {
-                Text("历史记录尚未读全。").type(T.sm, DS.ink2).padding(.horizontal, chatMargin)
+                Text("历史记录尚未读全。").font(.subheadline).ink(DS.ink2).padding(.horizontal, chatMargin)
             })
         }
         if chat.unavailableCount > 0 {
             items.append(ChatCollectionItem("chat-unavailable") {
                 Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
-                    .type(T.sm, DS.ink2).padding(.horizontal, 16)
+                    .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16)
             })
         }
         if let message = chat.liveError {
@@ -551,7 +551,7 @@ struct ChatPane: View {
         }
         if visible.count < pending.count {
             items.append(ChatCollectionItem("chat-more-pending") {
-                TextAction("还有 \(pending.count - 2) 条排队 展开", style: T.metaB, alignment: .trailing) { allPending = true }
+                TextAction("还有 \(pending.count - 2) 条排队 展开", style: .footnote.weight(.semibold), alignment: .trailing) { allPending = true }
                     .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin)
             })
         }
@@ -701,7 +701,7 @@ private struct PendingBubble: View {
             starting: starting)
         let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
         if isSkeleton(pending.id) || isSkeleton(pending.text) {
-            Text(skeletonMessage).type(T.sm, DS.ink2)
+            Text(skeletonMessage).font(.subheadline).ink(DS.ink2)
         } else {
             VStack(alignment: .trailing, spacing: 0) {
                 Button {
@@ -722,11 +722,11 @@ private struct PendingBubble: View {
                 HStack(spacing: 6) {
                     // The note gives way; what can be done stays.
                     Text(scheduledPendingLabel(pending, label: label) ?? (label + pendingSuffix(pending, origin: origin, index: index, of: count, cancel: cancel)))
-                        .type(T.meta, cancelFailed ? DS.red : DS.ink2).lineLimit(1)
+                        .font(.footnote).ink(cancelFailed ? DS.red : DS.ink2).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {
                         TextAction(
-                            resume.error.isEmpty ? "发送" : "重试", style: T.metaB,
+                            resume.error.isEmpty ? "发送" : "重试", style: .footnote.weight(.semibold),
                             enabled: online && !resume.running, alignment: .center
                         ) {
                             SessionHaptics.tap()
@@ -742,7 +742,7 @@ private struct PendingBubble: View {
                     }
                     if !canceling {
                         TextAction(
-                            cancelFailed ? "重试" : "取消", style: T.metaB, enabled: online,
+                            cancelFailed ? "重试" : "取消", style: .footnote.weight(.semibold), enabled: online,
                             alignment: .trailing
                         ) {
                             store.cancel(remote, sid: sid, requestId: id)
@@ -806,7 +806,7 @@ private struct OutgoingBubble: View {
             }
         ChatBubble(
             message.text.isEmpty ? nil : message.text, caption: note.caption, captionColor: ink,
-            captionIcon: note.sending ? Lucide.loaderCircle : nil, failed: note.failed,
+            captionIcon: note.sending ? Mark.progress : nil, failed: note.failed,
             links: note.actions.map { action in ChatLink(action.label) { act(action) } }
         ) {
             SessionImages.OutgoingThumbs(message: message)

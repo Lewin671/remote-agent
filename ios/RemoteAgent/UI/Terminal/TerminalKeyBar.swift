@@ -16,7 +16,7 @@ struct TerminalKeyBar: View {
     let onKeyboard: () -> Void
 
     /// Two rows of keys, the space between them and around them; the same at any text size.
-    static let height: CGFloat = 2 * Theme.minHit + 4 + 2 * 6 + 2
+    static let height: CGFloat = 2 * DS.minHit + 4 + 2 * 6 + 2
 
     var body: some View {
         VStack(spacing: 4) {
@@ -29,7 +29,7 @@ struct TerminalKeyBar: View {
                 ForEach(terminalKeyRows[1], id: \.label) { key in
                     KeyButton(label: key.label, icon: icon(key), enabled: enabled) { onKey(key) }
                 }
-                KeyButton(label: "键盘", icon: Lucide.keyboard, named: true, light: true, enabled: true, hint: "显示或收起键盘", action: onKeyboard)
+                KeyButton(label: "键盘", icon: "keyboard", named: true, light: true, enabled: true, hint: "显示或收起键盘", action: onKeyboard)
             }
         }
         .padding(6)
@@ -43,14 +43,12 @@ struct TerminalKeyBar: View {
         .accessibilityLabel("终端按键")
     }
 
-    private func icon(_ key: TerminalKey) -> LucideIcon? {
-        key.icon.flatMap { name in Lucide.all.first { $0.name == name } }
-    }
+    private func icon(_ key: TerminalKey) -> String? { key.icon }
 }
 
 private struct KeyButton: View {
     let label: String
-    let icon: LucideIcon?
+    let icon: String?
     /// The icon goes before the label instead of standing for it.
     var named = false
     /// The white key, 键盘 (design-system §6 「终端按键栏」).
@@ -60,24 +58,24 @@ private struct KeyButton: View {
     let action: () -> Void
 
     var body: some View {
-        let color = light ? Color.black : enabled ? Theme.Term.fg : Theme.Term.tool
+        let color = light ? Color.black : enabled ? TermColors.fg : TermColors.tool
         Button(action: action) {
             Group {
                 if let icon, named {
                     HStack(spacing: 6) {
-                        Ic(icon, style: T.sm, color: color)
-                        Text(label).type(T.sm, color)
+                        SymbolImage(icon, style: .subheadline, color: color)
+                        Text(label).font(.subheadline).ink(color)
                     }
                 } else if let icon {
-                    Ic(icon, size: 20, color: color, relativeTo: .footnote)
+                    SymbolImage(icon, size: 20, color: color, relativeTo: .footnote)
                 } else {
-                    Text(label).type(T.sm, color)
+                    Text(label).font(.subheadline).ink(color)
                 }
             }
             .lineLimit(1)
             .minimumScaleFactor(0.6)
             .padding(.horizontal, 2)
-            .frame(maxWidth: .infinity, minHeight: Theme.minHit, maxHeight: Theme.minHit)
+            .frame(maxWidth: .infinity, minHeight: DS.minHit, maxHeight: DS.minHit)
             .background(light ? Color.white : Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }

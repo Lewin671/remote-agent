@@ -3,17 +3,17 @@
 import SwiftUI
 
 enum BtnKind: Sendable {
-    /// The screen's one main action: `blue-bg` solid, white text.
+    /// The screen's one main action: the ink capsule.
     case primary
-    /// 取消, 再试一次: `chip`, text colour.
+    /// 取消, 再试一次: a `fill2` capsule, ink text.
     case secondary
-    /// 拒绝: the secondary surface with red text.
+    /// 拒绝: the secondary capsule with red text.
     case negative
     /// Solid red, only in a confirmation.
     case danger
 }
 
-/// A button: 44 pt, radius 10, text 15 semibold. Not enabled, the whole of it dims; its colours do not change.
+/// A button: a capsule at least 48 tall, text 17 semibold. Not enabled, the whole of it dims to 40 %; its colours do not change.
 struct Btn: View {
     private let text: String
     private let kind: BtnKind
@@ -34,23 +34,23 @@ struct Btn: View {
 
     var body: some View {
         let (back, fore): (Color, Color) = switch kind {
-        case .primary: (Theme.blueBg, Theme.onSolid)
-        case .secondary: (Theme.chip, Theme.fg)
-        case .negative: (Theme.chip, Theme.red)
-        case .danger: (Theme.redBg, Theme.onSolid)
+        case .primary: (DS.btn, DS.btnFg)
+        case .secondary: (DS.fill2, DS.ink)
+        case .negative: (DS.fill2, DS.red)
+        case .danger: (DS.red, Color.white)
         }
         Button(action: action) {
             // The words may wrap at large text sizes; the button grows with them (design-system §6).
-            Text(text).type(T.bodyB, fore)
+            Text(text).font(.body.weight(.semibold)).ink(fore)
                 .multilineTextAlignment(.center)
-                .padding(10)
-                .frame(maxWidth: fill ? .infinity : nil, minHeight: Theme.minHit)
-                .background(background ?? back, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
-                .contentShape(Rectangle())
+                .padding(.horizontal, 20).padding(.vertical, 10)
+                .frame(maxWidth: fill ? .infinity : nil, minHeight: 48)
+                .background(background ?? back, in: Capsule())
+                .contentShape(Capsule())
         }
         .buttonStyle(PressStyle())
         .disabled(!enabled)
-        .opacity(enabled ? 1 : 0.45)
+        .opacity(enabled ? 1 : 0.4)
     }
 }
 
@@ -71,13 +71,13 @@ struct Btns<Content: View>: View {
 struct TextAction: View {
     private let text: String
     private let color: Color
-    private let style: TypeStyle
+    private let style: Font
     private let enabled: Bool
     private let alignment: Alignment
     private let arrow: Bool
     private let action: () -> Void
 
-    init(_ text: String, color: Color = Theme.blue, style: TypeStyle = T.smB, enabled: Bool = true, alignment: Alignment = .leading, arrow: Bool = false, action: @escaping () -> Void) {
+    init(_ text: String, color: Color = DS.blue, style: Font = .subheadline.weight(.semibold), enabled: Bool = true, alignment: Alignment = .leading, arrow: Bool = false, action: @escaping () -> Void) {
         self.text = text
         self.color = color
         self.style = style
@@ -90,7 +90,7 @@ struct TextAction: View {
     var body: some View {
         Button(action: action) {
             Group {
-                if arrow { ArrowText(text, color: color, style: style) } else { Text(text).type(style, color) }
+                if arrow { ArrowText(text, color: color, style: style) } else { Text(text).font(style).ink(color) }
             }
             // A few words that keep their line: squeezed beside something long, they are never set a character to a line.
             .lineLimit(1).fixedSize()
@@ -104,13 +104,13 @@ struct TextAction: View {
 
 /// An icon that is a button by itself: 44 × 44 to the finger, and `label` says what it does.
 struct IconButton: View {
-    private let icon: LucideIcon
+    private let icon: String
     private let label: String
     private let size: CGFloat
     private let color: Color
     private let action: () -> Void
 
-    init(_ icon: LucideIcon, label: String, size: CGFloat = 22, color: Color = Theme.blue, action: @escaping () -> Void) {
+    init(_ icon: String, label: String, size: CGFloat = 22, color: Color = DS.ink, action: @escaping () -> Void) {
         self.icon = icon
         self.label = label
         self.size = size
@@ -119,7 +119,7 @@ struct IconButton: View {
     }
 
     var body: some View {
-        Button(action: action) { Ic(icon, size: size, color: color).hitTarget() }
+        Button(action: action) { SymbolImage(icon, size: size, color: color).hitTarget() }
             .buttonStyle(PressStyle())
             .accessibilityLabel(label)
     }

@@ -3,7 +3,7 @@
 // `GlassSegmented`.
 import SwiftUI
 
-/// A segmented pill for the values of one setting: the groove is `seg`, the chosen one a raised card.
+/// A segmented control for the values of one setting: a `fill2` capsule, the chosen one a light slider (`paper`, mid grey in the dark), never ink.
 struct SegPick: View {
     private let items: [String]
     @Binding private var selected: Int
@@ -24,19 +24,19 @@ struct SegPick: View {
                         Haptics.selection()
                     }
                 } label: {
-                    Text(items[i]).type(on ? T.smB : T.sm, on ? Theme.fg : Theme.muted)
+                    Text(items[i]).font(on ? .subheadline.weight(.semibold) : .subheadline).ink(DS.ink)
                         .lineLimit(1)
                         .padding(.horizontal, 10)
                         .frame(minWidth: 56, minHeight: 32)
                         .background {
                             if on {
-                                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(scheme == .dark ? Theme.track : Theme.card)
+                                Capsule()
+                                    .fill(scheme == .dark ? Color(white: 0.39) : DS.paper)
                                     .shadow(color: .black.opacity(scheme == .dark ? 0 : 0.08), radius: 1.5, y: 1)
                             }
                         }
                         // The pill is 36 pt tall; each segment is 44 to the finger.
-                        .frame(minHeight: Theme.minHit)
+                        .frame(minHeight: DS.minHit)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -45,7 +45,7 @@ struct SegPick: View {
         }
         .padding(.horizontal, 2)
         .background {
-            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.seg).padding(.vertical, 4)
+            Capsule().fill(DS.fill2).padding(.vertical, 4)
         }
         // As wide as its words: beside a label it is never squeezed into dots; a row too narrow for both puts it underneath.
         .fixedSize()
@@ -60,6 +60,7 @@ struct ChoiceGrid: View {
     private let enabled: Bool
     private let onPick: (String) -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.colorScheme) private var scheme
 
     init(_ items: [String], selected: String?, enabled: Bool = true, onPick: @escaping (String) -> Void) {
         self.items = items
@@ -73,17 +74,17 @@ struct ChoiceGrid: View {
         LazyVGrid(columns: columns, spacing: 6) {
             ForEach(items, id: \.self) { item in
                 let on = item == selected
-                let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                let shape = Capsule()
                 Button {
                     onPick(item)
                 } label: {
-                    Text(item).type(T.sm, on ? Theme.blue : enabled ? Theme.fg : Theme.muted)
+                    Text(item).font(on ? .subheadline.weight(.semibold) : .subheadline).ink(enabled ? DS.ink : DS.ink2)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 6)
-                        .frame(maxWidth: .infinity, minHeight: Theme.minHit)
-                        .background(on ? Theme.blueSoft : Theme.soft, in: shape)
-                        // The chosen one: blue-soft with a 1 pt blue outline (design-system §4).
-                        .overlay { if on { shape.strokeBorder(Theme.blue, lineWidth: 1) } }
+                        .frame(maxWidth: .infinity, minHeight: DS.minHit)
+                        .background(on ? (scheme == .dark ? Color(white: 0.39) : DS.paper) : DS.fill, in: shape)
+                        // The chosen one is the light slider of a segmented control, no coloured outline (design-system §4).
+                        .shadow(color: .black.opacity(on && scheme != .dark ? 0.08 : 0), radius: 1.5, y: 1)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
@@ -114,17 +115,17 @@ struct ContextBox: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 // Nearly full is the one case a count turns orange (design-system §1).
-                Text("\(percent)%").type(T.h22, percent > 80 ? Theme.orangeInk : Theme.fg)
-                Text(detail).type(T.sm, Theme.muted)
+                Text("\(percent)%").font(.title2.bold()).ink(percent > 80 ? DS.orangeInk : DS.ink)
+                Text(detail).font(.subheadline).ink(DS.ink2)
             }
             .accessibilityElement(children: .combine)
             Spacer(minLength: 0)
             if let action {
-                TextAction(action, color: enabled ? Theme.blue : Theme.muted, style: T.bodyB, enabled: enabled, alignment: .center, action: onAction)
+                TextAction(action, color: enabled ? DS.blue : DS.ink2, style: .body.weight(.semibold), enabled: enabled, alignment: .center, action: onAction)
             }
         }
         .padding(12)
-        .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
     }
 }
 

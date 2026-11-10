@@ -1,9 +1,9 @@
-// Text entry (docs/design-system.md §6): a field on a soft surface with a
+// Text entry (docs/design-system.md §6): a field on a `fill` surface with a
 // small label over what is typed, and the pill that filters a list.
 import SwiftUI
 import UIKit
 
-/// The surface of an input field: soft, radius 10. `background` replaces it, as `card` for a field on a grey card.
+/// The surface of an input field: `fill`, radius 18. `background` replaces it.
 struct FieldBox<Content: View>: View {
     private let background: Color?
     private let content: Content
@@ -17,7 +17,7 @@ struct FieldBox<Content: View>: View {
         content
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 14).padding(.vertical, 11)
-            .background(background ?? Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+            .background(background ?? DS.fill, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
     }
 }
 
@@ -60,21 +60,21 @@ struct InputField: View {
     }
 
     var body: some View {
-        let style: TypeStyle = switch look {
-        case .text: T.body
-        case .mono: T.mono13
-        case .code: T.code22
+        let style: Font = switch look {
+        case .text: .body
+        case .mono: .footnote.monospaced()
+        case .code: .title2.monospaced().weight(.semibold)
         }
         FieldBox(background: background) {
             VStack(alignment: .leading, spacing: 2) {
-                if let label { Text(label).type(T.meta, Theme.muted) }
+                if let label { Text(label).font(.footnote).ink(DS.ink2) }
                 TextField(
-                    "", text: $text, prompt: Text(placeholder).foregroundStyle(Theme.muted),
+                    "", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink2),
                     axis: lines.upperBound > 1 ? .vertical : .horizontal
                 )
                 .lineLimit(lines)
                 // The placeholder is a sentence in the text size; only what is typed takes the look.
-                .type(text.isEmpty && look == .code ? T.body : style, Theme.fg)
+                .font(text.isEmpty && look == .code ? .body : style).ink(DS.ink)
                 .multilineTextAlignment(look == .code ? .center : .leading)
                 .keyboardType(keyboard)
                 .textContentType(contentType)
@@ -83,7 +83,7 @@ struct InputField: View {
                 .submitLabel(submitLabel)
                 .onSubmit { onSubmit?() }
                 .focused($focused)
-                .tint(Theme.blue)
+                .tint(DS.blue)
                 .accessibilityLabel(label ?? placeholder)
             }
         }
@@ -102,7 +102,7 @@ struct FilterBox: View {
     private let placeholder: String
     private let inset: CGFloat
 
-    init(text: Binding<String>, placeholder: String = "按标题筛选", inset: CGFloat = Theme.Space.page) {
+    init(text: Binding<String>, placeholder: String = "按标题筛选", inset: CGFloat = DS.Space.l) {
         _text = text
         self.placeholder = placeholder
         self.inset = inset
@@ -110,22 +110,22 @@ struct FilterBox: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Ic(Lucide.search, style: T.body, color: Theme.muted)
-            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Theme.muted))
-                .type(T.body, Theme.fg)
+            SymbolImage("magnifyingglass", style: .body, color: DS.ink2)
+            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink2))
+                .font(.body).ink(DS.ink)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
-                .tint(Theme.blue)
+                .tint(DS.blue)
                 .accessibilityLabel(placeholder)
         }
         .padding(.leading, 14).padding(.trailing, text.isEmpty ? 14 : 40)
         .frame(minHeight: 36)
-        .background(Theme.chip, in: Capsule())
+        .background(DS.fill, in: Capsule())
         .overlay(alignment: .trailing) {
-            if !text.isEmpty { IconButton(Lucide.x, label: "清空筛选", size: 16, color: Theme.faint) { text = "" } }
+            if !text.isEmpty { IconButton("xmark", label: "清空筛选", size: 16, color: DS.ink3) { text = "" } }
         }
-        .frame(minHeight: Theme.minHit)
+        .frame(minHeight: DS.minHit)
         .padding(.horizontal, inset)
     }
 }

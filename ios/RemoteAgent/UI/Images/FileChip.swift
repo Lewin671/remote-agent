@@ -21,32 +21,32 @@ struct FileChip: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Ic(Lucide.file, size: 18, color: DS.ink2)
+            SymbolImage("doc", size: 18, color: DS.ink2)
             VStack(alignment: .leading, spacing: 2) {
-                Text(fileChipName(name, maxCharacters: 80)).type(T.sm, DS.ink2).lineLimit(1).truncationMode(.middle)
+                Text(fileChipName(name, maxCharacters: 80)).font(.subheadline).ink(DS.ink2).lineLimit(1).truncationMode(.middle)
                     .accessibilityLabel(name)
-                Text(fileSize(size) + status).type(T.meta, DS.ink2)
+                Text(fileSize(size) + status).font(.footnote).ink(DS.ink2)
                 if case .uploading(let progress) = state {
                     ProgressView(value: Double(progress)).tint(DS.blue)
                         .accessibilityLabel("文件上传进度")
                 }
                 if case .failed(let reason) = state {
-                    Text(reason).type(T.meta, DS.red).fixedSize(horizontal: false, vertical: true)
+                    Text(reason).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if case .failed = state, let retry {
-                Button("重试", action: retry).type(T.meta, DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+                Button("重试", action: retry).font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
             }
             if let remove {
-                Button(action: remove) { Ic(Lucide.x, size: 16, color: DS.ink2).hitTarget() }
+                Button(action: remove) { SymbolImage("xmark", size: 16, color: DS.ink2).hitTarget() }
                     .accessibilityLabel("移除文件 \(name)")
             }
         }
         .buttonStyle(PressStyle())
         .padding(.horizontal, 8).padding(.vertical, 4)
-        .background(DS.fill, in: RoundedRectangle(cornerRadius: Theme.Radius.sm))
-        .overlay { RoundedRectangle(cornerRadius: Theme.Radius.sm).strokeBorder(DS.sep, lineWidth: 1) }
+        .background(DS.fill, in: RoundedRectangle(cornerRadius: DS.Radius.small))
+        .overlay { RoundedRectangle(cornerRadius: DS.Radius.small).strokeBorder(DS.sep, lineWidth: 1) }
         .accessibilityElement(children: .contain)
     }
 }

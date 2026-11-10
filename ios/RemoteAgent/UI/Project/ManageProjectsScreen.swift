@@ -38,9 +38,9 @@ struct ManageProjectsScreen: View {
                         }
                         Hint("移除只是不再列出这个项目，会话和电脑上的目录都不动。").padding(.top, 4).padding(.bottom, 16)
                     }
-                    .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.page, bottom: 0, trailing: Theme.Space.page))
+                    .listRowInsets(EdgeInsets(top: 0, leading: DS.Space.l, bottom: 0, trailing: DS.Space.l))
                     .listRowSeparator(.hidden)
-                    .listRowBackground(Theme.card)
+                    .listRowBackground(DS.gbg)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -53,8 +53,8 @@ struct ManageProjectsScreen: View {
         .actionMenu(isPresented: $menuShown, actions: menu.map { actions(state, $0, blocked: blocked) } ?? []) {
             if let pr = menu {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(pr.name).type(T.bodyB, Theme.fg)
-                    Text(shortPath(pr.key)).type(T.mono, Theme.fg2)
+                    Text(pr.name).font(.body.weight(.semibold)).ink(DS.ink)
+                    Text(shortPath(pr.key)).font(.footnote.monospaced()).ink(DS.ink2)
                 }
             }
         }
@@ -103,7 +103,7 @@ struct ManageProjectsScreen: View {
         } trailing: {
             EmptyView()
         } accessory: {
-            IconButton(Lucide.ellipsis, label: "管理 \(pr.name)", size: 20) {
+            IconButton("ellipsis", label: "管理 \(pr.name)", size: 20) {
                 menu = pr
                 menuShown = true
             }
@@ -117,8 +117,8 @@ struct ManageProjectsScreen: View {
         // Out of reach of the server the changes cannot be made: the menu says why, a swipe offers nothing.
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if can {
-                Button("移除项目…") { removing = pr.key }.tint(Theme.redBg)
-                Button(pinned ? "取消常用" : "设为常用") { pin(pr.key, !pinned) }.tint(Theme.blueBg)
+                Button("移除项目…") { removing = pr.key }.tint(DS.red)
+                Button(pinned ? "取消常用" : "设为常用") { pin(pr.key, !pinned) }.tint(DS.blue)
             }
         }
     }

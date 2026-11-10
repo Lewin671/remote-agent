@@ -49,9 +49,9 @@ private struct ScheduleAgentPicker: UIViewRepresentable {
         }
         control.selectedSegmentIndex = agents.firstIndex { $0.rawValue == selection } ?? UISegmentedControl.noSegment
         control.isEnabled = enabled
-        control.selectedSegmentTintColor = UIColor(Theme.card)
-        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.muted)], for: .normal)
-        control.setTitleTextAttributes([.foregroundColor: UIColor(Theme.fg)], for: .selected)
+        control.selectedSegmentTintColor = UIColor(DS.gbg)
+        control.setTitleTextAttributes([.foregroundColor: UIColor(DS.ink2)], for: .normal)
+        control.setTitleTextAttributes([.foregroundColor: UIColor(DS.ink)], for: .selected)
     }
     @MainActor final class Coordinator: NSObject {
         var selection: Binding<Int>

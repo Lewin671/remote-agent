@@ -23,7 +23,6 @@ struct License: Identifiable, Sendable, Equatable {
 
 enum Licenses {
     static let all: [License] = [
-        License(files: ["ISC-Lucide"], name: "Lucide", use: "界面中的图标", kind: "ISC", package: nil, linked: true),
         License(files: ["Apache-2.0-swift-protobuf"], name: "swift-protobuf", use: "协议报文的编码", kind: "Apache-2.0", package: "swift-protobuf", linked: true),
         License(files: ["Apache-2.0-connect-swift"], name: "connect-swift", use: "和服务器通信", kind: "Apache-2.0", package: "connect-swift", linked: true),
         License(files: ["MIT-GRDB"], name: "GRDB", use: "本机的密文缓存", kind: "MIT", package: "grdb.swift", linked: true),

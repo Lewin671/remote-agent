@@ -155,15 +155,15 @@ struct ProjectSettingsSheet: View {
         HStack(spacing: 10) {
             Avatar(cwd, size: 22)
             VStack(alignment: .leading, spacing: 0) {
-                Text(name).type(T.bodyB, Theme.fg)
-                Text(shortPath(cwd)).type(T.mono, Theme.muted).lineLimit(2)
+                Text(name).font(.body.weight(.semibold)).ink(DS.ink)
+                Text(shortPath(cwd)).font(.footnote.monospaced()).ink(DS.ink2).lineLimit(2)
             }
         }
         .accessibilityElement(children: .combine)
         .padding(.bottom, 12)
         FieldLabel("新会话")
         let machineRow = SetRow(
-            "机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? Theme.green : Theme.gray
+            "机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3
         ) { page = .machine }
         // What a CLI's set starts from is read first where it is not known yet.
         let own = unread ? [AnyView(reading(state, cur))] : rows(state, c)
@@ -186,7 +186,7 @@ struct ProjectSettingsSheet: View {
             context.prefsChanges.run(context.remote, pinned ? .unpin(path: cwd) : .pin(path: cwd))
         }
         .padding(.top, 4)
-        TextAction("移除项目…", color: Theme.red, enabled: blocked == nil) { removing = cwd }
+        TextAction("移除项目…", color: DS.red, enabled: blocked == nil) { removing = cwd }
     }
 
     private func rows(_ state: RemoteState, _ c: NewConfig) -> [AnyView] {
@@ -199,7 +199,7 @@ struct ProjectSettingsSheet: View {
             out.append(AnyView(SetRow("上下文", window.text, action: window.fixed ? nil : { page = .context })))
         }
         out.append(AnyView(
-            SetRow("审批", effectiveModeText(chosen: c.mode, default: d), valueColor: settingsModeRed(c, default: d) ? Theme.red : nil) {
+            SetRow("审批", effectiveModeText(chosen: c.mode, default: d), valueColor: settingsModeRed(c, default: d) ? DS.red : nil) {
                 page = .mode
             }))
         return out
@@ -210,7 +210,7 @@ struct ProjectSettingsSheet: View {
             if state.conn != .online || !state.sessionsError.isEmpty {
                 EarlierTail(state)
             } else {
-                Text("正在读取 \(agentName(agent)) 上次的设置…").type(T.sm, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                Text("正在读取 \(agentName(agent)) 上次的设置…").font(.subheadline).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .padding(14)
@@ -227,7 +227,7 @@ struct ProjectSettingsSheet: View {
                 draft.move(to: m.id)
                 page = .main
             }
-            .trailing { Dot(m.online ? Theme.green : Theme.gray) }
+            .trailing { Dot(m.online ? DS.green : DS.ink3) }
             .accessibilityValue(m.online ? "在线" : "不在线")
         }
         Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
@@ -252,7 +252,7 @@ struct ProjectSettingsSheet: View {
                     draft.edit(pickModel(c, m))
                 }
             }
-            if !few { TextAction("全部模型", style: T.body, arrow: true) { allModels = true } }
+            if !few { TextAction("全部模型", style: .body, arrow: true) { allModels = true } }
             // With the default model an effort can still be chosen; choosing one does not fix the model.
             if let efforts = effortChoices(c, models: ms, settings: settings) {
                 FieldLabel("推理强度")
@@ -310,12 +310,12 @@ private struct SetCard: View {
     var body: some View {
         VStack(spacing: 0) {
             ForEach(rows.indices, id: \.self) { i in
-                if i > 0 { Rectangle().fill(Theme.line).frame(height: 1).accessibilityHidden(true) }
+                if i > 0 { Rectangle().fill(DS.sep).frame(height: 1).accessibilityHidden(true) }
                 rows[i]
             }
         }
-        .background(Theme.soft)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(DS.gbg)
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
     }
 }
 
@@ -341,27 +341,27 @@ private struct SetRow: View {
             if typeSize.isAccessibilitySize {
                 // The value goes under the label, at the right, instead of squeezing it.
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(label).type(T.sm, Theme.muted)
+                    Text(label).font(.subheadline).ink(DS.ink2)
                     HStack(spacing: 8) {
                         Spacer(minLength: 0)
                         if let dot { Dot(dot) }
-                        Text(value).type(T.sm, valueColor ?? Theme.fg2).multilineTextAlignment(.trailing)
-                        if action != nil { Arrow(Theme.faint) }
+                        Text(value).font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing)
+                        if action != nil { Arrow(DS.ink3) }
                     }
                 }
                 .padding(.vertical, 8)
             } else {
                 HStack(spacing: 10) {
-                    Text(label).type(T.sm, Theme.muted).lineLimit(1).fixedSize()
+                    Text(label).font(.subheadline).ink(DS.ink2).lineLimit(1).fixedSize()
                     Spacer(minLength: 0)
                     if let dot { Dot(dot) }
-                    Text(value).type(T.sm, valueColor ?? Theme.fg2).lineLimit(2).multilineTextAlignment(.trailing)
-                    if action != nil { Arrow(Theme.faint) }
+                    Text(value).font(.subheadline).ink(valueColor ?? DS.ink2).lineLimit(2).multilineTextAlignment(.trailing)
+                    if action != nil { Arrow(DS.ink3) }
                 }
             }
         }
         .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
         if let action {
             Button(action: action) { shown }.buttonStyle(RowPressStyle())
         } else {

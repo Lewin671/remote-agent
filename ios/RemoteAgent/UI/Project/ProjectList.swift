@@ -169,11 +169,11 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
                         Avatar(project.key, size: 22)
                         VStack(alignment: .leading, spacing: 0) {
                             // At the largest text sizes a line holds too little of either: both may take a second one.
-                            Text(project.name).type(T.bodyB, Theme.fg).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
+                            Text(project.name).font(.body.weight(.semibold)).ink(DS.ink).lineLimit(typeSize.isAccessibilitySize ? 2 : 1)
                             // A long path gives way in its middle: the folder's own name and what runs there stay.
-                            Text(projectDetail(state, project)).type(T.meta, Theme.muted)
+                            Text(projectDetail(state, project)).font(.footnote).ink(DS.ink2)
                                 .lineLimit(typeSize.isAccessibilitySize ? 2 : 1).truncationMode(.middle)
-                            if change?.saving == true { IconText(Lucide.loaderCircle, "正在同步…", style: T.meta) }
+                            if change?.saving == true { IconText(Mark.progress, "正在同步…", style: .footnote) }
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         trailing
@@ -187,8 +187,8 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
             }
             if case .failed(let op, let error)? = change {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
-                    Text("没能保存，列表保持原样：\(error)").type(T.meta, Theme.red).frame(maxWidth: .infinity, alignment: .leading)
-                    TextAction("重试", style: T.metaB, enabled: prefsBlocked(state) == nil, alignment: .trailing) {
+                    Text("没能保存，列表保持原样：\(error)").font(.footnote).ink(DS.red).frame(maxWidth: .infinity, alignment: .leading)
+                    TextAction("重试", style: .footnote.weight(.semibold), enabled: prefsBlocked(state) == nil, alignment: .trailing) {
                         context.prefsChanges.run(context.remote, op)
                     }
                 }
@@ -240,8 +240,8 @@ struct ProjectList<First: View, Row: View>: View {
         if let none = l.noMatch { Hint(none).padding(.bottom, 8) }
         Button(action: onNew) {
             HStack(spacing: 12) {
-                Ic(Lucide.plus, size: 18, color: Theme.blue, relativeTo: .subheadline).frame(width: 22)
-                Text("新项目…").type(T.bodyB, Theme.blue)
+                SymbolImage("plus", size: 18, color: DS.blue, relativeTo: .subheadline).frame(width: 22)
+                Text("新项目…").font(.body.weight(.semibold)).ink(DS.blue)
             }
             .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
         }

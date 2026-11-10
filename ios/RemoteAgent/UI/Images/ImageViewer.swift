@@ -115,12 +115,12 @@ struct ViewerPage: View {
                 .accessibilityAction(named: "放大或还原") { zoomToggles += 1 }
             } else {
                 // Not even a preview: the file's name is all there is.
-                Text(fileName(ref.path)).type(T.mono13, ViewerInk.text).multilineTextAlignment(
+                Text(fileName(ref.path)).font(.footnote.monospaced()).ink(ViewerInk.text).multilineTextAlignment(
                     .center
                 ).padding(24)
             }
             if big == .loading {
-                Mark(Lucide.loaderCircle, color: ViewerInk.text, size: 36, relativeTo: .title)
+                Mark(Mark.progress, color: ViewerInk.text, size: 36, relativeTo: .title)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .accessibilityHidden(true)
             }
@@ -131,12 +131,12 @@ struct ViewerPage: View {
                 Button {
                     if retry { attempt += 1 }
                 } label: {
-                    Text(note).type(T.sm, ViewerInk.text).multilineTextAlignment(.center)
+                    Text(note).font(.subheadline).ink(ViewerInk.text).multilineTextAlignment(.center)
                         .padding(.horizontal, 12).padding(.vertical, 8)
                         .frame(minHeight: retry ? DS.minHit : 0)
                         .background(
                             ViewerInk.chip,
-                            in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+                            in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
                 }
                 .buttonStyle(PressStyle())
                 .disabled(!retry)

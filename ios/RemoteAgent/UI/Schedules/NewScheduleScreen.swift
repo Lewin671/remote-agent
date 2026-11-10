@@ -77,7 +77,7 @@ struct NewScheduleScreen: View {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 12) {
                             InputField("让 agent 做什么", text: Bindable(draft).message, placeholder: "检查什么，有结果时通知我…", lines: 1...(sessionID.isEmpty ? 8 : 4))
-                            if draft.message.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: Theme.red) }
+                            if draft.message.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: DS.red) }
                             InputField("任务名", text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "留空就用消息的第一句" : "留空会用：" + scheduleTitle("", message: draft.message)).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
@@ -86,14 +86,14 @@ struct NewScheduleScreen: View {
                             if sessionID.isEmpty {
                                 GRow("项目", value: draft.config.map { projectName($0.cwd) } ?? "选择项目", chevron: true) { picker = .project }
                                 ScheduleAgentRow(state: state, config: Bindable(draft).config)
-                                GRow("权限", value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? "跟随 CLI 设置", chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? Theme.red : nil) { picker = .mode }
+                                GRow("权限", value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? "跟随 CLI 设置", chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? DS.red : nil) { picker = .mode }
                                 GRow(state.machines.count > 1 ? "机器和模型" : "模型", value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", draft.config.map { $0.model.isEmpty ? "默认" : $0.model } ?? "默认"].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
                             }
                         }
                         .disabled(draft.mutation.frozen)
-                        if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: Theme.orangeInk).padding(.horizontal, 16) }
+                        if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: DS.orangeInk).padding(.horizontal, 16) }
                         if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
-                        if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: Theme.orangeInk).padding(.horizontal, 16) }
+                        if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: DS.orangeInk).padding(.horizontal, 16) }
                         if !sessionID.isEmpty && draft.trigger.type == "interval" { Hint(scheduleIntervalHint).padding(.horizontal, 16) }
                         if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。").padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }

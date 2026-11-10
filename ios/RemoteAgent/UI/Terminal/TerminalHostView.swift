@@ -136,14 +136,14 @@ final class TerminalHostView: UIView {
         terminal.layer.anchorPoint = .zero
         terminal.center = .zero
         clipsToBounds = true
-        backgroundColor = UIColor(Theme.Term.bg)
+        backgroundColor = UIColor(TermColors.bg)
 
         terminal.terminalDelegate = self
-        terminal.nativeBackgroundColor = UIColor(Theme.Term.bg)
-        terminal.nativeForegroundColor = UIColor(Theme.Term.text)
-        terminal.caretColor = UIColor(Theme.Term.text)
-        terminal.selectedTextBackgroundColor = UIColor(Theme.Term.link).withAlphaComponent(0.35)
-        terminal.backgroundColor = UIColor(Theme.Term.bg)
+        terminal.nativeBackgroundColor = UIColor(TermColors.bg)
+        terminal.nativeForegroundColor = UIColor(TermColors.text)
+        terminal.caretColor = UIColor(TermColors.text)
+        terminal.selectedTextBackgroundColor = UIColor(TermColors.link).withAlphaComponent(0.35)
+        terminal.backgroundColor = UIColor(TermColors.bg)
         // The key bar is the pane's own, and the keyboard is the terminal's colour in either theme.
         terminal.inputAccessoryView = nil
         terminal.keyboardAppearance = .dark

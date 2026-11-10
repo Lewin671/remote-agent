@@ -391,7 +391,7 @@ import UIKit
     @Test func theKeyBarHasAnIconForEveryKeyThatNamesOne() {
         for key in terminalKeyRows.joined() {
             guard let name = key.icon else { continue }
-            #expect(Lucide.all.contains { $0.name == name }, "\(key.label)")
+            #expect(UIImage(systemName: name) != nil, "\(key.label)")
         }
     }
 }

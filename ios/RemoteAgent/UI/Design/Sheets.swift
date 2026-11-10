@@ -37,8 +37,6 @@ private struct SheetBody<Content: View>: View {
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
         }
         .scrollBounceBehavior(.basedOnSize)
-        // Whatever page it is over, a sheet's own surface is the card.
-        .environment(\.onSoft, false)
         .presentationDetents(detents)
         .sheetSurface()
         .tint(DS.blue)
@@ -77,16 +75,16 @@ struct SheetHead: View {
         HStack(spacing: 10) {
             if let onBack {
                 Button(action: onBack) {
-                    Ic(Lucide.chevronLeft, size: 22, color: Theme.blue).hitTarget(minWidth: 28, alignment: .leading)
+                    SymbolImage("chevron.left", size: 22, color: DS.blue).hitTarget(minWidth: 28, alignment: .leading)
                 }
                 .buttonStyle(PressStyle())
                 .accessibilityLabel("返回")
             }
-            Text(title).type(T.h17, Theme.fg).frame(maxWidth: .infinity, alignment: .leading).accessibilityAddTraits(.isHeader)
+            Text(title).font(.headline).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading).accessibilityAddTraits(.isHeader)
             // As wide as its words: 完成 and 取消 fit in 44 pt, 以后再说 does not.
-            if let action, let onAction { TextAction(action, style: T.body, alignment: .center, action: onAction) }
+            if let action, let onAction { TextAction(action, style: .body, alignment: .center, action: onAction) }
         }
-        .frame(minHeight: action != nil || onBack != nil ? Theme.minHit : nil)
+        .frame(minHeight: action != nil || onBack != nil ? DS.minHit : nil)
         .padding(.bottom, 10)
     }
 }

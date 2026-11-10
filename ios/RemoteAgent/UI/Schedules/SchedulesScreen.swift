@@ -10,7 +10,7 @@ struct SchedulesScreen: View {
         Page {
             VStack(spacing: 0) {
                 // 新定时 is the ink button of the bottom bar (UI/Shell); the page has no second way to it.
-                Text("定时任务").type(T.title30, Theme.fg).padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
+                Text("定时任务").font(.largeTitle.bold()).ink(DS.ink).padding(.vertical, 3).frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))
                 ConnectionBar()
                 Ticking { now in
@@ -18,18 +18,18 @@ struct SchedulesScreen: View {
                         if model.state.conn == .online,
                            let offline = scheduleOfflineNotice(store.tasks, state: model.state, online: store.online) {
                             Banner(offline).padding(16)
-                                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.card)
+                                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(DS.gbg)
                         }
                         ForEach(store.errors.keys.sorted(), id: \.self) { id in
                             Banner(store.errors[id] ?? "", tone: .error, action: "重试") { Task { await store.refresh(id) } }.padding(16)
                         }
-                        .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.card)
+                        .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(DS.gbg)
                         if store.tasks.isEmpty {
                             VStack(spacing: 8) {
-                                Text(store.loading.isEmpty ? "还没有定时任务" : "读取任务…").type(T.h17, Theme.fg)
-                                Text(scheduleEmpty).type(T.sm, Theme.muted).multilineTextAlignment(.center)
+                                Text(store.loading.isEmpty ? "还没有定时任务" : "读取任务…").font(.headline).ink(DS.ink)
+                                Text(scheduleEmpty).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
                             }.frame(maxWidth: .infinity).padding(.horizontal, 24).padding(.vertical, 64)
-                                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.card)
+                                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(DS.gbg)
                         }
                         ForEach(ScheduleInboxGroup.allCases, id: \.rawValue) { group in
                             let rows = store.rows(group)
@@ -37,16 +37,16 @@ struct SchedulesScreen: View {
                                 if group == .ended {
                                     Button { endedExpanded.toggle() } label: {
                                         HStack(spacing: 8) {
-                                            Text("已结束 \(rows.count)").type(T.smB, Theme.muted)
+                                            Text("已结束 \(rows.count)").font(.subheadline.weight(.semibold)).ink(DS.ink2)
                                             Spacer()
-                                            Arrow(Theme.muted, direction: endedExpanded ? .up : .down)
+                                            Arrow(DS.ink2, direction: endedExpanded ? .up : .down)
                                         }.frame(minHeight: 44).padding(.horizontal, 16)
                                     }.buttonStyle(PressStyle()).accessibilityValue(endedExpanded ? "已展开" : "已折叠")
                                 } else {
                                     HStack {
-                                        Text(group.title).type(T.smB, group == .attention ? Theme.orangeInk : Theme.muted).accessibilityAddTraits(.isHeader)
+                                        Text(group.title).font(.subheadline.weight(.semibold)).ink(group == .attention ? DS.orangeInk : DS.ink2).accessibilityAddTraits(.isHeader)
                                         Spacer()
-                                        if group == .attention { Text("\(rows.count)").type(T.sm, Theme.orangeInk) }
+                                        if group == .attention { Text("\(rows.count)").font(.subheadline).ink(DS.orangeInk) }
                                         else if rows.contains(where: store.hasNewResult) {
                                             TextAction("全部标为已读") { store.markRead(rows) }
                                         }
@@ -59,7 +59,7 @@ struct SchedulesScreen: View {
                                 }
                             }
                         }
-                        .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Theme.card)
+                        .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(DS.gbg)
                     }
                     .listStyle(.plain).scrollContentBackground(.hidden)
                     .environment(\.defaultMinListRowHeight, 0)
@@ -89,27 +89,27 @@ struct ScheduleListRow: View {
             HStack(alignment: .top, spacing: 0) {
                 ZStack {
                     if attention || unread {
-                        Circle().fill(attention ? Theme.orange : Theme.blue).frame(width: 8, height: 8)
+                        Circle().fill(attention ? DS.orange : DS.blue).frame(width: 8, height: 8)
                             .accessibilityLabel(attention ? "需要你处理" : "有新结果")
                     }
                 }.frame(width: 22, height: 20)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(task.spec.title).type(attention || unread ? T.bodyB : T.body.with(weight: .medium), task.group == .paused ? Theme.fg2 : Theme.fg)
+                        Text(task.spec.title).font(attention || unread ? .body.weight(.semibold) : .body.weight(.medium)).ink(task.group == .paused ? DS.ink2 : DS.ink)
                             .lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-                        if let resultDate { Text(scheduleRowTime(resultDate, now: date)).type(T.meta, Theme.muted).fixedSize() }
+                        if let resultDate { Text(scheduleRowTime(resultDate, now: date)).font(.footnote).ink(DS.ink2).fixedSize() }
                     }
                     preview(task, unread: unread, now: date).lineLimit(2).frame(maxWidth: .infinity, alignment: .leading)
                     HStack(spacing: 4) {
-                        if task.running != nil { Ic(Lucide.loaderCircle, size: 12, color: Theme.muted) }
+                        if task.running != nil { SymbolImage(Mark.progress, size: 12, color: DS.ink2) }
                         Text(scheduleListMetadata(entry, entries: store.tasks, state: model.state, online: store.online(entry.machineID)))
-                            .type(T.meta, Theme.muted).lineLimit(1)
+                            .font(.footnote).ink(DS.ink2).lineLimit(1)
                     }
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 12)
-            .background(Theme.card)
-            .overlay(alignment: .bottom) { if !last { Theme.line.frame(height: 0.5).padding(.leading, 38) } }
+            .background(DS.gbg)
+            .overlay(alignment: .bottom) { if !last { DS.sep.frame(height: 0.5).padding(.leading, 38) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(RowPressStyle()).accessibilityElement(children: .combine)
@@ -118,7 +118,7 @@ struct ScheduleListRow: View {
                 Button { toggleRead(unread) } label: {
                     if unread { Label("已读", systemImage: "checkmark") }
                     else { Text("未读") }
-                }.tint(Theme.blueBg)
+                }.tint(DS.blue)
             }
         }
         .accessibilityActions {
@@ -130,13 +130,13 @@ struct ScheduleListRow: View {
     }
     @ViewBuilder private func preview(_ task: ScheduleTask, unread: Bool, now: Date) -> some View {
         if task.awaitingFirstResult {
-            Text(task.listPreview(now: now)).type(T.sm, Theme.muted)
+            Text(task.listPreview(now: now)).font(.subheadline).ink(DS.ink2)
         } else if task.group == .attention {
-            (Text(task.attentionWord).foregroundColor(Theme.orangeInk).fontWeight(.semibold) +
+            (Text(task.attentionWord).foregroundColor(DS.orangeInk).fontWeight(.semibold) +
              Text(" · " + task.notificationPreview(now: now).replacingOccurrences(of: "，任务已停下", with: "")))
-                .type(T.sm, Theme.muted)
+                .font(.subheadline).ink(DS.ink2)
         } else {
-            Text(task.listPreview(now: now)).type(T.sm, unread ? Theme.fg : Theme.muted)
+            Text(task.listPreview(now: now)).font(.subheadline).ink(unread ? DS.ink : DS.ink2)
         }
     }
 }

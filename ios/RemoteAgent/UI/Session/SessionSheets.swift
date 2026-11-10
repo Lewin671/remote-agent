@@ -43,7 +43,7 @@ struct SessionModeSheet: View {
         let outside = !pm.isEmpty && permissionMode(pm) == nil ? (pm == "acceptEdits" ? "accept edits" : pm) : nil
         Group {
             SheetHead("审批模式")
-            if let outside { Text("当前：\(outside)（在终端设置）").type(T.meta, DS.ink2).padding(.bottom, 4) }
+            if let outside { Text("当前：\(outside)（在终端设置）").font(.footnote).ink(DS.ink2).padding(.bottom, 4) }
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
                 let reason = unavailableReason(m)
                 let off = reason != nil
@@ -181,7 +181,7 @@ struct SessionModelSheet: View {
                 if m.efforts.isEmpty && m.slug != current?.slug { setModel(m.slug, "") }
             }
         }
-        if !few { TextAction("全部模型", style: T.body, arrow: true) { all = true } }
+        if !few { TextAction("全部模型", style: .body, arrow: true) { all = true } }
         if let chosen = offered.first(where: { $0.slug == picked }), !chosen.efforts.isEmpty {
             FieldLabel("推理强度")
             ChoiceGrid(

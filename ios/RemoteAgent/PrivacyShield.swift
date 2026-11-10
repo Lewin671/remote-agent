@@ -69,8 +69,8 @@ final class PrivacyShield {
 struct PrivacyCover: View {
     var body: some View {
         ZStack {
-            Theme.card.ignoresSafeArea()
-            AppMark.view(size: 56, color: Theme.blueBg)
+            DS.gbg.ignoresSafeArea()
+            AppMark.view(size: 56, color: DS.blue)
         }
         .accessibilityHidden(true)
     }

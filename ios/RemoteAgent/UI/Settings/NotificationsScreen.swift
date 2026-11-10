@@ -43,8 +43,8 @@ private struct Fact: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).type(T.body, Theme.fg)
-            Text(text).type(T.sm, Theme.muted)
+            Text(title).font(.body).ink(DS.ink)
+            Text(text).font(.subheadline).ink(DS.ink2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14).padding(.vertical, 10)

@@ -48,7 +48,7 @@ struct QRScanner: View {
         }
         .overlay(alignment: .topLeading) {
             Button(action: onCancel) {
-                Text("取消").type(T.body, .white).padding(.horizontal, 16).hitTarget()
+                Text("取消").font(.body).ink(.white).padding(.horizontal, 16).hitTarget()
             }
             .buttonStyle(PressStyle())
         }
@@ -87,7 +87,7 @@ private struct ScannerNote: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            Text(text).type(T.body, .white).multilineTextAlignment(.center)
+            Text(text).font(.body).ink(.white).multilineTextAlignment(.center)
             if let action { Btn(action, kind: .primary, fill: false, action: onAction) }
         }
         .padding(24)
@@ -99,11 +99,11 @@ private struct ScannerNote: View {
 private struct Finder: View {
     var body: some View {
         VStack(spacing: 20) {
-            RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+            RoundedRectangle(cornerRadius: DS.Radius.darkCard, style: .continuous)
                 .strokeBorder(.white.opacity(0.9), lineWidth: 3)
                 .frame(width: 240, height: 240)
             Text("把管理端的配对二维码放进框里")
-                .type(T.sm, .white).multilineTextAlignment(.center)
+                .font(.subheadline).ink(.white).multilineTextAlignment(.center)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(.black.opacity(0.45), in: Capsule())
         }

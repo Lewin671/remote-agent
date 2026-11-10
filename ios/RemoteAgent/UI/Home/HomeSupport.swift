@@ -110,7 +110,7 @@ struct EarlierTail: View {
     }
 
     var body: some View {
-        let line = Text(text).type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+        let line = Text(text).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
         if retry {
             Button {
                 let remote = context.remote

@@ -3,9 +3,10 @@
 // edge, safe areas and keyboard avoidance as SwiftUI gives them. What the
 // design adds is the surface (card, or soft for grouped settings pages),
 // what the bar's middle says, and the large title of a first-level page.
+// Every page is `paper`; grouped lists on it are `gbg` (design-system §2).
 import SwiftUI
 
-/// A page's surface: card, or soft for grouped settings pages (`gray`), whose rows keep a readable column on a wide screen.
+/// A page: `paper`. A grouped settings page (`gray`) keeps a readable column on a wide screen.
 struct Page<Content: View>: View {
     private let gray: Bool
     private let content: Content
@@ -20,9 +21,8 @@ struct Page<Content: View>: View {
             if gray { content.readableColumn() } else { content }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background((gray ? Theme.soft : Theme.card).ignoresSafeArea())
-        .environment(\.onSoft, gray)
-        .tint(Theme.blue)
+        .background(DS.paper.ignoresSafeArea())
+        .tint(DS.blue)
     }
 }
 
@@ -48,7 +48,7 @@ struct NavTitle: View {
         self.subtitle = subtitle
         self.danger = danger.flatMap { $0.isEmpty ? nil : $0 }
         self.dot = dot
-        self.subtitleColor = subtitleColor ?? (dark ? Theme.Term.dim : Theme.muted)
+        self.subtitleColor = subtitleColor ?? (dark ? TermColors.dim : DS.ink2)
         self.dark = dark
     }
 
@@ -59,7 +59,7 @@ struct NavTitle: View {
         if let danger {
             if subtitle?.isEmpty == false { line.append(AttributedString(" · ")) }
             var red = AttributedString(danger)
-            red.foregroundColor = Theme.red
+            red.foregroundColor = DS.red
             line.append(red)
         }
         return line
@@ -69,13 +69,13 @@ struct NavTitle: View {
         VStack(spacing: 0) {
             HStack(spacing: 6) {
                 // Always one line; a title that does not fit is cut (design-system §6).
-                Text(title).type(T.bodyB, dark ? Theme.Term.fg : Theme.fg).lineLimit(1)
-                if let agent { Text(agent).type(T.metaM, dark ? Theme.Term.dim : Theme.muted).lineLimit(1).layoutPriority(1) }
+                Text(title).font(.body.weight(.semibold)).ink(dark ? TermColors.fg : DS.ink).lineLimit(1)
+                if let agent { Text(agent).font(.footnote.weight(.medium)).ink(dark ? TermColors.dim : DS.ink2).lineLimit(1).layoutPriority(1) }
             }
             if let line {
                 HStack(spacing: 5) {
                     if let dot { Dot(dot) }
-                    Text(line).type(T.meta, subtitleColor).lineLimit(1)
+                    Text(line).font(.footnote).ink(subtitleColor).lineLimit(1)
                 }
             }
         }
@@ -98,10 +98,10 @@ struct MoreButton: View {
 
     var body: some View {
         Button(action: action) {
-            Ic(Lucide.ellipsis, size: 22, color: Theme.blue)
+            SymbolImage("ellipsis", size: 22, color: DS.ink)
                 .overlay(alignment: .topTrailing) {
                     // Something in the menu wants a look, as a context that is nearly full.
-                    if dot { Circle().fill(Theme.orange).frame(width: 5, height: 5).offset(x: 3, y: -1) }
+                    if dot { Circle().fill(DS.orange).frame(width: 5, height: 5).offset(x: 3, y: -1) }
                 }
         }
         .accessibilityLabel("更多")
@@ -140,7 +140,7 @@ struct LargeTitle: View {
     }
 
     var body: some View {
-        Text(text).type(T.title30, Theme.fg).padding(.vertical, 3)
+        Text(text).font(.largeTitle.bold()).ink(DS.ink).padding(.vertical, 3)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityAddTraits(.isHeader)
             .padding(.init(top: 4, leading: 16, bottom: 2, trailing: 12))

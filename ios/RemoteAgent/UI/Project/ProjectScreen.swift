@@ -107,7 +107,7 @@ struct ProjectPageView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if fresh {
-                            if let launch { chip(state, launch).padding(.horizontal, Theme.Space.page).padding(.vertical, 4) }
+                            if let launch { chip(state, launch).padding(.horizontal, DS.Space.l).padding(.vertical, 4) }
                         } else {
                             header(state, page, launch, name: name)
                                 .background {
@@ -193,19 +193,19 @@ struct ProjectPageView: View {
         HStack(alignment: .top, spacing: 14) {
             Avatar(key, size: 52)
             VStack(alignment: .leading, spacing: 0) {
-                Text(name).type(T.h22, Theme.fg).lineLimit(2).accessibilityAddTraits(.isHeader)
-                Text(page.subtitle).type(T.sm, Theme.muted).lineLimit(2)
+                Text(name).font(.title2.bold()).ink(DS.ink).lineLimit(2).accessibilityAddTraits(.isHeader)
+                Text(page.subtitle).font(.subheadline).ink(DS.ink2).lineLimit(2)
                 HStack(spacing: 0) {
-                    Text("\(page.active.count) 个进行中 · ").type(T.sm, Theme.muted)
+                    Text("\(page.active.count) 个进行中 · ").font(.subheadline).ink(DS.ink2)
                     Button {
                         showEnded.toggle()
                     } label: {
                         // With none there is nothing to open: it is said as the count before it is.
                         Group {
                             if page.endedTotal == 0 {
-                                Text("已结束 0").type(T.sm, Theme.muted)
+                                Text("已结束 0").font(.subheadline).ink(DS.ink2)
                             } else {
-                                ArrowText("已结束 \(page.endedTotal)", style: T.smB, direction: showEnded ? .down : .right)
+                                ArrowText("已结束 \(page.endedTotal)", style: .subheadline.weight(.semibold), direction: showEnded ? .down : .right)
                             }
                         }
                             // 44 pt to the finger without making the header taller.
@@ -220,7 +220,7 @@ struct ProjectPageView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(.horizontal, Theme.Space.page).padding(.bottom, 2)
+        .padding(.horizontal, DS.Space.l).padding(.bottom, 2)
     }
 
     /// A change to the project's settings on its way, or why it did not arrive; also while it waits behind
@@ -230,7 +230,7 @@ struct ProjectPageView: View {
             Group {
                 switch change {
                 case .saving:
-                    Banner("正在保存项目设置…", icon: Lucide.loaderCircle)
+                    Banner("正在保存项目设置…", icon: Mark.progress)
                 case .failed(let op, let error):
                     Banner("项目设置没能保存：\(error)", tone: .error, action: "重试", onAction: { context.prefsChanges.run(context.remote, op) })
                 }
@@ -254,13 +254,13 @@ struct ProjectPageView: View {
             // On screen when the end of the list is reached: that is when the next page is fetched.
             if showEnded && earlier {
                 EarlierTail(state)
-                    .padding(.init(top: 12, leading: 35, bottom: 4, trailing: Theme.Space.page))
+                    .padding(.init(top: 12, leading: 35, bottom: 4, trailing: DS.Space.l))
                     .fetchEarlier(state, page: true)
                     .accessibilityIdentifier("project-earlier")
             }
         }
         if page.active.isEmpty && page.endedTotal == 0 && !isHidden(state, key: key) {
-            Text("这个项目还没有会话。").type(T.sm, Theme.muted).padding(Theme.Space.page)
+            Text("这个项目还没有会话。").font(.subheadline).ink(DS.ink2).padding(DS.Space.l)
         }
     }
 }
@@ -282,9 +282,9 @@ private struct HiddenProjectNotice: View {
                     Haptics.confirm()
                     context.prefsChanges.run(context.remote, .unhide(path: projectKey))
                 })
-            if let blocked { Hint(blocked, color: Theme.orangeInk) }
-            if case .failed(_, let error)? = change { Hint("没能保存：\(error)", color: Theme.red) }
+            if let blocked { Hint(blocked, color: DS.orangeInk) }
+            if case .failed(_, let error)? = change { Hint("没能保存：\(error)", color: DS.red) }
         }
-        .padding(.horizontal, Theme.Space.page).padding(.vertical, 4)
+        .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
     }
 }

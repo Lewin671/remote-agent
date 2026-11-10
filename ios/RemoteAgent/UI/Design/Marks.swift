@@ -5,6 +5,9 @@ import RACore
 import SwiftUI
 
 /// The status graphic (design-system §2 「状态图形」).
+/// How a session stands, by colour family: running, waiting for you, idle, off.
+enum StatusTone: Sendable, CaseIterable { case run, wait, idle, off }
+
 enum StatusKind: Sendable, Equatable {
     /// 运行中: an ink ring, half open, turning; still when the system asks for less motion.
     case running
@@ -45,7 +48,7 @@ struct StatusMark: View {
         Group {
             switch kind {
             case .running:
-                Spinner(still: still).frame(width: side + 2, height: side + 2)
+                Spinner(color: DS.ink).frame(width: side + 2, height: side + 2)
             case .idle:
                 Circle().strokeBorder(DS.ink3, lineWidth: 1.6).frame(width: side, height: side)
             case .waiting: dot(DS.orange)
@@ -63,14 +66,16 @@ struct StatusMark: View {
 }
 
 /// The running ring: a little over half a circle in ink, a turn every 0.9 s.
-private struct Spinner: View {
-    let still: Bool
+/// The turning ring of something in progress, half open; still when the system asks for less motion.
+struct Spinner: View {
+    var color: Color = DS.ink
     @State private var turning = false
+    @Environment(\.accessibilityReduceMotion) private var still
 
     var body: some View {
         Circle()
             .trim(from: 0, to: 0.7)
-            .stroke(DS.ink, style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
+            .stroke(color, style: StrokeStyle(lineWidth: 1.8, lineCap: .round))
             .rotationEffect(.degrees(turning ? 360 : 0))
             .animation(still ? nil : .linear(duration: 0.9).repeatForever(autoreverses: false), value: turning)
             .onAppear { turning = !still }

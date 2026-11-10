@@ -29,7 +29,7 @@ struct LicensesScreen: View {
         .navBar("开源许可")
         .kitSheet(item: $open, size: .large) { license in
             SheetHead(license.name, action: "完成") { open = nil }
-            Text(Licenses.text(license).map(Licenses.display) ?? "许可证文本没有随 App 打包").type(T.meta, Theme.fg2)
+            Text(Licenses.text(license).map(Licenses.display) ?? "许可证文本没有随 App 打包").font(.footnote).ink(DS.ink2)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }

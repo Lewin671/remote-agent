@@ -22,7 +22,7 @@ struct ConnectionCheckScreen: View {
         SettingsPage {
             GroupCard {
                 let network = state.link != .noNetwork
-                GRow("本机网络", value: network ? "正常" : "不通").valueLead { Dot(network ? Theme.green : Theme.gray) }
+                GRow("本机网络", value: network ? "正常" : "不通").valueLead { Dot(network ? DS.green : DS.ink3) }
                 result("服务器", sub: hostOf(context.account.server), check?.server ?? .wait, slow: slowServerMs)
                 for m in machines {
                     let name = machineLabel(state, id: m.id)
@@ -32,13 +32,13 @@ struct ConnectionCheckScreen: View {
                         // Whether it is there is not known from here; the server's row says why.
                         GRow(name, value: "未检测")
                     } else {
-                        GRow(name, value: "不在线").valueLead { Dot(Theme.gray) }
+                        GRow(name, value: "不在线").valueLead { Dot(DS.ink3) }
                     }
                 }
             }
             .padding(.top, 4)
             GroupNote("延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。")
-            Btn("再测一次", enabled: check?.busy == false, background: Theme.card) { run += 1 }
+            Btn("再测一次", enabled: check?.busy == false, background: DS.gbg) { run += 1 }
                 .padding(.horizontal, 16)
         }
         .navBar("连接检测")
@@ -57,15 +57,15 @@ struct ConnectionCheckScreen: View {
         switch ping {
         case .wait:
             return GRow(title, sub: sub, value: "检测中…")
-                .valueLead { Mark(Lucide.loaderCircle, color: Theme.muted, size: 13, relativeTo: .footnote) }
+                .valueLead { Mark(Mark.progress, color: DS.ink2, size: 13, relativeTo: .footnote) }
         case .skip:
             return GRow(title, sub: sub, value: "未检测")
         case .fail(let error):
-            return GRow(title, sub: sub, value: error, valueColor: Theme.red)
+            return GRow(title, sub: sub, value: error, valueColor: DS.red)
         case .ok(let ms):
             let late = ms >= slow
-            return GRow(title, sub: sub, value: "\(ms) ms" + (late ? " · 较慢" : ""), valueColor: Theme.fg2)
-                .valueLead { Dot(late ? Theme.orange : Theme.green) }
+            return GRow(title, sub: sub, value: "\(ms) ms" + (late ? " · 较慢" : ""), valueColor: DS.ink2)
+                .valueLead { Dot(late ? DS.orange : DS.green) }
         }
     }
 

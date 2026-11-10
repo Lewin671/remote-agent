@@ -113,9 +113,9 @@ struct AddDeviceScreen: View {
                 } else if let initiation = flow.initiation {
                     VStack(spacing: 12) {
                         QRCodeView(text: initiation.link.url(web: webOrigin(server: context.account.server, preferred: "")), label: "添加设备的配对二维码")
-                        Text(String(initiation.link.code.prefix(4)) + " " + String(initiation.link.code.suffix(4))).type(T.code22, Theme.fg).textSelection(.enabled)
+                        Text(String(initiation.link.code.prefix(4)) + " " + String(initiation.link.code.suffix(4))).font(.title2.monospaced().weight(.semibold)).ink(DS.ink).textSelection(.enabled)
                         Text("有效期至 " + securityTime(UInt64(max(initiation.expiresMs, 0)), timeOnly: true))
-                            .type(T.meta, Theme.muted)
+                            .font(.footnote).ink(DS.ink2)
                         Btn("复制配对码") { UIPasteboard.general.string = initiation.link.code }
                         Btn("取消配对", enabled: !flow.busy) { cancel() }
                     }.padding(16)

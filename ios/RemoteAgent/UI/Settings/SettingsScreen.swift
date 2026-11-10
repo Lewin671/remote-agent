@@ -45,7 +45,7 @@ struct SettingsScreen: View {
                         GRow("连接检测", value: connWord(state), chevron: true) {
                             nav.open(.connectionCheck)
                         }
-                        .valueLead { Dot(state.conn == .online ? Theme.green : Theme.gray) }
+                        .valueLead { Dot(state.conn == .online ? DS.green : DS.ink3) }
                         GRow("版本", value: AppInfo.versionLine)
                         GRow("开源许可", chevron: true) { nav.open(.licenses) }
                         GRow("隐私政策", chevron: true) { openURL(PublicInformation.privacy) }
@@ -129,12 +129,12 @@ struct SettingsScreen: View {
         let pick = SegPick(modes.map(\.1), selected: selected).accessibilityLabel("主题")
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
-                Text("主题").type(T.body, Theme.fg).lineLimit(1).fixedSize()
+                Text("主题").font(.body).ink(DS.ink).lineLimit(1).fixedSize()
                 Spacer(minLength: 10)
                 pick
             }
             VStack(alignment: .leading, spacing: 0) {
-                Text("主题").type(T.body, Theme.fg).padding(.top, 8)
+                Text("主题").font(.body).ink(DS.ink).padding(.top, 8)
                 ScrollView(.horizontal, showsIndicators: false) { pick }
             }
         }

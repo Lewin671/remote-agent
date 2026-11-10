@@ -30,13 +30,13 @@ struct QuotaScreen: View {
     @ViewBuilder private func groups(_ m: MachineView, state: RemoteState, now: Int64) -> some View {
         let groups = quotaGroups(asKnown(m, state: state), now: now)
         // Not connected, the connection bar says so and the numbers are what was last heard.
-        if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: Theme.orangeInk) }
+        if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: DS.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
             if !g.subgroups.isEmpty {
                 ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in
                     GroupLabel(sub.title + (g.lastRecord && index == 0 ? " · 上次记录" : ""))
                     if index == 0 && g.status == .failed {
-                        GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: Theme.red)
+                        GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: DS.red)
                     }
                     GroupCard {
                         for row in sub.rows { QuotaWindow(row: row) }
@@ -46,7 +46,7 @@ struct QuotaScreen: View {
                 GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
                 // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
                 if g.status == .failed {
-                    GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: Theme.red)
+                    GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: DS.red)
                 }
                 if g.status == .unsupported || g.status == .waiting || !g.rows.isEmpty {
                     GroupCard {
@@ -66,7 +66,7 @@ struct QuotaScreen: View {
             if !g.rows.isEmpty && !g.received.isEmpty { GroupNote(g.received) }
             // Used up or close to it; nothing switches CLI or model by itself.
             let banner = quotaBanner(g)
-            if !banner.isEmpty { GroupNote("\(banner)，不会自动切换 CLI 或模型", color: Theme.orangeInk) }
+            if !banner.isEmpty { GroupNote("\(banner)，不会自动切换 CLI 或模型", color: DS.orangeInk) }
         }
         if groups.isEmpty { GroupNote("这台电脑还没有报告它装了哪些 CLI") }
         GroupNote("时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。")
@@ -85,8 +85,8 @@ private struct QuotaState: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title).type(T.bodyB, Theme.fg)
-            Text(text).type(T.meta, Theme.muted)
+            Text(title).font(.body.weight(.semibold)).ink(DS.ink)
+            Text(text).font(.footnote).ink(DS.ink2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14).padding(.vertical, 10)
@@ -100,23 +100,23 @@ private struct QuotaWindow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let ink = row.tone == .full || row.tone == .warn ? Theme.orangeInk : Theme.muted
+        let ink = row.tone == .full || row.tone == .warn ? DS.orangeInk : DS.ink2
         let fill: Color = switch row.tone {
-        case .stale: Theme.gray
-        case .normal: Theme.blueBg
-        default: Theme.orange
+        case .stale: DS.ink3
+        case .normal: DS.blue
+        default: DS.orange
         }
         let sub = [row.reset, row.note].filter { !$0.isEmpty }.joined(separator: " · ")
         // Side by side, or the amount under the name when large text leaves no room for both.
         let head = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2)) : AnyLayout(HStackLayout(spacing: 8))
         VStack(alignment: .leading, spacing: 0) {
             head {
-                Text(row.label).type(T.body, Theme.fg).frame(maxWidth: .infinity, alignment: .leading)
-                Text(row.used).type(T.sm, ink)
+                Text(row.label).font(.body).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
+                Text(row.used).font(.subheadline).ink(ink)
             }
             if let percent = row.percent {
                 GeometryReader { geo in
-                    Capsule().fill(Theme.track)
+                    Capsule().fill(DS.fill2)
                         .overlay(alignment: .leading) {
                             Capsule().fill(fill).frame(width: geo.size.width * min(1, max(0, percent / 100)))
                         }
@@ -125,7 +125,7 @@ private struct QuotaWindow: View {
                 .padding(.top, 6)
                 .accessibilityHidden(true)
             }
-            if !sub.isEmpty { Text(sub).type(T.meta, Theme.muted).padding(.top, 8) }
+            if !sub.isEmpty { Text(sub).font(.footnote).ink(DS.ink2).padding(.top, 8) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 14).padding(.vertical, 10)

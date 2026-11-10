@@ -16,7 +16,7 @@ public struct TerminalKey: Sendable, Equatable {
 
     public let label: String
     public let kind: Kind
-    /// The Lucide icon drawn in place of `label`, which then only names the key to a screen reader.
+    /// The SF Symbol drawn in place of `label`, which then only names the key to a screen reader.
     public let icon: String?
 
     public static func text(_ label: String, _ seq: String, icon: String? = nil) -> TerminalKey {
@@ -30,9 +30,9 @@ public struct TerminalKey: Sendable, Equatable {
 
 public let terminalKeyRows: [[TerminalKey]] = [
     [
-        .text("Esc", "\u{1b}"), .arrow("左", "D", icon: "arrow-left"), .arrow("上", "A", icon: "arrow-up"),
-        .arrow("下", "B", icon: "arrow-down"), .arrow("右", "C", icon: "arrow-right"),
-        .text("回车", "\r", icon: "corner-down-left"),
+        .text("Esc", "\u{1b}"), .arrow("左", "D", icon: "arrow.left"), .arrow("上", "A", icon: "arrow.up"),
+        .arrow("下", "B", icon: "arrow.down"), .arrow("右", "C", icon: "arrow.right"),
+        .text("回车", "\r", icon: "return"),
     ],
     [.text("Tab", "\t"), .text("Ctrl+C", "\u{03}")],
 ]

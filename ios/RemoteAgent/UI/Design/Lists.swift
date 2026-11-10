@@ -19,17 +19,17 @@ struct SectionLabel: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(text).type(T.smB, Theme.muted).accessibilityAddTraits(.isHeader)
+            Text(text).font(.subheadline.weight(.semibold)).ink(DS.ink2).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
             // A long label wraps beside them; the count and the link are never squeezed to a character a line.
-            if let count { Text("\(count)").type(T.sm, Theme.muted).lineLimit(1).fixedSize() }
-            if let action, onAction != nil { ArrowText(action, style: T.smB).lineLimit(1).fixedSize() }
+            if let count { Text("\(count)").font(.subheadline).ink(DS.ink2).lineLimit(1).fixedSize() }
+            if let action, onAction != nil { ArrowText(action, style: .subheadline.weight(.semibold)).lineLimit(1).fixedSize() }
         }
         .padding(.init(top: 14, leading: 16, bottom: 6, trailing: 16))
         // The link's 44 pt target is drawn over the padding, so the row keeps the mockup's height.
         .overlay(alignment: .trailing) {
             if let action, let onAction {
-                Button(action: onAction) { Color.clear.frame(width: 88, height: Theme.minHit).contentShape(Rectangle()) }
+                Button(action: onAction) { Color.clear.frame(width: 88, height: DS.minHit).contentShape(Rectangle()) }
                     .accessibilityLabel(action)
             }
         }
@@ -52,15 +52,15 @@ struct GroupLabel: View {
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(text).type(T.sm, Theme.muted).accessibilityAddTraits(.isHeader)
+            Text(text).font(.subheadline).ink(DS.ink2).accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
-            if let count { Text(String(count)).type(T.sm, Theme.muted) }
-            if let action, onAction != nil { ArrowText(action, style: T.sm).lineLimit(1).fixedSize() }
+            if let count { Text(String(count)).font(.subheadline).ink(DS.ink2) }
+            if let action, onAction != nil { ArrowText(action, style: .subheadline).lineLimit(1).fixedSize() }
         }
         .padding(.init(top: 4, leading: 30, bottom: 6, trailing: 30))
         .overlay(alignment: .trailing) {
             if let action, let onAction {
-                Button(action: onAction) { Color.clear.frame(width: 104, height: Theme.minHit).contentShape(Rectangle()) }
+                Button(action: onAction) { Color.clear.frame(width: 104, height: DS.minHit).contentShape(Rectangle()) }
                     .accessibilityLabel(action)
             }
         }
@@ -95,12 +95,12 @@ struct GroupCard: View {
     var body: some View {
         VStack(spacing: 0) {
             ForEach(rows.indices, id: \.self) { i in
-                if i > 0 { Rectangle().fill(Theme.line).frame(height: 1).accessibilityHidden(true) }
+                if i > 0 { Rectangle().fill(DS.sep).frame(height: 1).accessibilityHidden(true) }
                 rows[i]
             }
         }
-        .background(Theme.card)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+        .background(DS.gbg)
+        .clipShape(RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         .padding(.init(top: 0, leading: 16, bottom: 12, trailing: 16))
     }
 }
@@ -170,7 +170,7 @@ struct GRow: View {
     private let enabled: Bool
     private let valueColor: Color?
     private let valueLines: Int
-    private let icon: LucideIcon?
+    private let icon: String?
     private let onTap: (() -> Void)?
     private var lead: AnyView?
     private var valueLead: AnyView?
@@ -180,7 +180,7 @@ struct GRow: View {
     /// `sub` is a second line under the text, 13 muted: what a client runs on, a computer's quota in short.
     init(
         _ text: String, sub: String? = nil, value: String? = nil, chevron: Bool = false, action: Bool = false, danger: Bool = false,
-        enabled: Bool = true, valueColor: Color? = nil, valueLines: Int = 2, icon: LucideIcon? = nil, onTap: (() -> Void)? = nil
+        enabled: Bool = true, valueColor: Color? = nil, valueLines: Int = 2, icon: String? = nil, onTap: (() -> Void)? = nil
     ) {
         self.text = text
         self.sub = sub
@@ -216,18 +216,18 @@ struct GRow: View {
         return row
     }
 
-    private var ink: Color { danger ? Theme.red : isAction ? Theme.blue : enabled ? Theme.fg : Theme.muted }
+    private var ink: Color { danger ? DS.red : isAction ? DS.blue : enabled ? DS.ink : DS.ink2 }
 
     private var title: some View {
         // At accessibility sizes nothing is cut: the row grows instead (design-system §6).
         let lines: Int? = typeSize.isAccessibilitySize ? nil : 2
         return VStack(alignment: .leading, spacing: 1) {
             HStack(spacing: 0) {
-                if let icon { Ic(icon, style: T.body, color: ink).padding(.trailing, 6) }
-                Text(text).type(T.body, ink).lineLimit(lines)
-                if chevron && isAction { Arrow(ink, style: T.body).padding(.leading, 4) }
+                if let icon { SymbolImage(icon, style: .body, color: ink).padding(.trailing, 6) }
+                Text(text).font(.body).ink(ink).lineLimit(lines)
+                if chevron && isAction { Arrow(ink, style: .body).padding(.leading, 4) }
             }
-            if let sub, !sub.isEmpty { Text(sub).type(T.sm, Theme.muted).lineLimit(lines) }
+            if let sub, !sub.isEmpty { Text(sub).font(.subheadline).ink(DS.ink2).lineLimit(lines) }
         }
     }
 
@@ -242,8 +242,8 @@ struct GRow: View {
                 HStack(spacing: 4) {
                     Spacer(minLength: 0)
                     valueLead.padding(.trailing, 1)
-                    Text(value ?? "").type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing)
-                    if chevron { Arrow(Theme.muted) }
+                    Text(value ?? "").font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing)
+                    if chevron { Arrow(DS.ink2) }
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 8)
@@ -255,8 +255,8 @@ struct GRow: View {
                         title.padding(.vertical, 11)
                         HStack(spacing: 4) {
                             valueLead.padding(.trailing, 1)
-                            Text(value).type(T.sm, valueColor ?? Theme.muted).multilineTextAlignment(.trailing).lineLimit(valueLines)
-                            if chevron { Arrow(Theme.muted) }
+                            Text(value).font(.subheadline).ink(valueColor ?? DS.ink2).multilineTextAlignment(.trailing).lineLimit(valueLines)
+                            if chevron { Arrow(DS.ink2) }
                         }
                     }
                     .frame(maxWidth: .infinity)
@@ -264,14 +264,14 @@ struct GRow: View {
                     title.padding(.vertical, 11).frame(maxWidth: .infinity, alignment: .leading)
                 }
                 trailing
-                if chevron && value == nil && !isAction { Arrow(Theme.muted) }
+                if chevron && value == nil && !isAction { Arrow(DS.ink2) }
             }
             .padding(.horizontal, 14)
         }
     }
 
     var body: some View {
-        let shown = row.frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading).opacity(enabled ? 1 : 0.6)
+        let shown = row.frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading).opacity(enabled ? 1 : 0.6)
         if let onTap {
             Button(action: onTap) { shown }.buttonStyle(RowPressStyle()).disabled(!enabled)
         } else {
@@ -295,13 +295,13 @@ struct ToggleRow: View {
     var body: some View {
         Toggle(isOn: $isOn) {
             VStack(alignment: .leading, spacing: 0) {
-                Text(title).type(T.body, Theme.fg)
-                if !sub.isEmpty { Text(sub).type(T.meta, Theme.muted) }
+                Text(title).font(.body).ink(DS.ink)
+                if !sub.isEmpty { Text(sub).font(.footnote).ink(DS.ink2) }
             }
         }
-        .tint(Theme.green)
+        .tint(DS.green)
         .padding(.horizontal, 14).padding(.vertical, 8)
-        .frame(minHeight: Theme.minHit)
+        .frame(minHeight: DS.minHit)
     }
 }
 
@@ -314,14 +314,14 @@ struct ListItem: View {
     private let danger: Bool
     private let small: String?
     private let last: Bool
-    private let icon: LucideIcon?
+    private let icon: String?
     private let onTap: (() -> Void)?
     private var trailing: AnyView?
 
     /// `small` is a note right after the title; `last` leaves out the line under the row.
     init(
         _ title: String, desc: String? = nil, checked: Bool = false, enabled: Bool = true, danger: Bool = false,
-        small: String? = nil, last: Bool = false, icon: LucideIcon? = nil, onTap: (() -> Void)? = nil
+        small: String? = nil, last: Bool = false, icon: String? = nil, onTap: (() -> Void)? = nil
     ) {
         self.title = title
         self.desc = desc
@@ -342,44 +342,44 @@ struct ListItem: View {
     }
 
     var body: some View {
-        let ink = !enabled ? Theme.muted : danger ? Theme.red : Theme.fg
+        let ink = !enabled ? DS.ink2 : danger ? DS.red : DS.ink
         let row = HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 0) {
-                let name = Text(title).type(desc != nil ? T.bodyB : T.body, ink)
+                let name = Text(title).font(desc != nil ? .body.weight(.semibold) : .body).ink(ink)
                 if let small {
                     // Beside the title when both fit on a line, else under it: a
                     // long model name does not squeeze its note to a column.
                     ViewThatFits(in: .horizontal) {
                         HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            if let icon { Ic(icon, style: T.body, color: ink) }
+                            if let icon { SymbolImage(icon, style: .body, color: ink) }
                             name.lineLimit(1)
-                            Text(small).type(T.meta, Theme.muted).lineLimit(1)
+                            Text(small).font(.footnote).ink(DS.ink2).lineLimit(1)
                         }
                         .fixedSize()
                         VStack(alignment: .leading, spacing: 0) {
                             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                                if let icon { Ic(icon, style: T.body, color: ink) }
+                                if let icon { SymbolImage(icon, style: .body, color: ink) }
                                 name
                             }
-                            Text(small).type(T.meta, Theme.muted)
+                            Text(small).font(.footnote).ink(DS.ink2)
                         }
                     }
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        if let icon { Ic(icon, style: T.body, color: ink) }
+                        if let icon { SymbolImage(icon, style: .body, color: ink) }
                         name
                     }
                 }
-                if let desc { Text(desc).type(T.meta.with(lineHeight: 1.45), Theme.muted) }
+                if let desc { Text(desc).font(.footnote).ink(DS.ink2) }
             }
             .padding(.vertical, 8)
             Spacer(minLength: 0)
             trailing
-            if checked { Ic(Lucide.check, size: 16, color: Theme.blue) }
+            if checked { SymbolImage("checkmark", size: 16, color: DS.blue) }
         }
         .padding(.horizontal, 2)
-        .frame(maxWidth: .infinity, minHeight: Theme.minHit, alignment: .leading)
-        .bottomLine(last ? .clear : Theme.line)
+        .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
+        .bottomLine(last ? .clear : DS.sep)
         Group {
             if let onTap {
                 Button(action: onTap) { row }.buttonStyle(RowPressStyle()).disabled(!enabled)
@@ -396,13 +396,13 @@ struct Hint: View {
     private let text: String
     private let color: Color
 
-    init(_ text: String, color: Color = Theme.muted) {
+    init(_ text: String, color: Color = DS.ink2) {
         self.text = text
         self.color = color
     }
 
     var body: some View {
-        Text(text).type(T.meta, color).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+        Text(text).font(.footnote).ink(color).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
     }
 }
 
@@ -413,7 +413,7 @@ struct FieldLabel: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
-        Text(text).type(T.metaB, Theme.muted)
+        Text(text).font(.footnote.weight(.semibold)).ink(DS.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 12).padding(.bottom, 6)
             .accessibilityAddTraits(.isHeader)
@@ -427,7 +427,7 @@ struct PageNote: View {
     init(_ text: String) { self.text = text }
 
     var body: some View {
-        Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center)
+        Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(24)
     }
 }
@@ -460,10 +460,10 @@ struct EmptyState: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
-            if !text.isEmpty { Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 8) }
+            Text(title).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+            if !text.isEmpty { Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.top, 8) }
             if let action, let onAction { Btn(action, kind: .primary, action: onAction).padding(.top, 20) }
-            if let note { Text(note).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.top, 10).padding(.bottom, 4) }
+            if let note { Text(note).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.top, 10).padding(.bottom, 4) }
             if let link, let onLink { TextAction(link, alignment: .center, action: onLink) }
         }
         .padding(.horizontal, 24)
@@ -479,13 +479,13 @@ struct LoadingRow: View {
     private let text: String
     private let inset: CGFloat
 
-    init(_ text: String = "读取中…", inset: CGFloat = Theme.Space.page) {
+    init(_ text: String = "读取中…", inset: CGFloat = DS.Space.l) {
         self.text = text
         self.inset = inset
     }
 
     var body: some View {
-        IconText(Lucide.loaderCircle, text)
+        IconText(Mark.progress, text)
             .padding(.horizontal, inset).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -495,13 +495,13 @@ struct LoadingRow: View {
 struct Skeleton: View {
     private let inset: CGFloat
 
-    init(inset: CGFloat = Theme.Space.page) { self.inset = inset }
+    init(inset: CGFloat = DS.Space.l) { self.inset = inset }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             ForEach([0.7, 0.9, 0.5], id: \.self) { share in
                 GeometryReader { box in
-                    RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .continuous).fill(Theme.chip)
+                    RoundedRectangle(cornerRadius: DS.Radius.inline, style: .continuous).fill(DS.fill)
                         .frame(width: box.size.width * share)
                 }
                 .frame(height: 12)
@@ -527,6 +527,6 @@ struct ErrorRow: View {
 
     var body: some View {
         Banner(text, tone: .error, action: onRetry == nil ? nil : action, onAction: onRetry)
-            .padding(.horizontal, Theme.Space.page).padding(.vertical, 4)
+            .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
     }
 }

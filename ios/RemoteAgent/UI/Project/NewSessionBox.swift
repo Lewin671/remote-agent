@@ -66,7 +66,7 @@ struct NewSessionBox: View {
                 )
                 .accessibilityLabel("新会话使用的 CLI")
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, Theme.Space.page)
+                .padding(.horizontal, DS.Space.l)
             }
             MessageCapsule(
                 text: Bindable(draft).text, placeholder: "描述任务…", label: "描述任务…", identifier: "new-session-text",
@@ -86,7 +86,7 @@ struct NewSessionBox: View {
             }
         }
         .readableColumn()
-        .background(Theme.card)
+        .background(DS.gbg)
         // What the next session inherits may be a session not fetched yet.
         .fetchEarlier(state, page: !settled)
         // The draft follows the project until something is written or chosen.
@@ -170,8 +170,8 @@ struct NewSessionBox: View {
             EarlierTail(text, retry: retry).padding(.horizontal, 4).accessibilityIdentifier("settings-unread")
         case .offlineChoice(let title, let text, let choices, let none):
             VStack(alignment: .leading, spacing: 0) {
-                Text(title).type(T.sm, Theme.orangeInk)
-                Text(text).type(T.meta, Theme.muted)
+                Text(title).font(.subheadline).ink(DS.orangeInk)
+                Text(text).font(.footnote).ink(DS.ink2)
                 ForEach(choices) { choice in
                     Button {
                         Haptics.selection()
@@ -179,29 +179,29 @@ struct NewSessionBox: View {
                     } label: {
                         HStack(spacing: 8) {
                             VStack(alignment: .leading, spacing: 0) {
-                                Text(choice.title).type(T.bodyB, Theme.fg)
-                                Text(choice.note).type(T.meta, Theme.muted)
+                                Text(choice.title).font(.body.weight(.semibold)).ink(DS.ink)
+                                Text(choice.note).font(.footnote).ink(DS.ink2)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            Arrow(Theme.muted, style: T.body)
+                            Arrow(DS.ink2, style: .body)
                         }
                         .padding(.vertical, 4)
-                        .frame(minHeight: Theme.minHit)
+                        .frame(minHeight: DS.minHit)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(PressStyle())
                 }
-                if let none { Text(none).type(T.meta, Theme.muted) }
+                if let none { Text(none).font(.footnote).ink(DS.ink2) }
             }
             .padding(.horizontal, 12).padding(.vertical, 9)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+            .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group, style: .continuous))
         case .offline(let text), .mismatch(let text):
             Banner(text, tone: .warn)
         case .missingAgent(let text):
             Banner(text, action: "换机器", onAction: onMachine)
         case .starting(let text):
-            Banner(text, icon: Lucide.loaderCircle)
+            Banner(text, icon: Mark.progress)
         case .failed(let text):
             // 重试 is ↑ again: it is offered when ↑ is.
             Banner(text, tone: .error, action: canStart ? "重试" : nil, onAction: { start(draft) })
@@ -224,15 +224,15 @@ struct ProjectSummaryChip: View {
         let parts = summaryParts(summary, full: full)
         Button(action: action) {
             HStack(spacing: 6) {
-                (Text(parts.before) + Text(parts.full).foregroundStyle(Theme.red) + Text(parts.after))
-                    .type(T.sm, Theme.fg2).lineLimit(typeSize.isAccessibilitySize ? 4 : 2).multilineTextAlignment(.leading)
+                (Text(parts.before) + Text(parts.full).foregroundStyle(DS.red) + Text(parts.after))
+                    .font(.subheadline).ink(DS.ink2).lineLimit(typeSize.isAccessibilitySize ? 4 : 2).multilineTextAlignment(.leading)
                     // Two lines before anything is cut: the model at the end is not the part to lose first.
                     .fixedSize(horizontal: false, vertical: true)
-                Arrow(Theme.faint)
+                Arrow(DS.ink3)
             }
             .padding(.horizontal, 10).padding(.vertical, 4)
             .frame(minHeight: 32)
-            .background(Theme.chip, in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
+            .background(DS.fill, in: RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
             // 44 pt to the finger without making the header taller.
             .padding(.vertical, 6).contentShape(Rectangle()).padding(.vertical, -6)
         }

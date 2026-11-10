@@ -13,7 +13,7 @@ struct ProjectPickList: View {
 
     var body: some View {
         ProjectList(state, onNew: onNew) { pr in
-            ProjectRow(state, pr, action: { onPick(pr.key) }) { Arrow(Theme.faint, style: T.body) }
+            ProjectRow(state, pr, action: { onPick(pr.key) }) { Arrow(DS.ink3, style: .body) }
         }
     }
 }
@@ -62,7 +62,7 @@ struct PickProjectScreen: View {
                         ProjectPickList(
                             state: state, onPick: { nav.open(.project(key: $0, focusNew: true)) }, onNew: { nav.open(.newProject) })
                     }
-                    .padding(.horizontal, Theme.Space.page).padding(.bottom, 16)
+                    .padding(.horizontal, DS.Space.l).padding(.bottom, 16)
                     .readableColumn()
                 }
                 .scrollDismissesKeyboard(.immediately)

@@ -47,13 +47,13 @@ struct GroupNote: View {
     private let text: String
     private let color: Color
 
-    init(_ text: String, color: Color = Theme.muted) {
+    init(_ text: String, color: Color = DS.ink2) {
         self.text = text
         self.color = color
     }
 
     var body: some View {
-        Text(text).type(T.sm, color)
+        Text(text).font(.subheadline).ink(color)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 30).padding(.bottom, 12)
     }
@@ -170,8 +170,8 @@ struct MachineRow: View {
             value: status?.text,
             chevron: true
         ) { nav.open(.machine(id: id)) }
-        .lead { IconBadge(Lucide.laptop, color: Theme.blueBg) }
-        .valueLead { if let status { Dot(status.online ? Theme.green : Theme.gray) } }
+        .lead { IconBadge("laptopcomputer", color: DS.blue) }
+        .valueLead { if let status { Dot(status.online ? DS.green : DS.ink3) } }
         .contextMenu {
             Button("账户额度") { nav.open(.quota(machine: id)) }
             Button("连接检测") { nav.open(.connectionCheck) }
@@ -180,9 +180,9 @@ struct MachineRow: View {
 }
 
 /// What a client is, drawn as a computer's row draws its laptop: a browser, a tablet or a phone.
-func clientIcon(_ d: DeviceView?) -> LucideIcon {
-    if d?.meta?.platform == "web" { return Lucide.globe }
-    return (d?.meta?.description_p ?? "").contains("iPad") ? Lucide.tablet : Lucide.smartphone
+func clientIcon(_ d: DeviceView?) -> String {
+    if d?.meta?.platform == "web" { return "globe" }
+    return (d?.meta?.description_p ?? "").contains("iPad") ? "ipad" : "iphone"
 }
 
 /// A client's row, the same wherever clients are listed (设置 and 设备): its
@@ -208,7 +208,7 @@ struct ClientRow: View {
             value: role,
             chevron: true
         ) { nav.open(.client(id: id)) }
-        .lead { IconBadge(clientIcon(client), color: Theme.blueBg) }
+        .lead { IconBadge(clientIcon(client), color: DS.blue) }
         .contextMenu {
             if let onRename { Button("重命名", action: onRename) }
             Button("复制设备 ID") { UIPasteboard.general.string = id }

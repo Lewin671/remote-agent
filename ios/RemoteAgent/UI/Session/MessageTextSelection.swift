@@ -7,7 +7,7 @@ struct MessageMenuPreview: View {
 
     var body: some View {
         Text(verbatim: text)
-            .type(T.body, DS.ink)
+            .font(.body).ink(DS.ink)
             .lineLimit(4)
             .frame(width: 260, alignment: .leading)
             .padding(16)
@@ -29,7 +29,7 @@ struct MessageTextSelection: View {
             VStack(alignment: .leading, spacing: 0) {
                 SheetHead("选择文字", action: "完成", onAction: onDone)
                 Text("长按文字，再拖动两端选择要复制的内容")
-                    .type(T.sm, DS.ink2)
+                    .font(.subheadline).ink(DS.ink2)
                     .padding(.bottom, 10)
             }
             .padding(.horizontal, 16)
@@ -37,7 +37,6 @@ struct MessageTextSelection: View {
             MessageSelectableText(text: text)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .environment(\.onSoft, false)
         .presentationDetents([.large])
         .presentationContentInteraction(.scrolls)
         .sheetSurface()

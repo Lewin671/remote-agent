@@ -11,7 +11,7 @@ struct ScheduleMessageText: View {
     @State private var clippedHeight: CGFloat = 0
     var body: some View {
         VStack(alignment: caption == nil ? .leading : .trailing, spacing: 0) {
-            Text(text).type(T.body, Theme.fg).lineLimit(expanded ? nil : 6)
+            Text(text).font(.body).ink(DS.ink).lineLimit(expanded ? nil : 6)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background {
                     GeometryReader { proxy in
@@ -20,7 +20,7 @@ struct ScheduleMessageText: View {
                     }
                 }
                 .background {
-                    Text(text).type(T.body, Theme.fg).fixedSize(horizontal: false, vertical: true).hidden()
+                    Text(text).font(.body).ink(DS.ink).fixedSize(horizontal: false, vertical: true).hidden()
                         .background { GeometryReader { proxy in
                             Color.clear.onAppear { fullHeight = proxy.size.height }
                                 .onChange(of: proxy.size.height) { _, height in fullHeight = height }
@@ -29,18 +29,18 @@ struct ScheduleMessageText: View {
                 .padding(.horizontal, bubble ? 12 : 0).padding(.vertical, bubble ? 8 : 0)
                 .background {
                     if bubble {
-                        UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 5, topTrailingRadius: 18).fill(Theme.soft)
+                        UnevenRoundedRectangle(topLeadingRadius: 18, bottomLeadingRadius: 18, bottomTrailingRadius: 5, topTrailingRadius: 18).fill(DS.gbg)
                     }
                 }
                 .textSelection(.enabled)
             if expanded || fullHeight > clippedHeight + 1 {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 4) {
-                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? "收起" : "展开全文")).type(T.meta, Theme.muted)
-                        Arrow(Theme.muted, direction: expanded ? .up : .down)
+                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? "收起" : "展开全文")).font(.footnote).ink(DS.ink2)
+                        Arrow(DS.ink2, direction: expanded ? .up : .down)
                     }.frame(minHeight: 44)
                 }.buttonStyle(PressStyle())
-            } else if let caption { Text(caption).type(T.meta, Theme.muted).padding(.top, 4) }
+            } else if let caption { Text(caption).font(.footnote).ink(DS.ink2).padding(.top, 4) }
         }
         .onChange(of: text) { _, _ in expanded = false }
         .debugSignal("schedule.description.toggle") { expanded.toggle() }
@@ -69,14 +69,14 @@ struct ScheduleMessageEditor: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                TextEditor(text: $text).type(T.body, Theme.fg)
+                TextEditor(text: $text).font(.body).ink(DS.ink)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .scrollContentBackground(.hidden).padding(12).focused($focused).disabled(saving || !enabled)
                     .accessibilityLabel("让 agent 做什么")
-                if text.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: Theme.red).padding(.horizontal, 16) }
+                if text.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: DS.red).padding(.horizontal, 16) }
                 if !error.isEmpty { Banner(error, tone: .error).padding(16) }
             }
-            .background(Theme.card)
+            .background(DS.gbg)
             .navigationTitle("让 agent 做什么").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {

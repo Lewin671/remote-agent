@@ -574,10 +574,10 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         func client(_ platform: String, _ description: String) -> DeviceView {
             DeviceView(id: "c", kind: .client, createdMs: 0, meta: .with { $0.platform = platform; $0.description_p = description })
         }
-        #expect(clientIcon(client("web", "Safari on iOS")) == Lucide.globe)
-        #expect(clientIcon(client("ios", "iOS 27.0 · iPad")) == Lucide.tablet)
-        #expect(clientIcon(client("ios", "iOS 27.0 · iPhone")) == Lucide.smartphone)
-        #expect(clientIcon(client("android", "Android 16 · Pixel 9")) == Lucide.smartphone)
-        #expect(clientIcon(nil) == Lucide.smartphone)
+        #expect(clientIcon(client("web", "Safari on iOS")) == "globe")
+        #expect(clientIcon(client("ios", "iOS 27.0 · iPad")) == "ipad")
+        #expect(clientIcon(client("ios", "iOS 27.0 · iPhone")) == "iphone")
+        #expect(clientIcon(client("android", "Android 16 · Pixel 9")) == "iphone")
+        #expect(clientIcon(nil) == "iphone")
     }
 }

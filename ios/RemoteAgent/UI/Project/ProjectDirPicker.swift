@@ -62,13 +62,13 @@ struct ProjectDirPicker: View {
             if pinned {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) { listing }
-                        .padding(.horizontal, Theme.Space.page).padding(.bottom, 16)
+                        .padding(.horizontal, DS.Space.l).padding(.bottom, 16)
                         .readableColumn()
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) {
                     if let dirs, error.isEmpty {
-                        choose(dirs).padding(.horizontal, Theme.Space.page).padding(.vertical, 8).readableColumn()
-                            .background(Theme.card).topLine()
+                        choose(dirs).padding(.horizontal, DS.Space.l).padding(.vertical, 8).readableColumn()
+                            .background(DS.gbg).topLine()
                     }
                 }
             } else {
@@ -121,13 +121,13 @@ struct ProjectDirPicker: View {
             // The folder before stays, dimmed, until the next one is listed: no blank in between.
             Group {
                 crumbs(d)
-                if d.dirs.isEmpty { Text("没有子目录").type(T.sm, Theme.muted).padding(.vertical, 8) }
+                if d.dirs.isEmpty { Text("没有子目录").font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
                 if !d.parent.isEmpty {
-                    ListItem("上一级", last: d.dirs.isEmpty, icon: Lucide.chevronLeft) { at.path = d.parent }
+                    ListItem("上一级", last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
                 }
                 ForEach(Array(d.dirs.enumerated()), id: \.element) { i, name in
                     ListItem(name, last: i == d.dirs.count - 1) { at.path = childPath(d.path, name) }
-                        .trailing { Arrow(Theme.muted, style: T.body) }
+                        .trailing { Arrow(DS.ink2, style: .body) }
                 }
             }
             .opacity(loading ? 0.45 : 1)
@@ -141,7 +141,7 @@ struct ProjectDirPicker: View {
     private var machines: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                Text("机器").type(T.meta, Theme.muted)
+                Text("机器").font(.footnote).ink(DS.ink2)
                 ForEach(listedMachines(state)) { m in
                     let on = at.machine == m.id
                     Button {
@@ -151,12 +151,12 @@ struct ProjectDirPicker: View {
                         }
                     } label: {
                         HStack(spacing: 5) {
-                            Dot(m.online ? Theme.green : Theme.gray)
-                            Text(machineLabel(state, id: m.id)).type(T.sm, on ? Theme.blue : Theme.fg2).lineLimit(1)
+                            Dot(m.online ? DS.green : DS.ink3)
+                            Text(machineLabel(state, id: m.id)).font(.subheadline).ink(on ? DS.blue : DS.ink2).lineLimit(1)
                         }
                         .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(on ? Theme.blueSoft : Theme.chip, in: Capsule())
-                        .overlay { if on { Capsule().strokeBorder(Theme.blue, lineWidth: 1) } }
+                        .background(on ? DS.fill : DS.fill, in: Capsule())
+                        .overlay { if on { Capsule().strokeBorder(DS.blue, lineWidth: 1) } }
                         .hitTarget(minWidth: 0)
                     }
                     .buttonStyle(PressStyle())
@@ -177,9 +177,9 @@ struct ProjectDirPicker: View {
         var line = Text("")
         for (i, part) in parts.enumerated() {
             if i > 0 { line = line + Text(" / ") }
-            line = line + (i == parts.count - 1 ? Text(part).fontWeight(.semibold).foregroundStyle(Theme.fg) : Text(part))
+            line = line + (i == parts.count - 1 ? Text(part).fontWeight(.semibold).foregroundStyle(DS.ink) : Text(part))
         }
-        return line.type(T.mono13, Theme.muted)
+        return line.font(.footnote.monospaced()).ink(DS.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, 6)
             .accessibilityLabel("当前目录 \(shortPath(d.path))")

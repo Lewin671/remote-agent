@@ -8,8 +8,8 @@
 import SwiftUI
 
 /// Presents `overlay` over the whole window on a scrim, without the system's
-/// slide from the bottom: what the dialogs and the action menu here stand
-/// on, and what a screen's own dialog should (`overlayCover`).
+/// slide from the bottom: what the dialogs here stand on, and what a
+/// screen's own dialog should (`overlayCover`).
 struct OverlayCover<Overlay: View>: ViewModifier {
     @Binding var isPresented: Bool
     let alignment: Alignment
@@ -45,14 +45,13 @@ private struct OverlayStage<Overlay: View>: View {
 
     var body: some View {
         ZStack(alignment: alignment) {
-            Theme.scrim.ignoresSafeArea()
+            Color.black.opacity(0.35).ignoresSafeArea()
                 .opacity(shown ? 1 : 0)
                 .contentShape(Rectangle())
                 .onTapGesture { if canDismiss() { isPresented = false } }
                 .accessibilityHidden(true)
             overlay()
                 // Whatever page it is over, a dialog's own surface is the card.
-                .environment(\.onSoft, false)
                 .opacity(shown ? 1 : 0)
                 .scaleEffect(shown || reduceMotion || alignment != .center ? 1 : 0.94)
                 .offset(y: shown || reduceMotion || alignment == .center ? 0 : 24)
@@ -60,7 +59,7 @@ private struct OverlayStage<Overlay: View>: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
         .accessibilityAddTraits(.isModal)
         .accessibilityAction(.escape) { if canDismiss() { isPresented = false } }
-        .tint(Theme.blue)
+        .tint(DS.blue)
         .onAppear { withAnimation(.easeOut(duration: 0.18)) { shown = true } }
         .onChange(of: isPresented) { _, still in
             guard !still else { return }
@@ -75,7 +74,7 @@ private struct OverlayStage<Overlay: View>: View {
     }
 }
 
-/// The card of a dialog: radius 20, at most 320 wide, 30 pt from the sides; it scrolls when text at a large size outgrows the screen.
+/// The card of a dialog: radius 30, at most 320 wide, 30 pt from the sides, with the shadow of what floats; it scrolls when text at a large size outgrows the screen.
 struct DialogCard<Content: View>: View {
     private let content: Content
 
@@ -85,7 +84,7 @@ struct DialogCard<Content: View>: View {
         let card = VStack(spacing: 0) { content }
             .padding(.init(top: 18, leading: 16, bottom: 12, trailing: 16))
             .frame(maxWidth: 320)
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+            .background(DS.raised, in: RoundedRectangle(cornerRadius: DS.Radius.darkCard, style: .continuous))
             // One shadow for the card; without the group each button and line of text inside would cast its own.
             .compositingGroup()
             .shadow(color: .black.opacity(0.2), radius: 15, y: 10)
@@ -130,94 +129,6 @@ struct SheetAction {
         self.busy = busy
         self.keepOpen = keepOpen
         self.action = action
-    }
-}
-
-/// A ⋯ menu, drawn as the kit's sheets are (选项目 and the rest): a card from
-/// the bottom with a grabber, what it is about at the top, and one
-/// left-aligned row per choice (design-system §6 弹层与对话框). A tap
-/// outside or a pull down closes it, unless a choice is running.
-private struct ActionMenu<Info: View>: View {
-    let actions: [SheetAction]
-    let hasInfo: Bool
-    let rowHeight: CGFloat
-    let info: Info
-    let dismiss: () -> Void
-    @State private var pull: CGFloat = 0
-
-    private func row(_ a: SheetAction, last: Bool) -> some View {
-        let ink = a.value == nil && a.danger ? Theme.red : a.value == nil && a.warn ? Theme.orangeInk : Theme.fg
-        return Button {
-            if a.danger && a.value == nil { Haptics.destructive() }
-            if !a.keepOpen { dismiss() }
-            a.action()
-        } label: {
-            HStack(spacing: 10) {
-                VStack(alignment: .leading, spacing: 1) {
-                    if a.busy {
-                        IconText(Lucide.loaderCircle, a.text, color: Theme.muted, style: T.body)
-                    } else {
-                        Text(a.text).type(T.body, ink).opacity(a.enabled ? 1 : 0.4)
-                    }
-                    if !a.note.isEmpty {
-                        Text(a.note).type(T.meta, a.noteError ? Theme.red : Theme.muted)
-                    }
-                }
-                .padding(.vertical, 8)
-                // The name keeps its room; a long value (a model) is what gives way.
-                .layoutPriority(1)
-                Spacer(minLength: 0)
-                if let value = a.value {
-                    HStack(spacing: 4) {
-                        Text(value).type(T.body, a.danger ? Theme.red : a.warn ? Theme.orangeInk : Theme.fg2).lineLimit(1)
-                        Arrow(Theme.faint, style: T.body)
-                    }
-                    .opacity(a.enabled ? 1 : 0.4)
-                }
-            }
-            .padding(.horizontal, 2)
-            .frame(maxWidth: .infinity, minHeight: rowHeight, alignment: .leading)
-            .bottomLine(last ? .clear : Theme.line)
-        }
-        .buttonStyle(RowPressStyle())
-        .disabled(!a.enabled || a.busy)
-    }
-
-    var body: some View {
-        // Leaving while a choice is running would drop its answer.
-        let busy = actions.contains { $0.busy }
-        let shape = UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.lg, topTrailingRadius: Theme.Radius.lg, style: .continuous)
-        let menu = VStack(alignment: .leading, spacing: 0) {
-            if hasInfo {
-                info.frame(maxWidth: .infinity, alignment: .leading).padding(.bottom, 6)
-            }
-            ForEach(actions.indices, id: \.self) { i in
-                row(actions[i], last: i == actions.count - 1)
-            }
-        }
-        .padding(.init(top: 26, leading: 16, bottom: 16, trailing: 16))
-        VStack(spacing: 0) {
-            ViewThatFits(in: .vertical) {
-                menu
-                ScrollView { menu }.scrollBounceBehavior(.basedOnSize)
-            }
-        }
-        .frame(maxWidth: 640)
-        .background {
-            shape.fill(Theme.card).ignoresSafeArea(edges: .bottom)
-        }
-        .overlay(alignment: .top) {
-            Capsule().fill(Theme.track).frame(width: 36, height: 5).padding(.top, 6).accessibilityHidden(true)
-        }
-        // Not to the top edge: the scrim above it is what closes it.
-        .padding(.top, 48)
-        .offset(y: max(0, pull))
-        .gesture(
-            DragGesture()
-                .onChanged { pull = busy ? 0 : $0.translation.height }
-                .onEnded { end in
-                    if !busy && end.translation.height > 80 { dismiss() } else { withAnimation(.easeOut(duration: 0.15)) { pull = 0 } }
-                })
     }
 }
 
@@ -275,7 +186,7 @@ private struct InputDialog: View {
     var body: some View {
         let running = runner.running
         DialogCard {
-            Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).padding(.bottom, 12)
+            Text(title).font(.headline).ink(DS.ink).multilineTextAlignment(.center).padding(.bottom, 12)
                 .accessibilityAddTraits(.isHeader)
             // The keyboard comes up with the dialog: there is nothing else to do in it.
             InputField(
@@ -285,9 +196,9 @@ private struct InputDialog: View {
             .onChange(of: value) { _, new in typed(new) }
             .padding(.bottom, 8)
             if !runner.error.isEmpty {
-                Text("没能保存：\(runner.error)").type(T.sm, Theme.red).multilineTextAlignment(.center).padding(.bottom, 8)
+                Text("没能保存：\(runner.error)").font(.subheadline).ink(DS.red).multilineTextAlignment(.center).padding(.bottom, 8)
             } else if let text {
-                Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.bottom, 8)
+                Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 8)
             }
             Btns {
                 Btn(dismissLabel, enabled: !running, action: onDismiss)
@@ -347,9 +258,9 @@ extension View {
     func confirm(isPresented: Binding<Bool>, title: String, text: String, confirm: String, danger: Bool = false, onConfirm: @escaping () -> Void) -> some View {
         modifier(OverlayCover(isPresented: isPresented, alignment: .center, canDismiss: { true }) {
             DialogCard {
-                Text(title).type(T.h17, Theme.fg).multilineTextAlignment(.center).padding(.bottom, 6)
+                Text(title).font(.headline).ink(DS.ink).multilineTextAlignment(.center).padding(.bottom, 6)
                     .accessibilityAddTraits(.isHeader)
-                Text(text).type(T.sm, Theme.muted).multilineTextAlignment(.center).padding(.bottom, 14)
+                Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 14)
                 Btns {
                     Btn("取消") { isPresented.wrappedValue = false }
                     Btn(confirm, kind: danger ? .danger : .primary) {
@@ -397,14 +308,15 @@ extension View {
         modifier(OverlayCover(isPresented: isPresented, alignment: alignment, canDismiss: canDismiss, overlay: content))
     }
 
-    /// A ⋯ menu: a sheet of left-aligned rows from the bottom; `info` is what stands at its top.
-    func actionMenu<Info: View>(isPresented: Binding<Bool>, actions: [SheetAction], rowHeight: CGFloat = 50, @ViewBuilder info: @escaping () -> Info) -> some View {
-        modifier(OverlayCover(isPresented: isPresented, alignment: .bottom, canDismiss: { !actions.contains { $0.busy } }) {
-            ActionMenu(actions: actions, hasInfo: Info.self != EmptyView.self, rowHeight: rowHeight, info: info()) { isPresented.wrappedValue = false }
-        })
+    /// A ⋯ menu of `actions` as the system's bottom sheet (`menuSheet`), `info`
+    /// at the top: the rows in one group, and what ends or removes in a red
+    /// group of its own under them.
+    func actionMenu<Info: View>(isPresented: Binding<Bool>, actions: [SheetAction], @ViewBuilder info: @escaping () -> Info) -> some View {
+        let ending = actions.filter { $0.danger && $0.value == nil }
+        let rest = actions.filter { !($0.danger && $0.value == nil) }
+        return menuSheet(isPresented: isPresented, groups: [rest, ending], info: info)
     }
 
-    /// The more menu without anything at its top.
     func actionMenu(isPresented: Binding<Bool>, actions: [SheetAction]) -> some View {
         actionMenu(isPresented: isPresented, actions: actions) { EmptyView() }
     }

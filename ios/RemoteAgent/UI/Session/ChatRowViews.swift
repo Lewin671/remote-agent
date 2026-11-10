@@ -105,14 +105,14 @@ struct ChatRowView: View, Equatable {
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(m.questions.enumerated()), id: \.offset) { _, q in
                     if !q.header.isEmpty {
-                        Text(verbatim: q.header).type(T.chat.with(weight: .semibold), DS.ink)
+                        Text(verbatim: q.header).font(.body.weight(.semibold)).ink(DS.ink)
                     }
                     MarkdownView(q.text, bleed: chatMargin)
                     ForEach(Array(q.options.enumerated()), id: \.offset) { _, o in
                         HStack(alignment: .top, spacing: 8) {
-                            Text("•").type(T.chat, DS.ink2)
+                            Text("•").font(.body).ink(DS.ink2)
                             (Text(verbatim: o.label).bold() + Text(verbatim: o.description_p.isEmpty ? "" : " · \(o.description_p)"))
-                                .type(T.chat, DS.ink)
+                                .font(.body).ink(DS.ink)
                         }
                     }
                 }
@@ -123,7 +123,7 @@ struct ChatRowView: View, Equatable {
             .accessibilityLabel("\(agentName(env.agent)) 的回复")
         case .thought(let t):
             ChatExpandable("思考过程", key: t.key) {
-                Text(t.text).type(T.sm, DS.ink2).padding(.bottom, 6)
+                Text(t.text).font(.subheadline).ink(DS.ink2).padding(.bottom, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, chatMargin)
@@ -149,12 +149,12 @@ struct ChatRowView: View, Equatable {
         case .note(let n):
             if let icon = n.icon {
                 ChatToolLine(
-                    icon == .check ? Lucide.check : Lucide.x, color: DS.ink3, title: n.text, meta: n.meta,
+                    icon == .check ? "checkmark" : "xmark", color: DS.ink3, title: n.text, meta: n.meta,
                     metaColor: n.tone == 2 ? DS.red : DS.ink2
                 )
                 .padding(.horizontal, chatMargin)
             } else {
-                Text(n.text).type(T.meta, DS.ink2).multilineTextAlignment(.center).lineLimit(2)
+                Text(n.text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).lineLimit(2)
                     .frame(maxWidth: .infinity)
                     .padding(.horizontal, chatMargin).padding(.vertical, 10)
             }
@@ -239,7 +239,7 @@ struct ChatBubble<Top: View>: View {
     private let text: String?
     private let caption: String?
     private let captionColor: Color
-    private let captionIcon: LucideIcon?
+    private let captionIcon: String?
     private let failed: Bool
     private let pending: Bool
     private let lines: Int?
@@ -250,7 +250,7 @@ struct ChatBubble<Top: View>: View {
 
     /// `pending`: not written yet, drawn as an outline; `lines` cuts a long one short.
     init(
-        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: LucideIcon? = nil,
+        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: String? = nil,
         failed: Bool = false, pending: Bool = false, lines: Int? = nil, links: [ChatLink] = [], padded: Bool = true,
         @ViewBuilder top: () -> Top
     ) {
@@ -334,7 +334,7 @@ extension ChatBubble {
 
 extension ChatBubble where Top == EmptyView {
     init(
-        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: LucideIcon? = nil,
+        _ text: String?, caption: String? = nil, captionColor: Color = DS.ink2, captionIcon: String? = nil,
         failed: Bool = false, pending: Bool = false, lines: Int? = nil, links: [ChatLink] = [], padded: Bool = true
     ) {
         self.init(
@@ -413,7 +413,7 @@ private struct ForkRow: View {
 /// A tool's line: a quiet mark, what it did in mono, and a note at the right
 /// (design-system §6 「工具调用」). `bold` is the folded group's summary.
 struct ChatToolLine<Trailing: View>: View {
-    private let mark: LucideIcon
+    private let mark: String
     private let color: Color
     private let title: String
     private let meta: String
@@ -423,7 +423,7 @@ struct ChatToolLine<Trailing: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     init(
-        _ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false,
+        _ mark: String, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.mark = mark
@@ -471,15 +471,15 @@ struct ChatToolLine<Trailing: View>: View {
 
     /// The mark in a word, for VoiceOver: a row is not told apart by colour or shape alone.
     private var markWord: String {
-        if mark == Lucide.check { return "已完成，" }
-        if mark == Lucide.x { return "失败，" }
-        if mark == Lucide.loaderCircle { return "进行中，" }
+        if mark == "checkmark" { return "已完成，" }
+        if mark == "xmark" { return "失败，" }
+        if mark == Mark.progress { return "进行中，" }
         return ""
     }
 }
 
 extension ChatToolLine where Trailing == EmptyView {
-    init(_ mark: LucideIcon, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false) {
+    init(_ mark: String, color: Color, title: String, meta: String = "", metaColor: Color = DS.ink2, bold: Bool = false) {
         self.init(mark, color: color, title: title, meta: meta, metaColor: metaColor, bold: bold) { EmptyView() }
     }
 }
@@ -496,7 +496,7 @@ private struct DoneToolRow: View {
         let parts = [!ok && call.hasExitCode ? "退出码 \(call.exitCode)" : "", decision].filter { !$0.isEmpty }
         let meta = parts.isEmpty ? (call.durationMs >= 1000 ? "\(call.durationMs / 1000)s" : "") : parts.joined(separator: " · ")
         ChatToolLine(
-            ok ? Lucide.check : Lucide.x, color: ok ? DS.ink3 : DS.red,
+            ok ? "checkmark" : "xmark", color: ok ? DS.ink3 : DS.red,
             title: firstLine(toolTitle(call, cwd: env.cwd, home: env.home)), meta: meta,
             metaColor: !ok || !decisionOk ? DS.red : DS.ink2)
     }
@@ -513,7 +513,7 @@ private struct BackgroundToolRow: View {
     var body: some View {
         let generic = (call.title.isEmpty || raw(call.title)) && raw(call.itemType)
         ChatToolLine(
-            Lucide.loaderCircle, color: DS.ink,
+            Mark.progress, color: DS.ink,
             title: generic ? "后台运行" : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
             meta: generic ? "" : "后台运行")
     }
@@ -531,21 +531,21 @@ private struct RunningToolRow: View {
         let title = firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
         if item.unfinished && env.noResult.contains(tool.seq) {
             // The turn completed without this tool's result: say only that.
-            ChatToolLine(Lucide.loaderCircle, color: DS.faint, title: title, meta: "等待同步")
+            ChatToolLine(Mark.progress, color: DS.faint, title: title, meta: "等待同步")
         } else {
             let state = state
             if state == .running {
                 // The command that runs now stands apart: `gbg`, radius 18 (design-system §6 「工具调用」).
                 Ticking(every: 1) { now in
                     ChatToolLine(
-                        Lucide.loaderCircle, color: DS.ink, title: title,
+                        Mark.progress, color: DS.ink, title: title,
                         meta: toolTimer(tool, state: state, now: now, frozenAt: env.frozenAt))
                 }
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.notice, style: .continuous))
             } else {
                 ChatToolLine(
-                    Lucide.loaderCircle, color: DS.ink, title: title,
+                    Mark.progress, color: DS.ink, title: title,
                     meta: state == .sync ? "等待同步" : item.unfinished ? "后台运行" : state.text)
             }
         }
@@ -574,8 +574,8 @@ private struct ToolGroupRow: View {
             Button {
                 open.toggle(group.key)
             } label: {
-                ChatToolLine(Lucide.check, color: DS.ink3, title: toolsSummary(group.calls), bold: true) {
-                    Arrow(DS.ink2, style: T.sm, direction: isOpen ? .up : .down)
+                ChatToolLine("checkmark", color: DS.ink3, title: toolsSummary(group.calls), bold: true) {
+                    Arrow(DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
                 }
                 .frame(minHeight: 28)
                 // The line is 28 pt; to the finger it is 44.
@@ -587,7 +587,7 @@ private struct ToolGroupRow: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
                         Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
-                            .type(T.mono, DS.ink2).lineLimit(1)
+                            .font(.footnote.monospaced()).ink(DS.ink2).lineLimit(1)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         // Each call's images stay under it when the group is open.
                         if !call.images.isEmpty {
@@ -632,7 +632,7 @@ struct ChatExpandable<Content: View>: View {
             Button {
                 withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { open.toggle(key) }
             } label: {
-                ArrowText(isOpen ? "收起\(title)" : title, color: DS.ink2, style: T.sm, direction: isOpen ? .up : .down)
+                ArrowText(isOpen ? "收起\(title)" : title, color: DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6).contentShape(Rectangle()).padding(.vertical, -6)
@@ -654,12 +654,12 @@ private struct PlanCard: View {
     var body: some View {
         let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 0) {
-            Text("计划").type(T.smB, DS.ink2).accessibilityAddTraits(.isHeader)
+            Text("计划").font(.subheadline.weight(.semibold)).ink(DS.ink2).accessibilityAddTraits(.isHeader)
             Group {
                 if isOpen {
                     MarkdownView(text)
                 } else {
-                    CutText(planPreview(text, lines: 6), style: T.sm.with(lineHeight: 1.6), color: DS.ink, lines: 6, cut: $cut)
+                    CutText(planPreview(text, lines: 6), style: .subheadline, color: DS.ink, lines: 6, cut: $cut)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -669,7 +669,7 @@ private struct PlanCard: View {
                 Button {
                     open.toggle(key)
                 } label: {
-                    ArrowText(isOpen ? "收起" : "展开全文", style: T.smB, direction: isOpen ? .up : .down)
+                    ArrowText(isOpen ? "收起" : "展开全文", style: .subheadline.weight(.semibold), direction: isOpen ? .up : .down)
                         .padding(.top, 4).padding(.vertical, 10).contentShape(Rectangle()).padding(.vertical, -10)
                 }
                 .buttonStyle(PressStyle())

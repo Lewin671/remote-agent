@@ -63,7 +63,7 @@ struct MachineScreen: View {
                 $0.online ? "在线" : "不在线"
             },
             dot: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
-                $0.online ? Theme.green : Theme.gray
+                $0.online ? DS.green : DS.ink3
             }
         )
         // Read when the page opens and again whenever the computer comes back within reach.
@@ -132,7 +132,7 @@ struct MachineScreen: View {
                             nav.open(.quota(machine: id))
                         }
                         .valueLead {
-                            Text(usedPart).type(T.sm, quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? Theme.orangeInk : Theme.muted).lineLimit(1)
+                            Text(usedPart).font(.subheadline).ink(quotaSummaryRow(g).map { $0.tone == .warn || $0.tone == .full } == true ? DS.orangeInk : DS.ink2).lineLimit(1)
                         }
                     } else {
                         GRow(title, value: line, chevron: true) {
@@ -150,8 +150,7 @@ struct MachineScreen: View {
                 for a in agents {
                     GRow(agentName(a.agent), value: a.version.or("未知"))
                         .valueLead {
-                            Text(a.verified ? "已验证 ·" : "未验证 ·").type(
-                                T.sm, a.verified ? Theme.muted : Theme.orangeInk)
+                            Text(a.verified ? "已验证 ·" : "未验证 ·").font(.subheadline).ink(a.verified ? DS.ink2 : DS.orangeInk)
                         }
                 }
             }
@@ -228,7 +227,7 @@ struct MachineScreen: View {
                             set: { selectedAgent = agents[$0] }
                         )
                     )
-                    .padding(.horizontal, Theme.Space.page)
+                    .padding(.horizontal, DS.Space.l)
                 } else {
                     GroupLabel("新项目默认设置 · \(agentName(activeAgent))")
                 }
@@ -254,7 +253,7 @@ struct MachineScreen: View {
                                 agent: activeAgent),
                         chevron: true, enabled: !busy,
                         valueColor: chosen == nil && (effective.mode == .full || !effective.known)
-                            ? Theme.red : nil
+                            ? DS.red : nil
                     ) { picking = .mode(activeAgent) }
                 }
 
@@ -431,7 +430,7 @@ private struct DefaultModelSheet: View {
                         if m.efforts.isEmpty { onPick(m.slug, "") } else { model = m.slug }
                     }
                 }
-                if !few { TextAction("全部模型", style: T.body, arrow: true) { all = true } }
+                if !few { TextAction("全部模型", style: .body, arrow: true) { all = true } }
                 if let m = models.models.first(where: { $0.slug == chosen }), !m.efforts.isEmpty {
                     FieldLabel("推理强度")
                     ChoiceGrid(m.efforts, selected: current.model == m.slug ? current.effort : nil)

@@ -7,18 +7,47 @@ import Observation
 import RACore
 import SwiftUI
 
-/// The connection notice of a page, under its navigation bar: nothing when
-/// online, otherwise the nearest stretch that is down (architecture §9
-/// 「断线时显示什么」), and 详情 when that is the server.
+/// The connection notice of a page, under its navigation bar, in from the page's sides.
 struct ConnectionBar: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        if model.state.link != .online || !model.state.clockWarning.isEmpty {
+            ConnectionStrip().padding(.horizontal, DS.Space.l).padding(.vertical, 6)
+        }
+    }
+}
+
+/// How the way to the server stands, as a strip of glass under a page's
+/// title (design-system §6 「连接状态」, architecture §9 「断线时显示什么」):
+/// nothing when connected, otherwise the nearest stretch that is down, and
+/// 详情 when that is the server.
+struct ConnectionStrip: View {
     @Environment(AppModel.self) private var model
     @State private var details = false
 
     var body: some View {
-        ConnBanner(model.state) { details = true }
-            .kitSheet(isPresented: $details) {
-                ServerDetails(state: model.state) { details = false }
+        let state = model.state
+        Group {
+            switch state.link {
+            case .online:
+                if !state.clockWarning.isEmpty { GlassStrip(text: state.clockWarning, symbol: "clock", tone: .attention) }
+            case .noNetwork:
+                GlassStrip(text: "本机网络不通 · " + (state.loaded ? "显示的是上次的内容" : "联网后才能读取会话"), symbol: "wifi.slash")
+            case .waiting:
+                GlassStrip(text: state.synced ? "正在重连…" : "连接中…", spinning: true)
+            case .noServer:
+                // Nothing kept to show: the reason is the whole of what can be said, in red.
+                if !state.loaded && !state.error.isEmpty {
+                    GlassStrip(text: "连不上服务器：\(state.error)", symbol: "xmark", tone: .error, action: "详情") { details = true }
+                } else {
+                    GlassStrip(text: "连不上服务器 · 正在重试", symbol: "icloud.slash", action: "详情") { details = true }
+                }
             }
+        }
+        .kitSheet(isPresented: $details) {
+            ServerDetails(state: state) { details = false }
+        }
     }
 }
 
@@ -31,17 +60,17 @@ struct ServerDetails: View {
     var body: some View {
         SheetHead("连不上服务器")
         Text("本机的网络是通的，但服务器没有回应。可能是服务器停了或正在重启，也可能是现在的网络到不了它。会一直自动重试，连上后补齐这段时间的内容。")
-            .type(T.sm, Theme.fg2)
+            .font(.subheadline).ink(DS.ink2)
         if let server = model.account?.server {
-            Text("服务器　\(hostOf(server))").type(T.sm, Theme.muted).padding(.top, 10)
+            Text("服务器　\(hostOf(server))").font(.subheadline).ink(DS.ink2).padding(.top, 10)
         }
         // Since start nothing was reached: when it was last is not known here.
         if state.synced {
             Ticking { now in
-                Text("断开于　\(whenText(state.offlineSinceMs, now: now))").type(T.sm, Theme.muted).padding(.top, 2)
+                Text("断开于　\(whenText(state.offlineSinceMs, now: now))").font(.subheadline).ink(DS.ink2).padding(.top, 2)
             }
         }
-        if !state.error.isEmpty { Text("原因　\(state.error)").type(T.sm, Theme.muted).padding(.top, 2) }
+        if !state.error.isEmpty { Text("原因　\(state.error)").font(.subheadline).ink(DS.ink2).padding(.top, 2) }
         if !state.errorDetail.isEmpty && state.errorDetail != state.error {
             Code(state.errorDetail, maxLines: 4).frame(maxWidth: .infinity, alignment: .leading).padding(.top, 10)
         }

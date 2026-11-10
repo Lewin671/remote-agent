@@ -54,7 +54,7 @@ struct ImageViewerScreen: View {
                 .ignoresSafeArea()
                 .offset(y: drag)
             } else {
-                Text(s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…").type(T.body, ViewerInk.text)
+                Text(s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…").font(.body).ink(ViewerInk.text)
                     .multilineTextAlignment(.center).padding(24)
             }
         }
@@ -112,14 +112,14 @@ struct ImageViewerScreen: View {
     private var bar: some View {
         ZStack {
             if let page, !all.isEmpty {
-                Text("\(page + 1) / \(all.count)").type(T.body, ViewerInk.text)
+                Text("\(page + 1) / \(all.count)").font(.body).ink(ViewerInk.text)
                     .accessibilityLabel("第 \(page + 1) 张，共 \(all.count) 张")
             }
             HStack {
                 Button {
                     nav.back()
                 } label: {
-                    Ic(Lucide.x, size: 22, color: ViewerInk.text).hitTarget()
+                    SymbolImage("xmark", size: 22, color: ViewerInk.text).hitTarget()
                 }
                 .buttonStyle(PressStyle())
                 .accessibilityLabel("关闭")
@@ -137,17 +137,17 @@ struct ImageViewerScreen: View {
         let details = [viewerSize(ref), s.map { titleOf($0) }].compactMap { $0 }.joined(separator: " · ")
         let large = typeSize.isAccessibilitySize
         return VStack(alignment: .leading, spacing: 2) {
-            Text(viewerSource(ref, agent: s?.agent ?? defaultAgent)).type(T.smB, ViewerInk.text)
+            Text(viewerSource(ref, agent: s?.agent ?? defaultAgent)).font(.subheadline.weight(.semibold)).ink(ViewerInk.text)
             if !ref.path.isEmpty {
-                Text(ref.path).type(T.mono, ViewerInk.path).lineLimit(large ? 4 : 2).truncationMode(.middle)
+                Text(ref.path).font(.footnote.monospaced()).ink(ViewerInk.path).lineLimit(large ? 4 : 2).truncationMode(.middle)
             }
-            if !details.isEmpty { Text(details).type(T.meta, ViewerInk.meta).lineLimit(large ? 3 : 1) }
+            if !details.isEmpty { Text(details).font(.footnote).ink(ViewerInk.meta).lineLimit(large ? 3 : 1) }
             let actions = Group {
                 action(saving ? "保存中…" : "保存", enabled: !saving) { save(image, loader) }
                 action("分享", enabled: true) {
                     if let picture = ImageLeaving.picture(ref, loader: loader) { sharing = picture }
                 }
-                if !message.isEmpty { Text(message).type(T.meta, ViewerInk.text).padding(.vertical, 4) }
+                if !message.isEmpty { Text(message).font(.footnote).ink(ViewerInk.text).padding(.vertical, 4) }
             }
             // Side by side while they fit; one under the other at the largest sizes.
             ViewThatFits(in: .horizontal) {
@@ -165,7 +165,7 @@ struct ImageViewerScreen: View {
 
     private func action(_ title: String, enabled: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).type(T.body, ViewerInk.action).frame(minWidth: DS.minHit, minHeight: DS.minHit, alignment: .leading)
+            Text(title).font(.body).ink(ViewerInk.action).frame(minWidth: DS.minHit, minHeight: DS.minHit, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

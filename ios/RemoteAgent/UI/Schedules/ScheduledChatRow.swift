@@ -14,8 +14,8 @@ struct ScheduledChatRow: View {
                 if case .note(let note) = row.item {
                     Button { expanded.toggle() } label: {
                         HStack(spacing: 6) {
-                            Text(note.text).type(T.meta, Theme.muted).multilineTextAlignment(.leading)
-                            Arrow(Theme.muted, direction: expanded ? .up : .down)
+                            Text(note.text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.leading)
+                            Arrow(DS.ink2, direction: expanded ? .up : .down)
                         }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.horizontal, 16)
                     }.buttonStyle(PressStyle()).accessibilityValue(expanded ? "已展开" : "已折叠")
                 }
@@ -67,19 +67,19 @@ struct ScheduleResultCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                if unread { Circle().fill(Theme.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读") }
-                Text(scheduleMoment(run.notificationTime)).type(T.meta, Theme.muted)
+                if unread { Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读") }
+                Text(scheduleMoment(run.notificationTime)).font(.footnote).ink(DS.ink2)
                 Spacer(minLength: 0)
                 if showConversation, !(run.sessionID ?? "").isEmpty { TextAction("对话", arrow: true, action: open) }
             }
             if let title = run.resultTitle {
-                Text(title).type(T.bodyB, Theme.fg).frame(maxWidth: .infinity, alignment: .leading)
+                Text(title).font(.body.weight(.semibold)).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
             }
             let full = scheduleFinalAnswer(history.events.events, runID: run.id)
             let fallback = (run.finalSummary?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false ? run.finalSummary : nil) ?? scheduleReason(run.reason)
             ScheduleResultBody(text: full ?? fallback, folds: sizeClass != .regular)
         }
-        .padding(16).background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.md))
+        .padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
         .padding(.horizontal, 16).padding(.top, 16)
         .task(id: run.sessionID) {
             guard let sid = run.sessionID, !sid.isEmpty else { return }
@@ -107,8 +107,8 @@ struct ScheduleResultBody: View {
             if folds && (count < blocks.count || clippedFirst) {
                 Button { expanded = true } label: {
                     HStack(spacing: 4) {
-                        Text("展开全文").type(T.sm, Theme.blue)
-                        Arrow(Theme.blue, direction: .down)
+                        Text("展开全文").font(.subheadline).ink(DS.blue)
+                        Arrow(DS.blue, direction: .down)
                     }.frame(minHeight: 44)
                 }.buttonStyle(PressStyle())
             }

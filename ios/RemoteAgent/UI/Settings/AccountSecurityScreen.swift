@@ -111,9 +111,9 @@ struct AccountSecurityScreen: View {
                     }
                 }.padding(16)
                 if pending.kind == .handoffOffer {
-                    TextAction("放弃此接任准备", color: Theme.red) { abandon = true }.disabled(action.running).padding(.horizontal, 16)
+                    TextAction("放弃此接任准备", color: DS.red) { abandon = true }.disabled(action.running).padding(.horizontal, 16)
                 } else if !pending.delivery.isEmpty {
-                    TextAction("移除未收件候选…", color: Theme.red) { abandon = true }.padding(.horizontal, 16)
+                    TextAction("移除未收件候选…", color: DS.red) { abandon = true }.padding(.horizontal, 16)
                 }
             }
             if !readError.isEmpty { GroupBanner(readError, tone: .error, action: "重试") { Task { await read() } } }
@@ -124,7 +124,7 @@ struct AccountSecurityScreen: View {
         .toolbar {
             if showPending {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { showPending = false } label: { Ic(Lucide.chevronLeft, size: 22, color: Theme.blue) }.accessibilityLabel("返回")
+                    Button { showPending = false } label: { SymbolImage("chevron.left", size: 22, color: DS.blue) }.accessibilityLabel("返回")
                 }
             }
         }
@@ -172,11 +172,11 @@ struct RecoveryCodeFigure: View {
     @Binding var saved: Bool
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(code).type(T.mono13, Theme.fg).textSelection(.enabled)
+            Text(code).font(.footnote.monospaced()).ink(DS.ink).textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(16)
-                .background(Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.sm))
+                .background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.small))
             Hint("请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。")
-            Toggle("我已离线保存新的恢复码", isOn: $saved).type(T.body, Theme.fg).tint(Theme.blue)
+            Toggle("我已离线保存新的恢复码", isOn: $saved).font(.body).ink(DS.ink).tint(DS.blue)
         }.padding(16)
     }
 }

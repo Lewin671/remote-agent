@@ -110,7 +110,7 @@ private struct JoinTitle: View {
     let text: String
 
     var body: some View {
-        Text(text).type(T.title30, Theme.fg)
+        Text(text).font(.largeTitle.bold()).ink(DS.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.init(top: 24, leading: 16, bottom: 6, trailing: 16))
             .accessibilityAddTraits(.isHeader)
@@ -121,7 +121,7 @@ private struct JoinText: View {
     let text: String
 
     var body: some View {
-        Text(text).type(T.sm, Theme.muted)
+        Text(text).font(.subheadline).ink(DS.ink2)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16).padding(.bottom, 16)
     }
@@ -133,7 +133,7 @@ private struct JoinLink: View {
     let action: () -> Void
 
     var body: some View {
-        TextAction(text, style: T.sm, alignment: .center, action: action).frame(maxWidth: .infinity)
+        TextAction(text, style: .subheadline, alignment: .center, action: action).frame(maxWidth: .infinity)
     }
 }
 
@@ -193,7 +193,7 @@ private struct Working: View {
 
     var body: some View {
         JoinTitle(text: model.retainedIdentity ? "一次性安全设置" : "加入账户")
-        IconText(Lucide.loaderCircle, "正在连接…")
+        IconText(Mark.progress, "正在连接…")
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16).padding(.top, 4)
         if model.canCancel {
@@ -210,14 +210,14 @@ private struct Compare: View {
 
     var body: some View {
         ZStack {
-            Text("核对图案").type(T.bodyB, Theme.fg).accessibilityAddTraits(.isHeader)
+            Text("核对图案").font(.body.weight(.semibold)).ink(DS.ink).accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer()
-                TextAction("取消", style: T.body, alignment: .center, action: model.cancel).padding(
+                TextAction("取消", style: .body, alignment: .center, action: model.cancel).padding(
                     .trailing, 8)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: Theme.minHit)
+        .frame(maxWidth: .infinity, minHeight: DS.minHit)
         HStack(spacing: 12) {
             ForEach(Array(emoji.enumerated()), id: \.offset) { _, e in
                 Text(e).font(.system(size: min(size, 64)))
@@ -229,14 +229,14 @@ private struct Compare: View {
         .accessibilityElement(children: .combine)
         .accessibilityLabel("4 个图案：" + emoji.joined(separator: "，"))
         Text("核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。")
-            .type(T.sm, Theme.muted).multilineTextAlignment(.center)
+            .font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
         if model.comparisonPending {
             Btn("图案一致，信任并继续", kind: .primary, action: model.confirmPictures).padding(
                 .horizontal, 16
             ).padding(.top, 16)
         }
-        IconText(Lucide.loaderCircle, model.comparisonPending ? "请先在本机确认图案" : "等待管理端批准并完成绑定…")
+        IconText(Mark.progress, model.comparisonPending ? "请先在本机确认图案" : "等待管理端批准并完成绑定…")
             .frame(maxWidth: .infinity).padding(.top, 24)
         if !model.notice.isEmpty {
             // Registering has begun: the join can no longer be left.

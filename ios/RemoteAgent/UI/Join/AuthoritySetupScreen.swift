@@ -95,7 +95,7 @@ struct AuthoritySetupScreen: View {
         } else {
             GroupBanner("上次显示的恢复码无法再次显示。先核实并完成原请求，再立即更换恢复码。", tone: .warn)
             Toggle("我知道尚未备份，完成后立即换码", isOn: $flow.acknowledgeMissing)
-                .type(T.body, Theme.fg).padding(16)
+                .font(.body).ink(DS.ink).padding(16)
         }
         if flow.mode == .create {
             InputField("设置令牌（如需要）", text: $flow.setupToken, placeholder: "设置令牌")
