@@ -236,7 +236,7 @@ export function validScheduleMessage(message: string): boolean {
   return !!message.trim() && new TextEncoder().encode(message).length <= scheduleMessageLimit;
 }
 export const scheduleOffline = "未连接，显示的是上次的状态";
-export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。";
+export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。";
 export const scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。";
 export function scheduleLimits(tr: ScheduleTrigger, now = Date.now()): string {
   return [tr.max_runs ? `共 ${tr.max_runs} 次` : "", tr.until ? `到 ${dateTime(tr.until, now)}` : ""].filter(Boolean).join("，或");

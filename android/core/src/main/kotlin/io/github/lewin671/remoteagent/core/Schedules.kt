@@ -65,7 +65,7 @@ const val SCHEDULE_OFFLINE = "未连接，显示的是上次的状态"
 const val SCHEDULE_OFFLINE_ROW = "未连接"
 const val SCHEDULE_MESSAGE_MAX_BYTES = 32 * 1024
 fun scheduleMessageValid(message: String) = message.isNotBlank() && message.toByteArray(Charsets.UTF_8).size <= SCHEDULE_MESSAGE_MAX_BYTES
-const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以点右上角的 ＋ 自己建。"
+const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。"
 const val SCHEDULE_INTERVAL_HINT = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
 fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
 enum class ScheduleInboxGroup(val label: String) { ATTENTION("需要你看一下"), RECENT("最近"), ENDED("已结束") }
