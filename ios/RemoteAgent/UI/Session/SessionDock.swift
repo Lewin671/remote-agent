@@ -188,7 +188,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                 HStack(spacing: 12) {
                     Button(action: toggle) {
                         head(summary, withToggle: false)
-                            .frame(minHeight: Theme.minHit)
+                            .frame(minHeight: DS.minHit)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -196,7 +196,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                     .accessibilityHint("收起")
                     extra
                     Button(action: toggle) {
-                        toggleText.frame(minHeight: Theme.minHit).contentShape(Rectangle())
+                        toggleText.frame(minHeight: DS.minHit).contentShape(Rectangle())
                     }
                     .buttonStyle(PressStyle())
                     .accessibilityHidden(true)
@@ -204,7 +204,7 @@ struct PendingDock<Content: View, Actions: View>: View {
             } else {
                 Button(action: toggle) {
                     head(summary)
-                        .frame(minHeight: Theme.minHit)
+                        .frame(minHeight: DS.minHit)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
@@ -254,10 +254,10 @@ struct DockFoot: View {
             if typeSize.isAccessibilitySize {
                 // No room for both on a line: the link goes under the question, at the right.
                 VStack(alignment: .trailing, spacing: 0) {
-                    if !left.isEmpty { Text(left).type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading) }
+                    if !left.isEmpty { Text(left).type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
                     Button(action: onLink) {
                         Group {
-                            if arrow { ArrowText(link, style: T.metaB) } else { Text(link).type(T.metaB, Theme.blue) }
+                            if arrow { ArrowText(link, style: T.metaB) } else { Text(link).type(T.metaB, DS.blue) }
                         }
                         .multilineTextAlignment(.trailing).hitTarget(alignment: .trailing)
                     }
@@ -266,7 +266,7 @@ struct DockFoot: View {
             } else {
                 HStack(spacing: 8) {
                     // With nothing at the left the link starts the line.
-                    if !left.isEmpty { Text(left).type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading) }
+                    if !left.isEmpty { Text(left).type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading) }
                     TextAction(link, style: T.metaB, arrow: arrow, action: onLink)
                     if left.isEmpty { Spacer(minLength: 0) }
                 }
@@ -340,7 +340,7 @@ private struct QuestionSteps: View {
     var body: some View {
         HStack(spacing: 4) {
             ForEach(0..<count, id: \.self) { i in
-                RoundedRectangle(cornerRadius: 2).fill(i <= at ? Theme.blue : Theme.track).frame(width: 16, height: 4)
+                RoundedRectangle(cornerRadius: 2).fill(i <= at ? DS.blue : DS.fill2).frame(width: 16, height: 4)
             }
         }
         .accessibilityHidden(true)
@@ -400,7 +400,7 @@ struct QuestionBody: View {
 
     var body: some View {
         if isSkeleton(question) {
-            if part == .content { Text(skeletonMessage).type(T.sm, Theme.muted) }
+            if part == .content { Text(skeletonMessage).type(T.sm, DS.ink2) }
         } else if let cur = current {
             switch part {
             case .content: content(cur)
@@ -415,12 +415,12 @@ struct QuestionBody: View {
         let answer = store.answer(qid, index)
         let progress = questionProgress(count: count, at: index, multi: cur.multiSelect)
         if full {
-            if !progress.isEmpty { Text(progress).type(T.meta, Theme.muted).padding(.top, 12) }
+            if !progress.isEmpty { Text(progress).type(T.meta, DS.ink2).padding(.top, 12) }
         } else if count > 1 {
             // The dock's line says which of them it is; the steps show it.
             QuestionSteps(count: count, at: index).padding(.top, 4)
         }
-        Text(cur.text).type(full ? T.h17 : T.bodyB, Theme.fg).lineLimit(full ? nil : 4)
+        Text(cur.text).type(full ? T.h17 : T.bodyB, DS.ink).lineLimit(full ? nil : 4)
             .padding(.top, full ? 8 : 4).padding(.bottom, full ? 12 : 6)
             .accessibilityAddTraits(.isHeader)
         if !full && longQuestion(cur) {
@@ -502,16 +502,16 @@ private struct QuestionOptionRow: View {
     var body: some View {
         let label = optionLabel(option.label)
         let shape = RoundedRectangle(cornerRadius: dark ? 14 : Theme.Radius.sm, style: .continuous)
-        let ink: Color = dark ? (selected ? .black : .white) : Theme.fg
-        let second: Color = dark ? (selected ? Color.black.opacity(0.6) : DS.ink2) : Theme.muted
+        let ink: Color = dark ? (selected ? .black : .white) : DS.ink
+        let second: Color = dark ? (selected ? Color.black.opacity(0.6) : DS.ink2) : DS.ink2
         Button(action: onTap) {
             HStack(alignment: .top, spacing: 8) {
                 if multi {
                     Image(systemName: selected ? "checkmark.square.fill" : "square")
-                        .foregroundStyle(dark ? ink : (selected ? Theme.blueBg : Theme.muted))
+                        .foregroundStyle(dark ? ink : (selected ? DS.blue : DS.ink2))
                         .frame(width: box, height: box).padding(.top, 1)
                 } else if selected {
-                    Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(dark ? ink : Theme.blue).padding(.top, 3)
+                    Image(systemName: "checkmark").font(.footnote.weight(.semibold)).foregroundStyle(dark ? ink : DS.blue).padding(.top, 3)
                 }
                 VStack(alignment: .leading, spacing: 1) {
                     Text(label.label).font(dark ? .body : .footnote).foregroundStyle(ink)
@@ -519,13 +519,13 @@ private struct QuestionOptionRow: View {
                     if submitting { Text("提交中…").font(.caption).foregroundStyle(second) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if label.recommended { Text("推荐").font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : Theme.blue) }
+                if label.recommended { Text("推荐").font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : DS.blue) }
             }
             .multilineTextAlignment(.leading)
             .padding(.horizontal, dark ? 14 : 11).padding(.vertical, dark ? 11 : 8)
             .frame(maxWidth: .infinity, minHeight: DS.minHit, alignment: .leading)
-            .background(dark ? (selected ? Color.white : Color.white.opacity(0.1)) : (selected ? Theme.blueSoft : Color.clear), in: shape)
-            .overlay { if !dark { shape.strokeBorder(selected ? Theme.blue : Theme.line, lineWidth: 1) } }
+            .background(dark ? (selected ? Color.white : Color.white.opacity(0.1)) : (selected ? DS.fill : Color.clear), in: shape)
+            .overlay { if !dark { shape.strokeBorder(selected ? DS.blue : DS.sep, lineWidth: 1) } }
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -577,7 +577,7 @@ struct PlanDock: View {
     let onFull: () -> Void
 
     var body: some View {
-        if isSkeleton(text) { Text(skeletonMessage).type(T.sm, Theme.muted) } else { dock }
+        if isSkeleton(text) { Text(skeletonMessage).type(T.sm, DS.ink2) } else { dock }
     }
 
     private var dock: some View {
@@ -621,7 +621,7 @@ struct PlanButtons: View {
 
     var body: some View {
         if terminalOnly {
-            Text(skeletonMessage).type(T.sm, Theme.muted)
+            Text(skeletonMessage).type(T.sm, DS.ink2)
         } else {
             VStack(alignment: .leading, spacing: 0) { choices }
                 .frame(maxWidth: actionsWidth, alignment: .leading)
@@ -642,7 +642,7 @@ struct PlanButtons: View {
             }
         }
         if let note = agentInfo(session.agent).planNote {
-            Text(note).type(T.meta, Theme.muted).padding(.top, 7)
+            Text(note).type(T.meta, DS.ink2).padding(.top, 7)
         }
         if full && agentInfo(session.agent).planClearContext {
             DockFoot("", link: "清空上下文后执行") { answer(.clearAndImplement) }

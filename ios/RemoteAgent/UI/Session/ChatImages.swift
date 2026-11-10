@@ -101,15 +101,15 @@ private struct ChatThumb: View {
     var body: some View {
         let preview = ChatPreviews.image(ref)
         Button(action: onOpen) {
-            Theme.chip
+            DS.fill
                 .overlay {
                     if let preview {
                         Image(uiImage: preview).resizable().scaledToFill()
                     } else {
                         // Not even a preview: the file's name is all there is.
                         VStack(spacing: 0) {
-                            Text(ref.sync == .nameOnly ? "图片没有同步" : "没有预览").type(T.tab, Theme.muted)
-                            if !ref.path.isEmpty { Text(fileName(ref.path)).type(T.tab, Theme.faint).lineLimit(2) }
+                            Text(ref.sync == .nameOnly ? "图片没有同步" : "没有预览").type(T.tab, DS.ink2)
+                            if !ref.path.isEmpty { Text(fileName(ref.path)).type(T.tab, DS.ink3).lineLimit(2) }
                         }
                         .multilineTextAlignment(.center).padding(6)
                     }
@@ -153,13 +153,13 @@ struct GeneratedCard: View {
                 Button {
                     onOpen(i)
                 } label: {
-                    Theme.chip
+                    DS.fill
                         .aspectRatio(CGFloat(aspect(ref)), contentMode: .fit)
                         .overlay {
                             if let preview {
                                 Image(uiImage: preview).resizable().scaledToFit()
                             } else {
-                                Text("没有预览").type(T.sm, Theme.muted)
+                                Text("没有预览").type(T.sm, DS.ink2)
                             }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
@@ -173,7 +173,7 @@ struct GeneratedCard: View {
             HStack(spacing: 8) {
                 let first = item.images.first
                 let size = first.map { $0.width > 0 ? " · \($0.width) × \($0.height)" : "" } ?? ""
-                Text("生成的图片\(size)").type(T.meta, Theme.muted).frame(maxWidth: .infinity, alignment: .leading)
+                Text("生成的图片\(size)").type(T.meta, DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
                 if !item.prompt.isEmpty {
                     Button {
                         open.toggle(item.key)
@@ -184,7 +184,7 @@ struct GeneratedCard: View {
                     .buttonStyle(PressStyle())
                 }
             }
-            if isOpen { Text(item.prompt).type(T.sm, Theme.fg2) }
+            if isOpen { Text(item.prompt).type(T.sm, DS.ink2) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, chatMargin).padding(.vertical, 8)

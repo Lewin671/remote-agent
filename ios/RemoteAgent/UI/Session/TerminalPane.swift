@@ -136,7 +136,7 @@ struct TerminalPane: View {
                     }
                     .lineLimit(1).minimumScaleFactor(0.7)
                     .padding(.horizontal, 8)
-                    .frame(minWidth: Theme.minHit, minHeight: Theme.minHit)
+                    .frame(minWidth: DS.minHit, minHeight: DS.minHit)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
@@ -144,7 +144,7 @@ struct TerminalPane: View {
             }
         }
         .padding(.leading, 12).padding(.trailing, 4)
-        .frame(minHeight: Theme.minHit)
+        .frame(minHeight: DS.minHit)
         .background(Theme.Term.bar)
         .bottomLine(Theme.Term.rule)
         // The two bars keep the screen its room: their words stop growing at the first of the largest sizes.
@@ -227,7 +227,7 @@ struct TerminalPane: View {
         Button(action: action) {
             Text(label).type(TerminalPane.fontStyle.with(weight: .semibold), enabled ? Theme.Term.link : Theme.Term.tool)
                 .fixedSize()
-                .frame(minWidth: Theme.minHit, minHeight: Theme.minHit)
+                .frame(minWidth: DS.minHit, minHeight: DS.minHit)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -263,7 +263,7 @@ struct TerminalPane: View {
                     details.toggle()
                 } label: {
                     Text(details ? "收起详情" : "查看详情").type(T.meta, Theme.Term.link)
-                        .frame(minHeight: Theme.minHit, alignment: .leading)
+                        .frame(minHeight: DS.minHit, alignment: .leading)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())

@@ -54,13 +54,13 @@ struct SessionAbsent: View {
                 ConnectionBar()
                 Spacer(minLength: 24)
                 if let note {
-                    Text(note).type(T.h17, Theme.fg).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
+                    Text(note).type(T.h17, DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                     // The server could not be asked: it is asked again by itself, and at once on a tap.
                     if case .failed = lookup { TextAction("重试", alignment: .center, action: onRetry) }
                     TextAction("返回", alignment: .center) { nav.back() }
                 } else {
-                    Mark(Lucide.loaderCircle, color: Theme.muted, size: 22, relativeTo: .body)
-                    Text(online ? "读取中…" : "连上服务器后读取这个会话").type(T.sm, Theme.muted).padding(.top, 12)
+                    Mark(Lucide.loaderCircle, color: DS.ink2, size: 22, relativeTo: .body)
+                    Text(online ? "读取中…" : "连上服务器后读取这个会话").type(T.sm, DS.ink2).padding(.top, 12)
                         .multilineTextAlignment(.center)
                 }
                 Spacer(minLength: 24)

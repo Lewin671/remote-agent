@@ -133,7 +133,7 @@ struct ViewerPage: View {
                 } label: {
                     Text(note).type(T.sm, ViewerInk.text).multilineTextAlignment(.center)
                         .padding(.horizontal, 12).padding(.vertical, 8)
-                        .frame(minHeight: retry ? Theme.minHit : 0)
+                        .frame(minHeight: retry ? DS.minHit : 0)
                         .background(
                             ViewerInk.chip,
                             in: RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))

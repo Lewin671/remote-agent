@@ -63,7 +63,7 @@ struct ApprovalScreen: View {
             .navBar(
                 "审批详情", subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") },
                 // Orange in its last minute, as on the dock and the home page's card.
-                subtitleColor: a.flatMap { ApprovalDeadline($0, now: now) }?.last == true ? Theme.orangeInk : nil)
+                subtitleColor: a.flatMap { ApprovalDeadline($0, now: now) }?.last == true ? DS.orangeInk : nil)
         }
         .followSession(session, chat: chat, finder: finder)
     }
@@ -74,8 +74,8 @@ struct ApprovalScreen: View {
         let how = [decisionText(outcome.decision), who ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         let kept = context.sessionStore.reason(approval)
         VStack(spacing: 0) {
-            Text("这条审批已经处理了。").type(T.sm, Theme.muted).multilineTextAlignment(.center)
-            if !how.isEmpty { Text(how).type(T.meta, Theme.muted).multilineTextAlignment(.center).padding(.top, 4) }
+            Text("这条审批已经处理了。").type(T.sm, DS.ink2).multilineTextAlignment(.center)
+            if !how.isEmpty { Text(how).type(T.meta, DS.ink2).multilineTextAlignment(.center).padding(.top, 4) }
             if !kept.isEmpty {
                 // What was being typed is the user's: kept to be copied, not sent anywhere.
                 Code(kept).textSelection(.enabled).padding(.top, 16)

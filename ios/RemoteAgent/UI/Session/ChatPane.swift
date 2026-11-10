@@ -512,13 +512,13 @@ struct ChatPane: View {
         }
         if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
             items.append(ChatCollectionItem("chat-history") {
-                Text("历史记录尚未读全。").type(T.sm, Theme.muted).padding(.horizontal, chatMargin)
+                Text("历史记录尚未读全。").type(T.sm, DS.ink2).padding(.horizontal, chatMargin)
             })
         }
         if chat.unavailableCount > 0 {
             items.append(ChatCollectionItem("chat-unavailable") {
                 Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
-                    .type(T.sm, Theme.muted).padding(.horizontal, 16)
+                    .type(T.sm, DS.ink2).padding(.horizontal, 16)
             })
         }
         if let message = chat.liveError {
@@ -530,7 +530,7 @@ struct ChatPane: View {
         if let start = chat.startPrompt {
             items.append(ChatCollectionItem("chat-start") {
                 ChatBubble(start.text, caption: start.caption,
-                           captionColor: start.failed ? Theme.red : start.warning ? Theme.orangeInk : Theme.muted)
+                           captionColor: start.failed ? DS.red : start.warning ? DS.orangeInk : DS.ink2)
             })
         }
         items += rows.map { row in
@@ -580,33 +580,27 @@ struct ChatPane: View {
     @ViewBuilder private func pill(_ action: @escaping () -> Void) -> some View {
         if tracker.fresh > 0 {
             Button(action: action) {
-                IconText(Lucide.arrowDown, "\(tracker.fresh) 条新消息", color: Theme.blue, style: T.smB)
-                    .padding(.horizontal, 12)
-                    .frame(minHeight: Theme.minHit)
-                    .background(
-                        Theme.card, in: RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    )
-                    // In the dark a shadow shows nothing: the line tells the pill from the chat under it.
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(
-                            Theme.line, lineWidth: 1)
-                    }
-                    .compositingGroup()
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 3)
+                Label("\(tracker.fresh) 条新消息", systemImage: "arrow.down")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(DS.ink)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 36)
+                    .glass(Capsule())
+                    .frame(minHeight: DS.minHit)
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(.plain)
             .transition(.opacity)
         } else if tracker.away {
             Button(action: action) {
-                Ic(Lucide.arrowDown, size: 18, color: Theme.blue)
+                Image(systemName: "arrow.down")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(DS.ink)
                     .frame(width: 36, height: 36)
-                    .background(Theme.card, in: Circle())
-                    .overlay { Circle().strokeBorder(Theme.line, lineWidth: 1) }
-                    .compositingGroup()
-                    .shadow(color: .black.opacity(0.15), radius: 10, y: 3)
-                    .hitTarget()
+                    .glass(Circle())
+                    .frame(minWidth: DS.minHit, minHeight: DS.minHit)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(PressStyle())
+            .buttonStyle(.plain)
             .accessibilityLabel("回到最新消息")
             .transition(.opacity)
         }
@@ -619,7 +613,7 @@ struct ChatPane: View {
         let name = machineLabel(state, id: session.machineId)
         if status == .exited {
             VStack(spacing: 0) {
-                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").type(T.meta, Theme.muted).padding(8) }
+                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(scheduledClosed: d.scheduledClosed, idleClosed: d.idleClosed, session: session, machine: machine, name: name)
             }
         } else if status == .offline {
@@ -672,7 +666,7 @@ struct ChatPane: View {
                     // Another item is another card: what was opened or typed in the one before does not carry over.
                     .id(first.id)
                 }
-                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").type(T.meta, Theme.muted).padding(8) }
+                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 SessionComposer(session: session, status: status, derived: d, focus: $typing)
             }
         }
@@ -707,7 +701,7 @@ private struct PendingBubble: View {
             starting: starting)
         let origin = originLabel(pending.origin, state: model.state, me: context.me, machine: "")
         if isSkeleton(pending.id) || isSkeleton(pending.text) {
-            Text(skeletonMessage).type(T.sm, Theme.muted)
+            Text(skeletonMessage).type(T.sm, DS.ink2)
         } else {
             VStack(alignment: .trailing, spacing: 0) {
                 Button {
@@ -728,7 +722,7 @@ private struct PendingBubble: View {
                 HStack(spacing: 6) {
                     // The note gives way; what can be done stays.
                     Text(scheduledPendingLabel(pending, label: label) ?? (label + pendingSuffix(pending, origin: origin, index: index, of: count, cancel: cancel)))
-                        .type(T.meta, cancelFailed ? Theme.red : Theme.muted).lineLimit(1)
+                        .type(T.meta, cancelFailed ? DS.red : DS.ink2).lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {
                         TextAction(
@@ -806,9 +800,9 @@ private struct OutgoingBubble: View {
             missingImages: message.missingImages)
         let ink: Color =
             switch note.tone {
-            case .plain: Theme.muted
-            case .warn: Theme.orangeInk
-            case .error: Theme.red
+            case .plain: DS.ink2
+            case .warn: DS.orangeInk
+            case .error: DS.red
             }
         ChatBubble(
             message.text.isEmpty ? nil : message.text, caption: note.caption, captionColor: ink,
@@ -821,43 +815,41 @@ private struct OutgoingBubble: View {
     }
 }
 
-/// In place of the message box when nothing can be sent: the session ended, or its computer is away.
+/// In place of the message box when nothing can be sent: the session
+/// ended, or its computer is away. A card of glass where the capsule
+/// would float, its state's mark, one line of why and what can be done.
 struct SessionEndCard<Actions: View>: View {
     private let title: String
     private let text: String
-    private let dot: Color
+    private let mark: StatusKind
     private let actions: Actions
 
-    init(
-        _ title: String, text: String, dot: Color = Theme.gray, @ViewBuilder actions: () -> Actions
-    ) {
+    init(_ title: String, text: String, mark: StatusKind = .off, @ViewBuilder actions: () -> Actions) {
         self.title = title
         self.text = text
-        self.dot = dot
+        self.mark = mark
         self.actions = actions()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Dot(dot)
-                Text(title).type(T.bodyB, Theme.fg)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                StatusMark(mark)
+                Text(title).font(.headline).foregroundStyle(DS.ink)
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
-            Text(text).type(T.sm, Theme.muted).padding(.top, 3)
+            Text(text).font(.subheadline).foregroundStyle(DS.ink2).padding(.top, 4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-            // Whatever can be done stands 10 pt under the text; with nothing to do the card ends with it.
+            // Whatever can be done stands under the text; with nothing to do the card ends with it.
             if Actions.self != EmptyView.self {
-                VStack(alignment: .leading, spacing: 0) { actions }.padding(.top, 10)
+                VStack(alignment: .leading, spacing: 0) { actions }.padding(.top, 12)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .padding(.horizontal, 14).padding(.vertical, 12)
-        .background(
-            Theme.soft, in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-        )
-        .padding(.init(top: 6, leading: 12, bottom: 8, trailing: 12))
+        .padding(.horizontal, 18).padding(.vertical, 16)
+        .glass(RoundedRectangle(cornerRadius: DS.Radius.card, style: .continuous), interactive: false)
+        .padding(.horizontal, DS.Space.m).padding(.top, 4).padding(.bottom, 8)
     }
 }
 
@@ -880,20 +872,17 @@ private struct EndedCard: View {
             text: endedText(
                 detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.unlinked,
                 machineOnline: machine?.online == true, machine: name),
-            dot: act.running ? Theme.blueBg : Theme.gray
+            mark: act.running ? .running : .idle
         ) {
             if reachable && !act.running {
-                Btn(
-                    act.error.isEmpty ? "恢复会话" : "再试一次",
-                    kind: act.error.isEmpty ? .primary : .secondary,
-                    enabled: state.conn == .online, background: act.error.isEmpty ? nil : Theme.card
-                ) {
+                InkButton(act.error.isEmpty ? "恢复会话" : "再试一次") {
                     SessionHaptics.tap()
                     restore()
                 }
+                .disabled(state.conn != .online)
             }
             if !act.error.isEmpty {
-                Text("恢复失败：\(act.error)").type(T.meta, Theme.red).padding(.top, 6)
+                Text("恢复失败：\(act.error)").font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
             }
         }
         .debugSignal("session.restore") { if reachable { restore() } }

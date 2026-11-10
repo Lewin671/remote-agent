@@ -43,7 +43,7 @@ struct SessionModeSheet: View {
         let outside = !pm.isEmpty && permissionMode(pm) == nil ? (pm == "acceptEdits" ? "accept edits" : pm) : nil
         Group {
             SheetHead("审批模式")
-            if let outside { Text("当前：\(outside)（在终端设置）").type(T.meta, Theme.muted).padding(.bottom, 4) }
+            if let outside { Text("当前：\(outside)（在终端设置）").type(T.meta, DS.ink2).padding(.bottom, 4) }
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
                 let reason = unavailableReason(m)
                 let off = reason != nil
@@ -60,7 +60,7 @@ struct SessionModeSheet: View {
             }
             Hint(outside.map { "照实显示终端中的模式；不提供切到 \($0) 的按钮。" } ?? "只改当前会话")
             if act.running { Hint("正在切换…") }
-            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: Theme.red) }
+            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: DS.red) }
         }
         .confirm(
             isPresented: $confirmFull, title: "切到完全放行？", text: "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
@@ -124,7 +124,7 @@ struct SessionModelSheet: View {
                     try await remote.command(sid, cmd)
                 }, onDone: { onClose() })
             }
-            if !compact.error.isEmpty { Hint("没能压缩：\(compact.error)", color: Theme.red) }
+            if !compact.error.isEmpty { Hint("没能压缩：\(compact.error)", color: DS.red) }
         }
         if !agentInfo(session.agent).switchesModelInSession {
             let cur = findModel(models?.models ?? [], id: session.info?.model ?? "") { $0.slug }
@@ -149,7 +149,7 @@ struct SessionModelSheet: View {
             }
             Hint(running ? "只在空闲时能切换；这一轮结束后再选" : "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
             if act.running { Hint("正在切换…") }
-            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: Theme.red) }
+            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: DS.red) }
         }
         // Read again each time the sheet opens: the computer's list changes with the CLI.
         Color.clear.frame(height: 0).task(id: attempt) {

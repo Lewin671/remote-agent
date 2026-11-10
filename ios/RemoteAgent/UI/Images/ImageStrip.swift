@@ -40,7 +40,7 @@ struct ImageStrip: View {
         let notice = center.notices[key]
         VStack(alignment: .leading, spacing: 0) {
             if draft.photos.isEmpty {
-                if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice) { line(text, Theme.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
+                if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice) { line(text, DS.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
             } else {
                 tray(draft)
                 meta(draft)
@@ -51,10 +51,10 @@ struct ImageStrip: View {
                 if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice)
                     ?? failed.map({ "有图没能传到电脑：\($0)，点按重试或移除" })
                 {
-                    line(text, Theme.orangeInk)
+                    line(text, DS.orangeInk)
                 }
                 let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
-                if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: "；"), Theme.muted) }
+                if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: "；"), DS.ink2) }
             }
             if !draft.documents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -64,8 +64,8 @@ struct ImageStrip: View {
                                      retry: { center.retry(key, item) }, remove: { center.remove(key, item) })
                         }
                     }
-                    Text("文件原样发送，包含其中的元数据。").type(T.meta, Theme.muted)
-                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").type(T.meta, Theme.muted)
+                    Text("文件原样发送，包含其中的元数据。").type(T.meta, DS.ink2)
+                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").type(T.meta, DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
@@ -128,11 +128,11 @@ struct ImageStrip: View {
         } label: {
             HStack(spacing: 5) {
                 Circle()
-                    .strokeBorder(draft.original ? Theme.blueBg : Theme.muted, lineWidth: draft.original ? 4 : 1.5)
+                    .strokeBorder(draft.original ? DS.blue : DS.ink2, lineWidth: draft.original ? 4 : 1.5)
                     .frame(width: 14, height: 14)
-                Text(draft.original ? "原图 · 共 \(megabytes) MB" : "原图").type(T.meta, Theme.fg2)
+                Text(draft.original ? "原图 · 共 \(megabytes) MB" : "原图").type(T.meta, DS.ink2)
             }
-            .frame(minHeight: Theme.minHit)
+            .frame(minHeight: DS.minHit)
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -143,7 +143,7 @@ struct ImageStrip: View {
         .accessibilityValue(draft.original ? "已选，共 \(megabytes) MB" : "未选")
         .accessibilityHint(canChange ? "只对这一条消息生效" : "这些图片是上次留下的，不能再换成原图或压缩图")
         .accessibilityAddTraits(.isToggle)
-        let count = Text("\(draft.photos.count) / \(max)").type(T.meta, Theme.muted)
+        let count = Text("\(draft.photos.count) / \(max)").type(T.meta, DS.ink2)
             .accessibilityLabel("已选 \(draft.photos.count) 张，最多 \(max) 张")
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
@@ -188,7 +188,7 @@ private struct DraftThumb: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-        Theme.soft
+        DS.fill
             .overlay { if let thumb { Image(uiImage: thumb).resizable().scaledToFill() } }
             .overlay { state }
             .frame(width: side, height: side)
@@ -204,7 +204,7 @@ private struct DraftThumb: View {
                         .frame(width: 18, height: 18)
                         .background(Color.black.opacity(0.6), in: Circle())
                         .padding(7)
-                        .frame(width: Theme.minHit, height: Theme.minHit, alignment: .topTrailing)
+                        .frame(width: DS.minHit, height: DS.minHit, alignment: .topTrailing)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
@@ -232,7 +232,7 @@ private struct DraftThumb: View {
                     Spacer(minLength: 0)
                     Color.black.opacity(0.35).frame(height: 4)
                         .overlay(alignment: .leading) {
-                            Theme.blueBg.frame(width: side * CGFloat(Swift.min(Swift.max(progress, 0), 1)), height: 4)
+                            DS.blue.frame(width: side * CGFloat(Swift.min(Swift.max(progress, 0), 1)), height: 4)
                         }
                 }
             }
@@ -335,11 +335,11 @@ struct OutgoingImageThumbs: View {
             HStack(spacing: 4) {
                 ForEach(photos.prefix(4)) { img in
                     ZStack {
-                        Theme.soft
+                        DS.fill
                         if let thumb = center.thumb(img) {
                             Image(uiImage: thumb).resizable().scaledToFill()
                         } else {
-                            Text("图片").type(T.meta, Theme.muted)
+                            Text("图片").type(T.meta, DS.ink2)
                         }
                     }
                     .frame(width: 56, height: 56)

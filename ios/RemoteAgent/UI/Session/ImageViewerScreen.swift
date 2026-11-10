@@ -128,7 +128,7 @@ struct ImageViewerScreen: View {
         }
         // The bar has one line's room; the caption below says the rest at any size.
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .frame(height: Theme.minHit)
+        .frame(height: DS.minHit)
         .padding(.horizontal, 4)
     }
 
@@ -165,7 +165,7 @@ struct ImageViewerScreen: View {
 
     private func action(_ title: String, enabled: Bool, _ run: @escaping () -> Void) -> some View {
         Button(action: run) {
-            Text(title).type(T.body, ViewerInk.action).frame(minWidth: Theme.minHit, minHeight: Theme.minHit, alignment: .leading)
+            Text(title).type(T.body, ViewerInk.action).frame(minWidth: DS.minHit, minHeight: DS.minHit, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())

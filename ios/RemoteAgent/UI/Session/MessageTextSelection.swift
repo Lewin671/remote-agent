@@ -7,11 +7,11 @@ struct MessageMenuPreview: View {
 
     var body: some View {
         Text(verbatim: text)
-            .type(T.body, Theme.fg)
+            .type(T.body, DS.ink)
             .lineLimit(4)
             .frame(width: 260, alignment: .leading)
             .padding(16)
-            .background(Theme.card)
+            .background(DS.paper)
             .textSelection(.disabled)
     }
 }
@@ -29,7 +29,7 @@ struct MessageTextSelection: View {
             VStack(alignment: .leading, spacing: 0) {
                 SheetHead("选择文字", action: "完成", onAction: onDone)
                 Text("长按文字，再拖动两端选择要复制的内容")
-                    .type(T.sm, Theme.muted)
+                    .type(T.sm, DS.ink2)
                     .padding(.bottom, 10)
             }
             .padding(.horizontal, 16)
@@ -42,8 +42,8 @@ struct MessageTextSelection: View {
         .presentationContentInteraction(.scrolls)
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(Theme.Radius.lg)
-        .presentationBackground(Theme.card)
-        .tint(Theme.blue)
+        .presentationBackground(DS.paper)
+        .tint(DS.blue)
     }
 }
 
@@ -70,8 +70,8 @@ struct MessageSelectableText: UIViewRepresentable {
         if view.text != text { view.text = text }
         let font = UIFont.preferredFont(forTextStyle: .body, compatibleWith: view.traitCollection)
         if view.font != font { view.font = font }
-        view.textColor = UIColor(Theme.fg)
-        view.tintColor = UIColor(Theme.blue)
+        view.textColor = UIColor(DS.ink)
+        view.tintColor = UIColor(DS.blue)
     }
 
     func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
