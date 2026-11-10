@@ -1,6 +1,6 @@
-# 从客户端发文件
+# 会话里的文件
 
-本文写任意文件如何从客户端到原生 CLI、保留多久以及网页怎样显示；图片自身的编码、占位和确认见 [session-images.md](session-images.md)，外部工具证据见 [Claude Code](claude-code-notes.md#文件路径引用)、[Codex](codex-notes.md#文件路径引用)，验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)。协议字段以 proto 为准；三端整合状态与剩余联合验收见 [plan.md](plan.md)。
+本文写任意文件如何从客户端到原生 CLI、保留多久以及网页怎样显示，以及反方向 Agent 怎样把电脑上的文件交给客户端（[最后一节](#agent-给客户端发文件)）；图片自身的编码、占位和确认见 [session-images.md](session-images.md)，外部工具证据见 [Claude Code](claude-code-notes.md#文件路径引用)、[Codex](codex-notes.md#文件路径引用)，验收见 [acceptance-notes.md](acceptance-notes.md#文件附件phase-a2026-10-28)。协议字段以 proto 为准；三端整合状态与剩余联合验收见 [plan.md](plan.md)。
 
 ## 传输与信任边界
 
@@ -88,3 +88,55 @@ daemon 在每个解析出的用户消息里识别精确的 `File: @"<path>" (fil
 | `internal/relay/handle.go`、`relay.go` | 原命令完整转发到本地 RPC，不解读文件；relay WebSocket 读上限 4 MiB |
 | `internal/server/{services,server,hub,request_limits}.go` | 中继只见密文：信封 1 MiB、RPC 请求 8 MiB、WebSocket 帧 2 MiB；大 RPC 全局并发 4、每账户 2，Forward 全局 64、每账户 32；均为逐请求/并发限制，不累计整份文件大小。768 KiB 块与现有加密开销可容纳，无需放宽限制；文件不走中继显示图片存储配额 |
 | `web/src/{attach,remote,model}.ts` 与 `views/{Attach,Files,NewSession,Session,Queue}.tsx` | 共用上传机制、独立限制、到期/换机器/恢复、请求不确定性、共享事件和文件条目 |
+
+## Agent 给客户端发文件
+
+做不做、信任边界和中继能看到什么见 [scope §4「Agent 发来的文件」](scope.md#agent-发来的文件)；字段以 proto 为准。电脑端（协议、daemon）已实现，客户端还没有，进度见 [plan.md](plan.md)。
+
+### 发起
+
+托管会话的 `remote_agent` MCP 提供 `send_file(path)`，三种 CLI 共用同一个 MCP 进程（接入见 [architecture §18](architecture.md#托管会话的工具入口)）。MCP 只把路径交给 daemon 本机专用的 `LocalService.SendFile`：请求带 MCP scope 头，必须和请求里的会话一致；来源是远程客户端的调用一律拒绝，加密指令里也没有对应的 Command。不改提示词，能力只靠工具描述。工具不声明 `readOnlyHint`，免得 CLI 因此在询问模式下跳过确认；daemon 不另加确认（理由见 scope）。
+
+成功时工具返回 `status: "offered"`、`file_id`、名字、大小、SHA-256 和一句说明：文件已放进对话，用户在客户端里下载，成功不代表用户已经下载。失败以工具错误返回原因：路径不在范围内（提示先复制进项目目录）、在拒绝名单里、是目录（提示先打 zip）、不是普通文件、超过 100 MiB、本轮已满 6 个、附件存储已满、复制时文件在变。每次调用一个文件。
+
+### 校验
+
+相对路径按会话工作目录解析。先把路径里的软链接全部解析成真实路径，再判断：
+
+- 在本会话上传目录 `uploads/<session id>/` 里（`shared/` 除外）的，直接允许：用户发来的文件常常要原样转回去，它们在状态目录里
+- 否则必须在项目目录（会话工作目录）或系统临时目录（daemon 的 `os.TempDir()` 和 `/tmp`）里，并且不在拒绝名单里：remote-agent 状态目录，以及家目录下的 `.ssh`、`.gnupg`、`.aws`、`.azure`、`.kube`、`.docker`、`.netrc`、`.git-credentials`、`.config/` 下的 `gcloud`、`gh`、`remote-agent`、`google-chrome`、`chromium`，`.mozilla`，`Library/` 下的 `Keychains`、`Cookies`、`Safari`，以及 Chrome、Firefox 的配置目录。名单写在代码里，没有配置项；它防误发，不是安全保证
+- 只接受普通文件，空文件也行；目录、FIFO、设备和 socket 拒绝
+- 打开时不跟随最后一级链接，也不阻塞（检查后被换成 FIFO 也不会卡住）；打开后再核对仍是普通文件、和检查时是同一个 inode，并把原路径重新解析一遍、必须得到同一个真实路径，挡住检查和打开之间的替换
+- 单个最多 100 MiB，和上传方向一致；每轮最多 6 个。轮次取 daemon 读完 transcript 后的当前轮，计数来自会话已提交副本里记下的轮次，重启后不清零
+
+### 副本与生命周期
+
+daemon 当场复制一份，之后原文件被改或被删都不影响。副本放在 `uploads/<session id>/shared/<file id>/`（数据和一份记录，目录 0700、文件 0600），和这个会话的上传在同一棵目录里，所以沿用上传的配额和清理：
+
+- **配额**：计入附件存储配额。在上传锁内先检查空间（不够时按[保留、配额与恢复](#保留配额与恢复)回收可回收的图片原件），再把暂存文件预设成目标长度占住空间；复制和哈希在锁外进行，不挡上传。空间不够返回 ResourceExhausted。存储占用把副本算进所属会话的 protected，清理按钮删不掉它
+- **提交**：复制、fsync 和写记录都在暂存目录 `shared/<file id>.tmp/` 里完成；再加锁复查本轮计数，rename 成 `shared/<file id>/` 并同步目录链。rename 是唯一的提交点，同步失败就撤回；只有提交过的副本会被提供
+- **崩溃恢复**：中断留下的暂存目录从不提供，GC 在它超过一小时后删除（复制只要几秒，不会删到进行中的）
+- **清理**：随会话上传目录一起删：会话退出时的清理，以及 GC 发现退出元数据时的补删。没有单独的保存期限，会话结束后就不能再下载；用户应在会话还在时下载
+
+### 在对话里出现
+
+文件引用挂在这次 MCP 调用的工具调用事件上（`ToolCall.shared_files`），不新增事件类型：旧的 Android 和 iOS 会把不认识的事件类型当成坏密文，加字段则三端都忽略，所以不提升协议版本。daemon 在解析出的工具调用里认出 `remote_agent.send_file`（Claude Code、Codex 的写法）和 `remote_agent/send_file`（Antigravity 的写法，按现有解析推测，未实测，见 [plan.md](plan.md) 的「待确认」），从 CLI 记录的工具输出里找出 32 位十六进制的 `file_id`，确认是本会话已提交的副本才挂上（Claude Code 2.1.322 已实测，见[实测](claude-code-notes.md#send_file-mcp-工具实测)）；名字、大小、哈希和真实路径都取自副本记录，不取输出里的文字。识别和用户消息的文件识别一样无状态，历史重放和重启后结果相同。
+
+已接受的缺口：一轮在工具返回之前被中断，或者 CLI 没把结果写进记录时，副本已经在电脑上，对话里却没有条目，用户无从下载，它随会话一起清理。
+
+客户端本来就不收工具输出，旧客户端只看到一行 `remote_agent.send_file` 工具调用和请求里的路径，下载不了。
+
+### 下载
+
+客户端只在机器声明了 `shared_files` 时提供下载。按 `shared_file_chunk_bytes`（768 KiB）的整数倍偏移，逐块经 `Forward` 发会话级指令 `GetSharedFileChunk`；电脑不在线就取不到，中继不排队也不保存文件。每个结果的数据都恰好是一整块，文件结束后补零，客户端按 `size_bytes` 截掉补的零、核对 SHA-256，不一致整份作废。空文件也取一块。共用测试向量在 [`testdata/shared-files/`](../testdata/shared-files/README.md)。
+
+它是只读指令：不写已接受指令的记录，结果不落盘，同一请求可以重发，断了从下一个偏移接着取。只有账户里的 Client 能取：Command 用途的信封要求签名者是 Client 成员（`deviceauth` 的 `Header.Scope`），只读指令跳过记录这一步在这项检查之后，Machine 既封不出这样的指令，伪造的也通不过；daemon 处理时再要求来源是签了名的客户端设备或本机。这些都有测试。
+
+取块结果封装时不压缩，长度字段用定长编码，所以每块密文一样长：中继只能从取了几块、什么时候取推算出以块为单位的大概大小，而且只在用户下载时。挂了 `shared_files` 的工具调用事件会比平时长一些，和事件密文长度本来就公开属于同一级。
+
+### 给客户端实现者
+
+- 条目放在 Agent 一侧那次工具调用下，显示名字和大小，点开能看到电脑上的完整路径，让用户下载前看得出是什么文件。电脑不在线时写「电脑不在线」，下载置灰；会话已结束、副本已删时取块返回 NotFound
+- 保存用的名字在本机再清理一遍：去掉路径分隔符、控制字符和双向控制符
+- 网页不在新标签打开下载的 blob，也不用文件原本的 MIME 类型（同源的 HTML 会在网页的源里执行），一律按 `application/octet-stream` 触发下载
+- 下载时显示进度、允许取消；`GetSharedFileChunk` 是会话指令，header 要带会话 ID

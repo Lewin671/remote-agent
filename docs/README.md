@@ -27,7 +27,7 @@
 | [architecture.md](architecture.md) | 设计 | 部署和发布、报文分层、通信方式、技术决策、接入 Codex、Claude Code 和 Antigravity（含多 CLI 的通用做法）、审批、项目、账户和密钥、同步和指令、终端、推送、daemon 设置、账户额度、定时任务 |
 | [android-client.md](android-client.md) | 设计 | Android 客户端自己的选型和约束：模块、生命周期、密钥保管、原生终端、更新、推送和在通知里审批 |
 | [ios-client.md](ios-client.md) | 设计 | iOS 客户端自己的选型和约束：工程和模块、和其他端保持一致的办法、生命周期、密钥保管、原生终端、还不能做的部分 |
-| [session-files.md](session-files.md) | 设计 | 从客户端发送任意文件：原样分块上传、CLI 路径引用、生命周期、网页交互与协议依赖 |
+| [session-files.md](session-files.md) | 设计 | 从客户端发送任意文件：原样分块上传、CLI 路径引用、生命周期、网页交互与协议依赖；以及 Agent 用 `send_file` 把电脑上的文件交给客户端 |
 | [session-images.md](session-images.md) | 设计 | 会话里的图片：取图、编码、加密上传、保存期限，以及从客户端发图片、失败处理和存储清理 |
 | [codex-notes.md](codex-notes.md) | 实测 | Codex 的行为：数据来源、菜单、hook、审批模式、弹窗、中断、模型提问 |
 | [claude-code-notes.md](claude-code-notes.md) | 实测 | Claude Code 的行为：启动、transcript、hook、权限模式、模型提问、计划、中断 |
