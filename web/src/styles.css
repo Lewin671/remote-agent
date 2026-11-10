@@ -662,6 +662,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .fl { font-size: 13px; color: var(--ink2); margin: 14px 12px 6px; font-weight: 400; }
 .hint { font-size: 13px; color: var(--ink2); margin-top: 8px; line-height: 1.45; }
 .sheet .hint { margin-left: 12px; margin-right: 12px; }
+.sheet .hint + .list { margin-top: 20px; }
 .sheet .banner { margin-top: 8px; }
 
 /* ---------- grouped rounded lists (design-system §6 列表行) ----------
@@ -809,7 +810,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .nt-note { padding: 12px 24px 0; font-size: 13px; color: var(--ink2); }
 .acc { flex: none; display: flex; align-items: center; gap: 8px; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); min-width: 0; }
 /* The summary: the machine's name gives way first, down to three letters. */
-.acc .project-summary { flex: 1; height: 40px; border-radius: 20px; font-weight: var(--w5); gap: 0; }
+.acc .project-summary { flex: 0 1 auto; height: 40px; border-radius: 20px; font-weight: var(--w5); gap: 0; }
 .project-summary > span { flex: 0 1 auto; white-space: pre; }
 .project-summary > .mach { flex-shrink: 1000; min-width: 3em; }
 .project-summary em { font-style: normal; color: var(--red); font-weight: var(--w6); }
@@ -822,7 +823,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .wstart .nt-banners { padding: 0 0 16px; }
 .wstart .attachments { padding: 12px 0 0; }
 .wstart .acc { padding: 22px 0 0; }
-.wstart .acc .project-summary { flex: 0 1 auto; }
 .wstart .acc > .snd { margin-left: auto; }
 .wstart .kh { margin-left: auto; font-size: 13px; color: var(--ink2); flex: none; white-space: nowrap; }
 .wstart .kh + .snd { margin-left: 0; }
