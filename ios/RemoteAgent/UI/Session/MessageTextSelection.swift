@@ -40,9 +40,7 @@ struct MessageTextSelection: View {
         .environment(\.onSoft, false)
         .presentationDetents([.large])
         .presentationContentInteraction(.scrolls)
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(Theme.Radius.lg)
-        .presentationBackground(DS.paper)
+        .sheetSurface()
         .tint(DS.blue)
     }
 }

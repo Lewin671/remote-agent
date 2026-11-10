@@ -40,10 +40,8 @@ private struct SheetBody<Content: View>: View {
         // Whatever page it is over, a sheet's own surface is the card.
         .environment(\.onSoft, false)
         .presentationDetents(detents)
-        .presentationDragIndicator(.visible)
-        .presentationCornerRadius(Theme.Radius.lg)
-        .presentationBackground(Theme.card)
-        .tint(Theme.blue)
+        .sheetSurface()
+        .tint(DS.blue)
     }
 }
 

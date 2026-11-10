@@ -36,8 +36,8 @@ private struct MenuSheet<Info: View>: View {
         .listStyle(.insetGrouped)
         .listSectionSpacing(12)
         .scrollBounceBehavior(.basedOnSize)
+        .sheetSurface()
         .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(busy)
         .tint(DS.blue)
     }
@@ -73,5 +73,20 @@ private struct MenuSheet<Info: View>: View {
         }
         .buttonStyle(.plain)
         .disabled(!a.enabled || a.busy)
+        .listRowBackground(DS.raised)
+    }
+}
+
+extension View {
+    /// A bottom sheet's own ground (design-system §6 「弹层与对话框」): opaque
+    /// `gbg`, never the system's glass that lets what is under it show
+    /// through, top corners of 38, the grabber. A `List` in it keeps its
+    /// rows on `DS.raised` and hides its own ground.
+    func sheetSurface() -> some View {
+        scrollContentBackground(.hidden)
+            .background(DS.gbg)
+            .presentationBackground(DS.gbg)
+            .presentationCornerRadius(DS.Radius.sheet)
+            .presentationDragIndicator(.visible)
     }
 }

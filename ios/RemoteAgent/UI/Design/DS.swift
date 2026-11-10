@@ -39,6 +39,8 @@ enum DS {
     static let paper = Color(uiColor: .systemBackground)
     /// The grey surface on the page: cards, grouped lists, the list of what waits, notices.
     static let gbg = Color(uiColor: .secondarySystemBackground)
+    /// The rounded lists on a sheet's `gbg`: white, one grey up from `gbg` in the dark.
+    static let raised = dynamic(0xFFFFFF, 0x2C2C2E)
     /// Fields, the ＋ circle, inline code.
     static let fill = dynamic(0x000000, 0xFFFFFF, alpha: (0.05, 0.09))
     /// Secondary buttons, a segmented control's groove, the chosen tab's ground, project avatars.
@@ -114,6 +116,8 @@ enum DS {
         static let card: CGFloat = 28
         /// The dark card and dialogs.
         static let darkCard: CGFloat = 30
+        /// A bottom sheet's top corners.
+        static let sheet: CGFloat = 38
     }
 
     /// The smallest side of anything that can be tapped.
