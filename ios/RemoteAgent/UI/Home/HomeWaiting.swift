@@ -197,11 +197,11 @@ private struct ApprovalCardBody: View {
             VStack(spacing: 8) { buttonRow(cut: cut, locked: locked, truncated: truncated) }
         }
         .padding(.top, 16)
-        if always && !denying && !cut && !truncated {
+        // Nothing can be decided now: the line that would allow is not offered, as the buttons are greyed.
+        if always && !denying && !cut && !truncated && !locked {
             LinkButton("允许，这类请求以后不再问") { decide(true, always: true) }
                 .font(.subheadline)
                 .tint(Color(red: 0.42, green: 0.71, blue: 1))
-                .disabled(locked)
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, -8)
         }

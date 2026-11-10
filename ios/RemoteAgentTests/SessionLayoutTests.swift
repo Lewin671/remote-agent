@@ -121,6 +121,10 @@ import UIKit
         let fits = Counts()
         _ = try await fitted(CountedCommand(text: short, lines: 5, counts: fits), width: 320, settle: true)
         #expect(fits.more == 0 && fits.total == 4)
+        // A command of one line is one line: whole, so 允许 can be offered (a count of 0 would keep it away).
+        let one = Counts()
+        _ = try await fitted(CountedCommand(text: "go test ./... -count=1", lines: 5, counts: one), width: 320, settle: true)
+        #expect(one.total == 1 && one.more == 0)
         // One long command is one line to count and several on the screen.
         let wide = Counts()
         _ = try await fitted(CountedCommand(text: String(repeating: "x", count: 400), lines: 5, counts: wide), width: 320, settle: true)
