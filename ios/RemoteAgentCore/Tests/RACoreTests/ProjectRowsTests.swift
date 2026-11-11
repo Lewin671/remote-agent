@@ -237,9 +237,10 @@ import Testing
         c.mode = .full
         d.edit(c)
         #expect(d.op() == PrefsOp.SetSettings(path: "/p/foo", machineId: "mac", sets: [c.agentSettings()]))
-        // The other CLI's set stays as stored, and is shown under its tab.
-        d.tab = .claude
-        #expect(d.config(st) == NewConfig(machineId: "mac", cwd: "/p/foo", agent: .claude))
+        // The sheet is for the CLI it was opened for; another CLI's set stays as stored, and is reached by opening it for that one.
+        #expect(d.current(st) == .codex && d.config(st) == c)
+        let other = ProjectSettingsDraft(cwd: "/p/foo", machine: "mac", agent: .claude)
+        #expect(other.current(st) == .claude && other.config(st) == NewConfig(machineId: "mac", cwd: "/p/foo", agent: .claude))
     }
 
     @Test func anotherMachineStartsEveryCliOver() {

@@ -327,22 +327,25 @@ public func promptText(_ text: String) -> String { text.jvmTrim() }
 // --- 项目设置 ---
 
 /// The edits of an open 项目设置 sheet (Android's NewSettingsSheet): the
-/// machine, shared by the CLIs, and each CLI's own set as far as it was
-/// changed here; the others stay as stored. Nothing is written until 完成.
+/// machine, and the set of the one CLI the sheet was opened for (the one
+/// selected next to the message box, a session's, a task's) as far as it
+/// was changed here; the others stay as stored. Another CLI's set is
+/// reached by selecting that CLI there, not in the sheet. Nothing is
+/// written until 完成.
 public struct ProjectSettingsDraft: Equatable, Sendable {
     public let cwd: String
     /// The machine the sheet opened on.
     public let from: String
     public private(set) var machine: String
-    /// The CLI whose set is shown.
-    public var tab: PBAgent
+    /// The CLI the sheet was opened for, whose set is shown.
+    public let agent: PBAgent
     public private(set) var edited: [PBAgent: NewConfig] = [:]
 
     public init(cwd: String, machine: String, agent: PBAgent) {
         self.cwd = cwd
         from = machine
         self.machine = machine
-        tab = agent
+        self.agent = agent
     }
 
     /// Models are per machine: on another one every CLI starts over.
@@ -350,10 +353,10 @@ public struct ProjectSettingsDraft: Equatable, Sendable {
 
     public func agents(_ state: RemoteState) -> [PBAgent] { machineAgents(state.machines[machine]) }
 
-    /// The CLI shown: the tab's, or the machine's first where it lacks that one.
+    /// The CLI shown: the one opened for, or the machine's first where it lacks that one.
     public func current(_ state: RemoteState) -> PBAgent {
         let all = agents(state)
-        return all.contains(tab) ? tab : all[0]
+        return all.contains(agent) ? agent : all[0]
     }
 
     /// The set shown: as changed here, else that machine's defaults after a move, else the project's own.

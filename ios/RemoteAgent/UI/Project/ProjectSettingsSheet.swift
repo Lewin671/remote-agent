@@ -1,8 +1,9 @@
 // 项目设置 (Android's NewSettingsSheet in ui/Project.kt, architecture §13):
-// the machine a project's new sessions use, and for each CLI the machine
-// has its own model and effort, context window (Claude Code) and approval
-// mode, under a tab per CLI when there is more than one. Each is chosen on
-// a page of the sheet. The folder is the project itself and is only
+// the machine a project's new sessions use, and the model and effort,
+// context window (Claude Code) and approval mode of the one CLI it was
+// opened for, under a title with the CLI's name when the machine has more
+// than one. Another CLI's set is reached by selecting that CLI next to the
+// message box. Each is chosen on a page of the sheet. The folder is the project itself and is only
 // shown. Which CLI a new session uses is not chosen here but next to the
 // message box. Nothing is written until 完成; what the sheet holds
 // meanwhile is a `ProjectSettingsDraft`.
@@ -23,7 +24,7 @@ struct ProjectSettingsRequest: Identifiable {
 struct ProjectSettingsSheet: View {
     private let cwd: String
     private let name: String
-    /// The CLI selected next to the message box: the sheet opens on its tab, and 换机器 looks for it.
+    /// The CLI selected next to the message box (or the session's, or the task's): the sheet is its set, and 换机器 looks for it.
     private let agent: PBAgent
     /// Gets the change to store, or nil when nothing was changed.
     private let onDone: (PrefsOp.SetSettings?) -> Void
@@ -168,12 +169,9 @@ struct ProjectSettingsSheet: View {
         // What a CLI's set starts from is read first where it is not known yet.
         let own = unread ? [AnyView(reading(state, cur))] : rows(state, c)
         if agents.count > 1 {
-            // The machine is shared; each CLI has its own set, seen under its tab.
+            // The machine is shared; the set under it is the CLI's, whose name is its title.
             SetCard([AnyView(machineRow)])
-            SegPick(
-                agents.map(agentName), selected: Binding(get: { agents.firstIndex(of: cur) ?? 0 }, set: { draft.tab = agents[$0] })
-            )
-            .padding(.top, 6)
+            FieldLabel(agentName(cur))
             SetCard(own)
             if !unread { Hint("各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
         } else {
