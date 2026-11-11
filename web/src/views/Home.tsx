@@ -4,6 +4,7 @@
 // (design-system §6, client-v58 #home).
 
 import { AgentMark } from "../agent-mark";
+import { agentName } from "../agents";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   agentOf,
@@ -206,9 +207,11 @@ export function SessionRow({
   const meta = metaOf(remote, s, cols);
   const timers = remote.sessionTasks(s.id);
   const scheduleMeta = timers.length ? "定时 " + (timers.length > 1 ? `${timers.length} 个任务` : frequency(timers[0].task.spec.trigger)) : "";
+  // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
+  const words = [meta, scheduleMeta].filter(Boolean).join(" · ");
   return <SessionLine tone={st.tone} title={titleOf(s)} right={when(s.updatedMs)}
     preview={st.text + (pv && pv !== st.text ? ` · ${pv}` : "")}
-    meta={(cols.agent || meta || scheduleMeta) && <>{cols.agent && <AgentMark agent={agentOf(s)} />}{[meta, scheduleMeta].filter(Boolean).join(" · ")}</>} selected={selected} last={last} enter={enter} onClick={() => go("s/" + s.id)} />;
+    meta={(cols.agent || words) && <>{cols.agent && <AgentMark agent={agentOf(s)} named={!words} />}{words || (cols.agent ? agentName(agentOf(s)) : "")}</>} selected={selected} last={last} enter={enter} onClick={() => go("s/" + s.id)} />;
 }
 
 /** An ended session: one line with no state graphic, under the date

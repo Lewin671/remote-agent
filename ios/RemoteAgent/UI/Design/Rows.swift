@@ -4,6 +4,7 @@
 // (`sessionRowText`, `endedRowText`, `pendingRowText`), and what a tap does
 // is the caller's. Each takes the whole width; the line under a row starts
 // where its text does.
+import RACore
 import RAProto
 import SwiftUI
 
@@ -47,7 +48,9 @@ struct SessionRowLayout: View {
                 if agent != nil || !third.isEmpty {
                     HStack(alignment: .firstTextBaseline, spacing: 0) {
                         if let agent { AgentMark(agent, style: .footnote, scale: 1.15) }
-                        if !third.isEmpty { Text(third).lineLimit(typeSize.isAccessibilitySize ? 2 : 1) }
+                        // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
+                        let words = third.isEmpty ? (agent.map { agentName($0) } ?? "") : third
+                        if !words.isEmpty { Text(words).lineLimit(typeSize.isAccessibilitySize ? 2 : 1) }
                     }
                     .font(.footnote).foregroundStyle(DS.ink2).padding(.top, 1)
                 }

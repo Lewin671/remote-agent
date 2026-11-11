@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.PendingRowText
+import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.RowMeta
 import io.github.lewin671.remoteagent.core.SessionView
@@ -108,7 +109,9 @@ fun SessionRow(
             if (third.isNotEmpty() || row.agent != null) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 // The CLI leads the line as its mark (design-system §5); the row's spoken text already names it.
                 row.agent?.let { AgentMarkLead(it, T.s13, p.ink2, scale = 1.15f) }
-                if (third.isNotEmpty()) Text(third, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
+                val words = third.ifEmpty { row.agent?.let { agentName(it) }.orEmpty() }
+                if (words.isNotEmpty()) Text(words, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
         }
     }
