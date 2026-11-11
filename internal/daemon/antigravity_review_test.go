@@ -189,6 +189,9 @@ func TestAgySubmissionEvidenceKeepsItsOriginalConversation(t *testing.T) {
 }
 func TestAgyConsumptionDoesNotRaceTerminalResolution(t *testing.T) {
 	h := agyHarness(t)
+	// This tests delivery/retraction ordering, not expiry. The shared harness's
+	// 200 ms deadline can expire while a loaded runner persists the card.
+	h.d.cfg.ApprovalTimeout = time.Minute
 	card := nativeCard(t, h)
 	req := card.GetApprovalRequested()
 	h.term.mu.Lock()
