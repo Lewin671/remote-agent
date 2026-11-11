@@ -68,6 +68,7 @@ import io.github.lewin671.remoteagent.core.projects
 import io.github.lewin671.remoteagent.core.resolveScope
 import io.github.lewin671.remoteagent.core.scopeKey
 import io.github.lewin671.remoteagent.core.scopeRows
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -128,6 +129,15 @@ fun HomeScreen() {
         homeList(state, scope, query, if (wide) shown.copy(allAttention = true, allRunning = true) else shown, t)
     }
     val headline = remember(state, scope) { homeHeadline(state, scope) }
+    var calm by remember { mutableStateOf(false) }
+    val hasRows = list.items.isNotEmpty()
+    LaunchedEffect(scope, query, hasRows) {
+        calm = false
+        if (hasRows) {
+            delay(Motion.SLOW + 120L)
+            calm = true
+        }
+    }
     var pick by rememberSaveable { mutableStateOf(false) }
     var menu by rememberSaveable { mutableStateOf(false) }
     var details by remember { mutableStateOf(false) }
@@ -170,7 +180,12 @@ fun HomeScreen() {
                 null -> {}
             }
             items(list.items, key = { it.id }) { item ->
-                HomeLine(state, item, list.meta, scope, t, list.grows) { shown = it(shown) }
+                // Rows coming, going and moving (§4 动效, 常), once the page has settled: the rows a page
+                // opens with, or a new scope or filter brings in one go, do not play it.
+                Box(
+                    if (calm) Modifier.animateItem(Motion.fadeInSpec(), Motion.enter(Motion.BASE), Motion.fadeOutSpec())
+                    else Modifier,
+                ) { HomeLine(state, item, list.meta, scope, t, list.grows) { shown = it(shown) } }
             }
         }
     }

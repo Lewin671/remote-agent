@@ -93,7 +93,10 @@ fun SessionRow(
             .semantics(mergeDescendants = true) { contentDescription = listOf(row.spoken, third.takeIf { it != row.meta }.orEmpty()).filter { it.isNotEmpty() }.joinToString("，") }
             .padding(start = 24.dp),
     ) {
-        Box(Modifier.width(Gutter).padding(top = 17.dp)) { markOf(row.status)?.let { StatusMark(it) } }
+        // Running, waiting, unread and idle change shape: the one fades into the other (§4 动效, 快).
+        Box(Modifier.width(Gutter).padding(top = 17.dp)) {
+            androidx.compose.animation.Crossfade(markOf(row.status), animationSpec = Motion.fadeInSpec(Motion.FAST), label = "row-mark") { kind -> kind?.let { StatusMark(it) } }
+        }
         Column(
             Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).padding(top = 13.dp, bottom = 13.dp, end = 24.dp),
         ) {
