@@ -269,13 +269,6 @@ function UpdateRow() {
   );
 }
 
-/** Every window of a CLI, one after another: 「5 小时 剩 82% · 7 天 剩 88%」;
- * what stands in their place when there are no numbers. */
-function windowsLine(views: ReturnType<typeof machineQuotaViews>): string {
-  const rows = views.flatMap((v) => v.rows).filter((r) => r.percent !== undefined && r.left !== "未获取");
-  return rows.length ? rows.map((r) => `${r.label} ${r.left}`).join(" · ") : quotaSummary(views);
-}
-
 /** On a machine's page: a line for each CLI's quota, leading to all of it. */
 function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
@@ -300,7 +293,8 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
               onClick={() => go("q/" + m.id)}
             >
               <span className="nw">{agentName(a)}</span>
-              <span className="v">{windowsLine(mine)}</span>
+              {/* Only the window with the least left (design-system §6); the rest are a tap away. */}
+              <span className="v">{quotaSummary(mine)}</span>
               <ChevronRight className="chev" />
             </button>
           );
@@ -1185,11 +1179,10 @@ export function MachinePage({
                   {!def.mode && (
                     <div className="row help">
                       不指定时实际用：
-                      {modeLabel(
-                        ApprovalMode.UNSPECIFIED,
-                        defaultModeOf(m, a),
-                        a,
-                      ).replace(/^默认：/, "")}
+                      {/* 完全放行 is red wherever it is written. */}
+                      <span className={defaultModeOf(m, a).mode === ApprovalMode.FULL_ACCESS ? "red" : undefined}>
+                        {modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(m, a), a).replace(/^默认：/, "")}
+                      </span>
                     </div>
                   )}
                 </div>

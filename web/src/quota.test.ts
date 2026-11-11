@@ -143,7 +143,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
       ["custom-bucket", [["custom-bucket", "剩 95%"]]],
     ]);
     expect(v.seen).toBe("最近收到 9:41");
-    expect(quotaSummary([v])).toBe("剩 60% · 5 小时");
+    expect(quotaSummary([v])).toBe("剩 60% · 第三方模型");
   });
 });
 

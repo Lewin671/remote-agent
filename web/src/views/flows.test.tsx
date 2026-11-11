@@ -2453,7 +2453,7 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   mount(<MachinePage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   // The machine's page lists every window, each with what is left.
   expect([...host.querySelectorAll(".quota-line")].find((r) => r.textContent?.startsWith("Antigravity"))?.querySelector(".v")?.textContent).toBe(
-    "Gemini · 5 小时 剩 82% · Gemini · 7 天 剩 88% · Gemini 4 Argon · 7 天 剩 65% · 第三方模型 · 5 小时 剩 60% · 第三方模型 · 7 天 剩 74%",
+    "剩 60% · 第三方模型",
   );
   await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
   expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);

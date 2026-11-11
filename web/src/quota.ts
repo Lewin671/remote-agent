@@ -233,7 +233,9 @@ export function quotaSummary(views: QuotaView[]): string {
       const got = v.rows.filter((r) => r.left !== "未获取" && r.percent !== undefined);
       if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
       const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
-      const win = tightest.windowName || tightest.label;
+      // A CLI with several pools (Gemini, 第三方模型) names the pool; the window is on the quota page.
+      const pool = tightest.windowName && tightest.label.endsWith(" · " + tightest.windowName) ? tightest.label.slice(0, -(" · " + tightest.windowName).length) : "";
+      const win = pool || tightest.windowName || tightest.label;
       const staleSuffix = v.stale && !tightest.left.includes("上次") ? "（上次记录）" : "";
       return `${tightest.left} · ${win}${staleSuffix}`;
     })

@@ -1156,8 +1156,8 @@ input.field { margin: 0; }
 
 
 /* v8: project settings, pending inputs, compact tools and large text. */
-.row.quota-line :is(.v, .nw) { white-space: normal; }
-.row.quota-line .v { flex: 1; justify-content: flex-end; text-align: right; overflow-wrap: anywhere; }
+.row.quota-line .nw { flex: none; }
+.row.quota-line .v { flex: 1; min-width: 0; display: block; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .row.quota-line:is(.warn, .full) .v { color: var(--orange-ink); }
 /* One setting's values: the segmented control, at the row's end. */
 .pick { margin-left: auto; display: flex; }
