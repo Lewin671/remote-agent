@@ -162,3 +162,42 @@ describe("the chat of a session that is still talking", () => {
     });
   }
 });
+
+describe("sending from far up", () => {
+  let root: Root | undefined;
+  let host: HTMLElement;
+  afterEach(() => {
+    act(() => root?.unmount());
+    host?.remove();
+    localStorage.clear();
+  });
+
+  it("returns to the end", async () => {
+    const r = DemoRemote.create(new URLSearchParams(), async () => undefined);
+    r.start();
+    const sid = "s-idle";
+    const list = r.events(sid);
+    for (let i = 0; i < 40; i++) list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: { case: "assistantMessage", value: { text: `answer ${i}` } } as never }));
+    host = document.createElement("div");
+    document.body.append(host);
+    root = createRoot(host);
+    await act(async () => root!.render(<SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />));
+    const el = host.querySelector<HTMLElement>(".body.chat")!;
+    let top = 0;
+    Object.defineProperties(el, {
+      clientHeight: { configurable: true, get: () => 400 },
+      scrollHeight: { configurable: true, get: () => 2600 },
+      scrollTop: { configurable: true, get: () => top, set: (v: number) => { top = Math.min(v, 2200); } },
+    });
+    await act(async () => { top = 2200; el.dispatchEvent(new Event("scroll", { bubbles: true })); });
+    await act(async () => { top = 900; el.dispatchEvent(new Event("scroll", { bubbles: true })); });
+    expect(r.scroll.get(sid)?.stick).toBe(false);
+    const input = host.querySelector("textarea")!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "one more thing");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.click(); });
+    expect(top).toBe(2200);
+  });
+});

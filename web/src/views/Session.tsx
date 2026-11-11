@@ -263,6 +263,7 @@ export function SessionPage({
     "" | "plan" | "question" | { approval: string }
   >("");
   const [toast, setToast] = useState("");
+  const [sent, setSent] = useState(0);
   const setToastRef = useRef(setToast);
   const composer = useRef<HTMLTextAreaElement>(null);
   // Remounting the input shows a draft put back from the chat.
@@ -535,6 +536,7 @@ export function SessionPage({
         d={d}
         agent={agent}
         machine={mname}
+        sent={sent}
         onRestore={restore}
         onTerminal={inactive ? undefined : toTerminal}
       />
@@ -581,6 +583,7 @@ export function SessionPage({
             session={session}
             d={d}
             onSend={(text, mode) => {
+              setSent((n) => n + 1);
               remote.send(
                 sid,
                 text,
@@ -826,6 +829,7 @@ function ChatBody({
   d,
   agent,
   machine,
+  sent,
   onRestore,
   onTerminal,
 }: {
@@ -835,6 +839,8 @@ function ChatBody({
   d: Derived;
   agent: Agent;
   machine: string;
+  /** Counts the messages sent from this view. */
+  sent: number;
   onRestore: (text: string, from?: string) => void;
   onTerminal?: () => void;
 }) {
@@ -960,6 +966,13 @@ function ChatBody({
     if (hist.loaded && items.length <= 100 && el && saved && !saved.stick)
       el.scrollTop = saved.top;
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Sending is asking to see the answer: back to the end, even from far up.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!sent || !el) return;
+    stick.current = true;
+    el.scrollTop = el.scrollHeight;
+  }, [sent]);
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
