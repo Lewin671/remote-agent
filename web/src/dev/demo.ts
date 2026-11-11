@@ -9,6 +9,7 @@
 //   ?demo&empty=1 | empty=offline | empty=none  accounts with no sessions
 //   ?demo&list=fail                          the first listing fails
 //   ?demo&prefs=fail                         saving project preferences fails
+//   ?demo&one-machine=1                     an account with one computer only
 //   ?demo&long=1                            long project, machine and session names
 //   ?demo&many=1&pick=1                     many sessions/projects, picker search
 //   ?demo&project-settings=1#/p/<encoded path>   project settings sheet
@@ -1584,6 +1585,7 @@ export class DemoRemote extends Remote {
       }, 1500);
     }
     if (q.has("scheduled-final")) r.seedSchedules();
+    if (q.has("one-machine")) for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
     return r;
   }
 
