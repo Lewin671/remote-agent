@@ -71,6 +71,10 @@ private class AboveProvider(private val gap: Int, private val right: Boolean) : 
  * ([onFile]), a small menu above it: 照片和视频, 文件. In a running session
  * the button is ■ interrupt while the box is empty; long-press send offers
  * queue when supported.
+ *
+ * With [tools] it is the new task's box (design-system §6 新任务): a rounded card of the same glass, the
+ * text across the top, [top] (the tray) under it, and a row below: ＋, [tools] (the CLI and the model),
+ * a gap, and the round button.
  */
 @Composable
 fun ComposeBox(
@@ -91,6 +95,7 @@ fun ComposeBox(
     onInterrupt: (() -> Unit)? = null,
     canInterrupt: Boolean = false,
     hasDraft: Boolean = text.isNotBlank(),
+    tools: (@Composable androidx.compose.foundation.layout.RowScope.() -> Unit)? = null,
 ) {
     val p = pal
     var sendMenu by remember { mutableStateOf(false) }
@@ -100,28 +105,45 @@ fun ComposeBox(
         Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
             // The box grows and shrinks with its lines and its tray of attachments (§4 动效, 常), the buttons
             // staying at the bottom; the glass outside the size animation so its shadow is not cut by it.
-            Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(7.dp)) {
-                top?.invoke()
-                Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    AttachButton(onPlus, onFile, plusEnabled)
-                    BasicTextField(
-                        text, onText,
-                        Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp)
-                            .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
-                            .onFocusChanged { onFocus(it.isFocused) },
-                        textStyle = T.s17.copy(color = p.ink),
-                        cursorBrush = SolidColor(p.blue),
-                        maxLines = 6,
-                        decorationBox = { inner ->
-                            Box {
-                                if (text.isEmpty()) Text(placeholder, style = T.s17, color = p.ink3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                                inner()
-                            }
-                        },
-                    )
-                    val interrupt = !hasDraft && onInterrupt != null
-                    val on = if (interrupt) canInterrupt else canSend
-                    SendButton(interrupt, on, sendLabel, { if (interrupt) onInterrupt?.invoke() else onSend() }, if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
+            val interrupt = !hasDraft && onInterrupt != null
+            val on = if (interrupt) canInterrupt else canSend
+            val field = @Composable { m: Modifier, lines: Int ->
+                BasicTextField(
+                    text, onText,
+                    m.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
+                        .onFocusChanged { onFocus(it.isFocused) },
+                    textStyle = T.s17.copy(color = p.ink),
+                    cursorBrush = SolidColor(p.blue),
+                    maxLines = lines,
+                    decorationBox = { inner ->
+                        Box {
+                            if (text.isEmpty()) Text(placeholder, style = T.s17, color = p.ink3, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                            inner()
+                        }
+                    },
+                )
+            }
+            val send = @Composable { SendButton(interrupt, on, sendLabel, { if (interrupt) onInterrupt?.invoke() else onSend() }, if (!interrupt && onQueue != null) ({ sendMenu = true }) else null) }
+            if (tools != null) {
+                // The new task's card: the text grows to eight lines, then scrolls inside.
+                Column(Modifier.fillMaxWidth().glass(p, Radii.R22, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(start = 7.dp, end = 7.dp, top = 10.dp, bottom = 7.dp)) {
+                    field(Modifier.fillMaxWidth().heightIn(min = 26.dp).padding(horizontal = 8.dp, vertical = 2.dp), 8)
+                    top?.invoke()
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                        AttachButton(onPlus, onFile, plusEnabled)
+                        // The tools take what they need of the room between ＋ and ↑, the gap the rest.
+                        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) { tools() }
+                        send()
+                    }
+                }
+            } else {
+                Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(7.dp)) {
+                    top?.invoke()
+                    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        AttachButton(onPlus, onFile, plusEnabled)
+                        field(Modifier.weight(1f).heightIn(min = 40.dp).padding(horizontal = 4.dp, vertical = 8.dp), 6)
+                        send()
+                    }
                 }
             }
             if (sendMenu) Popup(popupPositionProvider = AboveProvider(gap, right = true), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {

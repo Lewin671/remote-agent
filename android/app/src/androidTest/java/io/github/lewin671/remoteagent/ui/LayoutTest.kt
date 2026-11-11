@@ -219,7 +219,7 @@ class LayoutTest {
                     Column(Modifier.testTag("frame").width(320.dp).height(640.dp).background(pal.paper)) {
                         GroupTitle("今天", date = true)
                         SessionRow(state, session(ended = true), System.currentTimeMillis())
-                        NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name", mode = Mode.ASK), "remote-agent-with-a-very-long-project-name", false)
+                        NewSessionBox(state, NewConfig(machineId, key, model = "long-model-name"), "remote-agent-with-a-very-long-project-name", false)
                     }
                 }
             }
@@ -238,12 +238,12 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav, LocalDensity provides Density(base.density, 2f)) {
-                    NewSettingsSheet(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY), key, "remote-agent", machineId, Agent.AGENT_CODEX, onDone = {}, onClose = {})
+                    NewSettingsSheet(state.copy(conn = ConnState.ONLINE, prefs = PrefsObject.EMPTY), key, "remote-agent", machineId, Agent.AGENT_CODEX, onDone = {}, onClose = {}, scheduling = true)
                 }
             }
         }
         ui.onNodeWithText("机器").assertIsDisplayed()
-        ui.onNodeWithText("审批").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("权限").performScrollTo().assertIsDisplayed()
     }
     private fun approval(lines: Int) = ApprovalRequested.newBuilder().setApprovalId("A$lines")
         .setCommand((1..lines).joinToString("\n") { "echo step-$it" }).setDescription("说明文字".repeat(30)).build()

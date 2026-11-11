@@ -21,6 +21,9 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.platform.app.InstrumentationRegistry
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.core.Account
@@ -259,13 +262,26 @@ class V8Gallery {
         shoot("03-project", projectState(), mapOf("api" to apiEvents)) { ProjectScreen(foo, false) }
     }
 
+    // 新任务 (design-system §6): typed, and the computer's list under the project.
+    @Test fun newTaskTyped() {
+        shoot("03-new-task-typed", projectState(), then = {
+            ui.onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("把登录接口的限流改成按用户维度，补上测试")
+        }) { ProjectScreen(foo, false) }
+    }
+
+    @Test fun newTaskMachine() {
+        shoot("05-new-task-machine", projectState(), then = {
+            ui.onNodeWithTag("new-machine", useUnmergedTree = true).performClick()
+        }) { ProjectScreen(foo, false) }
+    }
+
     @Test fun projectMenu() {
         shoot("04-project-menu", projectState()) { ProjectScreen(foo, false) }
     }
 
     @Test fun newSettings() {
         shoot("05-project-settings", projectState(), then = {
-            ui.onNodeWithTag("project-settings-summary").performClick()
+            ui.onNodeWithTag("new-model", useUnmergedTree = true).performClick()
         }) { ProjectScreen(foo, false) }
     }
 
