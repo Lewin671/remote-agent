@@ -33,6 +33,17 @@ it("offers 照片和视频 / 文件, and selecting an image under 文件 never c
   await vi.waitFor(() => expect(t.ready()).toBe(true));
   expect(t.fileIds()).toEqual(["photo.png"]); expect(t.imageIds()).toEqual([]); expect(prepare).not.toHaveBeenCalled();
 });
+it("does not draw the hidden file inputs again when the button is drawn again", async () => {
+  const t = tray();
+  const types = vi.spyOn(HTMLInputElement.prototype, "type", "set");
+  const page = (n: number) => <div data-n={n}><AttachButton tray={t} blocked="" onBlocked={() => undefined} /></div>;
+  mount(page(0));
+  const before = types.mock.calls.length;
+  // A keystroke in the message draws the button again; React would set type and name of the inputs each time.
+  for (let i = 1; i <= 5; i++) await act(async () => root!.render(page(i)));
+  expect(types.mock.calls.length).toBe(before);
+  expect(host.querySelectorAll("input[type=file]")).toHaveLength(2);
+});
 it("keeps the old direct image picker without file capability", async () => {
   const t = tray(); t.fileSupported = false; mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   const click = vi.spyOn(host.querySelector<HTMLInputElement>('input[accept]')!, "click");

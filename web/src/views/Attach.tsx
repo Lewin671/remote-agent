@@ -4,7 +4,7 @@
 // that takes files also gets videos from the library: they go as files
 // (session-files.md 从相册选视频), drawn in the tray among the images.
 
-import { useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from "react";
+import { memo, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode, type RefObject } from "react";
 import { Tray, type TrayItem } from "../attach";
 import { clock, machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
@@ -131,10 +131,20 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
         <p>文件原样发送，包含其中的元数据。</p>
       </div>
     )}
-    <input ref={input} type="file" accept={mediaAccept(tray.fileSupported)} multiple hidden onChange={(e) => { addMedia(tray, attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
-    <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+    <FilePickers tray={tray} fileSupported={tray.fileSupported} media={input} files={files} />
   </span>;
 }
+
+/** The hidden inputs the button opens. React sets an input's type and name
+ * again each time it draws it, which the browser sees as a change of
+ * the page: they are drawn apart from the button, which draws with every
+ * keystroke in the message, and only when something they depend on changes. */
+const FilePickers = memo(function FilePickers({ tray, fileSupported, media, files }: { tray: Tray; fileSupported: boolean; media: RefObject<HTMLInputElement | null>; files: RefObject<HTMLInputElement | null> }) {
+  return <>
+    <input ref={media} type="file" accept={mediaAccept(fileSupported)} multiple hidden onChange={(e) => { addMedia(tray, attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+    <input ref={files} type="file" multiple hidden onChange={(e) => { tray.addFiles(attachmentFiles(e.currentTarget.files)); e.currentTarget.value = ""; }} />
+  </>;
+});
 
 function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => void; onRetry: () => void }) {
   const [url, setUrl] = useState<string>();
