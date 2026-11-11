@@ -383,6 +383,9 @@ export type QuietSpan = {
 };
 export function quietSpans(events: Event[]): QuietSpan[] {
   const spans: QuietSpan[] = [];
+  // Only a scheduled run can be a quiet one: most chats have none, and
+  // this is asked for each time another event comes in.
+  if (!events.some((e) => e.origin?.scheduledRunId && e.origin.scheduledTaskId)) return spans;
   const derived = derive(events);
   const identity = (task: string, run: string) => task + "/" + run;
   // Scheduled context can survive a completed turn and notify during a later
