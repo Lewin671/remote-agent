@@ -271,23 +271,29 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>, { fade = true 
  * of one color, which must not dip in between). */
 export function Swap({ k, children, className = "", hold = false }: { k: string; children: ReactNode; className?: string; hold?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
-  const snap = useRef<{ k: string; node: HTMLElement }>(undefined);
+  const shown = useRef<string>(undefined);
+  const leaving = useRef<HTMLElement>(undefined);
+  // The old content is gone from the page once this render is committed, so
+  // the copy it leaves by is taken now, and only when the key is to change.
+  if (shown.current !== undefined && shown.current !== k && canAnimate()) {
+    const old = box.current?.querySelector<HTMLElement>(":scope > .mo-swap-cur");
+    leaving.current = old ? copyOf(old) : undefined;
+  }
   useLayoutEffect(() => {
     const el = box.current;
     const cur = el?.querySelector<HTMLElement>(":scope > .mo-swap-cur");
-    if (!el || !cur || !canAnimate()) return;
-    const prev = snap.current;
-    if (prev && prev.k !== k) {
-      const old = prev.node;
-      old.classList.add("mo-swap-out");
-      el.append(old);
-      const ms = enterMs("fast");
-      if (!hold) old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: exitMs("fast"), easing: easeIn(), fill: "forwards" });
-      cur.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: easeOut() });
-      void Promise.allSettled([...cur.getAnimations()].map((a) => a.finished)).then(() => old.remove());
-      setTimeout(() => old.remove(), 1000);
-    }
-    snap.current = { k, node: copyOf(cur) };
+    const old = leaving.current;
+    leaving.current = undefined;
+    const changed = shown.current !== undefined && shown.current !== k;
+    shown.current = k;
+    if (!el || !cur || !canAnimate() || !changed || !old) return;
+    old.classList.add("mo-swap-out");
+    el.append(old);
+    const ms = enterMs("fast");
+    if (!hold) old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: exitMs("fast"), easing: easeIn(), fill: "forwards" });
+    cur.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms, easing: easeOut() });
+    void Promise.allSettled([...cur.getAnimations()].map((a) => a.finished)).then(() => old.remove());
+    setTimeout(() => old.remove(), 1000);
   });
   return (
     <div ref={box} className={"mo-swap " + className}>
@@ -301,29 +307,36 @@ export function Swap({ k, children, className = "", hold = false }: { k: string;
 /** A state graphic that changes shape (spinner, dot, ring) fades into the
  * next one: the old shape stays where it was, fading out under it. */
 export function useMarkSwap(ref: RefObject<HTMLElement | null>, key: string) {
-  const last = useRef<{ key: string; node: HTMLElement; width: number; height: number }>(undefined);
+  const last = useRef<string>(undefined);
+  const leaving = useRef<{ node: HTMLElement; width: number; height: number }>(undefined);
+  // The old shape is gone from the page once this render is committed, so
+  // its copy and its size are taken now, and only when the shape is to change.
+  if (last.current !== undefined && last.current !== key && canAnimate()) {
+    const el = ref.current;
+    leaving.current = el?.offsetParent ? { node: copyOf(el), width: el.offsetWidth, height: el.offsetHeight } : undefined;
+  }
   useLayoutEffect(() => {
     const el = ref.current;
-    if (!el || !canAnimate()) return;
-    const prev = last.current;
-    if (prev && prev.key !== key && el.offsetParent) {
-      // The old shape is centered where the new one now is, whatever moved
-      // around them in the same render.
-      const old = prev.node;
-      Object.assign(old.style, {
-        position: "absolute",
-        left: `${el.offsetLeft + (el.offsetWidth - prev.width) / 2}px`,
-        top: `${el.offsetTop + (el.offsetHeight - prev.height) / 2}px`,
-        width: `${prev.width}px`,
-        height: `${prev.height}px`,
-        margin: "0",
-      });
-      el.after(old);
-      old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: enterMs("fast"), easing: easeOut(), fill: "forwards" });
-      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("fast"), easing: easeOut() });
-      removeWhenDone(old);
-    }
-    last.current = { key, node: copyOf(el), width: el.offsetWidth, height: el.offsetHeight };
+    const prev = leaving.current;
+    leaving.current = undefined;
+    const changed = last.current !== undefined && last.current !== key;
+    last.current = key;
+    if (!el || !canAnimate() || !changed || !prev || !el.offsetParent) return;
+    // The old shape is centered where the new one now is, whatever moved
+    // around them in the same render.
+    const old = prev.node;
+    Object.assign(old.style, {
+      position: "absolute",
+      left: `${el.offsetLeft + (el.offsetWidth - prev.width) / 2}px`,
+      top: `${el.offsetTop + (el.offsetHeight - prev.height) / 2}px`,
+      width: `${prev.width}px`,
+      height: `${prev.height}px`,
+      margin: "0",
+    });
+    el.after(old);
+    old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: enterMs("fast"), easing: easeOut(), fill: "forwards" });
+    el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("fast"), easing: easeOut() });
+    removeWhenDone(old);
   });
 }
 

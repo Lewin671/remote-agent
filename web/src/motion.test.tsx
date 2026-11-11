@@ -3,8 +3,8 @@
 // The animations themselves need a browser; see docs/design-system.md §4.
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it } from "vitest";
-import { useFresh } from "./motion";
+import { expect, it, vi } from "vitest";
+import { Swap, useFresh } from "./motion";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -98,4 +98,35 @@ it("writes no duration or curve of its own in the motion rules", () => {
   const motion = css.slice(css.indexOf("/* ---------- motion"));
   const literal = motion.match(/(?:animation|transition)[^;{}]*?\b\d*\.?\d+m?s\b/g) ?? [];
   expect(literal.filter((x) => !x.includes("var(")).filter((x) => !/animation-duration/.test(x))).toEqual([]);
+});
+
+it("copies the old content of a swap only for the render that changes its key", async () => {
+  vi.stubEnv("MODE", "production");
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  // Copies of the swap's content: what the DOM itself clones inside is not counted.
+  const copied: string[] = [];
+  const real = Node.prototype.cloneNode;
+  const clones = vi.spyOn(Node.prototype, "cloneNode").mockImplementation(function (this: Node, deep?: boolean) {
+    if (this instanceof HTMLElement && this.classList.contains("mo-swap-cur")) copied.push(this.textContent ?? "");
+    return real.call(this, deep);
+  });
+  try {
+    const page = (k: string, text: string) => <Swap k={k}><b>{text}</b></Swap>;
+    await act(async () => root.render(page("send", "a")));
+    for (const text of ["b", "c", "d", "e"]) await act(async () => root.render(page("send", text)));
+    // Drawn again with the same key: nothing is copied.
+    expect(copied).toEqual([]);
+    await act(async () => root.render(page("stop", "x")));
+    expect(copied).toEqual(["e"]);
+    // What it leaves by is the content it had, and the new one is in place.
+    expect(host.querySelector(".mo-swap-out")?.textContent).toBe("e");
+    expect(host.querySelector(".mo-swap-cur")?.textContent).toBe("x");
+  } finally {
+    clones.mockRestore();
+    vi.unstubAllEnvs();
+    await act(async () => root.unmount());
+    host.remove();
+  }
 });
