@@ -1780,7 +1780,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(summary().querySelector(".mach")).toBeNull();
     // Mode and model; the effort and the window are in the settings.
     expect(summary().textContent).toMatch(/^询问 · gpt-6-astra$/i);
-    expect(summary().getAttribute("aria-label")).toBe(`新会话设置：${summary().textContent}`);
+    expect(summary().getAttribute("aria-label")).toBe(`项目设置：${summary().textContent}`);
   });
 });
 

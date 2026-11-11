@@ -134,17 +134,19 @@ import {
 type Tab = View;
 
 /** Tracks an element's width, for choices that depend on the space the
- * main area has rather than the window. */
-function useWidth<T extends HTMLElement>(): [RefObject<T | null>, number] {
-  const ref = useRef<T>(null);
+ * main area has rather than the window. Through a callback ref: the element
+ * is gone while a plan, question or approval page stands in its place, and
+ * the one that comes back must be watched again. */
+function useWidth<T extends HTMLElement>(): [(el: T | null) => void, number] {
   const [w, setW] = useState(0);
-  useLayoutEffect(() => {
-    const el = ref.current;
+  const ro = useRef<ResizeObserver>(undefined);
+  const ref = useCallback((el: T | null) => {
+    ro.current?.disconnect();
+    ro.current = undefined;
     if (!el) return;
-    const ro = new ResizeObserver(() => setW(el.clientWidth));
-    ro.observe(el);
+    ro.current = new ResizeObserver(() => setW(el.clientWidth));
+    ro.current.observe(el);
     setW(el.clientWidth);
-    return () => ro.disconnect();
   }, []);
   return [ref, w];
 }

@@ -895,6 +895,8 @@ export function Sidebar({
             onClick={() => {
               remote.focusProject = "*";
               go("");
+              // The main area may already be the new task: it is told all the same.
+              remote.touch();
             }}
           >
             <SquarePen />
@@ -975,6 +977,11 @@ export function WideHome({
   const ns = useNewSession(remote, pkey, go);
   const focus = remote.focusProject === "*" || (project !== undefined && remote.focusProject === project);
   if (focus) remote.focusProject = "";
+  // 新任务 with no project yet to start one in: it begins with choosing a directory.
+  const first = focus && !pkey && remote.listed;
+  useEffect(() => {
+    if (first) setPicking("new");
+  }, [first]);
   const name = projectName(pkey);
   return (
     <div className="body wnew">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { agentById, agentInfo } from "../agents";
 import { Clock, ChevronRight, ChevronDown, Ellipsis, Info, LoaderCircle, X } from "../icons";
@@ -168,7 +168,7 @@ export function ScheduleRow({
  * 立即运行一次, 标为未读 and 暂停 / 恢复, and in a group of its own the red
  * 删除任务…. Opened from a wide row's context menu, 标为已读 or 标为未读
  * comes first. */
-function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, onRecover, contextMenu = false }: { remote: Remote; machineId: string; task: ScheduleTask; onClose: () => void; onUnread?: () => void; onDeleted?: () => void; onRecover?: () => void; contextMenu?: boolean }) {
+function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, onRecover, contextMenu = false, anchor }: { remote: Remote; machineId: string; task: ScheduleTask; onClose: () => void; onUnread?: () => void; onDeleted?: () => void; onRecover?: () => void; contextMenu?: boolean; anchor?: RefObject<HTMLElement | null> }) {
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [deleting, setDeleting] = useState(false);
   const [rearming, setRearming] = useState<ScheduleTask>();
   const online = remote.conn === "online" && remote.machines.get(machineId)?.online;
@@ -194,7 +194,7 @@ function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, o
       else { remote.markScheduleUnread(machineId, task, !!onUnread); onUnread?.(); }
       onClose();
     }}><span className="mt">{contextMenu && fresh ? "标为已读" : "标为未读"}</span></button>;
-  return <Sheet onClose={() => !busy && onClose()} className="menu schedule-menu">
+  return <Sheet onClose={() => !busy && onClose()} className="menu schedule-menu" anchor={anchor}>
     <div className="menu-info"><b>{task.spec.title}</b>{[menuProject ? projectName(menuProject) : "", menuAgent, task.source === "agent" ? "Agent 在对话里创建" : "你创建", dayText(task.created_at)].filter(Boolean).join(" · ")}</div>
     <div className="list" role="menu">
       {contextMenu && readAction}
@@ -672,6 +672,7 @@ export function ScheduleDetail({
     return () => { remote.setScheduleDetail(); };
   }, [remote, machineId, id, visit, live]);
   const [menu, setMenu] = useState(false);
+  const moreRef = useRef<HTMLButtonElement>(null);
   const [snapshot, setSnapshot] = useState<{ task: string; runId?: string }>();
   const latest = task && latestNotification(task);
   useEffect(() => {
@@ -783,7 +784,7 @@ export function ScheduleDetail({
       <NavBar
         title={task.spec.title}
         sub={attention ? "已停下" : target.type === "resume_session" ? `${timingText(task.spec.trigger)} · 发到「${targetSession?.info ? titleOf(targetSession) : "对话"}」` : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "进行中" ? task.next_run_at ? "下次 " + dateTime(task.next_run_at, now) : "下次待定" : nextText(task, now)}`}
-        right={<button className="more" aria-label="更多" onClick={() => setMenu(true)}><Ellipsis /></button>}
+        right={<button ref={moreRef} className="more" aria-label="更多" onClick={() => setMenu(true)}><Ellipsis /></button>}
         onBack={onBack}
       />
       <ConnBar remote={remote} />
@@ -959,7 +960,7 @@ export function ScheduleDetail({
         {!online && <p className="foot">{machineName(m)} 连上后才能修改、运行或删除。</p>}
         </div>
       </div>
-      {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} onClose={() => setMenu(false)} onUnread={() => go("tasks")} onDeleted={() => go("tasks")} onRecover={() => { setMenu(false); recover(); }} />}
+      {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} onClose={() => setMenu(false)} onUnread={() => go("tasks")} onDeleted={() => go("tasks")} onRecover={() => { setMenu(false); recover(); }} anchor={moreRef} />}
       {edit === "target" && editBase && (
         <TaskTargetEditor
           remote={remote}

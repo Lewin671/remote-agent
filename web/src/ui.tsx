@@ -79,14 +79,17 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
   // A short choice made from a control in a wide window opens against that
-  // control, as a menu, not as a dialog in the middle of the window.
+  // control, as a menu, not as a dialog in the middle of the window; from
+  // the control's right edge when the control is in the right half, so the
+  // menu stays inside the window.
   const wide = useSyncExternalStore(subscribeWide, () => wideQuery().matches);
   const at = wide ? anchor?.current?.getBoundingClientRect() : undefined;
   return (
     <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
-      <div className={"sheet " + (at ? "anchored " : "") + className} style={at ? { left: at.left, top: at.bottom + 8 } : undefined} role="dialog" aria-modal="true">
-        <button className="grab" aria-label="关闭" onClick={onClose} />
+      <div className={"sheet " + (at ? "anchored " : "") + className} style={at ? (at.left + at.width / 2 > innerWidth / 2 ? { left: "auto", right: innerWidth - at.right, top: at.bottom + 8 } : { left: at.left, top: at.bottom + 8 }) : undefined} role="dialog" aria-modal="true">
+        {/* The handle is the phone sheet's; a dialog in a wide window has nothing to drag. */}
+        {!wide && <button className="grab" aria-label="关闭" onClick={onClose} />}
         {title !== undefined && (
           <div className="sheet-head">
             {back ? (

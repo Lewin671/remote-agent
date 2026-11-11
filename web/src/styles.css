@@ -682,6 +682,8 @@ h1, h2, h3 { font-weight: var(--w7); }
   .sheet.anchored { transform: none; width: auto; min-width: 220px; max-width: 320px; max-height: 60%; padding: 8px; border-radius: 22px; }
   .sheet.anchored > .sheet-head { display: none; }
   .sheet.anchored .list { margin: 0; }
+  .sheet.anchored .list + .list { margin-top: 8px; }
+  .sheet.anchored > .menu-info { padding: 8px 10px 12px; }
   .overlay:has(> .sheet.anchored) > .dim { background: none; }
 }
 .grab { display: block; width: 36px; height: 5px; background: var(--ink3); border-radius: 3px; margin: 0 auto 16px; padding: 0; position: relative; }

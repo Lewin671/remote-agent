@@ -1171,7 +1171,7 @@ export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; ba
   const head = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
   const line = [...head, machine, model].filter(Boolean).join(sep);
   return (
-    <button className="tok project-summary" onClick={onClick} aria-label={`新会话设置：${line}`}>
+    <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
       <span className="fx">
         {head.map((h, i) => (
           <span key={i}>
