@@ -66,7 +66,7 @@
   --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
   --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
   --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
-  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24);
+  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-bg: #ffffff; --nt-lit: rgba(255,255,255,0); --nt-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px rgba(0,0,0,.07);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -86,7 +86,7 @@
   --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
   --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
   --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
+  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-lit: rgba(255,255,255,.05); --nt-shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.28);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -106,7 +106,7 @@
     --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
     --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
     --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
+    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-lit: rgba(255,255,255,.05); --nt-shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.28);
   }
 }
 
@@ -1808,3 +1808,32 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 /* A computer that is offline is a card like the others, its words quieter. */
 .desk .mach-card.offl { background: var(--gbg); box-shadow: none; }
 .desk .mach-card.offl .mach-name b { color: var(--ink2); }
+
+/* ---- New task in a wide window: the box is where the eye goes, and the send key is the
+   one filled control. Where, with what, and how are words that become buttons under the
+   pointer: four grey lozenges around the field outweighed the field. ---- */
+.desk .wstart .sent { font-size: 17px; gap: 0; letter-spacing: -.01em; }
+.desk .wstart .sent .g { gap: 0; }
+.desk .wstart .sent b { margin: 0 7px; }
+.desk .wstart .sent .tok { background: none; height: 32px; padding: 0 7px; border-radius: 8px; font-size: 17px; gap: 6px; }
+.desk .wstart .sent .tok.p { padding-left: 7px; }
+.desk .wstart .sent .tok .av { display: none; }
+.desk .wstart .sent .tok > .amark { margin-right: 0; }
+.desk .wstart .sent .tok > .ic { font-size: 13px; margin-left: -1px; }
+/* The one raised thing on the page: a hairline, a lit top edge and a soft shadow under it. */
+.desk .wstart .wbox { margin-top: 12px; padding: 18px 18px 10px; background: var(--nt-bg); box-shadow: inset 0 0 0 1px var(--in-edge), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
+.desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--in-edge-hi), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
+.desk .wstart .wbox .ask { font-size: 16px; line-height: 1.5; }
+.desk .wstart .acc { margin-left: -7px; gap: 2px; }
+.desk .wstart .acc .cm-plus { background: none; color: var(--ink2); }
+.desk .wstart .acc .project-summary { background: none; color: var(--ink2); padding: 0 8px; border-radius: 8px; height: 28px; }
+.desk .wstart .acc .project-summary > .ic { transform: rotate(90deg); padding-left: 0; margin-left: 5px; font-size: 13px; }
+.desk .wstart .acc .snd { margin-left: 8px; }
+.desk .wstart .acc .kh { color: var(--ink3); transition: opacity var(--m-fast) var(--ease-out); }
+.desk .wstart .acc:has(> .snd.off) .kh, .desk .wstart .acc:has(> .mo-send .snd.off) .kh { opacity: 0; }
+.desk .cbar .cm-plus { background: none; color: var(--ink2); }
+.desk .wstart .sent .tok[aria-expanded="true"], .desk .wstart .acc .cm-plus[aria-expanded="true"] { background: var(--hov); }
+@media (hover: hover) {
+  .desk .wstart .sent .tok:hover:not(:disabled), .desk .wstart .acc .project-summary:hover:not(:disabled) { background: var(--hov); color: var(--ink); }
+  .desk .wstart .acc .cm-plus:hover:not(.off), .desk .cbar .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); }
+}
