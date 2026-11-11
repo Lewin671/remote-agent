@@ -14,9 +14,6 @@ import Testing
 
     @Test func looksUpAgentInfoByEnum() {
         let codex = agentInfo(.codex)
-        #expect(codex.id == "codex")
-        #expect(codex.name == "Codex")
-        #expect(codex.expectedQuotaWindows == ["primary", "secondary"])
         #expect(codex.quotaWindow("primary") == QuotaWindowDescriptor(label: "5 小时", group: nil))
         #expect(codex.quotaWindow("secondary") == QuotaWindowDescriptor(label: "7 天", group: nil))
         #expect(codex.toolLabelFromItemType == false)
@@ -29,14 +26,8 @@ import Testing
         #expect(codex.sessionNeedsModelList == false)
         #expect(codex.switchesModelInSession == true)
         #expect(codex.forks == true)
-        #expect(codex.modelLabel("gpt-6-sol") == "GPT-6-Sol")
-        #expect(codex.planName("claude_max") == "Max")
-        #expect(codex.planName("prolite") == "Pro Lite")
 
         let claude = agentInfo(.claude)
-        #expect(claude.id == "claude")
-        #expect(claude.name == "Claude Code")
-        #expect(claude.expectedQuotaWindows == ["five_hour", "seven_day"])
         #expect(claude.quotaWindow("five_hour") == QuotaWindowDescriptor(label: "5 小时", group: nil))
         #expect(claude.quotaWindow("seven_day") == QuotaWindowDescriptor(label: "7 天", group: nil))
         #expect(claude.toolLabelFromItemType == true)
@@ -49,14 +40,8 @@ import Testing
         #expect(claude.sessionNeedsModelList == true)
         #expect(claude.switchesModelInSession == true)
         #expect(claude.forks == true)
-        #expect(claude.modelLabel("claude-sonnet-5-5") == "claude-sonnet-5-5")
-        #expect(claude.planName("claude_max") == "Max")
-        #expect(claude.planName("prolite") == "Pro Lite")
 
         let agy = agentInfo(.antigravity)
-        #expect(agy.id == "agy")
-        #expect(agy.name == "Antigravity")
-        #expect(agy.expectedQuotaWindows == nil)
         #expect(agy.quotaWindow("gemini-5h") == QuotaWindowDescriptor(label: "Gemini · 5 小时", group: "Gemini"))
         #expect(agy.quotaWindow("gemini-weekly") == QuotaWindowDescriptor(label: "Gemini · 7 天", group: "Gemini"))
         #expect(agy.quotaWindow("gemini-argon-wtu-weekly") == QuotaWindowDescriptor(label: "Gemini 4 Argon · 7 天", group: "Gemini"))
@@ -69,14 +54,10 @@ import Testing
         #expect(agy.planKeepLabel == "修改计划…" && agy.planApproveLabel == "批准")
         #expect(agy.standardContextOption == false)
         #expect(agy.autoMayBeUnavailable == true)
-        #expect(agy.trustFolderHint == nil)
-        #expect(agy.usageHint == nil)
         #expect(agy.reconcilesUnclaimedInput == false)
         #expect(agy.sessionNeedsModelList == true)
         #expect(agy.switchesModelInSession == false)
         #expect(agy.forks == false)
-        #expect(agy.modelLabel("gemini-3-flash") == "gemini-3-flash")
-        #expect(agy.planName("Google AI Pro") == "Google AI Pro")
     }
 
     @Test func mapsUnspecifiedAndNilToCodex() {

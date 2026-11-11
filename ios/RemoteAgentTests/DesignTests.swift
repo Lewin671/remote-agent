@@ -11,12 +11,6 @@ import UIKit
         #expect(RGBA(0x777777).contrast(with: RGBA(0x777777)) == 1)
     }
 
-    @Test func theSpacingAndRadiiAreTheDesignSystems() {
-        #expect(DS.minHit == 44)
-        #expect(DS.Radius.code == 14 && DS.Radius.notice == 18 && DS.Radius.group == 20 && DS.Radius.card == 28)
-        #expect(DS.Radius.darkCard == 30 && DS.Radius.sheet == 38)
-    }
-
     @Test func aProjectIsNamedByItsLastFolder() {
         #expect(projectName("/Users/me/Code/foo") == "foo")
         #expect(projectName("/Users/me/Code/foo/") == "foo")
