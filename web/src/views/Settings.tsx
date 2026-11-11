@@ -106,7 +106,7 @@ export function Settings({
         </button>
       </div>
       {machines.map((m) => (
-        <MachineCard key={m.id} m={m} go={go} />
+        <MachineCard key={m.id} m={m} remote={remote} go={go} />
       ))}
       {machines.length === 0 && <p className="gf">还没有电脑。</p>}
       <ManagementEntry remote={remote} go={go} />
@@ -191,23 +191,24 @@ export function Settings({
  * quota, 「剩 N%」 of the tightest window, when it resets and a thin bar of
  * what is left, orange at 20% and below. One that is not online is only
  * an outline with when it was last seen. */
-function MachineCard({ m, go }: { m: MachineView; go: (r: string) => void }) {
+function MachineCard({ m, remote, go }: { m: MachineView; remote: Remote; go: (r: string) => void }) {
   const now = useNow(30_000);
   const agents = machineAgents(m);
-  const views = machineQuotaViews(m.meta, agents, now, m.online);
+  const online = remote.onlineOf(m);
+  const views = machineQuotaViews(m.meta, agents, now, online);
   return (
-    <div className={"mach-card" + (m.online ? "" : " offl")}>
+    <div className={"mach-card" + (online ? "" : " offl")}>
       <button className="mach-head" onClick={() => go("m/" + m.id)}>
         <span className="mach-name">
           <b>{machineName(m)}</b>
           <ChevronRight className="chev" />
         </span>
         <span className="s">
-          <StateMark kind={m.online ? "online" : "off"} />
-          {m.online ? "在线" : m.lastSeenMs ? `${ago(m.lastSeenMs)}在线` : "离线"}
+          <StateMark kind={online ? "online" : "off"} />
+          {online ? "在线" : m.lastSeenMs ? `${ago(m.lastSeenMs)}在线` : "离线"}
         </span>
       </button>
-      {m.online &&
+      {online &&
         agents.map((a) => {
           const q = tightest(views.filter((v) => v.agent === agentInfo(a).agent));
           return (

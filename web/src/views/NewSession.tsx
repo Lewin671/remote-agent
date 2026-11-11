@@ -410,7 +410,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   };
   // A project removed from the list (here or on another client) keeps its
   // draft, but a new session waits until it is restored.
-  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : (configured.model || configured.effort) && info.loading ? "正在读取模型列表…" : "";
+  const blocked = isHidden(remote.projectPrefs(), key) ? "这个项目已从列表移除，先重新添加" : remote.listed && !machine?.online ? `${machineName(machine)} 不在线` : remote.conn !== "online" ? "和服务器断线了" : unread ? "正在读取这个项目上次的设置…" : (configured.model || configured.effort) && info.loading ? "正在读取模型列表…" : "";
   // Giving up an unknown start: the user checked, or changed what to send.
   const abandon = () => {
     adopt();
@@ -597,7 +597,8 @@ export function NewBox({
       aria-label="新会话的第一句话"
     />
   );
-  const offline = !ns.machine?.online;
+  // Before the lists are in, no computer is known to be off.
+  const offline = ns.remote.listed && !ns.machine?.online;
   const error =
     ns.error &&
     (ns.expired ? (
@@ -920,7 +921,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
               <span className="mt">机器</span>
               <span className="mv">
-                <StateMark kind={machine?.online ? "online" : "off"} />
+                <StateMark kind={machine?.online || !remote.listed ? "online" : "off"} />
                 {machineName(machine)}
               </span>
               <ChevronRight className="chev" />

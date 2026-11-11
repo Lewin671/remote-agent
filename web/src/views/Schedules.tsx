@@ -78,7 +78,7 @@ function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
   const machines = [...remote.machines.values()].filter(
     (m) => (!id || m.id === id) && remote.supportsSchedules(m.id),
   );
-  const offline = machines.filter((m) => !m.online);
+  const offline = machines.filter((m) => !remote.onlineOf(m));
   return (
     <>
       {remote.conn === "online" && offline.length > 0 && (
@@ -128,7 +128,8 @@ export function ScheduleRow({
   const fresh = remote.scheduleHasNew(machineId, task);
   const notification = latestNotification(task);
   const at = attention ? stoppedTime(task) : notificationTime(notification);
-  const offline = remote.conn !== "online" || !m?.online;
+  // Nothing is said of the connection before the lists are in; the last state heard stands.
+  const offline = !remote.awaiting && (remote.conn !== "online" || !(m && remote.onlineOf(m)));
   const running = task.active_run && ["dispatching", "queued", "running"].includes(task.active_run.status);
   const [menu, setMenu] = useState(false);
   const mark = () => { if (fresh) remote.markScheduleRead(machineId, task); else { remote.markScheduleUnread(machineId, task, selected); if (selected) go("tasks"); } };

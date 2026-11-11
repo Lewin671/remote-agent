@@ -62,7 +62,7 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
   let todo = 0;
   let live = 0;
   for (const s of sessions) {
-    if (needsAttention(s, remote.machines.get(s.machineId))) todo++;
+    if (needsAttention(s, remote.presence.get(s.machineId))) todo++;
     else if (!s.info?.taskOwned && !exited(s)) live++;
   }
   return [todo && `${todo} 个待处理`, live && `${live} 个进行中`].filter(Boolean).join(" · ");
@@ -73,7 +73,7 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
  * online. */
 export function projectSub(remote: Remote, p: P): string {
   const counts = sessionCounts(remote, p.sessions);
-  const offline = p.machines.length > 0 && p.machines.every((id) => !remote.machines.get(id)?.online);
+  const offline = p.machines.length > 0 && remote.listed && p.machines.every((id) => !remote.machines.get(id)?.online);
   return shortPath(p.key) + (counts ? ` · ${counts}` : offline ? " · 电脑不在线" : "");
 }
 

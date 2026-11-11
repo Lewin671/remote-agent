@@ -94,15 +94,15 @@ function useScope(remote: Remote) {
  * questions, plans, popups, and within each the longest wait first. */
 export function todoList(remote: Remote): SessionView[] {
   return [...remote.sessions.values()]
-    .filter((s) => needsAttention(s, remote.machines.get(s.machineId)))
-    .sort((a, b) => compareAttention(a, b, remote.machines));
+    .filter((s) => needsAttention(s, remote.presence.get(s.machineId)))
+    .sort((a, b) => compareAttention(a, b, remote.presence));
 }
 
 /** Live sessions: not ended, and not already among what waits. */
 function liveList(remote: Remote): SessionView[] {
   return [...remote.sessions.values()].filter((s) => !s.info?.taskOwned)
     .filter(
-      (s) => !exited(s) && !needsAttention(s, remote.machines.get(s.machineId)),
+      (s) => !exited(s) && !needsAttention(s, remote.presence.get(s.machineId)),
     )
     .sort((a, b) => compareLive(a, b));
 }
@@ -121,7 +121,7 @@ function pendingOf(remote: Remote, sid: string) {
  * the dock handles it. Another project's item names its project. */
 function PendingRow({ remote, s, go, scope }: { remote: Remote; s: SessionView; go: Go; scope: string }) {
   useEffect(() => remote.retainHistory(s.id), [remote, s.id]);
-  const st = stateOf(s, remote.machines.get(s.machineId));
+  const st = stateOf(s, remote.presence.get(s.machineId));
   const p = pendingOf(remote, s.id);
   const kind =
     st.kind === "approval"
@@ -194,8 +194,7 @@ export function SessionRow({
   last?: boolean;
   enter?: boolean;
 }) {
-  const machine = remote.machines.get(s.machineId);
-  const st = shownStateOf(s, machine, remote.unlinked);
+  const st = shownStateOf(s, remote.presence.get(s.machineId), remote.unlinked && !remote.awaiting);
   // Waiting sessions preview what they wait for, which is in the events.
   const waiting = st.tone === "wait";
   useEffect(
@@ -328,7 +327,7 @@ function Timeline({
   const total = live.length + ended.length + todo.length;
   // On a phone the most urgent approval is the dark card; the rest are
   // rows, three at most before 还有 N 件. The sidebar lists them as rows.
-  const top = !wide && todo[0] && stateOf(todo[0], remote.machines.get(todo[0].machineId)).kind === "approval" ? todo[0] : undefined;
+  const top = !wide && todo[0] && stateOf(todo[0], remote.presence.get(todo[0].machineId)).kind === "approval" ? todo[0] : undefined;
   const rows = top ? todo.slice(1) : todo;
   const rowsShown = cut(rows, 3, allTodo);
   let group = "";
@@ -634,7 +633,7 @@ function useHeadline(remote: Remote, scope: string): { title: ReactNode; sub?: R
   let idle = 0;
   for (const s of liveList(remote)) {
     if (scope !== ALL && projectKey(s) !== scope) continue;
-    const tone = stateOf(s, remote.machines.get(s.machineId)).tone;
+    const tone = stateOf(s, remote.presence.get(s.machineId)).tone;
     if (tone === "run") running++;
     else if (tone === "idle") idle++;
   }
@@ -905,7 +904,7 @@ export function Sidebar({
         )}
       </div>
       {tasks ? (
-        <Suspense fallback={null}><SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} /></Suspense>
+        <Suspense fallback={<><h1 className="whl">{"\u200b"}</h1><div className="scroll" /></>}><SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} /></Suspense>
       ) : (
         <>
           {!remote.listed && !remote.listError && remote.sessions.size === 0 && remote.link === "online" ? (
@@ -921,13 +920,11 @@ export function Sidebar({
         </>
       )}
       <button className="conn" onClick={() => setChecking(true)} aria-label={conn.text ? `${conn.text}，连接检测` : "连接检测"} title="连接检测">
-        {conn.text ? (
+        {conn.text && (
           <>
             <StateMark kind={conn.tone} />
             {conn.text}
           </>
-        ) : (
-          "连接检测"
         )}
       </button>
       <div className="sfoot">

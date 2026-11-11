@@ -215,10 +215,9 @@ export function SessionPage({
   // A computer's presence is what this connection has heard of it; until the
   // lists are in, the copy kept in this browser (which says offline) is not it,
   // and the input must not be replaced by 电脑不在线 for the moment it takes.
-  // Until the lists are in nothing is known of the connection yet: no word
-  // for it, rather than 未连接 for a moment and then the state.
-  const awaiting = !remote.listed && remote.link === "waiting";
-  const st = shownStateOf(session, remote.listed ? machine : undefined, remote.unlinked && !awaiting);
+  // Nor is a word for the connection due then: the last state heard shows,
+  // rather than 未连接 and 电脑离线 and then the state.
+  const st = shownStateOf(session, remote.presence.get(session.machineId), remote.unlinked && !remote.awaiting);
   const agent = agentOf(session);
   const title = titleOf(session);
   const project = projectName(projectKey(session));
@@ -420,10 +419,9 @@ export function SessionPage({
       · <span className={known.text === "完全放行" ? "red" : ""}>{known.text}</span>
     </>
   );
-  const word = awaiting ? "" : st.text;
   const sub = (
     <>
-      {word}
+      {st.text}
       {modeTail}
     </>
   );
@@ -504,7 +502,7 @@ export function SessionPage({
       <span className="st">
         <StateMark kind={st.tone} />
         <span>
-          {word}
+          {st.text}
           {modeTail}
         </span>
       </span>

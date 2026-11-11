@@ -157,6 +157,8 @@ export interface MachineView {
   lastSeenMs: bigint;
   meta?: MachineMeta;
   metaRev: bigint;
+  /** Whether the copy kept in this browser had it online: what shows until the lists are in. */
+  keptOnline?: boolean;
 }
 
 export interface SessionView {
@@ -452,6 +454,8 @@ export function livePlanText(
     return e.kind.value.text;
   return live.planScreen;
 }
+
+const NO_MACHINES: ReadonlyMap<string, MachineView> = new Map();
 
 export class Remote {
   private historicalDerivations = new WeakMap<Event[], { count: number; agent: Agent; value: Derived }>();
@@ -1228,6 +1232,27 @@ export class Remote {
     return this.waitingNotice || (!this.listed && this.sessions.size === 0);
   }
 
+  /** The copy kept in this browser is on show and nothing of the connection
+   * is known yet, for the moment a reconnect takes: no word for it, rather
+   * than 未连接 and 电脑离线 and then the state. */
+  get awaiting(): boolean {
+    return !this.listed && this.link === "waiting" && !this.showWaiting;
+  }
+
+  /** The computers as this connection has heard of them. Until the lists are
+   * in, the copy kept in this browser (which says offline) is not that: no
+   * computer is known to be off, and what shows is the last state heard. */
+  get presence(): ReadonlyMap<string, MachineView> {
+    return this.listed ? this.machines : NO_MACHINES;
+  }
+
+  /** Whether a computer is online as far as is known: until the lists are in,
+   * as the copy kept in this browser had it, so that a card drawn from it has
+   * the shape it will have. */
+  onlineOf(m: MachineView): boolean {
+    return this.listed ? m.online : (m.keptOnline ?? m.online);
+  }
+
   /** Nothing here is known to still hold: the server is out of reach, or
    * has not been reached yet. A connection lost a moment ago does not count. */
   get unlinked(): boolean {
@@ -1338,6 +1363,8 @@ export class Remote {
               machines.bytes as Uint8Array,
             ).machines) {
               await this.putMachine({ ...m, online: false });
+              const kept = this.machines.get(m.id);
+              if (kept) kept.keptOnline = m.online;
             }
             for (const m of this.machines.values()) {
               try {
