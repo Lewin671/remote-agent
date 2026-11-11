@@ -36,21 +36,18 @@ function page<C extends ComponentType<any>>(load: () => Promise<{ default: C }>)
   });
 }
 
-// Which of the three files have come, to tell a route that has to wait for its
-// page from one that has it.
-const fetched = { settings: false, security: false, schedules: false };
-const part = <T,>(name: keyof typeof fetched, load: () => Promise<T>) => () => load().then((m) => ((fetched[name] = true), m));
-const settings = part("settings", () => import("./Settings"));
-const security = part("security", () => import("./Security"));
-const schedules = part("schedules", () => import("./Schedules"));
+const settings = () => import("./Settings");
+const security = () => import("./Security");
+const schedules = () => import("./Schedules");
 
-/** Whether a route's page is still to be fetched. */
-export function pageToFetch(route: string): boolean {
-  const [kind, arg] = route.split("/");
-  if (kind === "tasks") return !fetched.schedules;
-  if (kind === "settings") return !(arg === "security" || arg?.startsWith("add-device") ? fetched.security : fetched.settings);
-  if (kind === "devices" || kind === "q" || kind === "c" || kind === "m") return !fetched.settings;
-  return false;
+/** Whether a route's page is in a file of its own, which the page has to
+ * wait for even if it has the file already: a lazy part suspends the first
+ * time it is drawn, and React shows the fallback for 300ms at least before
+ * it lets the real page replace it, unless the route changes as a transition
+ * (the page being left stays until the new one is ready). */
+export function inOwnFile(route: string): boolean {
+  const [kind] = route.split("/");
+  return kind === "tasks" || kind === "settings" || kind === "devices" || kind === "q" || kind === "c" || kind === "m";
 }
 
 export const SettingsPage = page(() => settings().then((m) => ({ default: m.Settings })));
