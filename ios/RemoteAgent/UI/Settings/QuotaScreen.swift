@@ -94,7 +94,7 @@ private struct QuotaState: View {
     }
 }
 
-/// One usage window: its name, how much is used, a bar, and when it resets.
+/// One usage window: its name, what is left, a bar of it, and when it resets.
 private struct QuotaWindow: View {
     let row: QuotaRow
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -103,7 +103,7 @@ private struct QuotaWindow: View {
         let ink = row.tone == .full || row.tone == .warn ? DS.orangeInk : DS.ink2
         let fill: Color = switch row.tone {
         case .stale: DS.ink3
-        case .normal: DS.blue
+        case .normal: DS.ink
         default: DS.orange
         }
         let sub = [row.reset, row.note].filter { !$0.isEmpty }.joined(separator: " · ")
@@ -118,7 +118,7 @@ private struct QuotaWindow: View {
                 GeometryReader { geo in
                     Capsule().fill(DS.fill2)
                         .overlay(alignment: .leading) {
-                            Capsule().fill(fill).frame(width: geo.size.width * min(1, max(0, percent / 100)))
+                            Capsule().fill(fill).frame(width: geo.size.width * min(1, max(0, (100 - percent) / 100)))
                         }
                 }
                 .frame(height: 6)

@@ -943,7 +943,7 @@ internal fun idleCloseLabel(minutes: Int): String {
 internal fun idleCloseChoice(minutes: Int): Int =
     IDLE_CLOSE_CHOICES.indexOf(if (minutes < 0) -1 else if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes)
 
-/** One usage window: its name, how much is used, a bar, and when it resets. */
+/** One usage window: its name, what is left, a bar of it, and when it resets. */
 @Composable
 private fun QuotaRowView(
     r: io.github.lewin671.remoteagent.core.QuotaRow,
@@ -955,7 +955,7 @@ private fun QuotaRowView(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(r.label, style = T.s15, color = p.ink, modifier = Modifier.weight(1f))
             Text(
-                if (compact && r.reset.isNotEmpty()) "${r.used} · ${r.reset}" else r.used,
+                if (compact && r.reset.isNotEmpty()) "${r.left} · ${r.reset}" else r.left,
                 style = T.s13,
                 color =
                     when (r.tone) {
@@ -974,13 +974,13 @@ private fun QuotaRowView(
                     .background(p.fill2),
             ) {
                 Box(
-                    Modifier.fillMaxWidth((pc / 100).toFloat().coerceIn(0f, 1f))
+                    Modifier.fillMaxWidth(((100 - pc) / 100).toFloat().coerceIn(0f, 1f))
                         .height(6.dp)
                         .clip(RoundedCornerShape(3.dp))
                         .background(
                             when (r.tone) {
                                 io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.faint
-                                io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.blue
+                                io.github.lewin671.remoteagent.core.QuotaTone.NORMAL -> p.ink
                                 else -> p.orange
                             },
                         ),

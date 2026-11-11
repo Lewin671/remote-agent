@@ -66,10 +66,10 @@ class QuotaTest {
         assertEquals("Claude Code · Max", g.title)
         assertEquals("5 小时额度即将用尽", quotaBanner(g))
         assertEquals(QuotaStatus.OK, g.status)
-        assertEquals("已用 92%", g.rows[0].used)
+        assertEquals("剩 8%", g.rows[0].left)
         assertEquals(QuotaTone.WARN, g.rows[0].tone)
         // A window without a number is unknown, never 0%.
-        assertEquals("未获取", g.rows[1].used)
+        assertEquals("未获取", g.rows[1].left)
         assertEquals(null, g.rows[1].percent)
         // Codex has no entry: this daemon does not read it.
         assertEquals(QuotaStatus.UNSUPPORTED, quotaGroups(m, now).single { it.agent == Agent.AGENT_CODEX }.status)
@@ -83,9 +83,9 @@ class QuotaTest {
             .setObservedMs(now - 3_600_000).addWindows(w("five_hour", 28.0)).build()
         val g = quotaGroups(machine(true, failed), now).single { it.agent == Agent.AGENT_CLAUDE }
         assertTrue(g.lastRecord)
-        assertEquals("已用 28%", g.rows[0].used)
+        assertEquals("上次剩 72%", g.rows[0].left)
         assertEquals(QuotaTone.STALE, g.rows[0].tone)
-        assertEquals("已用 28% · 5 小时（上次记录）", quotaLine(g))
+        assertEquals("上次剩 72% · 5 小时", quotaLine(g))
         assertTrue(g.received.startsWith("最近成功收到"))
         val ok = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 28.0)).build()
         assertEquals(QuotaTone.STALE, quotaGroups(machine(false, ok), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0].tone)
@@ -95,7 +95,7 @@ class QuotaTest {
     fun aPassedResetOnlyWaitsForAnUpdate() {
         val q = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 100.0, resetIn = -60_000)).build()
         val r = quotaGroups(machine(true, q), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0]
-        assertEquals("等待更新", r.used)
+        assertEquals("等待更新", r.left)
         assertTrue(r.note.contains("不能据此确认额度已经恢复"))
     }
 
@@ -114,7 +114,7 @@ class QuotaTest {
             val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).addWindows(window).build()
             val g = quotaGroups(machine(true, q), now).single { it.agent == agent }
             assertEquals("2 小时", g.rows[0].label)
-            assertEquals("已用 99%", g.rows[0].used)
+            assertEquals("剩 1%", g.rows[0].left)
             assertEquals(QuotaTone.WARN, g.rows[0].tone)
             assertEquals("2 小时额度即将用尽", quotaBanner(g))
             // A window the account does not have is not shown as missing.
@@ -160,6 +160,6 @@ class QuotaTest {
         assertEquals(listOf("第三方模型 · 5 小时", "第三方模型 · 7 天"), g.sections[1].rows.map { it.label })
         assertEquals("custom-bucket", g.sections[2].title)
         assertEquals(listOf("custom-bucket"), g.sections[2].rows.map { it.label })
-        assertEquals("已用 40% · 5 小时", quotaLine(g))
+        assertEquals("剩 60% · 5 小时", quotaLine(g))
     }
 }

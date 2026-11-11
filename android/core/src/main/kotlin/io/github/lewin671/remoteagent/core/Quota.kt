@@ -12,10 +12,11 @@ import java.time.ZoneId
 
 enum class QuotaTone { NORMAL, WARN, FULL, STALE }
 
-/** One window as shown: 5 小时 · 已用 62% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted. */
+/** One window as shown: 5 小时 · 剩 38% · 4 小时 29 分后重置 · 今天 14:10, or why it cannot be trusted. */
 data class QuotaRow(
     val label: String,
-    val used: String,
+    /** What is left: 剩 38%, 已用尽, 上次剩 38%, 等待更新, 未获取. */
+    val left: String,
     val percent: Double?,
     val reset: String,
     val tone: QuotaTone,
@@ -93,7 +94,7 @@ fun resetText(resetMs: Long, now: Long): String {
     return "$left · $day ${t.hour}:${"%02d".format(t.minute)}"
 }
 
-/** One window: used share, reset time, and whether the reading can still be trusted. */
+/** One window: what is left, reset time, and whether the reading can still be trusted. */
 fun quotaRow(
     w: QuotaWindow,
     now: Long,
@@ -105,12 +106,12 @@ fun quotaRow(
     val label = if (useWindowMinutes && w.windowMinutes > 0) windowName else fallbackLabel
     if (!w.hasUsedPercent()) return QuotaRow(label, "未获取", null, "", QuotaTone.NORMAL, "没有收到这项额度数据", windowName)
     val pct = w.usedPercent
-    val used = if (pct >= 100) "已用尽" else "已用 ${kotlin.math.floor(pct).toInt()}%"
+    val left = if (pct >= 100) "已用尽" else "剩 ${100 - kotlin.math.floor(pct).toInt()}%"
     val passed = w.resetsAtMs in 1..now
     val reset = if (w.resetsAtMs > 0 && !passed) resetText(w.resetsAtMs, now) else ""
-    if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$used；重置时间已过，不能据此确认额度已经恢复", windowName)
-    if (lastRecord) return QuotaRow(label, used, pct, reset, QuotaTone.STALE, "", windowName)
-    return QuotaRow(label, used, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "", windowName)
+    if (passed) return QuotaRow(label, "等待更新", pct, "", QuotaTone.STALE, "上次$left；重置时间已过，不能据此确认额度已经恢复", windowName)
+    if (lastRecord) return QuotaRow(label, "上次$left", pct, reset, QuotaTone.STALE, "", windowName)
+    return QuotaRow(label, left, pct, reset, if (pct >= 100) QuotaTone.FULL else if (pct >= 80) QuotaTone.WARN else QuotaTone.NORMAL, "", windowName)
 }
 
 /**
@@ -207,14 +208,13 @@ fun quotaLine(g: QuotaGroup): String = when (g.status) {
     QuotaStatus.UNSUPPORTED -> "暂不支持读取额度"
     QuotaStatus.WAITING -> "暂未获取额度"
     else -> {
-        val got = g.rows.filter { it.used != "未获取" && it.percent != null }
+        val got = g.rows.filter { it.left != "未获取" && it.percent != null }
         if (got.isEmpty()) {
             "暂未获取额度" + if (g.lastRecord) "（上次记录）" else ""
         } else {
             val tightest = got.maxByOrNull { it.percent ?: -1.0 } ?: got.first()
             val win = tightest.windowName.ifEmpty { tightest.label }
-            val staleSuffix = if (g.lastRecord && !tightest.used.contains("上次")) "（上次记录）" else ""
-            "${tightest.used} · $win$staleSuffix"
+            "${tightest.left} · $win"
         }
     }
 }
