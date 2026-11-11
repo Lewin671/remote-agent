@@ -923,11 +923,18 @@ function ChatBody({
   useEffect(() => {
     const el = scroller.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    let h = el.clientHeight;
-    const ro = new ResizeObserver(() => {
-      const now = el.clientHeight;
-      const shrank = now < h;
-      h = now;
+    let h = -1;
+    // The observer reports once a frame, after the page has been laid out:
+    // the sizes it hands over and the page's own height are read without
+    // asking for another layout, and the one write is the scroll.
+    const ro = new ResizeObserver((entries) => {
+      let shrank = false;
+      for (const e of entries) {
+        if (e.target !== el) continue;
+        const now = e.contentRect.height;
+        if (h >= 0 && now < h) shrank = true;
+        h = now;
+      }
       if (!stick.current) return;
       if (shrank || Date.now() - pressedAt.current > 800) el.scrollTop = el.scrollHeight;
     });
