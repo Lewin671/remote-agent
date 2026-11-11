@@ -49,7 +49,7 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 
 - 账户和配对可在网页、Android 或 iOS 客户端里操作：用户先建账户成为唯一管理端，电脑只执行 `account join`。本地端到端产品验收从 `ios/scripts/dev-env.sh start --no-account` 开始，用真实客户端建账户和批准配对；测试夹具或 `internal/remoteclient` 只用于自动回归，不能代替产品链路验收；`account init`、`account pair` 不再是用户入口
 - server 前面需要有负责 HTTPS 的反向代理，部署方式见 [docs/architecture.md](architecture.md) 第 1 节
-- 本地调试网页用 `pnpm build && pnpm preview`，在 http://localhost:4173 打开
+- 本地调试网页用 `cd web && pnpm dev --host 127.0.0.1 --port 0`，打开输出的本机地址；CSS 修改会热更新。加 `?demo` 可用示例数据检查界面。动画检查时让标签页保持前台，确认页面可见后再比较连续帧；后台标签页的静止截图不能证明动画失效。构建产物、CSP 和 Service Worker 则用 `pnpm build && pnpm preview` 验证（默认 http://localhost:4173）。示例界面不替代真实 CLI 的端到端验收。
 - 会话内容由内容密钥解开；账户根密钥用于账户签名，不再用于解密旧历史，同样只留在自己的设备上
 - daemon 发现 `~/.remote-agent/account.json` 后会自动连上 server，不用重启
 - 网页能登录但一直「未连接」时，多半是浏览器的拦截扩展挡住了 WebSocket，见 [docs/browser-notes.md](browser-notes.md)
@@ -58,9 +58,10 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 
 - `go test ./...`：单元测试，不依赖真实的 Codex
 - `scripts/acceptance.sh`：用真实的 Codex 跑 P0 验收
-- `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量
+- `cd web && pnpm test`：网页的单元测试，包括和 Go 共用的加密测试向量；迭代时可先用 `pnpm test src/views/flows.test.tsx` 定位交互回归，局部运行不替代网页全套、AGENTS.md 要求的 Go 测试和发布把关。
 - 改了 `proto/` 之后运行 `buf generate`（需要 `buf`、`protoc-gen-go`、`protoc-gen-connect-go`），再在 `web/` 里运行 `pnpm gen`；生成的代码在 `gen/` 和 `web/src/gen/`，一并提交
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
+- Android 要复用编译缓存但完整重跑 JVM 测试，用 `cd android && ./gradlew --build-cache :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease`。每个测试任务后的 `--rerun` 强制它执行，禁止复用该任务的增量结果或缓存；编译和 lint 仍可复用未变输入的结果，Go 集成夹具仍从当前 checkout 构建。Release 工作流也用这些任务选项，签名构建与公开扫描照常执行。
 
 ## iOS 卡顿诊断
 
