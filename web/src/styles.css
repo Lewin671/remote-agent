@@ -1201,7 +1201,8 @@ input.field { margin: 0; }
 /* The scope menu on a wide window: a menu by the capsule, holding what
    the phone's sheet holds. */
 .pop-back { position: fixed; inset: 0; z-index: 20; }
-.pop { position: absolute; left: 4px; top: 44px; width: 330px; max-height: calc(100% - 140px); overflow-y: auto; background: var(--gbg); border-radius: 24px; box-shadow: var(--float); padding: 8px; z-index: 21; font-size: 15px; }
+/* Inside the sidebar, which clips: the popover takes its width, never more. */
+.pop { position: absolute; left: 4px; right: 4px; top: 44px; max-height: calc(100% - 140px); overflow-y: auto; background: var(--gbg); border-radius: 24px; box-shadow: var(--float); padding: 8px; z-index: 21; font-size: 15px; }
 .pop .plist .pi { min-height: 44px; font-size: 15px; }
 .pop .plist .pi b { font-size: 15px; }
 .pop .plist .pi small { font-size: 12px; }
