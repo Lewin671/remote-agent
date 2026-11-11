@@ -56,7 +56,11 @@ async function mount() {
   host = document.createElement("div"); document.body.append(host);
   root = createRoot(host);
   history.replaceState(null, "", "/#/tasks");
-  await act(async () => root!.render(<App />));
+  await act(async () => {
+    root!.render(<App />);
+    // The authenticated workspace is now fetched after the saved identity.
+    await import("./Workspace");
+  });
   return { remote, tasks, refresh: () => remote.refreshSchedules("mac") };
 }
 

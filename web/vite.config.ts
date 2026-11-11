@@ -124,7 +124,7 @@ export default defineConfig({
       output: {
         // Libraries change far less often than the app: in a chunk of their
         // own they keep their name, and browsers their copy, across releases.
-        manualChunks: (id) => (/node_modules\/(react|react-dom|scheduler|react-virtuoso|@bufbuild|@connectrpc)\//.test(id) ? "vendor" : undefined),
+        manualChunks: (id) => (/node_modules\/(react|react-dom|scheduler|@bufbuild|@connectrpc)\//.test(id) ? "vendor" : undefined),
       },
     },
   },

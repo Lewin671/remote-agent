@@ -24,7 +24,7 @@ function Gone() {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function page<C extends ComponentType<any>>(load: () => Promise<{ default: C }>) {
+export function page<C extends ComponentType<any>>(load: () => Promise<{ default: C }>) {
   return lazy(async () => {
     try {
       return await load();

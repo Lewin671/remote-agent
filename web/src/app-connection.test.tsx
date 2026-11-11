@@ -30,7 +30,11 @@ async function mount(initiallyHidden = false) {
   const reconnect = vi.spyOn(remote, "reconnectNow").mockImplementation(() => {});
   host = document.createElement("div"); document.body.append(host);
   root = createRoot(host);
-  await act(async () => root!.render(<App />));
+  await act(async () => {
+    root!.render(<App />);
+    // The authenticated workspace is now fetched after the saved identity.
+    await import("./Workspace");
+  });
   expect(start).toHaveBeenCalledTimes(initiallyHidden ? 0 : 1);
   vi.useFakeTimers();
   const visibility = async (value: boolean) => {
