@@ -287,17 +287,16 @@ private fun SessionTopBar(
         remember(s.machineId) {
             mutableStateOf<io.github.lewin671.remoteagent.proto.ListModelsResponse?>(null)
         }
-    LaunchedEffect(s.machineId, s.agent()) {
-        if (agentInfo(s.agent()).sessionNeedsModelList)
+    // The ⋯ menu's model row says the model's name, as the new-session summary does, so it reads the list when it opens too.
+    LaunchedEffect(s.machineId, s.agent(), menu) {
+        if (agentInfo(s.agent()).sessionNeedsModelList || menu)
             runCatching { models = remote.listModels(s.machineId, s.agent()) }
     }
     val raw = s.info?.model.orEmpty()
+    // Before the list is there, the name the CLI's slugs have (gpt-6.1-sol is GPT-6.1-Sol), never the bare ID.
     val model =
-        models?.let { ms ->
-            io.github.lewin671.remoteagent.core
-                .findModel(ms.modelsList, raw) { it.slug }
-                ?.displayName
-        } ?: raw
+        models?.let { io.github.lewin671.remoteagent.core.modelLabel(it.modelsList, raw, s.agent()) }
+            ?: agentInfo(s.agent()).modelLabel(raw)
     val effort = s.info?.effort.orEmpty()
     // Unknown context is left out, never shown as 0%.
     val pc = if (live) contextPercent(s) else null
