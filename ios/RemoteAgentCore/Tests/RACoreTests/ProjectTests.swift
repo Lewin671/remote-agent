@@ -57,11 +57,19 @@ import Testing
     }
 
     @Test func savedSettingsWinOverLatestSessionAndStayOnOfflineMachine() throws {
-        let stored = saved("old", .claude, set(.claude, "sonnet", "high", .fullAccess, standard: true))
+        let stored = saved("old", .claude, set(.claude, "sonnet", "high", standard: true))
         let st = state(stored, [session("s", "new", .codex, "astra", 999)], host("old", both, online: false), host("new", both))
         let c = try #require(projectConfig(st, key: path))
-        #expect(c == config("old", .claude, "sonnet", "high", .full, standard: true))
+        #expect(c == config("old", .claude, "sonnet", "high", standard: true))
         #expect(c.agentSettings() == stored.agents[0])
+    }
+
+    // A new task has no approval mode: one stored by an earlier version, or the latest session's, is not read.
+    @Test func aStoredOrInheritedModeIsIgnored() throws {
+        let stored = saved("mac", .codex, set(.codex, "astra", "", .fullAccess))
+        let st = state(stored, [session("s", "mac", .claude, "sonnet", 9, .fullAccess)], host("mac", both))
+        #expect(try #require(projectConfig(st, key: path)) == config("mac", .codex, "astra"))
+        #expect(try #require(projectConfig(st, key: path, pick: .claude)) == config("mac", .claude, "sonnet"))
     }
 
     @Test func aProjectWhoseSessionsAreAllOnPagesNotFetchedStartsOnTheMachineItsSummaryNames() {
@@ -110,11 +118,11 @@ import Testing
 
     @Test func aCliTheMachineLacksFallsBackToItsFirstAndIsNamed() throws {
         let vps = host("vps", [.codex])
-        let stored = saved("vps", .claude, set(.claude, "sonnet"), set(.codex, "astra", "", .ask))
+        let stored = saved("vps", .claude, set(.claude, "sonnet"), set(.codex, "astra"))
         let st = state(stored, [], vps)
         let c = try #require(projectConfig(st, key: path))
         // The CLI the machine has, with its own set; what is remembered is not touched.
-        #expect(c == config("vps", .codex, "astra", "", .ask))
+        #expect(c == config("vps", .codex, "astra"))
         #expect(missingAgent(st, c) == .claude)
         #expect(wantedAgent(st, key: path) == .claude)
         // With the CLI installed there is nothing to say.
@@ -139,8 +147,8 @@ import Testing
         // Codex has an entry: it is used as stored, empty fields meaning the machine's defaults.
         #expect(projectConfig(st, key: path) == config("mac", .codex, "sol"))
         // Claude Code has none: its own latest session, not the project's latest.
-        #expect(projectConfig(st, key: path, pick: .claude) == config("mac", .claude, "sonnet", "high", .auto))
-        // Plan is never carried over.
+        #expect(projectConfig(st, key: path, pick: .claude) == config("mac", .claude, "sonnet", "high"))
+        // No mode is carried over.
         #expect(projectConfig(state(nil, sessions, mac), key: path, pick: .codex) == config("mac", .codex, "astra", "low"))
         // An empty entry is the machine's defaults, not the latest session.
         let empty = state(saved("mac", .claude, set(.claude)), sessions, mac)
@@ -185,7 +193,7 @@ import Testing
         let claude = ended("c1", .claude, "sonnet", 90_000, effort: "high", mode: .auto)
         let st = paged(state(nil, [claude], summed("mac", 9, both)), 50_000)
         // The project's first session in the listing is held: the machine, the CLI and its set are settled.
-        #expect(projectStart(st, key: path) == ProjectStart(config: config("mac", .claude, "sonnet", "high", .auto), settled: true))
+        #expect(projectStart(st, key: path) == ProjectStart(config: config("mac", .claude, "sonnet", "high"), settled: true))
         // Codex has no session among the pages fetched, and eight ended sessions are not fetched: one of them may be Codex's.
         let codex = try #require(projectStart(st, key: path, pick: .codex))
         #expect(!codex.settled)
@@ -201,7 +209,7 @@ import Testing
         // The page with it came: settled, with its settings.
         let old = ended("x1", .codex, "astra", 40_000, effort: "low", mode: .ask)
         let fetched = paged(state(nil, [claude, old], summed("mac", 9, both)), 30_000)
-        #expect(projectStart(fetched, key: path, pick: .codex) == ProjectStart(config: config("mac", .codex, "astra", "low", .ask), settled: true))
+        #expect(projectStart(fetched, key: path, pick: .codex) == ProjectStart(config: config("mac", .codex, "astra", "low"), settled: true))
     }
 
     @Test func aSessionHeldPastThePagesFetchedDoesNotSettleIt() throws {
@@ -252,20 +260,18 @@ import Testing
     }
 
     @Test func theSummaryIsAboutWhatADraftStartsWithNotWhatTheProjectSaysNow() throws {
-        let full = state(saved("mac", .codex, set(.codex, "astra", "", .fullAccess)), [], host("mac", both), host("vps", both))
-        var draft = DraftConfig(projectConfig(full, key: path))
-        draft.follow(projectConfig(full, key: path), drafting: true)
-        // Written while the project said full access; another client then changes the project to ask.
-        let ask = state(saved("mac", .codex, set(.codex, "astra", "", .ask)), [], host("mac", both), host("vps", both))
-        let now = try #require(projectConfig(ask, key: path))
+        let astra = state(saved("mac", .codex, set(.codex, "astra")), [], host("mac", both), host("vps", both))
+        var draft = DraftConfig(projectConfig(astra, key: path))
+        draft.follow(projectConfig(astra, key: path), drafting: true)
+        // Written while the project said astra; another client then changes the project to sol.
+        let sol = state(saved("mac", .codex, set(.codex, "sol")), [], host("mac", both), host("vps", both))
+        let now = try #require(projectConfig(sol, key: path))
         draft.follow(now, drafting: true)
-        #expect(now.mode == .ask && draft.value?.mode == .full, "the draft goes where it was going")
+        #expect(now.model == "sol" && draft.value?.model == "astra", "the draft goes where it was going")
         let launch = try #require(launchConfig(draft: draft.value, project: now, hidden: false))
         #expect(launch == draft.value)
-        #expect(projectSummary(ask, launch) == "Codex · 完全放行 · mac · astra" && isFullAccess(ask, launch))
-        // 新任务 names the CLI in its sentence; the summary beside ＋ does not say it again.
-        #expect(newTaskSummary(ask, launch, cliInSentence: true) == "完全放行 · mac · astra")
-        #expect(newTaskSummary(ask, launch, cliInSentence: false) == "Codex · 完全放行 · mac · astra")
+        #expect(projectSummary(sol, launch) == "Codex · mac · astra")
+        #expect(summaryModel(launch) == "astra")
         // A machine picked for this start only is the one named.
         draft.choose(config("vps", .codex))
         #expect(launchConfig(draft: draft.value, project: now, hidden: false)?.machineId == "vps")
@@ -313,7 +319,8 @@ import Testing
         let first = try #require(startSettings(saved: nil, project: used, used: used))
         #expect(first == PrefsOp.SetSettings(path: path, machineId: "mac", agent: .claude, sets: [used.agentSettings()], keepExisting: true))
         let stored = applySettings(stored: nil, op: first, now: 1)
-        var want = saved("mac", .claude, set(.claude, "sonnet", "high", .auto, standard: true))
+        // No approval mode is written, whatever the configuration held.
+        var want = saved("mac", .claude, set(.claude, "sonnet", "high", standard: true))
         want.updatedMs = 1
         #expect(stored == want)
         // The same CLI again changes nothing.
@@ -358,10 +365,18 @@ import Testing
 
     @Test func summaryUsesTheMachineModelDisplayName() {
         let models = PBListModelsResponse.with { $0.models = [.with { $0.slug = "gpt-6-astra"; $0.displayName = "GPT-6-Astra"; $0.defaultEffort = "medium" }] }
-        let text = projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra", mode: .ask), models: models)
-        #expect(text.hasSuffix("询问 · GPT-6-Astra"), "\(text)")
-        // A machine that could not read its CLI's mode: the start follows the CLI's own settings.
-        #expect(projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra"), models: models) == "Codex · 跟随 CLI 设置 · GPT-6-Astra")
+        #expect(projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra"), models: models) == "Codex · GPT-6-Astra")
+        #expect(summaryModel(NewConfig(machineId: "mac", cwd: "/work/app"), models: nil) == "默认模型")
+    }
+
+    // 新任务: the computer in the title only among several, the CLI in the box only where the computer has several.
+    @Test func theNewTaskTitleAndBoxSayWhatThereIsToChoose() {
+        let models = PBListModelsResponse.with { $0.models = [.with { $0.slug = "gpt-6-astra"; $0.displayName = "GPT-6-Astra" }] }
+        let c = config("mac", .codex, "gpt-6-astra")
+        #expect(newTaskParts(state(nil, [], host("mac", both), host("vps", both)), c, models: models)
+            == NewTaskParts(machine: "mac", cli: .codex, model: "GPT-6-Astra"))
+        #expect(newTaskParts(state(nil, [], host("mac", [.codex])), c, models: models)
+            == NewTaskParts(machine: "", cli: nil, model: "Codex · GPT-6-Astra"))
     }
 
     @Test func summaryNamesTheMachineOnlyAmongSeveralAndCutsALongName() {
@@ -408,6 +423,22 @@ import Testing
         let edits = machine(info(.claude, .unspecified, .cliConfig))
         #expect(launchMode(chosen: nil, default: defaultModeOf(edits, agent: .claude)) == .send(.unspecified))
         #expect(modeLabel(chosen: nil, default: defaultModeOf(edits, agent: .claude), agent: .claude) == "默认：Claude Code 自己的模式")
+    }
+
+    // The machine's default is auto: a model without it, or an account without it, keeps a new task from starting.
+    @Test func anAutoDefaultTheModelLacksIsTheModelsOrTheAccountsIssue() {
+        let st = Mk.state(machines: [machine(info(.claude, .auto, .daemonSettings), info(.codex, .auto, .daemonSettings))])
+        let haiku = NewConfig(machineId: "m", cwd: path, agent: .claude, model: "haiku")
+        let some = PBListModelsResponse.with { $0.models = [.with { $0.slug = "haiku"; $0.autoUnavailable = true }, .with { $0.slug = "opus" }] }
+        let none = PBListModelsResponse.with { $0.models = [.with { $0.slug = "haiku"; $0.autoUnavailable = true }] }
+        #expect(autoIssue(st, haiku, models: some) == .model)
+        #expect(autoIssue(st, haiku, models: none) == .account)
+        var opus = haiku
+        opus.model = "opus"
+        #expect(autoIssue(st, opus, models: some) == nil)
+        // Nothing is said before the list has come, nor for a CLI whose auto mode is always there.
+        #expect(autoIssue(st, haiku, models: nil) == nil)
+        #expect(autoIssue(st, NewConfig(machineId: "m", cwd: path, model: "haiku"), models: none) == nil)
     }
 
     @Test func onlyAStartedSessionTakesTheDraft() {

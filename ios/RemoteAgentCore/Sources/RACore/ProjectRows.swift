@@ -140,23 +140,9 @@ public func projectPage(_ state: RemoteState, key: String) -> ProjectPage {
 
 // --- the settings summary ---
 
-/// Whether a start with `c` runs without approvals: chosen so, or the CLI's own default on that machine.
-public func isFullAccess(_ state: RemoteState, _ c: NewConfig) -> Bool {
-    c.mode == .full || (c.mode == nil && defaultModeOf(state.machines[c.machineId], agent: c.agent).mode == .full)
-}
-
-/// The summary cut around 完全放行, the one part of it written in red; `full` is empty when it is not to be.
-public func summaryParts(_ summary: String, full: Bool) -> (before: String, full: String, after: String) {
-    guard full, let r = summary.range(of: Mode.full.text) else { return (summary, "", "") }
-    return (String(summary[..<r.lowerBound]), Mode.full.text, String(summary[r.upperBound...]))
-}
-
-/// The summary as the navigation bar's second line has it once the keyboard is up: CLI, mode and machine.
+/// The summary as the navigation bar's second line has it once the keyboard is up: CLI and machine.
 public func foldedSummary(_ state: RemoteState, _ c: NewConfig) -> String {
-    [
-        agentName(c.agent), effectiveModeText(chosen: c.mode, default: defaultModeOf(state.machines[c.machineId], agent: c.agent)),
-        summaryMachine(state, id: c.machineId),
-    ].filter { !$0.isEmpty }.joined(separator: " · ")
+    [agentName(c.agent), summaryMachine(state, id: c.machineId)].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
 // --- the new-session box ---
@@ -191,6 +177,10 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
     case mismatch(String)
     /// The CLI meant is not on this machine, so another is used; 换机器.
     case missingAgent(String)
+    /// The machine's default mode is auto and the model has none; 换模型.
+    case autoModel(String)
+    /// The machine's default mode is auto and the account has no auto mode; 去改默认, on the machine's page.
+    case autoAccount(String)
     case starting(String)
     /// The start failed for certain; 重试.
     case failed(String)
@@ -204,6 +194,8 @@ public enum NewSessionNotice: Equatable, Sendable, Identifiable {
         case .offline: return "offline"
         case .mismatch: return "mismatch"
         case .missingAgent: return "missing-agent"
+        case .autoModel: return "auto-model"
+        case .autoAccount: return "auto-account"
         case .starting: return "starting"
         case .failed: return "failed"
         case .unknown: return "unknown"
@@ -248,11 +240,13 @@ public func offlineChoices(_ state: RemoteState, _ c: NewConfig) -> [OfflineMach
 
 /// The notices above the new-session box, in order (Android's NewSessionBox).
 /// `name` is the project's; `pick` the CLI chosen next to the box; `drafting`
-/// whether something is written. Out of reach of the server nothing is said
+/// whether something is written; `models` the list of the CLI's models, once
+/// it has come. Out of reach of the server nothing is said
 /// of the machine: every computer reads as offline then, and the connection
 /// bar has said why (architecture §9 「断线时显示什么」).
 public func newSessionNotices(
-    _ state: RemoteState, config c: NewConfig?, name: String, pick: PBAgent?, drafting: Bool, settled: Bool, start: NewSessionProgress
+    _ state: RemoteState, config c: NewConfig?, name: String, pick: PBAgent?, drafting: Bool, settled: Bool, start: NewSessionProgress,
+    models: PBListModelsResponse? = nil
 ) -> [NewSessionNotice] {
     var out = [NewSessionNotice]()
     // Why nothing can start yet; a page that failed says so, with the tap that tries again.
@@ -283,6 +277,13 @@ public func newSessionNotices(
         if let missing = missingAgent(state, c, pick: pick) {
             out.append(.missingAgent("\(label) 没有 \(agentName(missing))，这次用 \(agentName(c.agent))"))
         }
+        switch autoIssue(state, c, models: models) {
+        case .model?:
+            out.append(.autoModel("这个模型没有自动模式，而 \(label) 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认"))
+        case .account?:
+            out.append(.autoAccount("当前账户不支持自动模式，而 \(label) 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始"))
+        case nil: break
+        }
         if start.running { out.append(.starting("正在 \(label) 上启动…")) }
     }
     // An unknown start has its own notice below.
@@ -296,15 +297,20 @@ public func newSessionNotices(
     return out
 }
 
-/// Whether ↑ starts a session now: something is written, what it starts with is settled, and the machine is there to take it.
-public func canStartSession(_ state: RemoteState, config c: NewConfig?, drafting: Bool, settled: Bool, running: Bool) -> Bool {
+/// Whether ↑ starts a session now: something is written, what it starts with
+/// is settled, the machine is there to take it, and its default mode can be
+/// started in with this model (`autoIssue`, once `models` has come).
+public func canStartSession(
+    _ state: RemoteState, config c: NewConfig?, drafting: Bool, settled: Bool, running: Bool, models: PBListModelsResponse? = nil
+) -> Bool {
     guard let c, settled, !running, drafting, state.conn == .online, let machine = state.machines[c.machineId], machine.online else {
         return false
     }
-    return protocolMismatch(machine) == nil
+    return protocolMismatch(machine) == nil && autoIssue(state, c, models: models) == nil
 }
 
-/// The command that starts a session with its first message. `mode` unspecified leaves it to the CLI's own configuration.
+/// The command that starts a session with its first message. `mode` unspecified leaves it to the machine's default
+/// (daemon settings, else the CLI's own configuration); a new task always sends it so.
 public func createSessionCommand(_ c: NewConfig, prompt: String, mode: PBApprovalMode, imageIds: [String] = [], fileIds: [String] = []) -> PBCommand {
     var cmd = PBCommand()
     cmd.createSession = .with {

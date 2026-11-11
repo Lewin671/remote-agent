@@ -27,8 +27,14 @@ struct NewSessionBox: View {
     /// not, the pages of the listing are fetched and nothing starts; what is
     /// written stays, and takes the settings once they are known.
     var settled = true
+    /// The list of the CLI's models, once it has come: it says whether the machine's default mode can be started in.
+    var models: PBListModelsResponse?
     /// Opens the machine choice of the project's settings.
     var onMachine: () -> Void = {}
+    /// Opens the model's page of the project's settings.
+    var onModel: () -> Void = {}
+    /// Opens a computer's page in 设置, where its default mode is.
+    var onMachineSettings: (String) -> Void = { _ in }
     /// Drawn as 新任务's whole page (`NewTaskScreen`) rather than as the box at the bottom of a project's page.
     var sheet: NewTaskChrome?
     @Environment(AppModel.self) private var model
@@ -51,7 +57,7 @@ struct NewSessionBox: View {
         let images = attachments(config)
         let drafting = draft.drafting || images.hasImages
         let notices = newSessionNotices(
-            state, config: config, name: name, pick: draft.agent, drafting: drafting, settled: settled, start: draft.progress)
+            state, config: config, name: name, pick: draft.agent, drafting: drafting, settled: settled, start: draft.progress, models: models)
         let canSend = canStart(draft)
         Group {
             if let sheet {
@@ -130,64 +136,47 @@ struct NewSessionBox: View {
         .readableColumn()
     }
 
-    /// 新任务 as a whole page (design-system §6 「新任务」): the sentence 「在 [项目] 用 [CLI]」,
-    /// what to do in large type, and above the keyboard ＋ and the settings summary.
+    /// 新任务 as a whole page (design-system §6 「新任务」): where in the title, the notices in the middle, and at
+    /// the bottom the box with ＋, the CLI, the model and ↑.
     private func taskPage(
         _ sheet: NewTaskChrome, draft: NewSessionDraft, config: NewConfig?, agents: [PBAgent], images: ComposerAttachments,
         notices: [NewSessionNotice], canSend: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            NewTaskSentence(key: key, name: name, agents: agents, agent: config?.agent, onProject: sheet.onProject) { agent in
-                if let c = config { switchAgent(draft, c, to: agent) }
-            }
-            .padding(.horizontal, 20).padding(.top, 8)
+        VStack(spacing: 0) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    if !notices.isEmpty {
-                        VStack(spacing: 6) {
-                            ForEach(notices) { notice(of: $0, draft, canStart: canSend) }
-                        }
-                    }
-                    TextField(
-                        "", text: Bindable(draft).text,
-                        prompt: Text("要做什么？").font(.title2.bold()).foregroundStyle(DS.ink3), axis: .vertical
-                    )
-                    .font(.body)
-                    .foregroundStyle(DS.ink)
-                    .tint(DS.blue)
-                    .focused($focused)
-                    .accessibilityLabel("要做什么")
-                    .accessibilityIdentifier("new-session-text")
-                    .frame(maxWidth: .infinity, minHeight: 120, alignment: .topLeading)
+                VStack(spacing: 6) {
+                    ForEach(notices) { notice(of: $0, draft, canStart: canSend) }
                 }
-                .padding(.horizontal, 20).padding(.top, 16)
+                .padding(.horizontal, DS.Space.l).padding(.top, 8)
             }
             .scrollDismissesKeyboard(.interactively)
-            // Above the keyboard: what is attached, ＋, and what the session starts with.
-            VStack(alignment: .leading, spacing: 6) {
+            MessageCard(text: Bindable(draft).text, placeholder: "要做什么？", label: "要做什么", identifier: "new-session-text", focus: $focused) {
                 images.strip()
-                HStack(spacing: 8) {
-                    Button { images.pick() } label: { PlusCircle(dimmed: images.blocked != nil) }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("添加附件")
-                    ProjectSummaryChip(summary: sheet.summary, full: sheet.full, action: sheet.onSettings)
-                    Spacer(minLength: 0)
+            } accessories: {
+                AttachMenu(images: images)
+                if let c = config, let parts = sheet.parts {
+                    if parts.cli != nil {
+                        NewTaskCli(agents: agents, agent: c.agent) { switchAgent(draft, c, to: $0) }
+                    }
+                    NewTaskModel(text: parts.model, action: sheet.onModel)
                 }
-            }
-            .padding(.horizontal, 14).padding(.vertical, 6)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(DS.paper)
-        .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
-                Button(action: sheet.onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
-            }
-            ToolbarItem(placement: .topBarTrailing) {
+                Spacer(minLength: 0)
                 Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
                     .buttonStyle(.plain)
                     .disabled(!canSend)
                     .accessibilityLabel("开始")
                     .accessibilityIdentifier("new-session-start")
+            }
+            .readableColumn()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DS.paper)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: sheet.onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
+            }
+            ToolbarItem(placement: .principal) {
+                NewTaskWhere(key: key, name: name, machine: sheet.parts?.machine ?? "", onProject: sheet.onProject, onMachine: sheet.onMachine)
             }
         }
     }
@@ -211,7 +200,7 @@ struct NewSessionBox: View {
         let images = attachments(config)
         // Every image must be on the machine first: never a start with some of them.
         return canStartSession(
-            state, config: config, drafting: draft.drafting || images.hasImages, settled: settled, running: draft.running)
+            state, config: config, drafting: draft.drafting || images.hasImages, settled: settled, running: draft.running, models: models)
             && images.ready
     }
 
@@ -276,6 +265,12 @@ struct NewSessionBox: View {
             Banner(text, tone: .warn)
         case .missingAgent(let text):
             Banner(text, action: "换机器", onAction: onMachine)
+        case .autoModel(let text):
+            Banner(text, tone: .warn, action: "换模型", onAction: onModel)
+        case .autoAccount(let text):
+            Banner(text, tone: .warn, action: "去改默认") {
+                if let id = draft.config.value?.machineId { onMachineSettings(id) }
+            }
         case .starting(let text):
             Banner(text, icon: Mark.progress)
         case .failed(let text):
@@ -288,19 +283,17 @@ struct NewSessionBox: View {
 }
 
 /// The new-session settings as a button that opens the project's settings
-/// (design-system §6 「新任务」): a `fill` capsule in `ink`, as wide as its
-/// words, `›` at the end; only 完全放行 is red.
+/// (a project's page): a `fill` capsule in `ink`, as wide as its words, `›`
+/// at the end.
 struct ProjectSummaryChip: View {
     let summary: String
-    let full: Bool
     let action: () -> Void
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let parts = summaryParts(summary, full: full)
         Button(action: action) {
             HStack(spacing: 6) {
-                (Text(parts.before) + Text(parts.full).foregroundStyle(DS.red) + Text(parts.after))
+                Text(summary)
                     .font(.subheadline).ink(DS.ink).lineLimit(typeSize.isAccessibilitySize ? 4 : 2).multilineTextAlignment(.leading)
                     // Two lines before anything is cut: the model at the end is not the part to lose first.
                     .fixedSize(horizontal: false, vertical: true)

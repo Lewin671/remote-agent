@@ -121,21 +121,13 @@ import Testing
         #expect(page.recent(all: false).count == 1 && page.wanted(all: false) == 3 && page.wanted(all: true) == 1)
     }
 
-    @Test func onlyFullAccessIsRedInTheSummary() {
-        let st = state()
-        let ask = NewConfig(machineId: "mac", cwd: "/p/foo", mode: .ask)
-        let full = NewConfig(machineId: "mac", cwd: "/p/foo", mode: .full)
-        #expect(!isFullAccess(st, ask) && isFullAccess(st, full))
-        let summary = projectSummary(st, full)
-        #expect(summary == "Codex · 完全放行 · MacBook · 默认模型")
-        let parts = summaryParts(summary, full: true)
-        #expect(parts.before == "Codex · " && parts.full == "完全放行" && parts.after == " · MacBook · 默认模型")
-        #expect(summaryParts(summary, full: false).full.isEmpty)
-        #expect(foldedSummary(st, full) == "Codex · 完全放行 · MacBook")
-        // Left to a CLI whose own default is full access.
-        var own = st
-        own.machines["mac"]?.meta?.agents[0].defaultMode = .fullAccess
-        #expect(isFullAccess(own, NewConfig(machineId: "mac", cwd: "/p/foo")))
+    // A new task has no approval mode: the summary names none, even where the machine's default is full access.
+    @Test func theSummaryNamesNoApprovalMode() {
+        var st = state()
+        st.machines["mac"]?.meta?.agents[0].defaultMode = .fullAccess
+        let c = NewConfig(machineId: "mac", cwd: "/p/foo")
+        #expect(projectSummary(st, c) == "Codex · MacBook · 默认模型")
+        #expect(foldedSummary(st, c) == "Codex · MacBook")
     }
 
     // MARK: The new-session box

@@ -1,27 +1,29 @@
 // 新任务 (design-system §6 「新任务」): a whole-page sheet from the bottom,
-// closed at its top left, started with the ink circle at its top right.
-// The first line is a sentence, 「在 [项目] 用 [CLI]」, whose brackets are
-// chips: the project opens the list to choose another, the CLI lists those
-// its computer has. Under it what to do, in large type, with the keyboard
-// up; above the keyboard ＋ and the summary of what the session starts with,
-// which opens the project's settings. What is written stays with the
-// project's draft (`NewSessionBox`, which this is the page layout of).
+// laid out as a session's page. The title says where: the project, and
+// under it the computer where the account has more than one, each opening
+// its choice. The middle holds only the notices. At the bottom, above the
+// keyboard, the message box: what to do, what is attached, and a row of ＋,
+// the CLI (where the computer has more than one), the model, which opens
+// the model's page of the project's settings, and ↑. A new task has no
+// approval mode: it starts in the computer's default. What is written stays
+// with the project's draft (`NewSessionBox`, which this is the page layout of).
 import RACore
 import RAProto
 import SwiftUI
 
 /// What the page around `NewSessionBox` hands it to draw 新任务.
 struct NewTaskChrome {
-    var summary: String
-    var full: Bool
-    var onSettings: () -> Void
+    /// The computer in the title, the CLI and the model in the box.
+    var parts: NewTaskParts?
+    var onModel: () -> Void
+    var onMachine: () -> Void
     var onProject: () -> Void
     var onClose: () -> Void
     var onStarted: (String) -> Void
 }
 
 struct NewTaskScreen: View {
-    /// The project the task starts in; another can be chosen from the sentence.
+    /// The project the task starts in; another can be chosen from the title.
     @State var key: String
     /// The computer of a folder just chosen, which has no session to say it; nil for a project.
     @State var machine: String?
@@ -29,6 +31,7 @@ struct NewTaskScreen: View {
     /// The session started: the sheet closes and its page opens.
     let onStarted: (String) -> Void
     @Environment(AppModel.self) private var model
+    @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
     @State private var settings: ProjectSettingsRequest?
     @State private var picking = false
@@ -45,14 +48,20 @@ struct NewTaskScreen: View {
         let initial = start?.config ?? machine.map { NewConfig(machineId: $0, cwd: key) }
         let selected = machine == nil ? projectConfig(state, key: key, pick: newSessionPick(state, draft)) : draft.config.value ?? initial
         let launch = launchConfig(draft: draft.config.value, project: selected, hidden: isHidden(state, key: key))
-        let several = machineAgents(state.machines[draft.config.value?.machineId ?? ""]).count > 1
+        let models = summaryModels.list
         NewSessionBox(
             state: state, key: key, initial: initial, name: projectName(key), focus: true, settled: start?.settled != false,
+            models: models,
             onMachine: { settings = ProjectSettingsRequest(page: .machine) },
+            onModel: { settings = ProjectSettingsRequest(page: .model) },
+            onMachineSettings: { id in
+                onClose()
+                nav.open(.machine(id: id))
+            },
             sheet: NewTaskChrome(
-                summary: launch.map { newTaskSummary(state, $0, models: summaryModels.list, cliInSentence: several) } ?? "",
-                full: launch.map { isFullAccess(state, $0) } ?? false,
-                onSettings: { settings = ProjectSettingsRequest() },
+                parts: launch.map { newTaskParts(state, $0, models: models) },
+                onModel: { settings = ProjectSettingsRequest(page: .model) },
+                onMachine: { settings = ProjectSettingsRequest(page: .machine) },
                 onProject: { picking = true },
                 onClose: onClose,
                 onStarted: onStarted))
@@ -84,6 +93,15 @@ struct NewTaskScreen: View {
                 return try? await remote.listModels(key.machine, agent: key.agent)
             }
         }
+        #if DEBUG
+        .task {
+            // The settings sheet as `-newTaskSheet` names it (model, machine), for screenshots of sample data.
+            if let page = HomeLaunch.value("-newTaskSheet").flatMap(ProjectSettingsPage.init(rawValue:)) {
+                try? await Task.sleep(for: .milliseconds(900))
+                settings = ProjectSettingsRequest(page: page)
+            }
+        }
+        #endif
     }
 
     /// Another project, or a folder chosen on `machine`: what was written goes along when its draft is empty.
@@ -107,30 +125,59 @@ struct NewTaskScreen: View {
     }
 }
 
-/// 「在 [项目] 用 [CLI]」: 17 `ink2` around chips of `fill`, 15 / 600 `ink`;
-/// only 「在 [项目]」 when the computer has one CLI.
-struct NewTaskSentence: View {
+/// The title of 新任务: the project (avatar, 17 / 600 name, a small ⌄),
+/// and under it the computer in 12 `ink2` with its ⌄ where the account has
+/// more than one; neither on a capsule.
+struct NewTaskWhere: View {
     let key: String
     let name: String
-    let agents: [PBAgent]
-    let agent: PBAgent?
+    let machine: String
     let onProject: () -> Void
+    let onMachine: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Button(action: onProject) {
+                HStack(spacing: 6) {
+                    Avatar(key, size: 22)
+                    Text(name).font(.headline).ink(DS.ink).lineLimit(1)
+                    Arrow(DS.ink3, style: .caption, direction: .down)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityLabel("项目：\(name)")
+            .accessibilityHint("换一个项目")
+            .accessibilityIdentifier("new-task-project")
+            if !machine.isEmpty {
+                Button(action: onMachine) {
+                    HStack(spacing: 2) {
+                        Text(machine).font(.caption).ink(DS.ink2).lineLimit(1)
+                        Arrow(DS.ink3, style: .caption2, direction: .down)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityLabel("电脑：\(machine)")
+                .accessibilityHint("换一台电脑")
+                .accessibilityIdentifier("new-task-machine")
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+}
+
+/// The CLI in the box: its mark, its name and a small ⌄, in `ink2` on no
+/// capsule; a menu of the CLIs the computer has, the chosen one checked.
+struct NewTaskCli: View {
+    let agents: [PBAgent]
+    let agent: PBAgent
     let onAgent: (PBAgent) -> Void
 
     var body: some View {
-        let project = Button(action: onProject) {
-            HStack(spacing: 6) {
-                Avatar(key, size: 22)
-                Text(name).lineLimit(1)
-            }
-            .chip()
-        }
-        .buttonStyle(PressStyle())
-        .accessibilityLabel("项目：\(name)")
-        .accessibilityHint("换一个项目")
-        let cli = Menu {
-            // The mark before each name, as an image: a system menu takes no other view. The chosen one keeps its check.
-            Picker("CLI", selection: Binding(get: { agent ?? .codex }, set: { onAgent($0) })) {
+        Menu {
+            // The mark before each name, as an image: a system menu takes no other view.
+            Picker("CLI", selection: Binding(get: { agent }, set: { onAgent($0) })) {
                 ForEach(agents, id: \.self) { a in
                     if let glyph = AgentGlyph(a) {
                         Label { Text(agentName(a)) } icon: { Image(uiImage: glyph.image(side: 17)) }.tag(a)
@@ -140,48 +187,44 @@ struct NewTaskSentence: View {
                 }
             }
         } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
-                if let agent { AgentMark(agent, style: .subheadline, named: true) }
-                Text(agent.map(agentName) ?? "").lineLimit(1)
+            HStack(spacing: 4) {
+                AgentMark(agent, style: .subheadline, color: DS.ink2, named: true)
+                Text(agentName(agent)).lineLimit(1)
+                Arrow(DS.ink3, style: .caption2, direction: .down)
             }
-            .chip()
+            .newTaskAccessory()
         }
-        .accessibilityLabel("CLI：\(agent.map(agentName) ?? "")")
-        ViewThatFits(in: .horizontal) {
-            HStack(spacing: 6) {
-                Text("在")
-                project
-                if agents.count > 1 {
-                    Text("用")
-                    cli
-                }
+        .accessibilityLabel("CLI：\(agentName(agent))")
+        .accessibilityIdentifier("new-task-cli")
+    }
+}
+
+/// The model in the box, with a small ⌄: opens the model's page of the project's settings.
+struct NewTaskModel: View {
+    let text: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(text).lineLimit(1).truncationMode(.tail)
+                Arrow(DS.ink3, style: .caption2, direction: .down)
             }
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Text("在")
-                    project
-                }
-                if agents.count > 1 {
-                    HStack(spacing: 6) {
-                        Text("用")
-                        cli
-                    }
-                }
-            }
+            .newTaskAccessory()
         }
-        .font(.body)
-        .foregroundStyle(DS.ink2)
+        .buttonStyle(PressStyle())
+        .accessibilityLabel("模型：\(text)")
+        .accessibilityHint("项目设置")
+        .accessibilityIdentifier("new-task-model")
     }
 }
 
 extension View {
-    /// A chip of the sentence: `fill`, 15 / 600 `ink`, a capsule at least 36 tall.
-    fileprivate func chip() -> some View {
-        font(.subheadline.weight(.semibold))
-            .foregroundStyle(DS.ink)
-            .padding(.horizontal, 12)
-            .frame(minHeight: 36)
-            .background(DS.fill, in: Capsule())
+    /// The CLI and the model in the box: 15 / 500 `ink2`, no capsule, 44 pt to the finger.
+    fileprivate func newTaskAccessory() -> some View {
+        font(.subheadline.weight(.medium))
+            .foregroundStyle(DS.ink2)
+            .padding(.horizontal, 6)
             .frame(minHeight: DS.minHit)
             .contentShape(Rectangle())
     }

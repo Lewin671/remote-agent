@@ -94,22 +94,28 @@ import Testing
         _ = await start(draft, cfg, attached)
         #expect(computer.forwarded.map(\.id) == ["r1", "r2", "r2"] && computer.forwarded.last?.retry == true)
         #expect(computer.sent.count == 2, "no third command was sealed")
-        // Another mode, another CLI or another machine is another start too.
-        var asked = cfg
-        asked.mode = .ask
-        computer.answer(lost)
-        _ = await start(draft, asked, attached)
-        var claude = asked
+        // Another CLI or another machine is another start too.
+        var claude = cfg
         claude.agent = .claude
         computer.answer(lost)
         _ = await start(draft, claude, attached)
-        #expect(computer.forwarded.map(\.id) == ["r1", "r2", "r2", "r3", "r4"])
-        #expect(computer.sent.map(\.createSession.mode) == [.unspecified, .unspecified, .ask, .ask])
-        #expect(computer.sent.map(\.createSession.agent) == [.codex, .codex, .codex, .claude])
+        #expect(computer.forwarded.map(\.id) == ["r1", "r2", "r2", "r3"])
+        #expect(computer.sent.map(\.createSession.agent) == [.codex, .codex, .claude])
         // And so is another message; this one arrives, and reports what it was sent with.
         draft.text = "看这张图"
         #expect(await start(draft, claude, attached) == claude)
-        #expect(computer.forwarded.map(\.id).last == "r5" && !draft.frozen && draft.text.isEmpty)
+        #expect(computer.forwarded.map(\.id).last == "r4" && !draft.frozen && draft.text.isEmpty)
+    }
+
+    // A new task has no approval mode: the request leaves it to the machine's default, whatever the configuration holds.
+    @Test func aStartLeavesTheApprovalModeUnspecified() async {
+        computer.result(started("s-new"))
+        let draft = NewSessionDraft(cfg, settled: true)
+        draft.text = "say hi"
+        var full = cfg
+        full.mode = .full
+        _ = await start(draft, full)
+        #expect(computer.sent.map(\.createSession.mode) == [.unspecified])
     }
 
     @Test func aRepeatedStartReportsTheSettingsItWasSentWith() async {

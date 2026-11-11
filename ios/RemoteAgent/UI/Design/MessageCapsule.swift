@@ -88,3 +88,46 @@ struct MessageCapsule<Top: View, Plus: View, Trailing: View>: View {
         .padding(.top, 4).padding(.bottom, 8)
     }
 }
+
+/// The message box in its taller form (design-system §6 「新任务」): the
+/// same glass as the capsule, with the text on top, what is attached under
+/// it, and under that a row of `accessories` (＋, what the message goes
+/// with, and the round send button). The text grows to about eight lines,
+/// then scrolls inside the box.
+struct MessageCard<Below: View, Accessories: View>: View {
+    @Binding var text: String
+    let placeholder: String
+    /// Names the field for VoiceOver; `identifier` for a script.
+    let label: String
+    var identifier = ""
+    let focus: FocusState<Bool>.Binding
+    @ViewBuilder let below: Below
+    @ViewBuilder let accessories: Accessories
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink3), axis: .vertical)
+                .lineLimit(1...8)
+                .font(.body)
+                .foregroundStyle(DS.ink)
+                .tint(DS.blue)
+                .focused(focus)
+                .accessibilityLabel(label)
+                .accessibilityIdentifier(identifier)
+                .padding(.horizontal, 12).padding(.top, 12).padding(.bottom, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture { focus.wrappedValue = true }
+            below
+            HStack(spacing: 2) {
+                accessories
+            }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+        .animation(Motion.enter(), value: text.isEmpty)
+        .padding(4)
+        .glass(RoundedRectangle(cornerRadius: 22, style: .continuous), interactive: false)
+        .padding(.horizontal, DS.Space.m)
+        .padding(.top, 4).padding(.bottom, 8)
+    }
+}

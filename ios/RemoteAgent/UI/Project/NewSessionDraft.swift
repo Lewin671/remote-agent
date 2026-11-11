@@ -81,7 +81,8 @@ final class NewSessionDraft {
             preparedImages = []
             takenTransfers = []
         }
-        // An unknown start is resent as prepared, with the mode it had.
+        // An unknown start is resent as prepared, with the mode it had; a new one has none (architecture §13):
+        // the machine starts it in its default.
         let retry = attempt.frozen
         running = true
         error = ""
@@ -97,7 +98,7 @@ final class NewSessionDraft {
                 takenTransfers = attached.map(\.transferId)
                 return try remote.prepare(
                     machineId: cfg.machineId, sessionId: "",
-                    createSessionCommand(cfg, prompt: typed, mode: cfg.mode?.proto ?? .unspecified, imageIds: wanted.imageIds, fileIds: wanted.fileIds))
+                    createSessionCommand(cfg, prompt: typed, mode: .unspecified, imageIds: wanted.imageIds, fileIds: wanted.fileIds))
             }
             for (img, transfer) in zip(taken, takenTransfers) {
                 img.protectUpload(machineId: sent?.config.machineId ?? cfg.machineId, transferId: transfer, requestId: prepared.requestId)

@@ -65,6 +65,8 @@ struct ProjectPageView: View {
     let focus: Bool
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
+    /// The destination this page is drawn for.
+    @Environment(\.page) private var route
     @Environment(AccountContext.self) private var context
     @State private var showEnded = HomeLaunch.flag("-projectEnded")
     /// The header is scrolled out of sight: the navigation bar says what it said.
@@ -140,7 +142,10 @@ struct ProjectPageView: View {
                 if !hidden {
                     NewSessionBox(
                         state: state, key: key, initial: initial, name: name, focus: focus, settled: start?.settled != false,
-                        onMachine: { settings = ProjectSettingsRequest(page: .machine) })
+                        models: summaryModels.list,
+                        onMachine: { settings = ProjectSettingsRequest(page: .machine) },
+                        onModel: { settings = ProjectSettingsRequest(page: .model) },
+                        onMachineSettings: { nav.open(.machine(id: $0), from: route) })
                 }
             }
         }
@@ -183,7 +188,7 @@ struct ProjectPageView: View {
     }
 
     private func chip(_ state: RemoteState, _ launch: NewConfig) -> some View {
-        ProjectSummaryChip(summary: projectSummary(state, launch, models: summaryModels.list), full: isFullAccess(state, launch)) {
+        ProjectSummaryChip(summary: projectSummary(state, launch, models: summaryModels.list)) {
             settings = ProjectSettingsRequest()
         }
     }

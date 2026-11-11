@@ -4,11 +4,14 @@
 import Foundation
 import RAProto
 
-/// The modes a new session can be started in besides the default. Neither CLI
-/// starts in plan, and full access is only ever the confirmed machine default.
+/// The modes a session can be set to start in besides the default: a
+/// scheduled task's, and a machine's default for new tasks. Neither CLI starts
+/// in plan. A new task has none of its own (architecture §13): it starts in
+/// the machine's default.
 public let newSessionModes: [Mode] = [.ask, .auto, .full]
 
-/// How a new session starts; empty model, effort and mode mean the machine's defaults.
+/// How a new session starts; empty model, effort and mode mean the machine's
+/// defaults. A new task's mode is always empty; a scheduled task's is its own.
 public struct NewConfig: Equatable, Sendable {
     public var machineId: String
     public var cwd: String
@@ -32,13 +35,13 @@ public struct NewConfig: Equatable, Sendable {
         self.standardContext = standardContext
     }
 
-    /// The configuration's CLI set, as project settings store it.
+    /// The configuration's CLI set, as project settings store it: never with
+    /// an approval mode, which a new task does not have.
     public func agentSettings() -> PBAgentSettings {
         var s = PBAgentSettings()
         s.agent = agent
         s.model = model
         s.effort = effort
-        s.mode = mode?.proto ?? .unspecified
         s.standardContext = agentInfo(agent).standardContextOption && standardContext
         return s
     }
@@ -112,8 +115,9 @@ private func wantedAgent(from: Inheritance, pick: PBAgent?, saved: PBProjectSett
 }
 
 /// One CLI's set in a project: the stored entry (empty fields are the
-/// machine's defaults), else what the project's latest session on that CLI
-/// runs with, else the machine's defaults. Plan is never carried over.
+/// machine's defaults), else the model and effort the project's latest
+/// session on that CLI runs with, else the machine's defaults. No approval
+/// mode is carried over: a new task starts in the machine's default.
 public func agentSet(_ state: RemoteState, key: String, agent: PBAgent) -> PBAgentSettings {
     agentSet(state, key: key, agent: agent, saved: savedSettings(state, key: key))
 }
@@ -140,7 +144,6 @@ private func agentSet(from: Inheritance, agent: PBAgent, saved: PBProjectSetting
     if let last = from.first({ $0.agent == agent }) {
         b.model = last.info?.model ?? ""
         b.effort = last.info?.effort ?? ""
-        if let m = modeOf(last), newSessionModes.contains(m) { b.mode = m.proto }
     }
     return b
 }
@@ -203,10 +206,10 @@ public func projectConfig(_ state: RemoteState, key: String, pick: PBAgent?, mac
     projectStart(state, key: key, pick: pick, machine: machine, saved: saved)?.config
 }
 
+/// A stored set as a new task's configuration. A mode stored by an earlier
+/// version is not read: a new task starts in the machine's default.
 public func agentConfig(machineId: String, cwd: String, _ s: PBAgentSettings) -> NewConfig {
-    NewConfig(
-        machineId: machineId, cwd: cwd, agent: s.agent, model: s.model, effort: s.effort,
-        mode: modeOf(s.mode).flatMap { newSessionModes.contains($0) ? $0 : nil }, standardContext: s.standardContext)
+    NewConfig(machineId: machineId, cwd: cwd, agent: s.agent, model: s.model, effort: s.effort, standardContext: s.standardContext)
 }
 
 /// The CLI that was meant but that the machine of `c` does not have, so `c`
@@ -354,23 +357,58 @@ public func summaryMachine(_ state: RemoteState, id: String) -> String {
     return name.jvmLength > summaryMachineMax ? name.jvmTake(summaryMachineMax - 1) + "…" : name
 }
 
-/// Mode, machine and model; the effort and the context window are in the project's settings.
-public func projectSummary(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
-    let d = defaultModeOf(state.machines[c.machineId], agent: c.agent)
-    let mode = effectiveModeText(chosen: c.mode, default: d)
+/// The model a new session starts with, by its name once the list has it: the one chosen, else the list's default; 默认模型 while neither is known.
+public func summaryModel(_ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
     let modelId = c.model.ifEmpty(models?.defaultModel ?? "")
     let chosen = models.flatMap { findModel($0.models, id: modelId) { $0.slug } }
-    let model = chosen.map { $0.displayName.ifEmpty(modelId) } ?? modelId.ifEmpty("默认模型")
-    return [agentName(c.agent), mode, summaryMachine(state, id: c.machineId), model].filter { !$0.isEmpty }.joined(separator: " · ")
+    return chosen.map { $0.displayName.ifEmpty(modelId) } ?? modelId.ifEmpty("默认模型")
 }
 
-/// 新任务's summary beside ＋ (design-system §6 「新任务」): the project
-/// summary, without the CLI when the sentence above it already names it.
-public func newTaskSummary(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil, cliInSentence: Bool) -> String {
-    let all = projectSummary(state, c, models: models)
-    guard cliInSentence else { return all }
-    let name = agentName(c.agent) + " · "
-    return all.hasPrefix(name) ? String(all.dropFirst(name.count)) : all
+/// What 新任务 shows of where and with what it starts (design-system §6
+/// 「新任务」): the computer under the project in the title, only where the
+/// account has more than one; the CLI in the box, only where that computer
+/// has more than one; and the model beside it, led by the CLI's name when
+/// the CLI is not there to name it.
+public struct NewTaskParts: Equatable, Sendable {
+    public var machine: String
+    public var cli: PBAgent?
+    public var model: String
+
+    public init(machine: String, cli: PBAgent?, model: String) {
+        self.machine = machine
+        self.cli = cli
+        self.model = model
+    }
+}
+
+public func newTaskParts(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil) -> NewTaskParts {
+    let several = machineAgents(state.machines[c.machineId]).count > 1
+    let model = summaryModel(c, models: models)
+    return NewTaskParts(
+        machine: summaryMachine(state, id: c.machineId), cli: several ? c.agent : nil, model: several ? model : agentName(c.agent) + " · " + model)
+}
+
+/// CLI, machine and model; the effort and the context window are in the
+/// project's settings. A new task has no approval mode to name.
+public func projectSummary(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse? = nil) -> String {
+    [agentName(c.agent), summaryMachine(state, id: c.machineId), summaryModel(c, models: models)].filter { !$0.isEmpty }.joined(separator: " · ")
+}
+
+/// What keeps a new task from starting in its machine's default mode when
+/// that is auto (design-system §6 「新任务」): the model has no auto mode, or
+/// no model of the account has.
+public enum AutoIssue: Equatable, Sendable {
+    case model, account
+}
+
+/// The `AutoIssue` of starting with `c`, or nil. Nothing is said before the
+/// model list has come; the model is the chosen one, else the list's default.
+public func autoIssue(_ state: RemoteState, _ c: NewConfig, models: PBListModelsResponse?) -> AutoIssue? {
+    guard agentInfo(c.agent).autoMayBeUnavailable, c.mode == nil,
+        defaultModeOf(state.machines[c.machineId], agent: c.agent).mode == .auto,
+        let list = models?.models, autoUnavailable(list, model: c.model.ifEmpty(models?.defaultModel ?? ""))
+    else { return nil }
+    return allAutoUnavailable(list) ? .account : .model
 }
 
 public func effectiveModeText(chosen: Mode?, default d: DefaultMode) -> String {

@@ -1,18 +1,19 @@
-// 项目设置 (Android's NewSettingsSheet in ui/Project.kt, architecture §13):
-// the machine a project's new sessions use, and the model and effort,
-// context window (Claude Code) and approval mode of the one CLI it was
-// opened for, under a title with the CLI's name when the machine has more
-// than one. Another CLI's set is reached by selecting that CLI next to the
-// message box. Each is chosen on a page of the sheet. The folder is the project itself and is only
-// shown. Which CLI a new session uses is not chosen here but next to the
-// message box. Nothing is written until 完成; what the sheet holds
-// meanwhile is a `ProjectSettingsDraft`.
+// 项目设置 (architecture §13, design-system §6 「新任务」): the machine a
+// project's new sessions use, where the account has more than one, and the
+// model of the one CLI it was opened for, whose page also has the effort and
+// the context window (Claude Code). A new task has no approval mode, so
+// there is none here. Another CLI's set is reached by selecting that CLI
+// next to the message box. With one machine the model is all there is and
+// its page opens at once; a sheet opened on one page has no way back to the
+// first. Nothing is written until 完成, or until a machine is picked on a
+// sheet opened for that alone; what the sheet holds meanwhile is a
+// `ProjectSettingsDraft`.
 import RACore
 import RAProto
 import SwiftUI
 
 enum ProjectSettingsPage: String, Sendable {
-    case main, machine, model, context, mode
+    case main, machine, model
 }
 
 /// The sheet as it was asked for: a page to open on, and a new one each time so that nothing of the last is left.
@@ -23,18 +24,13 @@ struct ProjectSettingsRequest: Identifiable {
 
 struct ProjectSettingsSheet: View {
     private let cwd: String
-    private let name: String
     /// The CLI selected next to the message box (or the session's, or the task's): the sheet is its set, and 换机器 looks for it.
     private let agent: PBAgent
     /// Gets the change to store, or nil when nothing was changed.
     private let onDone: (PrefsOp.SetSettings?) -> Void
     private let onClose: () -> Void
     @Environment(AppModel.self) private var model
-    @Environment(Navigator.self) private var nav
-    /// The destination the sheet is over.
-    @Environment(\.page) private var under
     @Environment(AccountContext.self) private var context
-    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var draft: ProjectSettingsDraft
     @State private var page: ProjectSettingsPage
     @State private var models: PBListModelsResponse?
@@ -42,19 +38,20 @@ struct ProjectSettingsSheet: View {
     @State private var modelsFor = ""
     @State private var allModels = false
     @State private var settings: PBDaemonSettings?
-    @State private var removing: String?
+    /// The page the sheet was asked to open on.
+    private let open: ProjectSettingsPage
 
     init(
         cwd: String, machine: String, agent: PBAgent, open: ProjectSettingsPage = .main,
         onDone: @escaping (PrefsOp.SetSettings?) -> Void, onClose: @escaping () -> Void
     ) {
         self.cwd = cwd
-        name = projectName(cwd)
         self.agent = agent
         self.onDone = onDone
         self.onClose = onClose
         _draft = State(initialValue: ProjectSettingsDraft(cwd: cwd, machine: machine, agent: agent))
         _page = State(initialValue: open)
+        self.open = open
     }
 
     private struct Load: Hashable {
@@ -69,31 +66,26 @@ struct ProjectSettingsSheet: View {
         let blocked = prefsBlocked(state)
         // 完成 saves the whole of it from any page; without the connection there is nothing it could do.
         let done = blocked == nil ? save : nil
+        // With one machine the first page would list the model alone: the model's page is the first.
+        let root = open == .main && state.machines.count <= 1 ? ProjectSettingsPage.model : open
+        let shown = page == .main ? root : page
+        let back: (() -> Void)? = shown == root ? nil : { page = .main }
         Group {
-            switch page {
+            switch shown {
             case .main: main(state, c, blocked: blocked, done: done)
-            case .machine: machines(state, done: done)
-            case .model: modelPage(state, c, done: done)
-            case .context: contextPage(c, done: done)
-            case .mode: modePage(c, done: done)
+            case .machine: machines(state, done: done, back: back, alone: root == .machine)
+            case .model: modelPage(state, c, done: done, back: back)
             }
         }
         // What this CLI's set starts from may be a session not fetched yet.
         .fetchEarlier(state, page: draft.unread(state))
         // The list is read when the sheet opens and again when the models are to be chosen from.
-        .task(id: Load(machine: c.machineId, agent: c.agent, picking: page == .model)) { await load(c) }
-        .removeProjectConfirm($removing) {
-            onClose()
-            nav.open(.home, from: under)
-        }
-        // Chooses what `-settingsEdit` names (full, auto, ask, standard, effort=<e>, model=<slug>) and saves, for a script (debug builds).
+        .task(id: Load(machine: c.machineId, agent: c.agent, picking: shown == .model)) { await load(c) }
+        // Chooses what `-settingsEdit` names (standard, effort=<e>, model=<slug>) and saves, for a script (debug builds).
         .debugSignal("settings.apply") {
             for word in (HomeLaunch.value("-settingsEdit") ?? "").split(separator: ",") {
                 edit(draft.config(model.state)) { c in
                     switch word {
-                    case "full": c.mode = .full
-                    case "auto": c.mode = .auto
-                    case "ask": c.mode = .ask
                     case "standard": c.standardContext = true
                     default:
                         if word.hasPrefix("effort=") { c.effort = String(word.dropFirst(7)) }
@@ -146,61 +138,26 @@ struct ProjectSettingsSheet: View {
 
     // MARK: The first page
 
+    /// The machine and the model; only where the account has more than one machine, else the model's page is the first.
     @ViewBuilder private func main(_ state: RemoteState, _ c: NewConfig, blocked: String?, done: (() -> Void)?) -> some View {
         let agents = draft.agents(state)
         let cur = draft.current(state)
-        let unread = draft.unread(state)
-        let pinned = isPinned(state, key: cwd)
         SheetHead("项目设置", action: done == nil ? nil : "完成", onAction: done)
         if let blocked { Banner(blocked).padding(.bottom, 8) }
-        HStack(spacing: 10) {
-            Avatar(cwd, size: 22)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(name).font(.body.weight(.semibold)).ink(DS.ink)
-                Text(shortPath(cwd)).font(.footnote.monospaced()).ink(DS.ink2).lineLimit(2)
-            }
-        }
-        .accessibilityElement(children: .combine)
-        .padding(.bottom, 12)
-        FieldLabel("新会话")
-        let machineRow = SetRow(
-            "机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3
-        ) { page = .machine }
+        SetCard([
+            AnyView(SetRow("机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3) {
+                page = .machine
+            })
+        ])
+        // The set under it is the CLI's, whose name is its title.
+        if agents.count > 1 { FieldLabel(agentName(cur)) }
         // What a CLI's set starts from is read first where it is not known yet.
-        let own = unread ? [AnyView(reading(state, cur))] : rows(state, c)
-        if agents.count > 1 {
-            // The machine is shared; the set under it is the CLI's, whose name is its title.
-            SetCard([AnyView(machineRow)])
-            FieldLabel(agentName(cur))
-            SetCard(own)
-            if !unread { Hint("各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
+        if draft.unread(state) {
+            SetCard([AnyView(reading(state, cur))])
         } else {
-            SetCard([AnyView(machineRow)] + own)
-            if !unread { Hint("只影响之后新建的会话，进行中的不变；在你的设备之间同步。") }
+            let shown = models.flatMap { projectModel(c, models: $0, settings: settings) }
+            SetCard([AnyView(SetRow("模型", settingsModelValue(c, shown: shown)) { page = .model })])
         }
-        // The same two things 项目管理 offers for a project, under the same names.
-        TextAction(pinned ? "取消常用" : "设为常用", enabled: blocked == nil) {
-            Haptics.confirm()
-            context.prefsChanges.run(context.remote, pinned ? .unpin(path: cwd) : .pin(path: cwd))
-        }
-        .padding(.top, 4)
-        TextAction("移除项目…", color: DS.red, enabled: blocked == nil) { removing = cwd }
-    }
-
-    private func rows(_ state: RemoteState, _ c: NewConfig) -> [AnyView] {
-        let shown = models.flatMap { projectModel(c, models: $0, settings: settings) }
-        let d = defaultModeOf(state.machines[c.machineId], agent: c.agent)
-        var out = [AnyView(SetRow("模型", settingsModelValue(c, shown: shown)) { page = .model })]
-        if agentInfo(c.agent).standardContextOption {
-            // A model without a larger window has nothing to choose.
-            let window = settingsContext(c, shown: shown)
-            out.append(AnyView(SetRow("上下文", window.text, action: window.fixed ? nil : { page = .context })))
-        }
-        out.append(AnyView(
-            SetRow("审批", effectiveModeText(chosen: c.mode, default: d), valueColor: settingsModeRed(c, default: d) ? DS.red : nil) {
-                page = .mode
-            }))
-        return out
     }
 
     @ViewBuilder private func reading(_ state: RemoteState, _ agent: PBAgent) -> some View {
@@ -216,24 +173,28 @@ struct ProjectSettingsSheet: View {
 
     // MARK: The pages
 
-    @ViewBuilder private func machines(_ state: RemoteState, done: (() -> Void)?) -> some View {
+    /// `alone`: the sheet was opened for the machine only, and picking one is done with it.
+    @ViewBuilder private func machines(_ state: RemoteState, done: (() -> Void)?, back: (() -> Void)?, alone: Bool) -> some View {
         let rows = machineRows(state, cwd: cwd, agent: agent)
-        SheetHead("机器", action: done == nil ? nil : "完成", onAction: done, onBack: { page = .main })
+        SheetHead("机器", action: done == nil ? nil : "完成", onAction: done, onBack: back)
         ForEach(Array(rows.enumerated()), id: \.element.id) { i, m in
             ListItem(m.name, desc: m.note, checked: draft.machine == m.id, enabled: m.online, last: i == rows.count - 1) {
                 Haptics.selection()
                 draft.move(to: m.id)
-                page = .main
+                if alone, let done { done() } else { page = .main }
             }
             .trailing { Dot(m.online ? DS.green : DS.ink3) }
             .accessibilityValue(m.online ? "在线" : "不在线")
         }
-        Hint("换机器后，各 CLI 的模型和审批从那台机器的默认设置开始。")
+        Hint("换机器后，各 CLI 的模型从那台机器的默认设置开始。")
     }
 
-    @ViewBuilder private func modelPage(_ state: RemoteState, _ c: NewConfig, done: (() -> Void)?) -> some View {
-        SheetHead("模型", action: done == nil ? nil : "完成", onAction: done, onBack: { page = .main })
-        if let ms = models {
+    @ViewBuilder private func modelPage(_ state: RemoteState, _ c: NewConfig, done: (() -> Void)?, back: (() -> Void)?) -> some View {
+        SheetHead("模型", action: done == nil ? nil : "完成", onAction: done, onBack: back)
+        if let blocked = prefsBlocked(state), back == nil { Banner(blocked).padding(.bottom, 8) }
+        if draft.unread(state) {
+            reading(state, draft.current(state))
+        } else if let ms = models {
             let standing = defaultModelName(c, models: ms, settings: settings)
             ListItem("默认" + (standing.isEmpty ? "" : "（\(standing)）"), checked: c.model.isEmpty) {
                 Haptics.selection()
@@ -259,6 +220,7 @@ struct ProjectSettingsSheet: View {
                     edit(c) { $0.effort = effort }
                 }
             }
+            if agentInfo(c.agent).standardContextOption { context(c, shown: projectModel(c, models: ms, settings: settings)) }
         } else if !modelsError.isEmpty {
             Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(modelsError)", tone: .warn)
         } else {
@@ -266,36 +228,19 @@ struct ProjectSettingsSheet: View {
         }
     }
 
-    @ViewBuilder private func contextPage(_ c: NewConfig, done: (() -> Void)?) -> some View {
-        SheetHead("上下文窗口", action: done == nil ? nil : "完成", onAction: done, onBack: { page = .main })
-        ListItem("1M", desc: "Claude Code 的默认窗口", checked: !c.standardContext) {
-            Haptics.selection()
-            edit(c) { $0.standardContext = false }
-            page = .main
-        }
-        ListItem("标准 200k", desc: "超过 200k 前自动压缩", checked: c.standardContext, last: true) {
-            Haptics.selection()
-            edit(c) { $0.standardContext = true }
-            page = .main
-        }
-        Hint("窗口在会话开始时确定，改了只影响之后新建的会话。")
-    }
-
-    @ViewBuilder private func modePage(_ c: NewConfig, done: (() -> Void)?) -> some View {
-        let choices = modeChoices(c, models: models, settings: settings)
-        SheetHead("审批模式", action: done == nil ? nil : "完成", onAction: done, onBack: { page = .main })
-        ForEach(Array(choices.enumerated()), id: \.element.id) { i, choice in
-            // Full access is the one choice that takes the asking away: red, as wherever it is written.
-            ListItem(
-                choice.title, desc: choice.desc, checked: choice.checked, enabled: choice.enabled, danger: choice.mode == .full,
-                last: i == choices.count - 1
-            ) {
+    /// The context window (Claude Code), under the model: a model without a larger window has nothing to choose.
+    @ViewBuilder private func context(_ c: NewConfig, shown: PBModelInfo?) -> some View {
+        let window = settingsContext(c, shown: shown)
+        FieldLabel("上下文窗口")
+        if window.fixed {
+            Hint(window.text)
+        } else {
+            let options = ["1M", "标准 200k"]
+            ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0]) { picked in
                 Haptics.selection()
-                edit(c) { $0.mode = choice.mode }
-                page = .main
+                edit(c) { $0.standardContext = picked == options[1] }
             }
         }
-        Hint("完全放行的新会话直接按此设置启动。")
     }
 }
 
