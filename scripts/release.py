@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Prepare a task-completion release, or validate a tag in CI. No scheduled releases."""
+import os
 import argparse
 import hashlib
 import json
@@ -57,7 +58,9 @@ def prepare(kind):
         raise ValueError("Commit task changes before preparing a release")
     tags = release_tags()
     previous = tags[-1] if tags else None
-    if not changed_since(previous):
+    # RA_REPUBLISH=1: the last tag's release never came out and what fixed it
+    # was a test, which is no product change, so the next version carries it.
+    if not changed_since(previous) and os.environ.get("RA_REPUBLISH") != "1":
         return {"eligible": False, "reason": "No product changes since the last tag"}
     version, code = read_version()
     if previous and previous != "v" + version:
