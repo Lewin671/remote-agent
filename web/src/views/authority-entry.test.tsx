@@ -29,7 +29,10 @@ const done = vi.fn();
 const button = (label: string) =>
   [...host.querySelectorAll("button")].find((b) => (b.getAttribute("aria-label") ?? b.textContent) === label)!;
 async function click(label: string) {
-  await act(async () => button(label).click());
+  await act(async () => {
+    button(label).click();
+    if (label === "加入已有账户") await import("./Pairing");
+  });
 }
 async function input(label: string, value: string) {
   const el = host.querySelector<HTMLInputElement>(

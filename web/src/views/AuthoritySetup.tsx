@@ -1,6 +1,8 @@
 import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { Startup } from "../Startup";
+import { page } from "./pages";
 import {
   AuthoritySetup,
   authorityStartup,
@@ -14,9 +16,11 @@ import {
 } from "../security-operation";
 import { errorText } from "../remote";
 import { Banner, NavBar } from "../ui";
-import { Setup } from "./Pairing";
 import { CodeBackup, PersistenceResult } from "./AuthorityKit";
 import { SetupReset } from "../SetupReset";
+
+// Pairing and curve code are needed only after choosing to join.
+const Setup = page(() => import("./Pairing").then(m => ({ default: m.Setup })));
 
 export function AccountEntry({
   onDone,
@@ -76,7 +80,7 @@ export function AccountEntry({
     return (
       <>
         <NavBar onBack={() => setMode("")} title="加入已有账户" />
-        <Setup onDone={onDone} />
+        <Suspense fallback={<Startup />}><Setup onDone={onDone} /></Suspense>
       </>
     );
   if (!mode)
