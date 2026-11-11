@@ -672,7 +672,16 @@ h1, h2, h3 { font-weight: var(--w7); }
    corners, with no shadow. On a wide window it is centered. */
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 88%; overflow-y: auto; background: var(--gbg); border-radius: 38px 38px 0 0;
   padding: 8px 16px max(24px, env(safe-area-inset-bottom)); }
-@media (min-width: 900px) { .sheet { left: 50%; right: auto; width: 460px; transform: translateX(-50%); bottom: auto; top: 12%; border-radius: 30px; max-height: 76%; padding-bottom: 20px; box-shadow: var(--float); } }
+/* In a wide window a sheet is a dialog in the middle of the window: nothing to drag, and an edge of its own where the dim barely shows on a black page. */
+@media (min-width: 900px) {
+  .sheet { left: 50%; right: auto; width: 460px; transform: translate(-50%, -50%); bottom: auto; top: 50%; border-radius: 30px; max-height: 76%; padding-top: 20px; padding-bottom: 20px; box-shadow: var(--float), 0 0 0 .5px var(--sep); }
+  .sheet > .grab { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
+  /* A choice opened against the control it was made from: a menu, placed by the control's box. */
+  .sheet.anchored { transform: none; width: auto; min-width: 220px; max-width: 320px; max-height: 60%; padding: 8px; border-radius: 22px; }
+  .sheet.anchored > .sheet-head { display: none; }
+  .sheet.anchored .list { margin: 0; }
+  .overlay:has(> .sheet.anchored) > .dim { background: none; }
+}
 .grab { display: block; width: 36px; height: 5px; background: var(--ink3); border-radius: 3px; margin: 0 auto 16px; padding: 0; position: relative; }
 /* 44 to touch, though the handle is thin. */
 .grab::before { content: ""; position: absolute; inset: -16px -20px -12px; }

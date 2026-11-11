@@ -522,6 +522,7 @@ export function NewBox({
   const { text, setText } = ns;
   const [config, setConfig] = useState<"" | "main" | Pick>(settings ? "main" : "");
   const [choosing, setChoosing] = useState(false);
+  const cliRef = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, variant === "sheet" ? 4000 : 240);
   useEffect(() => {
@@ -661,7 +662,7 @@ export function NewBox({
       {many && (
         <span className="g">
           用
-          <button className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+          <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
             <span>{agentName(ns.cfg.agent)}</span>
             <ChevronDown />
           </button>
@@ -713,7 +714,7 @@ export function NewBox({
     <>
       {body}
       {choosing && (
-        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI">
+        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI" anchor={cliRef}>
           <div className="list" role="menu">
             {ns.agents.map((a) => (
               <button

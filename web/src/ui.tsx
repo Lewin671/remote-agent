@@ -62,18 +62,30 @@ export function GlassButton({ label, onClick, children, disabled, className = ""
   );
 }
 
+// Asked when a sheet opens, not when this module loads: it is also loaded where there is no window.
+const wideQuery = () => matchMedia("(min-width: 900px)");
+function subscribeWide(fn: () => void) {
+  const q = wideQuery();
+  q.addEventListener?.("change", fn);
+  return () => q.removeEventListener?.("change", fn);
+}
+
 /** A bottom sheet: gray, with a grab handle that closes it as the dim does.
  * A title, when given, is centered in a head with at most a 取消 or 完成 on
  * the right, only where something is to be confirmed, and a round back
  * button on the left a level down. On a wide window it is centered. */
-export function Sheet({ onClose, children, className = "", title, action, back }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void; disabled?: boolean }; back?: () => void }) {
+export function Sheet({ onClose, children, className = "", title, action, back, anchor }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void; disabled?: boolean }; back?: () => void; anchor?: RefObject<HTMLElement | null> }) {
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
+  // A short choice made from a control in a wide window opens against that
+  // control, as a menu, not as a dialog in the middle of the window.
+  const wide = useSyncExternalStore(subscribeWide, () => wideQuery().matches);
+  const at = wide ? anchor?.current?.getBoundingClientRect() : undefined;
   return (
     <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
-      <div className={"sheet " + className} role="dialog" aria-modal="true">
+      <div className={"sheet " + (at ? "anchored " : "") + className} style={at ? { left: at.left, top: at.bottom + 8 } : undefined} role="dialog" aria-modal="true">
         <button className="grab" aria-label="关闭" onClick={onClose} />
         {title !== undefined && (
           <div className="sheet-head">

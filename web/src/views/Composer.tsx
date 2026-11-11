@@ -109,7 +109,8 @@ export function Composer({
   };
   const i = session.info;
   const keys = sendKeys(fine);
-  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
+  // Not by whether a tool is running: that changes every few seconds of a turn, and the field would blink.
+  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
   const canQueue = d.running;
   const stopping = d.running && !t && !images;
   const send = stopping ? (
