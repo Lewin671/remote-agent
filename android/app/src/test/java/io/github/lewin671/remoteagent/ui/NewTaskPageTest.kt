@@ -1,6 +1,10 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
+import android.content.Context
+import android.content.ContextWrapper
+import io.github.lewin671.remoteagent.RaApp
+import org.robolectric.RuntimeEnvironment
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -36,7 +40,15 @@ class NewTaskPageTest {
         }
     }
 
-    @After fun close() = remote.close()
+    @Before fun imageStore() {
+        // The composer owns an image draft even with no attachments. Set up its store here so
+        // this screen's tests also run alone, without relying on another test creating RaApp.
+        val app = RaApp()
+        ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java)
+            .apply { isAccessible = true }.invoke(app, RuntimeEnvironment.getApplication())
+        RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
+    }
+    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear() }
 
     @Test fun theTitleSaysWhereAndTheBoxHoldsTheRest() {
         show("a", "b")
@@ -48,6 +60,42 @@ class NewTaskPageTest {
         ui.onNodeWithTag("new-model", useUnmergedTree = true).assertExists()
         ui.onNodeWithContentDescription("开始").assertExists()
         ui.onNodeWithText("新任务").assertDoesNotExist()
+    }
+
+    @Test fun cliMenuKeepsComposerAndTextFocusAndSameChipCloses() {
+        show("a")
+        val field = ui.onNode(hasSetTextAction())
+        field.performClick()
+        val box = ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot
+        ui.onNodeWithTag("new-agent").performTouchInput { click() }
+        ui.onNodeWithTag("new-agent-menu").assertExists()
+        field.assertIsFocused()
+        Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
+        ui.onNodeWithTag("new-agent").performTouchInput { click() }
+        ui.onNodeWithTag("new-agent-menu").assertDoesNotExist()
+        ui.onNodeWithTag("new-agent").performClick()
+        ui.onNodeWithText("Claude Code").performClick()
+        ui.onNodeWithTag("new-agent-menu").assertDoesNotExist()
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+        field.assertIsFocused()
+        Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
+    }
+
+    @Test fun modelPopoverKeepsComposerAndDismissesOutside() {
+        show("a")
+        val field = ui.onNode(hasSetTextAction())
+        field.performClick()
+        val box = ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot
+        ui.onNodeWithTag("new-model").performClick()
+        ui.onNodeWithTag("new-model-popover").assertExists()
+        field.assertIsFocused()
+        Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
+        ui.onNodeWithTag("new-model").performTouchInput { click() }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        ui.onNodeWithTag("new-model").performClick()
+        field.performTouchInput { click() }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        field.assertIsFocused()
     }
 
     @Test fun oneComputerHasNoSecondLine() {

@@ -63,6 +63,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.text.BasicTextField
@@ -387,7 +389,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     val state by remote.state.collectAsState()
     val p = pal
     val hidden = io.github.lewin671.remoteagent.core.isHidden(state, key)
-    // The page of project settings that is open ("model" or "machine"), or null.
+    // The machine picker uses project settings; model choices stay with the composer.
     var settingsOpen by remember { mutableStateOf<String?>(null) }
     // What the next session starts with, and whether the session it inherits from is known
     // yet ([ProjectStart]): the message box fetches pages until it is, and starts nothing before.
@@ -400,7 +402,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     Column(Modifier.fillMaxSize().background(p.paper)) {
         NewSessionBox(
             state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
-            onModel = { settingsOpen = "model" }, onProject = { picking = true },
+            onProject = { picking = true },
             banner = {
                 Column(Modifier.padding(horizontal = 12.dp)) {
                     when (val change = PrefsChanges.states[key]) {
@@ -501,7 +503,6 @@ fun NewSessionBox(
     focus: Boolean,
     onMachine: () -> Unit = {},
     settled: Boolean = true,
-    onModel: () -> Unit = {},
     onProject: (() -> Unit)? = null,
     banner: @Composable () -> Unit = {},
 ) {
@@ -528,12 +529,32 @@ fun NewSessionBox(
     val machineOnline = machine != null && online && state.machines[machine]?.online == true
     // The mode a new task gets is the machine's default; it cannot start when that is auto and the model has none.
     val defaults = config?.let { defaultModeOf(state.machines[it.machineId], it.agent) } ?: DefaultMode(null, false, false)
+    val picker = remember { ComposerPicker() }
     var models by remember(machine, config?.agent) { mutableStateOf<ListModelsResponse?>(null) }
     var modelsRead by remember(machine, config?.agent) { mutableStateOf(false) }
+    var modelsError by remember(machine, config?.agent) { mutableStateOf("") }
+    var settings by remember(machine, config?.agent) { mutableStateOf<DaemonSettings?>(null) }
     LaunchedEffect(machine, config?.agent) {
+        picker.close()
         val cfg = config ?: return@LaunchedEffect
-        models = runCatching { remote.listModels(cfg.machineId, cfg.agent) }.getOrNull()
+        runCatching { remote.listModels(cfg.machineId, cfg.agent) }
+            .onSuccess { models = it }.onFailure { modelsError = errorText(it) }
         modelsRead = true
+    }
+    // Keep the composer's snapshot visible while refreshing. Remote coalesces an in-flight cold
+    // read with this request; opening a picker never creates a second empty model state.
+    LaunchedEffect(machine, config?.agent, picker.open == "model") {
+        val cfg = config ?: return@LaunchedEffect
+        if (picker.open == "model") {
+            runCatching { remote.listModels(cfg.machineId, cfg.agent, fresh = true) }
+                .onSuccess { models = it; modelsError = "" }.onFailure { modelsError = errorText(it) }
+        }
+    }
+    LaunchedEffect(machine, config?.agent, picker.open == "model") {
+        val cfg = config ?: return@LaunchedEffect
+        if (picker.open != "model" && settings != null) return@LaunchedEffect
+        runCatching { remote.machineCommand(cfg.machineId, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings.settings }
+            .onSuccess { settings = it }
     }
     val issue = config?.let { autoIssue(it.agent, it.model.ifEmpty { models?.defaultModel.orEmpty() }, defaults.mode, models?.modelsList) }
     // Images go to the machine the session will start on; a new machine gets them again.
@@ -611,7 +632,7 @@ fun NewSessionBox(
             else if (c != null && state.machines[c.machineId]?.online != true) Notice("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = NoticeTone.WARN)
             if (c != null && missing != null) Notice("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
             if (c != null && issue == AutoIssue.MODEL) Notice("这个模型没有自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认",
-                tone = NoticeTone.WARN, action = "换模型", onAction = onModel)
+                tone = NoticeTone.WARN, action = "换模型", onAction = { picker.toggle("model") })
             if (c != null && issue == AutoIssue.ACCOUNT) Notice("当前账户不支持自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。到这台电脑的设置里改默认后再开始",
                 tone = NoticeTone.WARN, action = "去改默认", onAction = { nav.device(c.machineId) })
             if (act.running) Notice("正在 ${c?.let { machineLabel(state, it.machineId) }} 上启动…")
@@ -629,10 +650,10 @@ fun NewSessionBox(
             }
         }
     }
-    var picking by remember { mutableStateOf(false) }
     // 新任务 (design-system §6): close at the top left, where it runs in the middle; the notices; the box above the keyboard.
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    ComposerPickerBack(picker)
+    Column(Modifier.fillMaxSize().composerPickerEvents(picker)) {
+        Row(Modifier.fillMaxWidth().onGloballyPositioned { picker.top = it.boundsInWindow().bottom }.padding(start = 16.dp, end = 16.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             GlassButton(Lucide.X, "关闭", nav.back)
             Column(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
@@ -663,6 +684,7 @@ fun NewSessionBox(
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(top = 10.dp)) { notices() }
         ComposeBox(
             text, { text = it },
+            modifier = Modifier.onGloballyPositioned { picker.composer = it.boundsInWindow() }.testTag("new-composer"),
             placeholder = "要做什么？",
             canSend = canStart,
             onSend = { start() },
@@ -674,28 +696,52 @@ fun NewSessionBox(
             hasDraft = drafting,
             top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
             tools = {
-                if (c != null && agents.size > 1) BoxTool({ picking = true }, "CLI：${agentName(c.agent)}", Modifier.testTag("new-agent")) {
+                if (c != null && agents.size > 1) BoxTool({ picker.toggle("agent") }, "CLI：${agentName(c.agent)}", Modifier.onGloballyPositioned { picker.agent = it.boundsInWindow() }.testTag("new-agent")) {
                     AgentMark(c.agent, T.s15, p.ink2)
                     Text(agentName(c.agent), style = T.s15, color = p.ink2, maxLines = 1)
                 }
                 // The model, as the summary of the settings; with no CLI beside it, it names the CLI first.
                 val model = c?.let { (if (agents.size > 1) "" else agentName(it.agent) + " · ") + if (!modelsRead && it.model.isEmpty()) "读取设置…" else modelLabel(it, models) }
-                if (model != null) BoxTool(onModel, "模型：$model", Modifier.weight(1f, fill = false).testTag("new-model")) {
+                if (model != null) BoxTool({ picker.toggle("model") }, "模型：$model", Modifier.weight(1f, fill = false).onGloballyPositioned { picker.model = it.boundsInWindow() }.testTag("new-model")) {
                     Text(model, style = T.s15, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                 }
             },
         )
     }
-    if (picking && c != null) Sheet({ picking = false }) {
-        SheetHead("用哪个 CLI", "取消", { picking = false })
-        Group(Modifier.padding(start = 0.dp, end = 0.dp), rows = agents.map { a -> @Composable {
-            GRow(agentName(a), icon = AgentMarks.of(a), onClick = {
-                picking = false
-                entry.agent.value = a
-                val to = projectStart(state, key, a, c.machineId)
-                draft.retarget(switchAgent(c, to?.config, a), to?.settled != false)
-            }, trailing = { if (a == c.agent) Ic(Lucide.Check, 18.dp, p.blue) })
-        } })
+    if (picker.open == "agent" && c != null) ComposerPopover(picker, "CLI", panel = false) {
+        agents.forEach { a ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
+                .selectable(selected = a == c.agent, role = Role.RadioButton, onClick = {
+                    picker.close()
+                    entry.agent.value = a
+                    val to = projectStart(state, key, a, c.machineId)
+                    draft.retarget(switchAgent(c, to?.config, a), to?.settled != false)
+                }).padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AgentMark(a, T.s17, p.ink)
+                Text(agentName(a), style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
+                if (a == c.agent) Ic(Lucide.Check, 18.dp, p.blue)
+            }
+        }
+    }
+    if (picker.open == "model" && c != null) ComposerPopover(picker, "模型", panel = true) {
+        var edited by remember { mutableStateOf<NewConfig?>(null) }
+        val current = edited ?: c
+        val blockedPrefs = prefsBlocked(state)
+        SheetHead("模型", if (blockedPrefs == null && settled) "完成" else null, {
+            edited?.let { next ->
+                val op = PrefsOp.SetSettings(key, c.machineId, sets = listOf(next.agentSettings()))
+                PrefsChanges.run(remote, op)
+                draft.choose(next)
+            }
+            picker.close()
+        })
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+            if (blockedPrefs != null) Notice(blockedPrefs)
+            if (!settled) Text("正在读取这个项目上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
+            ModelSettingsBody(current, models, modelsError, settings, machineLabel(state, c.machineId),
+                scheduling = false, enabled = settled && blockedPrefs == null) { edited = it }
+        }
     }
 }
 
@@ -824,7 +870,6 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     var page by remember { mutableStateOf(start) }
     // Opened right at a page: done with it is done with the sheet.
     val back: (() -> Unit)? = if (start.isEmpty()) ({ page = "" }) else null
-    var allModels by remember { mutableStateOf(false) }
     // Models are per machine: on another one every CLI starts over.
     val moved = machine != machineId
     val agents = machineAgents(state.machines[machine])
@@ -959,45 +1004,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
             }
             "model" -> {
                 SheetHead("模型", if (blockedPrefs == null) "完成" else null, { done() }, onBack = back)
-                val ms = models
-                when {
-                    modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
-                    ms == null -> Text("读取 ${machineLabel(state, c.machineId)} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
-                    else -> {
-                        val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
-                        val shown = shownModels(ms.modelsList, ms.modelsList.firstOrNull { it.slug == c.model }, allModels)
-                        val few = shown.size == ms.modelsCount
-                        SheetList {
-                        ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), last = shown.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
-                        shown.forEachIndexed { i, m ->
-                            ListItem(
-                                m.displayName.ifEmpty { m.slug },
-                                small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
-                                checked = c.model == m.slug,
-                                last = i == shown.size - 1,
-                                onClick = {
-                                    edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
-                                },
-                            )
-                        }
-                        }
-                        if (!few) AllModels { allModels = true }
-                        projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
-                            val defaultEffort = if (c.model.isEmpty()) {
-                                defaultsFor(settings, c.agent).effort.ifEmpty { m.defaultEffort }
-                            } else m.defaultEffort
-                            FieldLabel("推理强度")
-                            ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, true) { edit(c.copy(effort = it)) }
-                        }
-                    }
-                }
-                // Claude Code's context window, on the model's page: a new task's settings are this page.
-                if (agentInfo(c.agent).standardContextOption && !scheduling) {
-                    FieldLabel("上下文窗口")
-                    // A model without a larger window has nothing to choose.
-                    if (shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW) Hint("标准 200k · 这个模型只有标准窗口")
-                    else Segmented(listOf("1M", "标准 200k"), if (c.standardContext) 1 else 0, { edit(c.copy(standardContext = it == 1)) }, Modifier.fillMaxWidth())
-                }
+                ModelSettingsBody(c, models, modelsError, settings, machineLabel(state, c.machineId), scheduling) { edit(it) }
             }
             "mode" -> {
                 SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
@@ -1014,6 +1021,62 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 Hint("完全放行的新会话直接按此设置启动。")
             }
         }
+    }
+}
+
+/** Shared by project/scheduled sheets and the new task's anchored panel. */
+@Composable
+internal fun ModelSettingsBody(
+    c: NewConfig,
+    models: ListModelsResponse?,
+    modelsError: String,
+    settings: DaemonSettings?,
+    machineName: String,
+    scheduling: Boolean,
+    enabled: Boolean = true,
+    edit: (NewConfig) -> Unit,
+) {
+    val p = pal
+    var allModels by remember(c.machineId, c.agent) { mutableStateOf(false) }
+    val shownModel = models?.let { projectModel(c, it, settings) }
+    val ms = models
+    when {
+        ms == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
+        ms == null -> Text("读取 ${machineName} 的设置…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
+        else -> {
+            val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
+            val shown = shownModels(ms.modelsList, ms.modelsList.firstOrNull { it.slug == c.model }, allModels)
+            val few = shown.size == ms.modelsCount
+            SheetList {
+            ListItem("默认" + if (defaultModel.isNotEmpty()) "（$defaultModel）" else "", checked = c.model.isEmpty(), enabled = enabled, last = shown.isEmpty(), onClick = { edit(c.copy(model = "", effort = "")) })
+            shown.forEachIndexed { i, m ->
+                ListItem(
+                    m.displayName.ifEmpty { m.slug },
+                    small = if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}" else null,
+                    checked = c.model == m.slug, enabled = enabled,
+                    last = i == shown.size - 1,
+                    onClick = {
+                        edit(c.copy(model = m.slug, effort = m.defaultEffort, mode = c.mode?.takeUnless { m.autoUnavailable && it == Mode.AUTO }))
+                    },
+                )
+            }
+            }
+            if (!few) AllModels { allModels = true }
+            projectModel(c, ms, settings)?.takeIf { it.effortsList.isNotEmpty() }?.let { m ->
+                val defaultEffort = if (c.model.isEmpty()) {
+                    defaultsFor(settings, c.agent).effort.ifEmpty { m.defaultEffort }
+                } else m.defaultEffort
+                FieldLabel("推理强度")
+                ChoiceGrid(m.effortsList, c.effort.ifEmpty { defaultEffort }, enabled) { edit(c.copy(effort = it)) }
+            }
+        }
+    }
+    // Claude Code's context window, on the model's page: a new task's settings are this page.
+    if (agentInfo(c.agent).standardContextOption && !scheduling) {
+        FieldLabel("上下文窗口")
+        // A model without a larger window has nothing to choose.
+        if (shownModel != null && shownModel.contextWindow in 1..io.github.lewin671.remoteagent.core.STANDARD_WINDOW) Hint("标准 200k · 这个模型只有标准窗口")
+        else Segmented(listOf("1M", "标准 200k"), if (c.standardContext) 1 else 0, { edit(c.copy(standardContext = it == 1)) }, Modifier.fillMaxWidth(), enabled = { enabled })
     }
 }
 
@@ -1185,7 +1248,6 @@ fun NewProjectAtScreen(machine: String, path: String) {
     Column(Modifier.fillMaxSize().background(p.paper)) {
         NewSessionBox(
             state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
-            onModel = { settingsOpen = "model" },
         )
     }
     val open = settingsOpen
