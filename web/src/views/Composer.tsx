@@ -36,6 +36,9 @@ export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: st
     s.height = el.offsetHeight;
     // Growing a line, or falling back once the message is sent, eases.
     const ro = new ResizeObserver((entries) => {
+      // The ease's own frames are resizes too; answering them with another
+      // ease would never settle.
+      if (easing(el)) return;
       const to = entries[entries.length - 1].borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
       const from = s.height;
       s.height = to;
