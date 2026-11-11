@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -210,7 +211,8 @@ fun GroupTitle(text: String, modifier: Modifier = Modifier, date: Boolean = fals
 @Composable
 fun ProjectAvatar(key: String, size: Int = 28, all: Boolean = false) {
     val p = pal
-    Box(Modifier.size(size.dp).clip(CircleShape).background(p.fill2), contentAlignment = Alignment.Center) {
+    // The letter only decorates the name beside it: hidden from screen readers (design-system §5).
+    Box(Modifier.clearAndSetSemantics {}.size(size.dp).clip(CircleShape).background(p.fill2), contentAlignment = Alignment.Center) {
         Text(
             if (all) "全" else projectName(key).take(1).lowercase(),
             // In the circle's own scale: the letter does not grow past it with the font size.
