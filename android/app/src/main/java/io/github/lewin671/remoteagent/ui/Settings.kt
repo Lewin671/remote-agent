@@ -644,8 +644,9 @@ fun DeviceScreen(id: String) {
                                                             color = p.orangeInk,
                                                         ),
                                                     )
-                                                    append("未验证 · ")
+                                                    append("未验证")
                                                     pop()
+                                                    append(" · ")
                                                 }
                                                 append(a.version.ifEmpty { "未知" })
                                             },
