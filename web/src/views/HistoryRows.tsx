@@ -32,8 +32,8 @@ type Props<T> = {
 // A first index well above zero, to have room to count down from as older
 // records join above.
 const FIRST = 1_000_000;
-// Frames a drawn list at the end must keep its height before it is shown.
-const STILL_FRAMES = 2;
+// Frames a drawn and measured list at the end must keep its height before it is shown.
+const STILL_FRAMES = 1;
 
 /** Keep complete event state, but mount only rows near the viewport. */
 export function HistoryRows<T extends { key: string }>(props: Props<T>) {
@@ -78,7 +78,8 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   // what it ends with is here (the latest page, or the copy kept in this
   // browser: older records that come in above are placed without moving what
   // is on screen), it stands at the end if it follows it, and its height has
-  // been the same for two frames. A placeholder stands in meanwhile. Plain
+  // been the same for a frame once every row on the page is measured. A
+  // placeholder stands in meanwhile. Plain
   // lists are placed in the frame they are drawn in and need none of this.
   const ready = useRef(isReady);
   ready.current = isReady;
@@ -92,9 +93,13 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       // The list stops short of the chat's own bottom padding: take that last step.
       if (follows && parent.scrollHeight - parent.scrollTop - parent.clientHeight < 40) parent.scrollTop = parent.scrollHeight;
       const sh = parent.scrollHeight;
-      const drawn = !!parent.querySelector("[data-item-index]") && sh > parent.clientHeight;
+      const rows = parent.querySelectorAll<HTMLElement>("[data-item-index]");
+      const drawn = rows.length > 0 && sh > parent.clientHeight;
       const there = !follows || sh - parent.scrollTop - parent.clientHeight < 4;
-      still = sh === last && there && drawn ? still + 1 : 0;
+      // Every row on the page is the size the list holds for it: what is
+      // left to correct is not on the page.
+      const measured = drawn && [...rows].every((el) => Math.abs(Number(el.dataset.knownSize) - el.offsetHeight) < 1);
+      still = sh === last && there && measured ? still + 1 : 0;
       last = sh;
       if ((still >= STILL_FRAMES && ready.current) || performance.now() - t0 > 6000) return parent.classList.remove("mo-hold");
       id = requestAnimationFrame(tick);

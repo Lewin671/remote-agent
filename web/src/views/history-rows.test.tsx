@@ -135,6 +135,8 @@ it("initially reveals the selected row within a virtual history instead of the o
 });
 
 it("shows the list as soon as the latest page is in, without waiting for the older records", async () => {
+  // A row in the mock list is as tall as the list says it is.
+  const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) { return Number(this.dataset.knownSize ?? 600); });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   const scroller = createRef<HTMLDivElement>(); const remote = { scroll: new Map() } as unknown as Remote;
   const items = Array.from({ length: 150 }, (_, i) => ({ key: String(i), text: "message " + (i + 1) }));
@@ -157,6 +159,7 @@ it("shows the list as soon as the latest page is in, without waiting for the old
   await act(async () => root!.render(page(true, false)));
   // The latest page is here and the rest is not: drawn at once.
   await vi.waitFor(async () => { await act(async () => { await new Promise((r) => setTimeout(r, 20)); }); expect(scroller.current!.classList.contains("mo-hold")).toBe(false); });
+  height.mockRestore();
 });
 
 it("keeps the rows on screen when older records join above", async () => {

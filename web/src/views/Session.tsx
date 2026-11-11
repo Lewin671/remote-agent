@@ -1143,13 +1143,18 @@ function ChatBody({
         }}
         onScroll={(e) => {
           const el = e.currentTarget;
-          const atBottom =
-            el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+          const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
+          const atBottom = gap < 60;
           // Virtual measurement and pagination also produce scroll events.
           // Only a user's scroll away turns following off.
           if (atBottom) stick.current = true;
           else if (Date.now() - userScrollAt.current < 1000)
             stick.current = false;
+          // The virtual list follows its last row, which stops short of the
+          // chat's own bottom padding: where nobody scrolled it, the last step
+          // is taken, so that older records that join above, or a row measured,
+          // do not leave the end a few pixels away.
+          if (stick.current && gap > 0 && gap < 40 && Date.now() - userScrollAt.current >= 1000) el.scrollTop = el.scrollHeight;
           remote.scroll.set(sid, { top: el.scrollTop, stick: stick.current });
           if (stick.current) {
             seen.current = count;
