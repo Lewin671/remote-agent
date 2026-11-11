@@ -2144,6 +2144,14 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 - 同一轮：项目设置弹层只显示当前 CLI 的一套设置（定时任务详情的「在哪运行」是唯一能改任务 CLI 的地方，保留分段）；输入框占位文字不再随工具启停切换
 
 
+### Android 的 CLI 标（2026-11-11，基于 v0.63.0）
+
+按 design-system 第 5 节「CLI 的标」把三个标移植到 Android：会话行第三行行首（列表里不止一种 CLI 时，代替 CLI 名字）、新任务的 CLI 胶囊和选 CLI 的弹层、会话 ⋯ 菜单第一行、设置里电脑卡的额度行和电脑详情页的账户额度行。
+
+- 自动检查：`./gradlew testDebugUnitTest` 通过（`metaLine` 不再写 CLI 名字，`SessionRowText.agent` 另给标；测试同步）；`assembleDebug`、`assembleDebugAndroidTest` 通过
+- 示例数据截图：本机 API 36 模拟器（只读副本）上跑现有的 `V58HomeGallery`、`V58SessionGallery`、`V58WideGallery`、`V8Gallery`，看过主页行（亮色、暗色、200% 字号）、新任务（亮色、暗色、选 CLI 的弹层）、会话 ⋯ 菜单、设置的电脑卡和电脑详情页的额度行；三个标的大小、与文字的间距和对齐都看过。没有人工点按，也没连真实 CLI 和本地 server
+- 没验证：Codex 和 Antigravity 的真实会话；读屏（行的朗读文字里 CLI 名字在状态和预览之后、位置之前，没有用 TalkBack 听）；真机；项目设置弹层里的 CLI 分段控件和定时任务里写 CLI 名字的地方没加标（分段控件放不下图形，网页也没有）
+
 ### 网页性能审计（2026-11-11）
 
 一台 Intel 台式机上的无头 Chrome（CDP，手机档位 390×844、CPU 降速 4 倍，宽屏档位 1440×900）做计时，演示页生产包，基线是 v0.60.8 的包，同一次测量里两个包交替各跑 5 次（`pages`、刷新偏移各 3 次）；本机 Chrome 和隔离环境（本地 server、daemon、tmux，Claude Code Haiku 真实会话）只做功能验证，不报计时。基线之后 main 又有改动（`useWidth` 改回调 ref、宽屏弹层不画拖动条），修改后的包在其上重定基线，所以修改后的数字里含这些。

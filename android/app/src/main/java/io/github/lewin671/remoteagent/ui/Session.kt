@@ -344,6 +344,7 @@ private fun SessionTopBar(
                     sessionMenuTitle(state, s),
                     shortPath(s.info?.cwd.orEmpty()),
                     mono = true,
+                    lead = { AgentMarkLead(s.agent(), T.s17b, p.ink) },
                 )
             },
             groups = listOf(

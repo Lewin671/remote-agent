@@ -689,7 +689,7 @@ fun NewSessionBox(
             }
             if (c != null && agents.size > 1) {
                 Text("用", style = T.s17, color = p.ink2)
-                Token({ picking = true }, Modifier.testTag("new-agent")) { Text(agentName(c.agent), style = T.s15b, color = p.ink, maxLines = 1) }
+                Token({ picking = true }, Modifier.testTag("new-agent")) { AgentMark(c.agent, T.s15b, p.ink, modifier = Modifier.padding(start = 7.dp)); Text(agentName(c.agent), style = T.s15b, color = p.ink, maxLines = 1) }
             }
         }
         banner()
@@ -719,7 +719,7 @@ fun NewSessionBox(
     if (picking && c != null) Sheet({ picking = false }) {
         SheetHead("用哪个 CLI", "取消", { picking = false })
         Group(Modifier.padding(start = 0.dp, end = 0.dp), rows = agents.map { a -> @Composable {
-            GRow(agentName(a), onClick = {
+            GRow(agentName(a), icon = AgentMarks.of(a), onClick = {
                 picking = false
                 entry.agent.value = a
                 val to = projectStart(state, key, a, c.machineId)

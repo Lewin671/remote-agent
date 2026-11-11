@@ -444,12 +444,15 @@ fun ActionSheet(info: (@Composable () -> Unit)?, groups: List<List<SheetAction>>
     }
 }
 
-/** The top of an [ActionSheet]: what it is about in bold, and a second line ([mono] for a path). */
+/** The top of an [ActionSheet]: what it is about in bold, after [lead] if any, and a second line ([mono] for a path). */
 @Composable
-fun SheetInfo(title: String, sub: String, mono: Boolean = false) {
+fun SheetInfo(title: String, sub: String, mono: Boolean = false, lead: (@Composable () -> Unit)? = null) {
     val p = pal
     Column(horizontalAlignment = Alignment.Start) {
-        Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            lead?.invoke()
+            Text(title, style = T.s17b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
         if (sub.isNotEmpty()) Text(sub, style = if (mono) T.mono12.copy(fontSize = 13.sp) else T.s13, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -422,7 +422,10 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
             val low = left <= 20.0
             Column(Modifier.padding(top = 14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(agentName(g.agent), style = T.s15b, color = p.ink, modifier = Modifier.weight(1f), maxLines = 1)
+                    Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                        AgentMarkLead(g.agent, T.s15b, p.ink)
+                        Text(agentName(g.agent), style = T.s15b, color = p.ink, maxLines = 1)
+                    }
                     Text("剩 ${left.roundToInt()}%", style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
                 }
                 Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
@@ -600,6 +603,7 @@ fun DeviceScreen(id: String) {
                             if (sepIdx != -1) {
                                 GRow(
                                     g.title.substringBefore(" · "),
+                                    icon = AgentMarks.of(g.agent),
                                     trailing = {
                                         Text(
                                             androidx.compose.ui.text.buildAnnotatedString {
@@ -619,7 +623,8 @@ fun DeviceScreen(id: String) {
                             } else {
                                 GRow(
                                     g.title.substringBefore(" · "),
-                                    qline,
+                                    icon = AgentMarks.of(g.agent),
+                                    value = qline,
                                     onClick = { nav.quota(id) },
                                     chevron = true,
                                 )

@@ -105,7 +105,11 @@ fun SessionRow(
                 row.status.text + if (row.preview.isNotEmpty()) " · ${row.preview}" else "",
                 style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp),
             )
-            if (third.isNotEmpty()) Text(third, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 4.dp))
+            if (third.isNotEmpty() || row.agent != null) Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                // The CLI leads the line as its mark (design-system §5); the row's spoken text already names it.
+                row.agent?.let { AgentMarkLead(it, T.s13, p.ink2, scale = 1.15f) }
+                if (third.isNotEmpty()) Text(third, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            }
         }
     }
 }

@@ -6,6 +6,7 @@
 // are tested here. iOS has the same rules in RACore/HomeRows.swift.
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
 import java.time.ZoneId
 
@@ -217,12 +218,14 @@ data class SessionRowText(
     val status: Status,
     /** After the status word; empty when the word already says it. */
     val preview: String,
-    /** The third line; empty for none. */
+    /** The third line's words; empty for none. The CLI is not among them. */
     val meta: String,
+    /** The CLI whose mark leads the third line, when the list used more than one; null for none. */
+    val agent: Agent? = null,
 ) {
     /** The row as one sentence for the screen reader: the title first, then its state, what it last said, where it runs and when. */
     val spoken: String
-        get() = listOf(title, status.text, preview, meta.replace(" · ", "，"), time).filter { it.isNotEmpty() }.joinToString("，")
+        get() = listOf(title, status.text, preview, agent?.let { agentName(it) }.orEmpty(), meta.replace(" · ", "，"), time).filter { it.isNotEmpty() }.joinToString("，")
 }
 
 fun sessionRowText(state: RemoteState, s: SessionView, meta: RowMeta, now: Long, zone: ZoneId = ZoneId.systemDefault()): SessionRowText {
@@ -235,6 +238,7 @@ fun sessionRowText(state: RemoteState, s: SessionView, meta: RowMeta, now: Long,
         // The status word already says a plan waits.
         preview = if (pv == st.text) "" else pv,
         meta = metaLine(state, s, meta),
+        agent = s.agent().takeIf { meta.agent },
     )
 }
 

@@ -82,11 +82,13 @@ data class RowMeta(val project: Boolean = false, val agent: Boolean = false, val
 fun rowMeta(state: RemoteState, sessions: Collection<SessionView>, project: Boolean): RowMeta =
     RowMeta(project = project, agent = sessions.map { it.agent() }.distinct().size > 1, machine = state.machines.size > 1)
 
-/** A row's third line: 分叉 · 项目 · CLI · 机器, each only when it says something; empty for no third line. */
+/**
+ * A row's third line: 分叉 · 项目 · 机器, each only when it says something; empty for none.
+ * The CLI is not among the words: its mark leads the line ([RowMeta.agent] says whether).
+ */
 fun metaLine(state: RemoteState, s: SessionView, meta: RowMeta): String = buildList {
     if (forked(s)) add("分叉")
     if (meta.project) add(projectName(projectKey(s)))
-    if (meta.agent) add(agentName(s.agent()))
     if (meta.machine) add(machineName(state.machines[s.machineId], s.machineId))
 }.joinToString(" · ")
 

@@ -237,7 +237,7 @@ class TimelineTest {
         )
         val all = homeTimeline(many, HomeScope.All, zone = zone).meta
         assertEquals(RowMeta(project = true, agent = true, machine = true), all)
-        assertEquals("分叉 · foo · Claude Code · n", metaLine(many, many.sessions.getValue("2"), all))
+        assertEquals("分叉 · foo · n", metaLine(many, many.sessions.getValue("2"), all))
         // One CLI in the scope: not written, though the account has two.
         val bar = homeTimeline(many, HomeScope.Of("/Code/bar"), zone = zone).meta
         assertEquals(RowMeta(machine = true), bar)
