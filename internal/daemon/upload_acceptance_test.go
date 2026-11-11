@@ -21,6 +21,7 @@ import (
 func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 	stages := []string{"move-intent", "move-directory", "move-rename", "move-destination", "move-source", "claim-reference", "queue-commit", "queue-visible", "acceptance-record"}
 	for _, image := range []bool{false, true} {
+		prepare := completedUpload(t, image, "claim.bin", []byte("original"))
 		for _, create := range []bool{false, true} {
 			path := "send"
 			if create {
@@ -46,7 +47,7 @@ func TestUploadClaimAcceptanceCrashMatrix(t *testing.T) {
 						r.d.cfg.PollInterval = time.Hour
 						r.d.agents[pb.Agent_AGENT_CODEX] = codex.New("unused", "", "")
 						u := r.d.uploads
-						fixture := completedUpload(t, u, image, "claim.bin", []byte("original"))
+						fixture := prepare(t, u)
 						ims, files, tr, want := fixture.images, fixture.files, fixture.record, fixture.bytes
 						var s *session
 						if !create {

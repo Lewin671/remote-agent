@@ -12,6 +12,7 @@ import (
 func TestUntakePersistsReturnIntentAndRecoversIOFailures(t *testing.T) {
 	for _, release := range []bool{false, true} {
 		for _, image := range []bool{false, true} {
+			prepare := completedUpload(t, image, "rejected.bin", []byte("rejected upload"))
 			for _, fault := range []string{"mkdir", "rename", "intent-sync", "pending-sync", "session-sync"} {
 				for _, recovery := range []string{"restart", "gc"} {
 					kind := "file"
@@ -25,7 +26,7 @@ func TestUntakePersistsReturnIntentAndRecoversIOFailures(t *testing.T) {
 						parallelStorageTest(t)
 						root := t.TempDir()
 						u := newUploads(root)
-						fixture := completedUpload(t, u, image, "rejected.bin", []byte("rejected upload"))
+						fixture := prepare(t, u)
 						images, files, tr := fixture.images, fixture.files, fixture.record
 						all, err := u.takeUploads(images, files, "phone", "s", "rejected")
 						if err != nil {

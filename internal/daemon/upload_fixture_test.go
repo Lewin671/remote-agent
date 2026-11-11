@@ -22,10 +22,10 @@ type completedUploadFixture struct {
 	bytes         []byte
 }
 
-// Build the same completed state for claim/return recovery, using the existing
-// image and file helpers (including the file begin/complete idempotency checks).
-func completedUpload(t *testing.T, u *uploads, image bool, name string, data []byte) completedUploadFixture {
+// Prepare one completed upload; each fault case gets an independent disk copy.
+func completedUpload(t *testing.T, image bool, name string, data []byte) func(*testing.T, *uploads) completedUploadFixture {
 	t.Helper()
+	u := newUploads(t.TempDir())
 	var f completedUploadFixture
 	if image {
 		f.images = []string{storageUpload(t, u)}
@@ -39,5 +39,29 @@ func completedUpload(t *testing.T, u *uploads, image bool, name string, data []b
 	if err != nil {
 		t.Fatal(err)
 	}
-	return f
+	return func(t *testing.T, target *uploads) completedUploadFixture {
+		t.Helper()
+		if err := os.CopyFS(target.dir, os.DirFS(u.dir)); err != nil {
+			t.Fatal(err)
+		}
+		result := f
+		record, err := target.load(f.record.ID)
+		result.record = record
+		if err != nil {
+			t.Fatal(err)
+		}
+		return result
+	}
+}
+
+// Copy prepared disk state into each case's private directory. Setup runs the
+// real upload path once; fault injection and recovery still use real I/O and
+// fsyncs in every case. Copies must not share writable files or upload records.
+func copyUploadState(t *testing.T, source string) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.CopyFS(root, os.DirFS(source)); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }

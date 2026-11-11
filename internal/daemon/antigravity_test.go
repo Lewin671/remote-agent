@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -247,27 +248,29 @@ func TestAgyImagesRecognizedInPhoneWidthTerminal(t *testing.T) {
 func TestAgyImageCleanupVerifiesMediaDisappears(t *testing.T) {
 	for _, disappears := range []bool{true, false} {
 		t.Run(fmt.Sprint(disappears), func(t *testing.T) {
-			h := agyHarness(t)
-			h.term.setScreen(agyScreen(t, "image-terminal.txt"))
-			h.term.onWrite = func(f *fakeTerm, b string) {
-				if b == "\x05\x15\x1b" && disappears {
-					f.screen = agyScreen(t, "image-cleared-1.5.0.txt")
+			synctest.Test(t, func(t *testing.T) {
+				h := agyHarness(t)
+				h.term.setScreen(agyScreen(t, "image-terminal.txt"))
+				h.term.onWrite = func(f *fakeTerm, b string) {
+					if b == "\x05\x15\x1b" && disappears {
+						f.screen = agyScreen(t, "image-cleared-1.5.0.txt")
+					}
 				}
-			}
-			c, err := h.term.Control()
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer c.Close()
-			l, err := holdLease(c, injectBase)
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer l.end()
-			in := input{Images: imagesFor(t, h.dir, "one.png")}
-			if got := h.s.clearPasted(c, l, in, []int32{1}, "", false, false); got != disappears {
-				t.Fatalf("cleanup=%v want %v", got, disappears)
-			}
+				c, err := h.term.Control()
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer c.Close()
+				l, err := holdLease(c, injectBase)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer l.end()
+				in := input{Images: imagesFor(t, h.dir, "one.png")}
+				if got := h.s.clearPasted(c, l, in, []int32{1}, "", false, false); got != disappears {
+					t.Fatalf("cleanup=%v want %v", got, disappears)
+				}
+			})
 		})
 	}
 }

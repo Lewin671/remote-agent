@@ -42,6 +42,88 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 			if !image && (tc.name == "cancel" || tc.name == "lru") {
 				continue
 			}
+			root := t.TempDir()
+			u := newUploads(root)
+			data := []byte("exact original file bytes")
+			if image {
+				data = testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
+			}
+			sum := sha256.Sum256(data)
+			req := &pb.BeginImageUploadRequest{TransferId: tid, TotalBytes: int64(len(data)), Sha256: sum[:]}
+			if image {
+				req.Format = pb.ImageFormat_IMAGE_FORMAT_PNG
+			} else {
+				req.FileName = "matrix.bin"
+			}
+			begin := func(t *testing.T, u *uploads) {
+				if _, err := u.begin(req, "phone"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			chunk := func(t *testing.T, u *uploads) {
+				if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.name != "begin" {
+				begin(t, u)
+			}
+			if tc.name != "begin" && tc.name != "chunk" {
+				chunk(t, u)
+			}
+			var ims, files []string
+			if tc.name != "begin" && tc.name != "chunk" && tc.name != "complete" {
+				st, err := u.complete(tid, "phone")
+				if err != nil {
+					t.Fatal(err)
+				}
+				if image {
+					ims = []string{st.ImageId}
+				} else {
+					files = []string{st.FileId}
+				}
+			}
+			var taken messageUploads
+			claimed := tc.name == "untake" || tc.name == "release" || tc.name == "returning" || tc.name == "exit" || tc.name == "cancel" || tc.name == "lru"
+			if claimed {
+				var err error
+				taken, err = u.takeUploads(ims, files, "phone", "s", "r")
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			if claimed || tc.name == "take" || tc.name == "reconcile" {
+				dir := u.sessionStateDir("s")
+				if err := os.MkdirAll(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				m := meta{ID: "s", Exited: tc.name == "exit", Starting: tc.name == "release"}
+				if err := m.save(dir); err != nil {
+					t.Fatal(err)
+				}
+				tr, _ := u.load(tid)
+				// Preserve image bytes independently of queue restoration in the move
+				// matrix; cancellation/GC of unexposed images is exercised below.
+				tr.Exposed = true
+				if tc.name == "lru" {
+					tr.Refs = nil
+					tr.Embedded = true
+					tr.AccessMs = time.Now().Add(-time.Hour).UnixMilli()
+				}
+				if tc.name == "untake" || tc.name == "cancel" {
+					tr.Exposed = false
+				}
+				if tc.name == "returning" {
+					tr.Returning = true
+					tr.Refs = nil
+				}
+				if tc.name == "reconcile" {
+					tr.Session = "s"
+				}
+				if err := u.save(tr); err != nil {
+					t.Fatal(err)
+				}
+			}
 			for _, stage := range tc.steps {
 				for _, crash := range []bool{false, true} {
 					for _, gc := range []bool{false, true} {
@@ -55,88 +137,7 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 						}
 						t.Run(strings.Join([]string{kind, tc.name, stage, mode, recovery}, "/"), func(t *testing.T) {
 							parallelStorageTest(t)
-							root := t.TempDir()
-							u := newUploads(root)
-							data := []byte("exact original file bytes")
-							if image {
-								data = testPNG(t, 3, 2, color.RGBA{1, 2, 3, 255})
-							}
-							sum := sha256.Sum256(data)
-							req := &pb.BeginImageUploadRequest{TransferId: tid, TotalBytes: int64(len(data)), Sha256: sum[:]}
-							if image {
-								req.Format = pb.ImageFormat_IMAGE_FORMAT_PNG
-							} else {
-								req.FileName = "matrix.bin"
-							}
-							begin := func() {
-								if _, err := u.begin(req, "phone"); err != nil {
-									t.Fatal(err)
-								}
-							}
-							chunk := func() {
-								if _, err := u.put(&pb.PutImageChunkRequest{TransferId: tid, Data: data}, "phone"); err != nil {
-									t.Fatal(err)
-								}
-							}
-							if tc.name != "begin" {
-								begin()
-							}
-							if tc.name != "begin" && tc.name != "chunk" {
-								chunk()
-							}
-							var ims, files []string
-							if tc.name != "begin" && tc.name != "chunk" && tc.name != "complete" {
-								st, err := u.complete(tid, "phone")
-								if err != nil {
-									t.Fatal(err)
-								}
-								if image {
-									ims = []string{st.ImageId}
-								} else {
-									files = []string{st.FileId}
-								}
-							}
-							var taken messageUploads
-							claimed := tc.name == "untake" || tc.name == "release" || tc.name == "returning" || tc.name == "exit" || tc.name == "cancel" || tc.name == "lru"
-							if claimed {
-								var err error
-								taken, err = u.takeUploads(ims, files, "phone", "s", "r")
-								if err != nil {
-									t.Fatal(err)
-								}
-							}
-							if claimed || tc.name == "take" || tc.name == "reconcile" {
-								dir := u.sessionStateDir("s")
-								if err := os.MkdirAll(dir, 0700); err != nil {
-									t.Fatal(err)
-								}
-								m := meta{ID: "s", Exited: tc.name == "exit", Starting: tc.name == "release"}
-								if err := m.save(dir); err != nil {
-									t.Fatal(err)
-								}
-								tr, _ := u.load(tid)
-								// Preserve image bytes independently of queue restoration in the move
-								// matrix; cancellation/GC of unexposed images is exercised below.
-								tr.Exposed = true
-								if tc.name == "lru" {
-									tr.Refs = nil
-									tr.Embedded = true
-									tr.AccessMs = time.Now().Add(-time.Hour).UnixMilli()
-								}
-								if tc.name == "untake" || tc.name == "cancel" {
-									tr.Exposed = false
-								}
-								if tc.name == "returning" {
-									tr.Returning = true
-									tr.Refs = nil
-								}
-								if tc.name == "reconcile" {
-									tr.Session = "s"
-								}
-								if err := u.save(tr); err != nil {
-									t.Fatal(err)
-								}
-							}
+							u := newUploads(copyUploadState(t, root))
 							hit := false
 							injected := errors.New("injected upload I/O error")
 							crashToken := new(int)
@@ -244,7 +245,7 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 							}
 							// Replace the entire uploads object; a failed pre-intent write is retried
 							// by its caller (Starting metadata for release, or the client's request).
-							u = newUploads(root)
+							u = newUploads(u.root)
 							if gc {
 								u.gc(time.Now())
 							} else {
@@ -252,10 +253,10 @@ func TestUploadTransitionFaultMatrix(t *testing.T) {
 							}
 							switch tc.name {
 							case "begin":
-								begin()
-								chunk()
+								begin(t, u)
+								chunk(t, u)
 							case "chunk":
-								chunk()
+								chunk(t, u)
 							case "complete":
 								if _, err := u.complete(tid, "phone"); err != nil {
 									t.Fatal("completion retry", err)
