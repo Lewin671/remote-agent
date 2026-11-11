@@ -220,7 +220,8 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>, { fade = true 
     let height: number | undefined = sizing(el) ? undefined : el.getBoundingClientRect().height;
     void sizing(el)?.finished.then(() => (height ??= el.getBoundingClientRect().height), () => undefined);
     let room = el.style.getPropertyValue("--content-max");
-    let view = `${innerWidth}x${innerHeight}`;
+    const viewport = () => `${innerWidth}x${innerHeight}x${window.visualViewport?.height}`;
+    let view = viewport();
     let copy: HTMLElement | undefined;
     let at = -Infinity;
     const snap = (every = 0) => {
@@ -239,7 +240,7 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>, { fade = true 
       if (sizing(el)) return;
       const to = el.getBoundingClientRect().height;
       const now = el.style.getPropertyValue("--content-max");
-      const here = `${innerWidth}x${innerHeight}`;
+      const here = viewport();
       const moved = now !== room || here !== view;
       const from = height;
       height = to;

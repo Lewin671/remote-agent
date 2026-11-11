@@ -112,7 +112,8 @@
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
-body { margin: 0; background: var(--paper); color: var(--ink); overscroll-behavior: none;
+#root { height: var(--viewport-height, 100%); }
+body { margin: 0; background: var(--paper); color: var(--ink);
   font: 17px/1.4 var(--sans); letter-spacing: -.01em; -webkit-font-smoothing: antialiased; }
 code, .mono { font: 13px var(--mono); letter-spacing: 0; font-variant-numeric: tabular-nums; }
 button { font: inherit; color: inherit; letter-spacing: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
@@ -166,7 +167,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .gcap > .ic:last-child { color: var(--ink3); font-size: 16px; }
 
 /* ---------- phone shell: the whole viewport, no bars ---------- */
-.phone { height: 100%; display: flex; flex-direction: column; background: var(--paper); padding-top: env(safe-area-inset-top); position: relative; }
+.phone { height: var(--viewport-height, 100%); display: flex; flex-direction: column; background: var(--paper); padding-top: env(safe-area-inset-top); position: fixed; left: 0; right: 0; top: var(--viewport-top, 0px); }
 .page { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--paper); }
 .body { flex: 1; overflow-y: auto; min-height: 0; -webkit-overflow-scrolling: touch; }
 /* The top of a page: glass buttons over the content, which fades out
@@ -384,6 +385,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 
 /* The chat: your messages in light gray bubbles, replies with no ground. */
 .chat { --chat-pad: 20px; padding: 8px var(--chat-pad) 16px; overflow-wrap: anywhere; }
+.body.chat { overscroll-behavior-y: contain; }
 .me { display: flex; flex-direction: column; align-items: flex-end; margin: 0 0 20px; }
 .me > div { max-width: 84%; background: var(--bubble); color: var(--ink); border-radius: 22px; padding: 10px 16px; font-size: 17px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
 /* Under a bubble: where it came from, or what became of it. */

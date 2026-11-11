@@ -6,6 +6,10 @@ import { registerWorker } from "./push";
 import { watchUpdates } from "./update";
 import { fetchAhead, watchChunks } from "./chunks";
 import { pagesAhead } from "./views/pages";
+import { watchViewport } from "./viewport";
+
+const stopViewport = watchViewport();
+if (import.meta.hot) import.meta.hot.dispose(stopViewport);
 
 registerWorker();
 watchUpdates();

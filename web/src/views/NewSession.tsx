@@ -2,6 +2,7 @@
 // box and send. Project settings persist in the sealed account prefs.
 
 import { AgentMark } from "../agent-mark";
+import { useKeyboardDismiss } from "../keyboard";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
@@ -533,6 +534,7 @@ export function NewBox({
   const { text, setText } = ns;
   const [config, setConfig] = useState<"" | "main" | Pick>(settings ? "main" : "");
   const [choosing, setChoosing] = useState(false);
+  const afterKeyboard = useKeyboardDismiss();
   const cliRef = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, 240);
@@ -670,7 +672,7 @@ export function NewBox({
     </button>
   );
   const mach = ns.summary.machine && (
-    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => setConfig("machine")}>
+    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => afterKeyboard(() => setConfig("machine"))}>
       <span>{ns.summary.machine}</span>
       <ChevronDown />
     </button>
@@ -679,7 +681,7 @@ export function NewBox({
     fixed || !onPickProject ? (
       <b>{name}</b>
     ) : (
-      <button className="tok p" onClick={onPickProject} aria-label={`项目：${name}`}>
+      <button className="tok p" onClick={() => afterKeyboard(onPickProject)} aria-label={`项目：${name}`}>
         <Avatar name={name} size="sm" />
         <span>{name}</span>
         <ChevronDown />
