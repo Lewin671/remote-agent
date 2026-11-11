@@ -281,8 +281,9 @@ private struct SessionPage: View {
         }
         .task(id: sid) { await chat.follow(context.remote, sid) }
         .onChange(of: params, initial: true) { _, p in chat.use(p) }
-        .task(id: s.machineId) {
-            if agentInfo(s.agent).sessionNeedsModelList { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
+        // The menu's model row says the model's name, so it reads the list when it opens too.
+        .task(id: [s.machineId, menu ? "menu" : ""]) {
+            if agentInfo(s.agent).sessionNeedsModelList || menu { models = try? await context.remote.listModels(s.machineId, agent: s.agent) }
         }
         .task {
             #if DEBUG
@@ -330,7 +331,8 @@ private struct SessionPage: View {
         let sent = sentMessage(s, events: [PBEvent]()) || chat.spoke
         let forkBlock = forkBlocked(status: status, running: running, sent: sent)
         let raw = s.info?.model ?? ""
-        let name = models.flatMap { findModel($0.models, id: raw) { $0.slug }?.displayName } ?? raw
+        // The model's name, as the new-session summary says it; until the list is there, the name the CLI's slugs have.
+        let name = models.flatMap { findModel($0.models, id: raw) { $0.slug }?.displayName }.flatMap { $0.isEmpty ? nil : $0 } ?? agentInfo(s.agent).modelLabel(raw)
         let effort = s.info?.effort ?? ""
         var settings: [SheetAction] = []
         var list: [SheetAction] = []
