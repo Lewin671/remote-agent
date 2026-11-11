@@ -140,7 +140,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   });
   const firstNow = useRef(first);
   firstNow.current = first;
-  const save = useCallback(() => list.current?.getState((state) => {
+  const saveNow = useCallback(() => list.current?.getState((state) => {
     if (!state.ranges.length) return;
     const map = positions.get(remote) ?? new Map<string, Position>();
     positions.set(remote, map);
@@ -152,10 +152,32 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     map.set(sid, { state, count: count.current, width: parent.clientWidth, first: firstNow.current, anchor: row && item ? { key: item.key, index, offset: edge - row.getBoundingClientRect().top } : undefined });
     while (map.size > 8) map.delete(map.keys().next().value!);
   }), [remote, sid, parent]);
+  // Where the list stands is only kept for coming back to a place that was
+  // left in the middle: nothing is kept for a list that follows its end, and
+  // for the rest it is read once a frame, when the layout the frame needs
+  // anyway is there, not once for each change of the list.
+  const pending = useRef(0);
+  const following = useRef(follow);
+  following.current = follow;
+  const save = useCallback(() => {
+    if (pending.current || following.current()) return;
+    pending.current = requestAnimationFrame(() => {
+      pending.current = 0;
+      if (!following.current()) saveNow();
+    });
+  }, [saveNow]);
   useLayoutEffect(() => {
     parent.addEventListener("scroll", save, { passive: true });
-    return () => parent.removeEventListener("scroll", save);
-  }, [parent, save]);
+    return () => {
+      parent.removeEventListener("scroll", save);
+      // Leaving: what was left to keep is kept now.
+      if (pending.current) {
+        cancelAnimationFrame(pending.current);
+        pending.current = 0;
+        saveNow();
+      }
+    };
+  }, [parent, save, saveNow]);
   // The rows between the header and the footer, handed to the list with the
   // first index so that both change together.
   const entries = useMemo<Entry<T>[]>(() => [{ at: "header" }, ...items.map((item) => ({ at: "row" as const, item })), { at: "footer" }], [items]);
@@ -173,8 +195,8 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     {...(focusIndex >= 0 ? { initialTopMostItemIndex: { index: focusIndex + 1, align: "start" as const } } : restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
       : top.stick ? { initialTopMostItemIndex: { index: items.length + 1, align: "end" as const } }
       : { initialScrollTop: top.top })}
-    rangeChanged={() => queueMicrotask(save)}
-    totalListHeightChanged={() => queueMicrotask(save)}
+    rangeChanged={save}
+    totalListHeightChanged={save}
     atBottomThreshold={60}
     followOutput={(atBottom) => atBottom || follow() ? "auto" : false}
   />;
