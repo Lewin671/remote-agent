@@ -32,10 +32,21 @@ struct SessionComposeBox<Top: View>: View {
     var sendHint = ""
     @ViewBuilder var top: Top
 
-    @ViewBuilder private var button: some View {
+    /// Which of the three buttons it is: they cross-fade when it changes (§4 动效, 快).
+    private enum Kind { case interrupt, menu, send }
+    private var kind: Kind {
+        if !hasDraft, onInterrupt != nil { .interrupt } else if onQueue != nil, canSend { .menu } else { .send }
+    }
+
+    private var button: some View {
+        ZStack { choice.id(kind).transition(.opacity) }
+            .animation(Motion.enter(Motion.fast), value: kind)
+    }
+
+    @ViewBuilder private var choice: some View {
         if !hasDraft, let onInterrupt {
             Button(action: onInterrupt) { InkCircle(symbol: "stop.fill", enabled: canInterrupt) }
-                .buttonStyle(.plain)
+                .buttonStyle(PressScale())
                 .disabled(!canInterrupt)
                 .accessibilityLabel("中断")
         } else if let onQueue, canSend {
@@ -55,12 +66,13 @@ struct SessionComposeBox<Top: View>: View {
                 onSend()
             }
             .menuOrder(.fixed)
+            .buttonStyle(PressScale())
             .accessibilityLabel("发送")
             .accessibilityHint("插入这一轮")
             .accessibilityAction(named: "这一轮结束后再发", onQueue)
         } else {
             Button(action: onSend) { InkCircle(symbol: "arrow.up", enabled: canSend) }
-                .buttonStyle(.plain)
+                .buttonStyle(PressScale())
                 .disabled(!canSend)
                 .accessibilityLabel("发送")
                 .accessibilityHint(sendHint)
@@ -68,7 +80,7 @@ struct SessionComposeBox<Top: View>: View {
     }
 
     var body: some View {
-        MessageCapsule(text: $text, placeholder: placeholder, label: "消息", focus: focus) {
+        MessageCapsule(text: $text, placeholder: placeholder, label: "消息", focus: focus, heightChanges: "\(hasDraft)\(text)") {
             top
         } plus: {
             attach
@@ -183,7 +195,6 @@ struct SessionComposer: View {
                 onQueue: running ? { send(.queue) } : nil,
                 onInterrupt: running
                     ? {
-                        SessionHaptics.decide()
                         interrupt.run {
                             var cmd = PBCommand()
                             cmd.interrupt = .with { $0.sessionID = sid }

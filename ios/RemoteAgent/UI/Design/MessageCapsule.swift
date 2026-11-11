@@ -16,8 +16,12 @@ struct InkCircle: View {
         Image(systemName: symbol)
             .font(.body.weight(.semibold))
             .foregroundStyle(enabled ? DS.btnFg : DS.ink3)
+            // ink and grey, and ↑ and ■, change by cross-fading (§4 动效, 快)
+            .contentTransition(.opacity)
             .frame(width: side, height: side)
             .background(enabled ? DS.btn : DS.fill2, in: Circle())
+            .animation(Motion.enter(Motion.fast), value: enabled)
+            .animation(Motion.enter(Motion.fast), value: symbol)
             .frame(minWidth: DS.minHit, minHeight: DS.minHit)
             .contentShape(Rectangle())
     }
@@ -49,6 +53,8 @@ struct MessageCapsule<Top: View, Plus: View, Trailing: View>: View {
     let label: String
     var identifier = ""
     let focus: FocusState<Bool>.Binding
+    /// Changes when the capsule's height will: its height follows in 200 ms (§4 动效) instead of jumping.
+    var heightChanges: AnyHashable = 0
     @ViewBuilder let top: Top
     @ViewBuilder let plus: Plus
     @ViewBuilder let trailing: Trailing
@@ -75,6 +81,7 @@ struct MessageCapsule<Top: View, Plus: View, Trailing: View>: View {
                 trailing.dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             }
         }
+        .animation(Motion.enter(), value: heightChanges)
         .padding(4)
         .glass(RoundedRectangle(cornerRadius: 26, style: .continuous), interactive: false)
         .padding(.horizontal, DS.Space.m)

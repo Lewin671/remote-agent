@@ -47,7 +47,7 @@ private struct InkStyle: ButtonStyle {
             .shadow(color: .black.opacity(floating && enabled ? (scheme == .dark ? 0.6 : 0.18) : 0), radius: 20, y: 16)
             .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
-            .animation(.snappy(duration: 0.15), value: configuration.isPressed)
+            .animation(Motion.enter(Motion.fast), value: configuration.isPressed)
     }
 }
 
