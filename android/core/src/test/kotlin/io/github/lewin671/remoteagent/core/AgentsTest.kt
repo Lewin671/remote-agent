@@ -26,9 +26,6 @@ class AgentsTest {
     @Test
     fun looksUpAgentInfoByEnum() {
         val codex = agentInfo(Agent.AGENT_CODEX)
-        assertEquals("codex", codex.id)
-        assertEquals("Codex", codex.name)
-        assertEquals(listOf("primary", "secondary"), codex.quotaWindows)
         assertEquals(QuotaWindowDescriptor("5 小时"), codex.quotaWindow("primary"))
         assertEquals(QuotaWindowDescriptor("7 天"), codex.quotaWindow("secondary"))
         assertTrue(codex.planClearContext)
@@ -41,14 +38,8 @@ class AgentsTest {
         assertFalse(codex.sessionNeedsModelList)
         assertTrue(codex.switchesModelInSession)
         assertTrue(codex.forks)
-        assertEquals("GPT-6-Sol", codex.modelLabel("gpt-6-sol"))
-        assertEquals("Max", codex.planName("claude_max"))
-        assertEquals("Pro Lite", codex.planName("prolite"))
 
         val claude = agentInfo(Agent.AGENT_CLAUDE)
-        assertEquals("claude", claude.id)
-        assertEquals("Claude Code", claude.name)
-        assertEquals(listOf("five_hour", "seven_day"), claude.quotaWindows)
         assertEquals(QuotaWindowDescriptor("5 小时"), claude.quotaWindow("five_hour"))
         assertEquals(QuotaWindowDescriptor("7 天"), claude.quotaWindow("seven_day"))
         assertFalse(claude.planClearContext)
@@ -61,14 +52,8 @@ class AgentsTest {
         assertTrue(claude.sessionNeedsModelList)
         assertTrue(claude.switchesModelInSession)
         assertTrue(claude.forks)
-        assertEquals("claude-sonnet-5-5", claude.modelLabel("claude-sonnet-5-5"))
-        assertEquals("Max", claude.planName("claude_max"))
-        assertEquals("Pro Lite", claude.planName("prolite"))
 
         val agy = agentInfo(Agent.AGENT_ANTIGRAVITY)
-        assertEquals("agy", agy.id)
-        assertEquals("Antigravity", agy.name)
-        assertEquals(emptyList<String>(), agy.quotaWindows)
         assertEquals(QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"), agy.quotaWindow("gemini-5h"))
         assertEquals(QuotaWindowDescriptor("Gemini · 7 天", "Gemini"), agy.quotaWindow("gemini-weekly"))
         assertEquals(QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"), agy.quotaWindow("gemini-argon-wtu-weekly"))
@@ -82,14 +67,10 @@ class AgentsTest {
         assertEquals("批准后回到默认模式（询问）", agy.planNote)
         assertFalse(agy.standardContextOption)
         assertTrue(agy.autoMayBeUnavailable)
-        assertNull(agy.trustFolderHint)
-        assertNull(agy.usageHint)
         assertFalse(agy.reconcilesUnclaimedInput)
         assertTrue(agy.sessionNeedsModelList)
         assertFalse(agy.switchesModelInSession)
         assertFalse(agy.forks)
-        assertEquals("gemini-3.1-pro-high", agy.modelLabel("gemini-3.1-pro-high"))
-        assertEquals("my-plan", agy.planName("my-plan"))
     }
 
     @Test

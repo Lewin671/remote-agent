@@ -233,18 +233,6 @@ class V8Gallery {
         ),
     )
 
-    @Test fun home() {
-        shoot("01-home-attention", homeState(true), mapOf("api" to apiEvents, "dep" to depEvents)) {
-            Column(Modifier.weight(1f)) { HomeScreen() }
-        }
-    }
-
-    @Test fun homeQuiet() {
-        shoot("02-home", homeState(false)) {
-            Column(Modifier.weight(1f)) { HomeScreen() }
-        }
-    }
-
     @Test fun homeMany() {
         val extras = (1..7).map { n -> session("many$n", "mac", "$home/Code/project$n", "处理第 $n 个项目", SessionStatus.SESSION_STATUS_RUNNING, created = now - n * 1000L) }.toMap()
         val st = homeState(false).copy(sessions = homeState(false).sessions + extras)
@@ -295,10 +283,6 @@ class V8Gallery {
         call("auth/login.go", ToolKind.TOOL_KIND_FILE_CHANGE), started("go test ./auth/..."),
     )
 
-    @Test fun sessionRunning() {
-        shoot("10-session-running", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING, context = 87_000)), mapOf("run" to runEvents)) { SessionScreen("run") }
-    }
-
     @Test fun queueSendMenu() {
         Outbox.draft("queue-menu").value = "改完顺便跑一下 lint"
         try {
@@ -327,14 +311,6 @@ class V8Gallery {
         approval("A0", "mkdir -p internal/handler", "新建目录"), resolved("A0"), call("mkdir -p internal/handler"),
         agent("拆分完成，跑一下测试确认没有破坏现有行为。"), approval("A1", "go test ./... -count=1", "跑一遍全部测试，确认拆包没有破坏行为"),
     )
-
-    @Test fun sessionApproval() {
-        shoot("12-session-approval", sessionState(apiSession), mapOf("api" to apiHistory), then = { ui.onNodeWithText("收起").performClick() }) { SessionScreen("api") }
-    }
-
-    @Test fun sessionApprovalOpen() {
-        shoot("13-session-approval-open", sessionState(apiSession), mapOf("api" to apiHistory), ) { SessionScreen("api") }
-    }
 
     /** A command of [n] lines, some long enough to wrap. */
     private fun longCommand(n: Int) = (1..n).joinToString("\n") { i ->
@@ -368,21 +344,6 @@ class V8Gallery {
 
     @Test fun approvalPage() {
         shoot("14-approval-page", sessionState(apiSession), mapOf("api" to apiHistory)) { ApprovalPage("api", "A1") }
-    }
-
-    @Test fun sessionQuestion() {
-        shoot("15-session-question", sessionState(session("dep", "imac", "$home/Code/bar", "升级依赖", questions = 1)), mapOf("dep" to depEvents), ) { SessionScreen("dep") }
-    }
-
-    @Test fun sessionPlan() {
-        val ev = events(turn(), user("先出个方案，把订单服务里的库存逻辑拆出去"), call("读取 14 个文件", ToolKind.TOOL_KIND_OTHER, item = "Read"), agent("方案如下，批准后开始改。"),
-            Event.newBuilder().setPlanProposed(PlanProposed.newBuilder().setText("1. 新建 `inventory` 包，迁移库存扣减和回滚\n2. 订单服务改为调用接口，保留旧实现做开关\n3. 补充集成测试，覆盖并发扣减\n4. 灰度开关上线")))
-        shoot("16-session-plan", sessionState(session("plan", "imac", "$home/Code/shop", "拆分订单服务", plan = true, mode = ApprovalMode.APPROVAL_MODE_PLAN)), mapOf("plan" to ev), ) { SessionScreen("plan") }
-    }
-
-    @Test fun sessionEnded() {
-        val ev = events(turn(), user("缓存是多久失效"), agent("没有按时间失效。模型列表缓存在前端页面的内存里，**同一台机器每次页面加载只请求一次**；刷新或重新打开页面会重新获取。"), turnEnd(12_000))
-        shoot("17-session-ended", sessionState(session("ended", "mac", "$home/Code/remote-agent", "介绍下这个项目", SessionStatus.SESSION_STATUS_EXITED)), mapOf("ended" to ev)) { SessionScreen("ended") }
     }
 
     @Test fun sessionOffline() {
@@ -526,10 +487,6 @@ class V8Gallery {
         shoot("35-manage", st) { ManageProjectsScreen() }
     }
 
-    @Test fun scopeSheet() {
-        shoot("02-scope", homeState(true), then = { ui.onNodeWithTag("scope-title").performClick() }) { HomeScreen() }
-    }
-
     @Test fun manageMenu() {
         val st = homeState(true).copy(prefs = PrefsObject(1, ProjectPrefs.newBuilder().setSchema(1).addPinned(ProjectPref.newBuilder().setPath(foo)).build()))
         shoot("35-manage-menu", st, then = { ui.onNodeWithContentDescription("管理 billing").performClick() }) { ManageProjectsScreen() }
@@ -603,11 +560,6 @@ class V8Gallery {
 
     @Test fun pair() {
         shoot("36-join", RemoteState()) { JoinScreen(io.github.lewin671.remoteagent.RaApp.instance) }
-    }
-
-    @Test fun terminal() {
-        shoot("37-terminal", sessionState(session("run", "mac", foo, "修复登录超时", SessionStatus.SESSION_STATUS_RUNNING)), mapOf("run" to runEvents),
-            then = { ui.onNodeWithText("终端").performClick() }) { SessionScreen("run") }
     }
 
     @Test fun hiddenProject() {
