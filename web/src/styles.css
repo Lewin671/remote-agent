@@ -66,7 +66,7 @@
   --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
   --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
   --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
-  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-bg: #ffffff; --nt-edge: rgba(0,0,0,.08); --nt-edge-hi: rgba(0,0,0,.18); --nt-lit: rgba(255,255,255,0); --nt-shadow: 0 1px 2px rgba(0,0,0,.05), 0 28px 56px -28px rgba(0,0,0,.26); --nt-ctl: rgba(0,0,0,.045); --nt-ctl-hi: rgba(0,0,0,.085); --nt-ctl-edge: rgba(0,0,0,.04); --nt-glow: rgba(0,0,0,0);
+  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-bg: #ffffff; --nt-edge: rgba(0,0,0,.14); --nt-line: rgba(0,0,0,.08); --nt-shadow: 0 1px 2px rgba(0,0,0,.05), 0 24px 48px -20px rgba(0,0,0,.22);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -86,7 +86,7 @@
   --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
   --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
   --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: linear-gradient(180deg, #2a2a2f, #232327); --nt-edge: rgba(255,255,255,.09); --nt-edge-hi: rgba(255,255,255,.2); --nt-lit: rgba(255,255,255,.09); --nt-shadow: 0 2px 6px rgba(0,0,0,.28), 0 32px 64px -24px rgba(0,0,0,.7); --nt-ctl: rgba(255,255,255,.07); --nt-ctl-hi: rgba(255,255,255,.13); --nt-ctl-edge: rgba(255,255,255,.07); --nt-glow: rgba(255,255,255,.04);
+  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-edge: rgba(255,255,255,.14); --nt-line: rgba(255,255,255,.075); --nt-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 6px rgba(0,0,0,.3), 0 32px 64px -20px rgba(0,0,0,.75);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -106,7 +106,7 @@
     --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
     --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
     --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: linear-gradient(180deg, #2a2a2f, #232327); --nt-edge: rgba(255,255,255,.09); --nt-edge-hi: rgba(255,255,255,.2); --nt-lit: rgba(255,255,255,.09); --nt-shadow: 0 2px 6px rgba(0,0,0,.28), 0 32px 64px -24px rgba(0,0,0,.7); --nt-ctl: rgba(255,255,255,.07); --nt-ctl-hi: rgba(255,255,255,.13); --nt-ctl-edge: rgba(255,255,255,.07); --nt-glow: rgba(255,255,255,.04);
+    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-edge: rgba(255,255,255,.14); --nt-line: rgba(255,255,255,.075); --nt-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 6px rgba(0,0,0,.3), 0 32px 64px -20px rgba(0,0,0,.75);
   }
 }
 
@@ -1809,37 +1809,37 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .mach-card.offl { background: var(--gbg); box-shadow: none; }
 .desk .mach-card.offl .mach-name b { color: var(--ink2); }
 
-/* ---- New task in a wide window: a title, and under it one made object. The field is lit
-   from above and lifted off the page; what the task runs in, with, and how are the pop-up
-   buttons of one bar inside it, all of one size and one material; the send key is the only
-   solid thing. ---- */
-.desk .wnew { background: radial-gradient(880px 480px at 50% 0, var(--nt-glow), transparent 72%); }
-.desk .wstart { width: min(720px, calc(100% - 48px)); }
-.desk .wstart .nt-top { display: flex; align-items: center; gap: 12px; margin: 0 2px 20px; min-width: 0; }
-.desk .wstart .nt-title { flex: 1; min-width: 0; margin: 0; font-size: 28px; line-height: 1.15; font-weight: var(--w7); letter-spacing: -.022em; color: var(--ink); }
-.desk .wstart .wbox { margin-top: 0; padding: 20px 20px 12px; border-radius: 22px; background: var(--nt-bg); box-shadow: inset 0 0 0 1px var(--nt-edge), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); transition: box-shadow var(--m-base) var(--ease-out); }
-.desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--nt-edge-hi), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
-.desk .wstart .wbox .ask, .desk .wstart .wbox .ask:placeholder-shown { font-size: 17px; line-height: 1.5; letter-spacing: -.005em; min-height: 78px; }
-.desk .wstart .wbox .ask::placeholder { color: var(--ink3); }
-.desk .wstart .acc { padding: 14px 0 0; margin-left: -4px; margin-right: -4px; gap: 6px; }
-.nt-picks { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
-.desk .wstart :is(.acc, .nt-top) :is(.tok, .cm-plus) { height: 28px; background: var(--nt-ctl); box-shadow: inset 0 0 0 .5px var(--nt-ctl-edge); color: var(--ink); }
-.desk .wstart :is(.acc, .nt-top) .tok { padding: 0 8px 0 10px; border-radius: 14px; font-size: 13px; font-weight: var(--w5); gap: 6px; max-width: 220px; flex: 0 1 auto; }
-.desk .wstart .nt-top .tok.p { padding-left: 5px; max-width: 260px; }
-.desk .wstart .nt-top .tok.still { background: none; box-shadow: none; color: var(--ink2); padding-right: 4px; }
-.desk .wstart :is(.acc, .nt-top) .tok > .ic { font-size: 12px; color: var(--ink3); margin: 0 -1px 0 -1px; }
-.desk .wstart .acc .tok > .amark { margin-right: 0; font-size: 14px; }
-.desk .wstart .nt-top .tok .av { width: 18px; height: 18px; font-size: 10px; }
-.desk .wstart .acc .project-summary { color: var(--ink); min-width: 96px; max-width: none; flex: 0 1 auto; gap: 0; }
-.sheet.anchored .plist .chev { display: none; }
-.desk .wstart .acc .project-summary > .ic { padding-left: 0; margin-left: 6px; }
-.desk .wstart .acc .cm-plus { width: 28px; border-radius: 50%; font-size: 16px; color: var(--ink); }
-.desk .wstart .acc .snd { width: 32px; height: 32px; margin-left: 6px; }
-.desk .wstart .acc .kh { color: var(--ink3); transition: opacity var(--m-fast) var(--ease-out); }
-.desk .wstart .acc:has(> .snd.off) .kh { opacity: 0; }
-.desk .wstart :is(.acc, .nt-top) :is(.tok, .cm-plus)[aria-expanded="true"] { background: var(--nt-ctl-hi); }
+/* ---- New task in a wide window: a sheet, composed the way a message is. A hairline frame
+   and a long soft shadow; a quiet title; one row for each choice, its name in grey and its
+   value a pop-up; the task written in the body under them; attach at the foot on the left
+   and 开始, the sheet's one solid button, on the right. No capsule row and no round arrow:
+   those are a chat box's, and this is not a chat. ---- */
+.desk .wstart { width: min(660px, calc(100% - 48px)); }
+.nt-card { background: var(--nt-bg); border-radius: 14px; box-shadow: 0 0 0 .5px var(--nt-edge), var(--nt-shadow); overflow: clip; }
+.desk .wstart .nt-title { margin: 0; height: 44px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: var(--w6); letter-spacing: 0; color: var(--ink2); border-bottom: .5px solid var(--nt-line); }
+.nt-rows { padding: 0 20px; }
+.nt-row { display: flex; align-items: center; gap: 0; min-height: 40px; border-bottom: .5px solid var(--nt-line); min-width: 0; }
+.nt-l { flex: none; width: 52px; font-size: 13px; color: var(--ink2); }
+.desk .wstart .nt-row .tok { height: 26px; padding: 0 6px 0 8px; margin-left: -8px; border-radius: 7px; background: none; box-shadow: none; font-size: 13px; font-weight: var(--w5); color: var(--ink); gap: 6px; min-width: 0; max-width: calc(100% - 44px); }
+.desk .wstart .nt-row .tok.still { color: var(--ink); }
+.desk .wstart .nt-row .tok > .ic { font-size: 12px; color: var(--ink3); margin-left: 0; padding-left: 0; }
+.desk .wstart .nt-row .tok > .amark { margin-right: 0; font-size: 14px; }
+.desk .wstart .nt-row .tok .av { width: 18px; height: 18px; font-size: 10px; }
+.desk .wstart .nt-row .project-summary { gap: 0; }
+.desk .wstart .nt-row .project-summary > .ic { margin-left: 6px; }
+.desk .wstart .nt-row .tok[aria-expanded="true"] { background: var(--hov); }
+.desk .wstart .nt-card .wbox { margin: 0; padding: 16px 20px 8px; background: none; border-radius: 0; box-shadow: none; }
+.desk .wstart .nt-card .wbox:focus-within { box-shadow: none; }
+.desk .wstart .nt-card .wbox .ask, .desk .wstart .nt-card .wbox .ask:placeholder-shown { font-size: 15px; line-height: 1.6; letter-spacing: 0; min-height: 144px; }
+.desk .wstart .nt-card .wbox .ask::placeholder { color: var(--ink3); }
+.desk .wstart .nt-card .acc { padding: 8px 12px 12px 14px; margin: 0; gap: 10px; }
+.desk .wstart .nt-card .acc .cm-plus { width: 28px; height: 28px; border-radius: 7px; background: none; color: var(--ink2); font-size: 17px; }
+.desk .wstart .nt-card .acc .kh { margin-left: auto; font-size: 12px; color: var(--ink3); transition: opacity var(--m-fast) var(--ease-out); }
+.desk .wstart .nt-card .acc:has(> .nt-go:disabled) .kh { opacity: 0; }
+.desk .wstart .nt-go { flex: none; min-height: 28px; padding: 0 16px; border-radius: 8px; font-size: 13px; font-weight: var(--w6); }
+.desk .wstart .nt-card .acc > .nt-go:first-child, .desk .wstart .nt-card .acc > .attach-wrap + .nt-go { margin-left: auto; }
 @media (hover: hover) {
-  .desk .wstart :is(.acc, .nt-top) .tok:hover:not(:disabled, .still), .desk .wstart .acc .cm-plus:hover:not(.off) { background: var(--nt-ctl-hi); color: var(--ink); }
+  .desk .wstart .nt-row .tok:hover:not(:disabled, .still), .desk .wstart .nt-card .acc .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); }
 }
 .desk .cbar .cm-plus { background: none; color: var(--ink2); }
 @media (hover: hover) { .desk .cbar .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); } }

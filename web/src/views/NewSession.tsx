@@ -647,8 +647,9 @@ export function NewBox({
   );
   // The draft stays when the CLI is switched.
   const many = ns.agents.length > 1;
-  // A phone says it as a sentence over the field; a wide window lines the
-  // same choices up under the text, as the pop-up buttons of one bar.
+  // A phone says it as a sentence over the field. A wide window composes it
+  // as a message is composed: a sheet with a row for each choice, the task
+  // written under them, and 开始 where a sheet's default button is.
   const bar = variant !== "sheet";
   const Pop = bar ? ChevronsUpDown : ChevronDown;
   const projectTok = fixed || !onPickProject ? (
@@ -709,25 +710,24 @@ export function NewBox({
     ) : (
       <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
         {banners}
-        {/* Where the task runs is the page's context, by its title; what runs it is in the field's bar. */}
-        <div className="nt-top">
+        <section className="nt-card">
           <h1 className="nt-title">新任务</h1>
-          {projectTok}
-        </div>
-        {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
-        <div className="wbox">
-          {field}
-          {trayView}
+          <div className="nt-rows">
+            <div className="nt-row"><span className="nt-l">项目</span>{projectTok}</div>
+            {many && <div className="nt-row"><span className="nt-l">CLI</span>{cliTok}</div>}
+            <div className="nt-row"><span className="nt-l">设置</span>{summary}</div>
+          </div>
+          {/* The task is the body of the sheet: the one large empty place in it, with the caret in it. */}
+          <div className="wbox">
+            {field}
+            {trayView}
+          </div>
           <div className="acc">
             {attach}
-            <span className="nt-picks">
-              {cliTok}
-              {summary}
-            </span>
-            {keys && <span className="kh">{keys} 开始</span>}
-            {send}
+            {keys && <span className="kh">{keys}</span>}
+            <button className="btn pri sm nt-go" disabled={disabled} onClick={() => void submit()} aria-label="开始新会话">开始</button>
           </div>
-        </div>
+        </section>
         {busyNote}
       </div>
     );
@@ -921,7 +921,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
   return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head">
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined} anchor={anchorOf(".wstart .nt-row .project-summary")} className="with-head">
       {body ?? (
         <>
           <div className="list">
@@ -984,7 +984,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在句子里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
+          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在新任务里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
           {!taskEditing && (
             <div className="list">
               <button className="mi link-row" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>
@@ -1107,7 +1107,7 @@ export function DirBrowser({
 /** 选项目: the project list, each row ending in ›, 新项目… at the end. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   return (
-    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .nt-top .tok.p")}>
+    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .nt-row .tok.p")}>
       <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
@@ -1188,10 +1188,7 @@ export function ConfigSummary({ summary, bare, pop, onClick }: { summary: Summar
   const sep = " · ";
   const all = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
   const line = [...all, machine, model].filter(Boolean).join(sep);
-  // A pop-up button says what was chosen, not every setting behind it: the
-  // model, the computer where there are several, and the one mode that must
-  // not go unseen. The rest is a press away, and in the button's name.
-  const head = pop && (model || machine) ? [full ? mode : "", bare ? "" : agent].filter(Boolean) : all;
+  const head = all;
   return (
     <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
       <span className="fx">
