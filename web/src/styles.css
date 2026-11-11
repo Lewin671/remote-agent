@@ -1815,20 +1815,21 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
    solid thing. ---- */
 .desk .wnew { background: radial-gradient(880px 480px at 50% 0, var(--nt-glow), transparent 72%); }
 .desk .wstart { width: min(720px, calc(100% - 48px)); }
-.desk .wstart .nt-title { margin: 0 0 20px 2px; font-size: 28px; line-height: 1.15; font-weight: var(--w7); letter-spacing: -.022em; color: var(--ink); }
+.desk .wstart .nt-top { display: flex; align-items: center; gap: 12px; margin: 0 2px 20px; min-width: 0; }
+.desk .wstart .nt-title { flex: 1; min-width: 0; margin: 0; font-size: 28px; line-height: 1.15; font-weight: var(--w7); letter-spacing: -.022em; color: var(--ink); }
 .desk .wstart .wbox { margin-top: 0; padding: 20px 20px 12px; border-radius: 22px; background: var(--nt-bg); box-shadow: inset 0 0 0 1px var(--nt-edge), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); transition: box-shadow var(--m-base) var(--ease-out); }
 .desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--nt-edge-hi), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
 .desk .wstart .wbox .ask, .desk .wstart .wbox .ask:placeholder-shown { font-size: 17px; line-height: 1.5; letter-spacing: -.005em; min-height: 78px; }
 .desk .wstart .wbox .ask::placeholder { color: var(--ink3); }
 .desk .wstart .acc { padding: 14px 0 0; margin-left: -4px; margin-right: -4px; gap: 6px; }
 .nt-picks { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
-.desk .wstart .acc :is(.tok, .cm-plus) { height: 28px; background: var(--nt-ctl); box-shadow: inset 0 0 0 .5px var(--nt-ctl-edge); color: var(--ink); }
-.desk .wstart .acc .tok { padding: 0 8px 0 10px; border-radius: 14px; font-size: 13px; font-weight: var(--w5); gap: 6px; max-width: 220px; flex: 0 1 auto; }
-.desk .wstart .acc .tok.p { padding-left: 5px; }
-.desk .wstart .acc .tok.still { background: none; box-shadow: none; color: var(--ink2); padding-right: 4px; }
-.desk .wstart .acc .tok > .ic { font-size: 12px; color: var(--ink3); margin: 0 -1px 0 -1px; }
+.desk .wstart :is(.acc, .nt-top) :is(.tok, .cm-plus) { height: 28px; background: var(--nt-ctl); box-shadow: inset 0 0 0 .5px var(--nt-ctl-edge); color: var(--ink); }
+.desk .wstart :is(.acc, .nt-top) .tok { padding: 0 8px 0 10px; border-radius: 14px; font-size: 13px; font-weight: var(--w5); gap: 6px; max-width: 220px; flex: 0 1 auto; }
+.desk .wstart .nt-top .tok.p { padding-left: 5px; max-width: 260px; }
+.desk .wstart .nt-top .tok.still { background: none; box-shadow: none; color: var(--ink2); padding-right: 4px; }
+.desk .wstart :is(.acc, .nt-top) .tok > .ic { font-size: 12px; color: var(--ink3); margin: 0 -1px 0 -1px; }
 .desk .wstart .acc .tok > .amark { margin-right: 0; font-size: 14px; }
-.desk .wstart .acc .tok .av { width: 18px; height: 18px; font-size: 10px; }
+.desk .wstart .nt-top .tok .av { width: 18px; height: 18px; font-size: 10px; }
 .desk .wstart .acc .project-summary { color: var(--ink); min-width: 96px; max-width: none; flex: 0 1 auto; gap: 0; }
 .sheet.anchored .plist .chev { display: none; }
 .desk .wstart .acc .project-summary > .ic { padding-left: 0; margin-left: 6px; }
@@ -1836,9 +1837,9 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .wstart .acc .snd { width: 32px; height: 32px; margin-left: 6px; }
 .desk .wstart .acc .kh { color: var(--ink3); transition: opacity var(--m-fast) var(--ease-out); }
 .desk .wstart .acc:has(> .snd.off) .kh { opacity: 0; }
-.desk .wstart .acc :is(.tok, .cm-plus)[aria-expanded="true"] { background: var(--nt-ctl-hi); }
+.desk .wstart :is(.acc, .nt-top) :is(.tok, .cm-plus)[aria-expanded="true"] { background: var(--nt-ctl-hi); }
 @media (hover: hover) {
-  .desk .wstart .acc .tok:hover:not(:disabled, .still), .desk .wstart .acc .cm-plus:hover:not(.off) { background: var(--nt-ctl-hi); color: var(--ink); }
+  .desk .wstart :is(.acc, .nt-top) .tok:hover:not(:disabled, .still), .desk .wstart .acc .cm-plus:hover:not(.off) { background: var(--nt-ctl-hi); color: var(--ink); }
 }
 .desk .cbar .cm-plus { background: none; color: var(--ink2); }
 @media (hover: hover) { .desk .cbar .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); } }

@@ -709,7 +709,11 @@ export function NewBox({
     ) : (
       <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
         {banners}
-        <h1 className="nt-title">新任务</h1>
+        {/* Where the task runs is the page's context, by its title; what runs it is in the field's bar. */}
+        <div className="nt-top">
+          <h1 className="nt-title">新任务</h1>
+          {projectTok}
+        </div>
         {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
         <div className="wbox">
           {field}
@@ -717,7 +721,6 @@ export function NewBox({
           <div className="acc">
             {attach}
             <span className="nt-picks">
-              {projectTok}
               {cliTok}
               {summary}
             </span>
@@ -1104,7 +1107,7 @@ export function DirBrowser({
 /** 选项目: the project list, each row ending in ›, 新项目… at the end. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   return (
-    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .acc .tok.p")}>
+    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .nt-top .tok.p")}>
       <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
@@ -1183,8 +1186,12 @@ export function ConfigSummary({ summary, bare, pop, onClick }: { summary: Summar
   const { agent, mode, machine, model } = summary;
   const full = mode === modeName(ApprovalMode.FULL_ACCESS);
   const sep = " · ";
-  const head = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
-  const line = [...head, machine, model].filter(Boolean).join(sep);
+  const all = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
+  const line = [...all, machine, model].filter(Boolean).join(sep);
+  // A pop-up button says what was chosen, not every setting behind it: the
+  // model, the computer where there are several, and the one mode that must
+  // not go unseen. The rest is a press away, and in the button's name.
+  const head = pop && (model || machine) ? [full ? mode : "", bare ? "" : agent].filter(Boolean) : all;
   return (
     <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
       <span className="fx">

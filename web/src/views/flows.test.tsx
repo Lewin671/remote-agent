@@ -95,7 +95,7 @@ function pickCliNow(name: string) {
 }
 
 /** The project the wide new task names, where it can be changed: a pop-up button of the field's bar. */
-const startProject = () => host.querySelector(".wstart .acc button.tok.p")?.textContent;
+const startProject = () => host.querySelector(".wstart .nt-top button.tok.p")?.textContent;
 
 it("keeps the context warning and the settings behind ⋯ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
@@ -1743,15 +1743,17 @@ describe("switching a new session's CLI (v2)", () => {
     // The project is the page's own, so the bar names it as a label, not a button.
     expect(host.querySelector(".wstart .sent")).toBeNull();
     expect(host.querySelector(".wstart .nt-title")?.textContent).toBe("新任务");
-    expect(host.querySelector(".wstart .acc .tok.p.still")?.textContent).toBe("ffoo");
-    expect(host.querySelector(".wstart .acc button.tok.p")).toBeNull();
+    expect(host.querySelector(".wstart .nt-top .tok.p.still")?.textContent).toBe("ffoo");
+    expect(host.querySelector(".wstart .nt-top button.tok.p")).toBeNull();
     expect(host.querySelector(".wstart .acc .tok.cli")?.textContent).toBe("Codex");
     const ask = host.querySelector(".wstart textarea.ask")!;
     expect(ask.getAttribute("placeholder")).toBe("要做什么？");
     // The task is written in a box of its own, under the title.
-    expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("nt-title");
+    expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("nt-top");
     const row = host.querySelector(".wstart .acc")!;
-    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
+    // The button names the computer and the model; the mode is in its name, and a press away.
+    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /);
+    expect(row.querySelector(".project-summary")?.getAttribute("aria-label")).toMatch(/^项目设置：询问 · MacBook/);
     expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
   });
 
@@ -1775,15 +1777,16 @@ describe("switching a new session's CLI (v2)", () => {
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     const summary = () => host.querySelector(".acc .project-summary")!;
     // The name is its own part, the one that gives way on a long line.
-    expect(summary().querySelector(".mach")?.textContent).toBe(" · MacBook");
+    // On a wide page the button leads with it: the mode is not among its words.
+    expect(summary().querySelector(".mach")?.textContent).toBe("MacBook");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
     expect(summary().querySelector(".mach")).toBeNull();
-    // Mode and model; the effort and the window are in the settings.
-    expect(summary().textContent).toMatch(/^询问 · gpt-6-astra$/i);
-    expect(summary().getAttribute("aria-label")).toBe(`项目设置：${summary().textContent}`);
+    // The model alone; the mode, the effort and the window are in the settings, the mode in the button's name too.
+    expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
+    expect(summary().getAttribute("aria-label")).toMatch(/^项目设置：询问 · gpt-6-astra$/i);
   });
 });
 
@@ -3136,7 +3139,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(startProject()).toBeTruthy();
     act(() => saveScope(foo));
     expect(startProject()).toBeUndefined();
-    expect(host.querySelector(".wstart .acc .tok.p.still span:last-child")?.textContent).toBe("foo");
+    expect(host.querySelector(".wstart .nt-top .tok.p.still span:last-child")?.textContent).toBe("foo");
   });
 });
 
