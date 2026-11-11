@@ -308,7 +308,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     }
     val enabled = writable && !busy && !uncertain
     val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
-    Column(Modifier.fillMaxSize().background(pal.gbg)) {
+    Column(Modifier.fillMaxSize().background(pal.paper)) {
         PageBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t) }, more = { menu = true })
         if (!state.loaded) ConnBanner(state)
         if (task == null) {

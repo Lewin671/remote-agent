@@ -478,26 +478,6 @@ fun FieldBox(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> 
     Box(modifier.fillMaxWidth().heightIn(min = 48.dp).clip(Radii.R14).background(pal.fill).padding(horizontal = 14.dp, vertical = 12.dp), contentAlignment = Alignment.CenterStart, content = content)
 }
 
-/** A page: navigation bar and content; card background, or soft for grouped settings pages ([gray]). */
-@Composable
-fun Page(
-    title: String,
-    onBack: (() -> Unit)?,
-    gray: Boolean = false,
-    subtitle: String? = null,
-    more: (() -> Unit)? = null,
-    right: (@Composable () -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val p = pal
-    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
-        Column(Modifier.fillMaxSize().background(if (gray) p.gbg else p.paper).imePadding()) {
-            PageBar(title, onBack, subtitle = subtitle, more = more, right = right)
-            content()
-        }
-    }
-}
-
 internal val WIDE_WINDOW_MIN_WIDTH = 840.dp
 
 @Composable

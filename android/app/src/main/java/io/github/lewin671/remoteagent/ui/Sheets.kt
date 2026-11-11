@@ -636,14 +636,15 @@ fun PlanPage(sid: String) {
 }
 
 /**
- * A page with back, a centered title and an optional second line; [gray] for grouped settings
- * pages.
+ * A page with back, a centered title and an optional second line, on `paper` with `gbg` cards like
+ * 设置 itself (design-system §2, §6): no bar colour. [readable] keeps a centred column of about 640
+ * dp on a wide screen, for settings pages.
  */
 @Composable
 fun PageScaffold(
     title: String,
     subtitle: String? = null,
-    gray: Boolean = false,
+    readable: Boolean = false,
     action: (@Composable () -> Unit)? = null,
     onBack: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
@@ -651,12 +652,10 @@ fun PageScaffold(
     val back = onBack ?: LocalNav.current.back
     if (onBack != null) androidx.activity.compose.BackHandler(onBack = onBack)
     val p = pal
-    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides gray) {
-        Column(Modifier.fillMaxSize().background(if (gray) p.gbg else p.paper).imePadding()) {
-            PageBar(title, back, subtitle = subtitle, right = action)
-            if (gray) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
-            else content()
-        }
+    Column(Modifier.fillMaxSize().background(p.paper).imePadding()) {
+        PageBar(title, back, subtitle = subtitle, right = action)
+        if (readable) Column(Modifier.weight(1f).fillMaxWidth().readableColumn()) { content() }
+        else content()
     }
 }
 

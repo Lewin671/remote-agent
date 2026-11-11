@@ -562,7 +562,7 @@ fun DeviceScreen(id: String) {
                 if (it.hasImageStorage()) imageStorage = it.imageStorage
             }
         }
-    PageScaffold(machineLabel(state, id), gray = true) {
+    PageScaffold(machineLabel(state, id), readable = true) {
         if (m == null) {
             PageNote("这台电脑不在当前可信目录中，撤销状态以回执为准")
             return@PageScaffold
@@ -1109,7 +1109,7 @@ fun QuotaScreen(id: String) {
     PageScaffold(
         "账户额度",
         subtitle = m?.let { machineLabel(state, id) + " · " + if (it.online) "在线" else "离线" },
-        gray = true,
+        readable = true,
     ) {
         if (m == null) {
             PageNote("这台机器已经移除了")
@@ -1563,8 +1563,8 @@ fun LicensesPage(onBack: () -> Unit) {
     val p = pal
     val res = androidx.compose.ui.platform.LocalContext.current.resources
     var open by remember { mutableStateOf<Int?>(null) }
-    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
-        Column(Modifier.fillMaxSize().background(p.gbg)) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
+        Column(Modifier.fillMaxSize().background(p.paper)) {
             PageBar("开源许可", onBack)
             Column(Modifier.verticalScroll(rememberScrollState())) {
                 for ((label, items) in
@@ -1622,8 +1622,8 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
             cache = app.imageEnvelopes.used
         }
     }
-    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
-        Column(Modifier.fillMaxSize().background(p.gbg)) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
+        Column(Modifier.fillMaxSize().background(p.paper)) {
             PageBar("设置", onBack)
             GLabel("附件存储 · 这台手机")
             Group(

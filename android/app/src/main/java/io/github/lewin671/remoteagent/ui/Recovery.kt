@@ -104,7 +104,7 @@ internal fun AccountSecurityContent(
 ) {
     val t = now()
     val self = LocalRemote.current.account.deviceId
-    PageScaffold("账户安全", gray = true) {
+    PageScaffold("账户安全", readable = true) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
             if (state.recoveryPending) Notice(
                 "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
