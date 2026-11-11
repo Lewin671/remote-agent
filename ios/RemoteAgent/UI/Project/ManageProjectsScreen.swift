@@ -60,7 +60,7 @@ struct ManageProjectsScreen: View {
         }
         .removeProjectConfirm($removing)
         .kitSheet(isPresented: $adding, size: .large) {
-            SheetHead("新项目 · 选目录", action: "取消", onAction: { adding = false })
+            SheetHead("新项目 · 选目录")
             // Chosen, the folder is listed and the page stays: the project appears under 其他.
             ProjectDirPicker(state) { machine, path in
                 context.addProject(model.state, machine: machine, path: path)

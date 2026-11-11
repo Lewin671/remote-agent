@@ -14,29 +14,49 @@ enum SheetSize: Sendable {
     case large
 }
 
+/// Content that lays out its own scroll and keeps its head and foot in place (the folder picker) says so
+/// with `sheetPinned()`: the sheet is then the whole screen and does not scroll its content.
+private struct SheetPinnedKey: PreferenceKey {
+    static let defaultValue = false
+    static func reduce(value: inout Bool, nextValue: () -> Bool) { value = value || nextValue() }
+}
+
+extension View {
+    func sheetPinned() -> some View { preference(key: SheetPinnedKey.self, value: true) }
+}
+
 private struct SheetBody<Content: View>: View {
     let size: SheetSize
     let content: Content
     @State private var height: CGFloat = 0
+    @State private var pinned = false
 
     private var detents: Set<PresentationDetent> {
+        if pinned { return [.large] }
         switch size {
         // Before the first layout the height is not known; a height that fits nothing would flash.
-        case .fit: height > 0 ? [.height(height)] : [.medium]
-        case .mediumOrLarge: [.medium, .large]
-        case .large: [.large]
+        case .fit: return height > 0 ? [.height(height)] : [.medium]
+        case .mediumOrLarge: return [.medium, .large]
+        case .large: return [.large]
         }
     }
 
+    // The grabber sits in the first 26 pt.
+    private let insets = EdgeInsets(top: 26, leading: 16, bottom: 24, trailing: 16)
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) { content }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                // The grabber sits in the first 26 pt.
-                .padding(.init(top: 26, leading: 16, bottom: 24, trailing: 16))
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height = $0 }
+        // One structure whether pinned or not, so what the content keeps in @State survives the change.
+        GeometryReader { screen in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) { content }
+                    .frame(maxWidth: .infinity, maxHeight: pinned ? screen.size.height - insets.top - insets.bottom : nil, alignment: .topLeading)
+                    .padding(insets)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { if !pinned { height = $0 } }
+            }
+            .scrollBounceBehavior(.basedOnSize)
+            .scrollDisabled(pinned)
         }
-        .scrollBounceBehavior(.basedOnSize)
+        .onPreferenceChange(SheetPinnedKey.self) { pinned = $0 }
         .presentationDetents(detents)
         .sheetSurface()
         .tint(DS.blue)

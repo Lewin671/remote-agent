@@ -305,3 +305,42 @@ struct AppMark: Shape {
             .accessibilityHidden(true)
     }
 }
+
+// MARK: - Scroll edge fades
+
+/// Where a scrolling region is cut by the bar above or below it, its content fades into the surface it is on
+/// instead of ending in a hard line (design-system §4 材质), over 24 pt. An edge fades only while there is
+/// content past it, so a list at rest keeps its first and last rows whole. Before iOS 18 it does not fade.
+private struct ScrollEdgeFades: ViewModifier {
+    private static let depth: CGFloat = 24
+    @State private var before: CGFloat = 0
+    @State private var after: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        if #available(iOS 18, *) {
+            content
+                .onScrollGeometryChange(for: [CGFloat].self) { g in
+                    [g.contentOffset.y + g.contentInsets.top, g.contentSize.height - g.contentOffset.y - g.containerSize.height + g.contentInsets.bottom]
+                } action: { _, new in
+                    before = new[0]
+                    after = new[1]
+                }
+                .mask {
+                    VStack(spacing: 0) {
+                        LinearGradient(colors: [.black.opacity(1 - min(max(before / Self.depth, 0), 1)), .black], startPoint: .top, endPoint: .bottom)
+                            .frame(height: Self.depth)
+                        Rectangle()
+                        LinearGradient(colors: [.black, .black.opacity(1 - min(max(after / Self.depth, 0), 1))], startPoint: .top, endPoint: .bottom)
+                            .frame(height: Self.depth)
+                    }
+                }
+        } else {
+            content
+        }
+    }
+}
+
+extension View {
+    /// The edges of a scroll view that content passes under fade into the surface behind it.
+    func scrollEdgeFades() -> some View { modifier(ScrollEdgeFades()) }
+}

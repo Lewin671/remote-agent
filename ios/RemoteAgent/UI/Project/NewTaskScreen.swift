@@ -70,7 +70,7 @@ struct NewTaskScreen: View {
         }
         .kitSheet(isPresented: $picking, size: .large, onDismiss: { browsing = false }) {
             if browsing {
-                SheetHead("新项目 · 选目录", action: "取消", onAction: { picking = false }, onBack: { browsing = false })
+                SheetHead("新项目 · 选目录", onBack: { browsing = false })
                 ProjectDirPicker(state) { machine, path in choose(path, on: machine, from: draft) }
             } else {
                 SheetHead("在哪个项目", action: "取消", onAction: { picking = false })

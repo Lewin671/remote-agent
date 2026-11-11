@@ -54,6 +54,67 @@ struct GlassSegmented: View {
     }
 }
 
+/// The segmented control that chooses a computer (client-v58 新项目 · 选目录): each segment is an online
+/// dot or a grey one and the whole name. Names that do not fit the width slide sideways, never wrap or
+/// cut; a computer that is not online is greyed and cannot be chosen.
+struct MachineSegmented: View {
+    struct Item: Identifiable, Equatable {
+        let id: String
+        let name: String
+        let online: Bool
+    }
+
+    let items: [Item]
+    @Binding var selected: String
+    @Namespace private var slider
+    @State private var width: CGFloat = 0
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var still
+
+    var body: some View {
+        GlassGroup {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(items) { item in
+                        let on = item.id == selected
+                        Button {
+                            guard item.online, !on else { return }
+                            Haptics.selection()
+                            withAnimation(still ? nil : .snappy(duration: 0.25)) { selected = item.id }
+                        } label: {
+                            HStack(spacing: 6) {
+                                StatusMark(item.online ? .online : .off)
+                                Text(item.name).lineLimit(1).fixedSize()
+                            }
+                            .font(.footnote.weight(on ? .semibold : .regular))
+                            .foregroundStyle(item.online ? DS.ink : DS.ink3)
+                            .padding(.horizontal, 14)
+                            .frame(minWidth: max(0, (width - 8) / CGFloat(max(items.count, 1))), minHeight: 32)
+                            .background {
+                                if on {
+                                    Capsule().fill(scheme == .dark ? Color(white: 0.39) : DS.paper)
+                                        .shadow(color: .black.opacity(0.08), radius: 2, y: 1)
+                                        .matchedGeometryEffect(id: "slider", in: slider)
+                                }
+                            }
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!item.online)
+                        .accessibilityLabel(item.name)
+                        .accessibilityValue(item.online ? "在线" : "不在线")
+                        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                    }
+                }
+                .padding(4)
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .glass(Capsule(), interactive: false)
+        }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+    }
+}
+
 /// A strip of glass under the title: an icon, one sentence (13, `ink2`), at
 /// most one text action. `tone` `.attention` is the orange one (a security
 /// reminder); `.error` writes the sentence red.

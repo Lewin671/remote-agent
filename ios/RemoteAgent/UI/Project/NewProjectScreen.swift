@@ -12,7 +12,7 @@ struct NewProjectScreen: View {
         Page {
             VStack(spacing: 0) {
                 ConnectionBar()
-                ProjectDirPicker(model.state, pinned: true) { machine, path in
+                ProjectDirPicker(model.state, onPage: true) { machine, path in
                     nav.open(.newProjectAt(machine: machine, path: path))
                 }
             }

@@ -297,7 +297,7 @@ private struct HomeScopeSheet: View {
 
     var body: some View {
         if browsing {
-            SheetHead("新项目 · 选目录", action: "取消", onAction: onClose, onBack: { browsing = false })
+            SheetHead("新项目 · 选目录", onBack: { browsing = false })
             ProjectDirPicker(state) { machine, path in
                 onClose()
                 nav.open(.newProjectAt(machine: machine, path: path))

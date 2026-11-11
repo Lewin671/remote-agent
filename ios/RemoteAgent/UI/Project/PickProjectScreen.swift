@@ -30,7 +30,7 @@ struct PickProjectSheet: View {
 
     var body: some View {
         if browsing {
-            SheetHead("新项目 · 选目录", action: "取消", onAction: onClose, onBack: { browsing = false })
+            SheetHead("新项目 · 选目录", onBack: { browsing = false })
             ProjectDirPicker(state) { machine, path in onPick(NewTaskTarget(key: path, machine: machine)) }
         } else {
             SheetHead("新会话 · 选项目", action: "取消", onAction: onClose)

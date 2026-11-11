@@ -27,14 +27,13 @@ private struct Browsing: Equatable {
     var attempt = 0
 }
 
-/// Choose a machine, then browse to a folder; `onChosen` with the folder.
-///
-/// In a sheet its lines join the sheet's column and scroll with it. As a
-/// page (`pinned`) it scrolls by itself and keeps the button that chooses
-/// the folder in reach under a long listing.
+/// Choose a machine (only where the account has more than one), then browse to a folder; `onChosen` with the
+/// folder. The computers and the path above the list and the button below it stay; only the list between
+/// them scrolls, and it fades into the surface at the edge it passes under. It fills what it is given: a
+/// sheet (which it pins, `sheetPinned()`) or a page (`onPage`).
 struct ProjectDirPicker: View {
     private let state: RemoteState
-    private let pinned: Bool
+    private let onPage: Bool
     private let onChosen: (_ machine: String, _ path: String) -> Void
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
@@ -43,9 +42,9 @@ struct ProjectDirPicker: View {
     @State private var loading = false
     @State private var error = ""
 
-    init(_ state: RemoteState, pinned: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
+    init(_ state: RemoteState, onPage: Bool = false, onChosen: @escaping (_ machine: String, _ path: String) -> Void) {
         self.state = state
-        self.pinned = pinned
+        self.onPage = onPage
         self.onChosen = onChosen
         _at = State(initialValue: Browsing(machine: firstOnlineMachine(state), path: HomeLaunch.value("-dirPath") ?? ""))
     }
@@ -58,24 +57,16 @@ struct ProjectDirPicker: View {
     }
 
     var body: some View {
-        Group {
-            if pinned {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) { listing }
-                        .padding(.horizontal, DS.Space.l).padding(.bottom, 16)
-                        .readableColumn()
-                }
-                .safeAreaInset(edge: .bottom, spacing: 0) {
-                    if let dirs, error.isEmpty {
-                        choose(dirs).padding(.horizontal, DS.Space.l).padding(.vertical, 8).readableColumn()
-                            .background(DS.gbg).topLine()
-                    }
-                }
-            } else {
-                listing
-                if let dirs, error.isEmpty { choose(dirs).padding(.top, 10) }
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            // A computer is chosen only where the account has more than one (design-system §6 新任务).
+            if state.machines.count > 1 { machines.padding(.bottom, 10) }
+            listing
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.horizontal, onPage ? DS.Space.l : 0)
+        .padding(.bottom, onPage ? 8 : 0)
+        .readableColumn()
+        .sheetPinned()
         .task(id: at) { await load() }
         // What a tap here would do, for a script (debug builds).
         .debugSignal("dir.first") { if let d = dirs, let name = d.dirs.first { at.path = childPath(d.path, name) } }
@@ -112,64 +103,41 @@ struct ProjectDirPicker: View {
     }
 
     @ViewBuilder private var listing: some View {
-        // A computer is chosen only where the account has more than one (design-system §6 新任务).
-        if state.machines.count > 1 { machines }
         if at.machine.isEmpty {
             Banner("没有在线的电脑", tone: .warn)
         } else if !error.isEmpty {
             Banner("读不了这个目录：\(error)", tone: .error, action: "重试", onAction: { at.attempt += 1 })
         } else if let d = dirs {
+            crumbs(d)
+            if d.dirs.isEmpty { Text("没有子目录").font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
             // The folder before stays, dimmed, until the next one is listed: no blank in between.
-            Group {
-                crumbs(d)
-                if d.dirs.isEmpty { Text("没有子目录").font(.subheadline).ink(DS.ink2).padding(.vertical, 8) }
-                if !d.parent.isEmpty {
-                    ListItem("上一级", last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
+            ScrollView {
+                VStack(spacing: 0) {
+                    if !d.parent.isEmpty {
+                        ListItem("上一级", last: d.dirs.isEmpty, icon: "chevron.left") { at.path = d.parent }
+                    }
+                    ForEach(Array(d.dirs.enumerated()), id: \.element) { i, name in
+                        ListItem(name, last: i == d.dirs.count - 1) { at.path = childPath(d.path, name) }
+                            .trailing { Arrow(DS.ink2, style: .body) }
+                    }
                 }
-                ForEach(Array(d.dirs.enumerated()), id: \.element) { i, name in
-                    ListItem(name, last: i == d.dirs.count - 1) { at.path = childPath(d.path, name) }
-                        .trailing { Arrow(DS.ink2, style: .body) }
-                }
+                .opacity(loading ? 0.45 : 1)
+                .disabled(loading)
             }
-            .opacity(loading ? 0.45 : 1)
-            .disabled(loading)
+            .scrollEdgeFades()
+            // The list takes what the button leaves, so the button stays at the bottom under a short list too.
+            .frame(maxHeight: .infinity, alignment: .top)
+            choose(d).padding(.top, 10)
         } else {
             LoadingRow(inset: 0)
         }
     }
 
-    /// 机器, then each computer as a pill; the chosen one is outlined, an offline one cannot be chosen.
+    /// The computers as a segmented control, the chosen one a slider; an offline one cannot be chosen.
     private var machines: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                Text("机器").font(.footnote).ink(DS.ink2)
-                ForEach(listedMachines(state)) { m in
-                    let on = at.machine == m.id
-                    Button {
-                        if !on {
-                            Haptics.selection()
-                            at = Browsing(machine: m.id)
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Dot(m.online ? DS.green : DS.ink3)
-                            Text(machineLabel(state, id: m.id)).font(.subheadline).ink(on ? DS.blue : DS.ink2).lineLimit(1)
-                        }
-                        .padding(.horizontal, 10).padding(.vertical, 4)
-                        .background(on ? DS.fill : DS.fill, in: Capsule())
-                        .overlay { if on { Capsule().strokeBorder(DS.blue, lineWidth: 1) } }
-                        .hitTarget(minWidth: 0)
-                    }
-                    .buttonStyle(PressStyle())
-                    .disabled(!m.online)
-                    .opacity(m.online ? 1 : 0.45)
-                    .accessibilityLabel(machineLabel(state, id: m.id))
-                    .accessibilityValue(m.online ? "在线" : "不在线")
-                    .accessibilityAddTraits(on ? .isSelected : [])
-                }
-            }
-        }
-        .padding(.bottom, 6)
+        MachineSegmented(
+            items: listedMachines(state).map { .init(id: $0.id, name: machineLabel(state, id: $0.id), online: $0.online) },
+            selected: Binding(get: { at.machine }, set: { if $0 != at.machine { at = Browsing(machine: $0) } }))
     }
 
     /// 「~ / Code / ai-bot」, the folder itself in the text colour.
