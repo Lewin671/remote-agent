@@ -339,7 +339,7 @@ private fun SessionTopBar(
         ActionSheet(
             info = {
                 SheetInfo(
-                    "${agentName(s.agent())} · ${projectName(projectKey(s))} · ${machineLabel(state, s.machineId)}",
+                    sessionMenuTitle(state, s),
                     shortPath(s.info?.cwd.orEmpty()),
                     mono = true,
                 )
@@ -1476,3 +1476,7 @@ internal fun putBackReferences(
     Outbox.draft(sid).value = text
     return true
 }
+
+/** What a session's ⋯ menu is about: the CLI, the project, and the machine only where the account has more than one (design-system §6). */
+internal fun sessionMenuTitle(state: RemoteState, s: SessionView): String =
+    listOfNotNull(agentName(s.agent()), projectName(projectKey(s)), machineLabel(state, s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · ")
