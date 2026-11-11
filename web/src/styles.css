@@ -987,6 +987,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .whl em { font-style: normal; color: var(--orange); }
 .wsub { padding: 4px 12px 10px; font-size: 13px; color: var(--ink2); flex: none; overflow-wrap: anywhere; }
 .wsub.err { color: var(--red); }
+/* Without the line under it, the headline keeps its own distance from what follows. */
+.whl:not(:has(+ .wsub)) { padding-bottom: 12px; }
 .wsub button { color: var(--blue); margin-left: 8px; min-height: 28px; }
 .side .find { margin: 0 4px 4px; height: 32px; border-radius: 16px; font-size: 13px; padding: 0 4px 0 12px; }
 .side .find .x { width: 28px; height: 28px; }
