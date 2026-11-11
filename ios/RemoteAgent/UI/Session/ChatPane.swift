@@ -411,6 +411,9 @@ struct ChatPane: View {
                         toEnd()
                     }
                     .alignmentGuide(.top) { $0[.bottom] + 8 }
+                    // It rises in and fades out (§4 动效).
+                    .animation(Motion.enter(), value: tracker.fresh > 0)
+                    .animation(Motion.enter(), value: tracker.away)
                 }
                 .offset(y: keyboard.lag)
         }
@@ -589,7 +592,7 @@ struct ChatPane: View {
                     .frame(minHeight: DS.minHit)
             }
             .buttonStyle(.plain)
-            .transition(.opacity)
+            .transition(Motion.appear(rise: Motion.bubbleRise))
         } else if tracker.away {
             Button(action: action) {
                 Image(systemName: "arrow.down")
@@ -602,7 +605,7 @@ struct ChatPane: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("回到最新消息")
-            .transition(.opacity)
+            .transition(Motion.appear(rise: Motion.bubbleRise))
         }
     }
 
@@ -665,10 +668,14 @@ struct ChatPane: View {
                     }
                     // Another item is another card: what was opened or typed in the one before does not carry over.
                     .id(first.id)
+                    // It comes up from the message box, 12 points and fading, while the chat gives up its room;
+                    // answered, it fades and closes (§4 动效, 停靠卡).
+                    .transition(Motion.roomy(rise: Motion.dockRise))
                 }
                 if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 SessionComposer(session: session, status: status, derived: d, focus: $typing)
             }
+            .animation(dock.first == nil ? Motion.exit() : Motion.enter(), value: dock.first?.id)
         }
     }
 }
@@ -729,7 +736,6 @@ private struct PendingBubble: View {
                             resume.error.isEmpty ? "发送" : "重试", style: .footnote.weight(.semibold),
                             enabled: online && !resume.running, alignment: .center
                         ) {
-                            SessionHaptics.tap()
                             resume.run {
                                 var cmd = PBCommand()
                                 cmd.resumeInput = .with {
@@ -876,7 +882,6 @@ private struct EndedCard: View {
         ) {
             if reachable && !act.running {
                 InkButton(act.error.isEmpty ? "恢复会话" : "再试一次") {
-                    SessionHaptics.tap()
                     restore()
                 }
                 .disabled(state.conn != .online)

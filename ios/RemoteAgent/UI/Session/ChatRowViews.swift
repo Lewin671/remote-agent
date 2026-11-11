@@ -314,8 +314,11 @@ extension ChatBubble {
             if let captionIcon { Mark(captionIcon, color: captionColor).padding(.trailing, 4) }
             if let caption {
                 Text(caption).font(.footnote).foregroundStyle(captionColor).multilineTextAlignment(.trailing)
+                    .contentTransition(.opacity)
             }
         }
+        // The words of the status line change by cross-fading (§4 动效, 快).
+        .animation(Motion.enter(Motion.fast), value: caption)
     }
 
     @ViewBuilder fileprivate var actions: some View {
@@ -630,7 +633,7 @@ struct ChatExpandable<Content: View>: View {
         let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) { open.toggle(key) }
+                withAnimation(reduceMotion ? nil : Motion.enter()) { open.toggle(key) }
             } label: {
                 ArrowText(isOpen ? "收起\(title)" : title, color: DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
                     .padding(.vertical, 6)

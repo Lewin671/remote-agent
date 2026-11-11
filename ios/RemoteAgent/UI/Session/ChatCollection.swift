@@ -42,6 +42,24 @@ struct ChatCollection: UIViewControllerRepresentable {
     }
 }
 
+/// A row's cell. A reused cell starts from nothing of an entrance that was cut short.
+final class ChatCell: UICollectionViewCell {
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        contentView.layer.removeAllAnimations()
+        contentView.alpha = 1
+        contentView.transform = .identity
+    }
+}
+
+/// How a row that has just come in at the end of the chat arrives (design-system §4 动效).
+private enum Entrance {
+    /// A bubble: fades in and rises 8 points, 200 ms.
+    case rise
+    /// A tool row, a line of a turn's time: fades in, 120 ms.
+    case fade
+}
+
 @MainActor
 final class ChatCollectionController: UIViewController, UICollectionViewDelegate {
     private let tracker: ChatScrollTracker
@@ -59,6 +77,12 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
     private var interaction: (Bool) -> Void = { _ in }
     private let work = ChatScrollWork()
     private var destination: Destination?
+    /// The rows of the last update, in order, and the entrances of the rows new in this one. An entrance is
+    /// only kept for a moment: a row whose cell is made later, when the reader scrolls to it, plays nothing.
+    private var order: [String] = []
+    private var entering: [String: (Entrance, CFTimeInterval)] = [:]
+    private var animators: [String: UIViewPropertyAnimator] = [:]
+    private var waiting: [String: (Entrance, UIView)] = [:]
 
     private enum Destination { case end, row(String) }
 
@@ -90,7 +114,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         collection.accessibilityIdentifier = "chat-list"
         collection.beforeLayout = { [weak self] in self?.anchor() }
         collection.afterLayout = { [weak self] anchor in self?.laidOut(anchor) }
-        collection.register(UICollectionViewCell.self, forCellWithReuseIdentifier: "row")
+        collection.register(ChatCell.self, forCellWithReuseIdentifier: "row")
         source = UICollectionViewDiffableDataSource<Int, String>(collectionView: collection) { [weak self] list, path, id in
             guard let self, let item = self.items[id] else { return nil }
             let cell = list.dequeueReusableCell(withReuseIdentifier: "row", for: path)
@@ -103,6 +127,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
                     .id(id)
             }.margins(.all, 0).minSize(height: 0)
             cell.backgroundConfiguration = .clear()
+            self.enter(cell, id)
             return cell
         }
         view = collection
@@ -135,6 +160,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         let place = joined && !tracker.scroll.following && !moving ? anchor(surviving: Set(ids)) : nil
         if joined { tracker.prepended(input.prepended) }
         if place != nil { tracker.keep() }
+        planEntrances(ids: ids, new: new, joined: joined)
         items = new
         for id in visibleFrames.keys where new[id] == nil {
             ChatDiagnosticRing.shared.record(.rowHidden, entity: entities[id] ?? 0)
@@ -162,6 +188,65 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         if input.ready && !opened {
             opened = true
             if destination == nil && tracker.scroll.following { destination = .end }
+        }
+    }
+
+    /// What the rows new at the end of the chat do as they come: bubbles rise in, tool rows fade in. A history
+    /// shown for the first time, history joining in front and a long catch-up are not new rows.
+    private func planEntrances(ids: [String], new: [String: ChatCollectionItem], joined: Bool) {
+        defer { order = ids }
+        guard opened, !joined else { return }
+        let seen = Set(order)
+        let added = ids.filter { !seen.contains($0) }
+        let content = ids.filter { $0 != "chat-end" }
+        guard !added.isEmpty, added.count <= 4, Array(content.suffix(added.count)) == added else { return }
+        let now = CACurrentMediaTime()
+        entering = entering.filter { now - $0.value.1 < 1 }
+        for id in added {
+            let kind: Entrance?
+            if id.hasPrefix("out-") || id.hasPrefix("pending-") {
+                kind = .rise
+            } else if let item = new[id]?.row?.item {
+                switch item {
+                case .user(let user): kind = user.from != nil ? .rise : nil
+                case .tool, .running, .tools, .note, .turnEnd, .generated: kind = .fade
+                default: kind = nil
+                }
+            } else {
+                kind = nil
+            }
+            if let kind { entering[id] = (kind, now) }
+        }
+    }
+
+    /// A row whose cell is made now begins its entrance unseen (clear) and plays it once the list has moved to its
+    /// end, so that the entrance is what the reader sees and is not over by the time the row is in sight.
+    private func enter(_ cell: UICollectionViewCell, _ id: String) {
+        guard let (kind, since) = entering.removeValue(forKey: id), CACurrentMediaTime() - since < 0.6 else { return }
+        let view = cell.contentView
+        view.alpha = 0
+        if kind == .rise && !Motion.reduced { view.transform = CGAffineTransform(translationX: 0, y: Motion.bubbleRise) }
+        waiting[id] = (kind, view)
+        // The list may not move at all (the reader is above): the entrance then plays after a moment.
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(150))
+            self?.playEntrances()
+        }
+    }
+
+    private func playEntrances() {
+        let now = waiting
+        waiting.removeAll()
+        for (id, (kind, view)) in now {
+            let long = kind == .rise && !Motion.reduced
+            let animator = Motion.curve(long ? Motion.base : Motion.fast)
+            animator.addAnimations {
+                view.alpha = 1
+                view.transform = .identity
+            }
+            animator.addCompletion { [weak self] _ in self?.animators[id] = nil }
+            animators[id] = animator
+            animator.startAnimation()
         }
     }
 
@@ -266,6 +351,7 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
         collection.scrollToItem(at: index, at: .bottom, animated: false)
         collection.layoutIfNeeded()
         collection.contentOffset.y = max(0, collection.contentSize.height - collection.bounds.height)
+        playEntrances()
     }
 
     private func scrollToRow(_ id: String) {
@@ -305,6 +391,10 @@ final class ChatCollectionController: UIViewController, UICollectionViewDelegate
     }
 
     func stopObserving() {
+        animators.values.forEach { $0.stopAnimation(true) }
+        animators.removeAll()
+        waiting.values.forEach { $0.1.alpha = 1; $0.1.transform = .identity }
+        waiting.removeAll()
         work.cancel()
         tracker.cancelFollow()
         _ = tracker.interaction(false)
