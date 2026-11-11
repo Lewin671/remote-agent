@@ -113,6 +113,11 @@ final class ScheduleStore {
         }
     }
     private func captureDetail(_ machine: String, _ list: [ScheduleTask]) {
+        // Entered with no result, there is nothing to hold: the first one that comes is shown as it is.
+        if capturedDetail, detailResultID == nil, case .schedule(let selectedMachine, let id) = viewing, selectedMachine == machine,
+           let first = list.first(where: { $0.id == id })?.latestNotification {
+            detailResultID = first.id
+        }
         guard foreground, completeMachines.contains(machine), !capturedDetail, case .schedule(let selectedMachine, let id) = viewing,
               selectedMachine == machine, let task = list.first(where: { $0.id == id }) else { return }
         detailUnread = unreadRunIDs(machine: machine, task: task)

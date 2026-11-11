@@ -675,9 +675,11 @@ export function ScheduleDetail({
   const latest = task && latestNotification(task);
   useEffect(() => {
     if (task && live && snapshot?.task !== machineId + "/" + id) setSnapshot({ task: machineId + "/" + id, runId: latest?.id });
+    // Entered with no result there is nothing to hold: the first one that comes is shown as it is.
+    else if (snapshot?.task === machineId + "/" + id && snapshot.runId === undefined && latest) setSnapshot({ task: snapshot.task, runId: latest.id });
   }, [task, latest, snapshot, machineId, id, live]);
   const captured = snapshot?.task === machineId + "/" + id;
-  const resultId = captured ? snapshot.runId : latest?.id;
+  const resultId = captured && snapshot.runId !== undefined ? snapshot.runId : latest?.id;
   const result = task && allRuns(task).find(run => run.id === resultId);
   const [edit, setEdit] = useState<"" | "name" | "time" | "message" | "target">(
     "",

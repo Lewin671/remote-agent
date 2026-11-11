@@ -1327,6 +1327,21 @@ it("updates a frozen run's summary and end time without replacing its identity",
   expect(button("有新结果")).toBeUndefined();
 });
 
+it("shows the first result at once when the task was entered with none, and holds the next ones", async () => {
+  const t = task({ runs: [] }), r = remote([t]);
+  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
+  expect(host.textContent).toContain("还没有运行");
+  const first = run("first", { notified: true, ended_at: "2026-11-01T09:00:00Z", notification_source: "agent", notification_text: "第一个结果", session_id: undefined });
+  await act(async () => { t.runs = [first]; r.touch(); });
+  expect(host.querySelector(".schedule-result h4")?.textContent).toBe("第一个结果");
+  expect(button("有新结果")).toBeUndefined();
+  expect(host.textContent).not.toContain("还没有运行");
+  const next = run("next", { notified: true, ended_at: "2026-11-01T10:00:00Z", notification_source: "agent", notification_text: "第二个结果", session_id: undefined });
+  await act(async () => { t.runs = [first, next]; r.touch(); });
+  expect(host.querySelector(".schedule-result h4")?.textContent).toBe("第一个结果");
+  expect(button("有新结果")).toBeTruthy();
+});
+
 it("follows cached results until the first live list, then freezes only the selected run ID", async () => {
   const cached = run("cached", { notified: true, session_id: undefined, notification_source: "agent", notification_text: "缓存结果", ended_at: "2026-11-01T08:00:00Z" });
   const t = task({ runs: [cached] }), r = remote([t]);

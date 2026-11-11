@@ -185,9 +185,9 @@ import UIKit
         current.runs = [ScheduleRun(id: "while-away", startedAt: scheduleISO(Date().addingTimeInterval(-30)), status: "completed", notified: true)]
         store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
         await store.refresh("m")
-        #expect(store.detailUnread == ["while-away"] && !store.hasNewResults && store.detailResult == nil)
-        store.refreshDetailResult(machine: "m", task: "t")
-        #expect(store.detailResult?.id == "while-away")
+        // Entered with no result, so the one that came while away is shown as it is, with its dot.
+        #expect(store.detailUnread == ["while-away"] && !store.hasNewResults)
+        #expect(store.detailResult?.id == "while-away" && !store.hasNewDetailResult)
     }
     @Test func cachedDetailWaitsForFirstCompleteListAndResolvesSelectedRunFromLiveData() async {
         let store = ScheduleStore()
@@ -219,6 +219,22 @@ import UIKit
         #expect(store.detailResult?.notificationTime == scheduleDate("2026-10-31T08:03:00Z"))
         store.refreshDetailResult(machine: "m", task: "t")
         #expect(store.detailResultID == "newer" && !store.hasNewDetailResult)
+    }
+    @Test func firstResultOfATaskEnteredWithNoneIsShownAtOnce() async {
+        let store = ScheduleStore()
+        var current = task()
+        store.configure(.init(cached: { _ in nil }, list: { _ in [current] }))
+        store.setViewing(.schedule(machine: "m", id: "t"), foreground: true)
+        store.reconcile(state())
+        await eventually("empty list captured") { store.loading.isEmpty && !store.tasks.isEmpty }
+        #expect(store.detailResult == nil && !store.hasNewDetailResult)
+        current.runs = [ScheduleRun(id: "first", startedAt: "2026-10-31T08:00:00Z", status: "completed", notified: true)]
+        await store.refresh("m")
+        #expect(store.detailResult?.id == "first" && !store.hasNewDetailResult)
+        // From here on a later result waits for the link.
+        current.runs?.append(ScheduleRun(id: "second", startedAt: "2026-11-01T08:00:00Z", status: "completed", notified: true))
+        await store.refresh("m")
+        #expect(store.detailResult?.id == "first" && store.hasNewDetailResult)
     }
     @Test func offlineCacheDoesNotConsumeUnreadOrCaptureUntilOnlineListArrives() async throws {
         let suite = "schedule-detail-cache-test-" + UUID().uuidString

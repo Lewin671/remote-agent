@@ -274,8 +274,12 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     var selectedResult by remember(machine, id) { mutableStateOf<ScheduledRun?>(null) }
     var resultCaptured by remember(machine, id) { mutableStateOf(false) }
     LaunchedEffect(task, capturedDetail) {
-        if (!resultCaptured && task != null && capturedDetail == ScheduleTaskKey(machine, id)) {
+        if (task == null) return@LaunchedEffect
+        if (!resultCaptured && capturedDetail == ScheduleTaskKey(machine, id)) {
             selectedResult = task.latestNotification; resultCaptured = true
+        } else if (resultCaptured && selectedResult == null) {
+            // Entered with no result: nothing is held to keep, so the first one that comes is shown as it is.
+            selectedResult = task.latestNotification
         }
     }
     var deleting by remember { mutableStateOf(false) }
@@ -318,7 +322,8 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 ScheduleAttentionBanner(scheduleAttentionText(task, t))
                 if (!targetMissing) PillButton(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, enabled)
             }
-            if (resultCaptured && task.latestNotification?.id != selectedResult?.id && task.latestNotification != null) {
+            val pinned = if (resultCaptured) selectedResult else null
+            if (pinned != null && task.latestNotification != null && task.latestNotification?.id != pinned.id) {
                 TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
             }
             task.active?.let { run ->
@@ -330,7 +335,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                     }
                 }
             }
-            val result = if (resultCaptured) selectedResult?.let { selected -> task.allRuns.firstOrNull { it.id == selected.id } ?: selected } else task.latestNotification
+            val result = pinned?.let { selected -> task.allRuns.firstOrNull { it.id == selected.id } ?: selected } ?: task.latestNotification
             if (result != null) ScheduleLatestResult(result, t, capturedDetail == ScheduleTaskKey(machine, id) && result.id in entryUnread,
                 showConversation = !(task.target.text("type") == "resume_session" && task.active != null)) {
                 nav.scheduledSession(result.session, result.seq)
