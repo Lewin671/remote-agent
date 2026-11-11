@@ -312,6 +312,31 @@ fun SettingsScreen() {
                         }
                     },
             )
+            GLabel("版本")
+            Group(
+                rows =
+                    listOf(
+                        {
+                            val version =
+                                app.versionName.let { v ->
+                                    val c = app.buildCommit.take(7)
+                                    if (c.isEmpty() || c in v) v else "$v · $c"
+                                }
+                            // A development copy does not update itself: its row only says what it
+                            // is.
+                            if (!Updater.enabled(app)) GRow("remote-agent", version)
+                            else
+                                GRow(
+                                    "remote-agent",
+                                    updateWord(update) ?: version,
+                                    onClick = { updating = true },
+                                    chevron = true,
+                                    valueColor = if (updateWord(update) != null) p.blue else null,
+                                )
+                        },
+                        { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
+                    ),
+            )
             GLabel("账户")
             Group(
                 rows =
@@ -325,25 +350,6 @@ fun SettingsScreen() {
                                 chevron = true,
                             )
                         },
-                        {
-                            val version =
-                                app.versionName.let { v ->
-                                    val c = app.buildCommit.take(7)
-                                    if (c.isEmpty() || c in v) v else "$v · $c"
-                                }
-                            // A development copy does not update itself: its row only says what it
-                            // is.
-                            if (!Updater.enabled(app)) GRow("版本", version)
-                            else
-                                GRow(
-                                    "版本",
-                                    updateWord(update) ?: version,
-                                    onClick = { updating = true },
-                                    chevron = true,
-                                    valueColor = if (updateWord(update) != null) p.blue else null,
-                                )
-                        },
-                        { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
                         {
                             AccountExitAction(
                                 state,
