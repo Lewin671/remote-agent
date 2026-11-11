@@ -25,15 +25,18 @@ final class SummaryModels {
 
     private(set) var list: PBListModelsResponse?
     @ObservationIgnored private var wanted: Key?
+    @ObservationIgnored private var request = UUID()
 
-    /// Shows nothing, then the list of `key` once `fetch` has it; nil shows nothing.
+    /// A refresh keeps the current list visible; a different target starts empty.
     func load(_ key: Key?, fetch: @MainActor (Key) async -> PBListModelsResponse?) async {
+        if wanted != key { list = nil }
         wanted = key
-        list = nil
+        let request = UUID()
+        self.request = request
         guard let key else { return }
         let got = await fetch(key)
-        guard wanted == key else { return }
-        list = got
+        guard wanted == key, self.request == request else { return }
+        if let got { list = got }
     }
 }
 

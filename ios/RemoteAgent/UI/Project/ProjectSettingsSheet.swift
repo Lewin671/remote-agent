@@ -36,7 +36,6 @@ struct ProjectSettingsSheet: View {
     @State private var models: PBListModelsResponse?
     @State private var modelsError = ""
     @State private var modelsFor = ""
-    @State private var allModels = false
     @State private var settings: PBDaemonSettings?
     /// The page the sheet was asked to open on.
     private let open: ProjectSettingsPage
@@ -194,11 +193,31 @@ struct ProjectSettingsSheet: View {
         if let blocked = prefsBlocked(state), back == nil { Banner(blocked).padding(.bottom, 8) }
         if draft.unread(state) {
             reading(state, draft.current(state))
-        } else if let ms = models {
+        } else {
+            ModelSettingsBody(config: c, models: models, modelsError: modelsError, settings: settings,
+                              machineName: machineLabel(state, id: c.machineId), onEdit: { draft.edit($0) })
+        }
+    }
+}
+
+/// Shared by project/scheduling sheets and the new-task panel. Presentation owns
+/// loading, scrolling, focus and commit; these are the same choices everywhere.
+struct ModelSettingsBody: View {
+    let config: NewConfig
+    let models: PBListModelsResponse?
+    var modelsError = ""
+    let settings: PBDaemonSettings?
+    let machineName: String
+    let onEdit: (NewConfig) -> Void
+    @State private var allModels = false
+
+    var body: some View {
+        let c = config
+        if let ms = models {
             let standing = defaultModelName(c, models: ms, settings: settings)
             ListItem("默认" + (standing.isEmpty ? "" : "（\(standing)）"), checked: c.model.isEmpty) {
                 Haptics.selection()
-                edit(c) {
+                edit {
                     $0.model = ""
                     $0.effort = ""
                 }
@@ -208,7 +227,7 @@ struct ProjectSettingsSheet: View {
             ForEach(Array(shown.enumerated()), id: \.element.slug) { i, m in
                 ListItem(m.displayName.isEmpty ? m.slug : m.displayName, checked: c.model == m.slug, last: few && i == shown.count - 1) {
                     Haptics.selection()
-                    draft.edit(pickModel(c, m))
+                    onEdit(pickModel(c, m))
                 }
             }
             if !few { TextAction("全部模型", style: .body, arrow: true) { allModels = true } }
@@ -217,15 +236,21 @@ struct ProjectSettingsSheet: View {
                 FieldLabel("推理强度")
                 ChoiceGrid(efforts.efforts, selected: efforts.selected) { effort in
                     Haptics.selection()
-                    edit(c) { $0.effort = effort }
+                    edit { $0.effort = effort }
                 }
             }
             if agentInfo(c.agent).standardContextOption { context(c, shown: projectModel(c, models: ms, settings: settings)) }
         } else if !modelsError.isEmpty {
             Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(modelsError)", tone: .warn)
         } else {
-            LoadingRow("读取 \(machineLabel(state, id: c.machineId)) 的设置…", inset: 0)
+            LoadingRow("读取 \(machineName) 的设置…", inset: 0)
         }
+    }
+
+    private func edit(_ change: (inout NewConfig) -> Void) {
+        var next = config
+        change(&next)
+        onEdit(next)
     }
 
     /// The context window (Claude Code), under the model: a model without a larger window has nothing to choose.
@@ -238,7 +263,7 @@ struct ProjectSettingsSheet: View {
             let options = ["1M", "标准 200k"]
             ChoiceGrid(options, selected: c.standardContext ? options[1] : options[0]) { picked in
                 Haptics.selection()
-                edit(c) { $0.standardContext = picked == options[1] }
+                edit { $0.standardContext = picked == options[1] }
             }
         }
     }

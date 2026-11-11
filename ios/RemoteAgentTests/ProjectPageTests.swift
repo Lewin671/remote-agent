@@ -9,6 +9,58 @@ import Testing
 /// start is made of, and the changes to the project's preferences that wait for one another.
 @MainActor
 @Suite struct ProjectPageTests {
+    @Test func modelPanelConsumesEditsOnceAndRejectsChangedTargets() {
+        let picker = NewTaskModelPicker()
+        let original = NewConfig(machineId: "mac", cwd: "/work/app")
+        var edited = original
+        edited.model = "chosen"
+        edited.effort = "high"
+        picker.open(original)
+        picker.follow(edited)
+        #expect(picker.config == edited, "settings that finish loading remain current")
+        picker.edited = edited
+        picker.follow(original)
+        #expect(picker.config == edited, "a refresh does not replace a pending choice")
+        #expect(picker.close(target: original, settled: true, blocked: false) == edited)
+        #expect(picker.close(target: original, settled: true, blocked: false) == nil)
+        for target in [NewConfig(machineId: "other", cwd: original.cwd),
+                       NewConfig(machineId: "mac", cwd: "/work/other"),
+                       NewConfig(machineId: "mac", cwd: original.cwd, agent: .claude)] {
+            picker.open(original)
+            picker.edited = edited
+            #expect(picker.close(target: target, settled: true, blocked: false) == nil)
+            #expect(!picker.isOpen)
+        }
+        for (settled, blocked) in [(false, false), (true, true)] {
+            picker.open(original)
+            picker.edited = edited
+            #expect(picker.close(target: original, settled: settled, blocked: blocked) == nil)
+        }
+        picker.open(original)
+        picker.edited = edited
+        picker.cancel()
+        picker.open(original)
+        #expect(picker.config == original)
+        #expect(picker.close(target: original, settled: true, blocked: false) == nil)
+    }
+
+    @Test func modelRefreshKeepsCachedChoicesEvenWhenRefreshFails() async {
+        let models = SummaryModels()
+        let key = SummaryModels.Key(machine: "mac", agent: .codex)
+        let cached = PBListModelsResponse.with { $0.defaultModel = "cached" }
+        await models.load(key) { _ in cached }
+        await models.load(key) { _ in
+            #expect(models.list == cached)
+            return nil
+        }
+        #expect(models.list == cached)
+        await models.load(.init(machine: "mac", agent: .claude)) { _ in
+            #expect(models.list == nil)
+            return nil
+        }
+        #expect(models.list == nil)
+    }
+
     private let cfg = NewConfig(machineId: "mac", cwd: "/work/app")
     private let computer = FakeCommands()
 

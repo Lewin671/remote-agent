@@ -42,6 +42,9 @@ struct NewSessionBox: View {
     @Environment(\.page) private var page
     @Environment(AccountContext.self) private var context
     @FocusState private var focused: Bool
+    // Native menus can temporarily collapse the keyboard's prediction strip.
+    @State private var cliViewport: CGFloat?
+    @State private var keyboardVisible = false
 
     private struct Follow: Equatable {
         var initial: NewConfig?
@@ -142,43 +145,103 @@ struct NewSessionBox: View {
         _ sheet: NewTaskChrome, draft: NewSessionDraft, config: NewConfig?, agents: [PBAgent], images: ComposerAttachments,
         notices: [NewSessionNotice], canSend: Bool
     ) -> some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(spacing: 6) {
-                    ForEach(notices) { notice(of: $0, draft, canStart: canSend) }
-                }
-                .padding(.horizontal, DS.Space.l).padding(.top, 8)
-            }
-            .scrollDismissesKeyboard(.interactively)
-            MessageCard(text: Bindable(draft).text, placeholder: "要做什么？", label: "要做什么", identifier: "new-session-text", focus: $focused) {
-                images.strip()
-            } accessories: {
-                AttachMenu(images: images)
-                if let c = config, let parts = sheet.parts {
-                    if parts.cli != nil {
-                        NewTaskCli(agents: agents, agent: c.agent) { switchAgent(draft, c, to: $0) }
+        let modelOpen = sheet.picker.isOpen
+        return GeometryReader { viewport in
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(notices) { notice(of: $0, draft, canStart: canSend) }
                     }
-                    NewTaskModel(text: parts.model, action: sheet.onModel)
+                    .padding(.horizontal, DS.Space.l).padding(.top, 8)
                 }
-                Spacer(minLength: 0)
-                Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
-                    .buttonStyle(.plain)
-                    .disabled(!canSend)
-                    .accessibilityLabel("开始")
-                    .accessibilityIdentifier("new-session-start")
+                .scrollDismissesKeyboard(.interactively)
+                MessageCard(text: Bindable(draft).text, placeholder: "要做什么？", label: "要做什么", identifier: "new-session-text", focus: $focused) {
+                    images.strip()
+                } accessories: {
+                    AttachMenu(images: images)
+                    if let c = config, let parts = sheet.parts {
+                        if parts.cli != nil {
+                            NewTaskCli(agents: agents, agent: c.agent) { switchAgent(draft, c, to: $0) }
+                                .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["cli": $0] }
+                        }
+                        NewTaskModel(text: parts.model) { toggleModel(draft) }
+                            .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["model": $0] }
+                    }
+                    Spacer(minLength: 0)
+                    Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
+                        .buttonStyle(.plain)
+                        .disabled(!canSend)
+                        .accessibilityLabel("开始")
+                        .accessibilityIdentifier("new-session-start")
+                }
+                .readableColumn()
+                .transformAnchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { $0["composer"] = $1 }
             }
-            .readableColumn()
+            .frame(maxWidth: .infinity)
+            .frame(height: min(cliViewport ?? viewport.size.height, viewport.size.height))
+            .frame(maxHeight: .infinity, alignment: .top)
+            .background(DS.paper)
+            .overlayPreferenceValue(NewTaskPanelAnchors.self) { anchors in
+                GeometryReader { geometry in
+                    if let composer = anchors["composer"], let chip = anchors["model"] {
+                        let box = geometry[composer]
+                        let height = min(600, max(0, box.minY - 8))
+                        let width = min(420, max(0, box.width - 24))
+                        let rect = CGRect(x: box.minX + 12, y: box.minY - 8 - height, width: width, height: height)
+                        NewTaskOutsideTouches(panel: modelOpen ? rect : nil, chip: geometry[chip],
+                                              cli: anchors["cli"].map { geometry[$0] },
+                                              onCLI: { if keyboardVisible { cliViewport = viewport.size.height } },
+                                              onClose: { closeModel(draft) })
+                            .allowsHitTesting(false)
+                        if modelOpen {
+                            NewTaskModelPanel(picker: sheet.picker, models: sheet.models, settled: settled) { closeModel(draft) }
+                                .frame(width: width, height: height)
+                                .position(x: rect.midX, y: rect.midY)
+                                .transition(.opacity)
+                        }
+                    }
+                }
+                .animation(Motion.enter(Motion.fast), value: modelOpen)
+            }
+            // Keep the pre-menu viewport until the prediction strip returns. The
+            // menu and the keyboard stay native; a real keyboard dismissal is free
+            // to resize the page as before.
+            .onChange(of: viewport.size.height) { _, height in
+                if let held = cliViewport, height <= held { cliViewport = nil }
+            }
+            .onChange(of: viewport.size.width) { _, _ in cliViewport = nil }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DS.paper)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in keyboardVisible = true }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardVisible = false
+            cliViewport = nil
+        }
+        .onChange(of: focused) { _, focused in if !focused { cliViewport = nil } }
+        .onDisappear { closeModel(draft) }
+        .onChange(of: config) { _, now in sheet.picker.follow(now) }
+        .onChange(of: draft.text) { _, _ in closeModel(draft) }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: sheet.onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
+                Button { closeModel(draft); sheet.onClose() } label: { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
             }
             ToolbarItem(placement: .principal) {
-                NewTaskWhere(key: key, name: name, machine: sheet.parts?.machine ?? "", onProject: sheet.onProject, onMachine: sheet.onMachine)
+                NewTaskWhere(key: key, name: name, machine: sheet.parts?.machine ?? "", onProject: { closeModel(draft); sheet.onProject() }, onMachine: { closeModel(draft); sheet.onMachine() })
             }
         }
+    }
+
+    private func toggleModel(_ draft: NewSessionDraft) {
+        guard let sheet else { onModel(); return }
+        if sheet.picker.isOpen { closeModel(draft) }
+        else if let c = draft.config.value { sheet.picker.open(c) }
+    }
+
+    private func closeModel(_ draft: NewSessionDraft) {
+        guard let next = sheet?.picker.close(target: draft.config.value, settled: settled, blocked: prefsBlocked(model.state) != nil) else { return }
+        let op = PrefsOp.SetSettings(path: key, machineId: next.machineId, sets: [next.agentSettings()])
+        context.prefsChanges.run(context.remote, .setSettings(op))
+        draft.config.choose(next)
+        Haptics.confirm()
     }
 
     private func attachments(_ config: NewConfig?) -> ComposerAttachments {
@@ -266,7 +329,7 @@ struct NewSessionBox: View {
         case .missingAgent(let text):
             Banner(text, action: "换机器", onAction: onMachine)
         case .autoModel(let text):
-            Banner(text, tone: .warn, action: "换模型", onAction: onModel)
+            Banner(text, tone: .warn, action: "换模型", onAction: { toggleModel(draft) })
         case .autoAccount(let text):
             Banner(text, tone: .warn, action: "去改默认") {
                 if let id = draft.config.value?.machineId { onMachineSettings(id) }

@@ -4,7 +4,7 @@
 // its choice. The middle holds only the notices. At the bottom, above the
 // keyboard, the message box: what to do, what is attached, and a row of ＋,
 // the CLI (where the computer has more than one), the model, which opens
-// the model's page of the project's settings, and ↑. A new task has no
+// an anchored model panel, and ↑. A new task has no
 // approval mode: it starts in the computer's default. What is written stays
 // with the project's draft (`NewSessionBox`, which this is the page layout of).
 import RACore
@@ -15,7 +15,8 @@ import SwiftUI
 struct NewTaskChrome {
     /// The computer in the title, the CLI and the model in the box.
     var parts: NewTaskParts?
-    var onModel: () -> Void
+    var models: SummaryModels
+    var picker: NewTaskModelPicker
     var onMachine: () -> Void
     var onProject: () -> Void
     var onClose: () -> Void
@@ -38,6 +39,7 @@ struct NewTaskScreen: View {
     /// The list of projects has turned into 新项目 · 选目录.
     @State private var browsing = false
     @State private var summaryModels = SummaryModels()
+    @State private var modelPicker = NewTaskModelPicker()
 
     var body: some View {
         let state = model.state
@@ -53,14 +55,13 @@ struct NewTaskScreen: View {
             state: state, key: key, initial: initial, name: projectName(key), focus: true, settled: start?.settled != false,
             models: models,
             onMachine: { settings = ProjectSettingsRequest(page: .machine) },
-            onModel: { settings = ProjectSettingsRequest(page: .model) },
             onMachineSettings: { id in
                 onClose()
                 nav.open(.machine(id: id))
             },
             sheet: NewTaskChrome(
                 parts: launch.map { newTaskParts(state, $0, models: models) },
-                onModel: { settings = ProjectSettingsRequest(page: .model) },
+                models: summaryModels, picker: modelPicker,
                 onMachine: { settings = ProjectSettingsRequest(page: .machine) },
                 onProject: { picking = true },
                 onClose: onClose,
@@ -98,7 +99,8 @@ struct NewTaskScreen: View {
             // The settings sheet as `-newTaskSheet` names it (model, machine), for screenshots of sample data.
             if let page = HomeLaunch.value("-newTaskSheet").flatMap(ProjectSettingsPage.init(rawValue:)) {
                 try? await Task.sleep(for: .milliseconds(900))
-                settings = ProjectSettingsRequest(page: page)
+                if page == .model, let c = draft.config.value { modelPicker.open(c) }
+                else { settings = ProjectSettingsRequest(page: page) }
             }
         }
         #endif
@@ -199,7 +201,7 @@ struct NewTaskCli: View {
     }
 }
 
-/// The model in the box, with a small ⌄: opens the model's page of the project's settings.
+/// The model in the box, with a small ⌄: opens an anchored model panel.
 struct NewTaskModel: View {
     let text: String
     let action: () -> Void
@@ -214,7 +216,7 @@ struct NewTaskModel: View {
         }
         .buttonStyle(PressStyle())
         .accessibilityLabel("模型：\(text)")
-        .accessibilityHint("项目设置")
+        .accessibilityHint("选择模型和推理强度")
         .accessibilityIdentifier("new-task-model")
     }
 }

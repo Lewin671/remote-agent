@@ -41,6 +41,9 @@ enum DS {
     static let gbg = Color(uiColor: .secondarySystemBackground)
     /// The rounded lists on a sheet's `gbg`: white, one grey up from `gbg` in the dark.
     static let raised = dynamic(0xFFFFFF, 0x2C2C2E)
+    /// Level-3 anchored panels and their half-point rim.
+    static let popover = dynamic(0xFFFFFF, 0x2B2B30)
+    static let rim = dynamic(0x000000, 0xFFFFFF, alpha: (0.08, 0.10))
     /// Fields, the ＋ circle, inline code.
     static let fill = dynamic(0x000000, 0xFFFFFF, alpha: (0.05, 0.09))
     /// Secondary buttons, a segmented control's groove, the chosen tab's ground, project avatars.
