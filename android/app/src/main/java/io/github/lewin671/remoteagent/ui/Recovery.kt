@@ -562,7 +562,6 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                     ButtonKind.INK,
                     enabled = !busy && server.length > 8,
                 )
-                TextAction("返回", { onBack() }, alignment = Alignment.CenterStart)
             } else {
                 GLabel("恢复码 · 只显示这一次")
                 RecoveryCodeFigure(c.recoveryCode)
@@ -704,7 +703,6 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                     ButtonKind.INK,
                     enabled = !busy && existing != null && existing.hasRoot,
                 )
-                TextAction("返回", onBack, alignment = Alignment.CenterStart)
             } else {
                 GLabel("新的恢复码 · 只显示这一次")
                 if (c.recoveryCode.isNotEmpty()) RecoveryCodeFigure(c.recoveryCode)
@@ -742,7 +740,6 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                     ButtonKind.INK,
                     enabled = !busy,
                 )
-                TextAction("返回", onBack, alignment = Alignment.CenterStart)
             }
         }
     }
@@ -803,7 +800,6 @@ internal fun RotateRecoveryContent(
                     ButtonKind.INK,
                     enabled = !busy,
                 )
-                TextAction("返回", onBack, alignment = Alignment.CenterStart)
             } else {
                 GLabel("新的恢复码 · 只显示这一次")
                 RecoveryCodeFigure(pv.code)

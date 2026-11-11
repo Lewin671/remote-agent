@@ -203,6 +203,8 @@ class UnauthenticatedScreensTest {
         show { JoinScreen(app) }
         ui.onNodeWithText("新建账户").performScrollTo().performClick()
         ui.onNodeWithContentDescription("返回").assertIsDisplayed()
+        // The top bar's round button is the one way back; no second "返回" text button at the bottom.
+        ui.onNodeWithText("返回").assertDoesNotExist()
         ui.onNodeWithContentDescription("返回").performClick()
         ui.onNodeWithText("新建账户").assertExists()
     }
@@ -223,6 +225,18 @@ class UnauthenticatedScreensTest {
         var backs = 0
         show { RebuildSecurityScreen(app, null) { backs++ } }
         ui.onNodeWithText("重建安全域").assertIsDisplayed()
+        ui.onNodeWithText("返回").assertDoesNotExist()
+        ui.onNodeWithContentDescription("返回").performClick()
+        org.junit.Assert.assertEquals(1, backs)
+    }
+
+    @Test
+    fun rotateRecoveryHasOnlyTheTopBarBack() {
+        val state = io.github.lewin671.remoteagent.core.RemoteState()
+        var backs = 0
+        show { RotateRecoveryContent(state, { error("unused") }, {}, { backs++ }) }
+        ui.onNodeWithText("生成新的恢复码").assertIsDisplayed()
+        ui.onNodeWithText("返回").assertDoesNotExist()
         ui.onNodeWithContentDescription("返回").performClick()
         org.junit.Assert.assertEquals(1, backs)
     }
