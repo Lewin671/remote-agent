@@ -270,6 +270,13 @@ extension Ref<LiveAnnouncer> {
         #expect(outgoingShown(input: .unconfirmed))
     }
 
+    @Test func theBoxSaysOnlyWhatTheMessageWillDo() {
+        #expect(composerPlaceholder(questionPending: false, planOpen: false) == "消息", "tools starting and stopping never change it")
+        #expect(composerPlaceholder(questionPending: true, planOpen: false) == "排队发送，回答后继续")
+        #expect(composerPlaceholder(questionPending: false, planOpen: true) == "补充你对计划的要求…")
+        #expect(composerPlaceholder(questionPending: true, planOpen: true) == "排队发送，回答后继续")
+    }
+
     @Test func sendingNeedsTextAConnectionAndAComputerThatSpeaksTheSameProtocol() {
         func can(_ text: String, online: Bool = true, keeping: Bool = false, images: Bool = false, ready: Bool = true, refused: Bool = false) -> Bool {
             composerCanSend(text: text, online: online, keeping: keeping, hasImages: images, imagesReady: ready, refused: refused)

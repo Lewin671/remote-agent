@@ -174,7 +174,7 @@ struct SessionComposer: View {
         VStack(spacing: 0) {
             SessionComposeBox(
                 text: Binding(get: { store.draft(sid) }, set: { store.setDraft(sid, $0) }),
-                placeholder: composerPlaceholder(derived),
+                placeholder: composerPlaceholder(questionPending: !derived.questions.isEmpty, planOpen: session.info?.planOpen == true),
                 canSend: composerCanSend(
                     text: text, online: online, keeping: store.isKeeping(sid), hasImages: attached, imagesReady: images.ready,
                     refused: refused),

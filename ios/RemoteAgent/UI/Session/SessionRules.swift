@@ -165,10 +165,11 @@ func outgoingShown(input: PBInputStatus?) -> Bool {
 
 // MARK: The message box
 
-/// The placeholder of the message box.
-func composerPlaceholder(_ d: Derived) -> String {
-    if !d.questions.isEmpty { return "排队发送，回答后继续" }
-    return d.tools.isEmpty ? "消息" : "消息…"
+/// The placeholder of the message box: it follows what the message will do (wait for the answer, go to
+/// the plan), never what is running, so it does not change while a turn's tools start and stop.
+func composerPlaceholder(questionPending: Bool, planOpen: Bool) -> String {
+    if questionPending { return "排队发送，回答后继续" }
+    return planOpen ? "补充你对计划的要求…" : "消息"
 }
 
 /// Whether what is in the box can be sent now.

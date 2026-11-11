@@ -1102,6 +1102,17 @@ private fun EndCard(
 }
 
 /**
+ * The placeholder of the message box: it follows what the message will do (wait for the answer, go to
+ * the plan), never what is running, so it does not change while a turn's tools start and stop.
+ */
+internal fun composerPlaceholder(questionPending: Boolean, planOpen: Boolean): String =
+    when {
+        questionPending -> "排队发送，回答后继续"
+        planOpen -> "补充你对计划的要求…"
+        else -> "消息"
+    }
+
+/**
  * The message box: the plus adds images, the text from one line up to about six, and send. The
  * mode, the model and the context are in the more menu of the navigation bar. Without the server
  * connection the draft stays and sending waits.
@@ -1170,12 +1181,7 @@ internal fun Composer(
     ComposeBox(
         text,
         { text = it },
-        placeholder =
-            when {
-                d.questions.isNotEmpty() -> "排队发送，回答后继续"
-                d.tools.isNotEmpty() -> "消息…"
-                else -> "消息"
-            },
+        placeholder = composerPlaceholder(d.questions.isNotEmpty(), s.info?.planOpen == true),
         canSend =
             !images.restoring && !images.readingFiles && fileDraftBlocked(images, machine) == null &&
                 !keeping &&
