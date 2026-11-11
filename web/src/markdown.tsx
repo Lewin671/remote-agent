@@ -660,11 +660,26 @@ function Table({ b }: { b: Extract<Block, { kind: "table" }> }) {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const mark = () => setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-    mark();
+    const table = el.firstElementChild;
+    let viewportWidth = 0, tableWidth = 0;
+    const observed = typeof ResizeObserver !== "undefined";
+    const mark = () => setMore(observed
+      ? el.scrollLeft + viewportWidth < tableWidth - 1
+      : el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
     el.addEventListener("scroll", mark, { passive: true });
-    const ro = typeof ResizeObserver === "undefined" ? undefined : new ResizeObserver(mark);
+    // Use the sizes delivered after layout, rather than force layout from
+    // each table's mount effect or scroll handler. The wrapper's padding is
+    // present on both sides of its scroll extent, so compare content widths.
+    const ro = observed ? new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.target === el) viewportWidth = entry.contentRect.width;
+        if (entry.target === table) tableWidth = entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+      }
+      mark();
+    }) : undefined;
     ro?.observe(el);
+    if (table) ro?.observe(table);
+    if (!ro) mark();
     return () => {
       el.removeEventListener("scroll", mark);
       ro?.disconnect();
