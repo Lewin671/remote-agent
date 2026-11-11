@@ -151,7 +151,8 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
         rows =
             listOf(
                 {
-                    GRow("删除这台电脑的记录", onClick = { confirm = true }, danger = true, enabled = !busy)
+                    // It asks first, as every row that ends in an ellipsis does (design-system §8).
+                    GRow("删除这台电脑的记录…", onClick = { confirm = true }, danger = true, enabled = !busy)
                 },
             ),
     )
