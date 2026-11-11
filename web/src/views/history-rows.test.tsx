@@ -147,9 +147,10 @@ it("shows the list as soon as the latest page is in, without waiting for the old
       Object.defineProperties(el, {
         clientHeight: { configurable: true, get: () => 600 },
         offsetHeight: { configurable: true, get: () => 600 },
-        scrollHeight: { configurable: true, get: () => 9000 },
+        scrollHeight: { configurable: true, get: () => Number.parseFloat((el.querySelector(".virtual-history") as HTMLElement)?.style.height || "600") },
       });
       el.getBoundingClientRect = () => new DOMRect(0, 0, 600, 600);
+      el.scrollTo = options => { if (typeof options === "object") el.scrollTop = options.top ?? 0; el.dispatchEvent(new Event("scroll")); };
     }}><HistoryRows items={items} render={(it) => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s" follow={() => true} loaded={loaded} ready={ready} long header={<p>start</p>} footer={<p>end</p>} /></div>
   </VirtuosoMockContext.Provider>;
   await act(async () => root!.render(page(false, false)));
@@ -205,4 +206,37 @@ it("shows a short chat in a long session at once: a list no taller than the page
   </VirtuosoMockContext.Provider>));
   await vi.waitFor(async () => { await act(async () => { await new Promise((r) => setTimeout(r, 20)); }); expect(scroller.current!.classList.contains("mo-hold")).toBe(false); }, { timeout: 1500 });
   height.mockRestore();
+});
+
+it("opens at the latest row when an empty long history first restores a cached prefix", async () => {
+  const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) { return Number(this.dataset.knownSize ?? 600); });
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>();
+  const remote = { scroll: new Map() } as unknown as Remote;
+  const all = Array.from({ length: 300 }, (_, i) => ({ key: String(i), text: `reply ${i + 1}` }));
+  const page = (items: typeof all, ready: boolean) => <VirtuosoMockContext.Provider value={{ viewportHeight: 600, itemHeight: 60 }}>
+    <div ref={el => {
+      scroller.current = el;
+      if (!el) return;
+      Object.defineProperties(el, {
+        clientHeight: { configurable: true, get: () => 600 },
+        scrollHeight: { configurable: true, get: () => Number.parseFloat((el.querySelector(".virtual-history") as HTMLElement)?.style.height || "600") },
+      });
+      el.getBoundingClientRect = () => new DOMRect(0, 0, 600, 600);
+      el.scrollTo = options => { if (typeof options === "object") el.scrollTop = options.top ?? 0; el.dispatchEvent(new Event("scroll")); };
+    }}><HistoryRows items={items} render={it => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s" follow={() => true} loaded={ready} ready={ready} long header={<p>start</p>} footer={<p>end</p>} /></div>
+  </VirtuosoMockContext.Provider>;
+  try {
+    await act(async () => root!.render(page([], false)));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+    await act(async () => root!.render(page(all.slice(0, 50), false)));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+    await act(async () => root!.render(page(all, true)));
+    await vi.waitFor(async () => {
+      await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+      expect(host.textContent).toContain("reply 300");
+      expect(scroller.current!.classList.contains("mo-hold")).toBe(false);
+    });
+    expect(host.textContent).not.toContain("reply 1");
+  } finally { height.mockRestore(); }
 });

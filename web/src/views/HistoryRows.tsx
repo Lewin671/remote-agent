@@ -65,7 +65,18 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   if (initial.loading && initial.top && !initial.top.stick && !loaded) return <div className="sep">正在恢复阅读位置…</div>;
   if (!windowed.current) return <>{header}{items.map((it, index) => <div key={it.key} className={"history-row" + (rowClass?.(it) ? " " + rowClass(it) : "")} data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
   if (!parent) return null;
+  // Initial positioning must use the page we intend to show, not an empty
+  // list or an incomplete cached prefix. Virtuoso initializes only once.
+  if (!props.ready) return <HistoryPlaceholder parent={parent} />;
   return <WindowedRows {...props} parent={parent} initialTop={initial.long || initial.loading ? initial.top : undefined} />;
+}
+
+function HistoryPlaceholder({ parent }: { parent: HTMLElement }) {
+  useLayoutEffect(() => {
+    parent.classList.add("mo-hold");
+    return () => parent.classList.remove("mo-hold");
+  }, [parent]);
+  return null;
 }
 
 function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded, ready: isReady, rowClass }: Props<T> & {
@@ -201,7 +212,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     itemContent={(_, entry) => entry.at === "header" ? <div className="history-boundary">{header}</div> : entry.at === "footer" ? <div className="history-boundary">{footer}</div> : <div className={rowClass?.(entry.item)}>{render(entry.item)}</div>}
     increaseViewportBy={400}
     {...(focusIndex >= 0 ? { initialTopMostItemIndex: { index: focusIndex + 1, align: "start" as const } } : restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
-      : top.stick ? { initialTopMostItemIndex: { index: items.length + 1, align: "end" as const } }
+      : top.stick ? { initialTopMostItemIndex: { index: "LAST" as const, align: "end" as const } }
       : { initialScrollTop: top.top })}
     rangeChanged={save}
     totalListHeightChanged={save}

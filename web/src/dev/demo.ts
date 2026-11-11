@@ -13,6 +13,8 @@
 //   ?demo&long=1                            long project, machine and session names
 //   ?demo&many=1&pick=1                     many sessions/projects, picker search
 //   ?demo&project-settings=1#/p/<encoded path>   project settings sheet
+//   &history-prefix                        restore an incomplete cached prefix before the complete history
+//   ?demo&backfill=800&history-delay=500#/s/s-run  cold long history: empty, latest page, then full history
 //   ?demo&backfill=60#/s/s-run              60 turns of tools and replies, of which the last 10 show first and the rest load above 1.5 s later
 //   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
 //   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
@@ -1575,14 +1577,23 @@ export class DemoRemote extends Remote {
         add({ case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED, durationMs: 2000n } });
       }
       const keep = 10 * 5;
-      const shown = all.slice(-keep);
-      r.backfill.set("s-run", { shown, all });
+      const tail = all.slice(-keep);
+      const delay = Math.min(5000, Math.max(0, Number(q.get("history-delay")) || 0));
+      const prefix = q.has("history-prefix");
+      const shown = delay ? [] : tail;
+      r.sessions.get("s-run")!.lastSeq = BigInt(all.length);
+      r.backfill.set("s-run", { shown, all, ready: !delay });
+      if (delay) setTimeout(() => {
+        r.backfill.get("s-run")!.shown = prefix ? all.slice(0, keep) : tail;
+        r.backfill.get("s-run")!.ready = !prefix;
+        r.changed();
+      }, delay);
       r.evs.set("s-run", all);
       setTimeout(() => {
         r.backfill.get("s-run")!.shown = all;
         r.backfill.delete("s-run");
         r.changed();
-      }, 1500);
+      }, delay + 1500);
     }
     if (q.has("scheduled-final")) r.seedSchedules();
     if (q.has("one-machine")) for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
@@ -2086,7 +2097,7 @@ export class DemoRemote extends Remote {
   }
 
   // ?backfill: the newest events show first, the older ones join above later.
-  private backfill = new Map<string, { shown: Event[]; all: Event[] }>();
+  private backfill = new Map<string, { shown: Event[]; all: Event[]; ready: boolean }>();
   override events(sid: string): Event[] {
     const b = this.backfill.get(sid);
     if (b) return b.shown;
@@ -2104,7 +2115,7 @@ export class DemoRemote extends Remote {
       backfilling: !!this.backfill.get(sid),
       // As with the real history: the latest page is enough to draw the chat.
       loaded: !this.backfill.get(sid),
-      ready: true,
+      ready: this.backfill.get(sid)?.ready ?? true,
       error: sid === "s-hist" ? "连接超时" : "",
       broken: sid === "s-ended",
     };
