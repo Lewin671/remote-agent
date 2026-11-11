@@ -86,16 +86,16 @@ const setting = (name: string) =>
 /** The CLI the new task's sentence names, and picking another there. */
 const cliPicked = () => host.querySelector(".sent .tok.cli")?.textContent;
 async function pickCli(name: string) {
-  await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
+  await click(host.querySelector<HTMLButtonElement>(".sent .tok.cli")!);
   await click(button(name, document.querySelector(".sheet")!));
 }
 function pickCliNow(name: string) {
-  act(() => host.querySelector<HTMLButtonElement>(".tok.cli")!.click());
+  act(() => host.querySelector<HTMLButtonElement>(".sent .tok.cli")!.click());
   act(() => button(name, document.querySelector(".sheet")!)!.click());
 }
 
-/** The project the wide new task names, where it can be changed: a pop-up button of the field's bar. */
-const startProject = () => host.querySelector(".wstart .nt-row button.tok.p")?.textContent;
+/** The project the wide new task names, and the start's sentence there. */
+const startProject = () => host.querySelector(".wstart .sent .tok.p")?.textContent;
 
 it("keeps the context warning and the settings behind ⋯ on a narrow phone", async () => {
   const viewport = (window as unknown as { happyDOM: { setViewport(size: { width: number; height: number }): void } }).happyDOM;
@@ -1508,7 +1508,7 @@ describe("a new-session draft", () => {
     r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
     const sent = capture(r);
     mount(<WideHome remote={r} go={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".wstart .nt-rows")).not.toBeNull());
+    await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
     const before = startProject();
     await type("加限流");
     // Another project gets a newer session meanwhile.
@@ -1737,28 +1737,25 @@ describe("switching a new session's CLI (v2)", () => {
     expect(document.querySelector(".cli-tabs")).toBeNull();
   });
 
-  it("composes the task on a wide page as a sheet: a row for each choice, then the task, then 开始", async () => {
+  it("puts the sentence above the task and the summary under it on a wide page", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    // The project is the page's own, so the bar names it as a label, not a button.
-    expect(host.querySelector(".wstart .sent")).toBeNull();
-    expect(host.querySelector(".wstart .nt-title")?.textContent).toBe("新任务");
-    expect(host.querySelector(".wstart .nt-row .tok.p.still")?.textContent).toBe("ffoo");
-    expect(host.querySelector(".wstart .nt-row button.tok.p")).toBeNull();
-    expect(host.querySelector(".wstart .nt-row .tok.cli")?.textContent).toBe("Codex");
+    // The project is the page's own, so the sentence names it as words.
+    expect(host.querySelector(".wstart .sent")?.textContent).toBe("在foo用Codex");
+    expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
     const ask = host.querySelector(".wstart textarea.ask")!;
     expect(ask.getAttribute("placeholder")).toBe("要做什么？");
-    // The task is written in a box of its own, under the title.
-    expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("nt-rows");
-    const row = host.querySelector(".wstart .nt-card")!;
-    expect(row.querySelector(".nt-row .project-summary")?.textContent).toMatch(/^询问 · MacBook/);
+    // The task is written in a box of its own, under the sentence.
+    expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
+    const row = host.querySelector(".wstart .acc")!;
+    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
     expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
   });
 
   it("shows what was read before at once when coming back to a CLI", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    const text = () => host.querySelector(".project-summary")!.textContent;
+    const text = () => host.querySelector(".acc .project-summary")!.textContent;
     await vi.waitFor(() => expect(text()).toMatch(/GPT-6-Astra$/));
     await pickCli("Claude Code");
     await vi.waitFor(() => expect(text()).not.toMatch(/GPT|读取/));
@@ -1773,7 +1770,7 @@ describe("switching a new session's CLI (v2)", () => {
   it("names the machine in the summary only when there is more than one", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
-    const summary = () => host.querySelector(".project-summary")!;
+    const summary = () => host.querySelector(".acc .project-summary")!;
     // The name is its own part, the one that gives way on a long line.
     expect(summary().querySelector(".mach")?.textContent).toBe(" · MacBook");
     act(() => {
@@ -2285,7 +2282,7 @@ describe("an image-only new-session draft (review B8)", () => {
     const r = demo();
     stub(r);
     mount(<WideHome remote={r} go={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".wstart .nt-rows")).not.toBeNull());
+    await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
     const before = startProject();
     await pick();
     bump(r, "s-plan");
@@ -2316,7 +2313,7 @@ it("asks to add a project again when it is removed while its draft is on the wid
   r.sessions.get("s-run")!.info!.createdAt = timestampFromMs(Date.now() + 86_400_000);
   await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
   mount(<WideHome remote={r} go={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".wstart .nt-rows")).not.toBeNull());
+  await vi.waitFor(() => expect(host.querySelector(".wstart .sent")).not.toBeNull());
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
@@ -3136,7 +3133,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(startProject()).toBeTruthy();
     act(() => saveScope(foo));
     expect(startProject()).toBeUndefined();
-    expect(host.querySelector(".wstart .nt-row .tok.p.still span:last-child")?.textContent).toBe("foo");
+    expect(host.querySelector(".wstart .sent b")?.textContent).toBe("foo");
   });
 });
 
