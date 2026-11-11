@@ -290,8 +290,7 @@ fun ManageProjectsScreen() {
         )
     }
     removing?.let { key -> RemoveProjectConfirm(key, onDismiss = { removing = null }) }
-    if (adding) Sheet({ adding = false }) {
-        SheetHead("新项目 · 选目录", "取消", { adding = false })
-        DirPicker(state) { machine, path -> addProject(remote, state, machine, path); adding = false }
+    if (adding) Sheet({ adding = false }, scroll = false) {
+        DirPickerBody(state) { machine, path -> addProject(remote, state, machine, path); adding = false }
     }
 }

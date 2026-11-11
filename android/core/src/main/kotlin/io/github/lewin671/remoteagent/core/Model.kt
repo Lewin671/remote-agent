@@ -1296,6 +1296,16 @@ fun shortenPath(path: String, cwd: String, home: String = ""): String {
 fun shortPath(p: String): String =
     p.replace(Regex("^/Users/[^/]+"), "~").replace(Regex("^/home/[^/]+"), "~")
 
+/**
+ * A folder's path as the picker writes it, piece by piece: ~ / Code / foo. A path outside the home folder keeps
+ * its leading slash on the first piece (/srv / www), so it does not read as one below the home folder; the root is "/".
+ */
+fun pathCrumbs(path: String): List<String> {
+    val parts = shortPath(path).split("/").filter { it.isNotEmpty() }
+    if (parts.firstOrNull() == "~") return parts
+    return if (parts.isEmpty()) listOf("/") else listOf("/" + parts.first()) + parts.drop(1)
+}
+
 /** Minutes left until a deadline, for "剩 N 分钟". */
 fun minutesLeft(deadlineMs: Long, now: Long = System.currentTimeMillis()): Long =
     maxOf(0, (deadlineMs - now + 59_999) / 60_000)

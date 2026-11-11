@@ -619,9 +619,8 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
         SheetHead("选项目", "取消", { pickProject = false })
         ProjectPickList(state, { path -> project = path; config = null; pickProject = false }, { pickProject = false; pickDirectory = true })
     }
-    if (pickDirectory) Sheet({ pickDirectory = false }) {
-        SheetHead("选目录", "取消", { pickDirectory = false })
-        DirPicker(state) { m, path -> project = path; config = NewConfig(m, path, machineAgents(state.machines[m]).first()); pickDirectory = false }
+    if (pickDirectory) Sheet({ pickDirectory = false }, scroll = false) {
+        DirPickerBody(state, "选目录") { m, path -> project = path; config = NewConfig(m, path, machineAgents(state.machines[m]).first()); pickDirectory = false }
     }
     val settingsPage = settings
     if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project), cfg.machineId, cfg.agent, settingsPage,

@@ -3,6 +3,8 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
@@ -34,6 +36,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -93,6 +96,7 @@ import io.github.lewin671.remoteagent.core.modeOf
 import io.github.lewin671.remoteagent.core.projectKey
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.projects
+import io.github.lewin671.remoteagent.core.pathCrumbs
 import io.github.lewin671.remoteagent.core.shortPath
 import io.github.lewin671.remoteagent.core.PrefsOp
 import io.github.lewin671.remoteagent.core.applySettings
@@ -1044,13 +1048,12 @@ fun ProjectPickList(state: RemoteState, onPick: (String) -> Unit, onNew: () -> U
 fun PickProjectSheet(state: RemoteState, onClose: () -> Unit, replace: Boolean = false) {
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
-    Sheet(onClose) {
+    Sheet(onClose, scroll = !browsing) {
         if (!browsing) {
             SheetHead("新会话 · 选项目", "取消", onClose)
             ProjectPickList(state, onPick = { onClose(); if (replace) nav.back(); nav.projectNew(it) }, onNew = { browsing = true })
         } else {
-            SheetHead("新项目 · 选目录", "取消", onClose, onBack = { browsing = false })
-            DirPicker(state) { machine, path -> onClose(); nav.newProjectAt(machine, path) }
+            DirPickerBody(state, onBack = { browsing = false }) { machine, path -> onClose(); nav.newProjectAt(machine, path) }
         }
     }
 }
@@ -1069,74 +1072,116 @@ fun PickProjectScreen() {
 }
 
 /**
- * Choose a machine (offline ones greyed), then browse to a folder; [onChosen]
- * with the folder.
+ * 新项目 · 选目录 as a bottom sheet (design-system §6 弹层): it fills the sheet, so the head and the
+ * button stay and only the list scrolls. A sheet is closed by its scrim or its handle, so the head has
+ * no 取消; [onBack] is there when the sheet came from a step before it.
  */
 @Composable
-fun DirPicker(state: RemoteState, onChosen: (machine: String, path: String) -> Unit) {
+fun DirPickerBody(state: RemoteState, title: String = "新项目 · 选目录", onBack: (() -> Unit)? = null, onChosen: (machine: String, path: String) -> Unit) {
+    // Not the whole height: the sheet stays below the status bar, whose icons are drawn for the page behind it.
+    Column(Modifier.fillMaxWidth().fillMaxHeight(.88f)) {
+        SheetHead(title, onBack = onBack)
+        DirPicker(state, Modifier.weight(1f), onChosen)
+    }
+}
+
+/**
+ * Choose a machine (only where the account has more than one; an offline one is greyed), then browse to
+ * a folder; [onChosen] with the folder. The machines and the path above the list and the button below it
+ * stay; the list between them scrolls and fades into the surface it is on at the edge it passes under,
+ * so nothing is drawn under the status bar. Give it a bounded height.
+ */
+@Composable
+fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (machine: String, path: String) -> Unit) {
     val p = pal
     val remote = LocalRemote.current
     var machine by rememberSaveable { mutableStateOf(state.machines.values.firstOrNull { it.online }?.id.orEmpty()) }
     var path by remember { mutableStateOf("") }
     var dirs by remember { mutableStateOf<ListDirectoriesResponse?>(null) }
+    var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var attempt by remember { mutableStateOf(0) }
     LaunchedEffect(machine, path, attempt) {
         if (machine.isEmpty()) return@LaunchedEffect
-        dirs = null
+        loading = true
         error = ""
         try {
             val r = remote.machineCommand(machine, remote.cmd { listDirectories = ListDirectoriesRequest.newBuilder().setPath(path).build() })
             dirs = r.listDirectories
         } catch (e: Exception) {
             error = errorText(e)
+        } finally {
+            loading = false
         }
     }
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("机器", style = T.s12, color = p.ink2)
-        for (m in state.machines.values) {
-            val on = machine == m.id
-            Row(
-                Modifier.heightIn(min = 44.dp).alpha(if (m.online) 1f else .45f).clickable(enabled = m.online) { machine = m.id; path = "" },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(
-                    Modifier.clip(RoundedCornerShape(14.dp)).background(if (on) p.fill else p.fill2).then(if (on) Modifier.border(1.5.dp, p.blue, RoundedCornerShape(14.dp)) else Modifier)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
-                ) {
-                    StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF)
-                    Text(machineLabel(state, m.id), style = T.s13, color = if (on) p.blue else p.ink)
+    Column(modifier) {
+        if (state.machines.size > 1) {
+            val listed = state.machines.values.sortedWith(compareByDescending<MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
+            SheetList(Modifier.padding(bottom = 10.dp)) {
+                listed.forEachIndexed { i, m ->
+                    ListItem(
+                        machineLabel(state, m.id),
+                        if (m.online) null else "不在线，现在不能新建",
+                        checked = machine == m.id, enabled = m.online, last = i == listed.size - 1,
+                        onClick = { if (machine != m.id) { machine = m.id; path = ""; dirs = null } },
+                        trailing = { StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF) },
+                    )
                 }
             }
         }
-    }
-    val d = dirs
-    when {
-        machine.isEmpty() -> Notice("没有在线的电脑", tone = NoticeTone.WARN)
-        error.isNotEmpty() -> Notice("读不了这个目录：$error", tone = NoticeTone.ERROR, action = "重试", onAction = { attempt++ })
-        d == null -> Text("读取中…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
-        else -> {
-            val parts = shortPath(d.path).split("/").filter { it.isNotEmpty() }
-            Text(
-                androidx.compose.ui.text.buildAnnotatedString {
-                    parts.forEachIndexed { i, part ->
-                        if (i > 0) append(" / ")
-                        if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink, fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.SemiBold))); append(part); pop() } else append(part)
+        val d = dirs
+        when {
+            machine.isEmpty() -> Notice("没有在线的电脑", tone = NoticeTone.WARN)
+            error.isNotEmpty() -> Notice("读不了这个目录：$error", tone = NoticeTone.ERROR, action = "重试", onAction = { attempt++ })
+            d == null -> Text("读取中…", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
+            else -> {
+                val parts = pathCrumbs(d.path)
+                Text(
+                    androidx.compose.ui.text.buildAnnotatedString {
+                        parts.forEachIndexed { i, part ->
+                            if (i > 0) append(" / ")
+                            if (i == parts.size - 1) { pushStyle(androidx.compose.ui.text.SpanStyle(color = p.ink, fontWeight = platformWeight(androidx.compose.ui.text.font.FontWeight.SemiBold))); append(part); pop() } else append(part)
+                        }
+                    },
+                    style = T.mono13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp),
+                )
+                if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
+                // The folder before stays, dimmed, until the next one is listed: no blank in between.
+                val listState = remember(d.path) { androidx.compose.foundation.lazy.LazyListState() }
+                val fade = if (LocalOnSoft.current) p.gbg else p.paper
+                Box(Modifier.weight(1f).fillMaxWidth().alpha(if (loading) .45f else 1f)) {
+                    if (d.parent.isNotEmpty() || d.dirsList.isNotEmpty()) LazyColumn(
+                        Modifier.clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg),
+                        state = listState,
+                    ) {
+                        if (d.parent.isNotEmpty()) item(key = "..") {
+                            ListItem("上一级", last = d.dirsList.isEmpty(), onClick = if (loading) null else ({ path = d.parent }), icon = Lucide.ChevronLeft)
+                        }
+                        itemsIndexed(d.dirsList, key = { _, name -> name }) { i, name ->
+                            ListItem(name, last = i == d.dirsList.size - 1, onClick = if (loading) null else ({ path = d.path.trimEnd('/') + "/" + name }), trailing = { Arrow(p.ink2, T.s15) })
+                        }
                     }
-                },
-                style = T.mono13, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp),
-            )
-            if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
-            if (d.parent.isNotEmpty() || d.dirsList.isNotEmpty()) SheetList {
-                if (d.parent.isNotEmpty()) ListItem("上一级", last = d.dirsList.isEmpty(), onClick = { path = d.parent }, icon = Lucide.ChevronLeft)
-                d.dirsList.forEachIndexed { i, name ->
-                    ListItem(name, last = i == d.dirsList.size - 1, onClick = { path = d.path.trimEnd('/') + "/" + name }, trailing = { Arrow(p.ink2, T.s15) })
+                    ScrollFade(fade, top = true, show = listState.canScrollBackward)
+                    ScrollFade(fade, top = false, show = listState.canScrollForward)
                 }
+                PillButton(
+                    "用 ${if (parts == listOf("/")) "/" else projectName(d.path)} 这个目录", { onChosen(machine, d.path) },
+                    Modifier.fillMaxWidth().padding(top = 10.dp), ButtonKind.INK, enabled = !loading,
+                )
             }
-            PillButton("用 ${projectName(d.path)} 这个目录", { onChosen(machine, d.path) }, Modifier.fillMaxWidth().padding(top = 10.dp), ButtonKind.INK)
         }
     }
+}
+
+/** The edge of a scrolling list that content passes under: the surface behind it, solid to clear, 24 dp deep (design-system §4 材质). */
+@Composable
+private fun BoxScope.ScrollFade(color: Color, top: Boolean, show: Boolean) {
+    val alpha by androidx.compose.animation.core.animateFloatAsState(if (show) 1f else 0f, label = "scrollFade")
+    if (alpha <= 0f) return
+    Box(
+        Modifier.align(if (top) Alignment.TopCenter else Alignment.BottomCenter).fillMaxWidth().height(24.dp).alpha(alpha)
+            .background(androidx.compose.ui.graphics.Brush.verticalGradient(if (top) listOf(color, color.copy(alpha = 0f)) else listOf(color.copy(alpha = 0f), color))),
+    )
 }
 
 /** 新项目 · 选目录 as a page (from the empty home page). */
@@ -1146,9 +1191,7 @@ fun NewProjectScreen() {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     PageScaffold("新项目 · 选目录") {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-            DirPicker(state) { machine, path -> nav.newProjectAt(machine, path) }
-        }
+        DirPicker(state, Modifier.weight(1f).padding(horizontal = 16.dp).padding(bottom = 8.dp)) { machine, path -> nav.newProjectAt(machine, path) }
     }
 }
 

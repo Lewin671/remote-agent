@@ -56,4 +56,15 @@ class ShortPathsTest {
     fun takesAFileEditTitleAsOnePath() {
         for ((path, cwd, home, shown) in wholePaths) assertEquals(path, shown, shortenPath(path, cwd, home))
     }
+
+    // Mirrors pathCrumbs in web/src/model.test.ts and ios/RemoteAgentCore.
+    @Test
+    fun theFolderPickerWritesAPathPieceByPiece() {
+        assertEquals(listOf("~", "Code", "ai-bot"), pathCrumbs("/Users/me/Code/ai-bot"))
+        assertEquals(listOf("~"), pathCrumbs("/home/me"))
+        // Outside the home folder the first piece keeps its slash, so it is not read as one below it.
+        assertEquals(listOf("/srv", "www"), pathCrumbs("/srv/www"))
+        assertEquals(listOf("/Users"), pathCrumbs("/Users"))
+        assertEquals(listOf("/"), pathCrumbs("/"))
+    }
 }
