@@ -236,7 +236,7 @@
 | `maximize-2` | `arrow.up.left.and.arrow.down.right` | 让终端适配这块屏幕 | 终端提示条和尺寸胶囊的「适配」前 |
 
 - 同一个意思只用一个图标；要加新图标时先在 Lucide 里找，再找对应的 SF Symbols，并在上表补一行
-- **CLI 的标**是唯一的例外：Codex、Claude Code、Antigravity 各用自家官方标的原形（Codex 用 OpenAI 的标），不自己画，也不取自 Lucide。一律画成单色，颜色和大小跟旁边的文字走，不用品牌色：三个彩色标排在一列里会比内容还抢眼。用在两类地方：会话行的第三行，列表里不止一种 CLI 时，标放在行首代替 CLI 的名字（悬停和读屏给出名字）；写着 CLI 名字的地方（新任务里选 CLI 的胶囊和选项、会话 ⋯ 菜单的第一行、设置里电脑卡的额度行），标放在名字前面，只是装饰。这些图形是各家的商标，只用来指代它们的产品。网页在 `web/src/agent-mark.tsx`，Android 在 `android/app/src/main/java/io/github/lewin671/remoteagent/ui/AgentMarks.kt`（路径数据与网页相同，写成 `ImageVector`）
+- **CLI 的标**是唯一的例外：Codex、Claude Code、Antigravity 各用自家官方标的原形（Codex 用 OpenAI 的标），不自己画，也不取自 Lucide。一律画成单色，颜色和大小跟旁边的文字走，不用品牌色：三个彩色标排在一列里会比内容还抢眼。用在两类地方：会话行的第三行，列表里不止一种 CLI 时，标放在行首代替 CLI 的名字（悬停和读屏给出名字）；写着 CLI 名字的地方（新任务里选 CLI 的胶囊和选项、会话 ⋯ 菜单的第一行、设置里电脑卡的额度行），标放在名字前面，只是装饰。这些图形是各家的商标，只用来指代它们的产品。网页在 `web/src/agent-mark.tsx`，Android 在 `android/app/src/main/java/io/github/lewin671/remoteagent/ui/AgentMarks.kt`（路径数据与网页相同，写成 `ImageVector`），iOS 在 `ios/RemoteAgent/UI/Design/AgentGlyphs.swift`（路径数据，和网页同一份）和 `AgentMark.swift`（把路径读成 `Path` 并画成填充的视图）
 - 本文其他小节为了简短，用字符指代上表的图标：`›` 是 `chevron-right`（向下、向上的 `›` 是 `chevron-down` / `chevron-up`），`⋯` 是 `ellipsis`，`＋` 是 `plus`，`■` 是实心的 `square`，`✓` `✕` `◌` 是 `check` `x` `loader-circle`，`⌕` 是 `search`
 - 画法不改：24 网格、线宽 1.8、圆头圆角，颜色跟随所在文字（`currentColor`）。只有中断的 `square` 填实，任务列表里的 `square` 不填
 - 大小跟随旁边的文字：行内图标和文字同高（1em 左右），玻璃圆钮里的图标 22–24，输入框和标签里的 20–22；可点区域仍不小于 44×44，由外层补足
