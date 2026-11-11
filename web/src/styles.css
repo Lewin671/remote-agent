@@ -629,6 +629,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .term .xterm { height: auto; }
 .tpan { height: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 .tpan > div { width: max-content; min-width: 100%; }
+.tpan.unfit { opacity: 0; }
+.tpan { transition: opacity .15s ease-out; }
 .term .xterm-viewport { background: var(--term) !important; }
 .term .stale { opacity: .55; }
 /* A card over the stopped screen: dark glass, white button. */

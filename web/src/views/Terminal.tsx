@@ -84,6 +84,10 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     setNewOutput(false);
   };
   const [fitted, setFitted] = useState(false);
+  // The first screen is drawn at the size the computer has and then fitted to
+  // this pane, the font scaled to it: seen, the text would jump about. It
+  // shows once the fitted screen is in, or after a moment if it never is.
+  const [shown, setShown] = useState(false);
   // The window is shared: the size this screen was fitted to, as the first
   // snapshot after fitting showed it. A later snapshot of another size
   // means the computer or another client changed it, and "fitted" is no
@@ -234,6 +238,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     setReason("");
     setDetails(false);
     setFitted(false);
+    setShown(false);
     fittedTo.current = undefined;
     dimsSeen.current = false;
     releasing.current = false;
@@ -319,6 +324,14 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     };
   }, [remote, session.id, attempt, online]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (state !== "live" || shown) return;
+    // Fitted: the computer has answered with the screen of the size asked for.
+    if ((fitted && fittedTo.current && fittedTo.current !== "pending") || changed) return setShown(true);
+    const timer = setTimeout(() => setShown(true), 900);
+    return () => clearTimeout(timer);
+  }, [state, fitted, dims, changed, shown]);
+
   const send = (s: string) => conn.current?.send({ kind: { case: "input", value: enc.encode(s) } });
   // Any key leaves the reader first, then goes to the session as before.
   const press = (s: string) => {
@@ -381,7 +394,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
         </div>
       </div>
       <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
-        <div className="tpan" ref={pan}>
+        <div className={"tpan" + (shown || state === "closed" ? "" : " unfit")} ref={pan}>
           <div ref={host} className={state === "closed" ? "stale" : ""} />
         </div>
         {history.phase === "loading" && <div className="thint">{history.error ? <>读取失败<button onClick={() => beginRef.current(0)}>重试</button></> : "读取记录…"}</div>}

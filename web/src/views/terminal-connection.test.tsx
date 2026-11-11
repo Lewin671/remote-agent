@@ -80,3 +80,46 @@ it("defers the first fit of a terminal reopened in the background until visible"
   await act(async () => { state.hide(false); document.dispatchEvent(new Event("visibilitychange")); });
   expect(state.send).toHaveBeenCalledTimes(1);
 });
+
+it("keeps the first screen out of sight until it is fitted to the pane, or for a moment at most", async () => {
+  const vm = vi;
+  vm.spyOn(document, "hidden", "get").mockReturnValue(false);
+  vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vm.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+  let frame!: Parameters<Remote["openTerminal"]>[1];
+  vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
+  const pane = () => host.querySelector(".tpan")!;
+  expect(pane().classList.contains("unfit")).toBe(true);
+  vi.useFakeTimers();
+  await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
+  expect(pane().classList.contains("unfit")).toBe(true);
+  await act(async () => vi.advanceTimersByTimeAsync(899));
+  expect(pane().classList.contains("unfit")).toBe(true);
+  await act(async () => vi.advanceTimersByTimeAsync(2));
+  expect(pane().classList.contains("unfit")).toBe(false);
+});
+
+it("shows the first screen as soon as the fitted one is in", async () => {
+  const vm = vi;
+  vm.spyOn(document, "hidden", "get").mockReturnValue(false);
+  vm.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(600);
+  vm.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
+  vm.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
+  const remote = DemoRemote.create(new URLSearchParams()); remote.start();
+  let frame!: Parameters<Remote["openTerminal"]>[1];
+  vi.spyOn(remote, "openTerminal").mockImplementation(async (_sid, receive) => { frame = receive; return { close: vi.fn(), send: vi.fn() } as never; });
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
+  const pane = () => host.querySelector(".tpan")!;
+  vi.useFakeTimers();
+  const snapshot = (cols: number) => act(async () => { await frame({ kind: { case: "snapshot", value: { cols, rows: 24, data: new Uint8Array([65]) } } } as never); });
+  await snapshot(80);
+  expect(pane().classList.contains("unfit")).toBe(true);
+  // The fit was asked for; the computer's answer is a screen of the new size.
+  await snapshot(56);
+  expect(pane().classList.contains("unfit")).toBe(false);
+});
