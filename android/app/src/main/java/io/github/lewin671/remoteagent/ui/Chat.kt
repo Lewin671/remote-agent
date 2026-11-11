@@ -643,7 +643,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
         }
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
-        is ChatItem.Tools -> Column(Modifier.padding(horizontal = ChatSide)) {
+        is ChatItem.Tools -> Column(Modifier.padding(horizontal = ChatSide).animateContentSize(Motion.enter(Motion.BASE))) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
             ToolLine(Lucide.Check, p.ink3, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
                 Arrow(p.ink2, T.s13, down = !open, up = open)

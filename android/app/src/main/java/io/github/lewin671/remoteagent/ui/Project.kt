@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -62,6 +64,9 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.boundsInWindow
@@ -75,6 +80,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -544,11 +554,30 @@ fun NewSessionBox(
         }
     }
     val picker = remember { ComposerPicker { closePicker() } }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val density = LocalDensity.current
+    val ime = WindowInsets.ime
+    val pickerScope = rememberCoroutineScope()
+    var opening by remember { mutableStateOf<Job?>(null) }
+    fun afterKeyboard(action: () -> Unit) {
+        opening?.cancel()
+        focusManager.clearFocus(force = true)
+        keyboard?.hide()
+        opening = pickerScope.launch {
+            // Visibility flips at the start of an IME animation. Its bottom
+            // reaches zero only after the page has recovered its full height.
+            snapshotFlow { ime.getBottom(density) }.first { it == 0 }
+            withFrameNanos { }
+            action()
+        }
+    }
     var models by remember(machine, config?.agent) { mutableStateOf<ListModelsResponse?>(null) }
     var modelsRead by remember(machine, config?.agent) { mutableStateOf(false) }
     var modelsError by remember(machine, config?.agent) { mutableStateOf("") }
     var settings by remember(machine, config?.agent) { mutableStateOf<DaemonSettings?>(null) }
     LaunchedEffect(key, machine, config?.agent) {
+        opening?.cancel()
         picker.cancel()
         val cfg = config ?: return@LaunchedEffect
         runCatching { remote.listModels(cfg.machineId, cfg.agent) }
@@ -644,7 +673,7 @@ fun NewSessionBox(
             else if (!settled) Text("正在读取这个项目上次的设置…", style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
             else if (c != null && state.machines[c.machineId]?.online != true) Notice("${machineLabel(state, c.machineId)} 不在线，现在不能新建", tone = NoticeTone.WARN)
-            if (c != null && missing != null) Notice("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = onMachine)
+            if (c != null && missing != null) Notice("${machineLabel(state, c.machineId)} 没有 ${agentName(missing)}，这次用 ${agentName(c.agent)}", action = "换机器", onAction = { afterKeyboard(onMachine) })
             if (c != null && issue == AutoIssue.MODEL) Notice("这个模型没有自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。换一个模型，或到这台电脑的设置里改默认",
                 tone = NoticeTone.WARN, action = "换模型", onAction = { picker.toggle("model") })
             if (c != null && issue == AutoIssue.ACCOUNT) Notice("当前账户不支持自动模式，而 ${machineLabel(state, c.machineId)} 的新项目默认审批模式是自动。到这台电脑的设置里改默认后再开始",
@@ -672,7 +701,7 @@ fun NewSessionBox(
             Column(Modifier.weight(1f).padding(horizontal = 8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(
                     Modifier.heightIn(min = 32.dp).clip(Radii.Pill)
-                        .then(if (onProject != null) Modifier.clickable(role = Role.Button, onClickLabel = "换项目", onClick = onProject) else Modifier)
+                        .then(if (onProject != null) Modifier.clickable(role = Role.Button, onClickLabel = "换项目", onClick = { afterKeyboard(onProject) }) else Modifier)
                         .padding(horizontal = 6.dp).testTag("new-project"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -683,7 +712,7 @@ fun NewSessionBox(
                 }
                 // The computer only where there is more than one to mean.
                 if (c != null && state.machines.size > 1) Row(
-                    Modifier.heightIn(min = 24.dp).clip(Radii.Pill).clickable(role = Role.Button, onClickLabel = "换电脑", onClick = onMachine)
+                    Modifier.heightIn(min = 24.dp).clip(Radii.Pill).clickable(role = Role.Button, onClickLabel = "换电脑", onClick = { afterKeyboard(onMachine) })
                         .padding(horizontal = 6.dp).testTag("new-machine"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
