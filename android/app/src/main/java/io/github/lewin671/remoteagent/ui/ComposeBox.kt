@@ -132,7 +132,8 @@ fun ComposeBox(
                     ).forEachIndexed { i, (label, detail, action) ->
                         Column(
                             Modifier.fillMaxWidth().heightIn(min = 52.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
-                                .clickable { sendMenu = false; action() }.padding(horizontal = 12.dp, vertical = 6.dp),
+                                // The press follows the menu's corners: the menu's 24 less its 6 of padding.
+                                .clip(Radii.R18).clickable { sendMenu = false; action() }.padding(horizontal = 12.dp, vertical = 6.dp),
                             verticalArrangement = Arrangement.Center,
                         ) {
                             Text(label, style = T.s17, color = p.ink)
@@ -207,7 +208,7 @@ private fun AttachMenu(onMedia: () -> Unit, onFile: () -> Unit) {
         listOf(Triple(Lucide.Image, "照片和视频", onMedia), Triple(Lucide.File, "文件", onFile)).forEachIndexed { i, (icon, label, action) ->
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).then(if (i > 0) Modifier.topLine(p.sep) else Modifier)
-                    .clickable(role = Role.Button, onClick = action).padding(horizontal = 12.dp),
+                    .clip(Radii.R18).clickable(role = Role.Button, onClick = action).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
