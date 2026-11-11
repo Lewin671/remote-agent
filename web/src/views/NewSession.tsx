@@ -664,8 +664,18 @@ export function NewBox({
   const many = ns.agents.length > 1;
   const sentence = (
     <div className="sent">
+      {/* Where it runs reads as one place: the machine, then the project on it. */}
+      {ns.summary.machine && (
+        <span className="g">
+          在
+          <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => setConfig("machine")}>
+            <span>{ns.summary.machine}</span>
+            <ChevronDown />
+          </button>
+        </span>
+      )}
       <span className="g">
-        在
+        {ns.summary.machine ? "的" : "在"}
         {fixed || !onPickProject ? (
           <b>{name}</b>
         ) : (
@@ -772,8 +782,8 @@ type Pick = "" | "machine" | "model" | "mode";
 export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
   const taskEditing = scheduled && lockMachine;
   const { remote, p, machine } = ns;
-  const manyMachines = remote.machines.size > 1;
-  const lone = !scheduled && !manyMachines;
+  // A new task picks its machine in the sentence, next to the project: its settings are the model's page and nothing else.
+  const lone = !scheduled;
   const start = asked || (lone ? "model" : "");
   const [pick, setPick] = useState<Pick>(start);
   const [removing, setRemoving] = useState(false);
@@ -948,7 +958,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
   return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !(lone && !asked) ? back2 : undefined} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head">
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">
       {body ?? (
         <>
           {scheduled && (
@@ -962,7 +972,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
               </div>
             </div>
           )}
-          {(scheduled || manyMachines) && (
+          {scheduled && (
             <>
               <div className="fl">新会话</div>
               <div className="list">
@@ -1189,27 +1199,26 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
   return <ProjectPicker remote={remote} onPick={open} onNew={() => setStep("new")} onClose={onClose} />;
 }
 
-/** What the summary of the new-session settings says. */
+/** What the new-session settings say: the machine is named in the
+ * sentence (where the account has more than one), the CLI and the model in
+ * the summary. */
 export type Summary = { agent: string; machine: string; model: string };
 
 /** The settings of a new session in one capsule, opening the project's
- * settings (design-system §6 新任务): the machine where the account has
- * more than one, and the model; the effort and the window are in the
- * settings. A new task has no approval mode to show. The CLI is written
- * at the start only when nothing else names it (bare: the sentence
- * already does). The machine's name gives way first when the line is
- * long, down to three letters; the model only after it. */
-export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; bare?: boolean; onClick: () => void }) {
-  const { agent, machine, model } = summary;
+ * settings (design-system §6 新任务): the model; the effort and the window
+ * are in the settings. A new task has no approval mode to show, and its
+ * machine is in the sentence. The CLI is written at the start only when
+ * nothing else names it (bare: the sentence already does). */
+export function ConfigSummary({ summary, bare, onClick }: { summary: { agent: string; model: string }; bare?: boolean; onClick: () => void }) {
+  const { agent, model } = summary;
   const head = bare ? "" : agent;
   const sep = " · ";
-  const line = [head, machine, model].filter(Boolean).join(sep);
+  const line = [head, model].filter(Boolean).join(sep);
   return (
     <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
       {head && <span className="fx">{head}</span>}
-      {/* Each part brings the dot before it: a part cut short never leaves one hanging at its end. */}
-      {machine && <span className="mach">{(head ? sep : "") + machine}</span>}
-      {model && <span className="mdl">{(head || machine ? sep : "") + model}</span>}
+      {/* The model brings the dot before it: a part cut short never leaves one hanging at its end. */}
+      {model && <span className="mdl">{(head ? sep : "") + model}</span>}
       <ChevronRight />
     </button>
   );

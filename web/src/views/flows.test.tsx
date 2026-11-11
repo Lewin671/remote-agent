@@ -270,13 +270,13 @@ it("keeps saved project settings as sessions change", () => {
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // The remembered CLI is the one the sentence names; the summary does not name it again, nor an approval mode.
   const line = () => `${cliPicked()} / ${host.querySelector(".acc .project-summary")?.textContent}`;
-  expect(line()).toMatch(/^Codex \/ MacBook · /);
+  expect(line()).toMatch(/^Codex \/ gpt-6-astra$/i);
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
     r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
-  expect(line()).toMatch(/^Codex \/ MacBook · /);
+  expect(line()).toMatch(/^Codex \/ gpt-6-astra$/i);
 });
 
 it("leaves an unknown approval mode unsaid in the navbar, and a new session does not say a mode at all", async () => {
@@ -297,10 +297,8 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   // Neither the project nor the machine says how a new Codex session starts.
   for (const a of r.machines.get("mac")!.meta!.agents) a.defaultModeSource = 0;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /));
-  expect(host.querySelector(".project-summary")?.textContent).not.toContain("CLI 设置");
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra$/));
   await fromMenu("新会话设置");
-  expect(setting("审批")).toBe("");
   expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|未读到/);
   await click(button("完成", document));
   await act(async () => {
@@ -1069,7 +1067,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await act(async () => undefined);
     // The page shows the start that is pending: its message, its machine, its image as uploaded.
     expect(input().value).toBe("看这张图");
-    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
     expect(uploads).toEqual(["imac"]);
     const tray = r.trays.get("new:/work/remote-agent") ?? [...r.trays.values()][0];
@@ -1177,21 +1175,21 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await click(button("换机器"));
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
     if (document.querySelector(".sheet")) await click(button("完成", document));
-    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
     // The first session starts, its machine back meanwhile.
     r.machines.get("mac")!.online = true;
     await act(async () => answer());
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
     // The next message is still there, and still goes where it was told to.
     expect(input().value).toBe("给登录接口加限流");
-    expect(host.querySelector(".project-summary")!.textContent).toContain("iMac");
+    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
     // What went with that one is not held for the message after it.
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 2));
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")!.textContent).not.toContain("iMac"));
+    await vi.waitFor(() => expect(host.querySelector(".sent .tok.m")!.textContent).not.toContain("iMac"));
   });
 });
 
@@ -1203,7 +1201,6 @@ it("keeps a project's model and effort after the page remounts", async () => {
   mount(page(r));
   await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((r) => r.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6-Sol", document)).toBeDefined());
   await click(button("GPT-6-Sol", document));
   await click(button("low", document));
@@ -1218,7 +1215,10 @@ it("keeps a project's model and effort after the page remounts", async () => {
   mount(page(reloaded));
   await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
   await fromMenu("新会话设置");
-  expect(setting("模型")).toContain("GPT-6-Sol · low");
+  // The sheet that was closed may still be leaving: look in the last one.
+  const sheet = () => [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!;
+  await vi.waitFor(() => expect(button("GPT-6-Sol", sheet())?.querySelector(".ck")).toBeTruthy());
+  expect(button("low", sheet())?.className).toBe("on");
   await click(button("完成", document));
   const real = reloaded.machineCommand.bind(reloaded);
   let sent: unknown;
@@ -1269,7 +1269,6 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await click(button(/^默认模型/, document));
   await vi.waitFor(() => expect(button("high", document)).toBeDefined());
   await click(button("high", document));
@@ -1277,9 +1276,8 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
-  await vi.waitFor(() => expect(button("high", document)?.className).toBe("on"));
+  await vi.waitFor(() => expect(button("high", [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!)?.className).toBe("on"));
 });
 
 it("keeps the effort in sight under a long model list", async () => {
@@ -1293,7 +1291,6 @@ it("keeps the effort in sight under a long model list", async () => {
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy(), { timeout: 3000 });
   // The default row, three models and the link: the effort follows right after.
   expect(document.querySelectorAll(".list .mi")).toHaveLength(5);
@@ -1303,10 +1300,10 @@ it("keeps the effort in sight under a long model list", async () => {
   await click(button("Old 7", document));
   await click(button("完成", document));
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   // Collapsed again, the picked model is still listed and checked.
-  await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy());
-  expect(button("Old 7", document)?.querySelector(".ck")).toBeTruthy();
+  const sheet = () => [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!;
+  await vi.waitFor(() => expect(button(/^全部模型/, sheet())).toBeTruthy());
+  expect(button("Old 7", sheet())?.querySelector(".ck")).toBeTruthy();
 });
 
 it("names a new project's default model as Codex does, even when /model hides it", async () => {
@@ -1316,8 +1313,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await fromMenu("新会话设置");
-  await vi.waitFor(() => expect(setting("模型")).toContain("GPT-6.1-Sol · low"), { timeout: 3000 });
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("GPT-6.1-Sol"), { timeout: 3000 });
   expect(document.querySelector(".mi")?.textContent).toContain("新项目默认设置");
 });
 
@@ -1390,7 +1386,7 @@ it("shows no approval mode in a new task's summary or settings", async () => {
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra$/));
   expect(host.querySelector(".project-summary")?.textContent).not.toMatch(/自动|询问|完全放行|默认：|审批/);
   await fromMenu("新会话设置");
   expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
@@ -1564,7 +1560,7 @@ describe("a new-session draft", () => {
     r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra$/), { timeout: 3000 });
     expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
     expect(host.querySelector(".project-summary em")).toBeNull();
     await type("加限流");
@@ -1680,7 +1676,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(cliPicked()).toBe("Claude Code");
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
     // Nothing is stored for Claude Code here: the project's latest Claude Code session says which model it starts with, not Codex's set.
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · Sonnet/), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Sonnet/), { timeout: 3000 });
     await fromMenu("新会话设置");
     expect(setting("CLI")).toBe("");
     await click(button("完成", document));
@@ -1725,7 +1721,7 @@ describe("switching a new session's CLI (v2)", () => {
     // Back on Codex, its stored model is what starts.
     await pickCli("Codex");
     expect(cliPicked()).toBe("Codex");
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · GPT-6-Astra/));
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra/));
   });
 
   it("opens the settings of the CLI picked next to the box, and of no other", async () => {
@@ -1735,11 +1731,10 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     expect(cliPicked()).toBe("Codex");
     await fromMenu("新会话设置");
-    // No tabs: the sheet names the one CLI it is about.
+    // No tabs: the sheet is the model page of the one CLI the sentence names.
     expect(document.querySelector(".cli-tabs")).toBeNull();
-    expect([...document.querySelectorAll(".sheet .fl")].map((x) => x.textContent)).toContain("Codex");
+    expect(document.querySelector(".sheet-head")?.textContent).toContain("模型");
     expect(document.querySelector(".sheet")!.textContent).not.toContain("审批");
-    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
     await click(button("GPT-6-Luna", document));
     await click(button("完成", document));
     // The model is saved; the project's mode is not touched by it.
@@ -1766,14 +1761,14 @@ describe("switching a new session's CLI (v2)", () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     // The project is the page's own, so the sentence names it as words.
-    expect(host.querySelector(".wstart .sent")?.textContent).toBe("在foo用Codex");
+    expect(host.querySelector(".wstart .sent")?.textContent).toBe("在MacBook的foo用Codex");
     expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
     const ask = host.querySelector(".wstart textarea.ask")!;
     expect(ask.getAttribute("placeholder")).toBe("要做什么？");
     // The task is written in a box of its own, under the sentence.
     expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
     const row = host.querySelector(".wstart .acc")!;
-    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /);
+    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^gpt-6-astra$/i);
     expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
   });
 
@@ -1792,18 +1787,20 @@ describe("switching a new session's CLI (v2)", () => {
     expect(text()).toBe(claude);
   });
 
-  it("names the machine in the summary only when there is more than one", async () => {
+  it("names the machine in the sentence only when there is more than one", async () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
+    const sentence = () => host.querySelector(".wstart .sent")!.textContent;
     const summary = () => host.querySelector(".acc .project-summary")!;
-    // The name is its own part, the one that gives way on a long line.
-    expect(summary().querySelector(".mach")?.textContent).toBe("MacBook");
+    expect(host.querySelector(".sent .tok.m")?.getAttribute("aria-label")).toBe("机器：MacBook");
+    expect(sentence()).toBe("在MacBook的foo用Codex");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
-    expect(summary().querySelector(".mach")).toBeNull();
-    // The model alone; the effort and the window are in the settings, and a new task has no mode.
+    expect(host.querySelector(".sent .tok.m")).toBeNull();
+    expect(sentence()).toBe("在foo用Codex");
+    // The summary is the model alone, with or without a machine; the effort and the window are in the settings.
     expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
     expect(summary().getAttribute("aria-label")).toBe(`项目设置：${summary().textContent}`);
   });
@@ -1834,13 +1831,19 @@ describe("a new task's settings have no approval mode (v2)", () => {
     expect(document.querySelector(".sheet")).toBeNull();
   });
 
-  it("lists the machine and the model when there are several computers, and nothing else", async () => {
+  it("opens on the model page with several computers too: the machine is picked in the sentence", async () => {
     const r = demo();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
-    const rows = [...document.querySelectorAll(".sheet .mi")].map((x) => x.querySelector(".mt")?.textContent);
-    expect(rows).toEqual(["机器", "模型"]);
-    expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|移除项目|常用|只影响之后新建/);
+    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("模型");
+    expect(document.querySelector(".sheet")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
+    await click(button("完成", document));
+    // The machine chip opens the list of machines, and picking one closes it.
+    await click(host.querySelector<HTMLButtonElement>(".sent .tok.m")!);
+    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("机器");
+    await click(button(/VPS-dev/, document));
+    expect(document.querySelector(".sheet")).toBeNull();
+    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("VPS-dev");
   });
 
   it("puts Claude Code's context window on the model page", async () => {
@@ -2651,9 +2654,8 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   const { ProjectPage } = await import("./Project");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   await pickCli("Antigravity");
-  await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
+  await click(host.querySelector<HTMLButtonElement>(".sent .tok.m")!);
   await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
-  await click(button(/^机器/, document));
   const items = [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
   const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
   expect(macBtn?.querySelector(".md")?.textContent).toBe("已装 Codex、Claude Code、Antigravity");
@@ -2675,10 +2677,8 @@ it("retries a start with a launch override whose reply was lost as the same requ
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   // A launch override chosen by the user, mode left to the default.
   await fromMenu("新会话设置");
-  await click(button(/^模型/));
   await act(async () => { await r.listModels("mac", Agent.CODEX); });
   await click(button("GPT-6-Sol"));
-  await click(host.querySelector<HTMLButtonElement>('.sheet-head button[aria-label="返回"]')!);
   await click(button("完成"));
   void ns;
   await act(async () => {
@@ -2898,19 +2898,18 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultModel: "gpt-6.1-sol", defaultEffort: "low" });
   mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(button("GPT-6.1-Sol", document)).toBeDefined());
   expect(button(/^默认模型/, document)).toBeDefined();
   await click(button(/^默认模型/, document));
   await vi.waitFor(() => expect(button("ultra", document)).toBeDefined());
   for (const e of ["low", "medium", "high", "xhigh", "max", "ultra"]) expect(button(e, document)).toBeDefined();
-  await click(button("GPT-6.1-Sol", document));
+  // The summary capsule is named like the model now: pick it in the sheet.
+  await click(button("GPT-6.1-Sol", document.querySelector(".sheet")!));
   await click(button("high", document));
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
   const before = reads;
   await fromMenu("新会话设置");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
   await vi.waitFor(() => expect(reads).toBeGreaterThan(before));
 });
 

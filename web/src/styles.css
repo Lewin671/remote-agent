@@ -883,7 +883,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* The summary: the machine's name gives way first, down to three letters. */
 .acc .project-summary { flex: 0 1 auto; height: 40px; border-radius: 20px; font-weight: var(--w5); gap: 0; }
 .project-summary > span { flex: 0 1 auto; white-space: pre; }
-.project-summary > .mach { flex-shrink: 1000; min-width: 3em; }
 .project-summary > .ic { margin-left: auto; padding-left: 6px; box-sizing: content-box; }
 /* Wide: the main area itself, the sentence and the task in its middle. */
 .wnew { display: flex; flex-direction: column; }
