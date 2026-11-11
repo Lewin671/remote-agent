@@ -66,7 +66,7 @@
   --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
   --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
   --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
-  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24);
+  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-lift: 0 1px 2px rgba(0,0,0,.05), 0 18px 44px -18px rgba(0,0,0,.18);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -86,7 +86,7 @@
   --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
   --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
   --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
+  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-lift: 0 1px 2px rgba(0,0,0,.18), 0 18px 44px -18px rgba(0,0,0,.45);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -106,7 +106,7 @@
     --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
     --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
     --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
+    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-lift: 0 1px 2px rgba(0,0,0,.18), 0 18px 44px -18px rgba(0,0,0,.45);
   }
 }
 
@@ -1832,3 +1832,12 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 /* It opens a menu under itself, as the project and the CLI do, so its arrow points down as theirs do. */
 .desk .wstart .acc .project-summary > .ic { transform: rotate(90deg); }
 .sheet.anchored .plist .chev { display: none; }
+
+/* ---- The wide new task, refined in place: the field is lifted a little off the page and
+   written in a size larger; 「＋」 starts where the text starts; the key hint steps back. ---- */
+.desk .wstart .sent { margin-left: 2px; }
+.desk .wstart .wbox { padding: 18px 18px 10px; border-radius: 16px; box-shadow: inset 0 0 0 1px var(--in-edge), var(--nt-lift); }
+.desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--in-edge-hi), var(--nt-lift); }
+.desk .wstart .wbox .ask, .desk .wstart .wbox .ask:placeholder-shown { font-size: 16px; }
+.desk .wstart .acc { margin-left: -6px; padding-top: 10px; }
+.desk .wstart .kh { color: var(--ink3); }
