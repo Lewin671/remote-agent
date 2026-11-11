@@ -223,7 +223,7 @@ export function Setup({
             图案一致，信任并继续
           </button>
         )}
-        <p className="wait">
+        <p className="wait-line">
           <LoaderCircle />
           {comparisonPending
             ? "请先在本机确认图案"

@@ -1,0 +1,30 @@
+// Class names in styles.css are short and global. A rule for a bare class
+// reaches every element that carries the name, so a name that one component
+// uses as a state or as an inner part must not also be styled on its own:
+// that is how the session row's third line once got the computer card's fill
+// and the waiting dot got a status line's height.
+import { readFileSync } from "node:fs";
+import { expect, it } from "vitest";
+
+const css = readFileSync(new URL("./styles.css", import.meta.url), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+
+/** Every class that has a rule whose selector is that class alone. */
+function bare(): Set<string> {
+  const out = new Set<string>();
+  for (const m of css.matchAll(/([^{}]+)\{[^{}]*\}/g))
+    for (const sel of m[1].split(",")) {
+      const one = /^\.([\w-]+)$/.exec(sel.trim());
+      if (one) out.add(one[1]);
+    }
+  return out;
+}
+
+it("styles no state or inner-part name on its own", () => {
+  const scoped = [
+    // StateMark kinds and other states, always written with their component: .mark.wait, .sw.off
+    "wait", "run", "idle", "off", "unread", "on", "sel", "open", "warn", "dis", "last", "stale", "offl",
+    // inner parts of a session row and of a list row
+    "gut", "sm", "row1", "pv", "mc", "s", "v", "n",
+  ];
+  expect(scoped.filter((x) => bare().has(x))).toEqual([]);
+});

@@ -800,6 +800,9 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
   useRemote(remote);
   const [picking, setPicking] = useState(() => remote.demoFlag("pick"));
   const { scope } = useScope(remote);
+  // Another scope is another list: it starts from its title, not from where the last one was scrolled to.
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => { body.current?.scrollTo(0, 0); }, [scope]);
   const none = remote.sessions.size === 0;
   // Within a project the new session is its own; under all projects one is picked first.
   const start = () => {
@@ -809,7 +812,7 @@ export function Home({ remote, go }: { remote: Remote; go: Go }) {
   };
   return (
     <>
-      <div className="body home under-bar">
+      <div className="body home under-bar" ref={body}>
         <div className="tbar">
           <ScopeCapsule remote={remote} go={go} />
           <span className="sp" />

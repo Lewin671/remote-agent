@@ -295,14 +295,14 @@ export function PairCodePage({
                   </>
                 )}
                 {approved && (
-                  <p role="status" className="wait">
+                  <p role="status" className="wait-line">
                     <LoaderCircle />
                     已批准，等待新设备完成绑定…
                   </p>
                 )}
               </>
             ) : (
-              <p role="status" className="wait">
+              <p role="status" className="wait-line">
                 <LoaderCircle />
                 等待新设备输入配对码…
               </p>
