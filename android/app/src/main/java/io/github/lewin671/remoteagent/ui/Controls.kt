@@ -1,5 +1,21 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -255,36 +271,86 @@ fun Segmented(
     dark: Boolean = false,
 ) {
     val p = pal
-    Row(
-        modifier.heightIn(min = 38.dp).glass(p, Radii.Pill, dark = dark, onGrey = LocalOnSoft.current).padding(3.dp)
-            .selectableGroup(),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items.forEachIndexed { i, title ->
-            val on = i == selected
-            val ok = enabled(i)
-            val text = when {
-                dark && on -> Color.White
-                dark -> CardColors.text.copy(alpha = if (ok) .7f else .35f)
-                on -> p.ink
-                ok -> p.ink2
-                else -> p.ink3
-            }
-            Row(
-                Modifier.weight(1f).heightIn(min = 32.dp)
-                    .then(if (on) Modifier.shadow(2.dp, Radii.Pill, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow).clip(Radii.Pill).background(if (dark) Color(0xFF636366) else p.paper) else Modifier)
-                    .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
-                    .padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(title, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = text, maxLines = 1)
-                if (i == dot) {
-                    Spacer(Modifier.width(5.dp))
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(p.orange))
+    val bounds = remember { mutableStateMapOf<Int, IntRange>() }
+    val soft = LocalOnSoft.current && !dark
+    Box(modifier.heightIn(min = 38.dp).segmentTrack(p, dark).padding(3.dp)) {
+        SegmentThumb(bounds, selected, if (dark) Color(0xFF636366) else if (soft) p.raised else p.paper, Modifier.matchParentSize())
+        Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+            items.forEachIndexed { i, title ->
+                val on = i == selected
+                val ok = enabled(i)
+                val text = when {
+                    dark && on -> Color.White
+                    dark -> CardColors.text.copy(alpha = if (ok) .7f else .35f)
+                    on -> p.ink
+                    ok -> p.ink2
+                    else -> p.ink3
+                }
+                val shown by animateColorAsState(text, tween(Motion.FAST, easing = Motion.Decelerate), label = "segment-ink")
+                Row(
+                    Modifier.weight(1f).heightIn(min = 32.dp).segmentBounds(bounds, i)
+                        .clip(Radii.Pill)
+                        .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text(title, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = shown, maxLines = 1)
+                    if (i == dot) {
+                        Spacer(Modifier.width(5.dp))
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(p.orange))
+                    }
                 }
             }
         }
+    }
+}
+
+/**
+ * The track of a segmented control: glass on a page; on a sheet's grey, where glass would be white like
+ * the slider, a darker fill the white slider stands out from, as on the 主题 control of 设置.
+ */
+@Composable
+private fun Modifier.segmentTrack(p: Palette, dark: Boolean): Modifier =
+    if (LocalOnSoft.current && !dark) clip(Radii.Pill).background(p.fill2)
+    else glass(p, Radii.Pill, dark = dark)
+
+/** Reports where an item of a segmented control lies, in the row of items, for the slider under the chosen one. */
+private fun Modifier.segmentBounds(bounds: MutableMap<Int, IntRange>, i: Int): Modifier = onPlaced {
+    val x = it.positionInParent().x.roundToInt()
+    bounds[i] = x until x + it.size.width
+}
+
+/**
+ * The light slider under the chosen item of a segmented control (paper, or mid grey on the dark
+ * terminal). It slides to the item chosen next, 200 ms (design-system §4 动效); with animations
+ * reduced it is there at once. It is first drawn where the chosen item is, never sliding in.
+ */
+@Composable
+private fun SegmentThumb(bounds: Map<Int, IntRange>, selected: Int, color: Color, modifier: Modifier = Modifier) {
+    val p = pal
+    val target = bounds[selected]
+    val x = remember { Animatable(0f) }
+    val w = remember { Animatable(0f) }
+    var placed by remember { mutableStateOf(false) }
+    LaunchedEffect(target) {
+        if (target == null) return@LaunchedEffect
+        val left = target.first.toFloat()
+        val width = (target.last - target.first + 1).toFloat()
+        if (!placed) {
+            x.snapTo(left); w.snapTo(width); placed = true
+        } else {
+            launch { x.animateTo(left, Motion.enter(Motion.BASE)) }
+            launch { w.animateTo(width, Motion.enter(Motion.BASE)) }
+        }
+    }
+    Box(modifier) {
+        if (placed) Box(
+            Modifier.offset { IntOffset(x.value.roundToInt(), 0) }
+                .width(with(LocalDensity.current) { w.value.toDp() }).fillMaxHeight()
+                .shadow(2.dp, Radii.Pill, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow)
+                .clip(Radii.Pill).background(color),
+        )
     }
 }
 
@@ -303,27 +369,30 @@ fun MachineSegmented(
     modifier: Modifier = Modifier,
 ) {
     val p = pal
+    val bounds = remember { mutableStateMapOf<Int, IntRange>() }
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         val share = (maxWidth - 6.dp) / names.size.coerceAtLeast(1)
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 38.dp).glass(p, Radii.Pill, onGrey = LocalOnSoft.current).padding(3.dp)
-                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).selectableGroup(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            names.forEachIndexed { i, name ->
-                val on = i == selected
-                val ok = online[i]
-                Row(
-                    Modifier.defaultMinSize(minWidth = share).heightIn(min = 32.dp)
-                        .then(if (on) Modifier.shadow(2.dp, Radii.Pill, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow).clip(Radii.Pill).background(p.paper) else Modifier)
-                        .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
-                        .padding(horizontal = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    StatusMark(if (ok) MarkKind.ONLINE else MarkKind.OFF, size = 7.dp)
-                    Spacer(Modifier.width(6.dp))
-                    Text(name, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = if (on) p.ink else if (ok) p.ink2 else p.ink3, maxLines = 1, softWrap = false)
+        Box(Modifier.fillMaxWidth().heightIn(min = 38.dp).segmentTrack(p, false).padding(3.dp)) {
+            Box(Modifier.horizontalScroll(androidx.compose.foundation.rememberScrollState())) {
+                SegmentThumb(bounds, selected, if (LocalOnSoft.current) p.raised else p.paper, Modifier.matchParentSize())
+                Row(Modifier.selectableGroup(), verticalAlignment = Alignment.CenterVertically) {
+                    names.forEachIndexed { i, name ->
+                        val on = i == selected
+                        val ok = online[i]
+                        val ink by animateColorAsState(if (on) p.ink else if (ok) p.ink2 else p.ink3, tween(Motion.FAST, easing = Motion.Decelerate), label = "segment-ink")
+                        Row(
+                            Modifier.defaultMinSize(minWidth = share).heightIn(min = 32.dp).segmentBounds(bounds, i)
+                                .clip(Radii.Pill)
+                                .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
+                                .padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            StatusMark(if (ok) MarkKind.ONLINE else MarkKind.OFF, size = 7.dp)
+                            Spacer(Modifier.width(6.dp))
+                            Text(name, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = ink, maxLines = 1, softWrap = false)
+                        }
+                    }
                 }
             }
         }
