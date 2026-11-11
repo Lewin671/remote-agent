@@ -129,7 +129,7 @@ class LayoutTest {
             val base = LocalDensity.current
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalDensity provides Density(base.density, 2f)) {
-                    Column(Modifier.testTag("frame").width(320.dp).background(pal.gbg)) {
+                    Column(Modifier.testTag("frame").width(320.dp).background(pal.paper)) {
                         GLabel("本客户端的通知")
                         Group(rows = listOf { Text("等我处理时", Modifier.padding(14.dp), color = pal.ink, style = T.s15) })
                         PushNotice(io.github.lewin671.remoteagent.push.PushStatus(problem, "重试")) { retries++ }
@@ -139,10 +139,10 @@ class LayoutTest {
         }
         for (theme in listOf(false, true)) {
             ui.runOnIdle { dark = theme }
-            ui.onNodeWithText(problem).assertIsDisplayed()
-            ui.onNodeWithText("仅影响 App 在后台时的系统通知，不影响聊天和审批").assertIsDisplayed()
+            ui.onNodeWithText(problem, substring = true).assertIsDisplayed()
+            ui.onNodeWithText("仅影响 App 在后台时的系统通知，不影响聊天和审批", substring = true).assertIsDisplayed()
             val frame = ui.onNodeWithTag("frame").fetchSemanticsNode().boundsInRoot
-            val note = ui.onNodeWithText(problem).fetchSemanticsNode().boundsInRoot
+            val note = ui.onNodeWithText(problem, substring = true).fetchSemanticsNode().boundsInRoot
             assertTrue(note.left >= frame.left && note.right <= frame.right)
             ui.onNodeWithText("重试").performClick()
             screenshot(if (theme) "push-notice-dark-large" else "push-notice-light-large")

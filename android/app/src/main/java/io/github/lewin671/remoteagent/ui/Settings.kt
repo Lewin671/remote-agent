@@ -436,7 +436,8 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
 }
 
 /**
- * Optional background delivery belongs with notification settings, not the app's connection banner.
+ * Optional background delivery belongs with notification settings, not the app's connection banner: a
+ * notice under the group (design-system §6 提示条) with the one action that fixes it.
  */
 @Composable
 internal fun PushNotice(
@@ -444,11 +445,12 @@ internal fun PushNotice(
     onAction: () -> Unit,
 ) {
     if (push.problem.isEmpty()) return
-    Column(Modifier.padding(horizontal = 20.dp).padding(top = 8.dp)) {
-        Text(push.problem, style = T.s13, color = pal.ink2)
-        Text("仅影响 App 在后台时的系统通知，不影响聊天和审批", style = T.s13, color = pal.ink2)
-        if (push.action.isNotEmpty()) TextLink(push.action, onAction, style = T.s13)
-    }
+    Notice(
+        push.problem + "\n仅影响 App 在后台时的系统通知，不影响聊天和审批",
+        Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
+        action = push.action.ifEmpty { null },
+        onAction = onAction,
+    )
 }
 
 /**
