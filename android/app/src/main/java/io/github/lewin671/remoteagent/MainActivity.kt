@@ -8,8 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -17,6 +16,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import io.github.lewin671.remoteagent.ui.Motion
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,6 +81,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        io.github.lewin671.remoteagent.ui.Motion.observe(applicationContext)
         enableEdgeToEdge()
         openSession.value = target(intent)
         openDevices.value = intent?.getBooleanExtra(Notifier.EXTRA_SECURITY, false) == true
@@ -384,14 +385,14 @@ fun routeArg(s: String): String = buildString {
 /** The key back from a route argument, which Navigation has already decoded once. */
 fun routeValue(arg: String?): String = arg.orEmpty()
 
-// Page transitions. A page slides in from the right over the one it covers,
-// which drifts a quarter of the way left; back plays it in reverse. Pages are
-// opaque, so two never show through each other. Switching tabs swaps in place,
-// and the image viewer fades over the page it opens from.
-private const val PAGE_MS = 300
-private val pageSlide = tween<IntOffset>(PAGE_MS, easing = FastOutSlowInEasing)
-private val viewerFade = tween<Float>(200)
-private val pageFade = tween<Float>(PAGE_MS)
+// Page transitions (design-system §4 动效, 慢). A page slides in from the right over the one it covers,
+// which drifts a quarter of the way left; back plays it in reverse, a little quicker. Pages are
+// opaque, so two never show through each other. Switching tabs swaps in place, and the image viewer
+// fades over the page it opens from. With animations reduced the slides become short fades.
+private val viewerFade get() = Motion.fadeInSpec(Motion.BASE)
+private val pageFade get() = Motion.fadeInSpec(Motion.SLOW)
+private fun <T> slideIn(): FiniteAnimationSpec<T> = Motion.enter(Motion.SLOW)
+private fun <T> slideOut(): FiniteAnimationSpec<T> = Motion.exit(Motion.SLOW)
 private val tabRoutes = setOf("home", "schedules")
 
 private fun tabSwitch(from: NavBackStackEntry, to: NavBackStackEntry) =
@@ -415,8 +416,9 @@ private fun pageEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTran
     when {
         tabSwitch(from, to) -> EnterTransition.None
         viewer(to) -> fadeIn(viewerFade)
-        rises(to) -> slideInVertically(pageSlide) { it }
-        else -> slideInHorizontally(pageSlide) { it }
+        Motion.reduced -> fadeIn(pageFade)
+        rises(to) -> slideInVertically(slideIn()) { it }
+        else -> slideInHorizontally(slideIn()) { it }
     }
 
 private fun pageExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransition =
@@ -424,20 +426,23 @@ private fun pageExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransi
         tabSwitch(from, to) -> ExitTransition.None
         // Stays as it is under the viewer fading in.
         viewer(to) -> fadeOut(viewerFade, targetAlpha = 1f)
+        Motion.reduced -> fadeOut(pageFade, targetAlpha = 1f)
         rises(to) -> fadeOut(pageFade, targetAlpha = 1f)
-        else -> slideOutHorizontally(pageSlide) { -it / 4 }
+        else -> slideOutHorizontally(slideIn()) { -it / 4 }
     }
 
 private fun pagePopEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     when {
         tabSwitch(from, to) || viewer(from) || rises(from) -> EnterTransition.None
-        else -> slideInHorizontally(pageSlide) { -it / 4 }
+        Motion.reduced -> fadeIn(pageFade)
+        else -> slideInHorizontally(slideIn()) { -it / 4 }
     }
 
 private fun pagePopExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransition =
     when {
         tabSwitch(from, to) -> ExitTransition.None
-        viewer(from) -> fadeOut(viewerFade)
-        rises(from) -> slideOutVertically(pageSlide) { it }
-        else -> slideOutHorizontally(pageSlide) { it }
+        viewer(from) -> fadeOut(Motion.fadeOutSpec(Motion.BASE))
+        Motion.reduced -> fadeOut(Motion.fadeOutSpec(Motion.SLOW))
+        rises(from) -> slideOutVertically(slideOut()) { it }
+        else -> slideOutHorizontally(slideOut()) { it }
     }

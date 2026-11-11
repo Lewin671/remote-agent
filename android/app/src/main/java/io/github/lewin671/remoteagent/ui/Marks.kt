@@ -85,7 +85,7 @@ fun StatusMark(kind: MarkKind, modifier: Modifier = Modifier, size: Dp = 9.dp, c
 fun Spinner(color: Color, modifier: Modifier = Modifier, size: Dp = 14.dp, stroke: Dp = 2.dp) {
     val transition = rememberInfiniteTransition(label = "spinner")
     val angle by transition.animateFloat(0f, 360f, infiniteRepeatable(tween(1000, easing = LinearEasing)), label = "rotation")
-    Canvas(modifier.size(size).rotate(angle)) {
+    Canvas(modifier.size(size).rotate(if (Motion.reduced) 0f else angle)) {
         val w = stroke.toPx()
         drawArc(color, -90f, 270f, useCenter = false, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2),
             size = androidx.compose.ui.geometry.Size(this.size.width - w, this.size.height - w), style = Stroke(w))

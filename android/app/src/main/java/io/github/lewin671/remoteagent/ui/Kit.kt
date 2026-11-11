@@ -522,5 +522,5 @@ fun Mark(icon: ImageVector, color: Color, size: Dp = 12.dp) {
     val angle by transition.animateFloat(0f, 360f,
         androidx.compose.animation.core.infiniteRepeatable(androidx.compose.animation.core.tween(900, easing = androidx.compose.animation.core.LinearEasing)),
         label = "rotation")
-    Ic(icon, size, color, Modifier.rotate(angle))
+    Ic(icon, size, color, Modifier.rotate(if (Motion.reduced) 0f else angle))
 }
