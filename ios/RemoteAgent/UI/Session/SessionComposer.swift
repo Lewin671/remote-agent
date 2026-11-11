@@ -136,6 +136,8 @@ struct SessionComposer: View {
     let status: Status
     let derived: Derived
     var focus: FocusState<Bool>.Binding
+    /// A message is being sent from this box, with or without images. Sending is asking to see the answer.
+    var onSent: () -> Void = {}
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var interrupt = ActionRunner()
@@ -156,6 +158,7 @@ struct SessionComposer: View {
         // Every image must be on the computer first: never a message with some of them.
         if attached && !images.ready { return }
         SessionHaptics.tap()
+        onSent()
         let taken = SessionImages.send(context.remote, session: sid, store: store, machineId: session.machineId, text: message, mode: mode) { kept in
             switch kept {
             case .success:

@@ -360,6 +360,13 @@ struct ChatPane: View {
 
     private func toEnd() { tracker.controller?.toEnd() }
 
+    /// Back to the end of the chat and following again, from wherever the reader was: the user asked for it
+    /// (the 回到最新 pill) or sent a message and wants to see the answer. What others send does not do this.
+    private func followEnd() {
+        tracker.jump()
+        toEnd()
+    }
+
     private func dockItems(_ d: Derived) -> [DockItem] {
         var items =
             d.approvals.values.map(DockItem.approval) + d.questions.values.map(DockItem.question)
@@ -406,10 +413,7 @@ struct ChatPane: View {
                 // The message box floats on glass: the chat fades out under it, it is not cut by a bar.
                 .background { EdgeFade(edge: .bottom) }
                 .overlay(alignment: .top) {
-                    pill {
-                        tracker.jump()
-                        toEnd()
-                    }
+                    pill { followEnd() }
                     .alignmentGuide(.top) { $0[.bottom] + 8 }
                     // It rises in and fades out (§4 动效).
                     .animation(Motion.enter(), value: tracker.fresh > 0)
@@ -429,10 +433,7 @@ struct ChatPane: View {
                 }
             }
         })
-        .debugSignal("session.end") {
-            tracker.jump()
-            toEnd()
-        }
+        .debugSignal("session.end") { followEnd() }
         .debugSignal("session.top") {
             // The rows as they are when the signal comes, not as they were when it was set up.
             tracker.leave()
@@ -673,7 +674,7 @@ struct ChatPane: View {
                     .transition(Motion.roomy(rise: Motion.dockRise))
                 }
                 if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
-                SessionComposer(session: session, status: status, derived: d, focus: $typing)
+                SessionComposer(session: session, status: status, derived: d, focus: $typing, onSent: followEnd)
             }
             .animation(dock.first == nil ? Motion.exit() : Motion.enter(), value: dock.first?.id)
         }

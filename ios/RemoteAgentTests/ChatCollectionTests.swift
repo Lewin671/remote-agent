@@ -122,6 +122,38 @@ import UIKit
         #expect(h.gap < 1 && h.tracker.fresh == 0 && !h.tracker.away)
     }
 
+    /// Someone else's rows leave a reader far up where they are; sending a message (the composer's `onSent`, which
+    /// is the same request for the end as the 回到最新 pill) takes them to the end and the list follows again.
+    @Test func sendingFromFarUpReturnsToTheEndAndFollowsTheAnswer() async throws {
+        await WindowTestGate.shared.acquire()
+        defer { WindowTestGate.shared.release() }
+        let h = try Harness()
+        defer { h.close() }
+        h.ids = (0..<80).map { "row-\($0)" }
+        h.update()
+        try await h.wait()
+        h.tracker.leave()
+        h.controller.toRow("row-10")
+        try await h.wait()
+        let offset = h.list.contentOffset.y
+        h.ids += ["other-1"]
+        h.update()
+        try await h.wait()
+        #expect(abs(h.list.contentOffset.y - offset) < 1 && h.gap > 1_000, "a message from elsewhere does not pull the reader down")
+        // The send: the end is asked for before the message's own row exists, as in `SessionComposer.send`.
+        h.tracker.jump()
+        h.controller.toEnd()
+        h.ids += ["mine-1"]
+        h.update()
+        try await h.wait()
+        #expect(h.gap < 1 && h.tracker.scroll.following && h.tracker.fresh == 0, "the sent message is in view")
+        h.heights["mine-1"] = 300
+        h.ids += ["answer-1"]
+        h.update()
+        try await h.wait()
+        #expect(h.gap < 1, "and the answer is followed")
+    }
+
     @Test func prependKeepsASurvivingRowAndDoesNotCountHistoryAsFresh() async throws {
         await WindowTestGate.shared.acquire()
         defer { WindowTestGate.shared.release() }
