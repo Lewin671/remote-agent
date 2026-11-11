@@ -3082,12 +3082,12 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
     // Waiting sessions are rows here, not cards.
     expect(host.querySelector(".tc, .pr")).toBeNull();
-    await click(host.querySelector<HTMLButtonElement>(".wsc .scp")!);
+    await click(host.querySelector<HTMLButtonElement>(".side-top .scp")!);
     expect(host.querySelector(".pop")).toBeTruthy();
     await click([...host.querySelectorAll<HTMLButtonElement>(".pop .pi")].find((b) => b.querySelector("b")?.textContent === "billing"));
     expect(host.querySelector(".pop")).toBeNull();
     expect(went).toEqual([""]);
-    expect(host.querySelector(".wsc .scp b")?.textContent).toBe("billing");
+    expect(host.querySelector(".side-top .scp b")?.textContent).toBe("billing");
     // The session on screen stays listed though it is not billing's.
     expect(host.querySelector(".sess.sel .row1 b")?.textContent).toBe("修复登录超时");
     expect(host.querySelector(".sess.sel .mc")?.textContent).toContain("foo");

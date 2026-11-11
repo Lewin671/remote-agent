@@ -874,6 +874,8 @@ export function Sidebar({
   return (
     <aside className="side">
       <div className="side-top">
+        {/* The scope and the way to start something share the top row: one line of controls, then the headline. */}
+        {!tasks && <ScopeCapsule remote={remote} go={go} wide onPicked={() => project !== undefined && go("")} />}
         {tasks ? (
           <button className="mini" disabled={!supported || remote.unlinked} onClick={() => go("tasks/new")}>
             <Plus />
@@ -897,10 +899,6 @@ export function Sidebar({
         <SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} />
       ) : (
         <>
-          <div className="wsc">
-            {/* The main area follows the scope unless it shows something else. */}
-            <ScopeCapsule remote={remote} go={go} wide onPicked={() => project !== undefined && go("")} />
-          </div>
           {!remote.listed && !remote.listError && remote.sessions.size === 0 && remote.link === "online" ? (
             <div className="scroll pad">
               <Skeleton />
