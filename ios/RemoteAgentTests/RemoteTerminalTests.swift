@@ -153,6 +153,10 @@ import Testing
         await eventually { streams.count == 1 }
         streams.listener(0).onFrame(snapshot("live"))
         await eventually { t.state == .live }
+        // Going live queues the initial fit on TermConn's asynchronous writer.
+        // Observe it before counting: otherwise the wait below can mistake that
+        // resize for the history request and race its actual delivery.
+        await eventually { streams.sent.contains { $0.resize.fit } }
         let before = streams.sent.count
         t.readUp(RemoteTerminal.readPull - 1)
         #expect(!t.reading && streams.sent.count == before)
