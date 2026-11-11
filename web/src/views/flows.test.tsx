@@ -84,13 +84,13 @@ const setting = (name: string) =>
   [...document.querySelectorAll(".sheet .mi")].find((r) => r.querySelector(".mt")?.textContent === name)?.querySelector(".mv")?.textContent ?? "";
 
 /** The CLI the new task's sentence names, and picking another there. */
-const cliPicked = () => host.querySelector(".sent .tok.cli")?.textContent;
+const cliPicked = () => host.querySelector(".tok.cli")?.textContent;
 async function pickCli(name: string) {
-  await click(host.querySelector<HTMLButtonElement>(".sent .tok.cli")!);
+  await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
   await click(button(name, document.querySelector(".sheet")!));
 }
 function pickCliNow(name: string) {
-  act(() => host.querySelector<HTMLButtonElement>(".sent .tok.cli")!.click());
+  act(() => host.querySelector<HTMLButtonElement>(".tok.cli")!.click());
   act(() => button(name, document.querySelector(".sheet")!)!.click());
 }
 
@@ -1067,7 +1067,7 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await act(async () => undefined);
     // The page shows the start that is pending: its message, its machine, its image as uploaded.
     expect(input().value).toBe("看这张图");
-    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
+    expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(1);
     expect(uploads).toEqual(["imac"]);
     const tray = r.trays.get("new:/work/remote-agent") ?? [...r.trays.values()][0];
@@ -1175,21 +1175,21 @@ describe("an unknown session start, after leaving its page and coming back", () 
     await click(button("换机器"));
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet button")].find((b) => b.textContent?.includes("iMac")));
     if (document.querySelector(".sheet")) await click(button("完成", document));
-    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
+    expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     // The first session starts, its machine back meanwhile.
     r.machines.get("mac")!.online = true;
     await act(async () => answer());
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 1));
     // The next message is still there, and still goes where it was told to.
     expect(input().value).toBe("给登录接口加限流");
-    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("iMac");
+    expect(host.querySelector(".tok.m")!.textContent).toContain("iMac");
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(2));
     expect(sent[1]).toEqual({ machine: "imac", prompt: "给登录接口加限流" });
     // What went with that one is not held for the message after it.
     await vi.waitFor(() => expect(r.sessions.size).toBe(before + 2));
-    await vi.waitFor(() => expect(host.querySelector(".sent .tok.m")!.textContent).not.toContain("iMac"));
+    await vi.waitFor(() => expect(host.querySelector(".tok.m")!.textContent).not.toContain("iMac"));
   });
 });
 
@@ -1361,7 +1361,7 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   const row = [...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("small")?.textContent === "~/Code");
   expect(row?.querySelector("b")?.textContent).toBe("Code");
   remount(<ProjectPage remote={r} pkey={added} go={() => undefined} onBack={() => undefined} />);
-  expect(host.querySelector(".sent .tok.p > span:not(.av)")?.textContent).toBe("Code");
+  expect(host.querySelector(".tok.p > span:not(.av)")?.textContent).toBe("Code");
   // Choosing an existing folder on its current machine keeps its settings.
   const foo = "/Users/me/Code/foo";
   await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
@@ -1748,7 +1748,7 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     await r.changePrefs("settings", foo, { id: "t1", kind: "settings", path: foo, at: Date.now(), settings: { machineId: "vps", agent: Agent.CLAUDE } });
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
-    expect(host.querySelector(".sent .tok.cli")).toBeNull();
+    expect(host.querySelector(".tok.cli")).toBeNull();
     expect(host.textContent).toContain("VPS-dev 没有 Claude Code，这次用 Codex");
     expect(host.querySelector(".project-summary")?.textContent).toMatch(/^Codex · /);
     // The project still remembers Claude Code.
@@ -1792,13 +1792,13 @@ describe("switching a new session's CLI (v2)", () => {
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     const sentence = () => host.querySelector(".wstart .sent")!.textContent;
     const summary = () => host.querySelector(".acc .project-summary")!;
-    expect(host.querySelector(".sent .tok.m")?.getAttribute("aria-label")).toBe("机器：MacBook");
+    expect(host.querySelector(".tok.m")?.getAttribute("aria-label")).toBe("机器：MacBook");
     expect(sentence()).toBe("在MacBook的foo用Codex");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
-    expect(host.querySelector(".sent .tok.m")).toBeNull();
+    expect(host.querySelector(".tok.m")).toBeNull();
     expect(sentence()).toBe("在foo用Codex");
     // The summary is the model alone, with or without a machine; the effort and the window are in the settings.
     expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
@@ -1839,11 +1839,11 @@ describe("a new task's settings have no approval mode (v2)", () => {
     expect(document.querySelector(".sheet")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
     await click(button("完成", document));
     // The machine chip opens the list of machines, and picking one closes it.
-    await click(host.querySelector<HTMLButtonElement>(".sent .tok.m")!);
+    await click(host.querySelector<HTMLButtonElement>(".tok.m")!);
     expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("机器");
     await click(button(/VPS-dev/, document));
     expect(document.querySelector(".sheet")).toBeNull();
-    expect(host.querySelector(".sent .tok.m")!.textContent).toContain("VPS-dev");
+    expect(host.querySelector(".tok.m")!.textContent).toContain("VPS-dev");
   });
 
   it("puts Claude Code's context window on the model page", async () => {
@@ -2654,7 +2654,7 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   const { ProjectPage } = await import("./Project");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   await pickCli("Antigravity");
-  await click(host.querySelector<HTMLButtonElement>(".sent .tok.m")!);
+  await click(host.querySelector<HTMLButtonElement>(".tok.m")!);
   await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
   const items = [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
   const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
@@ -2803,19 +2803,16 @@ describe("the client-v7 conversation", () => {
     let closed = 0;
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => closed++} />);
     expect(host.textContent).not.toContain("只打开终端");
-    // Close at the top left, send at the top right, gray with nothing written.
+    // Close at the top left; the title names the project; the box at the bottom holds ＋, the CLI, the model and send.
     const head = host.querySelector(".nt-hd")!;
     expect(head.firstElementChild?.getAttribute("aria-label")).toBe("关闭");
-    expect(head.lastElementChild?.getAttribute("aria-label")).toBe("开始新会话");
-    expect(head.lastElementChild?.classList.contains("off")).toBe(true);
-    expect(host.querySelector(".sent .tok.p > span:not(.av)")?.textContent).toBe("foo");
+    expect(head.querySelector(".tok.p > span:not(.av)")?.textContent).toBe("foo");
     expect(cliPicked()).toBe("Codex");
-    const ask = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    const ask = host.querySelector<HTMLTextAreaElement>(".pbox textarea[aria-label=新会话的第一句话]")!;
     expect(ask.placeholder).toBe("要做什么？");
-    await act(async () => ask.focus());
-    expect(host.querySelector(".sent")).toBeTruthy();
-    // ＋ and the summary sit in the row over the keyboard.
-    expect([...host.querySelector(".acc")!.children].map((c) => c.className)).toEqual(["attach-wrap", "tok project-summary"]);
+    const send = host.querySelector(".pbox .acc")!.lastElementChild!;
+    expect(send.getAttribute("aria-label")).toBe("开始新会话");
+    expect(send.classList.contains("off")).toBe(true);
     await click(head.firstElementChild as HTMLButtonElement);
     expect(closed).toBe(1);
   });
