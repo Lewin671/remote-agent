@@ -1544,9 +1544,14 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .qrow { padding: 12px 16px; }
 .desk .qrow + .qrow::before { left: 16px; }
 .desk .qrow > b { font-size: 15px; }
-.desk .mach-card { margin: 0 16px 12px; padding: 4px 16px 16px; border-radius: 14px; }
+.desk .mach-card { margin: 0 16px 12px; border-radius: 14px; }
 .desk .mach-name b { font-size: 17px; letter-spacing: -.02em; }
-.desk .qt { margin-top: 12px; }
+/* The card's two kinds of rows reach its edges, so a pointer over one tints a band of the card, not a box inside it. */
+.desk .mach-card { padding: 0; overflow: hidden; }
+.desk .mach-head { padding: 16px 16px 6px; }
+.desk .mach-head:last-child { padding-bottom: 16px; }
+.desk .qt { margin-top: 0; padding: 6px 16px; }
+.desk .mach-card > .qt:last-child { padding-bottom: 16px; }
 .desk .qt .l, .desk .qrow .l { font-size: 13px; }
 .desk .qt .l .n, .desk .qrow .l .n { font-size: 13px; }
 .desk .bar { height: 4px; }
