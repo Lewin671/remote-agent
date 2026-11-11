@@ -16,6 +16,7 @@ import (
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"google.golang.org/protobuf/proto"
 )
 
 // sendHarness is a live session whose project folder, temp folder and home
@@ -77,8 +78,8 @@ func download(t *testing.T, u *uploads, session string, f *pb.SharedFile) []byte
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(res.Data) != sharedChunkBytes || res.TotalBytes != uint64(f.SizeBytes) {
-			t.Fatalf("block at %d: %d bytes, total %d", off, len(res.Data), res.TotalBytes)
+		if len(res.Data) != sharedChunkBytes || res.GetTotalBytes() != uint64(f.SizeBytes) {
+			t.Fatalf("block at %d: %d bytes, total %d", off, len(res.Data), res.GetTotalBytes())
 		}
 		out = append(out, res.Data...)
 	}
@@ -464,5 +465,86 @@ func TestCapabilitiesOfferSharedFiles(t *testing.T) {
 	c := New(t.TempDir(), Config{}).capabilities()
 	if !c.SharedFiles || c.MaxSharedFileBytes != 100<<20 || c.SharedFileChunkBytes != 768<<10 {
 		t.Fatalf("capabilities: %+v", c)
+	}
+}
+
+// A source rewritten in place at the same length would give a copy mixing
+// old and new bytes under a hash that vouches for it.
+func TestSendFileRejectsSameLengthRewrite(t *testing.T) {
+	h := newSendHarness(t)
+	path := filepath.Join(h.cwd, "log.txt")
+	writeTestFile(t, path, []byte("aaaaaaaa"))
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	before, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeTestFile(t, path, []byte("bbbbbbbb"))
+	later := before.ModTime().Add(time.Second)
+	if err := os.Chtimes(path, later, later); err != nil {
+		t.Fatal(err)
+	}
+	u := h.d.uploads
+	if _, err := u.share(h.id(), "turn", u.sessionDrops(h.id()), f, before, "log.txt", path); connect.CodeOf(err) != connect.CodeAborted {
+		t.Fatalf("rewritten source: %v", err)
+	}
+	if entries, _ := os.ReadDir(u.sharedDir(h.id())); len(entries) != 0 {
+		t.Fatalf("left behind: %v", entries)
+	}
+}
+
+// The session's files are removed between send_file's liveness check and
+// the copy: the copy must not bring the folder back.
+func TestSendFileAfterSessionFilesDropped(t *testing.T) {
+	h := newSendHarness(t)
+	path := filepath.Join(h.cwd, "a.txt")
+	writeTestFile(t, path, []byte("hello"))
+	f, err := os.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		t.Fatal(err)
+	}
+	u := h.d.uploads
+	drops := u.sessionDrops(h.id())
+	u.dropSession(h.id())
+	if _, err := u.share(h.id(), "turn", drops, f, fi, "a.txt", path); connect.CodeOf(err) != connect.CodeFailedPrecondition {
+		t.Fatalf("after drop: %v", err)
+	}
+	if _, err := os.Stat(u.sharedDir(h.id())); !os.IsNotExist(err) {
+		t.Fatalf("shared folder exists again: %v", err)
+	}
+}
+
+// An empty file's block is as long on the wire as any other.
+func TestEmptySharedFileBlockLength(t *testing.T) {
+	h := newSendHarness(t)
+	writeTestFile(t, filepath.Join(h.cwd, "empty"), nil)
+	writeTestFile(t, filepath.Join(h.cwd, "one"), []byte("x"))
+	var sizes []int
+	for _, name := range []string{"empty", "one"} {
+		f, err := h.send(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res, err := h.d.uploads.sharedChunk(h.id(), f.FileId, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		b, err := proto.Marshal(res)
+		if err != nil {
+			t.Fatal(err)
+		}
+		sizes = append(sizes, len(b))
+	}
+	if sizes[0] != sizes[1] {
+		t.Fatalf("empty %d bytes, one byte %d bytes", sizes[0], sizes[1])
 	}
 }

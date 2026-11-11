@@ -3736,8 +3736,9 @@ type GetSharedFileChunkResponse struct {
 	// Exactly shared_file_chunk_bytes: the file's bytes from offset, then
 	// zeros past its end.
 	Data []byte `protobuf:"bytes,1,opt,name=data,proto3" json:"data,omitempty"`
-	// The file's size; fixed width so the result's length does not vary.
-	TotalBytes    uint64 `protobuf:"fixed64,2,opt,name=total_bytes,json=totalBytes,proto3" json:"total_bytes,omitempty"`
+	// The file's size. Fixed width and always present (an empty file's 0
+	// would otherwise be left out), so the result's length does not vary.
+	TotalBytes    *uint64 `protobuf:"fixed64,2,opt,name=total_bytes,json=totalBytes,proto3,oneof" json:"total_bytes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3780,8 +3781,8 @@ func (x *GetSharedFileChunkResponse) GetData() []byte {
 }
 
 func (x *GetSharedFileChunkResponse) GetTotalBytes() uint64 {
-	if x != nil {
-		return x.TotalBytes
+	if x != nil && x.TotalBytes != nil {
+		return *x.TotalBytes
 	}
 	return 0
 }
@@ -4560,11 +4561,12 @@ const file_remoteagent_v1_local_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
 	"\afile_id\x18\x02 \x01(\tR\x06fileId\x12\x16\n" +
-	"\x06offset\x18\x03 \x01(\x03R\x06offset\"Q\n" +
+	"\x06offset\x18\x03 \x01(\x03R\x06offset\"f\n" +
 	"\x1aGetSharedFileChunkResponse\x12\x12\n" +
-	"\x04data\x18\x01 \x01(\fR\x04data\x12\x1f\n" +
-	"\vtotal_bytes\x18\x02 \x01(\x06R\n" +
-	"totalBytes\"Y\n" +
+	"\x04data\x18\x01 \x01(\fR\x04data\x12$\n" +
+	"\vtotal_bytes\x18\x02 \x01(\x06H\x00R\n" +
+	"totalBytes\x88\x01\x01B\x0e\n" +
+	"\f_total_bytes\"Y\n" +
 	"\x1cGetImageUploadStatusResponse\x129\n" +
 	"\x06status\x18\x01 \x01(\v2!.remoteagent.v1.ImageUploadStatusR\x06status\"=\n" +
 	"\x1aCompleteImageUploadRequest\x12\x1f\n" +
@@ -4862,6 +4864,7 @@ func file_remoteagent_v1_local_proto_init() {
 	}
 	file_remoteagent_v1_event_proto_init()
 	file_remoteagent_v1_local_proto_msgTypes[20].OneofWrappers = []any{}
+	file_remoteagent_v1_local_proto_msgTypes[60].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

@@ -18,6 +18,7 @@ import (
 
 	"connectrpc.com/connect"
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 // Files the agent hands to the user (session-files.md "Agent 给客户端发文件").
@@ -105,14 +106,19 @@ func perTurnError() error {
 // share copies src (already validated and opened) for session. The space
 // is reserved under the upload lock by sizing the staging file, the copy
 // and hash run without it, and the rename into place commits the copy.
-func (u *uploads) share(session, turn string, src *os.File, size int64, name, path string) (*sharedRecord, error) {
+func (u *uploads) share(session, turn string, drops uint64, src *os.File, before os.FileInfo, name, path string) (*sharedRecord, error) {
 	if !validSessionDir(session) {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid session"))
 	}
 	pins := u.protectedSessions()
 	id := newID(16)
 	staging := filepath.Join(u.sharedDir(session), id+".tmp")
+	size := before.Size()
 	u.mu.Lock()
+	if u.drops[session] != drops {
+		u.mu.Unlock()
+		return nil, errEnded()
+	}
 	if n, err := u.sharedInTurn(session, turn); err != nil {
 		u.mu.Unlock()
 		return nil, err
@@ -161,6 +167,15 @@ func (u *uploads) share(session, turn string, src *os.File, size int64, name, pa
 		}
 	}
 	if err == nil {
+		// Rewritten in place at the same length: the copy may mix old and new bytes.
+		after, serr := src.Stat()
+		if serr != nil {
+			err = serr
+		} else if after.Size() != size || !after.ModTime().Equal(before.ModTime()) {
+			err = errChanged
+		}
+	}
+	if err == nil {
 		err = dst.Sync()
 	}
 	if err == nil {
@@ -179,6 +194,12 @@ func (u *uploads) share(session, turn string, src *os.File, size int64, name, pa
 	}
 	u.mu.Lock()
 	defer u.mu.Unlock()
+	// The session's files went while the copy ran; renaming into a folder
+	// made again by this call would leave a copy nothing removes.
+	if u.drops[session] != drops {
+		cleanup()
+		return nil, errEnded()
+	}
 	if n, err := u.sharedInTurn(session, turn); err != nil || n >= maxSharedPerTurn {
 		cleanup()
 		if err == nil {
@@ -186,12 +207,8 @@ func (u *uploads) share(session, turn string, src *os.File, size int64, name, pa
 		}
 		return nil, err
 	}
-	// The session's folder goes when it ends; a copy made meanwhile is not offered.
 	if err := os.Rename(staging, filepath.Join(u.sharedDir(session), id)); err != nil {
 		cleanup()
-		if os.IsNotExist(err) {
-			return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the session ended while the file was being copied"))
-		}
 		return nil, err
 	}
 	if err := u.syncUploadDirs(u.sharedDir(session)); err != nil {
@@ -200,6 +217,19 @@ func (u *uploads) share(session, turn string, src *os.File, size int64, name, pa
 		return nil, err
 	}
 	return r, nil
+}
+
+func errEnded() error {
+	return connect.NewError(connect.CodeFailedPrecondition, errors.New("the session ended while the file was being copied"))
+}
+
+// sessionDrops counts how often session's files were removed. send_file
+// takes it before checking that the session is alive: a removal after that
+// check changes the count, and the copy is not offered.
+func (u *uploads) sessionDrops(session string) uint64 {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return u.drops[session]
 }
 
 var errChanged = connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being copied; send it again once it is complete"))
@@ -251,7 +281,7 @@ func (u *uploads) sharedChunk(session, id string, offset int64) (*pb.GetSharedFi
 			return nil, err
 		}
 	}
-	return &pb.GetSharedFileChunkResponse{Data: data, TotalBytes: uint64(r.Size)}, nil
+	return &pb.GetSharedFileChunkResponse{Data: data, TotalBytes: proto.Uint64(uint64(r.Size))}, nil
 }
 
 // sharedFiles resolves the IDs a send_file call returned to this session's
@@ -461,6 +491,7 @@ func (d *Daemon) sendFile(ctx context.Context, sessionID, scope, raw string) (*p
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, errors.New("no such session"))
 	}
+	drops := d.uploads.sessionDrops(sessionID)
 	var cwd, turn string
 	var exited bool
 	// The turn decides the per-turn limit; read the transcript first so the
@@ -474,13 +505,17 @@ func (d *Daemon) sendFile(ctx context.Context, sessionID, scope, raw string) (*p
 	if exited {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the session has ended"))
 	}
-	f, real, size, err := openSendFile(d.sendTarget(sessionID, cwd), cwd, raw)
+	f, real, _, err := openSendFile(d.sendTarget(sessionID, cwd), cwd, raw)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
+	fi, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
 	name := safeFileName(filepath.Base(raw))
-	r, err := d.uploads.share(sessionID, turn, f, size, name, real)
+	r, err := d.uploads.share(sessionID, turn, drops, f, fi, name, real)
 	if err != nil {
 		return nil, err
 	}

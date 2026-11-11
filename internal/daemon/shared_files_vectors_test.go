@@ -83,7 +83,7 @@ func TestSharedFileBlockVectors(t *testing.T) {
 			if err != nil {
 				t.Fatalf("%s at %s: %v", c.Name, off, err)
 			}
-			if len(res.Data) != sharedChunkBytes || res.TotalBytes != uint64(size) {
+			if len(res.Data) != sharedChunkBytes || res.GetTotalBytes() != uint64(size) {
 				t.Fatalf("%s at %s: %d bytes", c.Name, off, len(res.Data))
 			}
 			keep := int64(sharedChunkBytes)

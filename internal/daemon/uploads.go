@@ -114,6 +114,7 @@ type uploads struct {
 	dir  string
 
 	mu               sync.Mutex
+	drops            map[string]uint64 // per session, see sessionDrops
 	quota            int64
 	limits           func() int64
 	pins             func() map[string]bool
@@ -569,6 +570,10 @@ func (u *uploads) dropSessionLocked(sessionID string) {
 	if sessionID == "" || sessionID == "partial" || sessionID == "pending" || strings.ContainsAny(sessionID, "/.\\") {
 		return
 	}
+	if u.drops == nil {
+		u.drops = map[string]uint64{}
+	}
+	u.drops[sessionID]++
 	entries, err := os.ReadDir(filepath.Join(u.dir, "partial"))
 	if err != nil && !os.IsNotExist(err) {
 		return

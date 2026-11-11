@@ -24,7 +24,7 @@ func (f *fakeLocal) GetSharedFileChunk(ctx context.Context, req *connect.Request
 	if req.Msg.FileId == "random" {
 		_, _ = rand.Read(data)
 	}
-	return connect.NewResponse(&pb.GetSharedFileChunkResponse{Data: data, TotalBytes: 10}), nil
+	return connect.NewResponse(&pb.GetSharedFileChunkResponse{Data: data, TotalBytes: proto.Uint64(10)}), nil
 }
 
 // A block crosses the relay as a session command, and its result is sealed

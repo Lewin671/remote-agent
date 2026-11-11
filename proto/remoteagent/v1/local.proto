@@ -561,8 +561,9 @@ message GetSharedFileChunkResponse {
   // Exactly shared_file_chunk_bytes: the file's bytes from offset, then
   // zeros past its end.
   bytes data = 1;
-  // The file's size; fixed width so the result's length does not vary.
-  fixed64 total_bytes = 2;
+  // The file's size. Fixed width and always present (an empty file's 0
+  // would otherwise be left out), so the result's length does not vary.
+  optional fixed64 total_bytes = 2;
 }
 
 message GetImageUploadStatusResponse {
