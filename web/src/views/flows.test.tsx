@@ -131,6 +131,18 @@ it("lets the home card handle one approval after another", async () => {
   expect(button("不允许", card())?.disabled).toBe(false);
 });
 
+it("names the computer on the home card only where the account has more than one", () => {
+  const several = demo();
+  expect(several.machines.size).toBeGreaterThan(1);
+  mount(<Home remote={several} go={() => undefined} />);
+  expect(host.querySelector(".tc .m")?.textContent).toMatch(/ · /);
+  const one = demo();
+  const keep = one.sessions.get("s-appr")!.machineId;
+  for (const id of [...one.machines.keys()]) if (id !== keep) one.machines.delete(id);
+  mount(<Home remote={one} go={() => undefined} />);
+  expect(host.querySelector(".tc .m")?.textContent).not.toMatch(/ · /);
+});
+
 it("gives an open dock about 60% of the chat column, 240 at the least, within its room", () => {
   // A phone: 700 high, of which the dock may take 470 under its line.
   expect(dockContentMax(470, 700)).toBe(420);

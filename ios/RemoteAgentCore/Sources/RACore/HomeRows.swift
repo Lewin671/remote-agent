@@ -321,7 +321,7 @@ public struct ApprovalCardText: Equatable, Sendable {
     /// The deadline is less than a minute away: the time turns orange.
     public var hot: Bool
     public var title: String
-    /// 「项目 · 机器」.
+    /// 「项目 · 机器」, the computer only where the account has more than one.
     public var place: String
 
     public init(kind: String, time: String, hot: Bool, title: String, place: String) {
@@ -352,7 +352,8 @@ public func approvalCardText(
     }
     return ApprovalCardText(
         kind: approvalHead(approval), time: time, hot: !state.unlinked && deadline > 0 && left < 60_000, title: titleOf(s, zone: zone),
-        place: [projectName(projectKey(s)), machineName(state.machines[s.machineId], id: s.machineId)].joined(separator: " · "))
+        // The computer is named only where the account has more than one (design-system §6 终端卡).
+        place: ([projectName(projectKey(s))] + (state.machines.count > 1 ? [machineName(state.machines[s.machineId], id: s.machineId)] : [])).joined(separator: " · "))
 }
 
 // --- the sentence at the top ---

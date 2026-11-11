@@ -224,6 +224,8 @@ class HomeRowsTest {
         val api = session("api", "/p/foo", title = "重构 API 层", approvals = 1)
         val request = ApprovalRequested.newBuilder().setApprovalId("A1").setCommand("go test ./...").setDeadline(ts(now + 8 * 60_000 - 20_000)).build()
         assertEquals(ApprovalCardText("请求执行", "剩 8 分钟，超时拒绝", false, "重构 API 层", "foo · m"), approvalCardText(st, api, request, timeoutNote = true, now, zone))
+        // The computer is written only where the account has more than one.
+        assertEquals("foo", approvalCardText(state(emptyList()), api, request, timeoutNote = true, now, zone).place)
         assertEquals("剩 8 分钟", approvalCardText(st, api, request, timeoutNote = false, now, zone).time)
         // The last minute is orange.
         assertTrue(approvalCardText(st, api, request.toBuilder().setDeadline(ts(now + 30_000)).build(), timeoutNote = true, now, zone).hot)

@@ -233,6 +233,8 @@ import Testing
         }
         let card = approvalCardText(st, api, approval: request, timeoutNote: true, now: now, zone: zone)
         #expect(card == ApprovalCardText(kind: "请求执行", time: "剩 8 分钟，超时拒绝", hot: false, title: "重构 API 层", place: "foo · m"))
+        // The computer is written only where the account has more than one.
+        #expect(approvalCardText(state([]), api, approval: request, timeoutNote: true, now: now, zone: zone).place == "foo")
         #expect(approvalCardText(st, api, approval: request, timeoutNote: false, now: now, zone: zone).time == "剩 8 分钟")
         // The last minute is orange.
         request.deadline = ts(now + 30_000)

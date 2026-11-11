@@ -168,7 +168,8 @@ function TopApproval({ remote, s, go, scope }: { remote: Remote; s: SessionView;
         <PendingRow remote={remote} s={s} go={go} scope={scope} />
       </div>
     );
-  const where = [projectName(projectKey(s)), machineName(remote.machines.get(s.machineId))].join(" · ");
+  // The computer is named only where the account has more than one (design-system §6 终端卡).
+  const where = [projectName(projectKey(s)), remote.machines.size > 1 ? machineName(remote.machines.get(s.machineId)) : ""].filter(Boolean).join(" · ");
   // Keyed by approval: the next one must not inherit this one's locked buttons.
   return <ApprovalCard key={a.approvalId} remote={remote} sid={s.id} a={a} title={titleOf(s)} where={where} onOpen={() => go("s/" + s.id)} timeoutNote />;
 }

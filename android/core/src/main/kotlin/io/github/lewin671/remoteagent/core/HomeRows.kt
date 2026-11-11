@@ -322,7 +322,8 @@ fun approvalCardText(
         time = time,
         hot = !state.unlinked && deadline > 0 && left < 60_000,
         title = titleOf(s, zone),
-        place = listOf(projectName(projectKey(s)), machineName(state.machines[s.machineId], s.machineId)).joinToString(" · "),
+        // The computer is named only where the account has more than one (design-system §6 终端卡).
+        place = listOfNotNull(projectName(projectKey(s)), machineName(state.machines[s.machineId], s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · "),
     )
 }
 
