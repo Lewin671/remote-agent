@@ -184,7 +184,7 @@ class HomeRowsTest {
         val st = state(listOf(run), machines = listOf("m", "n"))
         val row = sessionRowText(st, run, RowMeta(project = true, agent = true, machine = true), now, zone)
         assertEquals(SessionRowText("修复登录超时", "刚刚", Status.RUNNING, "正在执行 go test", "foo · m", Agent.AGENT_CODEX), row)
-        assertEquals("修复登录超时，运行中，正在执行 go test，foo，Codex，m，刚刚", row.spoken)
+        assertEquals("修复登录超时，运行中，正在执行 go test，Codex，foo，m，刚刚", row.spoken)
         // The status word already says a plan waits.
         assertTrue(sessionRowText(st, session("plan", plan = true), RowMeta(), now, zone).preview.isEmpty())
         // The mark leads the third line only where the list used more than one CLI.
