@@ -611,6 +611,7 @@ private fun ChatPane(
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     // The dock appearing or going also moves the bottom.
     LaunchedEffect(
+        followState.sends,
         items.size,
         outbox.size,
         d.tools.size,
@@ -773,6 +774,7 @@ private fun ChatPane(
                 d,
                 onTerminal,
                 onPlan = { nav.plan(s.id) },
+                onSent = followState::sent,
             )
         }
     }
@@ -989,6 +991,7 @@ private fun Bottom(
     d: io.github.lewin671.remoteagent.core.Derived,
     onTerminal: () -> Unit,
     onPlan: () -> Unit,
+    onSent: () -> Unit,
 ) {
     val p = pal
     val remote = LocalRemote.current
@@ -1068,7 +1071,7 @@ private fun Bottom(
             null -> {}
         }
     }
-    Composer(state, s, d, status, onFocus = {})
+    Composer(state, s, d, status, onSent = onSent, onFocus = {})
 }
 
 /**
@@ -1124,6 +1127,7 @@ internal fun Composer(
     s: SessionView,
     d: io.github.lewin671.remoteagent.core.Derived,
     status: Status,
+    onSent: () -> Unit = {},
     onFocus: (Boolean) -> Unit,
 ) {
     val p = pal
@@ -1152,6 +1156,7 @@ internal fun Composer(
         Motion.tap(view)
         if (picked.isEmpty()) {
             text = ""
+            onSent()
             Outbox.send(RaApp.instance.scope, remote, s.id, msg, mode)
             return
         }
@@ -1172,6 +1177,8 @@ internal fun Composer(
                 .onSuccess {
                     if (text.trim() == msg) text = ""
                     images.detach(picked)
+                    // The message is in the chat now: back to the end to see it, as for a text one.
+                    onSent()
                 }
                 .onFailure {
                     images.notice = "这条没有发出：${errorText(it)}"
@@ -1247,8 +1254,21 @@ class Follow {
     var on by mutableStateOf(true)
         private set
 
+    /** Counts the messages the user sent from this view; a change is the cue to go to the end. */
+    var sends by mutableIntStateOf(0)
+        private set
+
     fun observe(userDragging: Boolean, atBottom: Boolean) {
         if (atBottom) on = true else if (userDragging) on = false
+    }
+
+    /**
+     * The user sent a message: sending is asking to see the answer, so the chat goes back to the end
+     * and follows again, even from far up. Messages that arrive from elsewhere never do this.
+     */
+    fun sent() {
+        on = true
+        sends++
     }
 }
 

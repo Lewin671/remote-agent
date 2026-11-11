@@ -20,4 +20,21 @@ class FollowTest {
         f.observe(userDragging = false, atBottom = true)
         assertTrue(f.on)
     }
+
+    @Test
+    fun sendingFollowsAgainFromFarUp() {
+        val f = Follow()
+        f.observe(userDragging = true, atBottom = false)
+        assertFalse(f.on)
+        // Messages from elsewhere do not turn it back on; the user's own message does, and says so.
+        f.observe(userDragging = false, atBottom = false)
+        assertFalse(f.on)
+        val before = f.sends
+        f.sent()
+        assertTrue(f.on)
+        assertTrue(f.sends != before)
+        // The jump to the end has not finished: it must not stop following.
+        f.observe(userDragging = false, atBottom = false)
+        assertTrue(f.on)
+    }
 }
