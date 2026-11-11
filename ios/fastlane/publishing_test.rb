@@ -32,8 +32,12 @@ class PublishingTest < Minitest::Test
   end
 
   def test_never_withdraws_previous_review_or_overwrites_newer_version
-    %w[WAITING_FOR_REVIEW IN_REVIEW PREPARE_FOR_SUBMISSION PENDING_DEVELOPER_RELEASE].each do |state|
+    %w[PREPARE_FOR_SUBMISSION PENDING_DEVELOPER_RELEASE].each do |state|
       assert_raises(RuntimeError) { Publishing.decision([Version.new('0.55.0', state, 'MANUAL')]) }
+    end
+    # A previous version Apple is still handling is waited for, neither withdrawn nor a failure.
+    %w[WAITING_FOR_REVIEW IN_REVIEW PENDING_APPLE_RELEASE PROCESSING_FOR_DISTRIBUTION].each do |state|
+      assert_equal :waiting, Publishing.decision([Version.new('0.55.0', state, 'AFTER_APPROVAL')])
     end
     assert_raises(RuntimeError) { Publishing.decision([Version.new('0.57.0', 'READY_FOR_DISTRIBUTION', 'AFTER_APPROVAL')]) }
   end

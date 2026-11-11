@@ -74,8 +74,13 @@ platform :ios do
     app = Spaceship::ConnectAPI::App.find(Publishing::BUNDLE_ID)
     UI.user_error!('App Store app was not found') unless app
     versions = app.get_app_store_versions(filter: { platform: 'IOS' })
-    if Publishing.decision(versions) == :done
+    decision = Publishing.decision(versions)
+    if decision == :done
       UI.success('This version is already submitted with automatic release enabled')
+      next
+    end
+    if decision == :waiting
+      UI.important("A previous App Store version is still with Apple; #{Publishing.version} is not submitted. Run this workflow again once that version is through, or let the next release carry the changes.")
       next
     end
     notes = Publishing.notes

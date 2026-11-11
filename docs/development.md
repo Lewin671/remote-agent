@@ -85,7 +85,7 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 
 ## iOS App Store 自动发布
 
-`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先串行运行 Swift package 测试，再归档签名的 Release 并上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；已有版本在审核或待手动发布时会明确失败，不撤回审核、不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
+`iOS App Store` 工作流在 `Release` 成功后运行，从已公开的最新正式 tag 构建 iOS，使用 `version.properties` 的产品版本与 `androidVersionCode` 作为构建号。先串行运行 Swift package 测试，再归档签名的 Release 并上传、等待 Apple 处理、提交审核，审核通过后自动上架。Apple 审核不由 CI 控制；前一个版本还在 Apple 手里（等待审核、审核中、等待上架）时，这一版不提交，工作流正常结束并写明原因，不算失败：不撤回审核，等它结束后手动重跑，或由下一次发布带上这些变化。前一个版本待手动发布或状态异常时仍明确失败；不覆盖较新版本。解决 Apple 侧问题后，在 Actions 手动运行，填写最新正式 tag 并选中 `publish`；同一版本已上传的构建会复用，已自动送审的版本直接跳过。并发发布串行执行，GitHub 只保留一个等待运行的任务；被新版本取代的旧版本跳过。
 
 初次配置：
 

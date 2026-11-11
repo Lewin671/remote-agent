@@ -7,6 +7,7 @@ require 'cfpropertylist'
 module Publishing
   BUNDLE_ID = 'io.github.lewin671.remoteagent'
   EDITABLE = %w[PREPARE_FOR_SUBMISSION DEVELOPER_REJECTED REJECTED METADATA_REJECTED INVALID_BINARY].freeze
+  WAITING_ON_APPLE = %w[WAITING_FOR_REVIEW IN_REVIEW PENDING_APPLE_RELEASE PROCESSING_FOR_DISTRIBUTION].freeze
   SUBMITTED = %w[WAITING_FOR_REVIEW IN_REVIEW PENDING_APPLE_RELEASE PROCESSING_FOR_DISTRIBUTION READY_FOR_DISTRIBUTION].freeze
 
   def self.secret(name, required)
@@ -105,6 +106,10 @@ module Publishing
           return :done
         end
         raise "Version #{version} needs attention: #{state} / #{v.release_type}" unless EDITABLE.include?(state)
+      elsif WAITING_ON_APPLE.include?(state)
+        # Apple has the previous version: nothing here is wrong and nothing can be done until
+        # it is through. This release is not submitted; the next one after that will be.
+        return :waiting
       elsif !%w[READY_FOR_DISTRIBUTION REPLACED_WITH_NEW_VERSION].include?(state)
         raise "Previous App Store version #{v.version_string} is still #{state}; finish it before retrying"
       end
