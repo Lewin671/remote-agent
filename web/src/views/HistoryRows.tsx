@@ -94,7 +94,9 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       if (follows && parent.scrollHeight - parent.scrollTop - parent.clientHeight < 40) parent.scrollTop = parent.scrollHeight;
       const sh = parent.scrollHeight;
       const rows = parent.querySelectorAll<HTMLElement>("[data-item-index]");
-      const drawn = rows.length > 0 && sh > parent.clientHeight;
+      // Rows are on the page, and either the list is taller than it or its last
+      // row (the footer) is there: a short chat has nothing more to wait for.
+      const drawn = rows.length > 0 && (sh > parent.clientHeight || !!parent.querySelector(`[data-item-index="${firstNow.current + count.current - 1}"]`));
       const there = !follows || sh - parent.scrollTop - parent.clientHeight < 4;
       // Every row on the page is the size the list holds for it: what is
       // left to correct is not on the page.

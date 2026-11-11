@@ -189,3 +189,20 @@ it("keeps the rows on screen when older records join above", async () => {
   expect(after.filter((x) => x?.startsWith("message ")).slice(-3)).toEqual(before.filter((x) => x?.startsWith("message ")).slice(-3));
   expect(host.querySelectorAll("[data-item-index]").length).toBeLessThan(40);
 });
+
+it("shows a short chat in a long session at once: a list no taller than the page has nothing to wait for", async () => {
+  const height = vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLElement) { return Number(this.dataset.knownSize ?? 600); });
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>(); const remote = { scroll: new Map() } as unknown as Remote;
+  const items = Array.from({ length: 3 }, (_, i) => ({ key: String(i), text: "message " + (i + 1) }));
+  await act(async () => root!.render(<VirtuosoMockContext.Provider value={{ viewportHeight: 600, itemHeight: 60 }}>
+    <div ref={(el) => {
+      scroller.current = el;
+      if (!el) return;
+      Object.defineProperties(el, { clientHeight: { configurable: true, get: () => 600 }, offsetHeight: { configurable: true, get: () => 600 }, scrollHeight: { configurable: true, get: () => 600 } });
+      el.getBoundingClientRect = () => new DOMRect(0, 0, 600, 600);
+    }}><HistoryRows items={items} render={(it) => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s" follow={() => true} loaded ready long header={<p>start</p>} footer={<p>end</p>} /></div>
+  </VirtuosoMockContext.Provider>));
+  await vi.waitFor(async () => { await act(async () => { await new Promise((r) => setTimeout(r, 20)); }); expect(scroller.current!.classList.contains("mo-hold")).toBe(false); }, { timeout: 1500 });
+  height.mockRestore();
+});
