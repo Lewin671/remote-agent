@@ -622,7 +622,7 @@ export function SessionPage({
             info={
               <>
                 <b>
-                  {agentLabel} · {project} · {mname}
+                  {[agentLabel, project, remote.machines.size > 1 ? mname : ""].filter(Boolean).join(" · ")}
                 </b>
                 <span className="mono">
                   {shortPath(session.info?.cwd ?? "")}

@@ -237,7 +237,8 @@ private struct SessionPage: View {
         .menuSheet(isPresented: $menu, groups: groups(status: status, running: running, live: live, mode: mode, percent: percent)) {
             // What the menu is about: the CLI, the project, the computer, then the folder (design-system §6 「弹层与对话框」).
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(agentName(s.agent)) · \(projectName(projectKey(s))) · \(machineLabel(state, id: s.machineId))")
+                // The computer is named only where the account has more than one.
+                Text(([agentName(s.agent), projectName(projectKey(s))] + (state.machines.count > 1 ? [machineLabel(state, id: s.machineId)] : [])).joined(separator: " · "))
                     .font(.headline).foregroundStyle(DS.ink)
                 Text(shortPath(s.info?.cwd ?? "")).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
             }
