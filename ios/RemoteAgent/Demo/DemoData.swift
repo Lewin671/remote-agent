@@ -3,8 +3,8 @@
 // mockup's tidy examples has only been checked against one of the cases it
 // will meet:
 //
-//   everyday  the mockup's own examples, the data of Android's V7Gallery
-//             and V8Gallery (androidTest): three computers, a handful of
+//   everyday  the mockup's own examples, the data of Android's V8Gallery
+//             (androidTest): three computers, a handful of
 //             sessions in every state, one of each thing that waits;
 //   crowded   long titles and names, many projects, sessions, computers
 //             and clients, states that overlap, a computer offline with

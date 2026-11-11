@@ -13,7 +13,7 @@
 | 说法 | 含义 |
 |---|---|
 | 自动测试 | `go test ./...`、`cd web && pnpm test`、`cd android && ./gradlew test` 或仪器测试通过 |
-| 演示页 / 示例数据 | 网页的 `/?demo`、Android 的 `V7Gallery` / `V8Gallery` 用固定数据渲染，没有连 daemon |
+| 演示页 / 示例数据 | 网页的 `/?demo`、Android 的 `V8Gallery` 等用固定数据渲染，没有连 daemon |
 | 真实 CLI | 连着真实的 Codex 或 Claude Code 走过操作，客户端是本机 Chrome 或 Android 模拟器 |
 | 真机 | 在真手机上走过。**目前没有任何一项做过真机验收** |
 
@@ -89,7 +89,7 @@
 - 真实 CLI：工具开始即显示和计时、并行调用、Claude Code 自己转到后台的命令标为待确认；独立中断入口；审批停靠和允许；Claude Code 多选「提交 N 项」、计划「继续规划」、Haiku 不提供自动模式；常用、移除和撤销、恢复，隐藏项目的会话仍在主页；设备目录、客户端改名、设备默认模型、额度页；Claude Code `Read` 的图片预览、大图、保存和分享；从手机给两个 CLI 各发两张图（带方向标记的 6.7 MB 照片压成 669 KB 并转正）、原图 8.9 MB 分块上传后转正且没有 EXIF、新建会话第一条消息带图、进程被杀后待发图片从加密存储恢复并重传
 - 实测见 [android-notes §6](android-notes.md#6-v2-客户端)；v5 的复查见 [android-notes §7](android-notes.md#7-v5-界面复查)
 
-**v7 的画面**（2026-09-30，示例数据）：仪器测试 `V7Gallery` 以固定示例数据渲染 29 个手机画面的亮暗两套，在 304×644 dp 的模拟器显示上截图，与设计稿同一画面并排核对，并在字号 130% 下检查不溢出，见 [android-notes §9](android-notes.md#9-v7-界面还原)。没有连真实 CLI。
+**v7 的画面**（2026-09-30，示例数据）：仪器测试 `V7Gallery` 以固定示例数据渲染 29 个手机画面的亮暗两套，在 304×644 dp 的模拟器显示上截图，与设计稿同一画面并排核对，并在字号 130% 下检查不溢出，见 [android-notes §9](android-notes.md#9-v7-界面还原)。没有连真实 CLI。`V7Gallery` 之后删除：它的画面都在 `V8Gallery` 里，旧的「详情」按钮用例也早已失效。
 
 **v8 的画面**（2026-09-30，示例数据）：JVM 测试覆盖待发状态、模式与项目设置冲突重做；`V8Gallery` 在 API 36 模拟器上通过 33 个亮暗画面测试，130% 字号下抽查截图，见 [android-notes §10](android-notes.md#10-v8-界面还原)。连真实 CLI 的部分见下一节。
 
