@@ -605,7 +605,7 @@ fun NewSessionBox(
             entry.agent.value = null
             if (text.trim() == start.prompt && images.images.toList() == start.taken) draft.reset()
             Outbox.rememberPrompt(sid, start.prompt)
-            nav.session(sid)
+            nav.startedSession(sid)
             if (text.trim() == start.prompt) text = ""
             val taken = start.taken
             images.detach(taken)

@@ -437,6 +437,20 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
   expect(host.textContent).toContain("批准后回到默认模式（询问）");
 });
 
+it("replaces the new-task page in the history with the session it started", async () => {
+  const r = demo();
+  const go = vi.fn();
+  let ns: ReturnType<typeof useNewSession> | undefined;
+  function Box() {
+    ns = useNewSession(r, "/Users/me/Code/foo", go);
+    return null;
+  }
+  mount(<Box />);
+  await act(async () => void (await ns!.create("在 foo 里做")));
+  expect(go).toHaveBeenCalledTimes(1);
+  expect(go).toHaveBeenCalledWith(expect.stringMatching(/^s\//), true);
+});
+
 it("never sends one project's unknown start from another project's box", async () => {
   const r = demo();
   const sent: { cwd?: string; prompt?: string; requestId?: string }[] = [];

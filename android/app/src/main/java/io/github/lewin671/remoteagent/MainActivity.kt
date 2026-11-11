@@ -325,6 +325,15 @@ class MainActivity : ComponentActivity() {
                 if (currentTask?.destination?.route != "task/{machine}/{id}" || currentTask.arguments?.getString("id") != id || currentTask.arguments?.getString("machine") != machine) go("task/$machine/$id", true)
             },
             newTask = { go("newtask?session=$it") },
+            startedSession = { sid ->
+                leave()
+                val page = nav.currentBackStackEntry
+                val route = page?.destination?.route.orEmpty()
+                nav.navigate("session/$sid") {
+                    launchSingleTop = true
+                    if (route.startsWith("project/") || route.startsWith("newproject/")) popUpTo(page!!.destination.id) { inclusive = true }
+                }
+            },
             scheduledSession = { sid, seq ->
                 io.github.lewin671.remoteagent.ui.ScheduleJump.requested[sid] = seq
                 go("session/$sid", single = true)

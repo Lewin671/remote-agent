@@ -73,7 +73,8 @@ import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, X } from "../icons";
 
-export type Go = (route: string) => void;
+/** Navigate to a route; with replace the current history entry is swapped, so back skips it. */
+export type Go = (route: string, replace?: boolean) => void;
 
 /** The machine's defaults for new sessions of a CLI. */
 function defaultsOf(st: DaemonSettings | undefined, agent: Agent): { model: string; effort: string; mode: ApprovalMode } {
@@ -392,7 +393,8 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       // The draft went with it, on every page that shows this project.
       for (const x of Object.values(start.page ?? {})) if (x) start.spent.add(x);
       start.count++;
-      open("s/" + sid);
+      // The session takes the new-task page's place in the history: back goes to where the page was opened from.
+      open("s/" + sid, true);
       return true;
     } catch (e) {
       current.settle(e, sent);

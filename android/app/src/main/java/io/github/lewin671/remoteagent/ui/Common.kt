@@ -150,6 +150,8 @@ data class Nav(
     val task: (machine: String, id: String) -> Unit = { _, _ -> },
     val newTask: (session: String) -> Unit = {},
     val scheduledSession: (sid: String, seq: Long) -> Unit = { _, _ -> },
+    /** A session the new-task page just started: it takes the page's place, so back goes where the page was opened from. */
+    val startedSession: (String) -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

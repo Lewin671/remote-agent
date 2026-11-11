@@ -45,6 +45,7 @@ fun HomeOrWide() {
     var main by rememberSaveable { mutableStateOf<String?>(null) }
     val here = nav.copy(
         session = { main = "s$it" },
+        startedSession = { main = "s$it" },
         sessionTerminal = { OpenTerminal.requested[it] = true; main = "s$it" },
         project = { main = "n$it" },
         projectNew = { main = "n$it" },

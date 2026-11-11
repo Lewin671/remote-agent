@@ -221,7 +221,10 @@ function useRoute(): [string, Go] {
     addEventListener("hashchange", on);
     return () => removeEventListener("hashchange", on);
   }, []);
-  return [route, (r: string) => (location.hash = "/" + r)];
+  return [route, (r: string, replace?: boolean) => {
+    if (replace) location.replace(location.pathname + location.search + "#/" + r);
+    else location.hash = "/" + r;
+  }];
 }
 
 const wideQuery = matchMedia("(min-width: 900px)");
