@@ -77,7 +77,7 @@ describe("the chat of a session that is still talking", () => {
     const add = (kind: object) => list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: kind as never }));
     for (let i = 0; i < turns; i++) {
       add({ case: "userMessage", value: { text: `question ${i}` } });
-      add({ case: "assistantMessage", value: { text: `answer ${i}` } });
+      add({ case: "agentMessage", value: { text: `answer ${i}` } });
     }
     host = document.createElement("div");
     document.body.append(host);
@@ -104,7 +104,7 @@ describe("the chat of a session that is still talking", () => {
       });
     };
     const theyWrite = async (text: string) => {
-      add({ case: "assistantMessage", value: { text } });
+      add({ case: "agentMessage", value: { text } });
       await act(async () => { (r as unknown as { changed(): void }).changed(); });
     };
     await scrollTo(height() - 400); // at the end: following
@@ -113,6 +113,29 @@ describe("the chat of a session that is still talking", () => {
     const stick = () => r.scroll.get(sid)?.stick;
     return { el, scrollTo, theyWrite, resized, stick, top: () => top, sets, height };
   }
+
+  it("offers the latest messages while reading old history, with or without new replies", async () => {
+    const c = await open(20);
+    const button = () => host.querySelector<HTMLButtonElement>("button.newmsg");
+    const end = () => c.height() - 400;
+    expect(button()).toBeNull();
+    await c.scrollTo(end() - 30, "wheel");
+    expect(button()).toBeNull();
+    await c.scrollTo(end() - 400, "wheel");
+    expect(button()?.textContent).toContain("回到最新");
+    c.el.scrollTo = (options) => {
+      if (typeof options === "object") c.el.scrollTop = options.top ?? 0;
+      c.el.dispatchEvent(new Event("scroll", { bubbles: true }));
+    };
+    await act(async () => button()!.click());
+    expect(c.top()).toBe(end());
+    expect(button()).toBeNull();
+    await c.scrollTo(end() - 400, "wheel");
+    await c.theyWrite("another reply");
+    expect(button()?.textContent).toContain("1 条新消息");
+    await c.scrollTo(end());
+    expect(button()).toBeNull();
+  });
 
   for (const [label, turns] of [["plain list", 20], ["virtual list", 120]] as const) {
     describe(label, () => {
@@ -177,7 +200,7 @@ describe("sending from far up", () => {
     r.start();
     const sid = "s-idle";
     const list = r.events(sid);
-    for (let i = 0; i < 40; i++) list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: { case: "assistantMessage", value: { text: `answer ${i}` } } as never }));
+    for (let i = 0; i < 40; i++) list.push(create(EventSchema, { seq: BigInt(list.length + 1), kind: { case: "agentMessage", value: { text: `answer ${i}` } } as never }));
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);

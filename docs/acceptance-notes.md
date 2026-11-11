@@ -1748,7 +1748,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务：三端按 client-v52 改版（2026-10-30）
 
-产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v58 · 定时任务](design/client-v58.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
+产品版本 0.47.0 / 协议 11 的本地整合 checkout，三端按 [client-v59 · 定时任务](design/client-v59.html#schedules) 改版：详情顺序、「已停下 / 已暂停」、标题栏新建入口、已结束收起、离线行内「未连接」、新建页顺序、每周多选与每隔弹层、长描述的六行折叠与整页编辑、对话里的排队定时消息；网页另有宽屏两栏。共用向量 `testdata/schedules/clients.json` 新增 `offlineRow`、`titleFromMessage`，三端测试都读它。
 
 | 检查 | 结果 |
 |---|---|
@@ -1767,7 +1767,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务完成通知与接管说明（2026-10-30）
 
-基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v58](design/client-v58.html#schedules)。
+基于 v0.48.1 的独立 worktree，Go 1.26.10（darwin/arm64）、Claude Code 2.1.300、Xcode 27.0 / iOS 27 模拟器，协议 12，产品版本未修改；只本地提交，不推送、发版或部署。设计与升级要求见 [architecture §18](architecture.md#18-定时任务)，界面见 [client-v58](design/client-v59.html#schedules)。
 
 - 最终 `go test ./...` 全部通过；`go test ./internal/protocol -count=1` 的文档/协议约束检查也通过。通知标题复用原规则，包括允许尚未生成会话标题的缺失值；`TestScheduledFinish|TestScheduledNotifyTitleUsesExecutionSource` 定向复核通过。
 - 后端定向测试：`go test ./internal/daemon -run 'TestScheduledFinish|TestScheduledNotificationPolicySnapshot|TestMCPTakenOver' -count=1` 通过。覆盖缺省/显式开启、手动运行、已由 agent 通知不补发、关闭时不补发但仍允许 agent 通知、200 字摘要、失败/中断正文、来源会话承载启动失败通知、事件不可写时不记已通知及恢复重试、事件提交而任务保存前重启去重、策略快照、非法值拒绝、接管任务列表只读/来源/全部六种操作报错及跨会话拒绝。后续轮次回归 `TestFollowupSurvivesLaterSkippedRun|TestNonCompletedScheduledFollowups` 通过，保留 daemon 与 agent 通知的合计计数及原始运行结果。
@@ -1812,7 +1812,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 定时任务 IM 未读：网页（2026-11-01）
 
-基于 `64707901`、产品版本 0.50.2、协议 12 的独立 worktree，仅修改 `web/` 和 `docs/`，不提交、推送、发版或部署。界面与共同文案见 [client-v58 · 定时任务](design/client-v58.html#schedules)，视觉样式见 [design-system](design-system.md#6-组件)。本节只记录自动检查及边界，视觉验收由负责人完成。
+基于 `64707901`、产品版本 0.50.2、协议 12 的独立 worktree，仅修改 `web/` 和 `docs/`，不提交、推送、发版或部署。界面与共同文案见 [client-v59 · 定时任务](design/client-v59.html#schedules)，视觉样式见 [design-system](design-system.md#6-组件)。本节只记录自动检查及边界，视觉验收由负责人完成。
 
 ### 自动检查
 
@@ -1875,7 +1875,7 @@ rebase 到 `wt/file-upload` 的 `f23f0801`；冲突仅在验收文档，保留�
 
 ## 连接检测：区分正在重连与重连失败（2026-11-02）
 
-基于 v0.51.0 的独立 worktree，只改网页、Android 客户端和文档，协议不变。界面见 [client-v58 · 连接检测](design/client-v58.html)。
+基于 v0.51.0 的独立 worktree，只改网页、Android 客户端和文档，协议不变。界面见 [client-v59 · 连接检测](design/client-v59.html)。
 
 - 起因：网页从后台切回前台后打开连接检测，看到「实时推送 · 重连中」和「会话变化可能延迟」，服务器和电脑的往返却都正常。实际是切回前台后的重连还在进行，界面分不出这和卡住的区别。
 - 网页：`pnpm test` 92 个文件 1322 项通过，`pnpm run build` 通过。`reconnect.test.ts` 核对每一步的进度、失败和停止时清掉进度、新尝试重新计时且保留上一次失败原因；`conn-check.test.tsx` 核对步骤和秒数每秒刷新、进行中带上一次失败原因、失败后才出现原有提示、「立即重连」只在不在线时出现并调用 `reconnectNow`。
@@ -2204,7 +2204,7 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 - 滚动条是否「不占布局宽度」取决于系统设置：这台 Mac 的 Chrome 里 `offsetWidth − clientWidth` 是 0，系统设为「总是显示滚动条」或在 Windows 上，细滚动条（`scrollbar-width: thin`）仍占约 8–11px，没验。
 - 没做性能和刷新抖动（CLS）的计时测量，这需要专门的机器。改动里没有晚到才出现、会把内容推开的元素：代码块的语言行、弹层的关闭钮、新任务的上下留白都是第一帧就在的，顶栏的细线画在内容上、不占高度；没有重新量过。
 - 键盘：只试了侧栏的 Tab 顺序和弹层里的循环，没有用读屏软件听过。
-- `docs/design/client-v58.html` 的宽屏画面没改，宽屏以规范和实现为准。
+- `docs/design/client-v59.html` 的宽屏画面没改，宽屏以规范和实现为准。
 
 ### 网页交互排查和宽屏新任务区（2026-11-11）
 
@@ -2267,7 +2267,7 @@ daemon 设置新增 `idle_close_minutes`（默认 6 小时，可设 1 小时到 
 - 已发出、结果未知而待重试的请求保持原来的模式，这条靠代码保证（重试时直接用那次请求的配置），没有单独的用例。
 - 提示条的两种说法只在单元测试里看过，没有在演示数据里截图。
 - 演示页的标签页在后台时，页面被当作不可见，定时任务显示为连不上；截图时在页面里把可见性固定为可见，只用于看界面。
-- 没有重新核对界面稿 `design/client-v58.html`：其中新任务的摘要和项目设置画面仍是旧的，等三端都改完后出新一版。
+- 没有重新核对界面稿 `design/client-v59.html`：其中新任务的摘要和项目设置画面仍是旧的，等三端都改完后出新一版。
 
 ### 网页长历史缓存与表格布局（2026-11-11）
 

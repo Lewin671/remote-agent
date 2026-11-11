@@ -123,7 +123,7 @@ import {
 
 import { RowState, RememberDetails } from "./RowState";
 import { HistoryRows } from "./HistoryRows";
-import { followsEnd, type Scrolled } from "./scroll-follow";
+import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
 import {
   ArrowDown,
   Check,
@@ -857,6 +857,7 @@ function ChatBody({
   const userScrollAt = useRef(0);
   const lastScroll = useRef<Scrolled | undefined>(undefined);
   const [unseen, setUnseen] = useState(0);
+  const [away, setAway] = useState(false);
   const seen = useRef<number | undefined>(undefined);
   const hist = remote.history(sid);
   const restoringHistory = useRef(!hist.loaded);
@@ -946,6 +947,7 @@ function ChatBody({
       }
       // What the next scroll event is compared with: where the chat stands.
       lastScroll.current = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
+      setAway(!stick.current && el.scrollHeight - el.scrollTop - el.clientHeight >= NEAR_END);
       if (!stick.current) return;
       if (shrank || Date.now() - pressedAt.current > 800) el.scrollTop = el.scrollHeight;
     });
@@ -973,6 +975,7 @@ function ChatBody({
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!sent || !el) return;
+    setAway(false);
     stick.current = true;
     el.scrollTop = el.scrollHeight;
   }, [sent]);
@@ -1167,6 +1170,7 @@ function ChatBody({
           const now = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
           stick.current = followsEnd(stick.current, lastScroll.current, now, userScrollAt.current, Date.now());
           lastScroll.current = now;
+          setAway(!stick.current && gap >= NEAR_END);
           // The virtual list follows its last row, which stops short of the
           // chat's own bottom padding: where nobody scrolled it, the last step
           // is taken, so that older records that join above, or a row measured,
@@ -1214,11 +1218,13 @@ function ChatBody({
           )}
         />
       </div>
-      {unseen > 0 && (
+      {(away || unseen > 0) && (
         <NewMessages
           n={unseen}
           onClick={() => {
             const el = scroller.current;
+            userScrollAt.current = 0;
+            setAway(false);
             if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
             stick.current = true;
             seen.current = count;
@@ -1236,7 +1242,7 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   useExit(ref);
   return (
     <button ref={ref} className="newmsg" onClick={onClick}>
-      <ArrowDown /> {n} 条新消息
+      <ArrowDown /> {n > 0 ? `${n} 条新消息` : "回到最新"}
     </button>
   );
 }

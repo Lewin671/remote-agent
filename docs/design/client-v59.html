@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>remote-agent 客户端设计稿 v58 · 2026-11-10</title>
+<title>remote-agent 客户端设计稿 v59 · 2026-11-11</title>
 <style>
 
   /* 颜色各有一个意思：墨色 = 这屏最该做的事；蓝色 = 能点的文字；橙色 = 等你；绿色 = 在线；红色 = 危险。
@@ -433,22 +433,14 @@
 
 <div class="wrap">
 <div class="head">
-  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v58 · 2026-11-10 · 上一版 v57 在 git 历史里</p></div>
+  <div><h1>remote-agent 客户端</h1><p>网页 / Android / iOS 设计稿 · v59 · 2026-11-11 · 上一版 v58 在 git 历史里</p></div>
   <span class="sp"></span>
   <div class="seg" id="themeseg"><button data-t="auto" class="on">自动</button><button data-t="light">亮色</button><button data-t="dark">暗色</button></div>
 </div>
 <div class="note">本稿只表达界面长什么样，画面里的数值都是示例。做不做以 <a href="../scope.md">scope.md</a> 为准，技术决策见 <a href="../architecture.md">architecture.md</a>，颜色、字号、组件等视觉规则见 <a href="../design-system.md">design-system.md</a>，还没定的问题见 <a href="../plan.md">plan.md</a>。</div>
 <div class="note">
-  <h4>相对 v57 的改动</h4><ul>
-  <li>整套视觉换新：墨色主按钮，蓝色只用于能点的文字和未读，橙色只表示等你；正文 17 号、大标题 34 号；卡片和按钮用大圆角与胶囊。状态词不再上色，行首用图形（转圈、空心圈、橙点）区分。</li>
-  <li>不画导航栏和标签栏：内容铺满屏幕，上下边缘淡出，按钮是浮在内容上的小块玻璃。</li>
-  <li>主页的大标题是一句话，说现在有几件事等你、几个会话在运行，断线时说连接状态。等你的事排在最上面，最急的一件展开，其余一件一行。</li>
-  <li>等你批准的命令用深色的终端卡，主页、会话和宽屏是同一张；命令没显示全时卡上没有「允许」，先看完整命令。提问、计划等其他等待事项用同一张卡的壳。</li>
-  <li>底部从三个标签改为两个（会话、定时），右边是写着字的新建按钮；设置从主页右上角的齿轮进入，电脑是卡片，额度写剩多少。</li>
-  <li>新建会话改成一句话「在 项目 用 CLI」，下面直接写任务，其余设置收在键盘上方的摘要里。</li>
-  <li>会话里聊天 / 终端的切换改为分段控件；你的消息是浅灰气泡；⋯ 菜单是分组的底部弹层。</li>
-  <li>定时任务没读过的结果是能直接读的卡，读过的回到列表。</li>
-  <li>宽屏：窗口是灰底，会话内容是一张圆角纸，终端是嵌在纸里的深色面板。</li>
+  <h4>相对 v58 的改动</h4><ul>
+  <li>网页聊天回看时，离开底部后显示「回到最新」胶囊；有新消息时写数量，回到底部后消失。沿用现有玻璃胶囊样式。Android 与 iOS 本轮不改。</li>
   </ul>
 </div>
 <nav class="review-nav" aria-label="设计稿章节"><a href="#account-management">账户管理</a><a href="#home">主页</a><a href="#new">新建</a><a href="#conversation">会话</a><a href="#reply">回复正文</a><a href="#input">输入区</a><a href="#boundaries">边界状态</a><a href="#link">断线</a><a href="#conncheck">连接检测</a><a href="#update">App 更新</a><a href="#states">状态集</a><a href="#tools">工具执行</a><a href="#files">文件</a><a href="#images">图片</a><a href="#cli">多 CLI</a><a href="#rename">重命名</a><a href="#fork">分叉</a><a href="#approval-mode">审批模式</a><a href="#models">模型与上下文</a><a href="#quota">额度</a><a href="#projects">项目</a><a href="#devices">设备</a><a href="#device-security">账户安全</a><a href="#settings">设置与配对</a><a href="#wide">宽屏</a><a href="#schedules">定时任务</a><a href="#terminal-history">终端回看</a></nav>
@@ -1523,6 +1515,12 @@ go test ./internal/... -count=1</div><div class="bs"><button class="cb no dis">�
     <div class="st-h">聊天 · 长内容</div>
     <div class="ai"><pre>func Login(ctx context.Context, req LoginRequest) (*Session, error) {</pre><div class="tw"><table><tr><th>依赖</th><th>当前</th><th>最新</th><th>说明</th></tr><tr><td>pgx</td><td>v4.18.3</td><td>v5.7.1</td><td>大版本，要改连接池</td></tr><tr><td>chi</td><td>v5.0.12</td><td>v5.2.0</td><td>小版本</td></tr></table></div><div class="sh">← 可横向滑动 →</div></div>
     <div class="tl"><svg class="ic" width="14" height="14"><use href="#lu-x"/></svg><code>go build ./...</code><span class="rt">退出码 1</span></div>
+  </div>
+
+  <div class="st">
+    <div class="st-h">网页聊天 · 回看历史，没有新消息</div>
+    <div class="nm"><div class="ai">这里是前面一轮的回复，可以继续向上阅读。</div><div class="pill glass"><svg class="ic" width="15" height="15"><use href="#lu-arrow-down"/></svg>回到最新</div></div>
+    <div class="st-c">离开底部约 60px 后显示；回到底部附近就消失。有新消息时沿用数量提示，点击回到最新并继续跟随。</div>
   </div>
 
   <div class="st">
