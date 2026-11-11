@@ -96,15 +96,24 @@ function play(el: HTMLElement, frames: Keyframe[], ms: number, easing: string, i
   return a;
 }
 
-/** Makes a change that sets an element's height and eases it: from the
- * height on screen (also in the middle of an earlier change) to the new one. */
-export function easeHeight(el: HTMLElement, change: () => void) {
-  if (!canAnimate()) return change();
-  const from = el.getBoundingClientRect().height;
+/** Eases an element's height from one measured value to another. */
+export function easeBetween(el: HTMLElement, from: number, to: number) {
+  if (canAnimate() && sizeMs() > 0 && Math.abs(from - to) >= 1) play(el, [{ height: `${from}px` }, { height: `${to}px` }], sizeMs(), easeOut());
+}
+
+/** The height an element has on screen now, in the middle of an ease or not. */
+export function heightNow(el: HTMLElement): number {
+  return el.getBoundingClientRect().height;
+}
+
+/** Whether an ease of the element's height is running. */
+export function easing(el: Element): boolean {
+  return !!sizing(el);
+}
+
+/** Ends the running ease of an element's height. */
+export function stopEasing(el: Element) {
   sizing(el)?.cancel();
-  change();
-  const to = el.getBoundingClientRect().height;
-  if (sizeMs() > 0 && Math.abs(from - to) >= 1) play(el, [{ height: `${from}px` }, { height: `${to}px` }], sizeMs(), easeOut());
 }
 
 /** An inert copy of an element, for it to leave by or to fade out as. */

@@ -10,28 +10,55 @@ import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert, sendKeys, usePointerFine } from "../ui";
 import { ArrowUp, Square } from "../icons";
-import { easeHeight, Swap } from "../motion";
+import { easeBetween, easing, heightNow, stopEasing, Swap } from "../motion";
 
 /** The draft grows to about six lines (17 / 1.4, and its padding), then
  * scrolls inside. */
 const DRAFT_MAX = 150;
 
+/** Whether the browser sizes this textarea by its text itself. */
+function sizesItself(el: HTMLElement): boolean {
+  return typeof CSS !== "undefined" && !!CSS.supports?.("field-sizing", "content") && getComputedStyle(el).getPropertyValue("field-sizing") === "content";
+}
+
 /** A textarea that grows with its text up to max pixels. field-sizing
- * does this where supported; the height set here covers the rest. */
+ * does this where the stylesheet asks for it and the browser supports it
+ * (the height is then only eased here, from the size the browser reports once
+ * it has laid the new text out); the height set here covers the rest, with
+ * a single measure of the text per change. */
 export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: string, max = DRAFT_MAX) {
-  const drawn = useRef(false);
+  const state = useRef<{ native: boolean; height: number }>(undefined);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const fit = () => {
-      el.style.height = "auto";
-      el.style.height = `${Math.min(max, el.scrollHeight)}px`;
-    };
+    const s = (state.current ??= { native: sizesItself(el), height: 0 });
+    if (!s.native || typeof ResizeObserver === "undefined") return;
+    s.height = el.offsetHeight;
+    // Growing a line, or falling back once the message is sent, eases.
+    const ro = new ResizeObserver((entries) => {
+      const to = entries[entries.length - 1].borderBoxSize?.[0]?.blockSize ?? el.offsetHeight;
+      const from = s.height;
+      s.height = to;
+      if (from > 0) easeBetween(el, from, to);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const s = (state.current ??= { native: sizesItself(el), height: 0 });
+    if (s.native) return;
+    // What is on screen: the height set last, or where an ease has got to.
+    const from = easing(el) ? heightNow(el) : s.height;
+    stopEasing(el);
+    el.style.height = "auto";
+    const to = Math.min(max, el.scrollHeight);
+    el.style.height = `${to}px`;
+    s.height = to;
     // Growing a line, or falling back once the message is sent, eases;
     // the first fit, with a saved draft, is where it starts.
-    if (drawn.current) easeHeight(el, fit);
-    else fit();
-    drawn.current = true;
+    if (from > 0) easeBetween(el, from, to);
   }, [ref, text, max]);
 }
 
