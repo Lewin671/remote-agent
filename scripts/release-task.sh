@@ -39,7 +39,8 @@ fi
 tag=$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tag"])')
 git add version.properties
 git commit -m "Release $tag" -m "$summary"
-python3 -m unittest discover -s scripts -p '*_test.py'
+# The tests of the release tools decide eligibility themselves.
+env -u RA_REPUBLISH python3 -m unittest discover -s scripts -p '*_test.py'
 go test ./...
 git tag -a "$tag" -m "$summary"
 python3 scripts/release.py validate "$tag"
