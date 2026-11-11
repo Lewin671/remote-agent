@@ -149,7 +149,9 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   const [anchor] = useState(() => {
     if (top.stick) return undefined;
     if (initialTop) {
-      if (!saved || (saved.count === items.length + 2 && saved.width === parent.clientWidth) || !saved.anchor) return undefined;
+      // A remount starts its indices at FIRST again. A snapshot from before
+      // a prepend uses another origin, even when count and width match.
+      if (!saved || (saved.count === items.length + 2 && saved.width === parent.clientWidth && saved.first === firstAtMount.current) || !saved.anchor) return undefined;
       const index = items.findIndex((it) => it.key === saved.anchor!.key);
       return index >= 0 ? { index: index + 1, align: "start" as const, offset: saved.anchor.offset } : undefined;
     }

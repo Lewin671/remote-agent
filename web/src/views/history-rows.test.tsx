@@ -240,3 +240,47 @@ it("opens at the latest row when an empty long history first restores a cached p
     expect(host.textContent).not.toContain("reply 1");
   } finally { height.mockRestore(); }
 });
+
+it("restores the reading row after a prepended history is remounted with new height estimates", async () => {
+  host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+  const scroller = createRef<HTMLDivElement>();
+  const remote = { scroll: new Map() } as unknown as Remote;
+  const all = Array.from({ length: 300 }, (_, i) => ({ key: String(i), text: `saved reply ${i + 1}` }));
+  let following = true, first = 1_000_000, itemHeight = 60;
+  const bounds = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    return this.dataset.itemIndex !== undefined
+      ? new DOMRect(0, (Number(this.dataset.itemIndex) - first) * itemHeight - scroller.current!.scrollTop, 600, itemHeight)
+      : new DOMRect(0, 0, 600, 600);
+  });
+  const page = (items: typeof all) => <VirtuosoMockContext.Provider value={{ viewportHeight: 600, itemHeight }}>
+    <div ref={el => {
+      scroller.current = el; if (!el) return;
+      Object.defineProperties(el, {
+        clientWidth: { configurable: true, get: () => 600 },
+        clientHeight: { configurable: true, get: () => 600 },
+        offsetHeight: { configurable: true, get: () => 600 },
+        scrollHeight: { configurable: true, get: () => Number.parseFloat((el.querySelector(".virtual-history") as HTMLElement)?.style.height || "600") },
+      });
+      el.scrollTo = options => { if (typeof options === "object") el.scrollTop = options.top ?? 0; el.dispatchEvent(new Event("scroll")); };
+    }}><HistoryRows items={items} render={it => <p>{it.text}</p>} scroller={scroller} remote={remote} sid="s" follow={() => following} loaded ready long header={<p>start</p>} footer={<p>end</p>} /></div>
+  </VirtuosoMockContext.Provider>;
+  const settle = async () => act(async () => { await new Promise(resolve => setTimeout(resolve, 100)); });
+  try {
+    await act(async () => root!.render(page(all.slice(200)))); await settle();
+    first -= 200;
+    await act(async () => root!.render(page(all))); await settle();
+    following = false;
+    await act(async () => { scroller.current!.scrollTo({ top: 251 * 60 + 15 }); }); await settle();
+    remote.scroll.set("s", { top: scroller.current!.scrollTop, stick: false });
+    expect(host.textContent).toContain("saved reply 251");
+    await act(async () => root!.render(null));
+    // A new list has no measured rows; a different probe height must not
+    // turn a saved pixel offset into a different message.
+    first = 1_000_000; itemHeight = 100;
+    await act(async () => root!.render(page(all))); await settle();
+    expect(host.textContent).toContain("saved reply 251");
+    const row = [...host.querySelectorAll<HTMLElement>("[data-item-index]")].find(el => el.getBoundingClientRect().bottom > 0);
+    expect(row?.textContent).toBe("saved reply 251");
+    expect(row!.getBoundingClientRect().top).toBe(-15);
+  } finally { bounds.mockRestore(); }
+});
