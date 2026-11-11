@@ -36,9 +36,22 @@ function page<C extends ComponentType<any>>(load: () => Promise<{ default: C }>)
   });
 }
 
-const settings = () => import("./Settings");
-const security = () => import("./Security");
-const schedules = () => import("./Schedules");
+// Which of the three files have come, to tell a route that has to wait for its
+// page from one that has it.
+const fetched = { settings: false, security: false, schedules: false };
+const part = <T,>(name: keyof typeof fetched, load: () => Promise<T>) => () => load().then((m) => ((fetched[name] = true), m));
+const settings = part("settings", () => import("./Settings"));
+const security = part("security", () => import("./Security"));
+const schedules = part("schedules", () => import("./Schedules"));
+
+/** Whether a route's page is still to be fetched. */
+export function pageToFetch(route: string): boolean {
+  const [kind, arg] = route.split("/");
+  if (kind === "tasks") return !fetched.schedules;
+  if (kind === "settings") return !(arg === "security" || arg?.startsWith("add-device") ? fetched.security : fetched.settings);
+  if (kind === "devices" || kind === "q" || kind === "c" || kind === "m") return !fetched.settings;
+  return false;
+}
 
 export const SettingsPage = page(() => settings().then((m) => ({ default: m.Settings })));
 export const ClientPage = page(() => settings().then((m) => ({ default: m.ClientPage })));

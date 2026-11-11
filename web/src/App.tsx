@@ -31,6 +31,7 @@ import {
   SchedulesPage,
   SecurityPage,
   SettingsPage,
+  pageToFetch,
 } from "./views/pages";
 import { taskRoute } from "./schedules";
 import { hasScheduleDrafts } from "./schedule-drafts";
@@ -222,8 +223,13 @@ function useRoute(): [string, Go] {
   const read = () => location.hash.replace(/^#\/?/, "");
   const [route, setRoute] = useState(read);
   useEffect(() => {
-    // A page that has to be fetched first: the one being left stays until it is here.
-    const on = () => startTransition(() => setRoute(read()));
+    // A page that has to be fetched first: the one being left stays until it
+    // is here. Any other route changes at once, not at a transition's pace.
+    const on = () => {
+      const next = read();
+      if (pageToFetch(next)) startTransition(() => setRoute(next));
+      else setRoute(next);
+    };
     addEventListener("hashchange", on);
     return () => removeEventListener("hashchange", on);
   }, []);
