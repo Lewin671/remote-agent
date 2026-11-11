@@ -131,10 +131,16 @@ jobs:
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
-            ~/.gradle/caches
+            ~/.gradle/caches/*
             ~/.gradle/wrapper
+            !~/.gradle/caches/build-cache-1
           key: gradle-checks-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/libs.versions.toml', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-checks-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.gradle/caches/build-cache-1
+          key: gradle-check-outputs-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/**') }}-${{ github.sha }}
+          restore-keys: gradle-check-outputs-${{ runner.os }}-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle.properties', 'android/gradle/**') }}-
       - name: Restore APK configuration
         env:
           ANDROID_SIGNING: ${{ secrets.ANDROID_SIGNING }}
@@ -142,12 +148,13 @@ jobs:
         run: python3 scripts/android-ci.py
       - name: Android tests and release lint
         working-directory: android
-        # Nothing is taken from the build cache: :core:test would otherwise
-        # pass without running whenever only the Go server changed.
+        # Reuse compilation/lint outputs; each Test task's --rerun option
+        # forces execution instead of reusing up-to-date or cached results.
+        # The workflow enforces this even when checking out an earlier tag.
         # Compose's test Activity is a debugImplementation dependency, so
         # Robolectric UI tests use debug. Release lint and the signed R8
         # build still check the production variant without that Activity.
-        run: ./gradlew --no-daemon --no-configuration-cache --no-build-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :core:test :terminal:testReleaseUnitTest :app:testDebugUnitTest :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
+        run: ./gradlew --no-daemon --no-configuration-cache --build-cache --parallel -Dorg.gradle.jvmargs="-Xmx4g -XX:+UseParallelGC -Dfile.encoding=UTF-8" :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease -PofficialRelease=true -PbuildCommit="$(git rev-parse HEAD)"
       - name: Remove signing material
         if: always()
         run: rm -rf "$HOME/.config/remote-agent" android/app/google-services.json
