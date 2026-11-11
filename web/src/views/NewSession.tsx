@@ -740,9 +740,8 @@ export function NewBox({
 
 type Pick = "" | "machine" | "model" | "mode";
 
-/** 项目设置: the machine, and each CLI's model and mode for new sessions.
- * The tabs show one CLI's set at a time, opening on the CLI picked next
- * to the box; looking at the other one picks nothing. */
+/** 项目设置: the machine, and the model and mode of the CLI picked next to
+ * the box. Another CLI's set is reached by picking that CLI there. */
 export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
   const taskEditing = scheduled && lockMachine;
   const [pick, setPick] = useState<Pick>(start);
@@ -751,12 +750,10 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
   const { remote, p, machine } = ns;
-  const [tab, setTab] = useState(ns.cfg.agent);
-  const agent = ns.agents.includes(tab) ? tab : ns.cfg.agent;
+  // The CLI was picked next to the box: the sheet is that CLI's settings and no other's.
+  const agent = ns.cfg.agent;
   const cfg = ns.configFor(agent);
-  // The box's CLI is already read; only the other tab asks the machine.
-  const other = useMachineInfo(remote, agent === ns.cfg.agent ? "" : cfg.machineId, agent);
-  const info = agent === ns.cfg.agent ? ns.info : other;
+  const info = ns.info;
   const parts = describeParts(cfg, machine, info);
   // How this CLI last ran in the project may be on a page of sessions not
   // fetched yet. Until it is here its set is not shown as if known, nor
@@ -925,9 +922,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               <ChevronRight className="chev" />
             </button>
           </div>
-          {many && (
-            <Segmented className="cli-tabs full" label="按 CLI 的设置" value={String(agent)} onChange={(v) => setTab(Number(v) as Agent)} options={ns.agents.map((a) => ({ value: String(a), label: agentName(a) }))} />
-          )}
+          {many && <div className="fl">{agentName(agent)}</div>}
           {open ? (
             <div className="hint top">正在读取这个项目上次的设置…</div>
           ) : (

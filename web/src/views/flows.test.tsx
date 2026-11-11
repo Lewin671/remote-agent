@@ -1705,24 +1705,21 @@ describe("switching a new session's CLI (v2)", () => {
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook · GPT-6-Astra/));
   });
 
-  it("edits one CLI's set under its tab and picks nothing by looking", async () => {
+  it("opens the settings of the CLI picked next to the box, and of no other", async () => {
     const r = demo();
     const foo = "/Users/me/Code/foo";
     mount(<ProjectPage remote={r} pkey={foo} go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
+    expect(cliPicked()).toBe("Codex");
     await fromMenu("新会话设置");
-    const tab = (name: string) => [...document.querySelectorAll<HTMLButtonElement>(".cli-tabs button")].find((b) => b.textContent === name);
-    expect(tab("Codex")?.getAttribute("aria-pressed")).toBe("true");
-    expect(setting("上下文")).toBe("");
-    await click(tab("Claude Code"));
-    expect(document.querySelector('[aria-label="上下文窗口"]')).not.toBeNull();
+    // No tabs: the sheet names the one CLI it is about.
+    expect(document.querySelector(".cli-tabs")).toBeNull();
+    expect([...document.querySelectorAll(".sheet .fl")].map((x) => x.textContent)).toContain("Codex");
     await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("审批")));
     await click(button(/^自动/, document));
     await click(button("完成", document));
-    await vi.waitFor(() => expect(savedSet(r, foo, Agent.CLAUDE)).toMatchObject({ mode: ApprovalMode.AUTO }), { timeout: 3000 });
-    expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-astra", mode: ApprovalMode.ASK });
+    await vi.waitFor(() => expect(savedSet(r, foo)).toMatchObject({ mode: ApprovalMode.AUTO }), { timeout: 3000 });
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CODEX);
-    expect(cliPicked()).toBe("Codex");
   });
 
   it("shows no switch on a machine with one CLI, and says which CLI runs when the remembered one is missing", async () => {
