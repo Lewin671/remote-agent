@@ -66,6 +66,7 @@
   --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
   --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
   --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
+  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -85,6 +86,7 @@
   --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
   --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
   --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
+  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -104,6 +106,7 @@
     --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
     --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
     --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
+    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28);
   }
 }
 
@@ -1093,7 +1096,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .desk .cbar .cline { align-items: flex-end; gap: 8px; }
 .desk .cbar .draft { font-size: 15px; line-height: 1.55; min-height: 56px; padding: 8px 4px; }
 .desk .dock { margin: 0 24px 8px; }
-.desk .dock > .tc { border-radius: 14px; padding: 16px; }
+.desk .dock > .tc { border-radius: 14px; padding: 16px 24px; max-width: none; }
 .desk .endcard { margin: 8px 24px 16px; border-radius: 14px; padding: 16px; box-shadow: none; }
 .desk .toast { margin: 0 24px 8px; border-radius: 10px; }
 .desk .p-chat .chat { padding-inline: max(24px, calc((100% - 760px) / 2)); }
@@ -1577,11 +1580,12 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .tok::before { inset: -4px 0; }
 .desk .sent .tok { font-size: 15px; }
 .desk .tok.p { padding-left: 4px; }
-.desk .wbox { margin-top: 16px; background: var(--s2); border-radius: 14px; padding: 16px 16px 8px; box-shadow: inset 0 0 0 .5px var(--rim); }
-.desk .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+/* What can be written in: its own fill and a 1px edge that is there before focus and brighter in it, and a placeholder in ink2. */
+.desk .wbox { margin-top: 16px; background: var(--in-bg); border-radius: 14px; padding: 16px 16px 8px; box-shadow: inset 0 0 0 1px var(--in-edge); }
+.desk .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--in-edge-hi); }
 .desk .wstart .ask { font-size: 15px; line-height: 1.55; min-height: 72px; }
 .desk .wstart .ask:placeholder-shown { font-size: 15px; font-weight: 400; line-height: 1.55; letter-spacing: 0; }
-.desk .wbox .ask::placeholder { color: var(--ink3); }
+.desk :is(.wbox .ask, .cbar .draft, .schedule-body > .field :is(textarea, input))::placeholder { color: var(--ink2); }
 .desk .wbox :is(.tok, .cm-plus) { background: var(--fill); }
 .desk .wstart .acc { padding: 8px 0 0; margin-left: -8px; gap: 8px; }
 .desk .wstart .acc .project-summary { height: 32px; border-radius: 16px; font-size: 13px; }
@@ -1663,7 +1667,6 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk :is(input, textarea, select):focus-visible, .desk [tabindex="-1"]:focus-visible, [tabindex="-1"]:focus-visible { outline: none; }
 .desk .field:focus-visible, .desk .field:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
 .desk .find:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
-.desk .cbar:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
 .desk .tc .inp:focus-visible { box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); }
 .desk ::selection { background: color-mix(in srgb, var(--blue) 28%, transparent); }
 .desk button, .desk summary, .desk [role="button"], .desk a, .desk select, .desk label[for], .desk .row.backup-check { cursor: pointer; }
@@ -1771,10 +1774,22 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 /* Glass is for the phone's small floating pieces; here a piece that sat on
    glass is the surface it belongs to. */
 .desk .glass { background: var(--s2); -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; box-shadow: none; }
-.desk .cbar.glass { box-shadow: inset 0 0 0 .5px var(--rim); }
-.desk .cbar.glass:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .cbar.glass, .desk .schedule-body > .field { background: var(--in-bg); box-shadow: inset 0 0 0 1px var(--in-edge); }
+.desk .cbar.glass:focus-within, .desk .schedule-body > .field:focus-within { box-shadow: inset 0 0 0 1px var(--in-edge-hi); }
 .desk .termview .glass, .desk .tchip.glass { background: rgba(60,60,64,.6); }
 /* 新定时 on a wide window is a page of the same one column of 640. */
 .desk .schedule-body:not(.schedule-detail-body) { padding-inline: max(0px, calc((100% - 640px) / 2)); }
 /* The prompt's field carries .big (a button row's class), which made its label sit beside the text; here the label is above it. */
 .desk .schedule-prompt { display: block; }
+
+/* The dock is as wide as the column and lines up with the input under it.
+   Its decisions sit at the right in two buttons of a fixed least width; the
+   "don't ask again" link is on the left of the same row. */
+.desk .dock .btns, .desk .dock .btns.decide { max-width: none; justify-content: flex-end; }
+.desk .dock .btns > .btn, .desk .dock .btns.decide > .btn { flex: none; min-width: 120px; }
+.desk .dock .pending-actions:has(> .btns + .ml) { display: flex; flex-direction: row-reverse; align-items: center; justify-content: space-between; gap: 16px; margin-top: 16px; }
+.desk .dock .pending-actions:has(> .btns + .ml) > .btns { margin-top: 0; }
+.desk .dock .pending-actions:has(> .btns + .ml) > .ml { margin-top: 0; }
+/* A computer that is offline is a card like the others, its words quieter. */
+.desk .mach-card.offl { background: var(--gbg); box-shadow: none; }
+.desk .mach-card.offl .mach-name b { color: var(--ink2); }
