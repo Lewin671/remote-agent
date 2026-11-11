@@ -405,46 +405,46 @@ func (t sendTarget) check(path string) error {
 
 // openSendFile resolves and opens what the agent named. The final open
 // does not follow links and must reach the object that was checked.
-func openSendFile(t sendTarget, cwd, raw string) (f *os.File, real string, size int64, err error) {
+func openSendFile(t sendTarget, cwd, raw string) (f *os.File, real string, fi os.FileInfo, err error) {
 	switch {
 	case strings.TrimSpace(raw) == "":
-		return nil, "", 0, connect.NewError(connect.CodeInvalidArgument, errors.New("path is required"))
+		return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path is required"))
 	case len(raw) > 4096 || !utf8.ValidString(raw) || strings.ContainsRune(raw, 0):
-		return nil, "", 0, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a valid file path"))
+		return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("path is not a valid file path"))
 	}
 	abs := raw
 	if !filepath.IsAbs(abs) {
 		if cwd == "" {
-			return nil, "", 0, connect.NewError(connect.CodeInvalidArgument, errors.New("give an absolute path"))
+			return nil, "", nil, connect.NewError(connect.CodeInvalidArgument, errors.New("give an absolute path"))
 		}
 		abs = filepath.Join(cwd, abs)
 	}
 	real, err = filepath.EvalSymlinks(abs)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, "", 0, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
+			return nil, "", nil, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
 		}
-		return nil, "", 0, connect.NewError(connect.CodeFailedPrecondition, errors.New("the path cannot be read"))
+		return nil, "", nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the path cannot be read"))
 	}
 	if err := t.check(real); err != nil {
-		return nil, "", 0, err
+		return nil, "", nil, err
 	}
 	before, err := os.Lstat(real)
 	if err != nil {
-		return nil, "", 0, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
+		return nil, "", nil, connect.NewError(connect.CodeNotFound, errors.New("no file at that path"))
 	}
 	if err := sendableMode(before.Mode()); err != nil {
-		return nil, "", 0, err
+		return nil, "", nil, err
 	}
 	// O_NONBLOCK: a FIFO swapped in after the check must not hang the open.
 	f, err = os.OpenFile(real, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
 		if errors.Is(err, os.ErrPermission) {
-			return nil, "", 0, connect.NewError(connect.CodePermissionDenied, errors.New("the file cannot be read"))
+			return nil, "", nil, connect.NewError(connect.CodePermissionDenied, errors.New("the file cannot be read"))
 		}
-		return nil, "", 0, connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again"))
+		return nil, "", nil, connect.NewError(connect.CodeAborted, errors.New("the file changed while it was being checked; try again"))
 	}
-	fi, err := f.Stat()
+	fi, err = f.Stat()
 	if err == nil {
 		err = sendableMode(fi.Mode())
 	}
@@ -463,9 +463,9 @@ func openSendFile(t sendTarget, cwd, raw string) (f *os.File, real string, size 
 	}
 	if err != nil {
 		f.Close()
-		return nil, "", 0, err
+		return nil, "", nil, err
 	}
-	return f, real, fi.Size(), nil
+	return f, real, fi, nil
 }
 
 func sendableMode(m os.FileMode) error {
@@ -505,15 +505,11 @@ func (d *Daemon) sendFile(ctx context.Context, sessionID, scope, raw string) (*p
 	if exited {
 		return nil, connect.NewError(connect.CodeFailedPrecondition, errors.New("the session has ended"))
 	}
-	f, real, _, err := openSendFile(d.sendTarget(sessionID, cwd), cwd, raw)
+	f, real, fi, err := openSendFile(d.sendTarget(sessionID, cwd), cwd, raw)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
-	fi, err := f.Stat()
-	if err != nil {
-		return nil, err
-	}
 	name := safeFileName(filepath.Base(raw))
 	r, err := d.uploads.share(sessionID, turn, drops, f, fi, name, real)
 	if err != nil {
