@@ -442,6 +442,19 @@ class ProjectTest {
     }
 
     @Test
+    fun aStartIsFullWhenChosenOrWhenTheCliDefaultsToIt() {
+        val m = machine(info(Agent.AGENT_CLAUDE, ApprovalMode.APPROVAL_MODE_FULL_ACCESS, cli), info(Agent.AGENT_CODEX, ApprovalMode.APPROVAL_MODE_AUTO, cli))
+        val st = RemoteState(machines = mapOf("m" to m))
+        // A folder picked just now has no mode of its own: it follows the CLI's default on that machine.
+        assertTrue(startsFull(st, NewConfig("m", "/p", Agent.AGENT_CLAUDE)))
+        org.junit.Assert.assertFalse(startsFull(st, NewConfig("m", "/p", Agent.AGENT_CODEX)))
+        assertTrue(startsFull(st, NewConfig("m", "/p", Agent.AGENT_CODEX, mode = Mode.FULL)))
+        org.junit.Assert.assertFalse(startsFull(st, NewConfig("m", "/p", Agent.AGENT_CLAUDE, mode = Mode.ASK)))
+        // A default that could not be read is not taken for bypass.
+        org.junit.Assert.assertFalse(startsFull(RemoteState(), NewConfig("m", "/p", Agent.AGENT_CLAUDE)))
+    }
+
+    @Test
     fun aNewSessionCannotBeStartedInPlan() {
         assertEquals(listOf(Mode.ASK, Mode.AUTO, Mode.FULL), newSessionModes)
     }

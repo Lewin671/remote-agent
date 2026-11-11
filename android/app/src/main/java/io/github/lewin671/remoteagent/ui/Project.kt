@@ -398,7 +398,7 @@ fun ProjectScreen(key: String, focus: Boolean) {
     Column(Modifier.fillMaxSize().background(p.paper)) {
         // The CLI is in the sentence when there is more than one to choose: the summary does not repeat it.
         val summary = launch?.let { projectSummary(state, it, summaryModels).removePrefix(if (agents.size > 1) agentName(it.agent) + " · " else "") }
-        val full = launch != null && (launch.mode == Mode.FULL || (launch.mode == null && defaultModeOf(state.machines[launch.machineId], launch.agent).mode == Mode.FULL))
+        val full = launch != null && startsFull(state, launch)
         NewSessionBox(
             state, start?.config, projectName(key), focus, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
             summary = summary, full = full, onSettings = { settingsOpen = "" }, onProject = { picking = true },
@@ -468,6 +468,10 @@ fun projectSummary(state: RemoteState, c: NewConfig, models: ListModelsResponse?
     return listOf(agentName(c.agent), mode,
         summaryMachine(state, c.machineId), chosen?.displayName?.ifEmpty { modelId } ?: modelId.ifEmpty { "默认模型" }).filter { it.isNotEmpty() }.joinToString(" · ")
 }
+
+/** Whether a start with [c] is 完全放行: chosen, or the mode its CLI gives on that machine when none is. */
+fun startsFull(state: RemoteState, c: NewConfig): Boolean =
+    c.mode == Mode.FULL || (c.mode == null && defaultModeOf(state.machines[c.machineId], c.agent).mode == Mode.FULL)
 
 fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
     chosen?.text ?: if (!default.known) "跟随 CLI 设置" else default.mode?.text ?: "CLI 自己的模式"
@@ -1178,7 +1182,7 @@ fun NewProjectAtScreen(machine: String, path: String) {
         NewSessionBox(
             state, initial, projectName(path), focus = true, onMachine = { settingsOpen = "machine" }, settled = start?.settled != false,
             summary = projectSummary(state, selected, summaryModels).removePrefix(if (agents.size > 1) agentName(selected.agent) + " · " else ""),
-            full = selected.mode == Mode.FULL, onSettings = { settingsOpen = "" },
+            full = startsFull(state, selected), onSettings = { settingsOpen = "" },
         )
     }
     val open = settingsOpen
