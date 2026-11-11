@@ -418,11 +418,12 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(agentName(g.agent), style = T.s15b, color = p.ink, modifier = Modifier.weight(1f), maxLines = 1)
                     Text("剩 ${left.roundToInt()}%", style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
-                    if (row.reset.isNotEmpty()) Text(row.reset, style = T.s13, color = p.ink2, maxLines = 1)
                 }
                 Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
                     Box(Modifier.fillMaxWidth((left / 100).toFloat()).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
                 }
+                // The reset time is long ("2 天 15 小时后重置 · 11月14日 周六 1:00"); under the bar it leaves the CLI's name whole.
+                if (row.reset.isNotEmpty()) Text(row.reset, style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 4.dp))
             }
         }
     }

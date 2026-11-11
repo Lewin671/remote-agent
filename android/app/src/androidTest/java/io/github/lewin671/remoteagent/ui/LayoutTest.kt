@@ -435,7 +435,7 @@ class LayoutTest {
         var online by mutableStateOf(true)
         val meta = MachineMeta.newBuilder().setHostname(name)
             .addQuotas(AgentQuota.newBuilder().setAgent(Agent.AGENT_CODEX).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now)
-                .addWindows(QuotaWindow.newBuilder().setWindowMinutes(300).setUsedPercent(62.0))).build()
+                .addWindows(QuotaWindow.newBuilder().setWindowMinutes(300).setUsedPercent(62.0).setResetsAtMs(now + (63 * 60 + 5) * 60_000L))).build()
         ui.setContent {
             val density = LocalDensity.current
             RaTheme(if (dark) ThemeMode.DARK else ThemeMode.LIGHT) {
@@ -460,6 +460,9 @@ class LayoutTest {
                     val quota = ui.onNodeWithText("剩 38%", useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
                     assertTrue("quota above status", quota.top >= status.bottom)
                     assertTrue("quota outside card", quota.right <= frame.right)
+                    // A long reset time goes under the bar, so it never squeezes the CLI's name.
+                    val reset = ui.onNodeWithText("重置", substring = true, useUnmergedTree = true).assertIsDisplayed().fetchSemanticsNode().boundsInRoot
+                    assertTrue("reset beside the name", reset.top >= quota.bottom)
                 } else {
                     ui.onNodeWithText("剩 38%", useUnmergedTree = true).assertDoesNotExist()
                 }
