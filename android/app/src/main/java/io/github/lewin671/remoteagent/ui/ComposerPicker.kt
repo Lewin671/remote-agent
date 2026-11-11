@@ -51,7 +51,7 @@ import androidx.compose.ui.window.PopupProperties
 import kotlin.math.roundToInt
 
 /** Geometry is in window coordinates, shared by placement and outside-tap handling. */
-internal class ComposerPicker {
+internal class ComposerPicker(private val onClose: () -> Unit = {}) {
     var open by mutableStateOf<String?>(null)
     var top by mutableStateOf(0f)
     var composer by mutableStateOf(Rect.Zero)
@@ -72,8 +72,19 @@ internal class ComposerPicker {
         outsideChip = null
         return result
     }
-    fun close() { open = null }
-    fun toggle(which: String) { open = which.takeUnless { open == it } }
+    fun close() {
+        if (open == null) return
+        // Clear before saving: native dismissal and the page's DOWN can both close one popup.
+        open = null
+        onClose()
+    }
+    /** A different project/machine/CLI invalidates the pending choice; it is not a user dismissal. */
+    fun cancel() { open = null; outsideChip = null }
+    fun toggle(which: String) {
+        val previous = open
+        close()
+        open = which.takeUnless { previous == it }
+    }
 }
 
 @Composable
@@ -129,7 +140,7 @@ internal fun ComposerPopover(picker: ComposerPicker, title: String, panel: Boole
         properties = PopupProperties(focusable = false, dismissOnClickOutside = true)) {
         CompositionLocalProvider(LocalHintInset provides 12.dp, LocalOnSoft provides false) {
             Column(Modifier.width(width)
-                .then(if (panel) Modifier.height(available.coerceAtMost(420.dp)) else Modifier.heightIn(max = available))
+                .then(if (panel) Modifier.height(available.coerceAtMost(600.dp)) else Modifier.heightIn(max = available))
                 .shadow(16.dp, shape, ambientColor = p.float, spotColor = p.float)
                 .clip(shape).background(if (p.dark) Color(0xFF2B2B30) else Color.White)
                 .border(.5.dp, if (p.dark) Color.White.copy(alpha = .10f) else Color.Black.copy(alpha = .08f), shape)

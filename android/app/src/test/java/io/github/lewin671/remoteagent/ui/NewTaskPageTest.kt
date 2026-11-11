@@ -6,6 +6,8 @@ import android.content.ContextWrapper
 import io.github.lewin671.remoteagent.RaApp
 import org.robolectric.RuntimeEnvironment
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import io.github.lewin671.remoteagent.core.*
@@ -29,12 +31,17 @@ class NewTaskPageTest {
         .addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CLAUDE)).build())
 
     private fun show(vararg ids: String) {
-        val state = RemoteState(conn = ConnState.ONLINE, loaded = true, synced = true, machines = ids.associateWith { machine(it) })
-        remote.showForTest(state)
+        val state = RemoteState(conn = ConnState.ONLINE, loaded = true, synced = true, prefs = PrefsObject.EMPTY, machines = ids.associateWith { machine(it) })
+        val models = ListModelsResponse.newBuilder().setDefaultModel("first")
+            .addModels(ModelInfo.newBuilder().setSlug("first").setDisplayName("First"))
+            .addModels(ModelInfo.newBuilder().setSlug("second").setDisplayName("Second").setDefaultEffort("high"))
+            .build()
+        remote.showForTest(state, modelLists = ids.associate { (it to Agent.AGENT_CODEX) to models })
         ui.setContent {
             RaTheme(ThemeMode.LIGHT) {
                 CompositionLocalProvider(LocalRemote provides remote, LocalNav provides nav) {
-                    NewSessionBox(state, NewConfig(ids.first(), path, Agent.AGENT_CODEX), "demo", focus = false, onProject = {})
+                    val current by remote.state.collectAsState()
+                    NewSessionBox(current, NewConfig(ids.first(), path, Agent.AGENT_CODEX), "demo", focus = false, settled = current.loaded, onProject = {})
                 }
             }
         }
@@ -48,7 +55,7 @@ class NewTaskPageTest {
             .apply { isAccessible = true }.invoke(app, RuntimeEnvironment.getApplication())
         RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
     }
-    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear() }
+    @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); PrefsChanges.clear() }
 
     @Test fun theTitleSaysWhereAndTheBoxHoldsTheRest() {
         show("a", "b")
@@ -96,6 +103,87 @@ class NewTaskPageTest {
         field.performTouchInput { click() }
         ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
         field.assertIsFocused()
+    }
+
+    private fun selectSecondModel() {
+        ui.waitUntil(5000) { ui.onAllNodesWithContentDescription("模型：First").fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithTag("new-model").performClick()
+        ui.onNodeWithText("Second").performClick()
+    }
+
+    @Test fun selectingModelThenTappingTextSavesAndUpdatesChip() {
+        show("a")
+        val field = ui.onNode(hasSetTextAction())
+        field.performClick()
+        val box = ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot
+        selectSecondModel()
+        field.performTouchInput { click() }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        ui.onNodeWithTag("new-model").assertContentDescriptionEquals("模型：Second")
+        field.assertIsFocused()
+        Assert.assertEquals(box, ui.onNodeWithTag("new-composer").fetchSemanticsNode().boundsInRoot)
+        ui.runOnIdle {
+            val config = Drafts.newSession(path, null).config.value!!
+            Assert.assertEquals("second", config.model)
+            Assert.assertEquals("high", config.effort)
+            Assert.assertNotNull(PrefsChanges.states[path])
+        }
+    }
+
+    @Test fun machineChangeCancelsPendingModelWithoutSavingToEitherMachine() {
+        show("a", "b")
+        selectSecondModel()
+        ui.runOnIdle { Drafts.newSession(path, null).config.choose(NewConfig("b", path, Agent.AGENT_CODEX)) }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        ui.runOnIdle {
+            Assert.assertEquals("b", Drafts.newSession(path, null).config.value!!.machineId)
+            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
+            Assert.assertNull(PrefsChanges.states[path])
+        }
+    }
+
+    @Test fun agentChangeCancelsPendingModel() {
+        show("a")
+        selectSecondModel()
+        ui.runOnIdle { Drafts.newSession(path, null).config.choose(NewConfig("a", path, Agent.AGENT_CLAUDE)) }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        ui.runOnIdle {
+            Assert.assertEquals(Agent.AGENT_CLAUDE, Drafts.newSession(path, null).config.value!!.agent)
+            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
+            Assert.assertNull(PrefsChanges.states[path])
+        }
+    }
+
+    private fun closingBlockedEditDoesNotSave(change: (RemoteState) -> RemoteState) {
+        show("a")
+        selectSecondModel()
+        ui.runOnIdle { remote.showForTest(change(remote.state.value)) }
+        ui.onNode(hasSetTextAction()).performTouchInput { click() }
+        ui.onNodeWithTag("new-model-popover").assertDoesNotExist()
+        ui.runOnIdle {
+            Assert.assertEquals("", Drafts.newSession(path, null).config.value!!.model)
+            Assert.assertNull(PrefsChanges.states[path])
+        }
+    }
+
+    @Test fun blockedPreferencesPreventDismissalSave() = closingBlockedEditDoesNotSave { it.copy(conn = ConnState.OFFLINE) }
+    @Test fun unsettledSettingsPreventDismissalSave() = closingBlockedEditDoesNotSave { it.copy(loaded = false) }
+
+    @Test fun doneAndNativeDismissalCommitOnlyOnceAndCancellationDoesNotCommit() {
+        var saves = 0
+        val picker = ComposerPicker { saves++ }
+        picker.toggle("model")
+        picker.close() // 完成
+        picker.dismissOutside() // queued native outside event
+        picker.close() // underlying page DOWN
+        Assert.assertEquals(1, saves)
+        picker.toggle("model")
+        picker.cancel() // destination changed
+        picker.dismissOutside()
+        Assert.assertEquals(1, saves)
+        picker.toggle("model")
+        picker.toggle("model") // re-tap
+        Assert.assertEquals(2, saves)
     }
 
     @Test fun oneComputerHasNoSecondLine() {

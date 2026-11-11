@@ -61,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.boundsInWindow
@@ -529,13 +530,26 @@ fun NewSessionBox(
     val machineOnline = machine != null && online && state.machines[machine]?.online == true
     // The mode a new task gets is the machine's default; it cannot start when that is auto and the model has none.
     val defaults = config?.let { defaultModeOf(state.machines[it.machineId], it.agent) } ?: DefaultMode(null, false, false)
-    val picker = remember { ComposerPicker() }
+    // Keep the edit with its destination, outside the popup: every user dismissal saves it.
+    var edited by remember(key, machine, config?.agent) { mutableStateOf<NewConfig?>(null) }
+    val closePicker by rememberUpdatedState<() -> Unit> {
+        val next = edited
+        edited = null
+        val target = draft.value
+        if (next != null && settled && prefsBlocked(state) == null &&
+            next.cwd == target?.cwd && next.machineId == target.machineId && next.agent == target.agent) {
+            val op = PrefsOp.SetSettings(key, next.machineId, sets = listOf(next.agentSettings()))
+            PrefsChanges.run(remote, op)
+            draft.choose(next)
+        }
+    }
+    val picker = remember { ComposerPicker { closePicker() } }
     var models by remember(machine, config?.agent) { mutableStateOf<ListModelsResponse?>(null) }
     var modelsRead by remember(machine, config?.agent) { mutableStateOf(false) }
     var modelsError by remember(machine, config?.agent) { mutableStateOf("") }
     var settings by remember(machine, config?.agent) { mutableStateOf<DaemonSettings?>(null) }
-    LaunchedEffect(machine, config?.agent) {
-        picker.close()
+    LaunchedEffect(key, machine, config?.agent) {
+        picker.cancel()
         val cfg = config ?: return@LaunchedEffect
         runCatching { remote.listModels(cfg.machineId, cfg.agent) }
             .onSuccess { models = it }.onFailure { modelsError = errorText(it) }
@@ -725,17 +739,9 @@ fun NewSessionBox(
         }
     }
     if (picker.open == "model" && c != null) ComposerPopover(picker, "模型", panel = true) {
-        var edited by remember { mutableStateOf<NewConfig?>(null) }
         val current = edited ?: c
         val blockedPrefs = prefsBlocked(state)
-        SheetHead("模型", if (blockedPrefs == null && settled) "完成" else null, {
-            edited?.let { next ->
-                val op = PrefsOp.SetSettings(key, c.machineId, sets = listOf(next.agentSettings()))
-                PrefsChanges.run(remote, op)
-                draft.choose(next)
-            }
-            picker.close()
-        })
+        SheetHead("模型", if (blockedPrefs == null && settled) "完成" else null, picker::close)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             if (blockedPrefs != null) Notice(blockedPrefs)
             if (!settled) Text("正在读取这个项目上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
