@@ -54,6 +54,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
   const term = useRef<XTerm>(null);
   const conn = useRef<TermConn | null>(null);
   const size = useRef({ cols: 80, rows: 24 });
+  const viewport = useRef<{ width: number; height: number }>(undefined);
   const dimsSeen = useRef(false);
   const [dims, setDims] = useState<{ cols: number; rows: number }>();
   const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
@@ -110,7 +111,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     const t = term.current;
     const el = box.current;
     if (!t || !el) return;
-    const width = el.clientWidth - 12;
+    const width = (viewport.current?.width ?? el.clientWidth) - 12;
     const fs = Math.max(6, Math.min(fittedTo.current ? 12 : 14, Math.floor((10 * width) / (size.current.cols * charRatio())) / 10));
     if (t.options.fontSize !== fs) t.options.fontSize = fs;
   };
@@ -131,12 +132,16 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     });
     term.current = t;
     t.attachCustomWheelEventHandler(() => false);
+    // Read the pane once before xterm writes its DOM. Subsequent dimensions
+    // come from layout notifications, not reads after changing font size.
+    viewport.current = { width: box.current!.clientWidth, height: box.current!.clientHeight };
     t.open(host.current!);
     const typed = t.onData((d) => !history.visible && conn.current?.send({ kind: { case: "input", value: enc.encode(d) } }));
     // A fitted window follows the width of its pane: the browser window, or
     // the switch between the terminal alone and side by side. Height is left
     // alone, so a phone's keyboard never resizes the remote window.
-    let width = box.current!.clientWidth;
+    let width = viewport.current.width;
+    let paneHeight = 0, screenHeight = 0;
     let refit: ReturnType<typeof setTimeout> | undefined;
     const resize = () => {
       if (document.hidden) return;
@@ -147,15 +152,28 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       scale();
       // A screen taller than the pane (a shorter pane than the window, or
       // an open keyboard) shows its bottom rows, where the prompt is.
-      const pane = pan.current, screen = host.current;
-      if (pane && screen) screen.style.marginTop = `${Math.min(0, pane.clientHeight - screen.offsetHeight)}px`;
-      const now = box.current?.clientWidth ?? width;
+      const screen = host.current;
+      if (screen) {
+        const margin = `${Math.min(0, paneHeight - screenHeight)}px`;
+        if (screen.style.marginTop !== margin) screen.style.marginTop = margin;
+      }
+      const now = viewport.current?.width ?? width;
       if (now === width) return;
       width = now;
       clearTimeout(refit);
       refit = setTimeout(() => fittedTo.current && fitNow.current(), 200);
     };
-    const sized = new ResizeObserver(resize);
+    const sized = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const border = entry.borderBoxSize[0];
+        if (entry.target === box.current) viewport.current = { width: Math.round(border.inlineSize), height: Math.round(border.blockSize) };
+        if (entry.target === pan.current) paneHeight = Math.round(entry.contentRect.height);
+        if (entry.target === host.current) screenHeight = Math.round(border.blockSize);
+      }
+      // A font change resizes the screen and produces another notification
+      // before paint; do not force that layout synchronously to align it.
+      resize();
+    });
     document.addEventListener("visibilitychange", resize);
     sized.observe(box.current!);
     sized.observe(host.current!);
@@ -349,8 +367,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
     if (!el) return;
     // At a readable size, how much fits here.
     const fs = 12;
-    const cols = Math.floor((el.clientWidth - 12) / (fs * charRatio()));
-    const rows = Math.floor((el.clientHeight - 12) / (fs * 1.2));
+    const cols = Math.floor(((viewport.current?.width ?? el.clientWidth) - 12) / (fs * charRatio()));
+    const rows = Math.floor(((viewport.current?.height ?? el.clientHeight) - 12) / (fs * 1.2));
     if (cols < 20 || rows < 5) return;
     setChanged(false);
     // A window already this size sends no new snapshot to confirm it.

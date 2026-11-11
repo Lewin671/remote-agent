@@ -28,10 +28,11 @@ async function mount() {
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockImplementation(() => width);
   vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(480);
-  const observers: (() => void)[] = [];
+  const observers: { callback: (entries: unknown[]) => void; elements: Element[] }[] = [];
   vi.stubGlobal("ResizeObserver", class {
-    constructor(callback: () => void) { observers.push(callback); }
-    observe() {} disconnect() {}
+    private observation: (typeof observers)[number];
+    constructor(callback: (entries: unknown[]) => void) { this.observation = { callback, elements: [] }; observers.push(this.observation); }
+    observe(el: Element) { this.observation.elements.push(el); } disconnect() {}
   });
   terminal.writes.mockClear(); terminal.resize.mockClear();
   const remote = DemoRemote.create(new URLSearchParams()); remote.start();
@@ -44,7 +45,14 @@ async function mount() {
   await act(async () => root!.render(<TerminalView remote={remote} session={remote.sessions.get("s-run")!} running />));
   await act(async () => { await frame({ kind: { case: "snapshot", value: { cols: 80, rows: 24, data: new Uint8Array([65]) } } } as never); });
   send.mockClear(); vi.useFakeTimers();
-  return { remote, open, close, send, get frame() { return frame; }, hide: (value: boolean) => { hidden = value; }, resize: (value: number) => { width = value; observers.forEach(f => f()); } };
+  const layout = (value: number, paneHeight = 480, screenHeight = 480) => {
+    width = value;
+    for (const o of observers) o.callback(o.elements.map(el => {
+      const height = el.classList.contains("term") ? 480 : el.classList.contains("tpan") ? paneHeight : screenHeight;
+      return { target: el, contentRect: { width, height }, borderBoxSize: [{ inlineSize: width, blockSize: height }] };
+    }));
+  };
+  return { remote, open, close, send, get frame() { return frame; }, hide: (value: boolean) => { hidden = value; }, resize: layout, layout };
 }
 it("keeps the terminal through hiding and closes it with the main connection", async () => {
   const { remote, open, close, frame, hide } = await mount();
@@ -122,4 +130,15 @@ it("shows the first screen as soon as the fitted one is in", async () => {
   // The fit was asked for; the computer's answer is a screen of the new size.
   await snapshot(56);
   expect(pane().classList.contains("unfit")).toBe(false);
+});
+
+it("keeps the terminal prompt at the bottom when its pane shrinks, without resizing tmux for height", async () => {
+  const state = await mount();
+  const screen = host.querySelector<HTMLElement>(".tpan > div")!;
+  await act(async () => state.layout(600, 300, 700));
+  expect(screen.style.marginTop).toBe("-400px");
+  await act(async () => state.layout(600, 800, 700));
+  expect(screen.style.marginTop).toBe("0px");
+  await act(async () => vi.advanceTimersByTimeAsync(200));
+  expect(state.send).not.toHaveBeenCalled();
 });
