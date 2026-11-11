@@ -3,7 +3,7 @@
 
 import { AgentMark } from "../agent-mark";
 import { useKeyboardDismiss } from "../keyboard";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type ComponentProps } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
 import { AGENTS, agentInfo, defaultsFor } from "../agents";
@@ -73,6 +73,7 @@ function startOf(remote: Remote, key: string): Start {
 import { anchorOf, Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
+import { ComposerPicker, keepComposerFocus, type ComposerAnchor } from "./ComposerPicker";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
 import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, X } from "../icons";
@@ -536,6 +537,21 @@ export function NewBox({
   const [choosing, setChoosing] = useState(false);
   const afterKeyboard = useKeyboardDismiss();
   const cliRef = useRef<HTMLButtonElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
+  const boundaryRef = useRef<HTMLDivElement>(null);
+  const phone = variant === "sheet";
+  const target = ns.key + "/" + ns.cfg.machineId + "/" + ns.cfg.agent;
+  const previousTarget = useRef(target);
+  useEffect(() => {
+    if (!phone || previousTarget.current === target) return;
+    previousTarget.current = target;
+    setChoosing(false);
+    setConfig("");
+  }, [target, phone]);
+  const toggleModels = () => {
+    if (phone) setChoosing(false);
+    setConfig((c) => phone && (c === "main" || c === "model") ? "" : "main");
+  };
   const input = useRef<HTMLTextAreaElement>(null);
   useAutoGrow(input, text, 240);
   useEffect(() => {
@@ -638,9 +654,11 @@ export function NewBox({
       )}
       {ns.configFallback && <Banner>{ns.configFallback}</Banner>}
       {ns.issueKind === "model" && (
-        <Banner kind="warn" action="换模型" onAction={() => setConfig("model")}>
-          这个模型没有自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认
-        </Banner>
+        <div style={{ display: "contents" }} data-composer-picker={phone ? "model" : undefined} onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}>
+          <Banner kind="warn" action="换模型" onAction={() => { setChoosing(false); setConfig("model"); }}>
+            这个模型没有自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认
+          </Banner>
+        </div>
       )}
       {ns.issueKind === "account" && (
         <Banner kind="warn" action="去改默认" onAction={() => ns.go("m/" + ns.cfg.machineId)}>
@@ -665,7 +683,10 @@ export function NewBox({
   // The draft stays when the CLI is switched.
   const many = ns.agents.length > 1;
   const cli = many && (
-    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} aria-expanded={choosing}
+      data-composer-picker={phone ? "cli" : undefined}
+      onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}
+      onClick={() => { if (phone) setConfig(""); setChoosing((v) => phone ? !v : true); }}>
       <AgentMark agent={ns.cfg.agent} named />
       <span>{agentName(ns.cfg.agent)}</span>
       <ChevronDown />
@@ -709,11 +730,13 @@ export function NewBox({
     </div>
   );
   const busyNote = ns.busy && <div className="nt-note">正在 {machineName(ns.machine)} 上启动…</div>;
-  const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={() => setConfig("main")} />;
+  const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={toggleModels}
+    data-composer-picker={phone ? "model" : undefined} aria-expanded={config === "main" || config === "model"}
+    onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined} />;
   const attach = <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />;
   const body =
     variant === "sheet" ? (
-      <div className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
+      <div ref={boundaryRef} className={"ntask" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
         <header className="nt-hd">
           <button className="fbtn" aria-label="关闭" onClick={onClose}>
             <X />
@@ -730,7 +753,7 @@ export function NewBox({
           {busyNote}
         </div>
         {/* The same box as a session's and the wide page's, above the keyboard. */}
-        <div className="pbox">
+        <div className="pbox" ref={composerRef}>
           {field}
           {trayView}
           <div className="acc">
@@ -760,31 +783,35 @@ export function NewBox({
         {busyNote}
       </div>
     );
+  const cliChoices = (
+    <div className="list" role="menu">
+      {ns.agents.map((a) => (
+        <button
+          key={a}
+          className="mi"
+          role="menuitemradio"
+          aria-checked={a === ns.cfg.agent}
+          onClick={() => {
+            setChoosing(false);
+            if (a !== ns.cfg.agent) ns.setAgent(a);
+          }}
+        >
+          <span className="mt"><AgentMark agent={a} named />{agentName(a)}</span>
+          {a === ns.cfg.agent && <span className="ck"><Check /></span>}
+        </button>
+      ))}
+    </div>
+  );
   return (
     <>
       {body}
-      {choosing && (
-        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI" anchor={cliRef}>
-          <div className="list" role="menu">
-            {ns.agents.map((a) => (
-              <button
-                key={a}
-                className="mi"
-                role="menuitemradio"
-                aria-checked={a === ns.cfg.agent}
-                onClick={() => {
-                  setChoosing(false);
-                  if (a !== ns.cfg.agent) ns.setAgent(a);
-                }}
-              >
-                <span className="mt"><AgentMark agent={a} named />{agentName(a)}</span>
-                {a === ns.cfg.agent && <span className="ck"><Check /></span>}
-              </button>
-            ))}
-          </div>
-        </Sheet>
-      )}
-      {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")} />}
+      {choosing && (phone ? (
+        <ComposerPicker anchor={cliRef} boundary={boundaryRef} onClose={() => setChoosing(false)}>{cliChoices}</ComposerPicker>
+      ) : (
+        <Sheet onClose={() => setChoosing(false)} title="用哪个 CLI" anchor={cliRef}>{cliChoices}</Sheet>
+      ))}
+      {config && <ConfigSheet ns={ns} start={config === "main" ? "" : (config as Pick)} onClose={() => setConfig("")}
+        composer={phone && config !== "machine" ? { anchor: composerRef, boundary: boundaryRef } : undefined} />}
     </>
   );
 }
@@ -798,7 +825,7 @@ type Pick = "" | "machine" | "model" | "mode";
  * one machine the model is all there is, so its page opens at once.
  * scheduled: a scheduled task's settings, which keep the project block,
  * the 权限 row and the project's actions. */
-export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
+export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false, lockMachine = false, composer }: { composer?: ComposerAnchor; ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
   const taskEditing = scheduled && lockMachine;
   const { remote, p, machine } = ns;
   // A new task picks its machine in the sentence, next to the project: its settings are the model's page and nothing else.
@@ -976,8 +1003,8 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
   const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: "机器", model: "模型", mode: taskEditing ? "权限" : "审批模式" };
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
-  return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">
+  const content = (
+    <>
       {body ?? (
         <>
           {scheduled && (
@@ -1054,7 +1081,12 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
           )}
         </>
       )}
-    </Sheet>
+    </>
+  );
+  return composer ? (
+    <ComposerPicker {...composer} title="模型" onClose={onClose}>{content}</ComposerPicker>
+  ) : (
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">{content}</Sheet>
   );
 }
 
@@ -1228,13 +1260,13 @@ export type Summary = { agent: string; machine: string; model: string };
  * are in the settings. A new task has no approval mode to show, and its
  * machine is in the sentence. The CLI is written at the start only when
  * nothing else names it (bare: the sentence already does). */
-export function ConfigSummary({ summary, bare, onClick }: { summary: { agent: string; model: string }; bare?: boolean; onClick: () => void }) {
+export function ConfigSummary({ summary, bare, ...button }: { summary: { agent: string; model: string }; bare?: boolean } & ComponentProps<"button">) {
   const { agent, model } = summary;
   const head = bare ? "" : agent;
   const sep = " · ";
   const line = [head, model].filter(Boolean).join(sep);
   return (
-    <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
+    <button className="tok project-summary" aria-label={`项目设置：${line}`} {...button}>
       {head && <span className="fx">{head}</span>}
       {/* The model brings the dot before it: a part cut short never leaves one hanging at its end. */}
       {model && <span className="mdl">{(head ? sep : "") + model}</span>}

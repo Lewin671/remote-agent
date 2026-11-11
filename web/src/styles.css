@@ -882,6 +882,20 @@ h1, h2, h3 { font-weight: var(--w7); }
 .pbox .acc .cm-plus { margin-right: 4px; }
 .pbox .acc :is(.cm-plus, .snd) { width: 36px; height: 36px; font-size: 18px; }
 .pbox .acc .project-summary > .ic { transform: rotate(90deg); padding-left: 0; margin-left: 0; }
+/* Phone new-task choices stay in the composer's hierarchy, above their
+   anchors. Reserving the model panel's height keeps refreshes from resizing it. */
+.composer-picker { position: absolute; z-index: 51; display: flex; flex-direction: column; padding: 8px; background: var(--s3); border: .5px solid var(--rim); border-radius: 14px; box-shadow: var(--float); overflow: hidden; }
+.composer-picker.model-picker { padding: 12px; }
+.composer-picker > .sheet-head { flex: none; margin: 0 0 8px; }
+.composer-picker-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.composer-picker .list { background: transparent; margin: 0; }
+.composer-picker .list .mi { min-height: 44px; font-size: 15px; padding: 8px 10px; border-radius: 8px; }
+.composer-picker .list .mi::after { display: none; }
+.composer-picker .seg button { min-height: 44px; }
+.composer-picker .fl { margin-top: 16px; }
+/* Safari paints its native caret above web layers; the CLI menu covers
+   this part of the field, so hide only the caret while retaining focus. */
+.ntask:has(.composer-picker:not(.model-picker)) .ask { caret-color: transparent; }
 .nt-body { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 12px; }
 .nt-banners { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px 0; }
 .nt-banners:empty { display: none; }

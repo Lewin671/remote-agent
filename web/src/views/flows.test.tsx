@@ -81,17 +81,17 @@ async function fromMenu(item: string | RegExp, within: ParentNode = host) {
 
 /** A row's value in the new-session settings. */
 const setting = (name: string) =>
-  [...document.querySelectorAll(".sheet .mi")].find((r) => r.querySelector(".mt")?.textContent === name)?.querySelector(".mv")?.textContent ?? "";
+  [...document.querySelectorAll(":is(.sheet, .composer-picker) .mi")].find((r) => r.querySelector(".mt")?.textContent === name)?.querySelector(".mv")?.textContent ?? "";
 
 /** The CLI the new task's sentence names, and picking another there. */
 const cliPicked = () => host.querySelector(".tok.cli")?.textContent;
 async function pickCli(name: string) {
   await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
-  await click(button(name, document.querySelector(".sheet")!));
+  await click(button(name, document.querySelector(":is(.sheet, .composer-picker)")!));
 }
 function pickCliNow(name: string) {
   act(() => host.querySelector<HTMLButtonElement>(".tok.cli")!.click());
-  act(() => button(name, document.querySelector(".sheet")!)!.click());
+  act(() => button(name, document.querySelector(":is(.sheet, .composer-picker)")!)!.click());
 }
 
 /** The project the wide new task names, and the start's sentence there. */
@@ -299,7 +299,7 @@ it("leaves an unknown approval mode unsaid in the navbar, and a new session does
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra$/));
   await fromMenu("新会话设置");
-  expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|未读到/);
+  expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|未读到/);
   await click(button("完成", document));
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
@@ -1206,7 +1206,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   await click(button("low", document));
   // Finish directly on the model page, without returning to project settings.
   await click(button("完成", document));
-  expect(document.querySelector(".sheet")).toBeNull();
+  expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "gpt-6-sol", effort: "low" }), { timeout: 3000 });
   // Rebuild the page with the saved account preference.
   act(() => root!.unmount());
@@ -1216,7 +1216,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   await act(async () => { await Promise.all([reloaded.listModels("mac", Agent.CODEX), reloaded.settings("mac")]); });
   await fromMenu("新会话设置");
   // The sheet that was closed may still be leaving: look in the last one.
-  const sheet = () => [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!;
+  const sheet = () => [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!;
   await vi.waitFor(() => expect(button("GPT-6-Sol", sheet())?.querySelector(".ck")).toBeTruthy());
   expect(button("low", sheet())?.className).toBe("on");
   await click(button("完成", document));
@@ -1277,7 +1277,7 @@ it("keeps the default model while saving a chosen reasoning effort", async () =>
   await vi.waitFor(() => expect(savedSet(r, project)).toMatchObject({ model: "", effort: "high" }));
   await fromMenu("新会话设置");
   expect(document.querySelector(".mi .ck svg")).toBeTruthy();
-  await vi.waitFor(() => expect(button("high", [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!)?.className).toBe("on"));
+  await vi.waitFor(() => expect(button("high", [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!)?.className).toBe("on"));
 });
 
 it("keeps the effort in sight under a long model list", async () => {
@@ -1301,7 +1301,7 @@ it("keeps the effort in sight under a long model list", async () => {
   await click(button("完成", document));
   await fromMenu("新会话设置");
   // Collapsed again, the picked model is still listed and checked.
-  const sheet = () => [...document.querySelectorAll<HTMLElement>(".sheet")].at(-1)!;
+  const sheet = () => [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!;
   await vi.waitFor(() => expect(button(/^全部模型/, sheet())).toBeTruthy());
   expect(button("Old 7", sheet())?.querySelector(".ck")).toBeTruthy();
 });
@@ -1389,7 +1389,7 @@ it("shows no approval mode in a new task's summary or settings", async () => {
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra$/));
   expect(host.querySelector(".project-summary")?.textContent).not.toMatch(/自动|询问|完全放行|默认：|审批/);
   await fromMenu("新会话设置");
-  expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
+  expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
@@ -1734,7 +1734,7 @@ describe("switching a new session's CLI (v2)", () => {
     // No tabs: the sheet is the model page of the one CLI the sentence names.
     expect(document.querySelector(".cli-tabs")).toBeNull();
     expect(document.querySelector(".sheet-head")?.textContent).toContain("模型");
-    expect(document.querySelector(".sheet")!.textContent).not.toContain("审批");
+    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toContain("审批");
     await click(button("GPT-6-Luna", document));
     await click(button("完成", document));
     // The model is saved; the project's mode is not touched by it.
@@ -1819,7 +1819,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
     // No list of one row first: no 机器, no 审批, no project block, no note.
-    const sheet = document.querySelector(".sheet")!;
+    const sheet = document.querySelector(":is(.sheet, .composer-picker)")!;
     expect(sheet.querySelector(".sheet-head")?.textContent).toContain("模型");
     expect(sheet.querySelector('.sheet-head button[aria-label="返回"]')).toBeNull();
     expect(sheet.textContent).toContain("默认模型");
@@ -1828,21 +1828,21 @@ describe("a new task's settings have no approval mode (v2)", () => {
     await click(button("GPT-6-Luna", document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
     await click(button("完成", document));
-    expect(document.querySelector(".sheet")).toBeNull();
+    expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
   });
 
   it("opens on the model page with several computers too: the machine is picked in the sentence", async () => {
     const r = demo();
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await fromMenu("新会话设置");
-    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("模型");
-    expect(document.querySelector(".sheet")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
+    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain("模型");
+    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
     await click(button("完成", document));
     // The machine chip opens the list of machines, and picking one closes it.
     await click(host.querySelector<HTMLButtonElement>(".tok.m")!);
     expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("机器");
     await click(button(/VPS-dev/, document));
-    expect(document.querySelector(".sheet")).toBeNull();
+    expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
     expect(host.querySelector(".tok.m")!.textContent).toContain("VPS-dev");
   });
 
@@ -1852,7 +1852,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await pickCli("Claude Code");
     await fromMenu("新会话设置");
-    await vi.waitFor(() => expect(document.querySelector('.sheet [role="radiogroup"][aria-label="上下文窗口"], .sheet [aria-label="上下文窗口"]')).not.toBeNull());
+    await vi.waitFor(() => expect(document.querySelector(':is(.sheet, .composer-picker) [role="radiogroup"][aria-label="上下文窗口"], :is(.sheet, .composer-picker) [aria-label="上下文窗口"]')).not.toBeNull());
     await click(button("标准 200k", document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo", Agent.CLAUDE)).toMatchObject({ standardContext: true }), { timeout: 3000 });
   });
@@ -1907,7 +1907,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     expect(button("换模型")).toBeDefined();
     expect(sendButton()?.disabled).toBe(true);
     await click(button("换模型"));
-    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("模型");
+    expect(document.querySelector(":is(.sheet, .composer-picker) .sheet-head")?.textContent).toContain("模型");
     await click(button("Opus 5.5", document));
     await click(button("完成", document));
     await vi.waitFor(() => expect(host.textContent).not.toContain("这个模型没有自动模式"));
@@ -2030,7 +2030,7 @@ describe("project management (v2)", () => {
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-    expect(document.querySelector(".sheet")).not.toBeNull();
+    expect(document.querySelector(":is(.sheet, .composer-picker)")).not.toBeNull();
     expect(button("移除项目…")).toBeUndefined();
     expect(button(/^(设为|取消)常用$/)).toBeUndefined();
   });
@@ -2818,6 +2818,115 @@ describe("the client-v7 conversation", () => {
   });
 });
 
+describe("phone composer pickers", () => {
+  it.each(["project", "machine"])("still dismisses the keyboard before the %s sheet, even from a model popover", async (target) => {
+    const viewport = Object.assign(new EventTarget(), { height: 700, offsetTop: 0, scale: 1 });
+    vi.stubGlobal("visualViewport", viewport);
+    vi.stubGlobal("innerHeight", 700);
+    const matchMedia = window.matchMedia.bind(window);
+    const media = vi.spyOn(window, "matchMedia").mockImplementation((query) => {
+      const result = matchMedia(query);
+      if (query === "(min-width: 900px)") Object.defineProperty(result, "matches", { value: false });
+      return result;
+    });
+    try {
+      const r = demo();
+      mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+      const input = host.querySelector<HTMLTextAreaElement>(".ask")!;
+      act(() => input.focus());
+      viewport.height = 400;
+      act(() => viewport.dispatchEvent(new Event("resize")));
+      await fromMenu("新会话设置");
+      expect(document.activeElement).toBe(input);
+      expect(host.querySelector(".model-picker")).not.toBeNull();
+      const chip = host.querySelector<HTMLButtonElement>(target === "project" ? ".nt-hd .tok.p" : ".nt-hd .tok.m")!;
+      act(() => {
+        chip.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+        chip.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
+      });
+      await click(chip);
+      expect(document.activeElement).not.toBe(input);
+      expect(host.querySelector(".model-picker")).toBeNull();
+      await act(async () => { await new Promise((done) => setTimeout(done, 30)); });
+      expect(host.querySelector(".sheet")).toBeNull();
+      viewport.height = 700;
+      act(() => viewport.dispatchEvent(new Event("resize")));
+      await vi.waitFor(() => expect(host.querySelector(".sheet .sheet-head")?.textContent).toContain(target === "project" ? "选项目" : "机器"));
+    } finally {
+      media.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each(["done", "outside", "textarea", "typing", "escape", "same chip", "other chip"])("keeps focus and saves choices on %s", async (close) => {
+    const r = demo();
+    const path = "/Users/me/Code/foo";
+    mount(<ProjectPage remote={r} pkey={path} go={() => undefined} onBack={() => undefined} />);
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("GPT-6-Astra"));
+    // Refresh is deliberately unresolved: opening still shows the cached models.
+    vi.spyOn(r, "listModels").mockReturnValue(new Promise(() => undefined));
+    const input = host.querySelector<HTMLTextAreaElement>(".ask")!;
+    input.focus();
+    const chip = host.querySelector<HTMLButtonElement>(".project-summary")!;
+    const down = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+    act(() => chip.dispatchEvent(down));
+    expect(down.defaultPrevented).toBe(true);
+    await click(chip);
+    expect(host.querySelector(".overlay")).toBeNull();
+    expect(host.querySelector(".composer-picker")?.getAttribute("aria-modal")).toBeNull();
+    expect(host.querySelector(".composer-picker")?.textContent).toContain("GPT-6-Luna");
+    expect(host.querySelector(".composer-picker")?.textContent).not.toContain("读取");
+    const model = button("GPT-6-Luna")!;
+    const modelDown = new PointerEvent("pointerdown", { bubbles: true, cancelable: true });
+    act(() => model.dispatchEvent(modelDown));
+    expect(modelDown.defaultPrevented).toBe(true);
+    await click(model);
+    await click(button("high"));
+    if (close === "done") await click(button("完成"));
+    else if (close === "same chip") await click(chip);
+    else if (close === "other chip") await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
+    else if (close === "escape") act(() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    else if (close === "typing") act(() => input.dispatchEvent(new InputEvent("beforeinput", { bubbles: true })));
+    else {
+      const target = close === "textarea" ? input : host.querySelector<HTMLElement>(".nt-body")!;
+      const mouse = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+      act(() => {
+        target.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, cancelable: true }));
+        target.dispatchEvent(mouse);
+      });
+      if (close === "outside") expect(mouse.defaultPrevented).toBe(true);
+      await click(target);
+    }
+    expect(host.querySelector(".model-picker")).toBeNull();
+    expect(document.activeElement).toBe(input);
+    await vi.waitFor(() => expect(savedSet(r, path)).toMatchObject({ model: "gpt-6-luna", effort: "high" }));
+    if (close === "other chip") {
+      expect(host.querySelector(".composer-picker [role=menu]")).not.toBeNull();
+      await click(host.querySelector<HTMLButtonElement>(".tok.cli")!);
+      expect(host.querySelector(".composer-picker")).toBeNull();
+    }
+  });
+
+  it("does not focus the input when opened unfocused, and closes on a target change", async () => {
+    const r = demo();
+    const page = (path: string) => <ProjectPage remote={r} pkey={path} go={() => undefined} onBack={() => undefined} />;
+    mount(page("/Users/me/Code/foo"));
+    await fromMenu("新会话设置");
+    expect(document.activeElement).not.toBe(host.querySelector(".ask"));
+    expect(host.querySelector(".composer-picker")).not.toBeNull();
+    act(() => root!.render(page("/Users/me/Code/shop")));
+    expect(host.querySelector(".composer-picker")).toBeNull();
+  });
+
+  it("keeps the wide new task on its existing sheet", async () => {
+    const r = demo();
+    mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
+    await fromMenu("新会话设置");
+    expect(host.querySelector(".sheet")).not.toBeNull();
+    expect(host.querySelector(".composer-picker")).toBeNull();
+  });
+});
+
 it("writes a development build's commit once in the settings", async () => {
   const { versionText } = await import("./Settings");
   expect(versionText("0.8.2-dev.6098093", "60980937bd64665f")).toBe("0.8.2-dev.6098093");
@@ -2901,7 +3010,7 @@ it("refreshes the model picker and lists GPT-6.1-Sol alongside the default with 
   await vi.waitFor(() => expect(button("ultra", document)).toBeDefined());
   for (const e of ["low", "medium", "high", "xhigh", "max", "ultra"]) expect(button(e, document)).toBeDefined();
   // The summary capsule is named like the model now: pick it in the sheet.
-  await click(button("GPT-6.1-Sol", document.querySelector(".sheet")!));
+  await click(button("GPT-6.1-Sol", document.querySelector(":is(.sheet, .composer-picker)")!));
   await click(button("high", document));
   await click(button("完成", document));
   await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6.1-sol", effort: "high" }), { timeout: 4000 });
@@ -3170,9 +3279,9 @@ describe("the home timeline and its scope (client-v27)", () => {
     const went: string[] = [];
     mount(<Home remote={r} go={(x) => went.push(x)} />);
     await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
-    expect(document.querySelector(".sheet")?.textContent).toContain("看哪个项目");
+    expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain("看哪个项目");
     await click([...document.querySelectorAll<HTMLButtonElement>(".plist .pi")].find((b) => b.querySelector("b")?.textContent === "foo"));
-    expect(document.querySelector(".sheet")).toBeNull();
+    expect(document.querySelector(":is(.sheet, .composer-picker)")).toBeNull();
     expect(host.querySelector(".tbar .scope b")?.textContent).toBe("foo");
     // Live rows are foo's only, and do not name the project.
     const live = texts(".sess .row1 b");
@@ -3308,11 +3417,11 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   expect(host.textContent).toContain("正在读取这个项目上次的设置…");
   // Its settings are not offered for change meanwhile.
   await click(host.querySelector<HTMLButtonElement>(".project-summary")!);
-  expect(document.querySelector(".sheet")?.textContent).toContain("正在读取这个项目上次的设置…");
+  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).toContain("正在读取这个项目上次的设置…");
   // Every page is in and none was Claude Code's: it starts with the machine's defaults.
   r.moreSessions = false;
   act(() => (r as unknown as { changed(): void }).changed());
-  expect(document.querySelector(".sheet")?.textContent).not.toContain("正在读取这个项目上次的设置…");
+  expect(document.querySelector(":is(.sheet, .composer-picker)")?.textContent).not.toContain("正在读取这个项目上次的设置…");
   await vi.waitFor(() => expect(start().disabled).toBe(false), { timeout: 3000 });
 });
 
