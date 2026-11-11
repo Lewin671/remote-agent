@@ -1049,13 +1049,22 @@ private fun Bottom(
         if (status == Status.POPUP) add(DockItem.Popup(s.info?.statusDetail.orEmpty()))
     }
     val first = dockItems.firstOrNull()
-    if (first != null) {
-        when (first) {
-            is DockItem.Approval ->
-                ApprovalDock(s, first.a, dockItems.size - 1)
-            is DockItem.Question -> QuestionDock(s, first.q, dockItems.size - 1, onTerminal)
-            is DockItem.Plan -> PlanDock(s, first.text, dockItems.size - 1, onPlan)
-            is DockItem.Popup -> PopupDock(s, first.title, dockItems.size - 1, onTerminal)
+    // What the dock last showed stays while it goes, so it has something to fade out and close with.
+    val shown = remember { androidx.compose.runtime.mutableStateOf<DockItem?>(null) }
+    if (first != null) shown.value = first
+    // From the top of the message box it rises 12 dp and fades in while the chat gives up the room; on
+    // its way out it fades and closes (§4 动效, 停靠卡). The chat's end stays in view meanwhile.
+    Reveal(
+        visible = first != null,
+        enter = Motion.appear(Motion.BASE, riseDp = Motion.DOCK_RISE_DP, grow = true),
+        exit = Motion.vanish(Motion.BASE),
+    ) {
+        when (val item = shown.value) {
+            is DockItem.Approval -> ApprovalDock(s, item.a, (dockItems.size - 1).coerceAtLeast(0))
+            is DockItem.Question -> QuestionDock(s, item.q, (dockItems.size - 1).coerceAtLeast(0), onTerminal)
+            is DockItem.Plan -> PlanDock(s, item.text, (dockItems.size - 1).coerceAtLeast(0), onPlan)
+            is DockItem.Popup -> PopupDock(s, item.title, (dockItems.size - 1).coerceAtLeast(0), onTerminal)
+            null -> {}
         }
     }
     Composer(state, s, d, status, onFocus = {})

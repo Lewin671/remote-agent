@@ -6,6 +6,11 @@ import io.github.lewin671.remoteagent.core.approvalBody
 import io.github.lewin671.remoteagent.core.approvalTruncated
 import io.github.lewin671.remoteagent.core.approvalTruncatedMessage
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -201,22 +206,37 @@ fun PendingDock(
         }
         DockFolds.set(sid, item.id, !open)
     }
-    if (!open) return DockLine(label, rest, toggle)
-    DockShell {
-        DarkCard(float = true) {
-            DarkCardHead(label, rest, trailing = {
-                headExtra?.invoke()
-                CardLink("收起", toggle, up = true)
-            })
-            Column(Modifier.heightIn(max = LocalDockMax.current)) {
-                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
-                    body { DockFolds.set(sid, item.id, false) }
+    // Folding and opening change the card's height and swap its content: the words cross-fade and the
+    // height follows (§4 动效, 常).
+    // The animated box takes the shell's room too, so that the shadow is inside it and the old content,
+    // which is clipped to the size as it changes, does not draw over the message box.
+    AnimatedContent(
+        open,
+        transitionSpec = { dockSwap() },
+        label = "dock-fold",
+    ) { isOpen ->
+        DockShell {
+            if (!isOpen) DockLine(label, rest, toggle)
+            else DarkCard(float = true) {
+                DarkCardHead(label, rest, trailing = {
+                    headExtra?.invoke()
+                    CardLink("收起", toggle, up = true)
+                })
+                Column(Modifier.heightIn(max = LocalDockMax.current)) {
+                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                        body { DockFolds.set(sid, item.id, false) }
+                    }
+                    Column { actions() }
                 }
-                Column { actions() }
             }
         }
     }
 }
+
+/** One thing on the dock giving way to another (a folded line and the open card, the card and the one line it shrinks to once answered): the words cross-fade and the height follows, 200 ms. */
+internal fun <S> androidx.compose.animation.AnimatedContentTransitionScope<S>.dockSwap(): androidx.compose.animation.ContentTransform =
+    (fadeIn(Motion.fadeInSpec(Motion.BASE)) togetherWith fadeOut(Motion.fadeOutSpec(Motion.BASE))) using
+        SizeTransform(clip = true) { _, _ -> Motion.enter(Motion.BASE) }
 
 /** Where the dock sits: 12 in from the sides, just above the message box, and no wider than the chat ([ChatMax]). */
 @Composable
@@ -234,25 +254,23 @@ val ChatMax = 760.dp
 private fun DockLine(label: String, rest: String, onOpen: () -> Unit) {
     val p = pal
     val shape = RoundedCornerShape(22.dp)
-    DockShell {
-        Row(
-            Modifier.fillMaxWidth().floating(p, shape).clip(shape).background(p.tc).border(0.5.dp, p.tcLine, shape)
-                .heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "处理", onClick = onOpen)
-                .padding(start = 16.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-        ) {
-            Box(Modifier.size(8.dp).clip(CircleShape).background(CardColors.orange))
-            // One text, so a long type keeps its place first and the summary gives way.
-            Text(
-                buildAnnotatedString {
-                    withStyle(SpanStyle(color = CardColors.orange, fontWeight = T.s13b.fontWeight)) { append(label) }
-                    if (rest.isNotEmpty()) withStyle(SpanStyle(color = CardColors.text2)) { append(" · $rest") }
-                },
-                style = T.s13, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
-            )
-            ArrowText("处理", CardColors.link, T.s13, down = true)
-        }
+    Row(
+        Modifier.fillMaxWidth().floating(p, shape).clip(shape).background(p.tc).border(0.5.dp, p.tcLine, shape)
+            .heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "处理", onClick = onOpen)
+            .padding(start = 16.dp, end = 14.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(CardColors.orange))
+        // One text, so a long type keeps its place first and the summary gives way.
+        Text(
+            buildAnnotatedString {
+                withStyle(SpanStyle(color = CardColors.orange, fontWeight = T.s13b.fontWeight)) { append(label) }
+                if (rest.isNotEmpty()) withStyle(SpanStyle(color = CardColors.text2)) { append(" · $rest") }
+            },
+            style = T.s13, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+        )
+        ArrowText("处理", CardColors.link, T.s13, down = true)
     }
 }
 
@@ -284,19 +302,22 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
     if (isSkeleton(a)) return DockSkeleton()
     val state by LocalRemote.current.state.collectAsState()
     val d = rememberApprovalReply(s, a)
-    if (d.submitted) return DockShell { ApprovalSubmitted(approvalHead(a), d) }
     val t = now(15_000)
     var denying by rememberSaveable(a.approvalId) { mutableStateOf(false) }
-    PendingDock(
-        s.id,
-        DockItem.Approval(a),
-        agentName(s.agent()),
-        more,
-        left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
-        openLabel = approvalHead(a),
-        body = { ApprovalContent(a) },
-    ) {
-        ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, t))
+    // Answered, the card shrinks to the one line saying what was answered (§4 动效, 常).
+    AnimatedContent(d.submitted, transitionSpec = { dockSwap() }, label = "approval-answered") { submitted ->
+        if (submitted) DockShell { ApprovalSubmitted(approvalHead(a), d) }
+        else PendingDock(
+            s.id,
+            DockItem.Approval(a),
+            agentName(s.agent()),
+            more,
+            left = if (a.hasDeadline()) "剩 ${minutesLeft(a.deadline.seconds * 1000, t)} 分钟" else "",
+            openLabel = approvalHead(a),
+            body = { ApprovalContent(a) },
+        ) {
+            ApprovalButtons(state, s, a, d, denying, { denying = it }, approvalLocked(state, a, t))
+        }
     }
 }
 
