@@ -936,10 +936,11 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 }
                 if (!lockMachine) {
+                // In line with the words of the cards above: the sheet's 16 plus the card rows' 12.
                 TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) "取消常用" else "设为常用", {
                     PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) PrefsOp.Unpin(cwd) else PrefsOp.Pin(cwd))
-                }, enabled = blockedPrefs == null)
-                TextAction("移除项目…", { removing = true }, enabled = blockedPrefs == null, color = p.red)
+                }, Modifier.padding(horizontal = 12.dp), enabled = blockedPrefs == null)
+                TextAction("移除项目…", { removing = true }, Modifier.padding(horizontal = 12.dp), enabled = blockedPrefs == null, color = p.red)
                 if (removing) RemoveProjectConfirm(cwd, onDismiss = { removing = false }) { onClose(); nav.home() }
                 }
             }
