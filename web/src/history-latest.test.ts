@@ -243,3 +243,30 @@ it("leaves a cut fetch for the next connection's first frame while offline", asy
   expect(getEvents).toHaveBeenCalledTimes(1);
   expect(r.loaded(SID)).toBe(false);
 });
+
+it("keeps the displayed tail while prefix pages load, then exposes the complete history", async () => {
+  const count = 2 * PAGE + 2;
+  const r = await probe(count);
+  const first = deferred(), firstAsked = deferred(), second = deferred(), secondAsked = deferred();
+  (r as any).api = { getEvents: async ({ afterSeq, limit }: { afterSeq: bigint; limit: number }) => {
+    if (afterSeq === 0n) { firstAsked.resolve(); await first.promise; }
+    if (afterSeq === BigInt(PAGE)) { secondAsked.resolve(); await second.promise; }
+    const rest = rows.slice(0, count).filter(e => e.seq > afterSeq);
+    return { events: rest.slice(0, limit), more: rest.length > limit };
+  } };
+  try {
+    r.events(SID);
+    await firstAsked.promise;
+    const tail = r.events(SID);
+    const d = r.currentDerived(SID, r.historicalDerived(SID));
+    first.resolve();
+    await secondAsked.promise;
+    expect(r.events(SID).map(e => e.seq)).toEqual([6n, 7n, 8n]);
+    expect(r.events(SID)).toBe(tail);
+    expect(r.currentDerived(SID, r.historicalDerived(SID))).toBe(d);
+    const completed = until(r, () => r.loaded(SID));
+    second.resolve();
+    await completed;
+    expect(r.events(SID).map(e => e.seq)).toEqual(rows.slice(0, count).map(e => e.seq));
+  } finally { first.resolve(); second.resolve(); }
+});

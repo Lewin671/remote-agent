@@ -2679,8 +2679,13 @@ export class Remote {
       for (const seq of b.pending.keys()) if (seq > last) last = seq;
       let first = last;
       while (b.pending.has(first - 1n)) first--;
-      b.recent = [];
-      for (let seq = first; seq <= last; seq++) b.recent.push(b.pending.get(seq)!);
+      // Prefix pages do not change the suffix already on screen. Keep its
+      // identity so history projection and image indexes can reuse their work.
+      // Pending events are immutable and duplicates are rejected above.
+      if (b.recent?.[0]?.seq !== first || b.recent.at(-1)?.seq !== last) {
+        b.recent = [];
+        for (let seq = first; seq <= last; seq++) b.recent.push(b.pending.get(seq)!);
+      }
     } else b.recent = undefined;
     s.lastSeq = maxBig(s.lastSeq, BigInt(b.events.length));
     this.recorded(
@@ -2744,7 +2749,9 @@ export class Remote {
     const agent = agentOf(this.sessions.get(sid));
     // The complete prefix may grow while the displayed recent suffix stays
     // unchanged; that can make the plan text named by a live snapshot readable.
-    const events = buffer?.events, count = events?.length ?? 0;
+    // Only the live plan can refer to the growing prefix separately from d.
+    const events = live?.session?.planOpen && live.planEventSeq > 0n ? buffer?.events : undefined;
+    const count = events?.length ?? 0;
     const cached = this.currentDerivations.get(d);
     if (cached && cached.sid === sid && cached.live === live &&
         cached.checkpoint === checkpoint && cached.agent === agent &&
