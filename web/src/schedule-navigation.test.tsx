@@ -81,7 +81,7 @@ it("keeps tab unread, shares the badge across widths, and reads only the selecte
   // A wide window does not open a task by itself, so its notifications stay unread.
   expect(host.querySelector(".dm .schedule-unread-dot")).toBeNull();
   expect(host.querySelector(".side .schedule-selected")).toBeNull();
-  expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果");
+  expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果新定时");
   expect(host.querySelector(".dm textarea")).toBeNull();
   expect(remote.scheduleNewResults()).toBe(true);
   expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
@@ -145,7 +145,7 @@ it("clears the wide selection when marking the open detail unread", async () => 
   await act(async () => unread.click());
   await open(location.hash);
   expect(host.querySelector(".side .schedule-selected")).toBeNull();
-  expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果");
+  expect(host.querySelector(".dm")?.textContent).toBe("选一个任务查看结果新定时");
   expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0])).toEqual(new Set(["first"]));
 });
 

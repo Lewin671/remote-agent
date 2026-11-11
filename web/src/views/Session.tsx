@@ -89,6 +89,7 @@ import {
   Exp,
   fromHere,
   NavBar,
+  PathText,
   Skeleton,
   useRemote,
 } from "../ui";
@@ -657,7 +658,7 @@ export function SessionPage({
                   {[agentLabel, project, remote.machines.size > 1 ? mname : ""].filter(Boolean).join(" · ")}
                 </b>
                 <span className="mono">
-                  {shortPath(session.info?.cwd ?? "")}
+                  <PathText path={shortPath(session.info?.cwd ?? "")} />
                 </span>
               </>
             }
@@ -1031,7 +1032,7 @@ function ChatBody({
     <>
       <div className="sysline">
         {started ? dayTime(started) + " · " : ""}
-        {shortPath(cwd)}
+        <PathText path={shortPath(cwd)} />
       </div>
       {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
       {hist.backfilling && !hist.error && !hist.broken && (

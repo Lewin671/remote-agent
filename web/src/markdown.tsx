@@ -624,7 +624,7 @@ function Code({ lang, text, name }: { lang: string; text: string; name: string }
   // Only a diff is colored: added and removed lines mean something.
   const diff = lang === "diff" || lang === "patch";
   return (
-    <div className="cb">
+    <div className="cb" data-lang={lang || undefined}>
       <pre>
         {/* As wide as its longest line and the copy button: scrolled to the end, no code is left under the button. */}
         <span className="cbt">

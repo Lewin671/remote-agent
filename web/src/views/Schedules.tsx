@@ -28,6 +28,7 @@ import {
   useNow,
   useRemote,
   useEscape,
+  useDialogFocus,
   useOverlayExit,
 } from "../ui";
 import {
@@ -1026,6 +1027,7 @@ function TaskNameDialog({
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
+  useDialogFocus(root);
   useEffect(() => {
     input.current?.focus();
     input.current?.select();

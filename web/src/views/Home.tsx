@@ -32,7 +32,7 @@ import type { Remote, SessionView } from "../remote";
 import { ALL, resolveScope, savedScope, saveScope, subscribeScope } from "../scope";
 import { frequency, unreadLabel } from "../schedules";
 import { approvalDisplay } from "../approval-display";
-import { Avatar, Banner, GlassButton, Segmented, Sheet, Skeleton, StateMark, useEscape, useNow, useRemote } from "../ui";
+import { Avatar, Banner, GlassButton, Segmented, Sheet, Skeleton, StateMark, useDialogFocus, useEscape, useNow, useRemote } from "../ui";
 import { ScheduleBadge } from "./ScheduleBadge";
 import { SchedulesPage } from "./pages";
 import { SessionLine } from "./SessionLine";
@@ -581,10 +581,12 @@ function ScopeMenu({
 
 function Popover({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   useEscape(onClose);
+  const pop = useRef<HTMLDivElement>(null);
+  useDialogFocus(pop);
   return (
     <>
       <div className="pop-back" onClick={onClose} />
-      <div className="pop" role="dialog">
+      <div className="pop" role="dialog" ref={pop}>
         {children}
       </div>
     </>

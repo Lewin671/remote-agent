@@ -7,7 +7,7 @@ import type { ListModelsResponse, ModelInfo } from "./gen/remoteagent/v1/local_p
 import { agentInfo } from "./agents";
 import { agentName, agentOf, allAutoUnavailable, autoUnavailable, CONTEXT_WARN, findModel, contextPercent, modelLabel, modeOf, titleOf } from "./model";
 import { errorText, type Remote, type SessionView } from "./remote";
-import { Alert, Banner, Segmented, Sheet, useEscape, useOverlayExit } from "./ui";
+import { Alert, Banner, Segmented, Sheet, useDialogFocus, useEscape, useOverlayExit } from "./ui";
 import { Check, ChevronRight, LoaderCircle } from "./icons";
 
 /** A session sheet's head: what it sets in bold, and whose session. */
@@ -63,6 +63,7 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
+  useDialogFocus(root);
   useEffect(() => {
     input.current?.focus();
     input.current?.select();

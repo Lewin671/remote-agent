@@ -251,17 +251,41 @@ function useWide() {
   return useSyncExternalStore(subscribeWide, () => wideQuery.matches);
 }
 
+/** The wide main area's toolbar gets a hairline under it once the page
+ * beneath has scrolled (the stylesheet draws it over the content, so it takes
+ * no room): data-scrolled is set while the page's own scroller is not at its
+ * top, and cleared when the route changes, as a new page starts at the top. */
+function useMainScrolled(route: string, wide: boolean) {
+  const main = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = main.current;
+    if (!el) return;
+    el.removeAttribute("data-scrolled");
+    const on = (e: Event) => {
+      const t = e.target;
+      // Only a page with a toolbar over its scroller has a line to show.
+      if (t instanceof HTMLElement && t.classList.contains("body") && el.contains(t) && el.querySelector(".dh, .navbar"))
+        t.scrollTop > 0 ? el.setAttribute("data-scrolled", "") : el.removeAttribute("data-scrolled");
+    };
+    el.addEventListener("scroll", on, true);
+    return () => el.removeEventListener("scroll", on, true);
+  }, [route, wide]);
+  return main;
+}
+
 function Main({ remote }: { remote: Remote }) {
   useRemote(remote);
   const [route, go] = useRoute();
   useLayoutEffect(() => { remote.setSchedulePage(route); }, [remote, route]);
   useEffect(() => { remote.syncSchedules(); });
   const wide = useWide();
+  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
   const session = kind === "s" ? remote.sessions.get(arg) : undefined;
   const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? taskRoute(session.machineId, session.info.scheduledTaskId) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
+  const main = useMainScrolled(route, wide);
   // A session opened from a link may not be among the pages of the
   // listing held here: it is asked for by its ID.
   const absent =
@@ -309,7 +333,14 @@ function Main({ remote }: { remote: Remote }) {
     page = machineId === "new" ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} />
       : taskId ? <ScheduleDetail key={machineId + taskId} remote={remote} machineId={machineId} id={taskId} go={go} onBack={() => go("tasks")} />
       // Selecting a task marks its results read; a wide window starts with none selected.
-      : wide ? <div className="center muted schedule-selection-empty">选一个任务查看结果</div> : <SchedulesPage remote={remote} go={go} />;
+      : wide ? (
+        <div className="center muted schedule-selection-empty">
+          <span>选一个任务查看结果</span>
+          <button className="btn sm" disabled={!scheduling || remote.unlinked} onClick={() => go("tasks/new")}>
+            新定时
+          </button>
+        </div>
+      ) : <SchedulesPage remote={remote} go={go} />;
   }
   // A wide window has no project page: its sidebar lists sessions and the main area starts one.
   else if (kind === "p")
@@ -356,12 +387,11 @@ function Main({ remote }: { remote: Remote }) {
           selected={session?.id}
           project={kind === "p" ? arg : undefined}
         />
-        <main className="dm"><Suspense fallback={loading}>{page}</Suspense></main>
+        <main className="dm" ref={main}><Suspense fallback={loading}>{page}</Suspense></main>
       </div>
     );
   // The home draws its own bottom row; the task list gets the same one,
   // with 新定时 on the right.
-  const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
   return (
     <div className="phone">
       <Suspense fallback={loading}>{page}</Suspense>

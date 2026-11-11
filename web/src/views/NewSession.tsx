@@ -67,7 +67,7 @@ function startOf(remote: Remote, key: string): Start {
   if (!start) all.set(key, (start = new Start()));
   return start;
 }
-import { Avatar, Banner, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
+import { Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
@@ -912,7 +912,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               <Avatar name={projectName(cfg.cwd)} size="sm" />
               <div className="mt">
                 {projectName(cfg.cwd)}
-                <div className="md mono">{shortPath(cfg.cwd)}</div>
+                <div className="md mono"><PathText path={shortPath(cfg.cwd)} /></div>
               </div>
             </div>
           </div>

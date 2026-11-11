@@ -37,6 +37,7 @@ import {
   Segmented,
   StateMark,
   NavBar,
+  PathText,
   Sheet,
   useNow,
   useRemote,
@@ -1235,7 +1236,7 @@ export function MachinePage({
                   onClick={() => go("p/" + encodeURIComponent(p.key))}
                 >
                   {p.name}
-                  <span className="v">{shortPath(p.key)}</span>
+                  <span className="v"><PathText path={shortPath(p.key)} /></span>
                 </button>
               ))}
             </div>

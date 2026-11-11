@@ -45,6 +45,21 @@ export function StateMark({ kind }: { kind: Mark }) {
   return <i ref={ref} className={"mark " + kind} aria-hidden />;
 }
 
+/** A folder's path that gives way in the middle when it does not fit: the
+ * start and the last piece stay, and the stretch between them is cut (the
+ * stylesheet does it on a wide window; elsewhere it is plain text). The
+ * whole path is the tooltip. */
+export function PathText({ path }: { path: string }) {
+  const at = path.lastIndexOf("/");
+  if (at <= 0 || at === path.length - 1) return <>{path}</>;
+  return (
+    <span className="pth" title={path}>
+      <span className="pth-head">{path.slice(0, at + 1)}</span>
+      <span className="pth-tail">{path.slice(at + 1)}</span>
+    </span>
+  );
+}
+
 /** A project's avatar: its name's first letter on a gray circle, the same
  * for every project; 全 for all of them. */
 export function Avatar({ name, size = "", all }: { name: string; size?: "" | "sm" | "xs" | "lg"; all?: boolean }) {
@@ -78,6 +93,7 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
+  useDialogFocus(root);
   // A short choice made from a control in a wide window opens against that
   // control, as a menu, not as a dialog in the middle of the window; from
   // the control's right edge when the control is in the right half, so the
@@ -102,7 +118,7 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
               <span className="side-act" />
             )}
             <b>{title}</b>
-            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : <span className="side-act" />}
+            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : wide ? <button className="side-act close" aria-label="关闭" title="关闭" onClick={onClose}><X /></button> : <span className="side-act" />}
           </div>
         )}
         {children}
@@ -115,6 +131,41 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
  * (the stylesheet's .mo-leave), whoever unmounts it. */
 export function useOverlayExit(ref: RefObject<HTMLElement | null>) {
   useExit(ref, { tier: "slow", leave: "mo-leave" });
+}
+
+/** A dialog, sheet or menu in a window with a keyboard: focus moves to the
+ * panel itself when it opens (so no control shows a ring before a key is
+ * pressed), Tab and Shift+Tab go round inside it, and focus returns to what
+ * had it when it closes. A control in it that asks for focus itself (a
+ * field) keeps it. */
+const FOCUSABLE = 'a[href], button:not(:disabled), input:not(:disabled), textarea:not(:disabled), select:not(:disabled), [tabindex]:not([tabindex="-1"])';
+export function useDialogFocus(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const root = ref.current;
+    // A phone's sheet is touched, not tabbed through.
+    if (!root || !wideQuery().matches) return;
+    const before = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Only what is drawn: a control in a hidden part is not a stop.
+    const items = () => [...root.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((e) => e.getClientRects().length > 0 || e === document.activeElement);
+    if (!root.contains(document.activeElement)) {
+      const panel = root.matches('[role="dialog"], [role="alertdialog"]') ? root : (root.querySelector<HTMLElement>('[role="dialog"], [role="alertdialog"]') ?? root);
+      panel.tabIndex = -1;
+      panel.focus({ preventScroll: true });
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Tab") return;
+      const list = items();
+      if (list.length === 0) return;
+      const at = list.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && at <= 0) { e.preventDefault(); list[list.length - 1].focus(); }
+      else if (!e.shiftKey && (at === list.length - 1 || at < 0)) { e.preventDefault(); list[0].focus(); }
+    };
+    root.addEventListener("keydown", onKey);
+    return () => {
+      root.removeEventListener("keydown", onKey);
+      if (before?.isConnected) before.focus({ preventScroll: true });
+    };
+  }, [ref]);
 }
 
 export function useEscape(fn: () => void) {
@@ -143,6 +194,7 @@ export function Alert({
   useEscape(onCancel);
   const root = useRef<HTMLDivElement>(null);
   useOverlayExit(root);
+  useDialogFocus(root);
   return (
     <div className="overlay" ref={root}>
       <div className="dim" onClick={onCancel} />

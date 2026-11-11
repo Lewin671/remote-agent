@@ -11,7 +11,7 @@ import { AGENTS } from "../agents";
 import { isHidden, isPinned, groupProjects } from "../prefs";
 import { exited, needsAttention, projectName, projects, shortPath, type Project } from "../model";
 import type { Remote, SessionView } from "../remote";
-import { ActionSheet, Alert, Avatar, Banner, fromHere, NavBar, useNow, useRemote } from "../ui";
+import { ActionSheet, Alert, Avatar, Banner, fromHere, NavBar, PathText, useNow, useRemote } from "../ui";
 import type { Go } from "./NewSession";
 import { NewProjectSheet } from "./NewSession";
 import { saveScope } from "../scope";
@@ -71,10 +71,15 @@ export function sessionCounts(remote: Remote, sessions: Iterable<SessionView>): 
 /** A project's second line, the same wherever it is listed: its folder,
  * then how many sessions wait and run, or that no computer of it is
  * online. */
-export function projectSub(remote: Remote, p: P): string {
+export function projectSub(remote: Remote, p: P): ReactNode {
   const counts = sessionCounts(remote, p.sessions);
   const offline = p.machines.length > 0 && remote.listed && p.machines.every((id) => !remote.machines.get(id)?.online);
-  return shortPath(p.key) + (counts ? ` · ${counts}` : offline ? " · 电脑不在线" : "");
+  return (
+    <>
+      <PathText path={shortPath(p.key)} />
+      {counts ? ` · ${counts}` : offline ? " · 电脑不在线" : ""}
+    </>
+  );
 }
 
 /** One project in a list. The whole row is one button, with `end` at its
@@ -251,7 +256,7 @@ export function ManagePage({ remote, go, onBack }: { remote: Remote; go: Go; onB
           info={
             <>
               <b>{menu.name}</b>
-              <span className="mono">{shortPath(menu.key)}</span>
+              <span className="mono"><PathText path={shortPath(menu.key)} /></span>
             </>
           }
           actions={[
