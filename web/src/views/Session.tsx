@@ -121,6 +121,7 @@ import {
 
 import { RowState, RememberDetails } from "./RowState";
 import { HistoryRows } from "./HistoryRows";
+import { followsEnd, type Scrolled } from "./scroll-follow";
 import {
   ArrowDown,
   Check,
@@ -847,6 +848,7 @@ function ChatBody({
   const [focus] = useState(() => { const value = remote.scheduleFocus.get(sid); remote.scheduleFocus.delete(sid); return value; });
   const stick = useRef(focus ? false : saved?.stick ?? true);
   const userScrollAt = useRef(0);
+  const lastScroll = useRef<Scrolled | undefined>(undefined);
   const [unseen, setUnseen] = useState(0);
   const seen = useRef<number | undefined>(undefined);
   const hist = remote.history(sid);
@@ -935,6 +937,8 @@ function ChatBody({
         if (h >= 0 && now < h) shrank = true;
         h = now;
       }
+      // What the next scroll event is compared with: where the chat stands.
+      lastScroll.current = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
       if (!stick.current) return;
       if (shrank || Date.now() - pressedAt.current > 800) el.scrollTop = el.scrollHeight;
     });
@@ -1144,12 +1148,11 @@ function ChatBody({
         onScroll={(e) => {
           const el = e.currentTarget;
           const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
-          const atBottom = gap < 60;
-          // Virtual measurement and pagination also produce scroll events.
-          // Only a user's scroll away turns following off.
-          if (atBottom) stick.current = true;
-          else if (Date.now() - userScrollAt.current < 1000)
-            stick.current = false;
+          // Virtual measurement and pagination also produce scroll events;
+          // only a scroll away from the end turns following off.
+          const now = { top: el.scrollTop, height: el.scrollHeight, client: el.clientHeight };
+          stick.current = followsEnd(stick.current, lastScroll.current, now, userScrollAt.current, Date.now());
+          lastScroll.current = now;
           // The virtual list follows its last row, which stops short of the
           // chat's own bottom padding: where nobody scrolled it, the last step
           // is taken, so that older records that join above, or a row measured,

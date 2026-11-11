@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
+import { NEAR_END } from "./scroll-follow";
 import { Virtuoso, type StateSnapshot, type VirtuosoHandle } from "react-virtuoso";
 import type { Remote } from "../remote";
 
@@ -85,7 +86,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   ready.current = isReady;
   useLayoutEffect(() => {
     parent.classList.add("mo-hold");
-    const follows = !focusKey && (initialTop ? initialTop.stick : parent.scrollTop + parent.clientHeight >= parent.scrollHeight - 60);
+    const follows = !focusKey && (initialTop ? initialTop.stick : parent.scrollTop + parent.clientHeight >= parent.scrollHeight - NEAR_END);
     const t0 = performance.now();
     let still = 0;
     let last = -1;
@@ -204,7 +205,6 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       : { initialScrollTop: top.top })}
     rangeChanged={save}
     totalListHeightChanged={save}
-    atBottomThreshold={60}
-    followOutput={(atBottom) => atBottom || follow() ? "auto" : false}
+    followOutput={() => follow() ? "auto" : false}
   />;
 }
