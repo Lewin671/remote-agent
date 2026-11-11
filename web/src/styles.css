@@ -1093,8 +1093,12 @@ h1, h2, h3 { font-weight: var(--w7); }
 .desk .cbar .cm-plus, .desk .cbar .snd { width: 32px; height: 32px; }
 .desk .cbar .cm-plus { font-size: 18px; }
 .desk .cbar .snd { font-size: 17px; }
-.desk .cbar .cline { align-items: flex-end; gap: 8px; }
-.desk .cbar .draft { font-size: 15px; line-height: 1.55; min-height: 56px; padding: 8px 4px; }
+/* A desktop field: the text has the whole width, the controls sit on their own row under it. */
+.desk .cbar .cline { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 8px; }
+.desk .cbar .cline > .draft { grid-column: 1 / -1; grid-row: 1; }
+.desk .cbar .cline > .attach-wrap { grid-column: 1; grid-row: 2; }
+.desk .cbar .cline > .mo-send { grid-column: 3; grid-row: 2; }
+.desk .cbar .draft { font-size: 15px; line-height: 1.55; min-height: 40px; padding: 8px 8px 4px; }
 .desk .dock { margin: 0 24px 8px; }
 .desk .dock > .tc { border-radius: 14px; padding: 16px 24px; max-width: none; }
 .desk .endcard { margin: 8px 24px 16px; border-radius: 14px; padding: 16px; box-shadow: none; }
@@ -1337,6 +1341,8 @@ input.field { margin: 0; }
 .side .schedule-sidebar > .home-note { padding: 8px 12px 0; }
 .side .schedule-sidebar > .banner { margin: 4px 4px 8px; }
 .side .sess.schedule-line .sm { padding: 0; }
+/* The line is one run of text; as a block it can end in an ellipsis. */
+.sess.schedule-line .sm > .mc { display: block; }
 .side .schedule-ended { padding: 10px 12px; margin: 0; font-size: 12px; }
 .schedule-choices .sess { padding-left: 12px; }
 
@@ -1358,6 +1364,7 @@ input.field { margin: 0; }
 .schedule-result-head > button > .ic { font-size: 16px; }
 .schedule-result h4 { margin: 8px 0 0; font-size: 17px; font-weight: var(--w6); line-height: 1.4; overflow-wrap: anywhere; }
 .schedule-result .ai { margin: 10px 0 0; }
+.schedule-result .ai:empty { display: none; }
 .schedule-result .ai > [hidden] { display: none !important; }
 .schedule-result .ai > .schedule-first-block-clipped { max-height: var(--schedule-result-limit); overflow: hidden; }
 .schedule-expand { display: flex; align-items: center; gap: 2px; min-height: 44px; margin-bottom: -10px; font-size: 15px; color: var(--blue); }
