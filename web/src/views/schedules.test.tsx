@@ -1463,10 +1463,10 @@ it.each(["light", "dark"])("aligns the attention banner, recovery button and car
   expect(getComputedStyle(banner.parentElement!).marginRight).toBe(cardStyle.marginRight);
   expect(actionStyle.paddingLeft).toBe(cardStyle.marginLeft);
   expect(actionStyle.paddingRight).toBe(cardStyle.marginRight);
-  // The banner's text starts where the card's does; a banner is 18 round, a card 28.
+  // The banner's text starts where the card's does; on a wide window a banner is 10 round, a card 14.
   expect(alertStyle.paddingLeft).toBe(cardStyle.paddingLeft);
-  expect(alertStyle.borderRadius).toBe("18px");
-  expect(cardStyle.borderRadius).toBe("28px");
+  expect(alertStyle.borderRadius).toBe("10px");
+  expect(cardStyle.borderRadius).toBe("14px");
   expect(alertStyle.backgroundColor).not.toBe(getComputedStyle(column.parentElement!).backgroundColor);
   expect(alertStyle.fontSize).toBe("13px");
   expect(alertStyle.color).toBe(getComputedStyle(document.documentElement).getPropertyValue("--orange-ink").trim());

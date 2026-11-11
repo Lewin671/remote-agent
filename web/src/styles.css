@@ -60,6 +60,12 @@
   --float: 0 16px 40px rgba(0,0,0,.18);
   --term: #131315;
   --lift: #ffffff; --dialog: #f5f5f7; --knob: #ffffff; --badge: #b55a00; --badge-fg: #ffffff;
+  /* Wide surfaces (design-system §2 宽屏表面): four levels, read by .desk. */
+  --s0: #ececef; --s1: #ffffff; --s2: #f4f4f6; --s3: #ffffff;
+  --hair: rgba(0,0,0,.08); --sep-wide: rgba(0,0,0,.08); --rim: rgba(0,0,0,.08);
+  --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
+  --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
+  --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -74,6 +80,11 @@
   --float: 0 16px 40px rgba(0,0,0,.6);
   --term: #0d0d0f;
   --lift: #2c2c2e; --dialog: #2c2c2e; --knob: #636366; --badge: #ff9f2e; --badge-fg: #1d1d1f;
+  --s0: #111113; --s1: #19191c; --s2: #222226; --s3: #2b2b30;
+  --hair: rgba(255,255,255,.07); --sep-wide: rgba(255,255,255,.08); --rim: rgba(255,255,255,.10);
+  --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+  --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
+  --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -88,6 +99,11 @@
     --float: 0 16px 40px rgba(0,0,0,.6);
     --term: #0d0d0f;
     --lift: #2c2c2e; --dialog: #2c2c2e; --knob: #636366; --badge: #ff9f2e; --badge-fg: #1d1d1f;
+    --s0: #111113; --s1: #19191c; --s2: #222226; --s3: #2b2b30;
+    --hair: rgba(255,255,255,.07); --sep-wide: rgba(255,255,255,.08); --rim: rgba(255,255,255,.10);
+    --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
+    --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
   }
 }
 
@@ -967,105 +983,130 @@ h1, h2, h3 { font-weight: var(--w7); }
 .big { margin: 6px 16px; display: flex; }
 .big .btn { flex: 1; }
 
-/* ---------- wide (≥900): a gray window, the sidebar drawn on it, and
-   the main area a rounded sheet of paper (design-system §6 宽屏) ---------- */
-.desk { display: grid; grid-template-columns: 296px minmax(0, 1fr); gap: 8px; padding: 8px; height: 100%; background: var(--gbg); }
-.side { overflow: hidden; display: flex; flex-direction: column; min-height: 0; position: relative; font-size: 13px; }
-.side-top { display: flex; align-items: center; gap: 8px; padding: 4px 4px 0; flex: none; min-height: 40px; }
-/* The sidebar's ink button that says what it makes: 新任务, 新定时. */
-.mini { height: 32px; border-radius: 16px; padding: 0 14px 0 10px; background: var(--btn); color: var(--btn-fg); display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: var(--w6); margin-left: auto; flex: none; position: relative; white-space: nowrap; }
-.mini::before { content: ""; position: absolute; inset: -6px 0; }
+/* ---------- wide (≥900): a window of four surfaces (design-system §2 宽屏表面
+   and §6 宽屏). .desk maps the phone's tokens onto them, so the rules below
+   and every rule written with --paper, --gbg and --lift follow: --s0 the
+   window and sidebar, --s1 the main area, --s2 cards, inputs and bubbles,
+   --s3 what floats and what is picked. ---------- */
+.desk {
+  --paper: var(--s1); --gbg: var(--s2); --lift: var(--s3); --dialog: var(--s3); --bubble: var(--s2); --knob: var(--s3);
+  --float: var(--elev); --tc: var(--tc-wide); --tc-line: var(--tc-line-wide); --sep: var(--sep-wide);
+  display: grid; grid-template-columns: 288px minmax(0, 1fr); padding: 8px 8px 8px 0; height: 100%; background: var(--s0);
+  font: 15px/1.45 var(--sans); letter-spacing: 0; text-autospace: normal; font-variant-numeric: tabular-nums;
+}
+/* The sidebar: 8 of padding all round; what it holds starts on one line 20
+   from its edge (8 + 12): the headline, the group titles, the search, the
+   state graphic of a row. */
+.side { overflow: hidden; display: flex; flex-direction: column; min-height: 0; position: relative; padding: 0 8px; font-size: 13px; line-height: 1.4; }
+.side-top { display: flex; align-items: center; gap: 8px; padding: 4px 0 0; flex: none; min-height: 40px; }
+/* The sidebar's button for what it makes, 新任务 and 新定时: level 3 with a
+   hairline, ink words; the ink fill is left to the main action in view. */
+.mini { height: 32px; border-radius: 16px; padding: 0 12px 0 10px; background: var(--s3); color: var(--ink); box-shadow: 0 0 0 .5px var(--rim); display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: var(--w6); margin-left: auto; flex: none; position: relative; white-space: nowrap; }
+.mini::before { content: ""; position: absolute; inset: -4px 0; }
 .mini > .ic { font-size: 15px; }
-.mini:disabled { opacity: .35; }
-.scp { height: 32px; border-radius: 16px; background: var(--fill2); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 4px; font-size: 13px; font-weight: var(--w6); min-width: 0; max-width: 100%; position: relative; }
-.scp::before { content: ""; position: absolute; inset: -6px 0; }
+.mini:disabled { opacity: .4; }
+.scp { height: 32px; border-radius: 16px; background: var(--fill); display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 4px; font-size: 13px; font-weight: var(--w6); min-width: 0; max-width: 100%; position: relative; }
+.scp::before { content: ""; position: absolute; inset: -4px 0; }
 .scp .av { width: 24px; height: 24px; font-size: 12px; }
 .scp > b { font-weight: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .scp > .ic:last-child { color: var(--ink3); }
-.scp.open { background: var(--lift); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.whl { margin: 0; padding: 16px 12px 0; font-size: 24px; line-height: 1.15; font-weight: var(--w7); letter-spacing: -.025em; overflow-wrap: anywhere; flex: none; }
+.scp.open { background: var(--s3); box-shadow: 0 0 0 .5px var(--rim); }
+.whl { margin: 0; padding: 16px 12px 0; font-size: 22px; line-height: 1.2; font-weight: var(--w7); letter-spacing: -.02em; overflow-wrap: anywhere; flex: none; }
 .whl em { font-style: normal; color: var(--orange); }
-.wsub { padding: 4px 12px 10px; font-size: 13px; color: var(--ink2); flex: none; overflow-wrap: anywhere; }
+.wsub { padding: 4px 12px 12px; font-size: 13px; line-height: 1.45; color: var(--ink2); flex: none; overflow-wrap: anywhere; }
 .wsub.err { color: var(--red); }
 /* Without the line under it, the headline keeps its own distance from what follows. */
 .whl:not(:has(+ .wsub)) { padding-bottom: 12px; }
 .wsub button { color: var(--blue); margin-left: 8px; min-height: 28px; }
-.side .find { margin: 0 4px 4px; height: 32px; border-radius: 16px; font-size: 13px; padding: 0 4px 0 12px; }
+.side .find { margin: 0 0 8px; height: 32px; border-radius: 10px; font-size: 13px; padding: 0 4px 0 12px; }
 .side .find .x { width: 28px; height: 28px; }
-.side .scroll { flex: 1; overflow-y: auto; min-height: 0; padding: 0 0 8px; scrollbar-width: none; }
-.side .scroll::-webkit-scrollbar { display: none; }
-.side .home-banners { padding: 4px 4px 8px; }
+/* The list reaches the sidebar's edges so that a row's focus ring is not
+   cut; its rows are inset by the padding. */
+.side .scroll { flex: 1; overflow-y: auto; min-height: 0; margin: 0 -8px; padding: 0 8px 16px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 16px), transparent); }
+.side .home-banners { padding: 0 0 8px; }
 .side .sec, .side .sec.d { padding: 16px 12px 4px; font-size: 12px; font-weight: var(--w6); color: var(--ink2); }
-/* Desktop density, a step smaller: 13 / 12, time and third line 11. */
-.side .sess, .side .old { padding: 9px 12px; border-radius: 14px; gap: 10px; }
-.side .sess > .gut { width: 14px; padding-top: 3px; }
+/* Rows at desktop density: 13 / 600 for the title, 12 for the summary, 11
+   for the time and the third line; 8 above and below, none between rows. A
+   row is a rounded 10 piece: level 3 when picked, a 5% veil under the
+   pointer. */
+.side .sess, .side .old { padding: 8px 12px; border-radius: 10px; gap: 10px; }
+.side .sess > .gut { width: 12px; padding-top: 4px; }
 .side .sess .mark.run { width: 11px; height: 11px; border-width: 1.5px; }
-.side .sess .mark.wait, .side .sess .mark.off, .side .sess .mark.unread { width: 8px; height: 8px; margin: 2px 0 0 1px; }
-.side .sess .mark.idle { width: 9px; height: 9px; }
+.side .sess .mark.wait, .side .sess .mark.off, .side .sess .mark.unread, .side .sess .mark.online { width: 8px; height: 8px; margin: 3px 0 0; }
+.side .sess .mark.idle { width: 9px; height: 9px; margin: 2px 0 0; }
 .side .sess .sm, .side .old .sm { border: 0; padding: 0; }
 .side .sess .row1 b { font-size: 13px; }
 .side .sess .row1 > span, .side .old .sm > span:last-child { font-size: 11px; }
-.side .sess .pv { font-size: 12px; -webkit-line-clamp: 1; line-clamp: 1; margin-top: 2px; }
+.side .sess .pv { font-size: 12px; line-height: 1.4; -webkit-line-clamp: 1; line-clamp: 1; margin-top: 2px; }
 .side .sess .mc { font-size: 11px; margin-top: 2px; }
 .side .old .sm > span:first-child { font-size: 13px; }
-.side :is(.sess, .old).sel { background: var(--lift); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-.side .more-row, .side .tail { padding: 12px; font-size: 12px; }
+.side :is(.sess, .old).sel { background: var(--s3); box-shadow: 0 0 0 .5px var(--rim); }
+.side .more-row, .side .tail { padding: 8px 12px; min-height: 32px; border-radius: 10px; font-size: 12px; }
 .side .home-note { padding: 8px 12px 0; font-size: 13px; }
 /* Where the link stands, over the bottom row; a click checks it. */
-.side .conn { display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 12px; color: var(--ink2); min-height: 32px; flex: none; text-align: left; }
+.side .conn { display: flex; align-items: center; gap: 6px; padding: 0 12px; font-size: 12px; color: var(--ink2); min-height: 32px; flex: none; text-align: left; border-radius: 8px; }
 .side .conn .mark { width: 7px; height: 7px; }
 .side .conn .mark.run { width: 10px; height: 10px; border-width: 1.5px; }
-.sfoot { display: flex; gap: 8px; padding: 2px 4px 4px; align-items: center; flex: none; }
+.sfoot { display: flex; gap: 8px; padding: 4px 0 8px; align-items: center; flex: none; }
 .sfoot .seg { flex: 1; display: flex; }
 .sfoot .seg .schedule-attention-badge { min-width: 16px; height: 16px; font-size: 11px; padding: 0 4px; }
 .sfoot .seg .schedule-new-badge { width: 7px; height: 7px; }
-/* A small round icon button on the gray: the gear. */
-.ib { width: 34px; height: 34px; border-radius: 50%; background: var(--fill2); display: flex; align-items: center; justify-content: center; position: relative; flex: none; font-size: 18px; color: var(--ink); }
-.ib::before { content: ""; position: absolute; inset: -5px; }
-.ib.on { background: var(--lift); box-shadow: 0 1px 3px rgba(0,0,0,.1); }
-.dm { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: var(--paper); border-radius: 12px; box-shadow: 0 0 0 .5px var(--sep); position: relative; }
+/* A round icon button, drawn only under the pointer: the gear, ⋯. */
+.ib { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative; flex: none; font-size: 18px; color: var(--ink); }
+.ib::before { content: ""; position: absolute; inset: -6px; }
+.ib.on { background: var(--s3); box-shadow: 0 0 0 .5px var(--rim); }
+/* The main area: a level 1 sheet of 12 round on the window, a hairline for
+   its edge. Its toolbar is 52 high with no rule under it; the rule appears
+   once the content has scrolled under it (App sets data-scrolled) and is
+   drawn over the content, so it takes no room. */
+.dm { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: var(--s1); border-radius: 12px; box-shadow: 0 0 0 .5px var(--hair); position: relative; }
+.dm::after { content: ""; position: absolute; left: 0; right: 0; top: 52px; height: .5px; background: var(--rim); opacity: 0; pointer-events: none; z-index: 6; transition: opacity var(--m-fast) var(--ease-out); }
+.dm[data-scrolled]::after { opacity: 1; }
 .dm > .body { flex: 1; }
 .dm .navbar .back:empty { display: none; }
 /* A session on a wide window: a toolbar of one line, the title and its
    state on the left, 聊天 / 终端 / 并排 and ⋯ on the right (§6 宽屏). */
-.dh { flex: none; display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 12px 0 24px; min-width: 0; }
-.dh > b { font-size: 15px; font-weight: var(--w6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-.dh .st { flex: none; display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink2); white-space: nowrap; }
+.dh { flex: none; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 12px 0 24px; min-width: 0; }
+.dh > b { font-size: 15px; font-weight: var(--w6); letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.dh .st { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); white-space: nowrap; }
 .dh .st .mark { width: 8px; height: 8px; }
 .dh .st .mark.run { width: 11px; height: 11px; border-width: 1.5px; }
 .dh .st .mark.idle { width: 9px; height: 9px; }
 .dh .sp { flex: 1; }
-.dh .ib { background: var(--fill); }
-/* At desktop density the conversation is a step smaller (§6 宽屏). */
-.desk .ccol .chat { --chat-pad: 28px; padding: 12px var(--chat-pad); }
-.desk .ccol :is(.me > div, .ai, .pending-bubble .pending-text) { font-size: 15px; }
+/* The conversation: one column of at most 760, in the middle, that the
+   input and the dock share; side by side, each half has 24 of its own. */
+.desk .ccol .chat { --chat-pad: 24px; padding: 12px var(--chat-pad); }
+.desk .ccol :is(.me > div, .pending-bubble .pending-text) { font-size: 15px; line-height: 1.55; border-radius: 14px; }
+.desk .me > div { padding: 8px 16px; }
+.desk .pending-bubble .pending-text { padding: 8px 16px; }
+.desk .ccol .ai { font-size: 15px; }
 .desk .ccol .ai :is(code, .ref) { font-size: 13px; }
-.desk .ccol .ai .mdh :is(code) { font-size: 17px; }
-.desk .ccol .ai .mdh.h3 code, .desk .ccol .ai .mdh.h4 code { font-size: 13px; }
+.desk .ccol .ai .mdh.h1, .desk .ccol .ai .mdh.h2 { font-size: 17px; }
+.desk .ccol .ai .mdh.h3 { font-size: 15px; }
+.desk .ccol .ai .mdh.h4 { font-size: 13px; }
+.desk .ccol .ai .mdh code { font-size: 13px; }
 .desk .pic.local { width: 105px; height: 140px; }
-.desk .cbar { margin: 4px 24px 14px; border-radius: 23px; padding: 5px; }
-.desk .cbar .cm-plus, .desk .cbar .snd { width: 36px; height: 36px; }
-.desk .cbar .draft { font-size: 15px; min-height: 36px; padding: 7px 4px; }
+.desk .cbar { margin: 8px 24px 16px; border-radius: 14px; padding: 8px; gap: 8px; }
+.desk .cbar .cm-plus, .desk .cbar .snd { width: 32px; height: 32px; }
+.desk .cbar .cm-plus { font-size: 18px; }
+.desk .cbar .snd { font-size: 17px; }
+.desk .cbar .cline { align-items: flex-end; gap: 8px; }
+.desk .cbar .draft { font-size: 15px; line-height: 1.55; min-height: 56px; padding: 8px 4px; }
 .desk .dock { margin: 0 24px 8px; }
-.desk .dock > .tc { border-radius: 24px; padding: 16px; }
-.desk .endcard { margin: 4px 24px 14px; }
-.desk .toast { margin: 0 24px 8px; }
-/* The chat alone: one column of about 680 in the middle. */
-.desk .p-chat .chat { padding-inline: max(28px, calc((100% - 680px) / 2)); }
-.desk .p-chat :is(.cbar, .dock, .endcard, .toast) { width: min(680px, calc(100% - 48px)); margin-inline: auto; }
-/* The terminal: a dark rounded panel set in the paper, with paper round it. */
-.desk .tcol { padding: 0 8px 8px; }
+.desk .dock > .tc { border-radius: 14px; padding: 16px; }
+.desk .endcard { margin: 8px 24px 16px; border-radius: 14px; padding: 16px; box-shadow: none; }
+.desk .toast { margin: 0 24px 8px; border-radius: 10px; }
+.desk .p-chat .chat { padding-inline: max(24px, calc((100% - 760px) / 2)); }
+.desk .p-chat :is(.cbar, .dock, .endcard, .toast) { width: min(760px, calc(100% - 48px)); margin-inline: auto; }
+/* The terminal: a dark rounded panel set in the main area. */
+.desk .tcol { padding: 0 24px 16px; }
 .desk .p-split .tcol { padding-left: 0; }
-.desk .termview { border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1); }
+.desk .termview { border-radius: 14px; overflow: hidden; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1); }
 .desk .ttool { padding: 12px 12px 0; }
 .desk .tchip { flex: none; height: 28px; border-radius: 14px; padding: 0 4px 0 12px; font-size: 12px; background: rgba(255,255,255,.1); border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
 .desk .tchip button { min-height: 28px; }
 /* The ⋯ menu by its button: what a phone shows as a bottom sheet. */
-.pop.menu-pop { left: auto; right: 12px; top: 54px; width: 340px; padding: 16px 8px 8px; }
-.pop.menu-pop .menu-info { padding: 0 12px 12px; }
-.pop.menu-pop .list .mi { min-height: 44px; font-size: 15px; }
-.pop.menu-pop .list .mi .mv { font-size: 15px; }
-.pop.menu-pop .list + .list { margin-top: 8px; }
+.pop.menu-pop { left: auto; right: 12px; top: 44px; width: 320px; }
 
 /* ---------- v2 (docs/design/client-v2.html) ---------- */
 
@@ -1457,3 +1498,283 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
    margins in, so that its height is the card's with them. */
 .mo-box { display: flow-root; position: relative; flex: none; }
 .mo-box > .mo-swap-out { position: absolute; top: 0; left: 0; right: 0; }
+
+/* ---------- wide (≥900), the rest of §6 宽屏 ----------
+   Everything here is under .desk, so a phone is not touched. It sets the
+   desktop scale (radii 8 / 10 / 14 / 18, type 11 12 13 15 17 22 28, space
+   in 4s), the controls' look under a pointer and a key, and the surfaces
+   of what floats. */
+
+/* Pages: a toolbar of 52, then one column of 640 whose cards sit 16 in and
+   whose text sits 16 inside a card, so the page title, a group's name and a
+   row's words stand on one line, 32 from the column's edge. */
+.desk .navbar { min-height: 52px; padding: 0 12px 0 16px; gap: 8px; }
+.desk .navbar :is(.back, .more) { width: 32px; height: 32px; font-size: 18px; }
+.desk .navbar button:is(.back, .more) { background: none; border: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.desk .navbar .title { flex-direction: row; align-items: baseline; gap: 10px; text-align: left; justify-content: flex-start; }
+.desk .navbar .title b { font-size: 15px; letter-spacing: -.02em; max-width: 60%; }
+.desk .navbar .title span { font-size: 12px; margin-top: 0; }
+.desk .large { padding: 20px 32px 8px; }
+.desk .large h3 { font-size: 28px; line-height: 1.2; letter-spacing: -.02em; }
+.desk .label { padding: 24px 32px 8px; font-size: 13px; }
+.desk .gf, .desk .txt { padding-inline: 32px; }
+.desk .foot { padding-inline: 32px; text-align: left; }
+.desk .body.set { padding-top: 0; padding-bottom: 32px; }
+.desk .set-banners { margin: 8px 16px 0; }
+.desk .banner { border-radius: 10px; padding: 4px 8px 4px 16px; min-height: 40px; }
+.desk .grp, .desk .list { border-radius: var(--r-card, 14px); }
+.desk .row { padding: 0 16px; min-height: 44px; font-size: 15px; gap: 12px; }
+.desk .row + .row::before { left: 16px; }
+.desk .row.col, .desk .row.help { padding: 12px 16px; }
+.desk .row .v { font-size: 15px; }
+.desk .row.client { padding-top: 8px; padding-bottom: 8px; }
+.desk .qrow { padding: 12px 16px; }
+.desk .qrow + .qrow::before { left: 16px; }
+.desk .qrow > b { font-size: 15px; }
+.desk .mach-card { margin: 0 16px 12px; padding: 4px 16px 16px; border-radius: 14px; }
+.desk .mach-name b { font-size: 17px; letter-spacing: -.02em; }
+.desk .qt { margin-top: 12px; }
+.desk .qt .l, .desk .qrow .l { font-size: 13px; }
+.desk .qt .l .n, .desk .qrow .l .n { font-size: 13px; }
+.desk .bar { height: 4px; }
+.desk .addrow { margin: 0 16px; width: calc(100% - 32px); height: 44px; border-radius: 14px; font-size: 15px; }
+.desk .sw { width: 40px; height: 24px; border-radius: 12px; }
+.desk .sw::after { width: 20px; height: 20px; right: 2px; top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+.desk .sw.off::after { right: auto; left: 2px; }
+.desk .sw::before { inset: -10px -2px; }
+.desk .field { border-radius: 10px; padding: 8px 16px; font-size: 15px; }
+.desk .field input { font-size: 15px; }
+.desk .recovery-code { border-radius: 14px; margin-inline: 16px; }
+.desk .txt { font-size: 13px; }
+.desk .hint, .desk .fl { font-size: 13px; }
+/* Schedules: cards 14, text 15. */
+.desk .rc { margin: 8px 16px 0; padding: 16px; border-radius: 14px; }
+.desk .rc .row1 { font-size: 13px; }
+.desk .rc .row1 b { font-size: 15px; }
+.desk .rc .pv, .desk .rc.warn .pv { font-size: 15px; line-height: 1.55; }
+.desk .schedule-result { margin: 8px 16px 0; padding: 16px; border-radius: 14px; }
+.desk .schedule-result h4 { font-size: 15px; }
+.desk .schedule-description { border-radius: 14px; padding: 12px 16px; }
+.desk .schedule-text { font-size: 15px; line-height: 1.55; }
+.desk .schedule-run small { font-size: 13px; }
+.desk .schedule-run .quiet { font-size: 13px; }
+.desk .schedule-detail .label, .desk .schedule-detail-content > .label { padding-inline: 32px; }
+.desk .schedule-attention > .banner { padding: 4px 16px; }
+.desk .schedule-selection-empty { flex-direction: column; gap: 16px; font-size: 15px; }
+.desk .schedule-selection-empty .btn { flex: none; }
+.desk .dm .sec { font-size: 15px; }
+.desk .dm .sec.d, .desk .dm .sec .sec-act { font-size: 13px; }
+.desk .dm .sec .sec-act { min-height: 32px; }
+
+/* The first task and the new task: one column of 640 a little above the
+   middle (the spacers keep 38 : 62), the sentence, then a box that can be
+   written in, three lines at least; the controls under it are 32 high. */
+.desk .wnew::before { content: ""; flex: 38 1 0; }
+.desk .wnew::after { content: ""; flex: 62 1 0; }
+.desk .wstart { margin: 0 auto; flex: none; width: min(640px, calc(100% - 48px)); padding: 24px 0; }
+.desk .sent { font-size: 17px; gap: 8px; }
+.desk .tok { height: 32px; border-radius: 16px; padding: 0 12px; font-size: 13px; }
+.desk .tok::before { inset: -4px 0; }
+.desk .sent .tok { font-size: 15px; }
+.desk .tok.p { padding-left: 4px; }
+.desk .wbox { margin-top: 16px; background: var(--s2); border-radius: 14px; padding: 16px 16px 8px; box-shadow: inset 0 0 0 .5px var(--rim); }
+.desk .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .wstart .ask { font-size: 15px; line-height: 1.55; min-height: 72px; }
+.desk .wstart .ask:placeholder-shown { font-size: 15px; font-weight: 400; line-height: 1.55; letter-spacing: 0; }
+.desk .wbox .ask::placeholder { color: var(--ink3); }
+.desk .wbox :is(.tok, .cm-plus) { background: var(--fill); }
+.desk .wstart .acc { padding: 8px 0 0; margin-left: -8px; gap: 8px; }
+.desk .wstart .acc .project-summary { height: 32px; border-radius: 16px; font-size: 13px; }
+.desk .wstart .acc .cm-plus, .desk .wstart .acc .snd { width: 32px; height: 32px; }
+.desk .wstart .kh { font-size: 12px; }
+.desk .wstart .nt-banners { padding: 0 0 16px; }
+.desk .wstart > .et { margin: 0 0 8px; }
+.desk .wstart > .home-note { font-size: 15px; }
+
+/* Type: 11 / 12 / 13 / 15 / 17 / 22 / 28. Titles close up a little (-0.02em);
+   the text of a reply and a row is left as it is. The tool lines and the
+   rule between turns are the quietest things in a conversation. */
+.desk h1, .desk h2, .desk h3, .desk .et { letter-spacing: -.02em; }
+.desk .et { font-size: 22px; }
+.desk .tc h4 { font-size: 17px; font-weight: var(--w6); }
+.desk .tc .k, .desk .tc .m, .desk .tc .ml { font-size: 12px; }
+.desk .tc .y, .desk .tc .plan { font-size: 13px; line-height: 1.55; }
+.desk .tc .q { font-size: 15px; }
+.desk .tc .opt, .desk .tc .inp { font-size: 15px; }
+.desk .tc .cmd { border-radius: 6px; padding: 12px; font-size: 13px; }
+.desk .tc .cmd.clamp { padding-bottom: 0; border-bottom-width: 12px; }
+.desk .tc .opt { border-radius: 6px; min-height: 40px; padding: 8px 12px; }
+.desk .tc .inp { border-radius: 6px; min-height: 40px; padding: 8px 12px; }
+.desk .tool, .desk .record { font-size: 12px; line-height: 1.5; gap: 8px; }
+.desk .tool code, .desk .record code, .desk .record pre { font-size: 12px; line-height: 1.5; }
+.desk .tool.now { border-radius: 10px; padding: 8px 12px; margin: 16px 0 12px; }
+.desk .sep { font-size: 12px; color: var(--ink2); }
+.desk .sep::before, .desk .sep::after { border-top-color: var(--hair); }
+.desk .sysline { font-size: 12px; }
+.desk .me small, .desk .pending-bubble .pending-meta { font-size: 12px; }
+.desk .me small { margin: 4px 0 0; }
+.desk .pending-bubble > .pending-meta { margin: 4px 0 0; }
+.desk .me { margin-bottom: 24px; }
+.desk .sysline { margin-bottom: 24px; }
+.desk .sep { margin: 8px 0 24px; }
+.desk .think { font-size: 12px; }
+.desk .banner, .desk .toast { font-size: 13px; }
+.desk .menu-info { font-size: 12px; }
+.desk .menu-info b { font-size: 15px; letter-spacing: -.02em; }
+.desk .file-name { font-size: 13px; }
+.desk .file-chip { border-radius: 10px; min-height: 44px; }
+.desk .tc { border-radius: 14px; }
+.desk .tc.line { border-radius: 10px; padding: 8px 16px; min-height: 40px; }
+.desk .tstate { border-radius: 14px; padding: 16px; }
+.desk .tstate b { font-size: 15px; }
+.desk .tstate p { font-size: 13px; }
+.desk .security-qr { border-radius: 14px; }
+.desk .find { height: 32px; border-radius: 10px; font-size: 13px; }
+.desk .sheet h4 { font-size: 15px; letter-spacing: -.02em; }
+.desk .btn { min-height: 32px; padding: 0 16px; border-radius: 16px; font-size: 13px; }
+.desk .btn.sm { min-height: 28px; padding: 0 12px; font-size: 13px; }
+.desk .ichip { font-size: 12px; }
+
+/* Code in a reply: level 2 with a hairline, a top line with the language on
+   the left and the copy button on the right; the code below it can be
+   scrolled as far as it goes without sliding under the button. */
+.desk .cb { background: var(--s2); border-radius: 14px; box-shadow: inset 0 0 0 .5px var(--hair); overflow: hidden; }
+.desk .cb::before { content: attr(data-lang); display: block; height: 32px; padding: 0 56px 0 16px; font: 12px/32px var(--mono); letter-spacing: 0; color: var(--ink2); border-bottom: .5px solid var(--hair); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desk .cb pre { padding: 12px 16px; }
+.desk .cb .cbt { padding-right: 0; }
+.desk .cp { top: 0; right: 4px; width: 32px; height: 32px; border-radius: 8px; }
+.desk .cp::before { display: none; }
+.desk .cp > .ic { top: 8px; right: 8px; }
+/* A path gives way in the middle: its start and its last piece stay. */
+.desk .pth { display: inline-flex; max-width: 100%; min-width: 0; vertical-align: bottom; }
+.desk .pth-head { flex: 0 1 auto; min-width: 3ch; overflow: hidden; text-overflow: ellipsis; white-space: pre; }
+.desk .pth-tail { flex: none; white-space: pre; }
+.desk .cbmore { min-height: 32px; border-top: .5px solid var(--hair); padding: 0 16px; }
+
+/* Under a pointer and under a key (§6 宽屏): every control that can be
+   pressed has a hover and a pressed state, in the "quick" time. Rows take
+   a 5% veil, ink buttons go 6% toward their opposite, plain words get a
+   rounded veil, icon buttons a round one; the pressed button shrinks to
+   .98. The ring is 2 blue, 2 out, and only for a key. */
+.desk button, .desk a, .desk summary, .desk .tok, .desk .row, .desk .sess, .desk .old, .desk .seg button, .desk .sw {
+  transition: background-color var(--m-fast) var(--ease-out), color var(--m-fast) var(--ease-out), box-shadow var(--m-fast) var(--ease-out), opacity var(--m-fast) var(--ease-out), transform var(--m-fast) var(--ease-out);
+}
+.desk :is(button, a, summary, [tabindex]):focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.desk :is(input, textarea, select):focus-visible, .desk [tabindex="-1"]:focus-visible, [tabindex="-1"]:focus-visible { outline: none; }
+.desk .field:focus-visible, .desk .field:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .find:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .cbar:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .tc .inp:focus-visible { box-shadow: inset 0 0 0 1px rgba(255,255,255,.4); }
+.desk ::selection { background: color-mix(in srgb, var(--blue) 28%, transparent); }
+.desk button, .desk summary, .desk [role="button"], .desk a, .desk select, .desk label[for], .desk .row.backup-check { cursor: pointer; }
+.desk :is(input:not([type="checkbox"], [type="radio"], [type="button"]), textarea), .desk .wbox, .desk .find, .desk .cbar .draft { cursor: text; }
+.desk :is(button, [role="button"], select, input, textarea):disabled { cursor: default; opacity: .4; }
+.desk .mini:disabled { opacity: .4; }
+.desk :is(.tok, .link, .seg button, .pick button, .cm-plus.off, .snd.stop):disabled { opacity: .4; }
+/* Scrollbars: thin, drawn over the content, and only plain under the pointer. */
+.desk * { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+.desk *:hover { scrollbar-color: var(--thumb) transparent; }
+@media (hover: hover) {
+  .desk :is(.sess, .old, .pr, .more-row, .tail, .side .conn, .plist .pi, .list .mi, .pop .pi):hover:not(.sel, :disabled) { background: var(--hov); }
+  .desk :is(button, a).row:hover:not(:disabled, .help), .desk :is(button).qt:hover, .desk .mach-head:hover, .desk .schedule-run:hover { background: var(--hov); }
+  .desk :is(.ib, .gbtn, .fbtn, .back, .more, .dots, .x, .cp, .file-chip button, .side-act.close):hover:not(:disabled) { background: var(--fill); }
+  .desk :is(.link, .sec-act, .banner button, .me small button, .pending-meta button, .schedule-more, .schedule-expand, .cbmore, .wsub button, .conn button, .tc .lk, .tc .ml button, .sheet-head > .side-act):hover:not(:disabled) { background: var(--hov); }
+  .desk .cbmore:hover { background: var(--hov); }
+  .desk :is(.seg, .pick) button:not(.on):hover:not(:disabled) { color: var(--ink); }
+  .desk .scp:hover { background: var(--fill2); }
+  .desk .scp.open:hover { background: var(--s3); }
+  .desk .mini:hover:not(:disabled) { background: color-mix(in srgb, var(--s3), var(--ink) 6%); }
+  .desk .btn:hover:not(:disabled, .pri, .danger) { background: color-mix(in srgb, var(--fill2), var(--ink) 6%); }
+  .desk .btn.pri:hover:not(:disabled) { background: color-mix(in srgb, var(--btn), var(--btn-fg) 6%); }
+  .desk .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--red), #000 6%); }
+  .desk .snd:hover:not(:disabled, .off) { background: color-mix(in srgb, var(--btn), var(--btn-fg) 6%); }
+  .desk .cm-plus:hover:not(.off) { background: var(--fill2); }
+  .desk .tok:hover:not(:disabled) { background: var(--fill2); }
+  .desk .tc .btn:hover:not(:disabled, .pri) { background: rgba(255,255,255,.2); }
+  .desk .tc .btn.pri:hover:not(:disabled) { background: #e4e4e8; }
+  .desk .tc .opt:hover:not(:disabled, .on) { background: rgba(255,255,255,.16); }
+  .desk .attach-menu button:hover, .desk .send-menu button:hover { background: var(--hov); }
+  .desk .newmsg:hover { background: color-mix(in srgb, var(--s3), var(--ink) 6%); }
+  .desk .sec .sec-act:hover, .desk .tc h4 button:hover { background: var(--hov); }
+}
+.desk :is(.sess, .old, .pr, .row, .plist .pi, .list .mi, .more-row, .tail):active:not(.sel, :disabled, .help) { background: var(--press); }
+.desk :is(.ib, .gbtn, .fbtn, .back, .more, .dots, .x, .cp):active:not(:disabled) { background: var(--fill2); }
+.desk :is(.btn, .mini, .tok, .seg button, .cm-plus, .snd, .scp, .addrow):active:not(:disabled) { transform: scale(.98); }
+.desk .btn.pri:active:not(:disabled), .desk .snd:active:not(:disabled) { background: color-mix(in srgb, var(--btn), var(--btn-fg) 12%); }
+
+/* The segmented control: a recessed track, the picked part a level 3 knob. */
+.desk :is(.seg, .pick) { background: var(--seg); padding: 2px; }
+.desk :is(.seg, .pick) button { min-height: 28px; padding: 0 12px; font-size: 13px; }
+.desk .seg > .mo-knob { box-shadow: 0 0 0 .5px var(--rim), 0 1px 3px rgba(0,0,0,.18); }
+.desk .weekdays { background: var(--seg); }
+.desk .weekdays .on { box-shadow: 0 0 0 .5px var(--rim), 0 1px 3px rgba(0,0,0,.18); }
+
+/* What floats: level 3, one hairline and one shadow (--elev) for every sheet,
+   dialog, menu and popover. A dialog is 18 round, a menu 14. */
+.desk .dim { background: rgba(0,0,0,.4); }
+.desk .sheet { background: var(--s3); border-radius: 18px; box-shadow: var(--elev); padding: 16px; }
+.desk :is(.sheet, .pop, .dialog) { --lift: var(--s2); }
+.desk .dialog { border-radius: 18px; padding: 20px 20px 16px; width: min(360px, calc(100% - 64px)); }
+.desk .dialog h5 { font-size: 15px; letter-spacing: -.02em; }
+.desk .dialog p { font-size: 13px; line-height: 1.45; margin: 8px 0 16px; }
+.desk .dialog .btns { justify-content: flex-end; }
+.desk .dialog .btn { flex: none; min-width: 72px; }
+.desk .sheet-head { min-height: 32px; margin: 0 0 12px; gap: 8px; }
+.desk .sheet-head > b { text-align: left; font-size: 15px; letter-spacing: -.02em; }
+.desk .sheet-head > b:first-child { margin-left: 4px; }
+.desk .sheet-head > .side-act { width: auto; min-height: 32px; padding: 0 12px; border-radius: 16px; font-size: 13px; font-weight: var(--w6); }
+.desk .sheet-head > .side-act:empty { display: none; }
+.desk .sheet-head > .side-act:first-child:not(:empty) { padding: 0; }
+.desk .sheet-head > .side-act.close { width: 32px; padding: 0; color: var(--ink); font-size: 18px; justify-content: center; }
+.desk .fbtn { width: 32px; height: 32px; font-size: 18px; background: none; }
+.desk .sheet .hint, .desk .sheet .fl { margin-left: 4px; margin-right: 4px; }
+.desk .sheet .list .mi, .desk .sheet .row { min-height: 44px; padding: 0 12px 0 16px; font-size: 15px; }
+.desk .list .mi b { font-size: 15px; }
+.desk .list .mi .mv { font-size: 15px; }
+.desk .list .mi .md, .desk .list .mi small { font-size: 12px; }
+.desk .list .mi + .mi::before { left: 16px; }
+.desk .plist .pi { min-height: 48px; padding: 6px 12px; font-size: 15px; }
+.desk .plist .pi + .pi::before { left: 52px; }
+.desk .plist .pi b { font-size: 15px; }
+.desk .plist .pi small { font-size: 12px; }
+.desk .ctxbox { border-radius: 14px; padding: 12px 16px; }
+.desk .schedule-inputs input, .desk .schedule-inputs select { min-height: 40px; border-radius: 10px; font-size: 15px; }
+.desk .menu-info { padding: 4px 8px 12px; }
+/* A choice made from a control, and the ⋯ menu: a menu, not a card of rows.
+   Items are 32 high and 8 round, groups are told apart by a hairline. */
+.desk .sheet.anchored { padding: 8px; border-radius: 14px; min-width: 240px; }
+.desk .pop { left: 8px; right: 8px; top: 44px; background: var(--s3); border-radius: 14px; box-shadow: var(--elev); padding: 8px; font-size: 13px; }
+.desk .pop.menu-pop { left: auto; right: 12px; top: 44px; width: 320px; }
+.desk :is(.pop, .sheet.anchored) :is(.grp, .list) { background: none; border-radius: 0; overflow: visible; margin: 0; }
+.desk :is(.pop, .sheet.anchored) :is(.grp, .list) + :is(.grp, .list) { margin-top: 4px; padding-top: 4px; border-top: .5px solid var(--hair); }
+.desk :is(.pop, .sheet.anchored) .list .mi { min-height: 32px; padding: 0 8px; border-radius: 8px; font-size: 13px; gap: 8px; }
+.desk :is(.pop, .sheet.anchored) .list .mi + .mi::before, .desk .pop .plist .pi + .pi::before { display: none; }
+.desk :is(.pop, .sheet.anchored) .list .mi .mt { padding: 6px 0; }
+.desk :is(.pop, .sheet.anchored) .list .mi b, .desk :is(.pop, .sheet.anchored) .list .mi .mv { font-size: 13px; }
+.desk :is(.pop, .sheet.anchored) .list .mi .md { font-size: 12px; margin-top: 0; }
+.desk :is(.pop, .sheet.anchored) .menu-info { padding: 4px 8px 8px; }
+.desk .pop .menu-info { padding: 4px 8px 8px; }
+.desk .pop .plist .pi { min-height: 44px; padding: 6px 8px; border-radius: 8px; gap: 12px; }
+.desk .pop .plist .pi b { font-size: 13px; }
+.desk .pop .plist .pi small { font-size: 12px; }
+.desk .pop .plist .pi .av { width: 24px; height: 24px; font-size: 12px; }
+.desk .pop .plist .pi.add > .ic { width: 24px; }
+.desk .pop .plist .grp + .grp { margin-top: 4px; padding-top: 4px; border-top: .5px solid var(--hair); }
+.desk .pop .plist .fl { margin: 8px 8px 4px; font-size: 12px; }
+.desk .attach-menu, .desk .send-menu { background: var(--s3); border-radius: 14px; box-shadow: var(--elev); -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; padding: 4px; }
+.desk .attach-menu button { height: 32px; border-radius: 8px; font-size: 13px; padding: 0 8px; box-shadow: none; }
+.desk .attach-menu button + button { box-shadow: none; border-radius: 8px; }
+.desk .attach-menu p { font-size: 12px; margin: 4px 8px 8px; }
+.desk .send-menu button { min-height: 32px; border-radius: 8px; font-size: 13px; padding: 4px 8px; }
+.desk .newmsg { background: var(--s3); box-shadow: var(--elev); }
+
+/* Glass is for the phone's small floating pieces; here a piece that sat on
+   glass is the surface it belongs to. */
+.desk .glass { background: var(--s2); -webkit-backdrop-filter: none; backdrop-filter: none; border: 0; box-shadow: none; }
+.desk .cbar.glass { box-shadow: inset 0 0 0 .5px var(--rim); }
+.desk .cbar.glass:focus-within { box-shadow: inset 0 0 0 1px var(--edge-hi); }
+.desk .termview .glass, .desk .tchip.glass { background: rgba(60,60,64,.6); }
+/* 新定时 on a wide window is a page of the same one column of 640. */
+.desk .schedule-body:not(.schedule-detail-body) { padding-inline: max(0px, calc((100% - 640px) / 2)); }
+/* The prompt's field carries .big (a button row's class), which made its label sit beside the text; here the label is above it. */
+.desk .schedule-prompt { display: block; }
