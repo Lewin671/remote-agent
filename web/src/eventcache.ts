@@ -15,6 +15,8 @@ export interface CachedEvent {
   envelope: Envelope;
 }
 
+export const CACHE_PAGE_SIZE = 128;
+
 export interface EventCache {
   /** At most 128 contiguous events after a previously restored prefix. */
   read(sid: string, afterSeq?: bigint): Promise<CachedEvent[]>;
@@ -109,7 +111,7 @@ const idbCache: EventCache = {
       req.onerror = () => reject(req.error);
       req.onsuccess = () => {
         const cursor = req.result;
-        if (!cursor || out.length === 128 ||
+        if (!cursor || out.length === CACHE_PAGE_SIZE ||
             (cursor.key as [string, number])[1] !== Number(afterSeq) + out.length + 1) {
           resolve(out);
           return;

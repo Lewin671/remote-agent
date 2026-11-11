@@ -139,7 +139,7 @@ import {
   type PrefsStore,
 } from "./prefs";
 import { endedUnsent, machineName, modelLabel, type Outgoing } from "./model";
-import { eventCache, type CachedEvent, type EventCache } from "./eventcache";
+import { CACHE_PAGE_SIZE, eventCache, type CachedEvent, type EventCache } from "./eventcache";
 import { PROTOCOL_VERSION } from "./protocol";
 import {
   loadAccount,
@@ -2439,8 +2439,22 @@ export class Remote {
     b.restored = true;
     if (!this.cache || b.events.length) return;
     const stale = () => this.closed || this.buffers.get(s.id) !== b;
+    // A long encrypted cache is verified in pages too. Open its latest page
+    // first, when it reaches the known end, so reading can begin while the
+    // prefix is restored. Never expose an old middle page as the latest one.
+    if (s.lastSeq > BigInt(CACHE_PAGE_SIZE)) {
+      const after = s.lastSeq - BigInt(CACHE_PAGE_SIZE);
+      const tail = await this.cache.read(s.id, after).catch((): CachedEvent[] => []);
+      if (stale()) return;
+      if (tail.length === CACHE_PAGE_SIZE && tail.every((e, i) => e.seq === after + BigInt(i + 1))) {
+        b.tailRequested = true;
+        await this.ingest(s, tail, false, true, true);
+        if (stale()) return;
+        if (!b.broken && b.recent) { b.ready = true; this.changed(); }
+      }
+    }
     let after = 0n;
-    while (!stale()) {
+    while (!stale() && !b.broken) {
       const rows = await this.cache.read(s.id, after).catch((): CachedEvent[] => []);
       if (!rows.length || stale()) return;
       if (rows[0].seq !== after + 1n || rows.at(-1)!.seq > s.lastSeq) break;
@@ -2459,6 +2473,9 @@ export class Remote {
       verifiedSeqs: undefined,
       verifiedEvents: undefined,
       unavailableSeqs: undefined,
+      recent: undefined,
+      tailRequested: false,
+      ready: false,
     });
     await this.cache.drop(s.id).catch(() => undefined);
   }

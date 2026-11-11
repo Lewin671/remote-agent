@@ -92,3 +92,37 @@ it("does not draw the cached copy when the latest page is to replace it", async 
   expect(r.history("s").ready).toBe(false);
   release();
 }, 20000);
+
+it("shows the verified cached tail before restoring the prefix, without downloading it again", async () => {
+  const { CACHE_PAGE_SIZE } = await import("./eventcache");
+  const r = remote = await SyntheticRemote.create();
+  const count = CACHE_PAGE_SIZE + 2;
+  const all: CachedEvent[] = [];
+  for (let seq = 1n; seq <= BigInt(count); seq++) all.push({ seq,
+    envelope: await r.seal({ kind: PayloadKind.EVENT, sessionId: "s", seq }, EventSchema,
+      create(EventSchema, { sessionId: "s", seq, kind: { case: "agentMessage", value: { text: "message " + seq } } })),
+  });
+  let release!: () => void, entered!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const waiting = new Promise<void>(resolve => { entered = resolve; });
+  const read = vi.fn(async (_sid: string, after = 0n) => {
+    if (!after) { entered(); await barrier; }
+    return all.filter(e => e.seq > after).slice(0, CACHE_PAGE_SIZE);
+  });
+  (r as any).cache = { read, drop: vi.fn(), append: vi.fn(async () => {}), set: vi.fn(async () => {}) };
+  r.sessions.get("s")!.lastSeq = BigInt(count);
+  const getEvents = vi.fn(async () => ({ events: [], more: false }));
+  (r as any).api = { getEvents };
+  const loaded = new Promise<void>(resolve => { const off = r.subscribe(() => { if (r.loaded("s")) { off(); resolve(); } }); });
+  r.events("s");
+  await waiting;
+  try {
+    expect(r.history("s")).toMatchObject({ loaded: false, ready: true, backfilling: true });
+    expect(r.events("s").at(-1)?.kind).toMatchObject({ case: "agentMessage", value: { text: `message ${count}` } });
+    expect(r.events("s")[0].seq).toBe(3n);
+    expect(getEvents).not.toHaveBeenCalled();
+  } finally { release(); }
+  await loaded;
+  expect(r.events("s").map(e => e.seq)).toEqual(all.map(e => e.seq));
+  expect(getEvents).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ afterSeq: BigInt(count) }));
+}, 20000);
