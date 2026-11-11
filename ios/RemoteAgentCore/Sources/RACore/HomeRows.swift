@@ -212,20 +212,24 @@ public struct SessionRowText: Equatable, Sendable {
     public var status: Status
     /// After the status word; empty when the word already says it.
     public var preview: String
-    /// The third line; empty for none.
+    /// The third line, without the CLI; empty for none.
     public var meta: String
+    /// The CLI whose mark leads the third line, when the list uses more than one; nil for no mark.
+    public var agent: PBAgent?
 
-    public init(title: String, time: String, status: Status, preview: String, meta: String) {
+    public init(title: String, time: String, status: Status, preview: String, meta: String, agent: PBAgent? = nil) {
         self.title = title
         self.time = time
         self.status = status
         self.preview = preview
         self.meta = meta
+        self.agent = agent
     }
 
     /// The row as one sentence for VoiceOver: the title first, then its state, what it last said, where it runs and when.
     public var spoken: String {
-        [title, status.text, preview, meta.replacingOccurrences(of: " · ", with: "，"), time].filter { !$0.isEmpty }.joined(separator: "，")
+        [title, status.text, preview, agent.map { agentName($0) } ?? "", meta.replacingOccurrences(of: " · ", with: "，"), time]
+            .filter { !$0.isEmpty }.joined(separator: "，")
     }
 }
 
@@ -237,7 +241,7 @@ public func sessionRowText(
     return SessionRowText(
         title: titleOf(s, zone: zone), time: whenText(s.updatedMs, now: now, zone: zone), status: st,
         // The status word already says a plan waits.
-        preview: pv == st.text ? "" : pv, meta: metaLine(state, s, meta: meta))
+        preview: pv == st.text ? "" : pv, meta: metaLine(state, s, meta: meta), agent: meta.agent ? s.agent : nil)
 }
 
 /// An ended session on its one line: the title, and at the right when it ended, after the project where the list spans projects.

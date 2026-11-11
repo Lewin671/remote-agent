@@ -103,7 +103,7 @@ struct NewSessionBox: View {
             if let c = config, agents.count > 1 {
                 // The CLI of the next session, in a row of its own above the box; it stays there with the keyboard up.
                 SegPick(
-                    agents.map(agentName),
+                    agents.map(agentName), marks: agents,
                     selected: Binding(get: { agents.firstIndex(of: c.agent) ?? 0 }, set: { switchAgent(draft, c, to: agents[$0]) })
                 )
                 .accessibilityLabel("新会话使用的 CLI")

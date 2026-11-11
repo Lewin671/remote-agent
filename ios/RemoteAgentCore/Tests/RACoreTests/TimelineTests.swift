@@ -228,7 +228,7 @@ import Testing
             session("3", "/Code/bar"), machines: ["m", "n"])
         let all = homeTimeline(many, scope: .all, zone: zone).meta
         #expect(all == RowMeta(project: true, agent: true, machine: true))
-        #expect(metaLine(many, many.sessions["2"]!, meta: all) == "分叉 · foo · Claude Code · n")
+        #expect(metaLine(many, many.sessions["2"]!, meta: all) == "分叉 · foo · n")
         // One CLI in the scope: not written, though the account has two.
         let bar = homeTimeline(many, scope: .of(key: "/Code/bar"), zone: zone).meta
         #expect(bar == RowMeta(machine: true))

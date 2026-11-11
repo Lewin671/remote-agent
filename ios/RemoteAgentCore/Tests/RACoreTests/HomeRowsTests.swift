@@ -180,8 +180,12 @@ import Testing
         let run = session("run", title: "修复登录超时", created: now - 20_000, status: .running, preview: "正在执行 `go test`")
         let st = state([run], machines: ["m", "n"])
         let row = sessionRowText(st, run, meta: RowMeta(project: true, agent: true, machine: true), now: now, zone: zone)
-        #expect(row == SessionRowText(title: "修复登录超时", time: "刚刚", status: .running, preview: "正在执行 go test", meta: "foo · Codex · m"))
-        #expect(row.spoken == "修复登录超时，运行中，正在执行 go test，foo，Codex，m，刚刚")
+        #expect(row == SessionRowText(title: "修复登录超时", time: "刚刚", status: .running, preview: "正在执行 go test", meta: "foo · m", agent: .codex))
+        // The CLI is spoken where its mark is drawn, ahead of the rest of the third line.
+        #expect(row.spoken == "修复登录超时，运行中，正在执行 go test，Codex，foo，m，刚刚")
+        // A list that uses one CLI draws no mark and says no CLI.
+        let one = sessionRowText(st, run, meta: RowMeta(project: true), now: now, zone: zone)
+        #expect(one.agent == nil && one.meta == "foo" && one.spoken == "修复登录超时，运行中，正在执行 go test，foo，刚刚")
         // The status word already says a plan waits.
         let plan = session("plan", plan: true)
         #expect(sessionRowText(st, plan, meta: RowMeta(), now: now, zone: zone).preview.isEmpty)

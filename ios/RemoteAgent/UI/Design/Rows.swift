@@ -4,6 +4,7 @@
 // (`sessionRowText`, `endedRowText`, `pendingRowText`), and what a tap does
 // is the caller's. Each takes the whole width; the line under a row starts
 // where its text does.
+import RAProto
 import SwiftUI
 
 /// The gutter of a row: the status graphic's column, so that titles line up with or without one.
@@ -13,13 +14,16 @@ private struct Gutter: DynamicProperty {
 
 /// A session that has not ended: the status graphic, the title (17 / 600)
 /// with the time at the right, 「状态 · 预览」 (15, `ink2`, at most two
-/// lines), and a third line (13) only when there is something to say.
+/// lines), and a third line (13) only when there is something to say: the
+/// CLI's mark where the list uses more than one CLI, then words.
 struct SessionRowLayout: View {
     let mark: StatusKind?
     let title: String
     let time: String
     let second: String
     var third = ""
+    /// The CLI whose mark leads the third line; nil for none.
+    var agent: PBAgent?
     /// The second line holds to one line, as a running command.
     var oneLine = false
     /// The last of its list draws no line under it.
@@ -40,8 +44,12 @@ struct SessionRowLayout: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.ink2)
                     .lineLimit(oneLine ? 1 : 2)
-                if !third.isEmpty {
-                    Text(third).font(.footnote).foregroundStyle(DS.ink2).lineLimit(typeSize.isAccessibilitySize ? 2 : 1).padding(.top, 1)
+                if agent != nil || !third.isEmpty {
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        if let agent { AgentMark(agent, style: .footnote, scale: 1.15) }
+                        if !third.isEmpty { Text(third).lineLimit(typeSize.isAccessibilitySize ? 2 : 1) }
+                    }
+                    .font(.footnote).foregroundStyle(DS.ink2).padding(.top, 1)
                 }
             }
             .padding(.vertical, 13)

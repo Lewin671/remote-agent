@@ -129,13 +129,22 @@ struct NewTaskSentence: View {
         .accessibilityLabel("项目：\(name)")
         .accessibilityHint("换一个项目")
         let cli = Menu {
-            ForEach(agents, id: \.self) { a in
-                Button { onAgent(a) } label: {
-                    if a == agent { Label(agentName(a), systemImage: "checkmark") } else { Text(agentName(a)) }
+            // The mark before each name, as an image: a system menu takes no other view. The chosen one keeps its check.
+            Picker("CLI", selection: Binding(get: { agent ?? .codex }, set: { onAgent($0) })) {
+                ForEach(agents, id: \.self) { a in
+                    if let glyph = AgentGlyph(a) {
+                        Label { Text(agentName(a)) } icon: { Image(uiImage: glyph.image(side: 17)) }.tag(a)
+                    } else {
+                        Text(agentName(a)).tag(a)
+                    }
                 }
             }
         } label: {
-            Text(agent.map(agentName) ?? "").lineLimit(1).chip()
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                if let agent { AgentMark(agent, style: .subheadline, named: true) }
+                Text(agent.map(agentName) ?? "").lineLimit(1)
+            }
+            .chip()
         }
         .accessibilityLabel("CLI：\(agent.map(agentName) ?? "")")
         ViewThatFits(in: .horizontal) {

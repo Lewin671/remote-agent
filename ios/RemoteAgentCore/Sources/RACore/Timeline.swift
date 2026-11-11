@@ -110,12 +110,12 @@ public func rowMeta(_ state: RemoteState, sessions: some Sequence<SessionView>, 
     RowMeta(project: project, agent: Set(sessions.map(\.agent)).count > 1, machine: state.machines.count > 1)
 }
 
-/// A row's third line: 分叉 · 项目 · CLI · 机器, each only when it says something; empty for no third line.
+/// A row's third line: 分叉 · 项目 · 机器, each only when it says something; empty for no third line.
+/// The CLI is not among the words: its mark leads the line (`SessionRowText.agent`).
 public func metaLine(_ state: RemoteState, _ s: SessionView, meta: RowMeta) -> String {
     var parts = [String]()
     if forked(s) { parts.append("分叉") }
     if meta.project { parts.append(projectName(projectKey(s))) }
-    if meta.agent { parts.append(agentName(s.agent)) }
     if meta.machine { parts.append(machineName(state.machines[s.machineId], id: s.machineId)) }
     return parts.joined(separator: " · ")
 }

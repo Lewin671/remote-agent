@@ -62,7 +62,11 @@ struct MachineCard: View {
         return Button { nav.open(.quota(machine: id)) } label: {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(agentName(agent)).font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        AgentMark(agent, style: .subheadline, named: true)
+                        Text(agentName(agent))
+                    }
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(DS.ink)
                     Text(line.text).font(.subheadline).foregroundStyle(ink)
                     if !line.reset.isEmpty {
                         Text(line.reset).font(.subheadline).foregroundStyle(DS.ink2).lineLimit(1).layoutPriority(-1)

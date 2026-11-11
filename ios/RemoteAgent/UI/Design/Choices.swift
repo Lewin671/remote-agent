@@ -1,16 +1,20 @@
 // Choosing one of a few (docs/design-system.md §6): a segmented pill picks
 // one value of a setting (自动 / 亮色 / 暗色). The view switch 聊天 / 终端 is
 // `GlassSegmented`.
+import RAProto
 import SwiftUI
 
 /// A segmented control for the values of one setting: a `fill2` capsule, the chosen one a light slider (`paper`, mid grey in the dark), never ink.
+/// Where the values are CLIs, `marks` puts each one's mark before its name.
 struct SegPick: View {
     private let items: [String]
+    private let marks: [PBAgent]
     @Binding private var selected: Int
     @Environment(\.colorScheme) private var scheme
 
-    init(_ items: [String], selected: Binding<Int>) {
+    init(_ items: [String], marks: [PBAgent] = [], selected: Binding<Int>) {
         self.items = items
+        self.marks = marks
         _selected = selected
     }
 
@@ -24,8 +28,11 @@ struct SegPick: View {
                         Haptics.selection()
                     }
                 } label: {
-                    Text(items[i]).font(on ? .subheadline.weight(.semibold) : .subheadline).ink(DS.ink)
-                        .lineLimit(1)
+                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                        if marks.indices.contains(i) { AgentMark(marks[i], style: .subheadline, named: true) }
+                        Text(items[i]).lineLimit(1)
+                    }
+                    .font(on ? .subheadline.weight(.semibold) : .subheadline).ink(DS.ink)
                         .padding(.horizontal, 10)
                         .frame(minWidth: 56, minHeight: 32)
                         .background {

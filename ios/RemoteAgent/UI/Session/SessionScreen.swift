@@ -238,8 +238,11 @@ private struct SessionPage: View {
             // What the menu is about: the CLI, the project, the computer, then the folder (design-system §6 「弹层与对话框」).
             VStack(alignment: .leading, spacing: 2) {
                 // The computer is named only where the account has more than one.
-                Text(([agentName(s.agent), projectName(projectKey(s))] + (state.machines.count > 1 ? [machineLabel(state, id: s.machineId)] : [])).joined(separator: " · "))
-                    .font(.headline).foregroundStyle(DS.ink)
+                HStack(alignment: .firstTextBaseline, spacing: 0) {
+                    AgentMark(s.agent, style: .headline, named: true)
+                    Text(([agentName(s.agent), projectName(projectKey(s))] + (state.machines.count > 1 ? [machineLabel(state, id: s.machineId)] : [])).joined(separator: " · "))
+                }
+                .font(.headline).foregroundStyle(DS.ink)
                 Text(shortPath(s.info?.cwd ?? "")).font(.footnote.monospaced()).foregroundStyle(DS.ink2)
             }
         }

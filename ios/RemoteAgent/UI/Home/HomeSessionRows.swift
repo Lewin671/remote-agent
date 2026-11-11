@@ -7,8 +7,8 @@ import SwiftUI
 
 /// One session that has not ended: the status graphic, the title and time,
 /// then 「状态 · 预览」 with the status word in `ink2` like the rest, then
-/// only what differs between the rows of this list (`meta`), and the
-/// session's schedules. An ended session is a `HomeEndedRow`.
+/// only what differs between the rows of this list (`meta`; the CLI is its
+/// mark at the head of the line), and the session's schedules. An ended session is a `HomeEndedRow`.
 struct HomeSessionRow: View {
     let state: RemoteState
     let session: SessionView
@@ -30,7 +30,7 @@ struct HomeSessionRow: View {
                 SessionRowLayout(
                     mark: StatusKind(t.status), title: t.title, time: t.time,
                     second: t.preview.isEmpty ? t.status.text : "\(t.status.text) · \(t.preview)",
-                    third: sessionMeta(t.meta), oneLine: t.status.tone == .run, last: last)
+                    third: sessionMeta(t.meta), agent: t.agent, oneLine: t.status.tone == .run, last: last)
             }
             .buttonStyle(RowHighlight())
             .accessibilityElement(children: .ignore)
