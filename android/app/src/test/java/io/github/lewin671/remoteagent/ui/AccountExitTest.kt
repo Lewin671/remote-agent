@@ -27,7 +27,7 @@ class AccountExitTest {
                 Column { AccountExitAction(RemoteState(isAuthority = true), { pending }, { exits++ }) }
             }
         }
-        ui.onNodeWithText("退出并删除本机密钥").performClick()
+        ui.onNodeWithText("退出并删除本机密钥…").performClick()
         ui.onNodeWithText(authorityExitAdvice(true, false)).assertExists()
         ui.runOnIdle { pending = true }
         ui.onNodeWithText("退出").performClick()
@@ -47,7 +47,7 @@ class AccountExitTest {
                 }
             }
         }
-        ui.onNodeWithText("退出并删除本机密钥").performClick()
+        ui.onNodeWithText("退出并删除本机密钥…").performClick()
         ui.onNodeWithText("退出前没能读取安全操作状态：read failed").assertExists()
         ui.onNodeWithText("退出").assertDoesNotExist()
         ui.runOnIdle { assertEquals(0, exits) }
@@ -61,7 +61,7 @@ class AccountExitTest {
                 Column { AccountExitAction(RemoteState(), { false }, { exits++ }) }
             }
         }
-        ui.onNodeWithText("退出并删除本机密钥").performClick()
+        ui.onNodeWithText("退出并删除本机密钥…").performClick()
         ui.onNodeWithText(authorityExitAdvice(false, false)).assertExists()
         ui.onNodeWithText("取消").performClick()
         ui.runOnIdle { assertEquals(0, exits) }

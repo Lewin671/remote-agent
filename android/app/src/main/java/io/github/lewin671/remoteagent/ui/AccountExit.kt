@@ -23,8 +23,9 @@ internal fun AccountExitAction(
     var advice by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
+    // It asks first, as every row that ends in an ellipsis does (design-system §8).
     GRow(
-        "退出并删除本机密钥",
+        "退出并删除本机密钥…",
         onClick = {
             busy = true
             error = ""
