@@ -3487,7 +3487,7 @@ describe("devices in settings", () => {
     const rows = [...host.querySelectorAll<HTMLButtonElement>(".grp .row")].filter((x) => x.querySelector(".ico"));
     const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
     // A computer is a card: its name, then 在线 under it, then a quota line for each CLI.
-    const mac = [...host.querySelectorAll(".mc")].find((x) => x.querySelector(".mc-name b")?.textContent === "MacBook")!;
+    const mac = [...host.querySelectorAll(".mach-card")].find((x) => x.querySelector(".mach-name b")?.textContent === "MacBook")!;
     expect(mac.querySelector(".s")!.textContent).toBe("在线");
     const codex = [...mac.querySelectorAll(".qt")].find((x) => x.querySelector("b")?.textContent === "Codex")!;
     expect(codex.querySelector(".n")!.textContent).toMatch(/^剩 \d+%$|^已用尽$|^暂未获取额度$/);

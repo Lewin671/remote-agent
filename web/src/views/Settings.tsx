@@ -195,9 +195,9 @@ function MachineCard({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const agents = machineAgents(m);
   const views = machineQuotaViews(m.meta, agents, now, m.online);
   return (
-    <div className={"mc" + (m.online ? "" : " offl")}>
-      <button className="mc-head" onClick={() => go("m/" + m.id)}>
-        <span className="mc-name">
+    <div className={"mach-card" + (m.online ? "" : " offl")}>
+      <button className="mach-head" onClick={() => go("m/" + m.id)}>
+        <span className="mach-name">
           <b>{machineName(m)}</b>
           <ChevronRight className="chev" />
         </span>
