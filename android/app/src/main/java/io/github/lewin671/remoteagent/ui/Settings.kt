@@ -107,15 +107,16 @@ fun ToggleRow(title: String, sub: String, value: Boolean, enabled: Boolean = tru
     val p = pal
     Row(
         Modifier.fillMaxWidth()
-            .heightIn(min = 44.dp)
+            .heightIn(min = 50.dp)
             .clickable(enabled = enabled) { onChange(!value) }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(start = 18.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        // The same row as GRow (design-system §6 列表行): 17 over 13, 18 in from the card's edge.
         Column(Modifier.weight(1f)) {
-            Text(title, style = T.s15, color = p.ink)
-            if (sub.isNotEmpty()) Text(sub, style = T.s12, color = p.ink2)
+            Text(title, style = T.s17, color = p.ink)
+            if (sub.isNotEmpty()) Text(sub, style = T.s13, color = p.ink2)
         }
         Sw(value)
     }
