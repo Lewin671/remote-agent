@@ -699,13 +699,16 @@ export function NewBox({
       <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
         {banners}
         {sentence}
-        {field}
-        {trayView}
-        <div className="acc">
-          {attach}
-          {summary}
-          {keys && <span className="kh">{keys} 开始</span>}
-          {send}
+        {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
+        <div className="wbox">
+          {field}
+          {trayView}
+          <div className="acc">
+            {attach}
+            {summary}
+            {keys && <span className="kh">{keys} 开始</span>}
+            {send}
+          </div>
         </div>
         {busyNote}
       </div>
@@ -1176,10 +1179,10 @@ export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; ba
             {full && i === 0 ? <em>{h}</em> : h}
           </span>
         ))}
-        {(machine || model) && head.length > 0 && sep}
       </span>
-      {machine && <span className="mach">{machine}</span>}
-      {model && <span className="mdl">{(machine ? sep : "") + model}</span>}
+      {/* Each part brings the dot before it: a part cut short never leaves one hanging at its end. */}
+      {machine && <span className="mach">{(head.length > 0 ? sep : "") + machine}</span>}
+      {model && <span className="mdl">{(head.length > 0 || machine ? sep : "") + model}</span>}
       <ChevronRight />
     </button>
   );

@@ -1018,12 +1018,12 @@ function ChatBody({
         </Banner>
       )}
       {(hist.unavailable ?? 0) > 0 && (
-        <Banner kind="warn">
+        <Banner>
           恢复前有 {hist.unavailable} 条记录不可读；后续可读记录照常显示。
         </Banner>
       )}
       {hist.broken && (
-        <Banner kind="warn">
+        <Banner>
           {hist.error || "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"}
         </Banner>
       )}

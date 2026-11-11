@@ -1745,7 +1745,8 @@ describe("switching a new session's CLI (v2)", () => {
     expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
     const ask = host.querySelector(".wstart textarea.ask")!;
     expect(ask.getAttribute("placeholder")).toBe("要做什么？");
-    expect(ask.previousElementSibling?.className).toBe("sent");
+    // The task is written in a box of its own, under the sentence.
+    expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
     const row = host.querySelector(".wstart .acc")!;
     expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
     expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
@@ -1771,7 +1772,7 @@ describe("switching a new session's CLI (v2)", () => {
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     const summary = () => host.querySelector(".acc .project-summary")!;
     // The name is its own part, the one that gives way on a long line.
-    expect(summary().querySelector(".mach")?.textContent).toBe("MacBook");
+    expect(summary().querySelector(".mach")?.textContent).toBe(" · MacBook");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
