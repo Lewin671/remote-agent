@@ -95,12 +95,14 @@ struct ApprovalDecision: View {
 
     private func decide(_ allow: Bool, message: String = "", always: Bool = false) {
         guard !isSkeleton(approval), !allow || !approvalTruncated(approval) else { return }
-        chosen = allow
-        if allow { SessionHaptics.decide() } else { Haptics.destructive() }
-        let sent = context.sessionStore.decide(
-            context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
-            message: message, always: always)
-        Task { if await sent.value == true { Haptics.confirm() } }
+        SessionHaptics.tap()
+        // The card shrinks to the line of what was answered as it is answered (§4 动效).
+        withAnimation(Motion.enter()) {
+            chosen = allow
+            _ = context.sessionStore.decide(
+                context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID, allow: allow,
+                message: message, always: always)
+        }
     }
 }
 

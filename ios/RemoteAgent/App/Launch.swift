@@ -270,21 +270,25 @@ enum LaunchDriver {
 /// handler, the last view that asked for it.
 @MainActor
 enum DebugSignals {
-    private static var handlers: [String: () -> Void] = [:]
+    private static var handlers: [String: (owner: ObjectIdentifier, run: () -> Void)] = [:]
     private static var tokens: [String: Int32] = [:]
 
-    static func on(_ name: String, _ handler: @escaping () -> Void) {
-        handlers[name] = handler
+    static func on(_ name: String, _ handler: @escaping () -> Void) { on(name, owner: ObjectIdentifier(DebugSignals.self), handler) }
+
+    static func on(_ name: String, owner: ObjectIdentifier, _ handler: @escaping () -> Void) {
+        handlers[name] = (owner, handler)
         guard tokens[name] == nil else { return }
         var token: Int32 = 0
         let status = notify_register_dispatch("io.github.lewin671.remoteagent.debug." + name, &token, .main) { _ in
-            MainActor.assumeIsolated { handlers[name]?() }
+            MainActor.assumeIsolated { handlers[name]?.run() }
         }
         if status == 0 { tokens[name] = token }
     }
 
-    static func off(_ name: String) {
-        handlers[name] = nil
+    /// Only the view that asked for a signal takes it down: a view that goes after its replacement came (a card
+    /// fading out as the next fades in) leaves the replacement's handler.
+    static func off(_ name: String, owner: ObjectIdentifier) {
+        if handlers[name]?.owner == owner { handlers[name] = nil }
     }
 }
 
@@ -302,8 +306,8 @@ private struct DebugSignal: ViewModifier {
         // action, just as a tap does, rather than the first frame's machine and limits.
         current.run = action
         return content
-            .onAppear { DebugSignals.on(name) { current.run?() } }
-            .onDisappear { DebugSignals.off(name) }
+            .onAppear { DebugSignals.on(name, owner: ObjectIdentifier(current)) { current.run?() } }
+            .onDisappear { DebugSignals.off(name, owner: ObjectIdentifier(current)) }
     }
 }
 

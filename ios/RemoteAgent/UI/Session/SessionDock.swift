@@ -17,8 +17,9 @@ import UIKit
 /// ticks when it is made; the success tick waits for the computer's answer.
 @MainActor
 enum SessionHaptics {
+    /// The one light tap of a message going out and of an approval allowed or denied (§4 触感); nothing else in a
+    /// session gives one.
     static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
-    static func decide() { UIImpactFeedbackGenerator(style: .medium).impactOccurred() }
 }
 
 /// What an open dock item says after its type, in place of the summary: how long it still waits, how
@@ -159,7 +160,7 @@ struct PendingDock<Content: View, Actions: View>: View {
 
     private func toggle() {
         if !open { onOpen() }
-        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { open.toggle() }
+        withAnimation(reduceMotion ? nil : Motion.enter()) { open.toggle() }
     }
 
     var body: some View {
@@ -167,6 +168,7 @@ struct PendingDock<Content: View, Actions: View>: View {
         Group {
             if open {
                 DarkCard(floating: true) { card }
+                    .transition(Motion.roomy())
             } else {
                 card
                     .padding(.horizontal, 16)
@@ -174,6 +176,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                     .overlay { Capsule().strokeBorder(DS.tcLine, lineWidth: 1) }
                     .environment(\.colorScheme, .dark)
                     .floatShadow()
+                    .transition(Motion.roomy())
             }
         }
         .padding(.horizontal, DS.Space.m)
@@ -308,24 +311,32 @@ struct ApprovalDock: View {
     @State private var chosen: Bool?
 
     var body: some View {
-        Ticking(every: 15) { now in
-            let left = ApprovalDeadline(approval, now: now)
-            if context.sessionStore.resolve(approval.approvalID).submitted {
+        let submitted = context.sessionStore.resolve(approval.approvalID).submitted
+        // Answered, the card shrinks to the one line saying what was answered, its room closing with it (§4 动效, 常).
+        // The choice is made outside the clock below: a view that is built again every tick does not animate its swap.
+        Group {
+            if submitted {
                 ApprovalSubmitted(session: session, approval: approval, chosen: chosen)
                     .padding(.horizontal, DS.Space.m).padding(.bottom, 8)
+                    .transition(Motion.roomy())
             } else {
-                PendingDock(
-                    .approval(approval), agent: agentName(session.agent), more: more, title: approvalHead(approval),
-                    note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
-                ) {
-                    ApprovalContent(approval: approval, denying: denying)
-                } actions: {
-                    if !isSkeleton(approval) {
-                        ApprovalDecision(session: session, approval: approval, now: now, denying: $denying, chosen: $chosen)
+                Ticking(every: 15) { now in
+                    let left = ApprovalDeadline(approval, now: now)
+                    PendingDock(
+                        .approval(approval), agent: agentName(session.agent), more: more, title: approvalHead(approval),
+                        note: DockNote(text: left?.text ?? "", urgent: left?.last == true), open: $open, onOpen: onOpen
+                    ) {
+                        ApprovalContent(approval: approval, denying: denying)
+                    } actions: {
+                        if !isSkeleton(approval) {
+                            ApprovalDecision(session: session, approval: approval, now: now, denying: $denying, chosen: $chosen)
+                        }
                     }
                 }
+                .transition(Motion.roomy())
             }
         }
+        .animation(Motion.enter(), value: submitted)
         .onAppear { if startReason { denying = true } }
     }
 }
@@ -379,7 +390,6 @@ struct QuestionBody: View {
         let (store, remote, s, qid) = (store, context.remote, session, qid)
         let answer = store.answer(qid, qi)
         let done = onAnswered
-        SessionHaptics.decide()
         act.run({
             let sent = try await store.sendAnswer(remote, answer, options: options) { picked in
                 var cmd = PBCommand()
@@ -608,7 +618,6 @@ struct PlanButtons: View {
     private func answer(_ choice: PBPlanChoice) {
         guard !terminalOnly else { return }
         let (remote, sid) = (context.remote, session.id)
-        SessionHaptics.decide()
         act.run({
             var cmd = PBCommand()
             cmd.answerPlan = .with {
