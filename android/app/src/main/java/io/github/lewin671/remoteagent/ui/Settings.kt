@@ -807,9 +807,9 @@ fun DeviceScreen(id: String) {
             }
             DeleteMachineRecordsAction(id, state.isAuthority)
             if (!member && !state.isAuthority)
-                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。", Modifier.padding(horizontal = 16.dp))
+                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。", Modifier.padding(horizontal = 30.dp))
             if (member) {
-                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
+                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用", Modifier.padding(horizontal = 30.dp))
                 else if (state.isAuthority)
                     Group(
                         rows =
@@ -832,7 +832,7 @@ fun DeviceScreen(id: String) {
                     else "请在管理端（${state.authorityName}）上移除设备。",
                     style = T.s13,
                     color = p.ink2,
-                    modifier = Modifier.padding(horizontal = 16.dp),
+                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
                 )
             }
             if (remove.error.isNotEmpty())
