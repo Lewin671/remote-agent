@@ -176,7 +176,7 @@ private struct HomeTimeline: View {
             .padding(.bottom, 24)
             .frame(maxWidth: DS.column)
             .frame(maxWidth: .infinity)
-            .animation(reduceMotion ? nil : .snappy(duration: 0.28), value: list.items.map(\.id))
+            .animation(reduceMotion ? nil : Motion.enter(), value: list.items.map(\.id))
         }
         .scrollDismissesKeyboard(.immediately)
         .defaultScrollAnchor(HomeLaunch.flag("-homeEnd") ? .bottom : .top)

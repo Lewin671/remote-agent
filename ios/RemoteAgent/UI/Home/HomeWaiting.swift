@@ -113,7 +113,7 @@ private struct ApprovalCardBody: View {
                         command
                         ApprovalDecision(
                             session: session, approval: approval, now: now, cut: more > 0 && !full,
-                            onFull: { withAnimation(.snappy) { full = true } },
+                            onFull: { withAnimation(Motion.enter()) { full = true } },
                             // Until the command is laid out it is not known to be whole: nothing is allowed before.
                             measured: total > 0, denying: $denying, chosen: $chosen, signals: ("home.allow", "home.deny"))
                             .padding(.top, 16)
@@ -156,7 +156,7 @@ private struct ApprovalCardBody: View {
             } else if full && total > Self.lines {
                 HStack(spacing: 4) {
                     Text("共 \(total) 行").font(.footnote).foregroundStyle(DS.ink2)
-                    LinkButton("收起") { withAnimation(.snappy) { full = false } }.font(.footnote)
+                    LinkButton("收起") { withAnimation(Motion.enter()) { full = false } }.font(.footnote)
                 }
                 .padding(.vertical, -8).padding(.top, 8)
             }
@@ -175,6 +175,6 @@ struct RowHighlight: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .opacity(configuration.isPressed ? 0.6 : 1)
-            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .animation(Motion.enter(Motion.fast), value: configuration.isPressed)
     }
 }

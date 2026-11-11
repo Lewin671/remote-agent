@@ -23,7 +23,7 @@ struct GlassSegmented: View {
                     let can = enabled(i)
                     Button {
                         guard can, !on else { return }
-                        withAnimation(still ? nil : .snappy(duration: 0.25)) { selected = i }
+                        withAnimation(still ? nil : Motion.enter()) { selected = i }
                     } label: {
                         HStack(spacing: 4) {
                             Text(items[i])
@@ -80,7 +80,7 @@ struct MachineSegmented: View {
                         Button {
                             guard item.online, !on else { return }
                             Haptics.selection()
-                            withAnimation(still ? nil : .snappy(duration: 0.25)) { selected = item.id }
+                            withAnimation(still ? nil : Motion.enter()) { selected = item.id }
                         } label: {
                             HStack(spacing: 6) {
                                 StatusMark(item.online ? .online : .off)
