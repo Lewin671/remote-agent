@@ -2,6 +2,8 @@ package io.github.lewin671.remoteagent.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -280,6 +282,48 @@ fun Segmented(
                 if (i == dot) {
                     Spacer(Modifier.width(5.dp))
                     Box(Modifier.size(7.dp).clip(CircleShape).background(p.orange))
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The segmented control that chooses a machine (client-v58 新项目 · 选目录): each segment is an online
+ * dot or a grey one and the name, whole on one line. Where the names do not fit the width the control
+ * slides sideways, never wraps or cuts a name. A machine that is not online is greyed and cannot be
+ * chosen.
+ */
+@Composable
+fun MachineSegmented(
+    names: List<String>,
+    online: List<Boolean>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val p = pal
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
+        val share = (maxWidth - 6.dp) / names.size.coerceAtLeast(1)
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 38.dp).glass(p, Radii.Pill, onGrey = LocalOnSoft.current).padding(3.dp)
+                .horizontalScroll(androidx.compose.foundation.rememberScrollState()).selectableGroup(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            names.forEachIndexed { i, name ->
+                val on = i == selected
+                val ok = online[i]
+                Row(
+                    Modifier.defaultMinSize(minWidth = share).heightIn(min = 32.dp)
+                        .then(if (on) Modifier.shadow(2.dp, Radii.Pill, clip = false, ambientColor = p.glassShadow, spotColor = p.glassShadow).clip(Radii.Pill).background(p.paper) else Modifier)
+                        .selectable(selected = on, enabled = ok, role = Role.Tab) { onSelect(i) }
+                        .padding(horizontal = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    StatusMark(if (ok) MarkKind.ONLINE else MarkKind.OFF, size = 7.dp)
+                    Spacer(Modifier.width(6.dp))
+                    Text(name, style = if (on) T.s13b else T.s13.copy(fontWeight = platformWeight(FontWeight.Medium)), color = if (on) p.ink else if (ok) p.ink2 else p.ink3, maxLines = 1, softWrap = false)
                 }
             }
         }

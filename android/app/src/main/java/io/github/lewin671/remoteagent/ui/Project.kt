@@ -1117,17 +1117,11 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
     Column(modifier) {
         if (state.machines.size > 1) {
             val listed = state.machines.values.sortedWith(compareByDescending<MachineView> { it.online }.thenBy { machineLabel(state, it.id) })
-            SheetList(Modifier.padding(bottom = 10.dp)) {
-                listed.forEachIndexed { i, m ->
-                    ListItem(
-                        machineLabel(state, m.id),
-                        if (m.online) null else "不在线，现在不能新建",
-                        checked = machine == m.id, enabled = m.online, last = i == listed.size - 1,
-                        onClick = { if (machine != m.id) { machine = m.id; path = ""; dirs = null } },
-                        trailing = { StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF) },
-                    )
-                }
-            }
+            MachineSegmented(
+                listed.map { machineLabel(state, it.id) }, listed.map { it.online }, listed.indexOfFirst { it.id == machine },
+                { i -> val m = listed[i]; if (machine != m.id) { machine = m.id; path = ""; dirs = null } },
+                Modifier.padding(bottom = 10.dp),
+            )
         }
         val d = dirs
         when {
@@ -1148,10 +1142,9 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
                 if (d.dirsList.isEmpty()) Text("没有子目录", style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 8.dp))
                 // The folder before stays, dimmed, until the next one is listed: no blank in between.
                 val listState = remember(d.path) { androidx.compose.foundation.lazy.LazyListState() }
-                val fade = if (LocalOnSoft.current) p.gbg else p.paper
                 Box(Modifier.weight(1f).fillMaxWidth().alpha(if (loading) .45f else 1f)) {
                     if (d.parent.isNotEmpty() || d.dirsList.isNotEmpty()) LazyColumn(
-                        Modifier.clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg),
+                        Modifier.scrollEdgeFades(listState).clip(Radii.R20).background(if (LocalOnSoft.current) p.raised else p.gbg),
                         state = listState,
                     ) {
                         if (d.parent.isNotEmpty()) item(key = "..") {
@@ -1161,8 +1154,6 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
                             ListItem(name, last = i == d.dirsList.size - 1, onClick = if (loading) null else ({ path = d.path.trimEnd('/') + "/" + name }), trailing = { Arrow(p.ink2, T.s15) })
                         }
                     }
-                    ScrollFade(fade, top = true, show = listState.canScrollBackward)
-                    ScrollFade(fade, top = false, show = listState.canScrollForward)
                 }
                 PillButton(
                     "用 ${if (parts == listOf("/")) "/" else projectName(d.path)} 这个目录", { onChosen(machine, d.path) },
@@ -1171,17 +1162,6 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
             }
         }
     }
-}
-
-/** The edge of a scrolling list that content passes under: the surface behind it, solid to clear, 24 dp deep (design-system §4 材质). */
-@Composable
-private fun BoxScope.ScrollFade(color: Color, top: Boolean, show: Boolean) {
-    val alpha by androidx.compose.animation.core.animateFloatAsState(if (show) 1f else 0f, label = "scrollFade")
-    if (alpha <= 0f) return
-    Box(
-        Modifier.align(if (top) Alignment.TopCenter else Alignment.BottomCenter).fillMaxWidth().height(24.dp).alpha(alpha)
-            .background(androidx.compose.ui.graphics.Brush.verticalGradient(if (top) listOf(color, color.copy(alpha = 0f)) else listOf(color.copy(alpha = 0f), color))),
-    )
 }
 
 /** 新项目 · 选目录 as a page (from the empty home page). */

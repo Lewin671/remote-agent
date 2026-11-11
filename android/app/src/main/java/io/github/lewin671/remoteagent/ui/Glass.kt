@@ -17,6 +17,9 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -118,3 +121,46 @@ fun BoxScope.EdgeFade(top: Boolean, extra: Dp, color: Color = pal.paper) {
 
 /** The whole of a control greys to 40% when it cannot be used (design-system §6), its colours kept. */
 fun Modifier.disabledAlpha(enabled: Boolean, alpha: Float = .4f): Modifier = if (enabled) this else alpha(alpha)
+
+/** How deep the fade at the edge of a scrolling page is. */
+private val ScrollFadeDepth = 24.dp
+
+/**
+ * Where a scrolling region is cut by the bar above or below it, its content fades into the surface it is
+ * on instead of ending in a hard line (design-system §4 材质): the page colour, solid at the cut and clear
+ * [ScrollFadeDepth] in. An edge fades only while there is content past it, so a page at rest keeps its
+ * first and last rows whole. [before] and [after] are how far the content runs past the top and the
+ * bottom, in pixels. [color] is the surface; on a sheet it is the sheet's.
+ */
+fun Modifier.scrollEdgeFades(before: () -> Float, after: () -> Float, color: Color? = null): Modifier = composed {
+    val p = pal
+    val surface = color ?: if (LocalOnSoft.current) p.gbg else p.paper
+    val depth = with(androidx.compose.ui.platform.LocalDensity.current) { ScrollFadeDepth.toPx() }
+    drawWithContent {
+        drawContent()
+        for (top in booleanArrayOf(true, false)) {
+            val past = (if (top) before() else after()) / depth
+            val a = past.coerceIn(0f, 1f)
+            if (a <= 0f) continue
+            val solid = surface.copy(alpha = a)
+            val clear = surface.copy(alpha = 0f)
+            drawRect(
+                Brush.verticalGradient(if (top) listOf(solid, clear) else listOf(clear, solid), startY = if (top) 0f else size.height - depth, endY = if (top) depth else size.height),
+                topLeft = androidx.compose.ui.geometry.Offset(0f, if (top) 0f else size.height - depth),
+                size = androidx.compose.ui.geometry.Size(size.width, depth),
+            )
+        }
+    }
+}
+
+fun Modifier.scrollEdgeFades(state: androidx.compose.foundation.ScrollState, color: Color? = null): Modifier =
+    scrollEdgeFades({ state.value.toFloat() }, { (state.maxValue - state.value).toFloat() }, color)
+
+fun Modifier.scrollEdgeFades(state: androidx.compose.foundation.lazy.LazyListState, color: Color? = null): Modifier =
+    scrollEdgeFades({ if (state.canScrollBackward) 1e6f else 0f }, { if (state.canScrollForward) 1e6f else 0f }, color)
+
+/** A page's scroll, with the fades at its edges: `verticalScroll(rememberScrollState())` for a page that has bars over it. */
+fun Modifier.verticalScrollFaded(color: Color? = null): Modifier = composed {
+    val state = androidx.compose.foundation.rememberScrollState()
+    scrollEdgeFades(state, color).verticalScroll(state)
+}
