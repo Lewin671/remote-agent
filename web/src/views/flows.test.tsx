@@ -19,7 +19,7 @@ import { Dock, dockContentMax, PlanPage, QuestionPage } from "./Dock";
 import { Home, Sidebar, todoList, WideHome } from "./Home";
 import { ALL, saveScope } from "../scope";
 import { loadProjectConfig } from "../storage";
-import { NewBox, NewFlow, ProjectPicker, useNewSession } from "./NewSession";
+import { NewBox, NewFlow, NewProjectSheet, ProjectPicker, useNewSession } from "./NewSession";
 import { ProjectPage } from "./Project";
 import { addProject, ManagePage, sessionCounts } from "./Projects";
 import { SessionPage } from "./Session";
@@ -136,11 +136,28 @@ it("names the computer on the home card only where the account has more than one
   expect(several.machines.size).toBeGreaterThan(1);
   mount(<Home remote={several} go={() => undefined} />);
   expect(host.querySelector(".tc .m")?.textContent).toMatch(/ · /);
+  act(() => root!.unmount());
   const one = demo();
   const keep = one.sessions.get("s-appr")!.machineId;
   for (const id of [...one.machines.keys()]) if (id !== keep) one.machines.delete(id);
   mount(<Home remote={one} go={() => undefined} />);
   expect(host.querySelector(".tc .m")?.textContent).not.toMatch(/ · /);
+});
+
+it("chooses the computer for a new folder with a segmented control, only where there is more than one, and has no 取消", () => {
+  const listing = { kind: { case: "listDirectories", value: { path: "/home/x", parent: "", dirs: [] } } } as never;
+  const several = demo();
+  vi.spyOn(several, "machineCommand").mockResolvedValue(listing);
+  mount(<NewProjectSheet remote={several} onDone={() => undefined} onClose={() => undefined} />);
+  expect(host.querySelectorAll(".seg.machines button").length).toBe(several.machines.size);
+  expect(button("取消")).toBeUndefined();
+  act(() => root!.unmount());
+  const one = demo();
+  vi.spyOn(one, "machineCommand").mockResolvedValue(listing);
+  for (const id of [...one.machines.keys()].slice(1)) one.machines.delete(id);
+  mount(<NewProjectSheet remote={one} onDone={() => undefined} onClose={() => undefined} />);
+  expect(host.querySelector(".seg.machines")).toBeNull();
+  expect(button("取消")).toBeUndefined();
 });
 
 it("gives an open dock about 60% of the chat column, 240 at the least, within its room", () => {

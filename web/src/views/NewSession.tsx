@@ -1030,6 +1030,17 @@ export function DirBrowser({
     setDir(undefined);
     void open(start);
   }, [machineId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // The list fades into the sheet at an edge that more of it lies past (design-system §4 材质).
+  const listRef = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ up: false, down: false });
+  const measure = () => {
+    const el = listRef.current;
+    if (!el) return;
+    const up = el.scrollTop > 0;
+    const down = el.scrollTop + el.clientHeight < el.scrollHeight - 1;
+    setEdges((e) => (e.up === up && e.down === down ? e : { up, down }));
+  };
+  useEffect(measure, [dir, loading]);
   const parts = dir ? pathCrumbs(dir.path) : [];
   const name = parts[parts.length - 1] || "/";
   return (
@@ -1051,7 +1062,7 @@ export function DirBrowser({
           读不了这个目录：{error}
         </Banner>
       )}
-      <div className="list dirs">
+      <div className={"list dirs" + (edges.up ? " fade-top" : "") + (edges.down ? " fade-bottom" : "")} ref={listRef} onScroll={measure}>
         {dir?.parent && (
           <button className="mi" disabled={!!loading} onClick={() => void open(dir.parent)}>
             <ChevronLeft className="lead" />
@@ -1091,7 +1102,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
   const [machineId, setMachineId] = useState(machines.find((m) => m.online)?.id ?? "");
   const m = remote.machines.get(machineId);
   return (
-    <Sheet onClose={onClose} title={fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"} action={{ label: "取消", onClick: onClose }} back={onBack}>
+    <Sheet onClose={onClose} title={fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"} back={onBack}>
       {remote.machines.size > 1 && <Segmented
         className="full machines"
         label="机器"

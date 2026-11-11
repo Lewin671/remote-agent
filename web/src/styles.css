@@ -736,8 +736,16 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sheet .seg.full { margin: 0 0 12px; }
 .sheet .fl + .seg.full { margin-top: 0; }
 .seg.machines .mark { width: 7px; height: 7px; }
+/* Names that do not fit slide sideways; none wraps or is cut. */
+.seg.machines { overflow-x: auto; scrollbar-width: none; }
+.seg.machines::-webkit-scrollbar { display: none; }
+.seg.machines button { flex: 1 0 auto; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .sheet-foot { margin-top: 12px; }
-.list.dirs { max-height: 44vh; overflow-y: auto; }
+.list.dirs { max-height: 44vh; overflow-y: auto; --fade-top: 0px; --fade-bottom: 0px;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 var(--fade-top), #000 calc(100% - var(--fade-bottom)), transparent 100%); }
+.list.dirs.fade-top { --fade-top: 24px; }
+.list.dirs.fade-bottom { --fade-bottom: 24px; }
 /* Not possible now: the words grayed, why on the line below in ink2. */
 .list .mi.dis, .list .mi:disabled { color: var(--ink3); }
 .list .mi.dis b, .list .mi:disabled b { color: var(--ink3); }
