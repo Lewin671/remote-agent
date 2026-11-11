@@ -112,7 +112,8 @@ struct ProjectDirPicker: View {
     }
 
     @ViewBuilder private var listing: some View {
-        machines
+        // A computer is chosen only where the account has more than one (design-system §6 新任务).
+        if state.machines.count > 1 { machines }
         if at.machine.isEmpty {
             Banner("没有在线的电脑", tone: .warn)
         } else if !error.isEmpty {

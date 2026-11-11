@@ -1092,7 +1092,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
   const m = remote.machines.get(machineId);
   return (
     <Sheet onClose={onClose} title={fixedMachine ? "项目 · 选目录" : "新项目 · 选目录"} action={{ label: "取消", onClick: onClose }} back={onBack}>
-      <Segmented
+      {remote.machines.size > 1 && <Segmented
         className="full machines"
         label="机器"
         value={machineId || undefined}
@@ -1107,7 +1107,7 @@ export function NewProjectSheet({ remote, onBack, onDone, onClose, fixedMachine 
             </>
           ),
         }))}
-      />
+      />}
       {!machineId ? (
         <div className="hint">没有在线的电脑。在电脑上运行 remote-agent daemon 后再来。</div>
       ) : (
