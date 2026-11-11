@@ -56,16 +56,24 @@ class ScheduleCreationMachineTest {
             assertEquals("new",machine);assertEquals("codex",target.text("agent"));assertEquals("",target.text("model"));assertEquals("",target.text("effort"));assertEquals("ask",target.text("mode"))
         }
     }
-    @Test fun completingAfterSwitchAndCliSelectionReturnsExactlyTheDisplayedConfig() {
-        val state=state(both=true);prepare(state);var result:PrefsOp.SetSettings?=null
+    @Test fun switchingToAComputerWithoutTheOpenedCliFallsBackToItsFirstAndReturnsExactlyTheDisplayedConfig() {
+        // The new computer has Codex only: the sheet, opened for Claude Code, shows and returns Codex's set.
+        val state=state();prepare(state);var result:PrefsOp.SetSettings?=null
         ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { NewSettingsSheet(state,path,"project","old",Agent.AGENT_CLAUDE,onDone={result=it},onClose={},initial=initial,scheduling=true) } } }
         ui.onNodeWithText("机器",useUnmergedTree=true).performClick();ui.onNodeWithText("新电脑",useUnmergedTree=true).performClick()
-        ui.onNodeWithText("Codex",useUnmergedTree=true).performClick();ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists()
+        ui.onNodeWithText("默认模型",useUnmergedTree=true).assertExists()
         ui.onNodeWithText("完成").performScrollTo().performClick()
         ui.runOnIdle {
             assertNotNull(result);assertEquals("new",result!!.machineId);assertEquals(Agent.AGENT_CODEX,result!!.agent)
             assertEquals(1,result!!.sets.size)
             assertEquals(NewConfig("new",path,Agent.AGENT_CODEX),agentConfig("new",path,result!!.sets.single()))
         }
+    }
+    @Test fun theSheetOfAComputerWithSeveralClisHasTheOpenedClisSetUnderItsNameAndNoSwitch() {
+        val state=state(both=true);prepare(state)
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { CompositionLocalProvider(LocalRemote provides remote,LocalNav provides nav) { NewSettingsSheet(state,path,"project","new",Agent.AGENT_CLAUDE,onDone={},onClose={}) } } }
+        ui.onNodeWithText("Claude Code",useUnmergedTree=true).assertExists()
+        ui.onNodeWithText("Codex",useUnmergedTree=true).assertDoesNotExist()
+        ui.onNodeWithText("模型",useUnmergedTree=true).assertExists()
     }
 }

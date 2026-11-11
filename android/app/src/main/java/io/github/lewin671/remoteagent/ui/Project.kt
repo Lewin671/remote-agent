@@ -825,22 +825,23 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
 }
 
 /**
- * 项目设置 (client-v26): the machine, and for each CLI the machine has its
- * own model and effort, context window (Claude Code) and approval mode,
- * under a tab per CLI when there is more than one; each is chosen on a page
- * of the sheet. The folder is the project's read-only path. It opens on
- * [agent], the CLI selected next to the message box, and on [open]. Which
- * CLI a new session uses is not chosen here. [onDone] gets the change to
- * store, or null when nothing was changed.
+ * 项目设置 (client-v26): the machine, and the model and effort, context window (Claude Code) and
+ * approval mode of one CLI, [agent], the one selected next to the message box (or the session's, or the
+ * task's); each is chosen on a page of the sheet. Another CLI's set is reached by selecting that CLI
+ * there, so the sheet has no switch between them; with more than one CLI on the machine the set is
+ * under a title with the CLI's name. The folder is the project's read-only path. It opens on [open].
+ * Which CLI a new session uses is not chosen here. [onDone] gets the change to store, or null when
+ * nothing was changed. An existing scheduled task has no CLI choice outside the sheet, so there ([chooseAgent])
+ * the CLIs are switched between in it.
  */
 @Composable
-fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false, lockMachine: Boolean = false) {
+fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false, lockMachine: Boolean = false, chooseAgent: Boolean = false) {
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
+    var tab by remember { mutableStateOf(agent) }
     var removing by remember { mutableStateOf(false) }
     var machine by remember { mutableStateOf(machineId) }
-    var tab by remember { mutableStateOf(agent) }
     // The sets changed here, by CLI; the others stay as stored.
     val edited = remember { mutableStateMapOf<Agent, NewConfig>().apply { if (initial != null) put(initial.agent, initial) } }
     var page by remember { mutableStateOf(open) }
@@ -848,7 +849,8 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     // Models are per machine: on another one every CLI starts over.
     val moved = machine != machineId
     val agents = machineAgents(state.machines[machine])
-    val cur = if (tab in agents) tab else agents.first()
+    // The CLI the sheet was opened for, or, on a machine that does not have it, the first it has.
+    val cur = (if (chooseAgent) tab else agent).let { if (it in agents) it else agents.first() }
     val c = edited[cur] ?: if (moved) NewConfig(machine, cwd, cur) else agentConfig(machine, cwd, agentSet(state, cwd, cur))
     // What this CLI's set starts from may be a session not fetched yet: it is fetched before the set can be changed here.
     val unread = !moved && edited[cur] == null && !agentSetSettled(state, cwd, cur)
@@ -919,14 +921,14 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 if (unread && agents.size > 1) {
                     card(listOf(machineRow))
-                    Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth())
+                    if (chooseAgent) Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur))
                     card(listOf(reading))
                 } else if (unread) {
                     card(listOf(machineRow, reading))
                 } else if (agents.size > 1) {
-                    // The machine is shared; each CLI has its own set, seen under its tab.
+                    // The machine is shared; the set under it is the CLI's, whose name is its title.
                     card(listOf(machineRow))
-                    Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth())
+                    if (chooseAgent) Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur))
                     card(rows)
                     Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "各 CLI 独立保存一套，新建时用哪个在输入框旁选。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
                 } else {

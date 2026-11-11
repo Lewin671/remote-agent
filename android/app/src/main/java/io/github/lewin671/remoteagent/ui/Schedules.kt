@@ -410,7 +410,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 onDone = { op ->
                     val picked = op?.sets?.firstOrNull { it.agent == op.agent }
                     if (picked == null) edit = "" else operate("update", JsonObject(base.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), base.target))))
-                }, onClose = { edit = "" }, initial = cfg, scheduling = true, lockMachine = true)
+                }, onClose = { edit = "" }, initial = cfg, scheduling = true, lockMachine = true, chooseAgent = true)
         }
         if (deleting) Confirm("删除这个任务？", "停止后续调度，已发出的消息和已开的对话保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
     }
