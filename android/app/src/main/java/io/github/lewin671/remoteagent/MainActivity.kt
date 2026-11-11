@@ -282,6 +282,8 @@ class MainActivity : ComponentActivity() {
                         it.arguments?.getString("i")?.toIntOrNull() ?: 0,
                     )
                 }
+                page("licenses") { io.github.lewin671.remoteagent.ui.LicensesPage { nav.popBackStack() } }
+                page("phonestorage") { io.github.lewin671.remoteagent.ui.PhoneImageStoragePage { nav.popBackStack() } }
                 page("devices") { io.github.lewin671.remoteagent.ui.DevicesScreen() }
                 page("client/{id}") {
                     io.github.lewin671.remoteagent.ui.ClientScreen(
@@ -355,6 +357,8 @@ class MainActivity : ComponentActivity() {
             question = { sid, qid -> go("question/$sid/${routeArg(qid)}") },
             image = { sid, seq, i -> go("image/$sid/$seq/$i") },
             client = { go("client/$it") },
+            licenses = { go("licenses") },
+            phoneStorage = { go("phonestorage") },
             newProjectAt = { machine, path -> go("newproject/$machine/${routeArg(path)}") },
             sessionTerminal = { sid ->
                 OpenTerminal.requested[sid] = true

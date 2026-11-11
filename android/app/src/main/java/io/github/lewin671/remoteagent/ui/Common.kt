@@ -152,6 +152,9 @@ data class Nav(
     val scheduledSession: (sid: String, seq: Long) -> Unit = { _, _ -> },
     /** A session the new-task page just started: it takes the page's place, so back goes where the page was opened from. */
     val startedSession: (String) -> Unit = {},
+    /** 设置' sub-pages: they slide in as pages, like the rest. */
+    val licenses: () -> Unit = {},
+    val phoneStorage: () -> Unit = {},
 )
 
 val LocalNav = staticCompositionLocalOf<Nav> { error("no nav") }

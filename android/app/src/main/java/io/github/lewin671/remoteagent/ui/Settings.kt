@@ -151,25 +151,7 @@ fun SettingsScreen() {
     var checking by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
     val update by Updater.state.collectAsState()
-    var storage by remember { mutableStateOf(false) }
-    var licenses by remember { mutableStateOf(false) }
-    var rotating by remember { mutableStateOf(false) }
     val t = now()
-    if (licenses) {
-        androidx.activity.compose.BackHandler { licenses = false }
-        LicensesPage { licenses = false }
-        return
-    }
-    if (storage) {
-        androidx.activity.compose.BackHandler { storage = false }
-        PhoneImageStoragePage { storage = false }
-        return
-    }
-    if (rotating) {
-        androidx.activity.compose.BackHandler { rotating = false }
-        RotateRecoveryScreen { rotating = false }
-        return
-    }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(
             Modifier.fillMaxSize()
@@ -281,7 +263,7 @@ fun SettingsScreen() {
             )
             PushNotice(push) { Push.fix(app, remote) }
             GLabel("本机存储")
-            Group(rows = listOf { GRow("附件存储", onClick = { storage = true }, chevron = true) })
+            Group(rows = listOf { GRow("附件存储", onClick = nav.phoneStorage, chevron = true) })
             GLabel("外观")
             Group(
                 rows =
@@ -335,7 +317,7 @@ fun SettingsScreen() {
                                     valueColor = if (updateWord(update) != null) p.blue else null,
                                 )
                         },
-                        { GRow("开源许可", onClick = { licenses = true }, chevron = true) },
+                        { GRow("开源许可", onClick = nav.licenses, chevron = true) },
                     ),
             )
             GLabel("账户")
