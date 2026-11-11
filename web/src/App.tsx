@@ -2,6 +2,7 @@ import { RetainedIdentityDeniedScreen } from "./Rejoin";
 import { authorityStartup } from "./authority-setup";
 import {
   lazy,
+  startTransition,
   Suspense,
   useEffect,
   useLayoutEffect,
@@ -22,14 +23,18 @@ import {
   ClientPage,
   DevicesPage,
   MachinePage,
+  PairCodePage,
   QuotaPage,
   RemovedScreen,
-  Settings,
-} from "./views/Settings";
-import { PairCodePage, SecurityPage } from "./views/Security";
+  ScheduleCreate,
+  ScheduleDetail,
+  SchedulesPage,
+  SecurityPage,
+  SettingsPage,
+} from "./views/pages";
 import { taskRoute } from "./schedules";
+import { hasScheduleDrafts } from "./schedule-drafts";
 import { guardUpdateInput } from "./update";
-import { ScheduleCreate, hasScheduleDrafts, ScheduleDetail, SchedulesPage } from "./views/Schedules";
 import { Plus } from "./icons";
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
@@ -217,7 +222,8 @@ function useRoute(): [string, Go] {
   const read = () => location.hash.replace(/^#\/?/, "");
   const [route, setRoute] = useState(read);
   useEffect(() => {
-    const on = () => setRoute(read());
+    // A page that has to be fetched first: the one being left stays until it is here.
+    const on = () => startTransition(() => setRoute(read()));
     addEventListener("hashchange", on);
     return () => removeEventListener("hashchange", on);
   }, []);
@@ -257,7 +263,7 @@ function Main({ remote }: { remote: Remote }) {
   useEffect(() => {
     if (absent) void remote.ensureSession(arg);
   });
-  if (remote.removed) return <RemovedScreen remote={remote} />;
+  if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
   if (session)
@@ -311,7 +317,7 @@ function Main({ remote }: { remote: Remote }) {
   else if (kind === "settings" && arg === "rejoin") page = <Suspense fallback={loading}><Setup existing={remote.account} onDone={() => location.reload()} /></Suspense>;
   else if (kind === "settings" && arg === "security") page = <SecurityPage remote={remote} onBack={back} />;
   else if (kind === "settings" && arg.startsWith("add-device")) page = <PairCodePage remote={remote} replaces={arg.split("/")[1]} onBack={back} />;
-  else if (kind === "settings") page = <Settings remote={remote} go={go} onBack={wide ? undefined : () => go("")} />;
+  else if (kind === "settings") page = <SettingsPage remote={remote} go={go} onBack={wide ? undefined : () => go("")} />;
   else if (kind === "devices")
     page = <DevicesPage remote={remote} go={go} onBack={back} />;
   else if (kind === "q")
@@ -344,7 +350,7 @@ function Main({ remote }: { remote: Remote }) {
           selected={session?.id}
           project={kind === "p" ? arg : undefined}
         />
-        <main className="dm">{page}</main>
+        <main className="dm"><Suspense fallback={loading}>{page}</Suspense></main>
       </div>
     );
   // The home draws its own bottom row; the task list gets the same one,
@@ -352,7 +358,7 @@ function Main({ remote }: { remote: Remote }) {
   const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
   return (
     <div className="phone">
-      {page}
+      <Suspense fallback={loading}>{page}</Suspense>
       {kind === "tasks" && !arg && (
         <BottomBar remote={remote} go={go} active="tasks" action={{ label: "新定时", icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling || remote.unlinked }} />
       )}

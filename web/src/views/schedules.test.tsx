@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { hasScheduleDrafts } from "../schedule-drafts";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { EnvelopeSchema } from "../gen/remoteagent/v1/envelope_pb";
 import { CommandResultSchema } from "../gen/remoteagent/v1/remote_pb";
@@ -9,7 +10,6 @@ import { afterEach, expect, it, vi } from "vitest";
 import { DemoRemote } from "../dev/demo";
 import {
   ScheduleCreate,
-  hasScheduleDrafts,
   ScheduleDetail,
   ScheduleRow,
   ScheduleStrip,

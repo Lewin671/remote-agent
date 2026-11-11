@@ -15,36 +15,13 @@ import { forgetAccount } from "../storage";
 import type { HandoffOffer } from "../authority-client";
 import { equal } from "../device-security";
 
-import { authorityName } from "./DeviceManagement";
+import { authorityName } from "./authority-notice";
 export {
-  authorityName,
   ManagementEntry,
   PairCodePage,
   DeviceActions,
 } from "./DeviceManagement";
 
-export function RecoveryNotice({
-  remote,
-  go,
-}: {
-  remote: Remote;
-  go: (r: string) => void;
-}) {
-  useRemote(remote);
-  if (!remote.isAuthority || !remote.recoveryPending) return null;
-  return (
-    <Banner
-      kind="warn"
-      action="处理"
-      onAction={() => go("settings/security")}
-    >
-      恢复申请待处理
-      {remote.recoveryReadyMs > 0n
-        ? ` · 可生效时间：${futureTime(remote.recoveryReadyMs)}`
-        : ""}
-    </Banner>
-  );
-}
 export function SecurityGroup({
   remote,
   go,

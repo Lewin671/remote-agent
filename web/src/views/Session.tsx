@@ -4,7 +4,7 @@ import { agentInfo } from "../agents";
 import { FileChips, withoutFileLines } from "./Files";
 import { ChevronDown, ChevronLeft } from "../icons";
 import { ScheduleText } from "./ScheduleText";
-import { ScheduleCreate, ScheduleStrip } from "./Schedules";
+import { ScheduleCreate, ScheduleStrip } from "./pages";
 import { clockTime, foldScheduled, type ScheduledItem } from "../schedules";
 import { isSkeleton, skeletonMessage } from "../skeleton";
 import {
@@ -624,7 +624,12 @@ export function SessionPage({
       >
         {header}
         <ConnBar remote={remote} />
-        <ScheduleStrip remote={remote} session={session} go={route => { location.hash = "/" + route; }} />
+        {/* The strip is only drawn for a session that has tasks; the room it takes is kept while it is fetched. */}
+        {remote.sessionTasks(session.id).length > 0 && (
+          <Suspense fallback={<div className="schedule-strip" aria-hidden />}>
+            <ScheduleStrip remote={remote} session={session} go={route => { location.hash = "/" + route; }} />
+          </Suspense>
+        )}
         {!wide && <div className="segrow">{seg}</div>}
         <div className={"panes p-" + tab}>
           {tab !== "term" && chat}
@@ -756,7 +761,7 @@ export function SessionPage({
             onClose={() => setMenu(false)}
           />
         )}
-        {scheduling && <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}><div className="schedule-session-overlay"><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></div></Sheet>}
+        {scheduling && <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}><div className="schedule-session-overlay"><Suspense fallback={null}><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></Suspense></div></Sheet>}
         {confirmEnd && (
           <Alert
             title="结束这个会话？"

@@ -24,8 +24,17 @@ function csp(): Plugin {
   return {
     name: "csp",
     apply: "build",
-    transformIndexHtml(html) {
-      return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy.join("; ")}">`);
+    transformIndexHtml: {
+      order: "post",
+      handler(html, ctx) {
+        // The service worker keeps the files this page names, and only those:
+        // the parts fetched on demand are listed here for it to keep too, so
+        // that they are there offline and after a release replaces them on the
+        // server. (It finds them by their path, wherever it stands in the page.)
+        const parts = Object.keys(ctx.bundle ?? {}).filter((name) => /^assets\/.*\.(js|css)$/.test(name) && !html.includes("/" + name)).sort();
+        const keep = parts.length ? `\n    <meta name="on-demand-files" content="${parts.map((name) => "/" + name).join(" ")}">` : "";
+        return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy.join("; ")}">${keep}`);
+      },
     },
     generateBundle(_, bundle) {
       // Only the files this build made are kept for good. A name it did

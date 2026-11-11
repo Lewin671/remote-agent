@@ -3,17 +3,10 @@ import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useRef, useState } from "react";
 import type { AuthorityPairing } from "../authority-pairing";
-import { clientName } from "../devices";
 import { errorText, type Remote } from "../remote";
 import { Alert, Banner, NavBar, useRemote } from "../ui";
+import { authorityName } from "./authority-notice";
 
-export function authorityName(remote: Remote) {
-  return clientName(
-    remote.devices.get(remote.authorityDeviceId),
-    remote.devices,
-    remote.authorityDeviceId,
-  );
-}
 /** 添加设备 on the current authority: a line of blue words with ＋ after
  * the computers' cards, or the last row of a list of them (row); on any
  * other device, where to do it instead. */

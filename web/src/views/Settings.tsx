@@ -26,7 +26,8 @@ import { pushPrefs, pushState, setPushPrefs, type PushPrefs } from "../push";
 import { errorText, type MachineView, type Remote } from "../remote";
 import { DeviceActions, ManagementEntry } from "./DeviceManagement";
 import { RejoinButton } from "../Rejoin";
-import { LeaveAlert, RecoveryNotice, SecurityGroup } from "./Security";
+import { LeaveAlert, SecurityGroup } from "./Security";
+import { RecoveryNotice } from "./authority-notice";
 import { getTheme, setTheme, type Theme } from "../theme";
 import { applyUpdate, checkUpdate, useUpdate } from "../update";
 import {

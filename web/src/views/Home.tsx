@@ -3,7 +3,7 @@
 // as the sidebar; the bottom row of tabs; and the list rows they share
 // (design-system §6, client-v58 #home).
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
   agentName,
   agentOf,
@@ -34,10 +34,10 @@ import { frequency, unreadLabel } from "../schedules";
 import { approvalDisplay } from "../approval-display";
 import { Avatar, Banner, GlassButton, Segmented, Sheet, Skeleton, StateMark, useEscape, useNow, useRemote } from "../ui";
 import { ScheduleBadge } from "./ScheduleBadge";
-import { SchedulesPage } from "./Schedules";
+import { SchedulesPage } from "./pages";
 import { SessionLine } from "./SessionLine";
 import { useFresh } from "../motion";
-import { authorityName, RecoveryNotice } from "./Security";
+import { authorityName, RecoveryNotice } from "./authority-notice";
 import { useDerived } from "./actions";
 import { ApprovalCard } from "./ApprovalCard";
 import { approvalTitle } from "./Dock";
@@ -905,7 +905,7 @@ export function Sidebar({
         )}
       </div>
       {tasks ? (
-        <SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} />
+        <Suspense fallback={null}><SchedulesPage remote={remote} go={go} sidebar selected={selectedTask} /></Suspense>
       ) : (
         <>
           {!remote.listed && !remote.listError && remote.sessions.size === 0 && remote.link === "online" ? (

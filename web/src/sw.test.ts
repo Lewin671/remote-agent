@@ -80,6 +80,18 @@ it("keeps the old page when one of the new one's files cannot be had", async () 
   expect(sw.told).toEqual([]);
 });
 
+it("keeps the files of the parts fetched on demand, and the page even when one of them cannot be had", async () => {
+  const page = PAGE + '<meta name="on-demand-files" content="/assets/Settings-a.js /assets/Terminal-b.js">';
+  const sw = load({
+    "/": [new Response(page, { headers: { "content-type": "text/html" } })],
+    "/assets/index-new.js": [js()], "/assets/index-new.css": [js()], "/assets/Settings-a.js": [js()], "/assets/Terminal-b.js": ["fail"],
+  });
+  expect(await sw.ask()).toEqual({ ok: true });
+  expect(sw.stored.has("/assets/Settings-a.js")).toBe(true);
+  expect(sw.stored.has("/assets/Terminal-b.js")).toBe(false);
+  expect(sw.stored.has("/")).toBe(true);
+});
+
 it("fetches the files side by side, and once for checks asked together", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   const sw = load({ "/": [html()], "/assets/index-new.js": ["stall", js()], "/assets/index-new.css": ["stall", js()] });

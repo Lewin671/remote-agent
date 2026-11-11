@@ -12,9 +12,10 @@ self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 // through here: that is another origin.
 const SHELL = "shell-v1";
 
-// How many scripts and styles are kept: a few builds' worth, so that a tab
-// still running an earlier build finds its own.
-const ASSETS = 40;
+// How many scripts and styles are kept: a few builds' worth (a build has
+// some thirty, with the parts fetched on demand), so that a tab still
+// running an earlier build finds its own.
+const ASSETS = 120;
 
 // Files are kept and found by path alone: the same file is asked for by
 // a script tag, by an import and from here, with different request headers.
@@ -51,7 +52,7 @@ const WAIT = 30_000;
 const TRIES = 3;
 
 // A file read in full within the time allowed, or an error.
-async function get(path, init) {
+async function get(path, init, tries = TRIES) {
   for (let i = 1; ; i++) {
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), WAIT);
@@ -60,7 +61,7 @@ async function get(path, init) {
       const body = await res.blob();
       return new Response(body, { status: res.status, statusText: res.statusText, headers: res.headers });
     } catch (err) {
-      if (i >= TRIES) throw err;
+      if (i >= tries) throw err;
     } finally {
       clearTimeout(timer);
     }
@@ -70,18 +71,28 @@ async function get(path, init) {
 // Keeps a newly fetched page, but only together with the scripts and
 // styles it names: a release may replace them on the server before the
 // page is next opened, and a kept page without its scripts is a blank one.
-// They are fetched side by side, and the page is kept once all are in.
+// They are fetched side by side, and the page is kept once all are in. The
+// page also lists the files of the parts it fetches on demand (settings, the
+// terminal): they are kept as well, so that they are there offline, but one
+// that cannot be had is no reason to keep the old page.
 async function adopt(cache, res) {
   if (!found(res, "/")) return false;
   const html = await res.clone().text();
-  const files = await Promise.all(
-    [...new Set(html.match(/\/assets\/[\w.-]+/g) || [])].map(async (path) => {
-      const got = (await cache.match(path, any)) || (await get(path));
-      if (!found(got, path)) throw new Error("not found: " + path);
-      return [path, got];
-    }),
-  );
+  const listed = /<meta name="on-demand-files" content="([^"]*)">/.exec(html);
+  const names = (text) => [...new Set(text.match(/\/assets\/[\w.-]+/g) || [])];
+  const required = names(listed ? html.replace(listed[0], "") : html);
+  const onDemand = listed ? names(listed[1]).filter((path) => !required.includes(path)) : [];
+  const fetchFile = async (path, tries) => {
+    const got = (await cache.match(path, any)) || (await get(path, undefined, tries));
+    if (!found(got, path)) throw new Error("not found: " + path);
+    return [path, got];
+  };
+  const [files, more] = await Promise.all([
+    Promise.all(required.map((path) => fetchFile(path, TRIES))),
+    Promise.allSettled(onDemand.map((path) => fetchFile(path, 1))),
+  ]);
   for (const [path, got] of files) await keep(cache, path, got);
+  for (const r of more) if (r.status === "fulfilled") await keep(cache, r.value[0], r.value[1]);
   await keep(cache, "/", res);
   await prune(cache);
   return true;

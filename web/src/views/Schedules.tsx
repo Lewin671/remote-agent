@@ -14,6 +14,7 @@ import {
   type NewConfig,
 } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
+import { scheduleDrafts } from "../schedule-drafts";
 import {
   Switch,
   Alert,
@@ -1236,13 +1237,6 @@ function TaskTargetEditor({
   );
 }
 
-const scheduleDrafts = new WeakMap<
-  Remote,
-  Map<string, { project: string; name: string; trigger: ScheduleTrigger; notifyFinish?: boolean; dirty?: boolean }>
->();
-export function hasScheduleDrafts(remote: Remote): boolean {
-  return [...(scheduleDrafts.get(remote)?.values() ?? [])].some(draft => !!draft.name || !!draft.dirty);
-}
 export function ScheduleCreate({
   remote,
   go,
