@@ -1,5 +1,14 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -89,7 +98,9 @@ fun ComposeBox(
     val shape = RoundedCornerShape(27.dp)
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
         Box(Modifier.widthIn(max = ChatMax).fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)) {
-            Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).padding(7.dp)) {
+            // The box grows and shrinks with its lines and its tray of attachments (§4 动效, 常), the buttons
+            // staying at the bottom; the glass outside the size animation so its shadow is not cut by it.
+            Column(Modifier.fillMaxWidth().heightIn(min = 54.dp).glass(p, shape, onGrey = LocalOnSoft.current).animateContentSize(Motion.enter(Motion.BASE), Alignment.BottomCenter).padding(7.dp)) {
                 top?.invoke()
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AttachButton(onPlus, onFile, plusEnabled)
@@ -110,19 +121,7 @@ fun ComposeBox(
                     )
                     val interrupt = !hasDraft && onInterrupt != null
                     val on = if (interrupt) canInterrupt else canSend
-                    Box(
-                        Modifier.size(40.dp).clip(CircleShape)
-                            .background(if (interrupt) p.btn else if (on) p.btn else p.fill2)
-                            .disabledAlpha(!interrupt || on)
-                            .combinedClickable(enabled = on, role = Role.Button,
-                                onClickLabel = if (interrupt) "中断本轮" else sendLabel,
-                                onClick = { if (interrupt) onInterrupt?.invoke() else onSend() },
-                                onLongClick = if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
-                            .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (interrupt) Ic(Lucide.Square, 14.dp, p.btnFg) else Ic(Lucide.ArrowUp, 20.dp, if (on) p.btnFg else p.ink3)
-                    }
+                    SendButton(interrupt, on, sendLabel, { if (interrupt) onInterrupt?.invoke() else onSend() }, if (!interrupt && onQueue != null) ({ sendMenu = true }) else null)
                 }
             }
             if (sendMenu) Popup(popupPositionProvider = AboveProvider(gap, right = true), onDismissRequest = { sendMenu = false }, properties = PopupProperties(focusable = true)) {
@@ -142,6 +141,37 @@ fun ComposeBox(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The round ink button at the right of the message box: ↑ sends, ■ interrupts while the box is empty in
+ * a running session. Pressed, it shrinks a little and comes back; ink or grey, and ↑ or ■, change by
+ * cross-fading (design-system §4 动效, 快).
+ */
+@Composable
+private fun SendButton(interrupt: Boolean, on: Boolean, sendLabel: String, onClick: () -> Unit, onLongClick: (() -> Unit)?) {
+    val p = pal
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed && on) Motion.PRESS_SCALE else 1f, if (Motion.reduced) snap() else tween(Motion.FAST, easing = Motion.Decelerate), label = "send-press")
+    val fade = tween<Color>(Motion.FAST, easing = Motion.Decelerate)
+    val bg by animateColorAsState(if (interrupt || on) p.btn else p.fill2, fade, label = "send-bg")
+    val fg by animateColorAsState(if (interrupt || on) p.btnFg else p.ink3, fade, label = "send-fg")
+    Box(
+        Modifier.size(40.dp).graphicsLayer { scaleX = scale; scaleY = scale }.clip(CircleShape)
+            .background(bg)
+            .disabledAlpha(!interrupt || on)
+            .combinedClickable(interactionSource = source, indication = LocalIndication.current, enabled = on, role = Role.Button,
+                onClickLabel = if (interrupt) "中断本轮" else sendLabel,
+                onClick = onClick,
+                onLongClick = onLongClick)
+            .semantics { contentDescription = if (interrupt) "中断本轮" else sendLabel },
+        contentAlignment = Alignment.Center,
+    ) {
+        Crossfade(interrupt, animationSpec = Motion.fadeInSpec(Motion.FAST), label = "send-icon") { stop ->
+            if (stop) Ic(Lucide.Square, 14.dp, fg) else Ic(Lucide.ArrowUp, 20.dp, fg)
         }
     }
 }

@@ -1078,6 +1078,7 @@ internal fun Composer(
     val p = pal
     val remote = LocalRemote.current
     val interruptAction = rememberAction()
+    val view = androidx.compose.ui.platform.LocalView.current
     var text by Outbox.draft(s.id)
     val online = state.conn == ConnState.ONLINE
     val running = status == Status.RUNNING || d.running
@@ -1096,6 +1097,8 @@ internal fun Composer(
         // Every image must be on the computer first: never a message with some of them.
         if (!images.ready(s.machineId) && images.images.isNotEmpty()) return
         val picked = images.images.toList()
+        // The one light tap of a message going out.
+        Motion.tap(view)
         if (picked.isEmpty()) {
             text = ""
             Outbox.send(RaApp.instance.scope, remote, s.id, msg, mode)

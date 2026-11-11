@@ -218,7 +218,10 @@ fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply {
     val act = rememberAction(a.approvalId)
     val r = Resolves.of(a.approvalId)
     val which = remember(a.approvalId) { mutableStateOf(if (r.attempt.frozen) r.allow else null) }
+    val view = androidx.compose.ui.platform.LocalView.current
     return ApprovalReply(act, r, which) { allow, message, always ->
+        // One light tap for the answer, whichever it is (§4 触感).
+        Motion.tap(view)
         which.value = allow
         act.run({
             resolveApproval(remote, s, a, allow, message, always)
