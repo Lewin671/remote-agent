@@ -535,7 +535,7 @@ export function NewBox({
   const [choosing, setChoosing] = useState(false);
   const cliRef = useRef<HTMLButtonElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
-  useAutoGrow(input, text, variant === "sheet" ? 4000 : 240);
+  useAutoGrow(input, text, 240);
   useEffect(() => {
     if (autoFocus) input.current?.focus();
   }, [autoFocus]);
@@ -662,38 +662,46 @@ export function NewBox({
   );
   // The draft stays when the CLI is switched.
   const many = ns.agents.length > 1;
+  const cli = many && (
+    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+      <AgentMark agent={ns.cfg.agent} named />
+      <span>{agentName(ns.cfg.agent)}</span>
+      <ChevronDown />
+    </button>
+  );
+  const mach = ns.summary.machine && (
+    <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => setConfig("machine")}>
+      <span>{ns.summary.machine}</span>
+      <ChevronDown />
+    </button>
+  );
+  const proj =
+    fixed || !onPickProject ? (
+      <b>{name}</b>
+    ) : (
+      <button className="tok p" onClick={onPickProject} aria-label={`项目：${name}`}>
+        <Avatar name={name} size="sm" />
+        <span>{name}</span>
+        <ChevronDown />
+      </button>
+    );
   const sentence = (
     <div className="sent">
       {/* Where it runs reads as one place: the machine, then the project on it. */}
       {ns.summary.machine && (
         <span className="g">
           在
-          <button className="tok m" disabled={ns.busy} aria-haspopup="dialog" aria-label={`机器：${ns.summary.machine}`} onClick={() => setConfig("machine")}>
-            <span>{ns.summary.machine}</span>
-            <ChevronDown />
-          </button>
+          {mach}
         </span>
       )}
       <span className="g">
         {ns.summary.machine ? "的" : "在"}
-        {fixed || !onPickProject ? (
-          <b>{name}</b>
-        ) : (
-          <button className="tok p" onClick={onPickProject} aria-label={`项目：${name}`}>
-            <Avatar name={name} size="sm" />
-            <span>{name}</span>
-            <ChevronDown />
-          </button>
-        )}
+        {proj}
       </span>
       {many && (
         <span className="g">
           用
-          <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
-            <AgentMark agent={ns.cfg.agent} named />
-            <span>{agentName(ns.cfg.agent)}</span>
-            <ChevronDown />
-          </button>
+          {cli}
         </span>
       )}
     </div>
@@ -708,19 +716,28 @@ export function NewBox({
           <button className="fbtn" aria-label="关闭" onClick={onClose}>
             <X />
           </button>
-          <b>新任务</b>
-          {send}
+          {/* On a phone the title says where: the project, and under it the machine. */}
+          <div className="nt-where">
+            {proj}
+            {mach}
+          </div>
+          <span className="nt-pad" />
         </header>
         <div className="nt-body">
           {banners}
-          {sentence}
-          {field}
-          {trayView}
           {busyNote}
         </div>
-        <div className="acc">
-          {attach}
-          {summary}
+        {/* The same box as a session's and the wide page's, above the keyboard. */}
+        <div className="pbox">
+          {field}
+          {trayView}
+          <div className="acc">
+            {attach}
+            {cli}
+            {summary}
+            <span className="grow" />
+            {send}
+          </div>
         </div>
       </div>
     ) : (
