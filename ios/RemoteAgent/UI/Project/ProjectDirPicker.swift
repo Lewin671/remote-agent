@@ -105,7 +105,7 @@ struct ProjectDirPicker: View {
     }
 
     private func choose(_ d: PBListDirectoriesResponse) -> some View {
-        Btn("用 \(projectName(d.path)) 这个目录", kind: .primary, enabled: !loading) {
+        Btn("用 \(pathCrumbs(d.path) == ["/"] ? "/" : projectName(d.path)) 这个目录", kind: .primary, enabled: !loading) {
             Haptics.confirm()
             onChosen(at.machine, d.path)
         }

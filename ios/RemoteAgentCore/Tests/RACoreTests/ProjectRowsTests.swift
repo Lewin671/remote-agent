@@ -88,7 +88,11 @@ import Testing
 
     @Test func aFolderIsWrittenPieceByPiece() {
         #expect(pathCrumbs("/Users/me/Code/ai-bot") == ["~", "Code", "ai-bot"])
-        #expect(pathCrumbs("/srv/www") == ["srv", "www"])
+        #expect(pathCrumbs("/home/me") == ["~"])
+        // Outside the home folder the first piece keeps its slash, so it is not read as one below it.
+        #expect(pathCrumbs("/srv/www") == ["/srv", "www"])
+        #expect(pathCrumbs("/Users") == ["/Users"])
+        #expect(pathCrumbs("/") == ["/"])
         #expect(childPath("/Users/me/", "Code") == "/Users/me/Code")
         #expect(childPath("/", "srv") == "/srv")
         #expect(listDirectoriesCommand(path: "/srv").listDirectories.path == "/srv")

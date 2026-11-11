@@ -513,6 +513,17 @@ export function shortPath(p: string): string {
   return p.replace(/^\/Users\/[^/]+/, "~").replace(/^\/home\/[^/]+/, "~");
 }
 
+/** A folder's path as the picker writes it, piece by piece: ~ / Code / foo.
+ * A path outside the home folder keeps its leading slash on the first piece
+ * (/srv / www), so it does not read as one below the home folder; the root
+ * is "/". */
+export function pathCrumbs(p: string): string[] {
+  const parts = shortPath(p).split("/").filter(Boolean);
+  if (parts[0] === "~") return parts;
+  if (parts.length === 0) return ["/"];
+  return ["/" + parts[0], ...parts.slice(1)];
+}
+
 /** macOS reaches /tmp, /var and /etc through /private; either spelling
  * names the same folder. */
 function samePlace(p: string): string {

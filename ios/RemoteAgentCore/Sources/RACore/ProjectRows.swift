@@ -72,9 +72,13 @@ public func firstOnlineMachine(_ state: RemoteState) -> String {
     listedMachines(state).first(where: \.online)?.id ?? ""
 }
 
-/// A folder's path as the picker writes it, piece by piece: ~ / Code / foo.
+/// A folder's path as the picker writes it, piece by piece: ~ / Code / foo. A path outside the home folder
+/// keeps its leading slash on the first piece (/srv / www), so it does not read as one below the home folder; the root is "/".
 public func pathCrumbs(_ path: String) -> [String] {
-    shortPath(path).split(ascii: UInt8(ascii: "/")).filter { !$0.isEmpty }
+    let parts = shortPath(path).split(ascii: UInt8(ascii: "/")).filter { !$0.isEmpty }
+    if parts.first == "~" { return parts }
+    guard let first = parts.first else { return ["/"] }
+    return ["/" + first] + parts.dropFirst()
 }
 
 /// The folder `name` inside `dir`.

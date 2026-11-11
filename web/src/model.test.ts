@@ -16,6 +16,7 @@ import {
   forkBlocked,
   findModel,
   modelLabel,
+  pathCrumbs,
   defaultModeOf,
   inheritConfig,
   modeLabel,
@@ -1039,4 +1040,14 @@ it("keeps task-owned sessions out of projects while retaining by-ID session data
   const hidden = sess({ taskOwned: true, scheduledTaskId: "task", cwd: "/task" });
   const ordinary = sess({ cwd: "/ordinary" }, { id: "user" });
   expect(projects([hidden, ordinary], []).map((p) => p.key)).toEqual(["/ordinary"]);
+});
+
+describe("the folder picker's path", () => {
+  it("is written piece by piece, a path outside the home folder keeping its slash", () => {
+    expect(pathCrumbs("/Users/me/Code/ai-bot")).toEqual(["~", "Code", "ai-bot"]);
+    expect(pathCrumbs("/home/me")).toEqual(["~"]);
+    expect(pathCrumbs("/srv/www")).toEqual(["/srv", "www"]);
+    expect(pathCrumbs("/Users")).toEqual(["/Users"]);
+    expect(pathCrumbs("/")).toEqual(["/"]);
+  });
 });

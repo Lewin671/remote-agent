@@ -24,6 +24,7 @@ import {
   defaultModeOf,
   modeLabel,
   projectName,
+  pathCrumbs,
   projects,
   shortPath,
   type MachineLike,
@@ -1029,7 +1030,7 @@ export function DirBrowser({
     setDir(undefined);
     void open(start);
   }, [machineId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const parts = dir ? shortPath(dir.path).split("/").filter(Boolean) : [];
+  const parts = dir ? pathCrumbs(dir.path) : [];
   const name = parts[parts.length - 1] || "/";
   return (
     <>
