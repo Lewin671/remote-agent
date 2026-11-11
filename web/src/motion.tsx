@@ -352,26 +352,34 @@ export function useKnob(ref: RefObject<HTMLElement | null>, value: unknown) {
     const root = ref.current;
     const knob = root?.querySelector<HTMLElement>(":scope > .mo-knob");
     if (!root || !knob) return;
+    let settle = 0;
     place.current = (slide) => {
       const on = root.querySelector<HTMLElement>(":scope > button.on, :scope > button[aria-pressed='true'], :scope > button[aria-selected='true']");
       if (!on) {
         knob.style.opacity = "0";
         return;
       }
-      if (!slide || sizeMs() === 0) knob.style.transition = "none";
+      // Everything is read first and written after, so that the page lays
+      // out once for it, not once between each pair.
+      const width = on.offsetWidth, height = on.offsetHeight, x = on.offsetLeft, y = on.offsetTop;
+      const still = !slide || sizeMs() === 0;
+      cancelAnimationFrame(settle);
+      if (still) knob.style.transition = "none";
       knob.style.opacity = "1";
-      knob.style.width = `${on.offsetWidth}px`;
-      knob.style.height = `${on.offsetHeight}px`;
-      knob.style.transform = `translate(${on.offsetLeft}px, ${on.offsetTop}px)`;
-      if (!slide || sizeMs() === 0) {
-        void knob.offsetWidth;
-        knob.style.transition = "";
-      }
+      knob.style.width = `${width}px`;
+      knob.style.height = `${height}px`;
+      knob.style.transform = `translate(${x}px, ${y}px)`;
+      // The transition comes back once the placement has been drawn without
+      // it: the change is only taken into account at the next frame.
+      if (still) settle = requestAnimationFrame(() => (settle = requestAnimationFrame(() => (knob.style.transition = ""))));
     };
     if (typeof ResizeObserver === "undefined") return;
     const ro = new ResizeObserver(() => place.current?.(false));
     ro.observe(root);
-    return () => ro.disconnect();
+    return () => {
+      cancelAnimationFrame(settle);
+      ro.disconnect();
+    };
   }, [ref]);
   useLayoutEffect(() => {
     place.current?.(placed.current);
