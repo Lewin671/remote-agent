@@ -191,3 +191,42 @@ it("uses two revision transactions for an actual historical ingestion batch", as
   expect(transactions).toHaveBeenCalledTimes(2);
   expect(reads.mock.calls.filter(([k]) => k === "record-revision")).toHaveLength(2);
 });
+
+it("starts the history again when a reconnection cut the first fetch short", async () => {
+  const count = PAGE + 2;
+  const r = await probe(count);
+  const all = rows.slice(0, count);
+  const gate = deferred(), asked = deferred();
+  let calls = 0;
+  (r as any).api = { getEvents: async ({ afterSeq, limit }: { afterSeq: bigint; limit: number }) => {
+    if (calls++ === 0) { asked.resolve(); await gate.promise; }
+    const rest = all.filter(e => e.seq > afterSeq);
+    return { events: rest.slice(0, limit), more: rest.length > limit };
+  } };
+  r.events(SID);
+  await asked.promise;
+  // The connection is replaced and is up again while the first request is
+  // still out: nobody asks for the history a second time.
+  (r as any).generation++;
+  (r as any).conn = "online";
+  const done = until(r, () => r.loaded(SID));
+  gate.resolve();
+  await done;
+  expect(r.events(SID).map(e => e.seq)).toEqual(all.map(e => e.seq));
+  expect(r.history(SID)).toMatchObject({ loaded: true, error: "" });
+});
+
+it("leaves a cut fetch for the next connection's first frame while offline", async () => {
+  const r = await probe(PAGE - 1);
+  const gate = deferred(), asked = deferred();
+  const getEvents = vi.fn(async () => { asked.resolve(); await gate.promise; return { events: rows.slice(0, PAGE - 1), more: false }; });
+  (r as any).api = { getEvents };
+  r.events(SID);
+  await asked.promise;
+  (r as any).generation++;
+  (r as any).conn = "offline";
+  gate.resolve();
+  await vi.waitFor(() => expect((r as any).buffers.get(SID).fetching).toBe(false));
+  expect(getEvents).toHaveBeenCalledTimes(1);
+  expect(r.loaded(SID)).toBe(false);
+});

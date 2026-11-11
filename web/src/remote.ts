@@ -2503,7 +2503,15 @@ export class Remote {
       this.report(e);
     } finally {
       b.fetching = false;
-      if (b.refetch && !this.closed && generation !== this.generation)
+      // A fetch that a reconnection cut short starts again, whether or not
+      // anyone asked for another meanwhile (the new connection's first frame
+      // finds it running or done). Offline, that first frame asks.
+      if (
+        !this.closed &&
+        generation !== this.generation &&
+        this.buffers.get(sid) === b &&
+        (b.refetch || (!b.loaded && this.conn === "online"))
+      )
         void this.fetchEvents(sid);
       this.trimHistory();
       this.changed();
