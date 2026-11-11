@@ -1,10 +1,11 @@
 import { Sheet } from "../ui";
+import { Swap, useExit, useFresh, useKnob, useSettle } from "../motion";
 import { agentInfo } from "../agents";
 import { FileChips, withoutFileLines } from "./Files";
 import { ChevronDown, ChevronLeft } from "../icons";
 import { ScheduleText } from "./ScheduleText";
 import { ScheduleCreate, ScheduleStrip } from "./Schedules";
-import { clockTime, foldScheduled } from "../schedules";
+import { clockTime, foldScheduled, type ScheduledItem } from "../schedules";
 import { isSkeleton, skeletonMessage } from "../skeleton";
 import {
   lazy,
@@ -160,6 +161,30 @@ function useHeight(): [(el: HTMLElement | null) => void, number] {
     setH(el.clientHeight);
   }, []);
   return [ref, h];
+}
+
+/** The chat / terminal switch: a tablist whose knob slides to the picked view. */
+function ViewSwitch({ className, tabs, tab, inactive, popup, onPick }: { className: string; tabs: [Tab, string][]; tab: Tab; inactive: boolean; popup: boolean; onPick: (t: Tab) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useKnob(ref, tab);
+  return (
+    <div className={className} role="tablist" aria-label="视图" ref={ref}>
+      <i className="mo-knob" aria-hidden />
+      {tabs.map(([t, name]) => (
+        <button
+          key={t}
+          role="tab"
+          aria-selected={t === tab}
+          className={t === tab ? "on" : ""}
+          disabled={t !== "chat" && inactive}
+          onClick={() => onPick(t)}
+        >
+          {name}
+          {t === "term" && popup && <span className="n" />}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function SessionPage({
@@ -366,25 +391,14 @@ export function SessionPage({
   // Chat / terminal: a glass segmented control under the title on a phone
   // (dark glass over the terminal), the toolbar's own on a wide window.
   const seg = (
-    <div
+    <ViewSwitch
       className={wide ? "seg" : "vseg glass" + (tab === "term" ? " dark" : "")}
-      role="tablist"
-      aria-label="视图"
-    >
-      {tabs.map(([t, name]) => (
-        <button
-          key={t}
-          role="tab"
-          aria-selected={t === tab}
-          className={t === tab ? "on" : ""}
-          disabled={t !== "chat" && inactive}
-          onClick={() => pickTab(t)}
-        >
-          {name}
-          {t === "term" && st.kind === "popup" && <span className="n" />}
-        </button>
-      ))}
-    </div>
+      tabs={tabs}
+      tab={tab}
+      inactive={inactive}
+      popup={st.kind === "popup"}
+      onPick={pickTab}
+    />
   );
   // The mode follows the status only once it is known: a starting CLI has
   // not reported it, and one nobody could read is left unsaid.
@@ -851,6 +865,52 @@ function ChatBody({
   if (promptId && prompt) textOf.set(promptId, prompt);
 
   const count = items.length + outbox.length;
+  // What has only now arrived plays its entrance; what was there, or loads
+  // in above or behind a long open, plays nothing.
+  const byKey = new Map(items.map((it) => [it.key, it] as const));
+  const freshRow = useFresh(
+    items.map((it) => it.key),
+    hist.loaded,
+    {
+      replaces: (key, gone) => {
+        const it = byKey.get(key);
+        const tool = it?.kind === "tools" || it?.kind === "unsettled" || it?.kind === "background" || (it?.kind === "event" && it.event.kind.case === "toolCall");
+        return tool && gone.some((g) => g[0] === "r" || g[0] === "u");
+      },
+    },
+  );
+  const freshOut = useFresh(
+    outbox.map((o) => o.sendId),
+    hist.loaded,
+    { bulk: 3 },
+  );
+  // Messages this page sent: their line in the chat takes over from the
+  // bubble that was waiting, in the same place.
+  const sentHere = useRef(new Set<string>());
+  useLayoutEffect(() => {
+    for (const o of outbox) sentHere.current.add(o.sendId);
+  });
+  const rowClass = (it: ScheduledItem) => {
+    if (!freshRow(it.key)) return undefined;
+    if (it.kind !== "event") return it.kind === "quiet" ? undefined : "mo-fade";
+    const k = it.event.kind;
+    if (k.case === "userMessage") return k.value.requestId && sentHere.current.has(k.value.requestId) ? undefined : "mo-rise";
+    return k.case === "toolCall" || k.case === "approvalRequested" ? "mo-fade" : undefined;
+  };
+  // The chat column gives way as the dock or the input grows and gets back
+  // what they give up; following the bottom, it keeps the bottom in view.
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    let h = el.clientHeight;
+    const ro = new ResizeObserver(() => {
+      const now = el.clientHeight;
+      if (now < h && stick.current) el.scrollTop = el.scrollHeight;
+      h = now;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   useLayoutEffect(() => {
     const el = scroller.current;
     if (hist.loaded && items.length <= 100 && el && saved && !saved.stick)
@@ -992,11 +1052,12 @@ function ChatBody({
           sid={sid}
           o={o}
           phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))}
+          enter={freshOut(o.sendId)}
           agent={agent}
           onRestore={onRestore}
         />
       ))}
-      <PendingBubbles remote={remote} session={session} d={d} />
+      <PendingBubbles remote={remote} session={session} d={d} sentHere={sentHere.current} />
     </>
   );
 
@@ -1043,6 +1104,7 @@ function ChatBody({
           remote={remote}
           sid={sid}
           follow={() => stick.current}
+          rowClass={rowClass}
           loaded={hist.loaded || !!hist.error || hist.broken}
           header={header}
           footer={footer}
@@ -1061,14 +1123,16 @@ function ChatBody({
                 onTerminal={onTerminal}
                 who={who}
                 sid={sid}
+                settle={freshRow(it.key)}
+                sentHere={sentHere.current}
               />
             </RowState>
           )}
         />
       </div>
       {unseen > 0 && (
-        <button
-          className="newmsg"
+        <NewMessages
+          n={unseen}
           onClick={() => {
             const el = scroller.current;
             if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
@@ -1076,11 +1140,20 @@ function ChatBody({
             seen.current = count;
             setUnseen(0);
           }}
-        >
-          <ArrowDown /> {unseen} 条新消息
-        </button>
+        />
       )}
     </div>
+  );
+}
+
+/** 「回到最新」: rises in, fades out. */
+function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useExit(ref);
+  return (
+    <button ref={ref} className="newmsg" onClick={onClick}>
+      <ArrowDown /> {n} 条新消息
+    </button>
   );
 }
 
@@ -1089,6 +1162,7 @@ function Pending({
   sid,
   o,
   phase,
+  enter,
   agent,
   onRestore,
 }: {
@@ -1096,6 +1170,7 @@ function Pending({
   sid: string;
   o: Outgoing;
   phase: string;
+  enter: boolean;
   agent: Agent;
   onRestore: (text: string, from?: string) => void;
 }) {
@@ -1103,7 +1178,7 @@ function Pending({
   // taken it before the answer was lost.
   if (phase === "failed")
     return (
-      <div className={"me " + (o.unknown ? "warn" : "fail")}>
+      <div className={"me " + (o.unknown ? "warn" : "fail") + (enter ? " mo-rise" : "")}>
         <LocalThumbs blobs={o.thumbs} />
         <FileChips files={o.files} />
         {o.text && <div>{o.text}</div>}
@@ -1131,23 +1206,35 @@ function Pending({
       </div>
     );
   return (
-    <div className={"me" + (phase === "sending" ? " pending" : "")}>
+    <div className={"me" + (phase === "sending" ? " pending" : "") + (enter ? " mo-rise" : "")}>
       <LocalThumbs blobs={o.thumbs} />
       <FileChips files={o.files} />
       {o.text && <div>{o.text}</div>}
       <small>
-        {phase === "sending" ? (
-          <>
-            <LoaderCircle /> 发送中…
-          </>
-        ) : phase === "written" ? (
-          `已送入终端，等 ${agentName(agent)} 记录`
-        ) : (
-          "已送达电脑"
-        )}
+        {/* Where it has got to: each word fades into the next. */}
+        <Swap k={phase}>
+          <span className="mo-small">
+            {phase === "sending" ? (
+              <>
+                <LoaderCircle /> 发送中…
+              </>
+            ) : phase === "written" ? (
+              `已送入终端，等 ${agentName(agent)} 记录`
+            ) : (
+              "已送达电脑"
+            )}
+          </span>
+        </Swap>
       </small>
     </div>
   );
+}
+
+/** The line the sent bubble had, closing up. */
+function Settled() {
+  const ref = useRef<HTMLElement>(null);
+  useSettle(ref, true);
+  return <small ref={ref}>已送达电脑</small>;
 }
 
 function Row({
@@ -1163,6 +1250,8 @@ function Row({
   onTerminal,
   who,
   sid,
+  settle,
+  sentHere,
 }: {
   it: Item;
   d: Derived;
@@ -1176,6 +1265,9 @@ function Row({
   onTerminal?: () => void;
   who: Who;
   sid: string;
+  // The row has only now arrived; the ids of messages this page sent.
+  settle: boolean;
+  sentHere: Set<string>;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "background")
@@ -1235,6 +1327,9 @@ function Row({
             </div>
           )}
           {!e.origin?.scheduledTaskId && from && <small>{from}</small>}
+          {/* Taking over from the bubble that waited for it: that had its
+              status line under it, which now closes up instead of going. */}
+          {!from && settle && !!k.value.requestId && sentHere.has(k.value.requestId) && <Settled />}
         </div>
       );
     }

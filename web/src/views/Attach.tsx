@@ -9,6 +9,7 @@ import { Tray, type TrayItem } from "../attach";
 import { clock, machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
+import { useGrow } from "../motion";
 import { FileChip } from "./Files";
 import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
 
@@ -229,6 +230,14 @@ function mb(n: number): string {
  * message, and how many of how many. */
 export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
   if (tray.items.length === 0 && !tray.note) return <>{note}</>;
+  return <Attachments tray={tray} note={note} />;
+}
+
+/** The tray itself: it opens to its height as the first picture comes and
+ * closes up as the last goes, the input moving with it. */
+function Attachments({ tray, note }: { tray: Tray; note?: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useGrow(ref);
   const images = tray.images();
   // Videos from the library sit among the images, in the order chosen;
   // other files are chips.
@@ -237,7 +246,7 @@ export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
   const failed = images.filter((i) => i.state === "failed");
   const failedFiles = tray.files().filter((i) => i.state === "failed");
   return (
-    <div className="attachments">
+    <div className="attachments" ref={ref}>
       {thumbs.length > 0 && (
         <div className="att-tray">
           {thumbs.map((i) =>

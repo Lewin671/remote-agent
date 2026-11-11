@@ -27,6 +27,7 @@ import {
   useNow,
   useRemote,
   useEscape,
+  useOverlayExit,
 } from "../ui";
 import {
   allRuns,
@@ -1020,12 +1021,14 @@ function TaskNameDialog({
   const [name, setName] = useState(current);
   const input = useRef<HTMLInputElement>(null);
   useEscape(onClose);
+  const root = useRef<HTMLDivElement>(null);
+  useOverlayExit(root);
   useEffect(() => {
     input.current?.focus();
     input.current?.select();
   }, []);
   return (
-    <div className="overlay">
+    <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
       <form
         className="dialog rename"

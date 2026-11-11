@@ -4,7 +4,8 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 // shell. Only the first item is docked, open or folded to one dark line;
 // what has no room opens as a page, and the buttons stay in view.
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useGrow, useHeightFlip } from "../motion";
 import type { Agent, ApprovalRequested, PlanProposed, QuestionAsked } from "../gen/remoteagent/v1/event_pb";
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { approvalDisplay } from "../approval-display";
@@ -496,8 +497,23 @@ export function Dock({
       break;
   }
   return (
-    <div className="dockwrap" style={style}>
+    <DockBox style={style}>
       {card}
+    </DockBox>
+  );
+}
+
+/** What holds the dock: it opens to the card's height as it comes (rising
+ * 12px, fading in) and closes up as it goes, so the chat above gives way
+ * and takes the room back frame by frame; opening, folding and the next
+ * item taking over ease its height. */
+function DockBox({ style, children }: { style: CSSProperties; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useHeightFlip(ref);
+  useGrow(ref, { rise: true });
+  return (
+    <div className="mo-box" ref={ref} style={style}>
+      {children}
     </div>
   );
 }

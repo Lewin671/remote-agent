@@ -21,6 +21,23 @@
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, "JetBrains Mono", monospace;
 }
+:root {
+  /* Motion (design-system §4 动效): three durations, one curve. A thing
+     goes in 0.8 of the time it takes to come, on ease-in. --m-size is how
+     long a height takes to change and --m-dy / --m-dy-lg how far a thing
+     rises as it comes; all three are 0 when the system asks for less motion,
+     which also cuts every duration to a fade of 120ms at most. */
+  --m-fast: 120ms; --m-base: 200ms; --m-slow: 280ms;
+  --m-fast-out: 96ms; --m-base-out: 160ms; --m-slow-out: 224ms;
+  --m-size: var(--m-base); --m-dy: 8px; --m-dy-lg: 12px; --m-slide: 100%; --m-scale: .96;
+  --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-in: ease-in;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --m-base: 120ms; --m-slow: 120ms; --m-base-out: 96ms; --m-slow-out: 96ms;
+    --m-size: 0ms; --m-dy: 0px; --m-dy-lg: 0px; --m-slide: 0%; --m-slide-fade: 0; --m-scale: 1;
+  }
+}
 :root[data-weights="shifted"] {
   --w5: 450; --w6: 500; --w7: 600;
   --sans: "RA Latin", "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
@@ -296,19 +313,21 @@ h1, h2, h3 { font-weight: var(--w7); }
 .find .x { width: 36px; height: 36px; color: var(--ink3); flex: none; display: flex; align-items: center; justify-content: center; }
 
 /* ---------- segmented control: one setting's values, or a view ---------- */
-.seg, .pick { display: inline-flex; background: var(--fill2); border-radius: 999px; padding: 3px; gap: 0; flex: none; }
+.seg, .pick { position: relative; display: inline-flex; background: var(--fill2); border-radius: 999px; padding: 3px; gap: 0; flex: none; }
 .seg button, .pick button { flex: 1; position: relative; min-height: 28px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: var(--w5); color: var(--ink2);
   display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; text-align: center; }
 /* 44 to touch, though the control is lower. */
 .seg button::before, .pick button::before { content: ""; position: absolute; inset: -8px 0; }
-.seg .on, .pick .on { background: var(--knob); color: var(--ink); font-weight: var(--w6); box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.seg .on, .pick .on { color: var(--ink); font-weight: var(--w6); }
+.seg > .mo-knob { border-radius: 999px; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
 .seg button:disabled, .pick button:disabled { opacity: .4; }
 .seg .n { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
 .seg.full { display: flex; flex: 1; }
 .seg.wrap { flex-wrap: wrap; border-radius: 18px; }
 .seg.dark { background: rgba(255,255,255,.15); }
 .seg.dark button { color: rgba(245,245,247,.7); }
-.seg.dark .on { background: #636366; color: #fff; }
+.seg.dark .on { color: #fff; }
+.seg.dark > .mo-knob { background: #636366; }
 
 /* ---------- session (design-system §6 会话顶部与视图切换, client-v58 #conversation) ---------- */
 .session { position: relative; display: flex; flex-direction: column; height: 100%; min-height: 0; flex: 1; background: var(--paper); }
@@ -316,10 +335,11 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* Chat / terminal under the title: a glass capsule, the picked view on a
    light knob, never ink. */
 .segrow { flex: none; display: flex; justify-content: center; padding: 0 16px 8px; }
-.vseg { display: flex; width: 188px; height: 38px; border-radius: 19px; padding: 3px; }
+.vseg { position: relative; display: flex; width: 188px; height: 38px; border-radius: 19px; padding: 3px; }
 .vseg button { flex: 1; position: relative; border-radius: 16px; display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 13px; font-weight: var(--w5); color: var(--ink2); white-space: nowrap; }
 .vseg button::before { content: ""; position: absolute; inset: -3px 0; }
-.vseg .on { background: var(--knob); color: var(--ink); font-weight: var(--w6); box-shadow: 0 1px 4px rgba(0,0,0,.14); }
+.vseg .on { color: var(--ink); font-weight: var(--w6); }
+.vseg > .mo-knob { border-radius: 16px; box-shadow: 0 1px 4px rgba(0,0,0,.14); }
 .vseg button:disabled { color: var(--ink3); }
 .vseg .n { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
 /* Over the terminal, the image viewer and the dark card's kin, glass is
@@ -327,7 +347,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .vseg.dark, .termview .glass, .viewer .glass, .lightbox .glass { background: rgba(60,60,64,.6); border-color: rgba(255,255,255,.13); box-shadow: 0 6px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.1); color: #f5f5f7; }
 @media (prefers-reduced-transparency: reduce) { .vseg.dark, .termview .glass, .viewer .glass, .lightbox .glass { background: #2c2c2e; } }
 .vseg.dark button { color: rgba(245,245,247,.7); }
-.vseg.dark .on { background: #636366; color: #fff; }
+.vseg.dark .on { color: #fff; }
+.vseg.dark > .mo-knob { background: #636366; }
 .vseg.dark button:disabled { color: rgba(245,245,247,.35); }
 .panes { flex: 1; min-height: 0; display: flex; }
 .panes.p-split { display: grid; grid-template-columns: 1fr 1fr; }
@@ -478,7 +499,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 /* The input (§6 输入框): a glass capsule floating at the bottom, ＋ on the
    left, the draft from one line to about six, the ink send on the right;
    chosen images and files above the line. */
-.cbar { flex: none; position: relative; margin: 4px 12px max(12px, env(safe-area-inset-bottom)); border-radius: 27px; padding: 7px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.cbar { flex: none; position: relative; margin: 4px 12px max(12px, env(safe-area-inset-bottom)); border-radius: 27px; padding: 7px; display: flex; flex-direction: column; gap: 6px; min-width: 0;
+  transition: padding var(--m-size) var(--ease-out), border-radius var(--m-size) var(--ease-out); }
 .cbar:has(.attachments) { border-radius: 28px; padding: 8px; }
 .cline { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
 .cline > .attach-wrap { flex: none; }
@@ -490,7 +512,9 @@ h1, h2, h3 { font-weight: var(--w7); }
 .cbar .draft::placeholder { color: var(--ink3); }
 /* Send: ink, or gray with nothing to send; ■ in its place while a turn
    runs and the draft is empty. */
-.snd { width: 40px; height: 40px; border-radius: 50%; background: var(--btn); color: var(--btn-fg); display: flex; align-items: center; justify-content: center; font-size: 20px; flex: none; position: relative; }
+.snd { width: 40px; height: 40px; border-radius: 50%; background: var(--btn); color: var(--btn-fg); display: flex; align-items: center; justify-content: center; font-size: 20px; flex: none; position: relative;
+  transition: background-color var(--m-fast) var(--ease-out), color var(--m-fast) var(--ease-out), transform var(--m-fast) var(--ease-out), opacity var(--m-fast) var(--ease-out); }
+.snd:active:not(:disabled) { transform: scale(var(--m-scale)); }
 .snd.off { background: var(--fill2); color: var(--ink3); }
 .snd.stop > .ic { font-size: 14px; }
 .snd.stop:disabled { opacity: .4; }
@@ -504,7 +528,6 @@ h1, h2, h3 { font-weight: var(--w7); }
    scrolls within about 60% of the chat column (240 at the least, within
    the room the column leaves it, --content-max set by Dock) and the
    actions stay in view. Folded, it is one dark line. */
-.dockwrap { display: contents; }
 .dock { flex: none; margin: 0 12px 8px; }
 .dock > .tc { margin: 0; box-shadow: var(--float); }
 .tc > .pending-content { display: flex; flex-direction: column; min-height: 0; flex: 0 1 auto; }
@@ -793,9 +816,8 @@ h1, h2, h3 { font-weight: var(--w7); }
    One sentence of where and with which CLI, its capsules opening what
    they pick; the task, its placeholder 24 bold ink3 and what is typed 17;
    ＋ and the summary of the settings in a row over the keyboard. */
-.page.rise { animation: rise .3s cubic-bezier(.2, .8, .2, 1); }
-@keyframes rise { from { transform: translateY(100%); } }
-@media (prefers-reduced-motion: reduce) { .page.rise { animation: none; } }
+.page.rise { animation: rise var(--m-slow) var(--ease-out); }
+@keyframes rise { from { transform: translateY(var(--m-slide)); opacity: var(--m-slide-fade, 1); } }
 .ntask { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
 .nt-hd { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 14px 0; min-height: 56px; }
 .nt-hd > b { flex: 1; text-align: center; font-size: 17px; font-weight: var(--w6); }
@@ -1340,3 +1362,62 @@ input.field { margin: 0; }
 .schedule-strip { flex: none; display: flex; align-items: center; gap: 8px; margin: 0 16px 8px; min-height: 38px; border-radius: 19px; padding: 0 8px 0 14px; font-size: 13px; color: var(--ink2); text-align: left; }
 .schedule-strip > span:first-of-type { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .schedule-strip .act { flex: none; display: flex; align-items: center; color: var(--blue); font-weight: var(--w6); }
+
+/* ---------- motion (design-system §4 动效) ----------
+   Tokens are at the top of this file. Entrances are animations played once
+   when the element is inserted; exits are played by motion.tsx on an inert
+   copy (.mo-ghost) left where the element was; sizes and slides that need
+   measuring are motion.tsx's too. Reduced motion (the variables above) takes
+   out distance, scale and size, leaving fades of 120ms at most. Names are
+   prefixed mo- so that no other component's class can collide with them. */
+@keyframes mo-fade { from { opacity: 0; } }
+@keyframes mo-fade-out { to { opacity: 0; } }
+@keyframes mo-rise { from { opacity: 0; translate: 0 var(--m-dy); } }
+@keyframes mo-sheet-in { from { translate: 0 var(--m-slide); opacity: var(--m-slide-fade, 1); } }
+@keyframes mo-sheet-out { to { translate: 0 var(--m-slide); opacity: var(--m-slide-fade, 1); } }
+@keyframes mo-pop-in { from { opacity: 0; scale: var(--m-scale); } }
+@keyframes mo-pop-out { to { opacity: 0; scale: var(--m-scale); } }
+
+/* A new line in the chat: a tool row, the turn's rule come in with a fade;
+   a message, a queued bubble and 回到最新 rise 8px as well. */
+.mo-fade { animation: mo-fade var(--m-fast) var(--ease-out) backwards; }
+.mo-rise { animation: mo-rise var(--m-base) var(--ease-out) backwards; }
+.newmsg { animation: mo-rise var(--m-base) var(--ease-out) backwards; }
+
+/* Sheets, dialogs and menus. */
+.dim { animation: mo-fade var(--m-slow) var(--ease-out) backwards; }
+.sheet { animation: mo-sheet-in var(--m-slow) var(--ease-out) backwards; }
+.dialog { animation: mo-pop-in var(--m-base) var(--ease-out) backwards; }
+.pop { animation: mo-fade var(--m-base) var(--ease-out) backwards; }
+@media (min-width: 900px) { .sheet { animation: mo-rise var(--m-base) var(--ease-out) backwards; } }
+
+/* Leaving: the same, backwards and ease-in, at 0.8 of the time. A ghost never
+   plays what its original played on entering. */
+html .mo-ghost, html .mo-ghost * { animation: none; pointer-events: none; }
+html .mo-leave > .dim { animation: mo-fade-out var(--m-slow-out) var(--ease-in) forwards; }
+html .mo-leave > .sheet { animation: mo-sheet-out var(--m-slow-out) var(--ease-in) forwards; }
+html .mo-leave:has(> .dialog) > .dim { animation-duration: var(--m-base-out); }
+html .mo-leave > .dialog { animation: mo-pop-out var(--m-base-out) var(--ease-in) forwards; }
+html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--ease-in) forwards; }
+@media (min-width: 900px) { html .mo-leave > .sheet { animation: mo-fade-out var(--m-base-out) var(--ease-in) forwards; } }
+
+/* Content that changes in place: the new on top of the old in one cell. */
+.mo-swap { display: grid; }
+.mo-swap > * { grid-area: 1 / 1; min-width: 0; }
+.mo-swap-out { pointer-events: none; }
+.mo-send { flex: none; }
+.me small .mo-swap { justify-items: end; }
+.mo-small { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0 12px; max-width: 100%; }
+
+/* The knob of a segmented control; the picked button is drawn over it. */
+.mo-knob { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; background: var(--knob); pointer-events: none;
+  transition: transform var(--m-base) var(--ease-out), width var(--m-base) var(--ease-out), height var(--m-base) var(--ease-out), opacity var(--m-fast) var(--ease-out); }
+.seg button, .vseg button { transition: color var(--m-base) var(--ease-out); }
+
+/* Changing theme is no motion. */
+:root[data-theme-switch] *, :root[data-theme-switch] *::before, :root[data-theme-switch] *::after { transition: none !important; }
+
+/* A box whose height motion.tsx moves, and the dock's: it holds its
+   margins in, so that its height is the card's with them. */
+.mo-box { display: flow-root; position: relative; flex: none; }
+.mo-box > .mo-swap-out { position: absolute; top: 0; left: 0; right: 0; }

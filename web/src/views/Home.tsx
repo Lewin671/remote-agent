@@ -36,6 +36,7 @@ import { Avatar, Banner, GlassButton, Segmented, Sheet, Skeleton, StateMark, use
 import { ScheduleBadge } from "./ScheduleBadge";
 import { SchedulesPage } from "./Schedules";
 import { SessionLine } from "./SessionLine";
+import { useFresh } from "../motion";
 import { authorityName, RecoveryNotice } from "./Security";
 import { useDerived } from "./actions";
 import { ApprovalCard } from "./ApprovalCard";
@@ -183,6 +184,7 @@ export function SessionRow({
   selected,
   cols = {},
   last,
+  enter,
 }: {
   remote: Remote;
   s: SessionView;
@@ -190,6 +192,7 @@ export function SessionRow({
   selected?: boolean;
   cols?: Cols;
   last?: boolean;
+  enter?: boolean;
 }) {
   const machine = remote.machines.get(s.machineId);
   const st = shownStateOf(s, machine, remote.unlinked);
@@ -206,7 +209,7 @@ export function SessionRow({
   const scheduleMeta = timers.length ? "定时 " + (timers.length > 1 ? `${timers.length} 个任务` : frequency(timers[0].task.spec.trigger)) : "";
   return <SessionLine tone={st.tone} title={titleOf(s)} right={when(s.updatedMs)}
     preview={st.text + (pv && pv !== st.text ? ` · ${pv}` : "")}
-    meta={[meta, scheduleMeta].filter(Boolean).join(" · ")} selected={selected} last={last} onClick={() => go("s/" + s.id)} />;
+    meta={[meta, scheduleMeta].filter(Boolean).join(" · ")} selected={selected} last={last} enter={enter} onClick={() => go("s/" + s.id)} />;
 }
 
 /** An ended session: one line with no state graphic, under the date
@@ -306,6 +309,9 @@ function Timeline({
   const cut = <T,>(list: T[], max: number, all: boolean) =>
     all || wide || q || (sel && list.indexOf(sel as T) >= max) ? list : list.slice(0, max);
   const liveShown = cut(live, 5, allLive);
+  // A session that comes to the list fades in; the list as it is opened,
+  // scoped or searched does not.
+  const fresh = useFresh(liveShown.map((s) => s.id), true, { bulk: 2, anywhere: true });
   const endedShown = ended.slice(0, shown);
   // ⌘/Ctrl+K reaches the filter from anywhere on a wide window.
   useEffect(() => {
@@ -374,6 +380,7 @@ function Timeline({
           go={go}
           cols={{ ...cols, project: scope === ALL || projectKey(s) !== scope }}
           selected={s.id === selected}
+          enter={fresh(s.id)}
         />
       ))}
       {live.length > liveShown.length && (

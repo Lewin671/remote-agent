@@ -15,11 +15,13 @@ type Props<T> = {
   footer: ReactNode;
   loaded: boolean;
   focusKey?: string;
+  /** A class for a row that has only now arrived (its entrance). */
+  rowClass?: (item: T) => string | undefined;
 };
 
 /** Keep complete event state, but mount only rows near the viewport. */
 export function HistoryRows<T extends { key: string }>(props: Props<T>) {
-  const { items, render, scroller, remote, sid, header, footer, loaded } = props;
+  const { items, render, scroller, remote, sid, header, footer, loaded, rowClass } = props;
   const [parent, setParent] = useState<HTMLElement>();
   const [initial] = useState(() => ({ top: remote.scroll.get(sid), long: items.length > 100, loading: !loaded }));
   const shortRestored = useRef(false);
@@ -40,12 +42,12 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   // A reclaimed history arrives in pages. Do not restore a position into an
   // incomplete prefix or overwrite its measurements with that prefix.
   if (initial.loading && initial.top && !initial.top.stick && !loaded) return <div className="sep">正在恢复阅读位置…</div>;
-  if (items.length <= 100) return <>{header}{items.map((it, index) => <div key={it.key} className="history-row" data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
+  if (items.length <= 100) return <>{header}{items.map((it, index) => <div key={it.key} className={"history-row" + (rowClass?.(it) ? " " + rowClass(it) : "")} data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
   if (!parent) return null;
   return <WindowedRows {...props} parent={parent} initialTop={initial.long || initial.loading ? initial.top : undefined} />;
 }
 
-function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded }: Props<T> & {
+function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded, rowClass }: Props<T> & {
   parent: HTMLElement;
   initialTop?: { top: number; stick: boolean };
 }) {
@@ -99,7 +101,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     customScrollParent={parent}
     totalCount={items.length + 2}
     computeItemKey={(index) => index === 0 ? "history-header" : index === items.length + 1 ? "history-footer" : "row-" + items[index - 1].key}
-    itemContent={(index) => index === 0 ? <div className="history-boundary">{header}</div> : index === items.length + 1 ? <div className="history-boundary">{footer}</div> : render(items[index - 1])}
+    itemContent={(index) => index === 0 ? <div className="history-boundary">{header}</div> : index === items.length + 1 ? <div className="history-boundary">{footer}</div> : <div className={rowClass?.(items[index - 1])}>{render(items[index - 1])}</div>}
     increaseViewportBy={400}
     {...(focusIndex >= 0 ? { initialTopMostItemIndex: { index: focusIndex + 1, align: "start" as const } } : restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
       : top.stick ? { initialTopMostItemIndex: { index: items.length + 1, align: "end" as const } }

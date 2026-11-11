@@ -26,7 +26,12 @@ export function applyTheme(t: Theme = getTheme()) {
 export function setTheme(t: Theme) {
   if (t === "auto") localStorage.removeItem(KEY);
   else localStorage.setItem(KEY, t);
+  // Light to dark is no motion (design-system §4 动效): the colors that move
+  // for other reasons (send, knob) do not slide between themes.
+  const root = document.documentElement;
+  root.dataset.themeSwitch = "";
   applyTheme(t);
+  requestAnimationFrame(() => requestAnimationFrame(() => delete root.dataset.themeSwitch));
 }
 
 /**

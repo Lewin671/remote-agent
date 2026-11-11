@@ -1,6 +1,7 @@
 // Small building blocks shared by the views.
 
-import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { useExit, useKnob, useMarkSwap } from "./motion";
 import type { Tone } from "./model";
 import type { Remote } from "./remote";
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, CloudOff, LoaderCircle, WifiOff, X } from "./icons";
@@ -38,7 +39,10 @@ export type Mark = Tone | "online" | "unread";
  * idle a hollow gray ring, waiting an orange dot, not connected a faint
  * dot, unread a blue dot, online a green one. */
 export function StateMark({ kind }: { kind: Mark }) {
-  return <i className={"mark " + kind} aria-hidden />;
+  const ref = useRef<HTMLElement>(null);
+  // A state that changes (turning, then a dot, then a ring) fades into the next.
+  useMarkSwap(ref, kind);
+  return <i ref={ref} className={"mark " + kind} aria-hidden />;
 }
 
 /** A project's avatar: its name's first letter on a gray circle, the same
@@ -64,8 +68,10 @@ export function GlassButton({ label, onClick, children, disabled, className = ""
  * button on the left a level down. On a wide window it is centered. */
 export function Sheet({ onClose, children, className = "", title, action, back }: { onClose: () => void; children: ReactNode; className?: string; title?: ReactNode; action?: { label: string; onClick: () => void; disabled?: boolean }; back?: () => void }) {
   useEscape(onClose);
+  const root = useRef<HTMLDivElement>(null);
+  useOverlayExit(root);
   return (
-    <div className="overlay">
+    <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
       <div className={"sheet " + className} role="dialog" aria-modal="true">
         <button className="grab" aria-label="关闭" onClick={onClose} />
@@ -88,6 +94,12 @@ export function Sheet({ onClose, children, className = "", title, action, back }
       </div>
     </div>
   );
+}
+
+/** A sheet or a dialog that goes: its dim fades and the panel drops or fades
+ * (the stylesheet's .mo-leave), whoever unmounts it. */
+export function useOverlayExit(ref: RefObject<HTMLElement | null>) {
+  useExit(ref, { tier: "slow", leave: "mo-leave" });
 }
 
 export function useEscape(fn: () => void) {
@@ -114,8 +126,10 @@ export function Alert({
   onCancel: () => void;
 }) {
   useEscape(onCancel);
+  const root = useRef<HTMLDivElement>(null);
+  useOverlayExit(root);
   return (
-    <div className="overlay">
+    <div className="overlay" ref={root}>
       <div className="dim" onClick={onCancel} />
       <div className="dialog" role="alertdialog" aria-modal="true">
         {/* Danger shows on the button, never the title (design-system §2). */}
@@ -214,10 +228,12 @@ export function ActionSheet({ info, actions, onClose, pop }: { info?: ReactNode;
  * shows as a bottom sheet. A click outside or Esc closes it. */
 function PopMenu({ onClose, children }: { onClose: () => void; children: ReactNode }) {
   useEscape(onClose);
+  const root = useRef<HTMLDivElement>(null);
+  useExit(root, { leave: "mo-leave" });
   return (
     <>
       <div className="pop-back" onClick={onClose} />
-      <div className="pop menu menu-pop" role="dialog" aria-modal="true">
+      <div className="pop menu menu-pop" role="dialog" aria-modal="true" ref={root}>
         {children}
       </div>
     </>
@@ -239,8 +255,11 @@ export function Segmented<T extends string>({
   label: string;
   className?: string;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useKnob(ref, value);
   return (
-    <div className={"seg " + className} role="group" aria-label={label}>
+    <div className={"seg " + className} role="group" aria-label={label} ref={ref}>
+      <i className="mo-knob" aria-hidden />
       {options.map((o) => (
         <button key={o.value} className={o.value === value ? "on" : ""} aria-pressed={o.value === value} aria-label={o.aria} disabled={o.disabled} onClick={() => o.value !== value && onChange(o.value)}>
           {o.label}

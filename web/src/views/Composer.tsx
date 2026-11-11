@@ -10,6 +10,7 @@ import { SendMode } from "../gen/remoteagent/v1/event_pb";
 import type { Remote, SessionView } from "../remote";
 import { Alert, sendKeys, usePointerFine } from "../ui";
 import { ArrowUp, Square } from "../icons";
+import { easeHeight, Swap } from "../motion";
 
 /** The draft grows to about six lines (17 / 1.4, and its padding), then
  * scrolls inside. */
@@ -18,11 +19,19 @@ const DRAFT_MAX = 150;
 /** A textarea that grows with its text up to max pixels. field-sizing
  * does this where supported; the height set here covers the rest. */
 export function useAutoGrow(ref: RefObject<HTMLTextAreaElement | null>, text: string, max = DRAFT_MAX) {
+  const drawn = useRef(false);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(max, el.scrollHeight)}px`;
+    const fit = () => {
+      el.style.height = "auto";
+      el.style.height = `${Math.min(max, el.scrollHeight)}px`;
+    };
+    // Growing a line, or falling back once the message is sent, eases;
+    // the first fit, with a saved draft, is where it starts.
+    if (drawn.current) easeHeight(el, fit);
+    else fit();
+    drawn.current = true;
   }, [ref, text, max]);
 }
 
@@ -102,7 +111,8 @@ export function Composer({
   const keys = sendKeys(fine);
   const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : d.tools.length > 0 ? "消息…" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
   const canQueue = d.running;
-  const send = d.running && !t && !images ? (
+  const stopping = d.running && !t && !images;
+  const send = stopping ? (
     <button className="snd stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮">
       <Square />
     </button>
@@ -154,7 +164,10 @@ export function Composer({
           }}
           aria-label="消息"
         />
-        {send}
+        {/* ↑ and ■ swap by crossfade; the two are the same ink circle. */}
+        <Swap k={stopping ? "stop" : "send"} className="mo-send" hold>
+          {send}
+        </Swap>
       </div>
       {slash !== undefined && (
         <Alert

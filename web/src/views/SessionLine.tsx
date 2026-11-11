@@ -13,6 +13,7 @@ export function SessionLine({
   meta,
   selected,
   last,
+  enter,
   onClick,
 }: {
   tone: Tone;
@@ -22,11 +23,13 @@ export function SessionLine({
   meta?: ReactNode;
   selected?: boolean;
   last?: boolean;
+  /** The session has only now come to this list. */
+  enter?: boolean;
   onClick: () => void;
 }) {
   return (
     <button
-      className={`sess ${tone}${selected ? " sel" : ""}${last ? " last" : ""}`}
+      className={`sess ${tone}${selected ? " sel" : ""}${last ? " last" : ""}${enter ? " mo-fade" : ""}`}
       onClick={onClick}
     >
       <span className="gut"><StateMark kind={tone} /></span>

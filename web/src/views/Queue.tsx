@@ -12,6 +12,7 @@ import { agentName, agentOf, machineName, queuedIds, type Derived } from "../mod
 import { errorText, type Remote, type SessionView } from "../remote";
 import { LocalThumbs } from "./Images";
 import { promptIdOf } from "./Composer";
+import { useFresh } from "../motion";
 
 /** How a cancel ended, as the page reports it once the message leaves
  * the queue: canceled here, canceled elsewhere, or written first. */
@@ -36,11 +37,14 @@ export function stageText(stage: InputStage | undefined): string {
 }
 
 /** Pending input is shown at the end of the chat, on every client. */
-export function PendingBubbles({ remote, session, d }: { remote: Remote; session: SessionView; d: Derived }) {
+export function PendingBubbles({ remote, session, d, sentHere }: { remote: Remote; session: SessionView; d: Derived; sentHere?: Set<string> }) {
   const ids = queuedIds(d);
   const [all, setAll] = useState(() => remote.demoFlag("queue-all"));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const shown = all || ids.length <= 3 ? ids : ids.slice(0, 2);
+  // A message that joins the queue rises in; those already there do not, and
+  // neither does one this page has sent: it rose in when it was written.
+  const fresh = useFresh(shown, true, { bulk: 3 });
   const sid = session.id;
   // No turn to insert into yet: the CLI is still coming up.
   const starting = session.info?.status === SessionStatus.STARTING;
@@ -61,7 +65,7 @@ export function PendingBubbles({ remote, session, d }: { remote: Remote; session
   return <>
     {shown.map((id, i) => {
       const a = d.accepted.get(id);
-      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className="pending-bubble me" key={id}>{skeletonMessage}</div>;
+      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>{skeletonMessage}</div>;
       const o = remote.outbox(sid).find((x) => x.sendId === id);
       const c = remote.cancels.get(id);
       const paused = d.paused.has(id);
