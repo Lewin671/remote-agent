@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Virtuoso, type StateSnapshot, type VirtuosoHandle } from "react-virtuoso";
 import type { Remote } from "../remote";
 
-type Position = { state: StateSnapshot; count: number; width: number; anchor?: { key: string; index: number; offset: number } };
+type Position = { state: StateSnapshot; count: number; width: number; first: number; anchor?: { key: string; index: number; offset: number } };
+type Entry<T> = { at: "header" } | { at: "footer" } | { at: "row"; item: T };
 const positions = new WeakMap<Remote, Map<string, Position>>();
 type Props<T> = {
   items: T[];
@@ -13,7 +14,12 @@ type Props<T> = {
   follow: () => boolean;
   header: ReactNode;
   footer: ReactNode;
+  /** All the history is here. */
   loaded: boolean;
+  /** What is here is what the list ends with (the latest page, or the whole
+   * copy kept in this browser): it can be drawn, and older records that come
+   * in above are placed without moving what is on screen. */
+  ready: boolean;
   focusKey?: string;
   /** A class for a row that has only now arrived (its entrance). */
   rowClass?: (item: T) => string | undefined;
@@ -22,6 +28,12 @@ type Props<T> = {
    * replacing the plain one when the count passes 100. */
   long?: boolean;
 };
+
+// A first index well above zero, to have room to count down from as older
+// records join above.
+const FIRST = 1_000_000;
+// Frames a drawn list at the end must keep its height before it is shown.
+const STILL_FRAMES = 2;
 
 /** Keep complete event state, but mount only rows near the viewport. */
 export function HistoryRows<T extends { key: string }>(props: Props<T>) {
@@ -55,21 +67,21 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   return <WindowedRows {...props} parent={parent} initialTop={initial.long || initial.loading ? initial.top : undefined} />;
 }
 
-function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded, rowClass }: Props<T> & {
+function WindowedRows<T extends { key: string }>({ items, render, parent, remote, sid, follow, header, footer, initialTop, focusKey, loaded, ready: isReady, rowClass }: Props<T> & {
   parent: HTMLElement;
   initialTop?: { top: number; stick: boolean };
 }) {
   const list = useRef<VirtuosoHandle>(null);
   const focused = useRef<string | undefined>(undefined);
   // The list is drawn with estimated row heights and corrects them as the
-  // rows are measured, and the history comes in pages that change what it
-  // holds: both move it. It is not shown until it holds rows, all the history
-  // is here and its height has been the same for a few frames (at the bottom,
-  // for a list that follows the end); one that has stood still for a second
-  // is shown whatever it waits for. A placeholder stands in meanwhile. Plain
+  // rows are measured: that moves it. It is not shown until it holds rows,
+  // what it ends with is here (the latest page, or the copy kept in this
+  // browser: older records that come in above are placed without moving what
+  // is on screen), it stands at the end if it follows it, and its height has
+  // been the same for two frames. A placeholder stands in meanwhile. Plain
   // lists are placed in the frame they are drawn in and need none of this.
-  const ready = useRef(loaded);
-  ready.current = loaded;
+  const ready = useRef(isReady);
+  ready.current = isReady;
   useLayoutEffect(() => {
     parent.classList.add("mo-hold");
     const follows = !focusKey && (initialTop ? initialTop.stick : parent.scrollTop + parent.clientHeight >= parent.scrollHeight - 60);
@@ -84,7 +96,7 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       const there = !follows || sh - parent.scrollTop - parent.clientHeight < 4;
       still = sh === last && there && drawn ? still + 1 : 0;
       last = sh;
-      if ((still >= 3 && ready.current) || still >= 60 || performance.now() - t0 > 6000) return parent.classList.remove("mo-hold");
+      if ((still >= STILL_FRAMES && ready.current) || performance.now() - t0 > 6000) return parent.classList.remove("mo-hold");
       id = requestAnimationFrame(tick);
     });
     return () => {
@@ -99,6 +111,16 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
   }, [focusKey, items, loaded]);
   const currentItems = useRef(items);
   currentItems.current = items;
+  // Older records join above as the history comes in. The list is told how
+  // many, as a lower index for its first row, and keeps what is on screen
+  // where it is. Its indices from here on count from that first one.
+  const head = useRef({ key: items[0]?.key, first: FIRST });
+  if (items[0]?.key !== head.current.key) {
+    const joined = head.current.key === undefined ? 0 : items.findIndex((it) => it.key === head.current.key);
+    head.current = { key: items[0]?.key, first: joined > 0 ? head.current.first - joined : head.current.first };
+  }
+  const first = head.current.first;
+  const firstAtMount = useRef(first);
   const count = useRef(items.length + 2);
   count.current = items.length + 2;
   const [saved] = useState(() => positions.get(remote)?.get(sid));
@@ -116,6 +138,8 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     const row = [...parent.querySelectorAll<HTMLElement>("[data-history-index]")].find((el) => el.getBoundingClientRect().bottom > edge);
     return row ? { index: Number(row.dataset.historyIndex), align: "start" as const, offset: edge - row.getBoundingClientRect().top } : undefined;
   });
+  const firstNow = useRef(first);
+  firstNow.current = first;
   const save = useCallback(() => list.current?.getState((state) => {
     if (!state.ranges.length) return;
     const map = positions.get(remote) ?? new Map<string, Position>();
@@ -123,24 +147,28 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     map.delete(sid);
     const edge = parent.getBoundingClientRect().top;
     const row = [...parent.querySelectorAll<HTMLElement>("[data-item-index]")].find((el) => el.getBoundingClientRect().bottom > edge);
-    const index = Number(row?.dataset.itemIndex);
+    const index = Number(row?.dataset.itemIndex) - firstNow.current;
     const item = currentItems.current[index - 1];
-    map.set(sid, { state, count: count.current, width: parent.clientWidth, anchor: row && item ? { key: item.key, index, offset: edge - row.getBoundingClientRect().top } : undefined });
+    map.set(sid, { state, count: count.current, width: parent.clientWidth, first: firstNow.current, anchor: row && item ? { key: item.key, index, offset: edge - row.getBoundingClientRect().top } : undefined });
     while (map.size > 8) map.delete(map.keys().next().value!);
   }), [remote, sid, parent]);
   useLayoutEffect(() => {
     parent.addEventListener("scroll", save, { passive: true });
     return () => parent.removeEventListener("scroll", save);
   }, [parent, save]);
+  // The rows between the header and the footer, handed to the list with the
+  // first index so that both change together.
+  const entries = useMemo<Entry<T>[]>(() => [{ at: "header" }, ...items.map((item) => ({ at: "row" as const, item })), { at: "footer" }], [items]);
   const focusIndex = loaded && focusKey ? items.findIndex(it => it.key === focusKey) : -1;
-  const restore = !focusKey && !top.stick && !anchor && saved && saved.count === items.length + 2 && saved.width === parent.clientWidth ? saved.state : undefined;
+  const restore = !focusKey && !top.stick && !anchor && saved && saved.count === items.length + 2 && saved.width === parent.clientWidth && saved.first === firstAtMount.current ? saved.state : undefined;
   return <Virtuoso
     ref={list}
     className="virtual-history"
     customScrollParent={parent}
-    totalCount={items.length + 2}
-    computeItemKey={(index) => index === 0 ? "history-header" : index === items.length + 1 ? "history-footer" : "row-" + items[index - 1].key}
-    itemContent={(index) => index === 0 ? <div className="history-boundary">{header}</div> : index === items.length + 1 ? <div className="history-boundary">{footer}</div> : <div className={rowClass?.(items[index - 1])}>{render(items[index - 1])}</div>}
+    data={entries}
+    firstItemIndex={first}
+    computeItemKey={(_, entry) => entry.at === "row" ? "row-" + entry.item.key : "history-" + entry.at}
+    itemContent={(_, entry) => entry.at === "header" ? <div className="history-boundary">{header}</div> : entry.at === "footer" ? <div className="history-boundary">{footer}</div> : <div className={rowClass?.(entry.item)}>{render(entry.item)}</div>}
     increaseViewportBy={400}
     {...(focusIndex >= 0 ? { initialTopMostItemIndex: { index: focusIndex + 1, align: "start" as const } } : restore ? { restoreStateFrom: restore } : anchor ? { initialTopMostItemIndex: anchor }
       : top.stick ? { initialTopMostItemIndex: { index: items.length + 1, align: "end" as const } }

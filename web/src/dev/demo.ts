@@ -2093,14 +2093,16 @@ export class DemoRemote extends Remote {
     return e;
   }
 
-  override loaded(): boolean {
-    return true;
+  override loaded(sid: string): boolean {
+    return !this.backfill.get(sid);
   }
 
   override history(sid: string): History {
     return {
       backfilling: !!this.backfill.get(sid),
-      loaded: true,
+      // As with the real history: the latest page is enough to draw the chat.
+      loaded: !this.backfill.get(sid),
+      ready: true,
       error: sid === "s-hist" ? "连接超时" : "",
       broken: sid === "s-ended",
     };

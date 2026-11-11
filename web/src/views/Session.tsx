@@ -1151,6 +1151,7 @@ function ChatBody({
           rowClass={rowClass}
           long={Number(session.lastSeq ?? 0) > LONG_HISTORY}
           loaded={hist.loaded || !!hist.error || hist.broken}
+          ready={hist.ready || !!hist.error || hist.broken}
           header={header}
           footer={footer}
           render={(it) => it.kind === "quiet" ? <button className="schedule-quiet" onClick={() => setExpandedQuiet(old => new Set(old).add(it.key))}>{it.times.join("、")} 定时检查 · 没有新回复 <ChevronDown /></button> : (

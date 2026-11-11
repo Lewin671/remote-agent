@@ -67,7 +67,8 @@ it("renders the latest page after one request, then joins the prefix with live e
   await prefixRequested.promise;
   expect(getEvents.mock.calls[0][0]).toEqual({ sessionId: SID, afterSeq: BigInt(count - PAGE), limit: PAGE });
   expect(r.events(SID).map(e => e.seq)).toEqual(rows.slice(count - PAGE, count).map(e => e.seq));
-  expect(r.history(SID)).toMatchObject({ loaded: false, backfilling: true });
+  // The latest page is enough to draw the chat; the rest comes in above it.
+  expect(r.history(SID)).toMatchObject({ loaded: false, ready: true, backfilling: true });
   // Overlap two downloaded events and append one real signed live event.
   await (r as any).ingest(r.sessions.get(SID), rows.slice(count - 2), true, false, false);
   expect(r.events(SID).at(-1)?.seq).toBe(BigInt(count + 1));
@@ -192,6 +193,18 @@ it("uses two revision transactions for an actual historical ingestion batch", as
   expect(reads.mock.calls.filter(([k]) => k === "record-revision")).toHaveLength(2);
 });
 
+it("is not ready before the first page, and ready with it", async () => {
+  const r = await probe(PAGE - 1);
+  const gate = deferred();
+  (r as any).api = { getEvents: async () => { await gate.promise; return { events: rows.slice(0, PAGE - 1), more: false }; } };
+  r.events(SID);
+  expect(r.history(SID)).toMatchObject({ loaded: false, ready: false });
+  const done = until(r, () => r.loaded(SID));
+  gate.resolve();
+  await done;
+  expect(r.history(SID)).toMatchObject({ loaded: true, ready: true });
+});
+
 it("starts the history again when a reconnection cut the first fetch short", async () => {
   const count = PAGE + 2;
   const r = await probe(count);
@@ -213,7 +226,7 @@ it("starts the history again when a reconnection cut the first fetch short", asy
   gate.resolve();
   await done;
   expect(r.events(SID).map(e => e.seq)).toEqual(all.map(e => e.seq));
-  expect(r.history(SID)).toMatchObject({ loaded: true, error: "" });
+  expect(r.history(SID)).toMatchObject({ loaded: true, ready: true, error: "" });
 });
 
 it("leaves a cut fetch for the next connection's first frame while offline", async () => {

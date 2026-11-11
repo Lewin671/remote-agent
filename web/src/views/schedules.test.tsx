@@ -1214,7 +1214,7 @@ it("renders verified run history as full Markdown and quietly falls back while l
   const release = vi.fn();
   vi.spyOn(r, "ensureSession").mockResolvedValue();
   const retain = vi.spyOn(r, "retainHistory").mockReturnValue(release);
-  const history = vi.spyOn(r, "history").mockReturnValue({ loaded: false, backfilling: false, broken: false, error: "", unavailable: 0 });
+  const history = vi.spyOn(r, "history").mockReturnValue({ loaded: false, ready: false, backfilling: false, broken: false, error: "", unavailable: 0 });
   const full = "完整回复\n\n| 项目 | 结果 |\n| --- | --- |\n| 检查 | 通过 |\n\n- 第一项\n- 第二项\n\n```sh\necho ok\n```";
   vi.spyOn(r, "events").mockReturnValue([
     create(EventSchema, { origin: { scheduledRunId: execution.id }, kind: { case: "userMessage", value: { text: "检查" } } }),
@@ -1223,12 +1223,12 @@ it("renders verified run history as full Markdown and quietly falls back while l
   await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={() => {}} onBack={() => {}} />);
   expect(retain).toHaveBeenCalledWith("s-idle");
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
-  history.mockReturnValue({ loaded: true, backfilling: false, broken: false, error: "", unavailable: 0 });
+  history.mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
   await act(async () => r.touch());
   expect(host.querySelector(".schedule-result table")?.textContent).toContain("检查通过");
   expect(host.querySelectorAll(".schedule-result li")).toHaveLength(2);
   expect(host.querySelector(".schedule-result pre")?.textContent).toBe("echo ok");
-  history.mockReturnValue({ loaded: true, backfilling: false, broken: true, error: "private read failure", unavailable: 0 });
+  history.mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: true, error: "private read failure", unavailable: 0 });
   await act(async () => r.touch());
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("短摘要");
   expect(host.textContent).not.toContain("private read failure");
@@ -1488,7 +1488,7 @@ it.each(["offline", "list-error"])("shows the latest cached result without readi
   await (r as any).restoreScheduleSnapshot("mac", { bytes: toBinary(EnvelopeSchema, create(EnvelopeSchema)), requestId: "cache" });
   vi.spyOn(r, "ensureSession").mockResolvedValue();
   vi.spyOn(r, "retainHistory").mockReturnValue(() => {});
-  vi.spyOn(r, "history").mockReturnValue({ loaded: true, backfilling: false, broken: false, error: "", unavailable: 0 });
+  vi.spyOn(r, "history").mockReturnValue({ loaded: true, ready: true, backfilling: false, broken: false, error: "", unavailable: 0 });
   vi.spyOn(r, "events").mockReturnValue([
     create(EventSchema, { origin: { scheduledRunId: "cached" }, kind: { case: "userMessage", value: { text: "定时检查" } } }),
     create(EventSchema, { kind: { case: "agentMessage", value: { phase: "final_answer", text: "缓存的完整回复" } } }),

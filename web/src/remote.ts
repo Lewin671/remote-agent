@@ -190,7 +190,11 @@ interface EventBuffer {
   pending: Map<bigint, Event>; // arrived ahead of a gap
   fetching: boolean;
   refetch: boolean;
+  // All of the history is here.
   loaded: boolean;
+  // Enough is here to show without the list moving later: all of it, the
+  // latest page (older ones follow), or the whole copy cached in this browser.
+  ready: boolean;
   // The copy cached in this browser has been read, or there is none.
   restored: boolean;
   // The last fetch failed; a retry may help.
@@ -208,6 +212,9 @@ export interface History {
   backfilling?: boolean;
   unavailable?: number;
   loaded: boolean;
+  /** The chat can be drawn: what is held is what the list will end up
+   * showing at its end, though older records may still come in above. */
+  ready: boolean;
   error: string;
   broken: boolean;
 }
@@ -2359,6 +2366,7 @@ export class Remote {
         fetching: false,
         refetch: false,
         loaded: false,
+        ready: false,
         restored: false,
         error: "",
         broken: false,
@@ -2380,6 +2388,7 @@ export class Remote {
     return {
       backfilling: !!b?.recent,
       loaded: b?.loaded ?? false,
+      ready: b?.ready ?? false,
       error: this.sessions.get(sid)?.historyError ?? b?.error ?? "",
       broken: !!this.sessions.get(sid)?.historyError || (b?.broken ?? false),
       unavailable: b?.unavailableSeqs?.size ?? 0,
@@ -2440,13 +2449,19 @@ export class Remote {
     b.fetching = true;
     const generation = this.generation;
     let tailThrough: bigint | undefined;
+    // The latest page is asked for first when the history is longer than a page.
+    const wantsTail = () => !b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize);
     try {
-      if (!b.restored && this.cache) await this.restore(s, b);
+      if (!b.restored && this.cache) {
+        await this.restore(s, b);
+        // The copy kept here is all there is to wait for, unless the latest
+        // page is to be shown in its place.
+        if (b.events.length && !wantsTail()) { b.ready = true; this.changed(); }
+      }
       if (b.error === RETIRED_HISTORY_ERROR) return;
       // lastSeq is a routing hint, not authenticated event content. Every
       // returned envelope still passes the normal historical checks.
-      if (!b.tailRequested && s.lastSeq > BigInt(b.events.length + this.historyPageSize)) {
-        b.tailRequested = true;
+      if (wantsTail()) {
         const tail = await this.api.getEvents({
           sessionId: sid,
           afterSeq: s.lastSeq - BigInt(this.historyPageSize),
@@ -2454,7 +2469,9 @@ export class Remote {
         });
         if (this.closed || generation !== this.generation || this.buffers.get(sid) !== b)
           return;
+        b.tailRequested = true;
         await this.ingest(s, tail.events, false, false, true);
+        if (b.recent || b.events.length) b.ready = true;
         if (!tail.more && tail.events.length && !b.broken)
           tailThrough = tail.events.at(-1)!.seq;
       }
@@ -2482,6 +2499,7 @@ export class Remote {
           )
             return;
           await this.ingest(s, res.events, false, false, true);
+          if (b.events.length) b.ready = true;
           // An event that does not open stops progress; asking for the
           // same page again would not help.
           if (b.broken) break;
@@ -2496,6 +2514,7 @@ export class Remote {
         }
       } while (b.refetch);
       b.loaded = true;
+      b.ready = true;
       if (b.error !== RETIRED_HISTORY_ERROR) b.error = "";
     } catch (e) {
       if (this.closed || generation !== this.generation) return;
@@ -2504,8 +2523,9 @@ export class Remote {
     } finally {
       b.fetching = false;
       // A fetch that a reconnection cut short starts again, whether or not
-      // anyone asked for another meanwhile (the new connection's first frame
-      // finds it running or done). Offline, that first frame asks.
+      // anyone asked for another meanwhile; the new connection finds it
+      // either running or done. Without a connection yet, its first
+      // frame asks for the history anyway.
       if (
         !this.closed &&
         generation !== this.generation &&

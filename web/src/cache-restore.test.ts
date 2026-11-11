@@ -48,3 +48,47 @@ it("notifies after each verified cache batch and leaves scroll restoration pendi
   expect(getEvents).toHaveBeenCalledWith(expect.objectContaining({ afterSeq: 3n }));
   expect(r.events("s").map(e => e.seq)).toEqual([1n, 2n, 3n]);
 }, 20000);
+
+it("draws the whole cached copy before the server has answered", async () => {
+  const r = remote = await SyntheticRemote.create();
+  const all: CachedEvent[] = [];
+  for (let seq = 1n; seq <= 3n; seq++) all.push({ seq,
+    envelope: await r.seal({ kind: PayloadKind.EVENT, sessionId: "s", seq }, EventSchema,
+      create(EventSchema, { sessionId: "s", seq, kind: { case: "agentMessage", value: { text: "m" + seq } } })),
+  });
+  (r as any).cache = { read: vi.fn(async (_sid: string, after = 0n) => all.filter(e => e.seq > after).slice(0, 2)), drop: vi.fn(), append: vi.fn(async () => {}), set: vi.fn(async () => {}) };
+  r.sessions.get("s")!.lastSeq = 3n;
+  let release!: () => void, asked!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const answered = new Promise<void>(resolve => { asked = resolve; });
+  (r as any).api = { getEvents: vi.fn(async () => { asked(); await barrier; return { events: [], more: false }; }) };
+  r.events("s");
+  await answered;
+  // The network request is out; the cached copy is all in and can be drawn.
+  expect(r.events("s").map(e => e.seq)).toEqual([1n, 2n, 3n]);
+  expect(r.history("s")).toMatchObject({ loaded: false, ready: true });
+  const loaded = new Promise<void>(resolve => { const off = r.subscribe(() => { if (r.loaded("s")) { off(); resolve(); } }); });
+  release();
+  await loaded;
+  expect(r.history("s")).toMatchObject({ loaded: true, ready: true });
+}, 20000);
+
+it("does not draw the cached copy when the latest page is to replace it", async () => {
+  const r = remote = await SyntheticRemote.create();
+  const rows: CachedEvent[] = [];
+  for (let seq = 1n; seq <= 2n; seq++) rows.push({ seq,
+    envelope: await r.seal({ kind: PayloadKind.EVENT, sessionId: "s", seq }, EventSchema,
+      create(EventSchema, { sessionId: "s", seq, kind: { case: "agentMessage", value: { text: "m" + seq } } })),
+  });
+  (r as any).cache = { read: vi.fn(async (_sid: string, after = 0n) => rows.filter(e => e.seq > after)), drop: vi.fn(), append: vi.fn(async () => {}), set: vi.fn(async () => {}) };
+  // The server is far ahead of the cached copy: its latest page is shown instead.
+  r.sessions.get("s")!.lastSeq = 5000n;
+  let release!: () => void, asked!: () => void;
+  const barrier = new Promise<void>(resolve => { release = resolve; });
+  const answered = new Promise<void>(resolve => { asked = resolve; });
+  (r as any).api = { getEvents: vi.fn(async () => { asked(); await barrier; return { events: [], more: false }; }) };
+  r.events("s");
+  await answered;
+  expect(r.history("s").ready).toBe(false);
+  release();
+}, 20000);
