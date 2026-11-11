@@ -1582,18 +1582,23 @@ export class DemoRemote extends Remote {
       const prefix = q.has("history-prefix");
       const shown = delay ? [] : tail;
       r.sessions.get("s-run")!.lastSeq = BigInt(all.length);
-      r.backfill.set("s-run", { shown, all, ready: !delay });
-      if (delay) setTimeout(() => {
-        r.backfill.get("s-run")!.shown = prefix ? all.slice(0, keep) : tail;
-        r.backfill.get("s-run")!.ready = !prefix;
-        r.changed();
-      }, delay);
+      const start = () => {
+        if (delay) setTimeout(() => {
+          r.backfill.get("s-run")!.shown = prefix ? all.slice(0, keep) : tail;
+          r.backfill.get("s-run")!.ready = !prefix;
+          r.changed();
+        }, delay);
+        setTimeout(() => {
+          r.backfill.get("s-run")!.shown = all;
+          r.backfill.delete("s-run");
+          r.changed();
+        }, delay + 1500);
+      };
+      // Like Remote.events: a cold restore starts when the history is read,
+      // not while the route's scripts may still be downloading.
+      r.backfill.set("s-run", { shown, all, ready: !delay, start: delay ? start : undefined });
       r.evs.set("s-run", all);
-      setTimeout(() => {
-        r.backfill.get("s-run")!.shown = all;
-        r.backfill.delete("s-run");
-        r.changed();
-      }, delay + 1500);
+      if (!delay) start();
     }
     if (q.has("scheduled-final")) r.seedSchedules();
     if (q.has("one-machine")) for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
@@ -2097,10 +2102,13 @@ export class DemoRemote extends Remote {
   }
 
   // ?backfill: the newest events show first, the older ones join above later.
-  private backfill = new Map<string, { shown: Event[]; all: Event[]; ready: boolean }>();
+  private backfill = new Map<string, { shown: Event[]; all: Event[]; ready: boolean; start?: () => void }>();
   override events(sid: string): Event[] {
     const b = this.backfill.get(sid);
-    if (b) return b.shown;
+    if (b) {
+      const start = b.start; b.start = undefined; start?.();
+      return b.shown;
+    }
     let e = this.evs.get(sid);
     if (!e) this.evs.set(sid, (e = []));
     return e;
