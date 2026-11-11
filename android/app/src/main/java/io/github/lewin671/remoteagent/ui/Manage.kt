@@ -265,7 +265,7 @@ fun ManageProjectsScreen() {
         seenRev = rev
     }
     PageScaffold("项目管理") {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.weight(1f).verticalScrollFaded().padding(horizontal = 16.dp)) {
             if (elsewhere) Notice("项目列表已在另一客户端更新", Modifier.padding(vertical = 4.dp), action = "知道了", onAction = { elsewhere = false })
             ProjectList(state, onNew = { adding = true }, card = p.gbg) { pr ->
                 // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.

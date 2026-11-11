@@ -315,7 +315,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             Notice(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
             return@Column
         }
-        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScroll(rememberScrollState())) {
+        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScrollFaded()) {
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (uncertain) TextAction("重新读取", { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
             if (attention) {
@@ -570,7 +570,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     Column(Modifier.fillMaxSize().background(pal.paper)) {
         if (current) SheetHead("定时发到这个对话", "取消", onClose) else PageBar("新任务", onClose)
         ConnBanner(state)
-        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScrollFaded().padding(horizontal = 16.dp)) {
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (blocked != null) Notice(blocked, tone = NoticeTone.WARN)
             FieldLabel("让 agent 做什么")

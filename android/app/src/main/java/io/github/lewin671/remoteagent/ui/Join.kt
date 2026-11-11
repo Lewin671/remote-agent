@@ -271,7 +271,7 @@ private fun JoinContent(app: RaApp) {
     }
 
     if (mode == "entry") {
-        Column(Modifier.fillMaxSize().background(p.gbg).verticalScroll(rememberScrollState())) {
+        Column(Modifier.fillMaxSize().background(p.gbg).verticalScrollFaded(p.gbg)) {
             LargeTitle("加入账户")
             Group(rows = listOf(
                 { GRow("新建账户", onClick = { mode = "create" }, chevron = true) },
@@ -323,7 +323,7 @@ private fun JoinContent(app: RaApp) {
                 Modifier.fillMaxSize()
                     .background(p.paper)
                     .imePadding()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScrollFaded(),
             ) {
                 when (s) {
                     is JoinStep.Emoji -> {

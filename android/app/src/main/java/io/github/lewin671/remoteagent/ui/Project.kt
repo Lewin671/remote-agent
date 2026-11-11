@@ -1065,7 +1065,7 @@ fun PickProjectScreen() {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     PageScaffold("新会话 · 选项目") {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        Column(Modifier.weight(1f).verticalScrollFaded().padding(horizontal = 16.dp)) {
             ProjectPickList(state, onPick = { nav.projectNew(it) }, onNew = { nav.newProject() }, card = pal.gbg)
         }
     }

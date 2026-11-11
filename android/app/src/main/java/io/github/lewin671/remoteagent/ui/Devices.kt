@@ -63,7 +63,7 @@ fun DevicesScreen() {
         if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices()
     }
     PageScaffold("设备") {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+        Column(Modifier.weight(1f).verticalScrollFaded()) {
             if (state.clockWarning)
                 Notice(
                     "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
@@ -228,7 +228,7 @@ fun ClientScreen(id: String) {
             PageNote("这个客户端已不在当前成员列表中")
             return@PageScaffold
         }
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+        Column(Modifier.weight(1f).verticalScrollFaded()) {
             GLabel(if (id == state.authorityDeviceId) "管理端" else "客户端")
             Group(
                 rows =

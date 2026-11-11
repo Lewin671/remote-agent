@@ -34,7 +34,7 @@ internal fun HandoffPreparationContent(
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     PageScaffold("接管管理权", onBack = onBack) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(16.dp)) {
             Text(
                 "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
                 style = T.s13,

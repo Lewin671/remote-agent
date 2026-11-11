@@ -620,7 +620,7 @@ fun PlanPage(sid: String) {
             return@PageScaffold
         }
         Column(
-            Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+            Modifier.weight(1f).verticalScrollFaded().padding(horizontal = 16.dp),
         ) {
             Markdown(plan.text, bleed = 16.dp)
         }

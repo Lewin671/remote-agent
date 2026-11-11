@@ -174,7 +174,7 @@ fun SettingsScreen() {
         Column(
             Modifier.fillMaxSize()
                 .background(p.paper)
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .readableColumn(),
         ) {
             BackRow(nav.back)
@@ -576,7 +576,7 @@ fun DeviceScreen(id: String) {
             PageNote("这台电脑不在当前可信目录中，撤销状态以回执为准")
             return@PageScaffold
         }
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column(Modifier.verticalScrollFaded()) {
             if (!member)
                 Notice(
                     "已移除 · 保留的会话档案",
@@ -1125,7 +1125,7 @@ fun QuotaScreen(id: String) {
             PageNote("这台机器已经移除了")
             return@PageScaffold
         }
-        Column(Modifier.verticalScroll(rememberScrollState())) {
+        Column(Modifier.verticalScrollFaded()) {
             if (!m.online)
                 Text(
                     "机器离线，显示上次记录",
@@ -1292,7 +1292,7 @@ fun PairScreen(replacesDeviceId: String = "") {
     PageScaffold("添加设备") {
         Column(
             Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
@@ -1576,7 +1576,7 @@ fun LicensesPage(onBack: () -> Unit) {
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(Modifier.fillMaxSize().background(p.paper)) {
             PageBar("开源许可", onBack)
-            Column(Modifier.verticalScroll(rememberScrollState())) {
+            Column(Modifier.verticalScrollFaded()) {
                 for ((label, items) in
                     listOf(
                         "字体 · SIL Open Font License 1.1" to bundledFonts,

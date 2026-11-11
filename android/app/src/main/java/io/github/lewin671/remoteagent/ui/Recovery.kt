@@ -64,7 +64,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     when (page) {
         "recovery" -> RotateRecoveryScreen { page = "overview" }
         "handoff" -> if (!state.isAuthority) HandoffPreparation { page = "overview" } else PageScaffold("交接管理权", onBack = { page = "overview" }) {
-            Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(16.dp)) { HandoffControls() }
+            Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(16.dp)) { HandoffControls() }
         }
         "pending" -> PageScaffold("未完成的安全操作", onBack = { page = "overview" }) {
             Column(Modifier.fillMaxWidth().padding(16.dp)) {
@@ -105,7 +105,7 @@ internal fun AccountSecurityContent(
     val t = now()
     val self = LocalRemote.current.account.deviceId
     PageScaffold("账户安全", readable = true) {
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(vertical = 16.dp)) {
+        Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
             if (state.recoveryPending) Notice(
                 "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
@@ -172,7 +172,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .imePadding()
                 .padding(horizontal = 16.dp),
         ) {
@@ -517,7 +517,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .imePadding()
                 .padding(horizontal = 16.dp),
         ) {
@@ -658,7 +658,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         Column(
             Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .imePadding()
                 .padding(horizontal = 16.dp),
         ) {
@@ -774,7 +774,7 @@ internal fun RotateRecoveryContent(
     PageScaffold("恢复码", onBack = onBack) {
         Column(
             Modifier.fillMaxWidth()
-                .verticalScroll(rememberScrollState())
+                .verticalScrollFaded()
                 .imePadding()
                 .padding(horizontal = 16.dp),
         ) {
