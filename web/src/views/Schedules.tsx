@@ -145,11 +145,12 @@ export function ScheduleRow({
     task.status === "paused" ? "已暂停" : "", offline ? scheduleOfflineRow : "",
   ].filter(Boolean).join(" · ")}</span>;
   const flags = (fresh ? " unread" : "") + (attention ? " attention" : "") + (task.status === "paused" ? " paused" : "") + (offline ? " off" : "") + (selected ? " sel" : "");
+  const wrap = useRef<HTMLDivElement>(null);
   const props = {
     onContextMenu: (e: React.MouseEvent) => { if (matchMedia("(min-width: 900px)").matches) { e.preventDefault(); setMenu(true); } },
     onClick: () => go(taskRoute(machineId, task.id)),
   };
-  return <div className={"schedule-row-wrap" + (selected ? " schedule-selected" : "")}>
+  return <div className={"schedule-row-wrap" + (selected ? " schedule-selected" : "")} ref={wrap}>
     {card ? (
       <button className={"rc schedule-line" + (attention ? " warn" : "") + flags} {...props}>
         {row1}
@@ -163,7 +164,7 @@ export function ScheduleRow({
       </button>
     )}
     {notification && <button className="schedule-read-action" aria-label={fresh ? "标为已读" : "标为未读"} onClick={mark}>{fresh ? "标为已读" : "标为未读"}</button>}
-    {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} contextMenu onClose={() => setMenu(false)} onUnread={selected ? () => go("tasks") : undefined} onDeleted={selected ? () => go("tasks") : undefined} />}
+    {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} contextMenu anchor={wrap} onClose={() => setMenu(false)} onUnread={selected ? () => go("tasks") : undefined} onDeleted={selected ? () => go("tasks") : undefined} />}
   </div>;
 }
 

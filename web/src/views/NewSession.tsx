@@ -68,12 +68,12 @@ function startOf(remote: Remote, key: string): Start {
   if (!start) all.set(key, (start = new Start()));
   return start;
 }
-import { Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
+import { anchorOf, Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
-import { ArrowUp, Check, ChevronDown, ChevronLeft, ChevronRight, X } from "../icons";
+import { ArrowUp, Check, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, X } from "../icons";
 
 /** Navigate to a route; with replace the current history entry is swapped, so back skips it. */
 export type Go = (route: string, replace?: boolean) => void;
@@ -647,34 +647,42 @@ export function NewBox({
   );
   // The draft stays when the CLI is switched.
   const many = ns.agents.length > 1;
+  // A phone says it as a sentence over the field; a wide window lines the
+  // same choices up under the text, as the pop-up buttons of one bar.
+  const bar = variant !== "sheet";
+  const Pop = bar ? ChevronsUpDown : ChevronDown;
+  const projectTok = fixed || !onPickProject ? (
+    bar ? <span className="tok p still"><Avatar name={name} size="xs" /><span>{name}</span></span> : <b>{name}</b>
+  ) : (
+    <button className="tok p" onClick={onPickProject} aria-haspopup="dialog" aria-label={`项目：${name}`}>
+      <Avatar name={name} size={bar ? "xs" : "sm"} />
+      <span>{name}</span>
+      <Pop />
+    </button>
+  );
+  const cliTok = many && (
+    <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+      <AgentMark agent={ns.cfg.agent} named />
+      <span>{agentName(ns.cfg.agent)}</span>
+      <Pop />
+    </button>
+  );
   const sentence = (
     <div className="sent">
       <span className="g">
         在
-        {fixed || !onPickProject ? (
-          <b>{name}</b>
-        ) : (
-          <button className="tok p" onClick={onPickProject} aria-label={`项目：${name}`}>
-            <Avatar name={name} size="sm" />
-            <span>{name}</span>
-            <ChevronDown />
-          </button>
-        )}
+        {projectTok}
       </span>
       {many && (
         <span className="g">
           用
-          <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
-            <AgentMark agent={ns.cfg.agent} named />
-            <span>{agentName(ns.cfg.agent)}</span>
-            <ChevronDown />
-          </button>
+          {cliTok}
         </span>
       )}
     </div>
   );
   const busyNote = ns.busy && <div className="nt-note">正在 {machineName(ns.machine)} 上启动…</div>;
-  const summary = <ConfigSummary summary={ns.summary} bare={many} onClick={() => setConfig("main")} />;
+  const summary = <ConfigSummary summary={ns.summary} bare={many} pop={bar} onClick={() => setConfig("main")} />;
   const attach = <AttachButton tray={tray} blocked={ns.attachWhy} onBlocked={setToast} />;
   const body =
     variant === "sheet" ? (
@@ -701,14 +709,18 @@ export function NewBox({
     ) : (
       <div className={"wstart" + (drop.over ? " drop" : "")} {...drop.props} role="group" aria-label={`${name} · 新会话`}>
         {banners}
-        {sentence}
+        <h1 className="nt-title">新任务</h1>
         {/* In a wide window the task is written in a box of its own: on the bare page nothing showed where to type. */}
         <div className="wbox">
           {field}
           {trayView}
           <div className="acc">
             {attach}
-            {summary}
+            <span className="nt-picks">
+              {projectTok}
+              {cliTok}
+              {summary}
+            </span>
             {keys && <span className="kh">{keys} 开始</span>}
             {send}
           </div>
@@ -906,7 +918,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
   return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined}>
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head">
       {body ?? (
         <>
           <div className="list">
@@ -1092,7 +1104,7 @@ export function DirBrowser({
 /** 选项目: the project list, each row ending in ›, 新项目… at the end. */
 export function ProjectPicker({ remote, onPick, onNew, onClose, title = "选项目" }: { remote: Remote; onPick: (key: string) => void; onNew: () => void; onClose: () => void; title?: string }) {
   return (
-    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }}>
+    <Sheet onClose={onClose} title={title} action={{ label: "取消", onClick: onClose }} anchor={anchorOf(".wstart .acc .tok.p")}>
       <ProjectList remote={remote} onNew={onNew} item={(p) => <ProjectItem key={p.key} remote={remote} p={p} onClick={() => onPick(p.key)} end={<ChevronRight className="chev" />} />} />
     </Sheet>
   );
@@ -1167,7 +1179,7 @@ export type Summary = { agent: string; mode: string; machine: string; model: str
  * 完全放行 is red, and it comes first. The machine's name gives way first
  * when the line is long, down to three letters; the mode and the model
  * only after it. */
-export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; bare?: boolean; onClick: () => void }) {
+export function ConfigSummary({ summary, bare, pop, onClick }: { summary: Summary; bare?: boolean; pop?: boolean; onClick: () => void }) {
   const { agent, mode, machine, model } = summary;
   const full = mode === modeName(ApprovalMode.FULL_ACCESS);
   const sep = " · ";
@@ -1186,7 +1198,7 @@ export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; ba
       {/* Each part brings the dot before it: a part cut short never leaves one hanging at its end. */}
       {machine && <span className="mach">{(head.length > 0 ? sep : "") + machine}</span>}
       {model && <span className="mdl">{(head.length > 0 || machine ? sep : "") + model}</span>}
-      <ChevronRight />
+      {pop ? <ChevronsUpDown /> : <ChevronRight />}
     </button>
   );
 }

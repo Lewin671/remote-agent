@@ -974,8 +974,14 @@ export function WideHome({
   const [picking, setPicking] = useState<"" | "pick" | "new">(() => (remote.demoFlag("pick") ? "pick" : ""));
   const pkey = fixed ?? key ?? list[0]?.key ?? "";
   const ns = useNewSession(remote, pkey, go);
-  const focus = remote.focusProject === "*" || (project !== undefined && remote.focusProject === project);
-  if (focus) remote.focusProject = "";
+  // Taken once, and kept for the render that commits: a render may run twice.
+  const asked = useRef(false);
+  if (remote.focusProject === "*" || (project !== undefined && remote.focusProject === project)) {
+    asked.current = true;
+    remote.focusProject = "";
+  }
+  const focus = asked.current;
+  useEffect(() => { asked.current = false; });
   // 新任务 with no project yet to start one in: it begins with choosing a directory.
   const first = focus && !pkey && remote.listed;
   useEffect(() => {

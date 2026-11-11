@@ -12,6 +12,7 @@ import {
   Clock as LClock,
   SquareCheck as LSquareCheck,
   ChevronDown as LChevronDown,
+  ChevronsUpDown as LChevronsUpDown,
   ChevronLeft as LChevronLeft,
   ChevronRight as LChevronRight,
   ChevronUp as LChevronUp,
@@ -60,6 +61,8 @@ export const ChevronRight = icon(LChevronRight);
 export const ChevronLeft = icon(LChevronLeft);
 /** Opens in place, or the menu right under it. */
 export const ChevronDown = icon(LChevronDown);
+/** A pop-up button's mark in a wide window: the value is one of several. */
+export const ChevronsUpDown = icon(LChevronsUpDown);
 /** Closes what opened in place. */
 export const ChevronUp = icon(LChevronUp);
 /** More actions. */

@@ -66,7 +66,7 @@
   --elev: 0 0 0 .5px rgba(0,0,0,.08), 0 12px 32px rgba(0,0,0,.14), 0 1px 3px rgba(0,0,0,.08);
   --hov: rgba(0,0,0,.05); --press: rgba(0,0,0,.08); --seg: rgba(0,0,0,.06); --edge-hi: rgba(0,0,0,.3);
   --tc-wide: #1d1d1f; --tc-line-wide: transparent; --thumb: rgba(0,0,0,.28);
-  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-bg: #ffffff; --nt-lit: rgba(255,255,255,0); --nt-shadow: 0 1px 2px rgba(0,0,0,.04), 0 10px 28px rgba(0,0,0,.07);
+  --in-bg: #f4f4f6; --in-edge: rgba(0,0,0,.10); --in-edge-hi: rgba(0,0,0,.24); --nt-bg: #ffffff; --nt-edge: rgba(0,0,0,.08); --nt-edge-hi: rgba(0,0,0,.18); --nt-lit: rgba(255,255,255,0); --nt-shadow: 0 1px 2px rgba(0,0,0,.05), 0 28px 56px -28px rgba(0,0,0,.26); --nt-ctl: rgba(0,0,0,.045); --nt-ctl-hi: rgba(0,0,0,.085); --nt-ctl-edge: rgba(0,0,0,.04); --nt-glow: rgba(0,0,0,0);
 }
 /* Dark: chosen in settings, or the system's when the setting is auto. */
 :root[data-theme="dark"] {
@@ -86,7 +86,7 @@
   --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
   --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
   --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-lit: rgba(255,255,255,.05); --nt-shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.28);
+  --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: linear-gradient(180deg, #2a2a2f, #232327); --nt-edge: rgba(255,255,255,.09); --nt-edge-hi: rgba(255,255,255,.2); --nt-lit: rgba(255,255,255,.09); --nt-shadow: 0 2px 6px rgba(0,0,0,.28), 0 32px 64px -24px rgba(0,0,0,.7); --nt-ctl: rgba(255,255,255,.07); --nt-ctl-hi: rgba(255,255,255,.13); --nt-ctl-edge: rgba(255,255,255,.07); --nt-glow: rgba(255,255,255,.04);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -106,7 +106,7 @@
     --elev: 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.06), 0 12px 32px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
     --hov: rgba(255,255,255,.05); --press: rgba(255,255,255,.08); --seg: rgba(0,0,0,.28); --edge-hi: rgba(255,255,255,.32);
     --tc-wide: #0c0c0e; --tc-line-wide: rgba(255,255,255,.12); --thumb: rgba(255,255,255,.28);
-    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: #232327; --nt-lit: rgba(255,255,255,.05); --nt-shadow: 0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.28);
+    --in-bg: #26262b; --in-edge: rgba(255,255,255,.14); --in-edge-hi: rgba(255,255,255,.28); --nt-bg: linear-gradient(180deg, #2a2a2f, #232327); --nt-edge: rgba(255,255,255,.09); --nt-edge-hi: rgba(255,255,255,.2); --nt-lit: rgba(255,255,255,.09); --nt-shadow: 0 2px 6px rgba(0,0,0,.28), 0 32px 64px -24px rgba(0,0,0,.7); --nt-ctl: rgba(255,255,255,.07); --nt-ctl-hi: rgba(255,255,255,.13); --nt-ctl-edge: rgba(255,255,255,.07); --nt-glow: rgba(255,255,255,.04);
   }
 }
 
@@ -1022,7 +1022,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .wsub { padding: 4px 12px 12px; font-size: 13px; line-height: 1.45; color: var(--ink2); flex: none; overflow-wrap: anywhere; }
 .wsub.err { color: var(--red); }
 /* Without the line under it, the headline keeps its own distance from what follows. */
-.whl:not(:has(+ .wsub)) { padding-bottom: 12px; }
+.whl:not(:has(+ .wsub)) { padding-bottom: 32px; }
 .wsub button { color: var(--blue); margin-left: 8px; min-height: 28px; }
 .side .find { margin: 0 0 8px; height: 32px; border-radius: 10px; font-size: 13px; padding: 0 4px 0 12px; }
 .side .find .x { width: 28px; height: 28px; }
@@ -1809,31 +1809,58 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .mach-card.offl { background: var(--gbg); box-shadow: none; }
 .desk .mach-card.offl .mach-name b { color: var(--ink2); }
 
-/* ---- New task in a wide window: the box is where the eye goes, and the send key is the
-   one filled control. Where, with what, and how are words that become buttons under the
-   pointer: four grey lozenges around the field outweighed the field. ---- */
-.desk .wstart .sent { font-size: 17px; gap: 0; letter-spacing: -.01em; }
-.desk .wstart .sent .g { gap: 0; }
-.desk .wstart .sent b { margin: 0 7px; }
-.desk .wstart .sent .tok { background: none; height: 32px; padding: 0 7px; border-radius: 8px; font-size: 17px; gap: 6px; }
-.desk .wstart .sent .tok.p { padding-left: 7px; }
-.desk .wstart .sent .tok .av { display: none; }
-.desk .wstart .sent .tok > .amark { margin-right: 0; }
-.desk .wstart .sent .tok > .ic { font-size: 13px; margin-left: -1px; }
-/* The one raised thing on the page: a hairline, a lit top edge and a soft shadow under it. */
-.desk .wstart .wbox { margin-top: 12px; padding: 18px 18px 10px; background: var(--nt-bg); box-shadow: inset 0 0 0 1px var(--in-edge), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
-.desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--in-edge-hi), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
-.desk .wstart .wbox .ask { font-size: 16px; line-height: 1.5; }
-.desk .wstart .acc { margin-left: -7px; gap: 2px; }
-.desk .wstart .acc .cm-plus { background: none; color: var(--ink2); }
-.desk .wstart .acc .project-summary { background: none; color: var(--ink2); padding: 0 8px; border-radius: 8px; height: 28px; }
-.desk .wstart .acc .project-summary > .ic { transform: rotate(90deg); padding-left: 0; margin-left: 5px; font-size: 13px; }
-.desk .wstart .acc .snd { margin-left: 8px; }
+/* ---- New task in a wide window: a title, and under it one made object. The field is lit
+   from above and lifted off the page; what the task runs in, with, and how are the pop-up
+   buttons of one bar inside it, all of one size and one material; the send key is the only
+   solid thing. ---- */
+.desk .wnew { background: radial-gradient(880px 480px at 50% 0, var(--nt-glow), transparent 72%); }
+.desk .wstart { width: min(720px, calc(100% - 48px)); }
+.desk .wstart .nt-title { margin: 0 0 20px 2px; font-size: 28px; line-height: 1.15; font-weight: var(--w7); letter-spacing: -.022em; color: var(--ink); }
+.desk .wstart .wbox { margin-top: 0; padding: 20px 20px 12px; border-radius: 22px; background: var(--nt-bg); box-shadow: inset 0 0 0 1px var(--nt-edge), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); transition: box-shadow var(--m-base) var(--ease-out); }
+.desk .wstart .wbox:focus-within { box-shadow: inset 0 0 0 1px var(--nt-edge-hi), inset 0 1px 0 var(--nt-lit), var(--nt-shadow); }
+.desk .wstart .wbox .ask, .desk .wstart .wbox .ask:placeholder-shown { font-size: 17px; line-height: 1.5; letter-spacing: -.005em; min-height: 78px; }
+.desk .wstart .wbox .ask::placeholder { color: var(--ink3); }
+.desk .wstart .acc { padding: 14px 0 0; margin-left: -4px; margin-right: -4px; gap: 6px; }
+.nt-picks { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1 1 0; }
+.desk .wstart .acc :is(.tok, .cm-plus) { height: 28px; background: var(--nt-ctl); box-shadow: inset 0 0 0 .5px var(--nt-ctl-edge); color: var(--ink); }
+.desk .wstart .acc .tok { padding: 0 8px 0 10px; border-radius: 14px; font-size: 13px; font-weight: var(--w5); gap: 6px; max-width: 220px; flex: 0 1 auto; }
+.desk .wstart .acc .tok.p { padding-left: 5px; }
+.desk .wstart .acc .tok.still { background: none; box-shadow: none; color: var(--ink2); padding-right: 4px; }
+.desk .wstart .acc .tok > .ic { font-size: 12px; color: var(--ink3); margin: 0 -1px 0 -1px; }
+.desk .wstart .acc .tok > .amark { margin-right: 0; font-size: 14px; }
+.desk .wstart .acc .tok .av { width: 18px; height: 18px; font-size: 10px; }
+.desk .wstart .acc .project-summary { color: var(--ink); min-width: 96px; max-width: none; flex: 0 1 auto; gap: 0; }
+.sheet.anchored .plist .chev { display: none; }
+.desk .wstart .acc .project-summary > .ic { padding-left: 0; margin-left: 6px; }
+.desk .wstart .acc .cm-plus { width: 28px; border-radius: 50%; font-size: 16px; color: var(--ink); }
+.desk .wstart .acc .snd { width: 32px; height: 32px; margin-left: 6px; }
 .desk .wstart .acc .kh { color: var(--ink3); transition: opacity var(--m-fast) var(--ease-out); }
-.desk .wstart .acc:has(> .snd.off) .kh, .desk .wstart .acc:has(> .mo-send .snd.off) .kh { opacity: 0; }
-.desk .cbar .cm-plus { background: none; color: var(--ink2); }
-.desk .wstart .sent .tok[aria-expanded="true"], .desk .wstart .acc .cm-plus[aria-expanded="true"] { background: var(--hov); }
+.desk .wstart .acc:has(> .snd.off) .kh { opacity: 0; }
+.desk .wstart .acc :is(.tok, .cm-plus)[aria-expanded="true"] { background: var(--nt-ctl-hi); }
 @media (hover: hover) {
-  .desk .wstart .sent .tok:hover:not(:disabled), .desk .wstart .acc .project-summary:hover:not(:disabled) { background: var(--hov); color: var(--ink); }
-  .desk .wstart .acc .cm-plus:hover:not(.off), .desk .cbar .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); }
+  .desk .wstart .acc .tok:hover:not(:disabled, .still), .desk .wstart .acc .cm-plus:hover:not(.off) { background: var(--nt-ctl-hi); color: var(--ink); }
 }
+.desk .cbar .cm-plus { background: none; color: var(--ink2); }
+@media (hover: hover) { .desk .cbar .cm-plus:hover:not(.off) { background: var(--hov); color: var(--ink); } }
+
+/* ---- What a control opens, opens against it: the project, the CLI, 「＋」 and the settings
+   of a new task are four menus of one kind, under the word that was pressed. ---- */
+@media (min-width: 900px) {
+  .sheet.anchored.with-head { width: 360px; max-width: 360px; padding: 12px; }
+  .sheet.anchored.with-head > .sheet-head { display: flex; margin: 0 0 8px; min-height: 32px; padding: 0 4px; }
+  .sheet.anchored:has(.plist) { width: 340px; max-width: 340px; }
+}
+.desk .wstart .attach-menu { bottom: auto; top: calc(100% + 8px); left: 0; }
+
+/* ---- Keyboard and pointer details found by walking the pages with real sessions. ---- */
+/* The headline keeps the room of its second line, so the list under it does not move when the line comes or goes. */
+/* A row at the edge of a clipped card or menu draws its ring inside itself. */
+.desk :is(.row, .mach-head, .qt, .mi, .pi, .schedule-line):focus-visible { outline-offset: -2px; }
+.desk .schedule-inputs :is(input:not([type="checkbox"]), select):focus-visible { box-shadow: inset 0 0 0 1px var(--in-edge-hi); }
+.desk .schedule-inputs input[type="checkbox"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+@media (hover: hover) {
+  .desk .sw:hover:not(:disabled) { filter: brightness(1.1); }
+  .desk :is(.pending-sum, .pending-action):hover { opacity: .76; }
+}
+.desk .sw:active:not(:disabled) { filter: brightness(.92); }
+.desk :is(.pending-sum, .pending-action):active { opacity: .6; }

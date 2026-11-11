@@ -25,7 +25,7 @@ import {
   type SessionImage,
 } from "../imageview";
 import { errorText, type ImageResult, type Remote } from "../remote";
-import { Exp, GlassButton, useRemote } from "../ui";
+import { Exp, GlassButton, useDialogFocus, useEscape, useRemote } from "../ui";
 import { ChevronLeft, ChevronRight, X } from "../icons";
 
 /** Opens the viewer at a picture; provided by the session page. */
@@ -320,10 +320,12 @@ export function ImageViewer({
     setNote("");
     setI((x) => Math.max(0, Math.min(images.length - 1, x + d)));
   };
+  useEscape(onClose);
+  const box = useRef<HTMLDivElement>(null);
+  useDialogFocus(box);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowLeft") go(-1);
+      if (e.key === "ArrowLeft") go(-1);
       else if (e.key === "ArrowRight") go(1);
     };
     addEventListener("keydown", onKey);
@@ -446,6 +448,7 @@ export function ImageViewer({
         role="dialog"
         aria-modal="true"
         aria-label="查看图片"
+        ref={box}
       >
         <div className="lb-top">
           <span>

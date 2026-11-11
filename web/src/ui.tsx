@@ -96,14 +96,17 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
   useDialogFocus(root);
   // A short choice made from a control in a wide window opens against that
   // control, as a menu, not as a dialog in the middle of the window; from
-  // the control's right edge when the control is in the right half, so the
-  // menu stays inside the window.
+  // the control's left edge, or from its right edge where the widest menu
+  // would not fit to the right of the left one.
   const wide = useSyncExternalStore(subscribeWide, () => wideQuery().matches);
   const at = wide ? anchor?.current?.getBoundingClientRect() : undefined;
+  // Under the control; over it when there is little room under and more over.
+  const over = at && innerHeight - at.bottom < 340 && at.top > innerHeight - at.bottom;
+  const place = at ? { ...(at.left + 376 > innerWidth ? { left: "auto", right: innerWidth - at.right } : { left: at.left }), ...(over ? { top: "auto", bottom: innerHeight - at.top + 8, maxHeight: at.top - 24 } : { top: at.bottom + 8, maxHeight: innerHeight - at.bottom - 24 }) } : undefined;
   return (
     <div className="overlay" ref={root}>
       <div className="dim" onClick={onClose} />
-      <div className={"sheet " + (at ? "anchored " : "") + className} style={at ? (at.left + at.width / 2 > innerWidth / 2 ? { left: "auto", right: innerWidth - at.right, top: at.bottom + 8 } : { left: at.left, top: at.bottom + 8 }) : undefined} role="dialog" aria-modal="true">
+      <div className={"sheet " + (at ? "anchored " : "") + className} style={place} role="dialog" aria-modal="true">
         {/* The handle is the phone sheet's; a dialog in a wide window has nothing to drag. */}
         {!wide && <button className="grab" aria-label="关闭" onClick={onClose} />}
         {title !== undefined && (
@@ -168,12 +171,28 @@ export function useDialogFocus(ref: RefObject<HTMLElement | null>) {
   }, [ref]);
 }
 
+/** Esc closes what is on top: of the layers open, only the one opened last
+ * hears it, so a picker over a sheet does not take the sheet with it. */
+const escapes: { fn: () => void }[] = [];
+const onEscape = (e: KeyboardEvent) => { if (e.key === "Escape") escapes[escapes.length - 1]?.fn(); };
 export function useEscape(fn: () => void) {
+  const cell = useRef({ fn });
+  cell.current.fn = fn;
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && fn();
-    addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
-  }, [fn]);
+    const c = cell.current;
+    if (escapes.push(c) === 1) addEventListener("keydown", onEscape);
+    return () => {
+      escapes.splice(escapes.indexOf(c), 1);
+      if (escapes.length === 0) removeEventListener("keydown", onEscape);
+    };
+  }, []);
+}
+
+/** The control a layer opens against, found when the layer is drawn: for a
+ * layer whose opener is drawn by another part of the page. Where there is
+ * no such control the layer is a dialog in the middle. */
+export function anchorOf(selector: string): RefObject<HTMLElement | null> {
+  return { get current() { return document.querySelector<HTMLElement>(selector); } };
 }
 
 export function Alert({
@@ -297,6 +316,7 @@ function PopMenu({ onClose, children }: { onClose: () => void; children: ReactNo
   useEscape(onClose);
   const root = useRef<HTMLDivElement>(null);
   useExit(root, { leave: "mo-leave" });
+  useDialogFocus(root);
   return (
     <>
       <div className="pop-back" onClick={onClose} />
