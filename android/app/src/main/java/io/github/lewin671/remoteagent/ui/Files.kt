@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.*
@@ -24,7 +25,8 @@ import io.github.lewin671.remoteagent.proto.SentFile
 @Composable
 internal fun rememberDocumentPicker(draft: ImageDraft, remote: Remote, machineId: String?): (() -> Unit)? {
     val context = LocalContext.current
-    val machine = remote.state.value.machines[machineId]
+    val state by remote.state.collectAsState()
+    val machine = state.machines[machineId]
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
         draft.addDocuments(context, it, remote, machineId)
     }
@@ -93,7 +95,8 @@ internal fun FileChips(files: List<SentFile>) {
 internal fun FileStrip(draft: ImageDraft, remote: Remote, machineId: String?) {
     if (draft.readingFiles) Text("正在读取所选文件…", style = T.s13, color = pal.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
     val files = draft.documents.filterNot { isVideoDraft(it) }
-    val blocked = fileDraftBlocked(draft, remote.state.value.machines[machineId])
+    val state by remote.state.collectAsState()
+    val blocked = fileDraftBlocked(draft, state.machines[machineId])
     if (files.isEmpty() && blocked == null) return
     Column(Modifier.padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         files.forEach { file ->

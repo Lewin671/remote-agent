@@ -31,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -61,7 +62,8 @@ import androidx.compose.foundation.layout.BoxScope
 @Composable
 fun rememberImagePicker(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?, max: Int, videos: Boolean = false): () -> Unit {
     val context = LocalContext.current
-    val machine = remote.state.value.machines[machineId]
+    val state by remote.state.collectAsState()
+    val machine = state.machines[machineId]
     val images = blocked == null
     val room = io.github.lewin671.remoteagent.core.libraryRoom(if (images) draft.pictures.size else max, max, draft.documents.size, io.github.lewin671.remoteagent.core.maxFiles(machine), videos)
     val take = { uris: List<android.net.Uri> ->
@@ -232,7 +234,8 @@ private object VideoFrames {
 @Composable
 internal fun RefreshDraftUploads(draft: ImageDraft, remote: Remote, machineId: String?, blocked: String?) {
     draft.bindRemote(remote)
-    val machine = remote.state.value.machines[machineId]
+    val state by remote.state.collectAsState()
+    val machine = state.machines[machineId]
     val fileBlocked = fileDraftBlocked(draft, machine)
     val deadlines = draft.images.map { it.expiresMs }
     LaunchedEffect(draft, machineId, blocked, fileBlocked, deadlines, draft.images.size, draft.restoring) {
