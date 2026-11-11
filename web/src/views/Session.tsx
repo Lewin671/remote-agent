@@ -1,5 +1,5 @@
 import { Sheet } from "../ui";
-import { Swap, useExit, useFresh, useKnob, useSettle } from "../motion";
+import { canAnimate, Swap, useExit, useFresh, useHeightFlip, useKnob, useSettle } from "../motion";
 import { agentInfo } from "../agents";
 import { FileChips, withoutFileLines } from "./Files";
 import { ChevronDown, ChevronLeft } from "../icons";
@@ -16,6 +16,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type RefObject,
 } from "react";
 import type { Event, ImageRef } from "../gen/remoteagent/v1/event_pb";
@@ -66,6 +67,7 @@ import {
   plain,
   projectKey,
   projectName,
+  queuedIds,
   shortPath,
   shortenPath,
   shortenPaths,
@@ -101,7 +103,7 @@ import {
 import { PlanChoice } from "../gen/remoteagent/v1/local_pb";
 import { Composer, promptIdOf } from "./Composer";
 import { ApprovalPage, Dock, PlanPage, QuestionPage } from "./Dock";
-import { PendingBubbles } from "./Queue";
+import { PendingBubbles, queueLine } from "./Queue";
 
 // The terminal brings xterm, a third of the page's script: fetched when a
 // terminal is first shown, or ahead of that once the page has settled.
@@ -207,7 +209,10 @@ export function SessionPage({
   const events = remote.events(sid);
   const d = useDerived(remote, sid);
   const machine = remote.machines.get(session.machineId);
-  const st = shownStateOf(session, machine, remote.unlinked);
+  // A computer's presence is what this connection has heard of it; until the
+  // lists are in, the copy kept in this browser (which says offline) is not it,
+  // and the input must not be replaced by 电脑不在线 for the moment it takes.
+  const st = shownStateOf(session, remote.listed ? machine : undefined, remote.unlinked);
   const agent = agentOf(session);
   const title = titleOf(session);
   const project = projectName(projectKey(session));
@@ -886,9 +891,9 @@ function ChatBody({
   );
   // Messages this page sent: their line in the chat takes over from the
   // bubble that was waiting, in the same place.
-  const sentHere = useRef(new Set<string>());
+  const sentHere = useRef(new Map<string, Sent>());
   useLayoutEffect(() => {
-    for (const o of outbox) sentHere.current.add(o.sendId);
+    for (const o of outbox) if (!sentHere.current.has(o.sendId)) sentHere.current.set(o.sendId, { text: "已送达电脑", queued: false });
   });
   const rowClass = (it: ScheduledItem) => {
     if (!freshRow(it.key)) return undefined;
@@ -897,19 +902,38 @@ function ChatBody({
     if (k.case === "userMessage") return k.value.requestId && sentHere.current.has(k.value.requestId) ? undefined : "mo-rise";
     return k.case === "toolCall" || k.case === "approvalRequested" ? "mo-fade" : undefined;
   };
-  // The chat column gives way as the dock or the input grows and gets back
-  // what they give up; following the bottom, it keeps the bottom in view.
+  // Following the bottom means what the chat holds may change height as it
+  // likes (a queue line comes in, a running tool becomes a row, a picture
+  // loads) and the column may give way as the dock or the input grows: the
+  // bottom stays in view in the same frame. Not for what the person has just
+  // opened (a tap or a key inside the chat), which grows where it was
+  // touched, and never once they have scrolled up.
+  const pressedAt = useRef(0);
   useEffect(() => {
     const el = scroller.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     let h = el.clientHeight;
     const ro = new ResizeObserver(() => {
       const now = el.clientHeight;
-      if (now < h && stick.current) el.scrollTop = el.scrollHeight;
+      const shrank = now < h;
       h = now;
+      if (!stick.current) return;
+      if (shrank || Date.now() - pressedAt.current > 800) el.scrollTop = el.scrollHeight;
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    // The rows (or the virtual list that holds them) are the scroller's children.
+    const watched = new Set<Element>();
+    const sync = () => {
+      for (const c of el.children) if (!watched.has(c)) (watched.add(c), ro.observe(c));
+      for (const c of watched) if (c.parentElement !== el) (watched.delete(c), ro.unobserve(c));
+    };
+    const mo = new MutationObserver(sync);
+    mo.observe(el, { childList: true });
+    sync();
+    return () => {
+      mo.disconnect();
+      ro.disconnect();
+    };
   }, []);
   useLayoutEffect(() => {
     const el = scroller.current;
@@ -946,12 +970,18 @@ function ChatBody({
     phaseOf(o, d.inputs.get(o.sendId)) === "done" &&
     d.accepted.has(o.sendId) &&
     !recorded.has(o.sendId);
+  const queued = queuedIds(d);
   const pending = outbox.filter(
     (o) =>
-      ["sending", "delivered", "failed"].includes(
+      ["sending", "delivered", "queued", "failed"].includes(
         phaseOf(o, d.inputs.get(o.sendId)),
       ) || awaiting(o),
   );
+  // Whether a bubble that unmounts goes without a sound: the chat now holds
+  // its message, or it is still waiting and only drawn again (the long chat
+  // swaps to its virtual list).
+  const quiet = useRef<(id: string) => boolean>(() => false);
+  quiet.current = (id) => recorded.has(id) || pending.some((o) => o.sendId === id);
   const started = session.info?.createdAt
     ? Number(session.info.createdAt.seconds) * 1000
     : events[0]
@@ -1049,7 +1079,13 @@ function ChatBody({
         <Pending
           key={o.sendId}
           remote={remote}
-          sid={sid}
+          session={session}
+          d={d}
+          rank={queued.indexOf(o.sendId) + 1}
+          count={queued.length}
+          sentHere={sentHere.current}
+          quiet={quiet}
+          reached={items.length > 100 && stick.current ? () => { const e = scroller.current; return !e || e.scrollHeight - e.scrollTop - e.clientHeight < 4; } : undefined}
           o={o}
           phase={awaiting(o) ? "written" : phaseOf(o, d.inputs.get(o.sendId))}
           enter={freshOut(o.sendId)}
@@ -1057,7 +1093,7 @@ function ChatBody({
           onRestore={onRestore}
         />
       ))}
-      <PendingBubbles remote={remote} session={session} d={d} sentHere={sentHere.current} />
+      <PendingBubbles remote={remote} session={session} d={d} sentHere={sentHere.current} own={new Set(pending.map((o) => o.sendId))} />
     </>
   );
 
@@ -1066,6 +1102,12 @@ function ChatBody({
       <div
         className="body chat"
         ref={scroller}
+        onPointerDownCapture={() => {
+          pressedAt.current = Date.now();
+        }}
+        onKeyDownCapture={() => {
+          pressedAt.current = Date.now();
+        }}
         onWheel={() => {
           userScrollAt.current = Date.now();
         }}
@@ -1105,6 +1147,7 @@ function ChatBody({
           sid={sid}
           follow={() => stick.current}
           rowClass={rowClass}
+          long={Number(session.lastSeq ?? 0) > LONG_HISTORY}
           loaded={hist.loaded || !!hist.error || hist.broken}
           header={header}
           footer={footer}
@@ -1157,84 +1200,146 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   );
 }
 
+/** Sessions with more events than this are drawn with the virtual list from the
+ * start: past it the chat is, or soon will be, over 100 rows (a row is about
+ * half an event). */
+const LONG_HISTORY = 170;
+
+/** How long a queued message with no reason to wait may be on its way before
+ * its bubble says it is queued: an idle session takes it in about half a
+ * second (measured on a real Claude Code session), which must not flash. */
+const QUEUE_SHOWN_AFTER = 1000;
+
+/** A message this page sent, from the moment it is sent until the chat holds
+ * it: one bubble throughout. Sending, delivered, written to the terminal, and
+ * waiting in the queue are the same element under the same key; only the line
+ * under it changes, and only a message that really waits (a turn runs, it is
+ * paused, or it has waited a moment) takes the queue's outline, with its
+ * 取消 line coming in by height and its fill and frame by a fade. It goes by
+ * collapsing when it is canceled or dismissed, and without a sound when the
+ * chat has the recorded message to put in its place. */
 function Pending({
   remote,
-  sid,
+  session,
+  d,
   o,
   phase,
   enter,
   agent,
   onRestore,
+  rank,
+  count,
+  sentHere,
+  quiet,
+  reached,
 }: {
   remote: Remote;
-  sid: string;
+  session: SessionView;
+  d: Derived;
   o: Outgoing;
   phase: string;
   enter: boolean;
+  // In a long (virtual) chat, the bottom is reached a frame or two after the
+  // bubble is drawn: its entrance waits for that, hidden until then.
+  reached?: () => boolean;
   agent: Agent;
   onRestore: (text: string, from?: string) => void;
+  rank: number;
+  count: number;
+  sentHere: Map<string, Sent>;
+  quiet: RefObject<(id: string) => boolean>;
 }) {
+  const sid = session.id;
+  const root = useRef<HTMLDivElement>(null);
+  const tail = useRef<HTMLElement>(null);
+  const [waiting, setWaiting] = useState(() => !!reached);
+  useEffect(() => {
+    if (!waiting) return;
+    let frames = 0;
+    let id = requestAnimationFrame(function poll() {
+      if (reached?.() || ++frames > 12) return setWaiting(false);
+      id = requestAnimationFrame(poll);
+    });
+    return () => cancelAnimationFrame(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useExit(root, { collapse: true, skip: () => quiet.current(o.sendId) });
+  useHeightFlip(tail, { fade: false });
+  // A queued message that is only on its way to the terminal shows nothing of
+  // the queue; one that has waited a moment does.
+  const queued = phase === "queued";
+  const [late, setLate] = useState(false);
+  useEffect(() => {
+    setLate(false);
+    if (!queued) return;
+    const t = setTimeout(() => setLate(true), QUEUE_SHOWN_AFTER);
+    return () => clearTimeout(t);
+  }, [queued]);
+  const failed = phase === "failed";
+  const line = queued ? queueLine(remote, session, d, o.sendId, rank, count) : undefined;
+  const asQueue = !!line && (line.needed || late);
+  const lineKey = asQueue ? "queue" : phase === "queued" ? "delivered" : phase;
+  const said = phase === "sending" ? "发送中…" : phase === "written" ? `已送入终端，等 ${agentName(agent)} 记录` : "已送达电脑";
+  // What the chat's own line for it will start from.
+  sentHere.set(o.sendId, { text: asQueue ? line.text : said, queued: asQueue });
   // Either it surely did not go, or it may have: the computer may have
   // taken it before the answer was lost.
-  if (phase === "failed")
-    return (
-      <div className={"me " + (o.unknown ? "warn" : "fail") + (enter ? " mo-rise" : "")}>
-        <LocalThumbs blobs={o.thumbs} />
-        <FileChips files={o.files} />
-        {o.text && <div>{o.text}</div>}
-        <small>
-          {o.unknown ? "可能没发出去：" : "没发出去："}
-          {o.error}
-          {!o.unknown && (!!o.imageIds?.length || !!o.files?.length) && (
-            <button
-              onClick={() => {
-                onRestore(o.text, o.sendId);
-              }}
-            >
-              放回输入框
-            </button>
-          )}
-          {!o.missingImages && (
-            <button onClick={() => remote.retrySend(sid, o.sendId)}>
-              重试
-            </button>
-          )}
-          <button onClick={() => remote.dismissSend(sid, o.sendId)}>
-            移除此提示
-          </button>
-        </small>
-      </div>
-    );
+  const cls = failed ? (o.unknown ? " warn" : " fail") : asQueue ? " pending-bubble mo-queued" : phase === "sending" ? " pending" : "";
   return (
-    <div className={"me" + (phase === "sending" ? " pending" : "") + (enter ? " mo-rise" : "")}>
+    <div ref={root} className={"me" + cls + (enter ? (waiting ? " mo-wait" : " mo-rise") : "")}>
       <LocalThumbs blobs={o.thumbs} />
       <FileChips files={o.files} />
-      {o.text && <div>{o.text}</div>}
-      <small>
-        {/* Where it has got to: each word fades into the next. */}
-        <Swap k={phase}>
-          <span className="mo-small">
-            {phase === "sending" ? (
-              <>
-                <LoaderCircle /> 发送中…
-              </>
-            ) : phase === "written" ? (
-              `已送入终端，等 ${agentName(agent)} 记录`
+      {o.text && <div className="mo-text">{o.text}</div>}
+      <small ref={tail}>
+        {failed ? (
+          <>
+            {o.unknown ? "可能没发出去：" : "没发出去："}
+            {o.error}
+            {!o.unknown && (!!o.imageIds?.length || !!o.files?.length) && <button onClick={() => onRestore(o.text, o.sendId)}>放回输入框</button>}
+            {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>}
+            <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
+          </>
+        ) : (
+          /* Where it has got to: each word fades into the next. */
+          <Swap k={lineKey}>
+            {asQueue ? (
+              <span className="pending-meta">
+                <span>{line.text}</span>
+                {line.buttons}
+              </span>
             ) : (
-              "已送达电脑"
+              <span className="mo-small">
+                {phase === "sending" && <LoaderCircle />} {said}
+              </span>
             )}
-          </span>
-        </Swap>
+          </Swap>
+        )}
       </small>
     </div>
   );
 }
 
+/** What a sent bubble last said under it, for the line that closes up in its place. */
+type Sent = { text: string; queued: boolean };
+
+/** A message of the chat. One that takes over from a bubble that was waiting
+ * in the queue (`from`) starts in the queue's frame and fill, which fade to
+ * the message's own. */
+function MessageRow({ from, children }: { from?: boolean; children: ReactNode }) {
+  const [queued, setQueued] = useState(!!from);
+  useEffect(() => {
+    if (!queued) return;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setQueued(false)));
+    return () => cancelAnimationFrame(id);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  return <div className={"me" + (queued ? " mo-queued" : "")}>{children}</div>;
+}
+
 /** The line the sent bubble had, closing up. */
-function Settled() {
+function Settled({ text, tall }: { text: string; tall: boolean }) {
   const ref = useRef<HTMLElement>(null);
   useSettle(ref, true);
-  return <small ref={ref}>已送达电脑</small>;
+  // Where nothing can play it, it is not there.
+  return canAnimate() ? <small ref={ref} className={tall ? "mo-tall" : undefined}>{text}</small> : null;
 }
 
 function Row({
@@ -1267,7 +1372,7 @@ function Row({
   sid: string;
   // The row has only now arrived; the ids of messages this page sent.
   settle: boolean;
-  sentHere: Set<string>;
+  sentHere: Map<string, Sent>;
 }) {
   if (it.kind === "tools") return <ToolGroup calls={it.calls} short={short} />;
   if (it.kind === "background")
@@ -1309,12 +1414,13 @@ function Row({
             : label;
       const images = k.value.images;
       const segs = splitPlaceholders(withoutFileLines(k.value.text, k.value.files), images);
+      const sent = k.value.requestId ? sentHere.get(k.value.requestId) : undefined;
       return (
-        <div className="me">
+        <MessageRow from={settle && sent?.queued}>
           <ImageStrip refs={images} numbered />
           <FileChips files={k.value.files} />
           {e.origin?.scheduledTaskId ? <ScheduleText key={e.seq.toString()} text={k.value.text} meta={`定时任务 · ${clockTime(Number(e.time?.seconds ?? 0n) * 1000)}`} /> : segs.length > 0 && (
-            <div>
+            <div className="mo-text">
               {segs.map((x, i) =>
                 "text" in x ? (
                   <span key={i}>{x.text}</span>
@@ -1329,8 +1435,8 @@ function Row({
           {!e.origin?.scheduledTaskId && from && <small>{from}</small>}
           {/* Taking over from the bubble that waited for it: that had its
               status line under it, which now closes up instead of going. */}
-          {!from && settle && !!k.value.requestId && sentHere.has(k.value.requestId) && <Settled />}
-        </div>
+          {!from && settle && !!sent && <Settled text={sent.text} tall={sent.queued} />}
+        </MessageRow>
       );
     }
     case "scheduledNotification":

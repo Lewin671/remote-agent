@@ -811,6 +811,8 @@ h1, h2, h3 { font-weight: var(--w7); }
 .banner.err { color: var(--red); }
 .skel { height: 12px; border-radius: 6px; background: var(--fill); margin: 7px 0; animation: pulse 1.4s ease-in-out infinite; }
 @keyframes pulse { 50% { opacity: .5; } }
+/* what stands in for a list that is not shown yet: a few lines, as the first load has */
+.body.mo-hold::before { content: ""; visibility: visible; display: block; position: sticky; top: 24px; height: 120px; margin-bottom: -120px; border-radius: 6px; background: linear-gradient(var(--fill), var(--fill)) 0 0 / 92% 12px no-repeat, linear-gradient(var(--fill), var(--fill)) 0 36px / 70% 12px no-repeat, linear-gradient(var(--fill), var(--fill)) 0 72px / 82% 12px no-repeat; animation: pulse 1.4s ease-in-out infinite; }
 
 /* ---------- 新任务 (design-system §6 新任务, client-v58 #new) ----------
    One sentence of where and with which CLI, its capsules opening what
@@ -1380,6 +1382,9 @@ input.field { margin: 0; }
 
 /* A new line in the chat: a tool row, the turn's rule come in with a fade;
    a message, a queued bubble and 回到最新 rise 8px as well. */
+.mo-wait { opacity: 0; }
+/* A virtual list settling into place is not shown until it has. */
+.body.mo-hold { visibility: hidden; }
 .mo-fade { animation: mo-fade var(--m-fast) var(--ease-out) backwards; }
 .mo-rise { animation: mo-rise var(--m-base) var(--ease-out) backwards; }
 .newmsg { animation: mo-rise var(--m-base) var(--ease-out) backwards; }
@@ -1408,6 +1413,14 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .mo-send { flex: none; }
 .me small .mo-swap { justify-items: end; }
 .mo-small { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 0 12px; max-width: 100%; }
+
+/* A message of this page's waiting in the queue is the bubble it already was:
+   its frame and fill fade to the queue's, its line below grows by height. */
+.me > .mo-text { transition: background-color var(--m-fast) var(--ease-out), color var(--m-fast) var(--ease-out), box-shadow var(--m-fast) var(--ease-out); }
+.me.mo-queued > .mo-text { background: transparent; box-shadow: inset 0 0 0 1px var(--faint); color: var(--ink2); }
+.me small .pending-meta { margin: 0; }
+/* The line a queued bubble had, closing up from its height. */
+.me small.mo-tall { min-height: 32px; }
 
 /* The knob of a segmented control; the picked button is drawn over it. */
 .mo-knob { position: absolute; left: 0; top: 0; width: 0; height: 0; opacity: 0; background: var(--knob); pointer-events: none;

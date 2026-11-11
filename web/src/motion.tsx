@@ -68,9 +68,10 @@ function rowGap(parent: Element | null): number {
 function boxFrames(el: HTMLElement, height: number) {
   const cs = getComputedStyle(el);
   const gap = rowGap(el.parentElement);
-  const shut = { height: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: `${-gap}px` };
+  const shut = { height: "0px", minHeight: "0px", paddingTop: "0px", paddingBottom: "0px", marginTop: "0px", marginBottom: `${-gap}px` };
   const open = {
     height: `${height}px`,
+    minHeight: cs.minHeight === "auto" ? "0px" : cs.minHeight,
     paddingTop: cs.paddingTop,
     paddingBottom: cs.paddingBottom,
     marginTop: cs.marginTop,
@@ -135,6 +136,9 @@ type ExitOptions = {
   collapse?: boolean;
   /** A class the stylesheet animates the ghost and its parts by. */
   leave?: string;
+  /** Asked as it unmounts: true when something takes its place at once, and
+   * it should go without a sound. */
+  skip?: () => boolean;
 };
 
 /** Plays an element's exit on a ghost left in its place. Held until the
@@ -169,7 +173,7 @@ export function useExit(ref: RefObject<HTMLElement | null>, o: ExitOptions = {})
     alive.current = true;
     return () => {
       alive.current = false;
-      if (el && el.isConnected && canAnimate()) leaving(el, opts.current, () => alive.current);
+      if (el && el.isConnected && canAnimate() && !opts.current.skip?.()) leaving(el, opts.current, () => alive.current);
     };
   }, [ref]);
 }
@@ -199,7 +203,7 @@ export function useGrow(ref: RefObject<HTMLElement | null>, { rise = false }: { 
  * its height eases to the new one while the old content, copied just
  * before, fades out above the new. Resizing the window or the keyboard
  * (`--content-max` moving) is not this and does not ease. */
-export function useHeightFlip(ref: RefObject<HTMLElement | null>) {
+export function useHeightFlip(ref: RefObject<HTMLElement | null>, { fade = true }: { fade?: boolean } = {}) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el || !canAnimate() || typeof ResizeObserver === "undefined") return;
@@ -211,6 +215,7 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>) {
     let copy: HTMLElement | undefined;
     let at = -Infinity;
     const snap = (every = 0) => {
+      if (!fade) return;
       const t = performance.now();
       if (t - at < every || sizing(el)) return;
       const card = el.firstElementChild as HTMLElement | null;
@@ -234,11 +239,11 @@ export function useHeightFlip(ref: RefObject<HTMLElement | null>) {
       if (from === undefined || moved || Math.abs(from - to) < 1) return snap();
       // Without size motion the new content still fades in.
       if (sizeMs() === 0) {
-        el.firstElementChild?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("base"), easing: easeOut() });
+        if (fade) el.firstElementChild?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("base"), easing: easeOut() });
         return snap();
       }
       play(el, [{ height: `${from}px` }, { height: `${to}px` }], sizeMs(), easeOut());
-      el.firstElementChild?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("base"), easing: easeOut() });
+      if (fade) el.firstElementChild?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: enterMs("base"), easing: easeOut() });
       if (copy) {
         const old = copy;
         old.classList.add("mo-swap-out");

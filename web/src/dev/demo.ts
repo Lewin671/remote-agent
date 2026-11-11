@@ -12,6 +12,7 @@
 //   ?demo&long=1                            long project, machine and session names
 //   ?demo&many=1&pick=1                     many sessions/projects, picker search
 //   ?demo&project-settings=1#/p/<encoded path>   project settings sheet
+//   ?demo&backfill=60#/s/s-run              60 turns of tools and replies, of which the last 10 show first and the rest load above 1.5 s later
 //   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
 //   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
 //   ?demo&cancel=failed&queue-all=1#/s/s-multi  cancel retry
@@ -1561,6 +1562,27 @@ export class DemoRemote extends Remote {
           }),
         ),
       );
+    const turns = Math.min(2_000, Math.max(0, Number(q.get("backfill")) || 0));
+    if (turns) {
+      const all: Event[] = [];
+      const add = (kind: EventKind) => all.push(create(EventSchema, { seq: BigInt(all.length + 1), sessionId: "s-run", kind }));
+      for (let i = 0; i < turns; i++) {
+        add({ case: "userMessage", value: { text: `第 ${i + 1} 轮的问题` } });
+        add({ case: "turnStarted", value: {} });
+        add({ case: "toolCall", value: { callId: `c${i}`, kind: ToolKind.COMMAND, title: `echo ${i + 1}`, status: "completed" } });
+        add({ case: "agentMessage", value: { text: `第 ${i + 1} 轮的回复。` } });
+        add({ case: "turnEnded", value: { outcome: TurnOutcome.COMPLETED, durationMs: 2000n } });
+      }
+      const keep = 10 * 5;
+      const shown = all.slice(-keep);
+      r.backfill.set("s-run", { shown, all });
+      r.evs.set("s-run", all);
+      setTimeout(() => {
+        r.backfill.get("s-run")!.shown = all;
+        r.backfill.delete("s-run");
+        r.changed();
+      }, 1500);
+    }
     if (q.has("scheduled-final")) r.seedSchedules();
     return r;
   }
@@ -2061,7 +2083,11 @@ export class DemoRemote extends Remote {
     }, 800);
   }
 
+  // ?backfill: the newest events show first, the older ones join above later.
+  private backfill = new Map<string, { shown: Event[]; all: Event[] }>();
   override events(sid: string): Event[] {
+    const b = this.backfill.get(sid);
+    if (b) return b.shown;
     let e = this.evs.get(sid);
     if (!e) this.evs.set(sid, (e = []));
     return e;
@@ -2073,6 +2099,7 @@ export class DemoRemote extends Remote {
 
   override history(sid: string): History {
     return {
+      backfilling: !!this.backfill.get(sid),
       loaded: true,
       error: sid === "s-hist" ? "连接超时" : "",
       broken: sid === "s-ended",

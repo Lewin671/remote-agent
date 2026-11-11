@@ -1926,7 +1926,7 @@ describe("who did what (v2)", () => {
     return (async () => {
       await vi.waitFor(() => expect(r.devicesStatus).toBe("ready"));
       mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-      const notes = [...host.querySelectorAll(".me small")].map((x) => x.textContent);
+      const notes = [...host.querySelectorAll(".me:not(.pending-bubble) small")].map((x) => x.textContent);
       // The first message is this client's own: it carries no name.
       expect(notes).toEqual(["Android · Pixel 9", "VPS-dev 终端"]);
       // A client that says nothing of itself, with no ID in its name.

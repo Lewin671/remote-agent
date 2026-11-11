@@ -8,7 +8,7 @@ import { isSkeleton, skeletonMessage } from "../skeleton";
 import { useState } from "react";
 import { InputStage, InputStatus, SendMode, SessionStatus } from "../gen/remoteagent/v1/event_pb";
 import { originLabel } from "../devices";
-import { agentName, agentOf, machineName, queuedIds, type Derived } from "../model";
+import { agentName, agentOf, machineName, queuedIds, queueReason, type Derived } from "../model";
 import { errorText, type Remote, type SessionView } from "../remote";
 import { LocalThumbs } from "./Images";
 import { promptIdOf } from "./Composer";
@@ -36,8 +36,56 @@ export function stageText(stage: InputStage | undefined): string {
   return "";
 }
 
-/** Pending input is shown at the end of the chat, on every client. */
-export function PendingBubbles({ remote, session, d, sentHere }: { remote: Remote; session: SessionView; d: Derived; sentHere?: Set<string> }) {
+/** Cancels a queued message, or sends one that is paused. */
+async function queueAct(remote: Remote, sid: string, d: Derived, id: string, resume = false) {
+  if (isSkeleton(id) || isSkeleton(d.accepted.get(id)?.text)) return;
+  if (resume) { remote.resumes.set(id, { state: "sending", error: "" }); remote.touch(); }
+  if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
+  try {
+    await remote.command(sid, resume ? { case: "resumeInput", value: { sessionId: sid, requestId: id } } : { case: "cancelInput", value: { sessionId: sid, requestId: id } });
+    if (resume) { remote.resumes.delete(id); remote.touch(); }
+  } catch (e) {
+    if (resume) remote.resumes.set(id, { state: "failed", error: errorText(e) });
+    if (!resume) remote.cancels.set(id, { state: "failed", error: errorText(e) });
+    remote.touch();
+  }
+}
+
+/** What a queued message says under its bubble: a few words for what it
+ * waits for (design-system §6 输入框), and what can be done with it. `rank`
+ * is its place among the `count` queued; `needed` says whether the user has
+ * anything to do or know about it (a turn runs, it is paused, held or being
+ * canceled), or whether it is only on its way to the terminal. */
+export function queueLine(remote: Remote, session: SessionView, d: Derived, id: string, rank: number, count: number) {
+  const sid = session.id;
+  const a = d.accepted.get(id);
+  const o = remote.outbox(sid).find((x) => x.sendId === id);
+  const c = remote.cancels.get(id);
+  const paused = d.paused.has(id);
+  const resume = paused ? remote.resumes.get(id) : undefined;
+  const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
+  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
+  const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
+  const mode = a?.mode ?? o?.mode;
+  const starting = session.info?.status === SessionStatus.STARTING;
+  const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
+  const scheduleLabel = a?.origin?.scheduledTaskId ? `定时任务${queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : ""} · ` : "";
+  const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : held ? "插入这一轮" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
+  const needed = queueReason(session, d) !== "" || paused || held || !!c?.state || !!resume?.state || mode === SendMode.QUEUE || starting;
+  const text = `${scheduleLabel}${status}${count > 1 && !paused && !held && !c?.state ? ` · 第 ${rank} 条` : ""}${from ? ` · ${from}` : ""}`;
+  const buttons = (
+    <>
+      {paused && <button disabled={resume?.state === "sending"} onClick={() => void queueAct(remote, sid, d, id, true)}>{resume?.state === "failed" ? "重试" : "发送"}</button>}
+      {c?.state === "failed" ? <button onClick={() => void queueAct(remote, sid, d, id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void queueAct(remote, sid, d, id)}>取消</button>}
+    </>
+  );
+  return { text, buttons, needed };
+}
+
+/** Pending input is shown at the end of the chat, on every client. A message
+ * this page sent (`own`) is not drawn here: its bubble, which has been on
+ * screen since it was sent, takes the queue's look itself (Session's Pending). */
+export function PendingBubbles({ remote, session, d, sentHere, own }: { remote: Remote; session: SessionView; d: Derived; sentHere?: { has(id: string): boolean }; own?: Set<string> }) {
   const ids = queuedIds(d);
   const [all, setAll] = useState(() => remote.demoFlag("queue-all"));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -46,46 +94,21 @@ export function PendingBubbles({ remote, session, d, sentHere }: { remote: Remot
   // neither does one this page has sent: it rose in when it was written.
   const fresh = useFresh(shown, true, { bulk: 3 });
   const sid = session.id;
-  // No turn to insert into yet: the CLI is still coming up.
-  const starting = session.info?.status === SessionStatus.STARTING;
-  const ctx = { me: remote.account.deviceId, devices: remote.devices, machine: machineName(remote.machines.get(session.machineId)) };
-  const act = async (id: string, resume = false) => {
-    if (isSkeleton(id) || isSkeleton(d.accepted.get(id)?.text)) return;
-    if (resume) { remote.resumes.set(id, { state: "sending", error: "" }); remote.touch(); }
-    if (!resume) { remote.cancels.set(id, { state: "canceling", error: "" }); remote.touch(); }
-    try {
-      await remote.command(sid, resume ? { case: "resumeInput", value: { sessionId: sid, requestId: id } } : { case: "cancelInput", value: { sessionId: sid, requestId: id } });
-      if (resume) { remote.resumes.delete(id); remote.touch(); }
-    } catch (e) {
-      if (resume) remote.resumes.set(id, { state: "failed", error: errorText(e) });
-      if (!resume) remote.cancels.set(id, { state: "failed", error: errorText(e) });
-      remote.touch();
-    }
-  };
   return <>
     {shown.map((id, i) => {
+      // One this page sent is its own bubble's (Session's Pending) until the
+      // chat holds it; it does not come back as a queue bubble after that.
+      if (own?.has(id) || sentHere?.has(id)) return null;
       const a = d.accepted.get(id);
       if (isSkeleton(id) || isSkeleton(a?.text)) return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>{skeletonMessage}</div>;
       const o = remote.outbox(sid).find((x) => x.sendId === id);
-      const c = remote.cancels.get(id);
-      const paused = d.paused.has(id);
-      const resume = paused ? remote.resumes.get(id) : undefined;
-      const held = d.inputs.get(id) === InputStatus.HELD_BY_CLI;
-      const from = a?.origin && a.origin.deviceId !== remote.account.deviceId ? originLabel(a.origin, ctx) : "";
-      const mode = a?.mode ?? o?.mode;
-      const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
-      const scheduleLabel = a?.origin?.scheduledTaskId ? `定时任务${queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : ""} · ` : "";
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : "另一客户端的消息");
-      // A few words for what it waits for (design-system §6 输入框).
-      const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : held ? "插入这一轮" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
-      return <div className="pending-bubble me" key={id}>
+      const line = queueLine(remote, session, d, id, i + 1, ids.length);
+      return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>
         <LocalThumbs blobs={o?.thumbs} />
         <FileChips files={a?.files ?? o?.files} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
-        <div className="pending-meta"><span>{scheduleLabel}{status}{ids.length > 1 && !paused && !held && !c?.state && ` · 第 ${i + 1} 条`}{from && ` · ${from}`}</span>
-          {paused && <button disabled={resume?.state === "sending"} onClick={() => void act(id, true)}>{resume?.state === "failed" ? "重试" : "发送"}</button>}
-          {c?.state === "failed" ? <button onClick={() => void act(id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void act(id)}>取消</button>}
-        </div>
+        <div className="pending-meta"><span>{line.text}</span>{line.buttons}</div>
       </div>;
     })}
     {!all && ids.length > 3 && <button className="more-row" onClick={() => setAll(true)}>还有 {ids.length - 2} 条排队 展开</button>}

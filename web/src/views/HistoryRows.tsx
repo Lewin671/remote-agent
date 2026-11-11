@@ -17,11 +17,19 @@ type Props<T> = {
   focusKey?: string;
   /** A class for a row that has only now arrived (its entrance). */
   rowClass?: (item: T) => string | undefined;
+  /** The history is known to be long before all of it is here (the session's
+   * event count), so the virtual list is used from the first draw instead of
+   * replacing the plain one when the count passes 100. */
+  long?: boolean;
 };
 
 /** Keep complete event state, but mount only rows near the viewport. */
 export function HistoryRows<T extends { key: string }>(props: Props<T>) {
-  const { items, render, scroller, remote, sid, header, footer, loaded, rowClass } = props;
+  const { items, render, scroller, remote, sid, header, footer, loaded, rowClass, long } = props;
+  // Once the virtual list is in use it stays: swapping it for the plain one
+  // and back would redraw the whole chat.
+  const windowed = useRef(false);
+  if (items.length > 100 || long) windowed.current = true;
   const [parent, setParent] = useState<HTMLElement>();
   const [initial] = useState(() => ({ top: remote.scroll.get(sid), long: items.length > 100, loading: !loaded }));
   const shortRestored = useRef(false);
@@ -42,7 +50,7 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   // A reclaimed history arrives in pages. Do not restore a position into an
   // incomplete prefix or overwrite its measurements with that prefix.
   if (initial.loading && initial.top && !initial.top.stick && !loaded) return <div className="sep">正在恢复阅读位置…</div>;
-  if (items.length <= 100) return <>{header}{items.map((it, index) => <div key={it.key} className={"history-row" + (rowClass?.(it) ? " " + rowClass(it) : "")} data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
+  if (!windowed.current) return <>{header}{items.map((it, index) => <div key={it.key} className={"history-row" + (rowClass?.(it) ? " " + rowClass(it) : "")} data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
   if (!parent) return null;
   return <WindowedRows {...props} parent={parent} initialTop={initial.long || initial.loading ? initial.top : undefined} />;
 }
@@ -53,6 +61,37 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
 }) {
   const list = useRef<VirtuosoHandle>(null);
   const focused = useRef<string | undefined>(undefined);
+  // The list is drawn with estimated row heights and corrects them as the
+  // rows are measured, and the history comes in pages that change what it
+  // holds: both move it. It is not shown until it holds rows, all the history
+  // is here and its height has been the same for a few frames (at the bottom,
+  // for a list that follows the end); one that has stood still for a second
+  // is shown whatever it waits for. A placeholder stands in meanwhile. Plain
+  // lists are placed in the frame they are drawn in and need none of this.
+  const ready = useRef(loaded);
+  ready.current = loaded;
+  useLayoutEffect(() => {
+    parent.classList.add("mo-hold");
+    const follows = !focusKey && (initialTop ? initialTop.stick : parent.scrollTop + parent.clientHeight >= parent.scrollHeight - 60);
+    const t0 = performance.now();
+    let still = 0;
+    let last = -1;
+    let id = requestAnimationFrame(function tick() {
+      // The list stops short of the chat's own bottom padding: take that last step.
+      if (follows && parent.scrollHeight - parent.scrollTop - parent.clientHeight < 40) parent.scrollTop = parent.scrollHeight;
+      const sh = parent.scrollHeight;
+      const drawn = !!parent.querySelector("[data-item-index]") && sh > parent.clientHeight;
+      const there = !follows || sh - parent.scrollTop - parent.clientHeight < 4;
+      still = sh === last && there && drawn ? still + 1 : 0;
+      last = sh;
+      if ((still >= 3 && ready.current) || still >= 60 || performance.now() - t0 > 6000) return parent.classList.remove("mo-hold");
+      id = requestAnimationFrame(tick);
+    });
+    return () => {
+      cancelAnimationFrame(id);
+      parent.classList.remove("mo-hold");
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (!loaded || !focusKey || focused.current === focusKey) return;
     const index = items.findIndex(it => it.key === focusKey);
