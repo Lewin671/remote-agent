@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// Fault matrices keep real files and fsyncs. Bound their concurrent disk work
+// Storage matrices keep real files and fsyncs. Bound their concurrent disk work
 // even when the test runner exposes more than four CPUs.
 var storageTestSlots = make(chan struct{}, 4)
 

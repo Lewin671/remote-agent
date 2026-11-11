@@ -50,6 +50,7 @@ func TestManualExecutionLifecycleMatrix(t *testing.T) {
 	for _, typ := range []string{"at", "interval", "calendar", "after_turn"} {
 		for _, ending := range []string{"completed", "failed", "interrupted", "uncertain", "cancelled", "skipped", "dispatch_rejected", "restart_dispatching", "restart_requested", "restart_queued", "input_paused"} {
 			t.Run(typ+"/"+ending, func(t *testing.T) {
+				parallelStorageTest(t)
 				h, task := manualFixture(t, typ)
 				defer func() { h.s.log.Close() }()
 				before := automaticPlan(task)

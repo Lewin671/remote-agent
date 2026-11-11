@@ -51,6 +51,7 @@ func TestFailedOneShotRetryOutcome(t *testing.T) {
 		for _, outcome := range []string{"completed", "failed", "interrupted"} {
 			for _, control := range []string{"none", "pause", "cancel"} {
 				t.Run(typ+"/"+outcome+"/"+control, func(t *testing.T) {
+					parallelStorageTest(t)
 					h := scheduleHarness(t)
 					defer func() { h.s.log.Close() }()
 					now := time.Now()
@@ -123,6 +124,7 @@ func TestNonCompletedScheduledFollowups(t *testing.T) {
 		for _, terminal := range []bool{false, true} {
 			for _, boundary := range []string{"client", "local", "resume", "exit", "scheduled"} {
 				t.Run(status+map[bool]string{false: "/paused", true: "/cancelled"}[terminal]+"/"+boundary, func(t *testing.T) {
+					parallelStorageTest(t)
 					h := scheduleHarness(t)
 					defer func() { h.s.log.Close() }()
 					task := startScheduledTurn(t, h)
