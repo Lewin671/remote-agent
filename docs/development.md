@@ -16,7 +16,7 @@
 
 ## 本地使用
 
-需要 Go 1.26.10+、tmux 3.2+，以及已登录的 codex、claude 或 agy。
+需要 Go 1.26.11+、tmux 3.2+，以及已登录的 codex、claude 或 agy。
 
 ```sh
 scripts/install.sh             # 编译到 ~/bin/remote-agent；装过后台服务的话顺便重启 daemon
