@@ -1,6 +1,7 @@
 // Starting sessions. There is one way: type in a project's new-session
 // box and send. Project settings persist in the sealed account prefs.
 
+import { AgentMark } from "../agent-mark";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
 import type { DaemonSettings, ListDirectoriesResponse, ListModelsResponse } from "../gen/remoteagent/v1/local_pb";
@@ -664,6 +665,7 @@ export function NewBox({
         <span className="g">
           用
           <button ref={cliRef} className="tok cli" disabled={ns.busy} aria-haspopup="dialog" aria-label={`CLI：${agentName(ns.cfg.agent)}`} onClick={() => setChoosing(true)}>
+            <AgentMark agent={ns.cfg.agent} named />
             <span>{agentName(ns.cfg.agent)}</span>
             <ChevronDown />
           </button>
@@ -731,7 +733,7 @@ export function NewBox({
                   if (a !== ns.cfg.agent) ns.setAgent(a);
                 }}
               >
-                <span className="mt">{agentName(a)}</span>
+                <span className="mt"><AgentMark agent={a} named />{agentName(a)}</span>
                 {a === ns.cfg.agent && <span className="ck"><Check /></span>}
               </button>
             ))}

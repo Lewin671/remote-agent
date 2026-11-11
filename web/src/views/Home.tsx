@@ -3,9 +3,9 @@
 // as the sidebar; the bottom row of tabs; and the list rows they share
 // (design-system §6, client-v58 #home).
 
+import { AgentMark } from "../agent-mark";
 import { Suspense, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import {
-  agentName,
   agentOf,
   askTitle,
   compareAttention,
@@ -53,12 +53,12 @@ export type { Go };
  * names only those: what every row shares is noise. */
 export type Cols = { project?: boolean; agent?: boolean; machine?: boolean };
 
-/** The third line of a row: 分叉, then what its list does not share. */
+/** The third line of a row: 分叉, then what its list does not share. The
+ * CLI is not among the words: its mark leads the line. */
 function metaOf(remote: Remote, s: SessionView, cols: Cols): string {
   return [
     s.info?.forkedFrom ? "分叉" : "",
     cols.project ? projectName(projectKey(s)) : "",
-    cols.agent ? agentName(agentOf(s)) : "",
     cols.machine ? machineName(remote.machines.get(s.machineId)) : "",
   ]
     .filter(Boolean)
@@ -208,7 +208,7 @@ export function SessionRow({
   const scheduleMeta = timers.length ? "定时 " + (timers.length > 1 ? `${timers.length} 个任务` : frequency(timers[0].task.spec.trigger)) : "";
   return <SessionLine tone={st.tone} title={titleOf(s)} right={when(s.updatedMs)}
     preview={st.text + (pv && pv !== st.text ? ` · ${pv}` : "")}
-    meta={[meta, scheduleMeta].filter(Boolean).join(" · ")} selected={selected} last={last} enter={enter} onClick={() => go("s/" + s.id)} />;
+    meta={(cols.agent || meta || scheduleMeta) && <>{cols.agent && <AgentMark agent={agentOf(s)} />}{[meta, scheduleMeta].filter(Boolean).join(" · ")}</>} selected={selected} last={last} enter={enter} onClick={() => go("s/" + s.id)} />;
 }
 
 /** An ended session: one line with no state graphic, under the date

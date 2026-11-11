@@ -1,3 +1,4 @@
+import { AgentMark } from "../agent-mark";
 import { Switch } from "../ui";
 import { useEffect, useState } from "react";
 import { ApprovalMode, type Agent } from "../gen/remoteagent/v1/event_pb";
@@ -215,7 +216,7 @@ function MachineCard({ m, remote, go }: { m: MachineView; remote: Remote; go: (r
           return (
             <button key={a} className={"qt" + (q.tone ? " " + q.tone : "")} onClick={() => go("q/" + m.id)}>
               <span className="l">
-                <b>{agentName(a)}</b>
+                <b><AgentMark agent={a} named />{agentName(a)}</b>
                 <span className="n">{q.left}</span>
                 {q.reset && <span>{q.reset}</span>}
               </span>
@@ -295,7 +296,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
               key={a}
               onClick={() => go("q/" + m.id)}
             >
-              <span className="nw">{agentName(a)}</span>
+              <span className="nw"><AgentMark agent={a} named />{agentName(a)}</span>
               {/* Only the window with the least left (design-system §6); the rest are a tap away. */}
               <span className="v">{quotaSummary(mine)}</span>
               <ChevronRight className="chev" />

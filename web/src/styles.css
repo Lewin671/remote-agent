@@ -310,6 +310,9 @@ h1, h2, h3 { font-weight: var(--w7); }
 .sess .row1 b { flex: 1; min-width: 0; font-size: 17px; font-weight: var(--w6); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sess .row1 > span { font-size: 13px; color: var(--ink2); flex: none; white-space: nowrap; }
 .sess .pv { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 15px; line-height: 1.38; color: var(--ink2); margin-top: 3px; overflow-wrap: anywhere; }
+/* A CLI's mark: as tall as the text it sits in, in its colour. */
+.amark { width: 1em; height: 1em; flex: none; display: inline-block; vertical-align: -.14em; margin-right: .4em; }
+.sess .mc > .amark { font-size: 1.15em; margin-right: .4em; vertical-align: -.17em; }
 .sess .mc { font-size: 13px; color: var(--ink2); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sess.sel { background: var(--fill); }
 @media (hover: hover) { .sess:hover:not(.sel), .old:hover:not(.sel), .pr:hover:not(:disabled) { background: var(--fill); } }

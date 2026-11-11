@@ -1,3 +1,4 @@
+import { AgentMark } from "../agent-mark";
 import { Sheet } from "../ui";
 import { canAnimate, Swap, useExit, useFresh, useHeightFlip, useKnob, useSettle } from "../motion";
 import { agentInfo } from "../agents";
@@ -655,6 +656,7 @@ export function SessionPage({
             info={
               <>
                 <b>
+                  <AgentMark agent={agent} named />
                   {[agentLabel, project, remote.machines.size > 1 ? mname : ""].filter(Boolean).join(" · ")}
                 </b>
                 <span className="mono">

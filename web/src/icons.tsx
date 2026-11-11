@@ -1,6 +1,6 @@
 // Every icon of the interface. They all come from Lucide, one per meaning
 // (design-system §5); nothing else draws an icon, and no font glyph stands
-// in for one.
+// in for one. The one exception is the CLIs' own marks, in agent-mark.tsx.
 
 import {
   ArrowDown as LArrowDown,
