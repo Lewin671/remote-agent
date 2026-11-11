@@ -74,7 +74,7 @@ export function DeviceActions({
             disabled={busy}
             onClick={() => setConfirm("remove")}
           >
-            移除设备
+            移除设备…
           </button>
         ) : (
           machine && (

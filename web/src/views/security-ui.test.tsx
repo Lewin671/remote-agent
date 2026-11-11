@@ -183,13 +183,13 @@ it("separates device removal from archive deletion and retains the actions after
     .mockRejectedValue(new Error("storage failed"));
   const deletion = vi.spyOn(r, "deleteMachineRecords");
   await mount(<DeviceActions remote={r} id="mini" machine />);
-  await click("移除设备");
+  await click("移除设备…");
   expect(host.textContent).toContain("历史档案仍保留");
   await click("移除");
   expect(remove).toHaveBeenCalledWith("mini");
   expect(deletion).not.toHaveBeenCalled();
   expect(host.textContent).toContain("storage failed");
-  expect(button("移除设备")).toBeTruthy();
+  expect(button("移除设备…")).toBeTruthy();
 });
 it("shows pending recovery on home and settings, with the actual ready time", async () => {
   const r = demo("role=authority&recovery=pending");
