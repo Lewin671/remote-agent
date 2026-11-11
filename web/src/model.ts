@@ -779,11 +779,12 @@ export interface NewConfig {
 }
 
 /** A project's latest session supplies its initial settings: the machine
- * and the CLI. Each CLI's model, effort and mode come from the project's
- * latest session on that CLI (agent: which CLI to answer for; the latest
- * session's by default), the machine's defaults if it has none. Plan is a
- * passing state; an offline machine stays selected until the user picks
- * another for this start. */
+ * and the CLI. Each CLI's model and effort come from the project's latest
+ * session on that CLI (agent: which CLI to answer for; the latest
+ * session's by default), the machine's defaults if it has none. The
+ * approval mode is never inherited: a new task starts with the machine's
+ * default. An offline machine stays selected until the user picks another
+ * for this start. */
 export function inheritConfig(
   p: Project<SessionLike> | undefined,
   machines: Map<string, MachineLike>,
@@ -804,18 +805,13 @@ export function inheritConfig(
   const a = agent ?? agentOf(latest);
   const from = order.find((s) => agentOf(s) === a);
   void machines;
-  const mode = (from && modeOf(from)?.mode) ?? ApprovalMode.UNSPECIFIED;
-  const keep =
-    mode === ApprovalMode.ASK ||
-    mode === ApprovalMode.AUTO ||
-    mode === ApprovalMode.FULL_ACCESS;
   return {
     machineId: latest.machineId,
     cwd,
     agent: a,
     model: from?.info?.model ?? "",
     effort: from?.info?.effort ?? "",
-    mode: keep ? mode : ApprovalMode.UNSPECIFIED,
+    mode: ApprovalMode.UNSPECIFIED,
     from,
   };
 }
@@ -835,22 +831,39 @@ export function switchMachine(cfg: NewConfig, m: MachineLike): NewConfig {
   };
 }
 
-/** Why a new session cannot start with this CLI, model and mode, or "". */
+/** What keeps a session from starting in AUTO with this CLI and model:
+ * "account" when no model of the account has the auto mode, "model" when
+ * only this one lacks it, "" when nothing does. */
+export function autoIssueKind(
+  agent: Agent,
+  model: string,
+  mode: ApprovalMode,
+  models?: ModelInfo[],
+): "" | "model" | "account" {
+  if (
+    !agentInfo(agent).autoMayBeUnavailable ||
+    mode !== ApprovalMode.AUTO ||
+    !autoUnavailable(models, model)
+  )
+    return "";
+  return allAutoUnavailable(models) ? "account" : "model";
+}
+
+/** Why a session cannot start with this CLI, model and mode, or "". This
+ * is the wording for a scheduled task, whose mode is chosen with it; a new
+ * task has no mode of its own and words it in the new task page. */
 export function newConfigIssue(
   agent: Agent,
   model: string,
   mode: ApprovalMode,
   models?: ModelInfo[],
 ): string {
-  if (
-    agentInfo(agent).autoMayBeUnavailable &&
-    mode === ApprovalMode.AUTO &&
-    autoUnavailable(models, model)
-  )
-    return allAutoUnavailable(models)
-      ? "当前账户不支持自动模式，换一种审批模式再开始"
-      : "这个模型没有自动模式，换一种审批模式再开始";
-  return "";
+  const kind = autoIssueKind(agent, model, mode, models);
+  return kind === "account"
+    ? "当前账户不支持自动模式，换一种审批模式再开始"
+    : kind === "model"
+      ? "这个模型没有自动模式，换一种审批模式再开始"
+      : "";
 }
 
 /** The mode a CLI gives a session started without one on a machine, as the

@@ -268,19 +268,27 @@ const savedSet = (r: DemoRemote, path: string, agent = Agent.CODEX) => r.project
 it("keeps saved project settings as sessions change", () => {
   const r = demo();
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  // The remembered CLI is the one the sentence names; the summary does not name it again.
+  // The remembered CLI is the one the sentence names; the summary does not name it again, nor an approval mode.
   const line = () => `${cliPicked()} / ${host.querySelector(".acc .project-summary")?.textContent}`;
-  expect(line()).toMatch(/^Codex \/ 询问 · /);
+  expect(line()).toMatch(/^Codex \/ MacBook · /);
   // The Claude Code session in foo becomes the most recent one.
   act(() => {
     r.sessions.get("s-claude")!.updatedMs = BigInt(Date.now() + 60_000);
     (r as unknown as { changed(): void }).changed();
   });
-  expect(line()).toMatch(/^Codex \/ 询问 · /);
+  expect(line()).toMatch(/^Codex \/ MacBook · /);
 });
 
-it("leaves an unknown approval mode unsaid in the navbar and follows the CLI in a new session", async () => {
+it("leaves an unknown approval mode unsaid in the navbar, and a new session does not say a mode at all", async () => {
   const r = demo();
+  const sent: { mode?: number }[] = [];
+  r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+    if (cmd?.case === "createSession") {
+      sent.push({ mode: cmd.value.mode });
+      throw new CommandError("failed_precondition", "stop here");
+    }
+    return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+  };
   // s-run's CLI has not said its mode.
   mount(<SessionPage remote={r} session={r.sessions.get("s-run")!} onBack={() => undefined} wide={false} />);
   expect(host.querySelector(".navbar .title > span")!.textContent).toBe("运行中");
@@ -288,12 +296,21 @@ it("leaves an unknown approval mode unsaid in the navbar and follows the CLI in 
   host.remove();
   // Neither the project nor the machine says how a new Codex session starts.
   for (const a of r.machines.get("mac")!.meta!.agents) a.defaultModeSource = 0;
-  savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.UNSPECIFIED;
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^跟随 CLI 设置/));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /));
+  expect(host.querySelector(".project-summary")?.textContent).not.toContain("CLI 设置");
   await fromMenu("新会话设置");
-  expect(setting("审批")).toBe("跟随 CLI 设置");
-  expect(document.body.textContent).not.toContain("未读到");
+  expect(setting("审批")).toBe("");
+  expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|未读到/);
+  await click(button("完成", document));
+  await act(async () => {
+    const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await click(sendButton());
+  await vi.waitFor(() => expect(sent).toHaveLength(1));
+  expect(sent[0]).toMatchObject({ mode: ApprovalMode.UNSPECIFIED });
 });
 
 it("shows a failed first listing and lists again", async () => {
@@ -1222,7 +1239,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
   expect(sent).toMatchObject({ model: "gpt-6-sol", effort: "low", cwd: project });
 });
 
-it("keeps project settings by path and carries full access without a new confirmation", async () => {
+it("keeps project settings by path, and never stores or reads an approval mode there", async () => {
   const r = demo();
   let ns: ReturnType<typeof useNewSession>;
   function Box({ remote = r, project }: { remote?: DemoRemote; project: string }) {
@@ -1232,13 +1249,19 @@ it("keeps project settings by path and carries full access without a new confirm
   const foo = "/Users/me/Code/foo";
   const shop = "/Users/me/Code/shop";
   mount(<Box project={foo} />);
+  // A mode that comes along (a scheduled task's choice) is held by the page but not stored.
   act(() => ns.setCfg({ ...ns.cfg, model: "gpt-6-luna", effort: "max", mode: ApprovalMode.FULL_ACCESS }));
   expect(ns!.cfg.mode).toBe(ApprovalMode.FULL_ACCESS);
   await vi.waitFor(() => expect(savedSet(r, foo)?.model).toBe("gpt-6-luna"));
+  expect(savedSet(r, foo)?.mode).toBe(ApprovalMode.UNSPECIFIED);
   act(() => root!.render(<Box project={shop} />));
   expect(ns!.cfg.model).not.toBe("gpt-6-luna");
   act(() => root!.render(<Box key="reload" project={foo} />));
-  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", effort: "max", mode: ApprovalMode.FULL_ACCESS });
+  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", effort: "max", mode: ApprovalMode.UNSPECIFIED });
+  // A mode stored by an earlier version is ignored.
+  savedSet(r, foo)!.mode = ApprovalMode.FULL_ACCESS;
+  act(() => root!.render(<Box key="old" project={foo} />));
+  expect(ns!.cfg).toMatchObject({ model: "gpt-6-luna", mode: ApprovalMode.UNSPECIFIED });
 });
 
 it("keeps the default model while saving a chosen reasoning effort", async () => {
@@ -1361,19 +1384,16 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   expect(r.projectPrefs().settings.find((s) => s.path === foo)).toEqual(before);
 });
 
-it("shows the effective approval mode in project settings while keeping the default choice", async () => {
+it("shows no approval mode in a new task's summary or settings", async () => {
   const r = demo();
   // Codex reports its effective mode, with no explicit new-project override.
   (r as unknown as { saved: unknown }).saved = create(DaemonSettingsSchema, { defaultMode: ApprovalMode.UNSPECIFIED });
   r.draftMachines.set("/Users/me/Code/new", "mac");
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("自动"));
+  await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /));
+  expect(host.querySelector(".project-summary")?.textContent).not.toMatch(/自动|询问|完全放行|默认：|审批/);
   await fromMenu("新会话设置");
-  expect(setting("审批")).toBe("自动");
-  await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("审批")));
-  const defaultOption = [...document.querySelectorAll<HTMLButtonElement>(".mi")].find((b) => b.textContent?.includes("跟随 Codex 自己的配置"));
-  expect(defaultOption?.textContent).toContain("默认");
-  expect(defaultOption?.querySelector(".ck svg")).toBeTruthy();
+  expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|完全放行|移除项目|设为常用/);
 });
 
 it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit", () => {
@@ -1537,14 +1557,16 @@ describe("a new-session draft", () => {
     expect(sent[0].agent).toBe(Agent.CODEX);
   });
 
-  it("leaves the mode to the machine's default when that is full access", async () => {
+  it("leaves the mode to the machine's default, full access included, and says none", async () => {
     const r = demo();
     const sent = capture(r);
     // The machine reports Codex's default as full access.
     r.machines.get("mac")!.meta!.agents[0].defaultMode = ApprovalMode.FULL_ACCESS;
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("完全放行"), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /), { timeout: 3000 });
+    expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
+    expect(host.querySelector(".project-summary em")).toBeNull();
     await type("加限流");
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
@@ -1657,14 +1679,15 @@ describe("switching a new session's CLI (v2)", () => {
     await pickCli("Claude Code");
     expect(cliPicked()).toBe("Claude Code");
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!.value).toBe("加限流");
-    // Nothing is stored for Claude Code here: the project's latest Claude Code session says how it starts, not Codex's set.
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook · Sonnet/), { timeout: 3000 });
+    // Nothing is stored for Claude Code here: the project's latest Claude Code session says which model it starts with, not Codex's set.
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · Sonnet/), { timeout: 3000 });
     await fromMenu("新会话设置");
     expect(setting("CLI")).toBe("");
     await click(button("完成", document));
     await click(sendButton());
     await vi.waitFor(() => expect(sent).toHaveLength(1));
-    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.ASK, prompt: "加限流" });
+    // The approval mode that session ran in is not carried over: the machine's default applies.
+    expect(sent[0]).toMatchObject({ agent: Agent.CLAUDE, mode: ApprovalMode.UNSPECIFIED, prompt: "加限流" });
     // Picking is not saving: the project still remembers Codex.
     expect(r.projectPrefs().settings.find((s) => s.path === "/Users/me/Code/foo")?.agent).toBe(Agent.CODEX);
   });
@@ -1694,7 +1717,7 @@ describe("switching a new session's CLI (v2)", () => {
     // The next one starts with Claude Code picked; Codex's set is as it was.
     await vi.waitFor(() => expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CLAUDE), { timeout: 3000 });
     expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.ASK });
-    expect(savedSet(r, foo, Agent.CLAUDE)).toBeDefined();
+    expect(savedSet(r, foo, Agent.CLAUDE)).toMatchObject({ mode: ApprovalMode.UNSPECIFIED });
     act(() => root!.unmount());
     host.remove();
     mount(page());
@@ -1702,7 +1725,7 @@ describe("switching a new session's CLI (v2)", () => {
     // Back on Codex, its stored model is what starts.
     await pickCli("Codex");
     expect(cliPicked()).toBe("Codex");
-    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook · GPT-6-Astra/));
+    await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · GPT-6-Astra/));
   });
 
   it("opens the settings of the CLI picked next to the box, and of no other", async () => {
@@ -1715,10 +1738,12 @@ describe("switching a new session's CLI (v2)", () => {
     // No tabs: the sheet names the one CLI it is about.
     expect(document.querySelector(".cli-tabs")).toBeNull();
     expect([...document.querySelectorAll(".sheet .fl")].map((x) => x.textContent)).toContain("Codex");
-    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("审批")));
-    await click(button(/^自动/, document));
+    expect(document.querySelector(".sheet")!.textContent).not.toContain("审批");
+    await click([...document.querySelectorAll<HTMLButtonElement>(".sheet .mi")].find((b) => b.textContent?.startsWith("模型")));
+    await click(button("GPT-6-Luna", document));
     await click(button("完成", document));
-    await vi.waitFor(() => expect(savedSet(r, foo)).toMatchObject({ mode: ApprovalMode.AUTO }), { timeout: 3000 });
+    // The model is saved; the project's mode is not touched by it.
+    await vi.waitFor(() => expect(savedSet(r, foo)).toMatchObject({ model: "gpt-6-luna", mode: ApprovalMode.UNSPECIFIED }), { timeout: 3000 });
     expect(r.projectPrefs().settings.find((s) => s.path === foo)?.agent).toBe(Agent.CODEX);
   });
 
@@ -1748,7 +1773,7 @@ describe("switching a new session's CLI (v2)", () => {
     // The task is written in a box of its own, under the sentence.
     expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
     const row = host.querySelector(".wstart .acc")!;
-    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^询问 · MacBook/);
+    expect(row.querySelector(".project-summary")?.textContent).toMatch(/^MacBook · /);
     expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
   });
 
@@ -1772,18 +1797,142 @@ describe("switching a new session's CLI (v2)", () => {
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     const summary = () => host.querySelector(".acc .project-summary")!;
     // The name is its own part, the one that gives way on a long line.
-    expect(summary().querySelector(".mach")?.textContent).toBe(" · MacBook");
+    expect(summary().querySelector(".mach")?.textContent).toBe("MacBook");
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
     expect(summary().querySelector(".mach")).toBeNull();
-    // Mode and model; the effort and the window are in the settings.
-    expect(summary().textContent).toMatch(/^询问 · gpt-6-astra$/i);
+    // The model alone; the effort and the window are in the settings, and a new task has no mode.
+    expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
     expect(summary().getAttribute("aria-label")).toBe(`项目设置：${summary().textContent}`);
   });
 });
 
+
+describe("a new task's settings have no approval mode (v2)", () => {
+  /** Leaves one computer on the account. */
+  const alone = (r: DemoRemote) => {
+    for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
+  };
+
+  it("opens straight on the model page when the account has one computer", async () => {
+    const r = demo();
+    alone(r);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    await fromMenu("新会话设置");
+    // No list of one row first: no 机器, no 审批, no project block, no note.
+    const sheet = document.querySelector(".sheet")!;
+    expect(sheet.querySelector(".sheet-head")?.textContent).toContain("模型");
+    expect(sheet.querySelector('.sheet-head button[aria-label="返回"]')).toBeNull();
+    expect(sheet.textContent).toContain("默认模型");
+    expect(sheet.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
+    // Choosing a model stores it, and 完成 closes the sheet.
+    await click(button("GPT-6-Luna", document));
+    await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo")).toMatchObject({ model: "gpt-6-luna" }), { timeout: 3000 });
+    await click(button("完成", document));
+    expect(document.querySelector(".sheet")).toBeNull();
+  });
+
+  it("lists the machine and the model when there are several computers, and nothing else", async () => {
+    const r = demo();
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    await fromMenu("新会话设置");
+    const rows = [...document.querySelectorAll(".sheet .mi")].map((x) => x.querySelector(".mt")?.textContent);
+    expect(rows).toEqual(["机器", "模型"]);
+    expect(document.querySelector(".sheet")!.textContent).not.toMatch(/审批|移除项目|常用|只影响之后新建/);
+  });
+
+  it("puts Claude Code's context window on the model page", async () => {
+    const r = demo();
+    alone(r);
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    await pickCli("Claude Code");
+    await fromMenu("新会话设置");
+    await vi.waitFor(() => expect(document.querySelector('.sheet [role="radiogroup"][aria-label="上下文窗口"], .sheet [aria-label="上下文窗口"]')).not.toBeNull());
+    await click(button("标准 200k", document));
+    await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo", Agent.CLAUDE)).toMatchObject({ standardContext: true }), { timeout: 3000 });
+  });
+
+  it("sends the new task without a mode, whatever mode the project's last session ran in", async () => {
+    const r = demo();
+    const sent: { mode?: number }[] = [];
+    r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+      if (cmd?.case === "createSession") {
+        sent.push({ mode: cmd.value.mode });
+        throw new CommandError("failed_precondition", "stop here");
+      }
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    // The project's latest Codex session ran in full access, and an old stored set says so too.
+    for (const s of r.sessions.values()) if (s.info?.cwd === "/Users/me/Code/foo") s.info.mode = ApprovalMode.FULL_ACCESS;
+    savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.FULL_ACCESS;
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
+    await act(async () => {
+      const input = host.querySelector<HTMLTextAreaElement>("textarea[aria-label=新会话的第一句话]")!;
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0].mode).toBe(ApprovalMode.UNSPECIFIED);
+  });
+
+  it("asks for another model, not another mode, when the machine's default is auto and the model has none", async () => {
+    const r = demo();
+    alone(r);
+    // Claude Code on the machine defaults to auto; its Sonnet has no auto mode.
+    const claude = r.machines.get("mac")!.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
+    claude.defaultMode = ApprovalMode.AUTO;
+    claude.defaultModeSource = 2;
+    r.draftMachines.set("/Users/me/Code/new", "mac");
+    const real = r.machineCommand.bind(r);
+    r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+      if (cmd?.case === "listModels" && cmd.value.agent === Agent.CLAUDE)
+        return create(CommandResultSchema, { kind: { case: "listModels", value: { defaultModel: "claude-sonnet-5-5", models: [
+          { slug: "claude-sonnet-5-5", displayName: "Sonnet 5.5", efforts: [], autoUnavailable: true },
+          { slug: "claude-opus-5-5", displayName: "Opus 5.5", efforts: [] },
+        ] } } });
+      return real(m, cmd);
+    };
+    await act(async () => { await r.listModels("mac", Agent.CLAUDE, true); });
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
+    await pickCli("Claude Code");
+    await vi.waitFor(() => expect(host.textContent).toContain("这个模型没有自动模式"), { timeout: 3000 });
+    expect(host.textContent).not.toContain("改模式");
+    expect(button("换模型")).toBeDefined();
+    expect(sendButton()?.disabled).toBe(true);
+    await click(button("换模型"));
+    expect(document.querySelector(".sheet .sheet-head")?.textContent).toContain("模型");
+    await click(button("Opus 5.5", document));
+    await click(button("完成", document));
+    await vi.waitFor(() => expect(host.textContent).not.toContain("这个模型没有自动模式"));
+  });
+
+  it("points to the machine's default settings when the account has no auto mode at all", async () => {
+    const r = demo();
+    alone(r);
+    const claude = r.machines.get("mac")!.meta!.agents.find((a) => a.agent === Agent.CLAUDE)!;
+    claude.defaultMode = ApprovalMode.AUTO;
+    claude.defaultModeSource = 2;
+    r.draftMachines.set("/Users/me/Code/new", "mac");
+    const real = r.machineCommand.bind(r);
+    r.machineCommand = async (m: string, cmd: CommandKind): Promise<CommandResult> => {
+      if (cmd?.case === "listModels" && cmd.value.agent === Agent.CLAUDE)
+        return create(CommandResultSchema, { kind: { case: "listModels", value: { defaultModel: "claude-sonnet-5-5", models: [{ slug: "claude-sonnet-5-5", displayName: "Sonnet 5.5", efforts: [], autoUnavailable: true }] } } });
+      return real(m, cmd);
+    };
+    await act(async () => { await r.listModels("mac", Agent.CLAUDE, true); });
+    const went: string[] = [];
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={(to) => went.push(to)} onBack={() => undefined} />);
+    await pickCli("Claude Code");
+    await vi.waitFor(() => expect(host.textContent).toContain("当前账户不支持自动模式"), { timeout: 3000 });
+    expect(host.textContent).toContain("设置 › 这台电脑");
+    await click(button("去改默认"));
+    expect(went).toEqual(["m/mac"]);
+  });
+});
 
 describe("project management (v2)", () => {
   const names = (sel: string) => [...host.querySelectorAll(sel)].map((e) => e.firstChild?.textContent ?? "");
@@ -1873,17 +2022,14 @@ describe("project management (v2)", () => {
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false), { timeout: 3000 });
   });
 
-  it("asks before removing from the project's settings too, then leaves the project", async () => {
+  it("leaves removing and pinning to the project lists, not a new task's settings", async () => {
     const r = createDemo(new URLSearchParams("project-settings=1"));
     r.start();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
-    const went: string[] = [];
-    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={(to) => went.push(to)} onBack={() => undefined} />);
-    await click(button("移除项目…"));
-    expect(host.querySelector(".dialog")?.textContent).toContain("移除 foo？");
-    await click(button("移除"));
-    await vi.waitFor(() => expect(r.projectPrefs().hidden.map((h) => h.path)).toContain("/Users/me/Code/foo"), { timeout: 3000 });
-    await vi.waitFor(() => expect(went).toEqual([""]));
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    expect(document.querySelector(".sheet")).not.toBeNull();
+    expect(button("移除项目…")).toBeUndefined();
+    expect(button(/^(设为|取消)常用$/)).toBeUndefined();
   });
 
   it("shows a failed save as not done, and retries the same operation", async () => {

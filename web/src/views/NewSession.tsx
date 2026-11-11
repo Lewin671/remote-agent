@@ -18,6 +18,7 @@ import {
   modelLabel,
   inheritConfig,
   machineAgents,
+  autoIssueKind,
   newConfigIssue,
   switchMachine,
   machineName,
@@ -118,7 +119,7 @@ export function useMachineInfo(remote: Remote, machineId: string, agent: Agent) 
 }
 
 /** What the configuration says, part by part: the machine, the CLI, the
- * model and effort, and the mode. */
+ * model and effort, and the mode (a scheduled task's). */
 export function describeParts(cfg: NewConfig, m: MachineLike | undefined, info: ReturnType<typeof useMachineInfo>) {
   const def = defaultsOf(info.settings, cfg.agent);
   const slug = cfg.model || def.model || info.models?.defaultModel || "";
@@ -159,7 +160,7 @@ function setOf(c: NewConfig): AgentSet {
   return { agent: c.agent, model: c.model, effort: c.effort, mode: c.mode, standardContext: agentInfo(c.agent).standardContextOption && !!c.standardContext };
 }
 
-/** The mode a start with cfg will run in: the one chosen, else the CLI's
+/** The mode a start with cfg will run in: the one chosen (a scheduled task's), else the CLI's
  * effective default the machine reports, or that it follows the CLI's
  * own settings when nobody could read them. */
 function modeTextOf(cfg: NewConfig, m: MachineLike | undefined): string {
@@ -177,9 +178,12 @@ type Picked = { key: string; agent: Agent };
 type Latched = { key: string; machineId: string; agent: Agent; by: Partial<Record<Agent, NewConfig>> };
 
 /** The configuration and the create call of a new session in project key.
- * The project's settings name the machine and keep one set of model,
- * effort and mode per CLI; which CLI a start uses is picked next to the
- * box, the project remembering the last one used. */
+ * The project's settings name the machine and keep one set of model and
+ * effort per CLI; which CLI a start uses is picked next to the box, the
+ * project remembering the last one used. A new task has no approval mode:
+ * what is stored or was inherited is not read, none is stored, and the
+ * request says none, so the machine's default applies. A scheduled task
+ * that shares this hook holds its own mode in this page only. */
 export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?: string) {
   // Recomputed on every render: which session is latest changes with any
   // session's activity, not only when sessions come or go.
@@ -271,12 +275,13 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     const heldConfig = !base && held?.machineId === at.machineId && held?.by[a];
     if (heldConfig && !local?.sets[a] && !local?.machineId) return { ...heldConfig, ...at };
     const set = (!base && local?.sets[a]) || saved?.agents.find((x) => x.agent === a);
-    if (set) return { ...at, model: set.model, effort: set.effort, mode: set.mode, standardContext: set.standardContext };
+    // A stored set's mode is not read: a new task starts in the machine's default mode.
+    if (set) return { ...at, model: set.model, effort: set.effort, mode: !base && local?.sets[a] ? set.mode : ApprovalMode.UNSPECIFIED, standardContext: set.standardContext };
     // Another machine has its own models and defaults.
     if (!base && local?.machineId) return { ...at, model: "", effort: "", mode: ApprovalMode.UNSPECIFIED };
     // A draft begun before this CLI's sessions were fetched held nothing for it.
     const h = held?.by[a] ?? inherit(a);
-    return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: h?.mode ?? ApprovalMode.UNSPECIFIED, from: h?.from };
+    return { ...at, model: h?.model ?? "", effort: h?.effort ?? "", mode: ApprovalMode.UNSPECIFIED, from: h?.from };
   };
   const configured = configFor(agent);
   const info = useMachineInfo(remote, configured.machineId, configured.agent);
@@ -289,8 +294,9 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   const busy = start.running;
   const [error, setError] = useState("");
   const [configError, setConfigError] = useState("");
+  // The project's settings do not keep an approval mode: a scheduled task's choice lives in this page only.
   const save = (settings: { machineId?: string; agent?: Agent; sets?: AgentSet[] }, keepExisting = false) =>
-    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings, keepExisting }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
+    remote.changePrefs("settings", key, { id: crypto.randomUUID(), kind: "settings" as const, path: key, at: Date.now(), settings: settings.sets ? { ...settings, sets: settings.sets.map((x) => ({ ...x, mode: ApprovalMode.UNSPECIFIED })) } : settings, keepExisting }).then((ok) => setConfigError(ok ? "" : "项目设置没有保存，请重试"));
   // Settings not stored yet begin with where and on which CLI it starts now.
   const whole = () => (saved ? {} : { machineId: baseMachine, agent });
   /** Changes one CLI's set, or the machine: config is configFor of a CLI
@@ -318,14 +324,16 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // What a start would send. While one's outcome is unknown, only what the
   // user changed counts: the message as sent (trimmed), and the settings
   // only if they chose others, cfg being that request's own until then.
-  const payloadFor = (prompt: string, mode?: ApprovalMode): StartPayload => ({
+  const payloadFor = (prompt: string): StartPayload => ({
     machineId: cfg.machineId,
     req: {
       cwd: cfg.cwd,
       prompt: prompt.trim(),
       model: cfg.model,
       effort: cfg.effort,
-      mode: mode ?? cfg.mode,
+      // Unspecified: the machine resolves its own default. Only a request
+      // already sent keeps the mode it went with.
+      mode: cfg.mode,
       agent: cfg.agent,
       standardContext: agentInfo(cfg.agent).standardContextOption && !!cfg.standardContext,
       // The images are part of what is started: other images, another start.
@@ -335,11 +343,11 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   });
   /** Whether sending prompt now would be a different start from the one
    * whose outcome is unknown. */
-  const changes = (prompt: string, mode?: ApprovalMode): boolean => {
+  const changes = (prompt: string): boolean => {
     const pending = current.payload;
     if (!pending) return false;
     // Renewing an upload changes only its transport ID, never the unknown request.
-    const wanted = payloadFor(prompt, mode);
+    const wanted = payloadFor(prompt);
     wanted.req.imageIds = pending.req.imageIds;
     wanted.req.fileIds = pending.req.fileIds;
     return JSON.stringify(wanted) !== JSON.stringify(pending) || start.images.length !== tray.items.length ||
@@ -349,15 +357,15 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // gets them again (the tray keeps them prepared).
   const tray = useTray(remote, "new:" + key, cfg.machineId, maxImages(machine));
   const [, redraw] = useState(0);
-  const create = async (prompt: string, mode?: ApprovalMode, terminal = false) => {
+  const create = async (prompt: string, terminal = false) => {
     // One request at a time, whichever page sent the one on its way.
     if (start.running) return false;
     // A different start gives up the unknown one; the same start, however
     // it was typed, is retried as the same request.
-    if (changes(prompt, mode)) abandon();
+    if (changes(prompt)) abandon();
     // While an earlier attempt's outcome is unknown, only it is retried.
     const retry = current.frozen;
-    const sent = current.next(payloadFor(prompt, mode));
+    const sent = current.next(payloadFor(prompt));
     if (!retry) { start.page = { local, picked: pick, latched: held }; start.images = tray.items.map((i) => ({ key: i.key, prepared: i.prepared })); }
     const { payload, slot } = sent;
     const open = fromHere(go);
@@ -439,13 +447,13 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     // own CLI's settings, so this is only ever another CLI's, picked since.
     else if (held && held.by[agent] === undefined && !unread && inherit(agent)) setLatched({ ...held, by: { ...held.by, [agent]: inherit(agent) } });
   });
-  // Full access, or a default nobody knows, is confirmed first.
   const dm = defaultModeOf(machine, cfg.agent);
   const modeText = modeTextOf(cfg, machine);
   const parts = describeParts(cfg, machine, info);
   // The machine is named only where there is more than one to mean.
   // The model only once one is known: a CLI with none chosen yet says nothing of it.
-  const summary: Summary = { agent: agentName(cfg.agent), mode: modeText, machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.slug || info.loading ? parts.label : "" };
+  // The model's placeholder is written too, so the capsule is never empty.
+  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label };
   return {
     remote,
     go,
@@ -467,6 +475,8 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     // The CLI's last settings are still being fetched: no session starts before.
     reading: unread && remote.conn === "online",
     issue: newConfigIssue(cfg.agent, parts.slug, cfg.mode || dm.mode, info.models?.models),
+    // The same, told apart for a new task, whose mode is the machine's default.
+    issueKind: autoIssueKind(cfg.agent, parts.slug, cfg.mode || dm.mode, info.models?.models),
     parts,
     tray,
     attachWhy: attachBlocked(remote, machine),
@@ -625,9 +635,14 @@ export function NewBox({
         </Banner>
       )}
       {ns.configFallback && <Banner>{ns.configFallback}</Banner>}
-      {ns.issue && (
-        <Banner kind="warn" action="改模式" onAction={() => setConfig("mode")}>
-          {ns.issue}
+      {ns.issueKind === "model" && (
+        <Banner kind="warn" action="换模型" onAction={() => setConfig("model")}>
+          这个模型没有自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认
+        </Banner>
+      )}
+      {ns.issueKind === "account" && (
+        <Banner kind="warn" action="去改默认" onAction={() => ns.go("m/" + ns.cfg.machineId)}>
+          当前账户不支持自动模式，而 {machineName(ns.machine)} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始
         </Banner>
       )}
       {ns.configError && <Banner kind="warn" action="重试保存" onAction={() => ns.setCfg(ns.cfg)}>{ns.configError}</Banner>}
@@ -745,18 +760,26 @@ export function NewBox({
   );
 }
 
+/** The pages of the settings; 审批模式 is a scheduled task's only. */
 type Pick = "" | "machine" | "model" | "mode";
 
-/** 项目设置: the machine, and the model and mode of the CLI picked next to
- * the box. Another CLI's set is reached by picking that CLI there. */
-export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
+/** 项目设置: the machine (where the account has more than one), and the
+ * model of the CLI picked next to the box; a new task has no approval mode
+ * of its own. Another CLI's set is reached by picking that CLI there. With
+ * one machine the model is all there is, so its page opens at once.
+ * scheduled: a scheduled task's settings, which keep the project block,
+ * the 权限 row and the project's actions. */
+export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false, lockMachine = false }: { ns: NewSession; onClose: () => void; start?: Pick; scheduled?: boolean; lockMachine?: boolean }) {
   const taskEditing = scheduled && lockMachine;
+  const { remote, p, machine } = ns;
+  const manyMachines = remote.machines.size > 1;
+  const lone = !scheduled && !manyMachines;
+  const start = asked || (lone ? "model" : "");
   const [pick, setPick] = useState<Pick>(start);
   const [removing, setRemoving] = useState(false);
   const [allModels, setAllModels] = useState(false);
   // Opened right at one setting: done with it is done with the sheet.
   const back2 = () => (start ? onClose() : setPick(""));
-  const { remote, p, machine } = ns;
   // The CLI was picked next to the box: the sheet is that CLI's settings and no other's.
   const agent = ns.cfg.agent;
   const cfg = ns.configFor(agent);
@@ -864,6 +887,25 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
             />
           </>
         )}
+        {agentInfo(cfg.agent).standardContextOption && !scheduled && (
+          <>
+            <div className="fl">上下文窗口</div>
+            {parts.fixedWindow ? (
+              <div className="hint top">标准 200k · 这个模型只有标准窗口</div>
+            ) : (
+              <Segmented
+                className="full"
+                label="上下文窗口"
+                value={cfg.standardContext ? "std" : "1m"}
+                onChange={(v) => set({ standardContext: v === "std" })}
+                options={[
+                  { value: "1m", label: "1M" },
+                  { value: "std", label: "标准 200k" },
+                ]}
+              />
+            )}
+          </>
+        )}
       </>
     );
   } else if (pick === "mode") {
@@ -906,29 +948,35 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">正在读取这个项目上次的设置…</div>;
   return (
-    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick ? back2 : undefined} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head">
+    <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !(lone && !asked) ? back2 : undefined} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head">
       {body ?? (
         <>
-          <div className="list">
-            <div className="mi pid">
-              <Avatar name={projectName(cfg.cwd)} size="sm" />
-              <div className="mt">
-                {projectName(cfg.cwd)}
-                <div className="md mono"><PathText path={shortPath(cfg.cwd)} /></div>
+          {scheduled && (
+            <div className="list">
+              <div className="mi pid">
+                <Avatar name={projectName(cfg.cwd)} size="sm" />
+                <div className="mt">
+                  {projectName(cfg.cwd)}
+                  <div className="md mono"><PathText path={shortPath(cfg.cwd)} /></div>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="fl">新会话</div>
-          <div className="list">
-            <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
-              <span className="mt">机器</span>
-              <span className="mv">
-                <StateMark kind={machine?.online || !remote.listed ? "online" : "off"} />
-                {machineName(machine)}
-              </span>
-              <ChevronRight className="chev" />
-            </button>
-          </div>
+          )}
+          {(scheduled || manyMachines) && (
+            <>
+              <div className="fl">新会话</div>
+              <div className="list">
+                <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
+                  <span className="mt">机器</span>
+                  <span className="mv">
+                    <StateMark kind={machine?.online || !remote.listed ? "online" : "off"} />
+                    {machineName(machine)}
+                  </span>
+                  <ChevronRight className="chev" />
+                </button>
+              </div>
+            </>
+          )}
           {many && <div className="fl">{agentName(agent)}</div>}
           {open ? (
             <div className="hint top">正在读取这个项目上次的设置…</div>
@@ -939,29 +987,13 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
                 <span className="mv">{info.loading ? `读取 ${machineName(machine)} 的设置…` : parts.model}</span>
                 <ChevronRight className="chev" />
               </button>
-              {agentInfo(cfg.agent).standardContextOption && !scheduled && (
-                <div className="mi">
-                  <span className="mt">上下文</span>
-                  {parts.fixedWindow ? (
-                    <span className="mv">标准 200k · 这个模型只有标准窗口</span>
-                  ) : (
-                    <Segmented
-                      label="上下文窗口"
-                      value={cfg.standardContext ? "std" : "1m"}
-                      onChange={(v) => set({ standardContext: v === "std" })}
-                      options={[
-                        { value: "1m", label: "1M" },
-                        { value: "std", label: "标准 200k" },
-                      ]}
-                    />
-                  )}
-                </div>
+              {scheduled && (
+                <button className="mi" onClick={() => setPick("mode")}>
+                  <span className="mt">{taskEditing ? "权限" : "审批"}</span>
+                  <span className={"mv" + (modeTextOf(cfg, machine) === modeName(ApprovalMode.FULL_ACCESS) ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
+                  <ChevronRight className="chev" />
+                </button>
               )}
-              <button className="mi" onClick={() => setPick("mode")}>
-                <span className="mt">{taskEditing ? "权限" : "审批"}</span>
-                <span className={"mv" + (modeTextOf(cfg, machine) === modeName(ApprovalMode.FULL_ACCESS) ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
-                <ChevronRight className="chev" />
-              </button>
             </div>
           )}
           {info.error && (
@@ -969,8 +1001,8 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
             </Banner>
           )}
-          <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在句子里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>
-          {!taskEditing && (
+          {scheduled && <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在句子里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>}
+          {scheduled && !taskEditing && (
             <div className="list">
               <button className="mi link-row" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>
                 <span className="mt">{pinAction(remote, cfg.cwd).label}</span>
@@ -980,7 +1012,7 @@ export function ConfigSheet({ ns, onClose, start = "", scheduled = false, lockMa
               </button>
             </div>
           )}
-          {!taskEditing && removing && (
+          {scheduled && !taskEditing && removing && (
             <RemoveProjectAlert
               remote={remote}
               path={cfg.cwd}
@@ -1158,34 +1190,26 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
 }
 
 /** What the summary of the new-session settings says. */
-export type Summary = { agent: string; mode: string; machine: string; model: string };
+export type Summary = { agent: string; machine: string; model: string };
 
 /** The settings of a new session in one capsule, opening the project's
- * settings (design-system §6 新任务): the CLI, the mode, the machine and
- * the model; the effort and the window are in the settings. bare: the
- * sentence already names the CLI, so it is not written again. Only
- * 完全放行 is red, and it comes first. The machine's name gives way first
- * when the line is long, down to three letters; the mode and the model
- * only after it. */
+ * settings (design-system §6 新任务): the machine where the account has
+ * more than one, and the model; the effort and the window are in the
+ * settings. A new task has no approval mode to show. The CLI is written
+ * at the start only when nothing else names it (bare: the sentence
+ * already does). The machine's name gives way first when the line is
+ * long, down to three letters; the model only after it. */
 export function ConfigSummary({ summary, bare, onClick }: { summary: Summary; bare?: boolean; onClick: () => void }) {
-  const { agent, mode, machine, model } = summary;
-  const full = mode === modeName(ApprovalMode.FULL_ACCESS);
+  const { agent, machine, model } = summary;
+  const head = bare ? "" : agent;
   const sep = " · ";
-  const head = [full ? mode : "", bare ? "" : agent, full ? "" : mode].filter(Boolean);
-  const line = [...head, machine, model].filter(Boolean).join(sep);
+  const line = [head, machine, model].filter(Boolean).join(sep);
   return (
     <button className="tok project-summary" onClick={onClick} aria-label={`项目设置：${line}`}>
-      <span className="fx">
-        {head.map((h, i) => (
-          <span key={i}>
-            {i > 0 && sep}
-            {full && i === 0 ? <em>{h}</em> : h}
-          </span>
-        ))}
-      </span>
+      {head && <span className="fx">{head}</span>}
       {/* Each part brings the dot before it: a part cut short never leaves one hanging at its end. */}
-      {machine && <span className="mach">{(head.length > 0 ? sep : "") + machine}</span>}
-      {model && <span className="mdl">{(head.length > 0 || machine ? sep : "") + model}</span>}
+      {machine && <span className="mach">{(head ? sep : "") + machine}</span>}
+      {model && <span className="mdl">{(head || machine ? sep : "") + model}</span>}
       <ChevronRight />
     </button>
   );

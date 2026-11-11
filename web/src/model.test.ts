@@ -406,15 +406,14 @@ describe("new sessions follow the project", () => {
       sess({ model: "gpt-6-astra", effort: "medium", agent: Agent.CLAUDE, ...ctx, createdAt: timestampFromMs(5) }, { id: "b", updatedMs: 5n }),
     ];
     const c = inheritConfig(projects(list)[0], machines(true, true));
-    expect(c).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.AUTO, cwd: "/Users/me/Code/foo" });
+    expect(c).toMatchObject({ machineId: "m1", agent: Agent.CLAUDE, model: "gpt-6-astra", effort: "medium", mode: ApprovalMode.UNSPECIFIED, cwd: "/Users/me/Code/foo" });
     expect(c?.from?.id).toBe("b");
   });
 
-  it("keeps full access but treats plan as a passing state", () => {
-    const full = sess({ mode: ApprovalMode.FULL_ACCESS });
-    expect(inheritConfig(projects([full])[0], machines(true, true))?.mode).toBe(ApprovalMode.FULL_ACCESS);
-    const plan = sess({ mode: ApprovalMode.PLAN });
-    expect(inheritConfig(projects([plan])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
+  it("never inherits the approval mode: a new task starts in the machine's default", () => {
+    for (const mode of [ApprovalMode.ASK, ApprovalMode.AUTO, ApprovalMode.FULL_ACCESS, ApprovalMode.PLAN]) {
+      expect(inheritConfig(projects([sess({ mode })])[0], machines(true, true))?.mode).toBe(ApprovalMode.UNSPECIFIED);
+    }
   });
 
   it("keeps the last machine until the user picks another", () => {
