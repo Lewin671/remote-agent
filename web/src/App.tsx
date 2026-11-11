@@ -1,3 +1,4 @@
+import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
 import { authorityStartup } from "./authority-setup";
 import {
@@ -43,7 +44,7 @@ const Setup = lazy(() =>
   import("./views/Pairing").then((m) => ({ default: m.Setup })),
 );
 const AccountEntry = lazy(() => import("./views/AuthoritySetup").then(m => ({ default: m.AccountEntry })));
-const loading = <div className="center muted">加载中…</div>;
+const loading = <Startup />;
 // Keep brief tab/app switches from rebuilding the stream and terminal.
 const HIDDEN_GRACE_MS = 60_000;
 
@@ -195,9 +196,9 @@ export function App() {
       remote.stop();
     };
   }, [remote]);
-  // Reading what this browser kept takes a moment; the words come only if it takes long.
+  // Keep the HTML shell in place while reading the saved identity.
   if (remote === undefined)
-    return <div className="center muted late">加载中…</div>;
+    return loading;
   if (setupError)
     return (
       <div className="center">

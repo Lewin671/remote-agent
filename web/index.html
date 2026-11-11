@@ -13,9 +13,39 @@
     <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>remote-agent</title>
+    <script>
+      try {
+        var theme = localStorage.getItem("ra-theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch (_) {}
+    </script>
+    <style>
+      :root { color-scheme: light; --startup-paper: #fff; --startup-ink: #1d1d1f; --startup-muted: #6e6e73; }
+      :root[data-theme="dark"] { color-scheme: dark; --startup-paper: #000; --startup-ink: #f5f5f7; --startup-muted: #a1a1a6; }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) { color-scheme: dark; --startup-paper: #000; --startup-ink: #f5f5f7; --startup-muted: #a1a1a6; }
+      }
+      html, body, #root { height: 100%; }
+      body { margin: 0; background: var(--startup-paper); color: var(--startup-ink); }
+      .startup { box-sizing: border-box; min-height: 100%; max-width: 460px; margin: 0 auto;
+        padding: max(48px, calc(env(safe-area-inset-top) + 24px)) 24px 24px;
+        font: 17px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Segoe UI", sans-serif;
+        letter-spacing: -.01em; -webkit-font-smoothing: antialiased; }
+      .startup h1 { margin: 0; font-size: 34px; line-height: 1.14; font-weight: 600; letter-spacing: -.03em; }
+      .startup p { margin: 12px 0 0; color: var(--startup-muted); }
+      .startup a { display: inline-block; margin-top: 20px; color: inherit; }
+      .startup [hidden] { display: none; }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main id="startup" class="startup" aria-label="正在打开 remote-agent">
+        <h1>remote-agent</h1>
+        <p id="startup-status" role="status">正在打开…</p>
+        <a id="startup-retry" href="" hidden>重新加载</a>
+        <noscript><p>请启用 JavaScript 后重新加载。</p></noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

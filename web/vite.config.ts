@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import react from "@vitejs/plugin-react";
@@ -8,9 +9,13 @@ import { defineConfig, type Plugin } from "vite";
 // Builds carry the policy twice: in a meta tag, and in a _headers file for
 // hosts like Cloudflare Pages, since frame-ancestors only works as a real
 // header. It is left out of the dev server, which injects inline scripts.
+// The small theme script runs before any network dependency. Authorize its
+// exact bytes, in both policies, without allowing arbitrary inline scripts.
+const themeScript = readFileSync(new URL("./index.html", import.meta.url), "utf8").match(/<script>([\s\S]*?)<\/script>/)![1];
+const themeHash = createHash("sha256").update(themeScript).digest("base64");
 const policy = [
   "default-src 'self'",
-  "script-src 'self'",
+  `script-src 'self' 'sha256-${themeHash}'`,
   "style-src 'self' 'unsafe-inline'",
   // Session images are shown from decrypted bytes as blob: URLs.
   "img-src 'self' blob: data:",
@@ -31,8 +36,24 @@ function csp(): Plugin {
         // the parts fetched on demand are listed here for it to keep too, so
         // that they are there offline and after a release replaces them on the
         // server. (It finds them by their path, wherever it stands in the page.)
-        const parts = Object.keys(ctx.bundle ?? {}).filter((name) => /^assets\/.*\.(js|css)$/.test(name) && !html.includes("/" + name)).sort();
-        const keep = parts.length ? `\n    <meta name="on-demand-files" content="${parts.map((name) => "/" + name).join(" ")}">` : "";
+        // app-entry is imported after the HTML can paint, but is required
+        // for an offline launch just like a static script/style dependency.
+        const bundle = ctx.bundle ?? {};
+        const required = new Set<string>();
+        const visit = (name: string) => {
+          if (required.has(name)) return;
+          required.add(name);
+          const item = bundle[name];
+          if (item?.type !== "chunk") return;
+          for (const dependency of item.imports) visit(dependency);
+          for (const css of (item as typeof item & { viteMetadata?: { importedCss: Set<string> } }).viteMetadata?.importedCss ?? []) required.add(css);
+        };
+        for (const [name, item] of Object.entries(bundle)) {
+          if (item.type === "chunk" && item.facadeModuleId?.endsWith("/src/app-entry.tsx")) visit(name);
+        }
+        const parts = Object.keys(bundle).filter((name) => /^assets\/.*\.(js|css)$/.test(name) && !required.has(name) && !html.includes("/" + name)).sort();
+        const keep = (required.size ? `\n    <meta name="app-files" content="${[...required].sort().map((name) => "/" + name).join(" ")}">` : "") +
+          (parts.length ? `\n    <meta name="on-demand-files" content="${parts.map((name) => "/" + name).join(" ")}">` : "");
         return html.replace("<head>", `<head>\n    <meta http-equiv="Content-Security-Policy" content="${policy.join("; ")}">${keep}`);
       },
     },
