@@ -2,7 +2,7 @@ import Observation
 import RACore
 import SwiftUI
 
-/// 图片存储 · 这台手机 (Android's PhoneImageStoragePage): what the images
+/// 附件存储 · 这台手机 (Android's PhoneImageStoragePage): what the images
 /// waiting to be sent take, and what the cache of viewed images takes, each
 /// against its own limit. Clearing the cache keeps the images waiting.
 struct ImageStorageScreen: View {
@@ -13,9 +13,9 @@ struct ImageStorageScreen: View {
     var body: some View {
         let s = storage
         SettingsPage {
-            GroupLabel("图片存储 · \(thisDeviceWord)")
+            GroupLabel("附件存储 · \(thisDeviceWord)")
             GroupCard {
-                GRow("待发和待确认图片", value: s?.pending.map { "\(imageBytes($0)) / \(wholeBytes(PendingPolicy.draftLimit))" } ?? "读取中…")
+                GRow("待发和待确认附件", value: s?.pending.map { "\(imageBytes($0)) / \(wholeBytes(PendingPolicy.draftLimit))" } ?? "读取中…")
                 GRow("查看缓存", value: s?.cache.map { "\(imageBytes($0)) / \(wholeBytes(CipherStore.defaultImageLimit))" } ?? "读取中…")
                 GRow(
                     s?.clearing == true ? "正在清理…" : "清理查看缓存", action: true,
@@ -25,7 +25,7 @@ struct ImageStorageScreen: View {
             GroupNote("草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。查看缓存超过上限时先清最久没看的。")
             if let error = s?.error, !error.isEmpty { GroupBanner(error, tone: .error) }
         }
-        .navBar("图片存储")
+        .navBar("附件存储")
         // What 清理 in the confirmation does (debug builds).
         .debugSignal("images.clear") {
             guard let storage else { return }

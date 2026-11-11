@@ -59,7 +59,7 @@ enum Route: Hashable, Sendable {
     case notifications
     /// 连接检测.
     case connectionCheck
-    /// 图片存储 · 这台手机.
+    /// 附件存储 · 这台手机.
     case imageStorage
     /// 开源许可.
     case licenses

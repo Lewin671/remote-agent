@@ -300,9 +300,9 @@ struct MachineScreen: View {
         _ s: PBDaemonSettings, usage: PBImageStorageUsage?, enabled: Bool
     ) -> some View {
         let free = usage.map { $0.reclaimableBytes + $0.cacheBytes } ?? 0
-        GroupLabel("图片存储")
+        GroupLabel("附件存储")
         GroupCard {
-            GRow("上传的图片", value: usage.map(uploadsText) ?? "读取中…")
+            GRow("上传的图片和文件", value: usage.map(uploadsText) ?? "读取中…")
             GRow(
                 "空间上限", value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
             ) { picking = .imageQuota }

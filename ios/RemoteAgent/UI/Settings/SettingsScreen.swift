@@ -35,7 +35,7 @@ struct SettingsScreen: View {
                     NotificationsNote()
                     GroupLabel("本机存储")
                     GroupCard {
-                        GRow("图片存储", value: imagesUsed, chevron: true) { nav.open(.imageStorage) }
+                        GRow("附件存储", value: imagesUsed, chevron: true) { nav.open(.imageStorage) }
                     }
                     GroupLabel("外观")
                     GroupCard { themeRow }
