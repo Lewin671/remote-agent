@@ -815,7 +815,8 @@ fun DeviceScreen(id: String) {
                         rows =
                             listOf {
                                 GRow(
-                                    "移除这台机器",
+                                    // It asks first, as every row that ends in an ellipsis does (design-system §8).
+                                    "移除这台机器…",
                                     onClick = { confirm = true },
                                     danger = true,
                                     enabled =

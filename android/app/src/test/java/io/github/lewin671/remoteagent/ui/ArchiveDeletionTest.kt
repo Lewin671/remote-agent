@@ -51,13 +51,13 @@ class ArchiveDeletionTest {
             }
         }
         ui.onNodeWithText("已移除 · 保留的会话档案").assertExists()
-        ui.onNodeWithText("移除这台机器").assertDoesNotExist()
+        ui.onNodeWithText("移除这台机器…").assertDoesNotExist()
         ui.onNodeWithText("移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。").assertDoesNotExist()
         ui.onNodeWithText("让这台电脑重新加入并接续会话").assertExists()
         ui.onNodeWithText("删除这台电脑的记录…").assertExists()
         ui.runOnIdle { remote.showForTest(current) }
         ui.onNodeWithText("已移除 · 保留的会话档案").assertDoesNotExist()
-        ui.onNodeWithText("移除这台机器").assertExists()
+        ui.onNodeWithText("移除这台机器…").assertExists()
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
     }
 
@@ -102,7 +102,7 @@ class ArchiveDeletionTest {
         ui.onNodeWithText("让这台电脑重新加入并接续会话").assertDoesNotExist()
         ui.onNodeWithText("档案重接和删除记录，请在管理端（客户端）上操作。").assertExists()
         ui.runOnIdle { remote.showForTest(current.copy(isAuthority = false)) }
-        ui.onNodeWithText("移除这台机器").assertDoesNotExist()
+        ui.onNodeWithText("移除这台机器…").assertDoesNotExist()
         ui.onNodeWithText("请在管理端（客户端）上移除设备。").assertExists()
         ui.runOnIdle { remote.showForTest(current) }
         ui.onNodeWithText("删除这台电脑的记录…").assertDoesNotExist()
