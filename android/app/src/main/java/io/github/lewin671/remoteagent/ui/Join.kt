@@ -263,9 +263,9 @@ private fun JoinContent(app: RaApp) {
         Column(Modifier.fillMaxSize().background(p.paper).padding(24.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             Text("服务器不认识这台设备", style = T.s17b, color = p.ink)
-            Hint("可能已被移除，或服务已重建。电脑上的会话不受影响。")
+            Hint("可能已被移除，或服务已重建。电脑上的会话不受影响。", inset = 0.dp)
             RejoinButton(app, "用配对码重新加入")
-            Hint("会先删除这台手机上的账户密钥和缓存，再用配对码加入。")
+            Hint("会先删除这台手机上的账户密钥和缓存，再用配对码加入。", inset = 0.dp)
         }
         return
     }
@@ -378,7 +378,6 @@ private fun JoinContent(app: RaApp) {
                         )
                         Hint(
                             "返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。",
-                            Modifier.padding(horizontal = 16.dp),
                         )
                     }
                     JoinStep.Working -> {
@@ -390,7 +389,7 @@ private fun JoinContent(app: RaApp) {
                             T.s13,
                             Modifier.padding(horizontal = 16.dp),
                         )
-                        if (error.isNotEmpty()) Hint(error, Modifier.padding(horizontal = 16.dp))
+                        if (error.isNotEmpty()) Hint(error)
                     }
                     JoinStep.Form,
                     JoinStep.Scan -> {

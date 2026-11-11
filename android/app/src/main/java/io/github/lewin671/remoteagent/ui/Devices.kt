@@ -81,7 +81,7 @@ fun DevicesScreen() {
             GLabel("电脑 · 运行 CLI")
             val ms = state.machines.values.sortedBy { machineLabel(state, it.id) }
             if (ms.isEmpty())
-                Hint("还没有电脑", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
+                Hint("还没有电脑", Modifier.padding(bottom = 12.dp))
             else
                 Group(
                     rows =
@@ -154,7 +154,6 @@ fun DevicesScreen() {
                             io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t) +
                             "。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
                     else "正在读取成员状态…",
-                    Modifier.padding(horizontal = 16.dp),
                 )
             }
             Text(
@@ -175,7 +174,7 @@ fun DevicesScreen() {
             else
                 Hint(
                     addDeviceHint(state),
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    Modifier.padding(bottom = 8.dp),
                 )
             if (state.isAuthority) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
@@ -197,7 +196,7 @@ fun DevicesScreen() {
                 }
                 Hint(
                     "这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。",
-                    Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    Modifier.padding(bottom = 4.dp),
                 )
             }
             Spacer(Modifier.height(24.dp))
@@ -335,7 +334,7 @@ fun ClientScreen(id: String) {
             } else {
                 Hint(
                     "请在管理端（${state.authorityName}）上移除设备。",
-                    Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    Modifier.padding(bottom = 8.dp),
                 )
             }
         }

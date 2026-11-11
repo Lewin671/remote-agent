@@ -492,8 +492,8 @@ private fun HiddenBanner(state: RemoteState, key: String) {
             action = if (blocked == null && change != PrefsChanges.State.Saving) "重新添加" else null,
             onAction = { PrefsChanges.run(remote, PrefsOp.Unhide(key)) },
         )
-        if (blocked != null) Hint(blocked, color = pal.orangeInk)
-        if (change is PrefsChanges.State.Failed) Hint("没能保存：${change.error}", color = pal.red)
+        if (blocked != null) Hint(blocked, color = pal.orangeInk, inset = 12.dp)
+        if (change is PrefsChanges.State.Failed) Hint("没能保存：${change.error}", color = pal.red, inset = 12.dp)
     }
 }
 
@@ -1065,7 +1065,7 @@ fun PickProjectScreen() {
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     PageScaffold("新会话 · 选项目") {
-        Column(Modifier.weight(1f).verticalScrollFaded().padding(horizontal = 16.dp)) {
+        FormColumn(Modifier.weight(1f).verticalScrollFaded()) {
             ProjectPickList(state, onPick = { nav.projectNew(it) }, onNew = { nav.newProject() }, card = pal.gbg)
         }
     }

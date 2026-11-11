@@ -195,10 +195,10 @@ fun SessionScreen(sid: String) {
         } else Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f)) {
             val note = Modifier.padding(horizontal = 20.dp)
-            if (events.historyPartial) Hint("历史记录尚未读全。", note)
+            if (events.historyPartial) Hint("历史记录尚未读全。", note, inset = 0.dp)
             if (events.unavailableCount > 0)
-                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。", note)
-            events.liveError?.let { Hint(it, note) }
+                Hint("恢复前有 ${events.unavailableCount} 条记录不可读；后续可读记录照常显示。", note, inset = 0.dp)
+            events.liveError?.let { Hint(it, note, inset = 0.dp) }
             ChatPane(
                 state,
                 s,
@@ -735,7 +735,7 @@ private fun ChatPane(
             }
         }
         androidx.compose.runtime.CompositionLocalProvider(LocalDockMax provides dockMax) {
-            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = ChatSide))
+            if (s.info?.taskOwned == true) Hint("回复后，这个对话会移到会话列表", Modifier.padding(horizontal = ChatSide), inset = 0.dp)
             Bottom(
                 state,
                 s,

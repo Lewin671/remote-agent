@@ -392,7 +392,6 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
         }
     else Hint(
         if (machines.isEmpty()) noMachinesHint(state) else addDeviceHint(state),
-        Modifier.padding(horizontal = 28.dp),
     )
     Spacer(Modifier.height(12.dp))
 }
@@ -662,7 +661,7 @@ fun DeviceScreen(id: String) {
                 if (agents.any { !it.verified })
                     Hint(
                         "未验证的版本请在电脑上运行 remote-agent doctor",
-                        Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
+                        Modifier.padding(bottom = 12.dp),
                     )
             }
             val s = settings
@@ -670,7 +669,7 @@ fun DeviceScreen(id: String) {
                 !m.online ->
                     Hint(
                         "${machineLabel(state, id)} 不在线，连上后才能读取和修改新会话默认设置",
-                        Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp),
+                        Modifier.padding(bottom = 12.dp),
                     )
                 loadError.isNotEmpty() ->
                     Notice(
@@ -681,7 +680,7 @@ fun DeviceScreen(id: String) {
                         onAction = { attempt++ },
                     )
                 s == null ->
-                    Hint("读取中…", Modifier.padding(horizontal = 30.dp).padding(bottom = 12.dp))
+                    Hint("读取中…", Modifier.padding(bottom = 12.dp))
                 else -> {
                     val mAgents = machineAgents(m)
                     val currentAgent = if (activeAgent in mAgents) activeAgent!! else mAgents.firstOrNull() ?: DEFAULT_AGENT
@@ -807,9 +806,9 @@ fun DeviceScreen(id: String) {
             }
             DeleteMachineRecordsAction(id, state.isAuthority)
             if (!member && !state.isAuthority)
-                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。", Modifier.padding(horizontal = 30.dp))
+                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。")
             if (member) {
-                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用", Modifier.padding(horizontal = 30.dp))
+                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
                 else if (state.isAuthority)
                     Group(
                         rows =
@@ -828,12 +827,10 @@ fun DeviceScreen(id: String) {
                                 )
                             },
                     )
-                Text(
+                Hint(
                     if (state.isAuthority) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
                     else "请在管理端（${state.authorityName}）上移除设备。",
-                    style = T.s13,
-                    color = p.ink2,
-                    modifier = Modifier.padding(horizontal = 30.dp, vertical = 8.dp),
+                    Modifier.padding(bottom = 8.dp),
                 )
             }
             if (remove.error.isNotEmpty())
@@ -1291,10 +1288,9 @@ fun PairScreen(replacesDeviceId: String = "") {
     AuthorityStartEffect(model) { model.enter() }
     DisposableEffect(model) { onDispose { model.leave() } }
     PageScaffold("添加设备") {
-        Column(
+        FormColumn(
             Modifier.fillMaxWidth()
-                .verticalScrollFaded()
-                .padding(horizontal = 16.dp),
+            .verticalScrollFaded(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Hint("电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。")

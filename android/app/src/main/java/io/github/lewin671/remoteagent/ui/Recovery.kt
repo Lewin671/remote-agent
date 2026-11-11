@@ -64,10 +64,10 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     when (page) {
         "recovery" -> RotateRecoveryScreen { page = "overview" }
         "handoff" -> if (!state.isAuthority) HandoffPreparation { page = "overview" } else PageScaffold("交接管理权", onBack = { page = "overview" }) {
-            Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(16.dp)) { HandoffControls() }
+            FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) { HandoffControls() }
         }
         "pending" -> PageScaffold("未完成的安全操作", onBack = { page = "overview" }) {
-            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            FormColumn(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
                 Hint("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
                 PillButton("继续原操作", {
                     busy = true
@@ -117,8 +117,8 @@ internal fun AccountSecurityContent(
                 { GRow("当前管理端", if (state.isAuthority) "本机" else state.authorityName) },
                 { GRow("远程控制有效期", io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t)) },
             ) + if (state.isAuthority) listOf<@Composable () -> Unit>({ GRow("现在续期", action = true, onClick = onRenew) }) else emptyList())
-            Hint("回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            if (!state.isAuthority) Hint("请打开${state.authorityName}续期。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Hint("回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。", Modifier.padding(bottom = 8.dp))
+            if (!state.isAuthority) Hint("请打开${state.authorityName}续期。", Modifier.padding(bottom = 8.dp))
             if (state.isAuthority) Group(rows = listOf(
                 { GRow("恢复码", chevron = true, onClick = onRecovery) },
                 { GRow("交接管理权", chevron = true, onClick = onHandoff) },
@@ -170,11 +170,10 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
 
     PageScaffold("用恢复码找回管理权", onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
-        Column(
+        FormColumn(
             Modifier.fillMaxWidth()
-                .verticalScrollFaded()
-                .imePadding()
-                .padding(horizontal = 16.dp),
+            .verticalScrollFaded()
+            .imePadding(),
         ) {
             val s = submission
             if (s == null) {
@@ -515,11 +514,10 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
 
     PageScaffold("新建账户", onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
-        Column(
+        FormColumn(
             Modifier.fillMaxWidth()
-                .verticalScrollFaded()
-                .imePadding()
-                .padding(horizontal = 16.dp),
+            .verticalScrollFaded()
+            .imePadding(),
         ) {
             val c = created
             if (c == null) {
@@ -656,11 +654,10 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
     }
     PageScaffold("重建安全域", onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
-        Column(
+        FormColumn(
             Modifier.fillMaxWidth()
-                .verticalScrollFaded()
-                .imePadding()
-                .padding(horizontal = 16.dp),
+            .verticalScrollFaded()
+            .imePadding(),
         ) {
             val c = created
             if (c == null) {
@@ -772,11 +769,10 @@ internal fun RotateRecoveryContent(
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     PageScaffold("恢复码", onBack = onBack) {
-        Column(
+        FormColumn(
             Modifier.fillMaxWidth()
-                .verticalScrollFaded()
-                .imePadding()
-                .padding(horizontal = 16.dp),
+            .verticalScrollFaded()
+            .imePadding(),
         ) {
             val pv = prepared
             if (pv == null) {

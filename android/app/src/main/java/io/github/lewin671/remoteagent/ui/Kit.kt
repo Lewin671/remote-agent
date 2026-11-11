@@ -313,7 +313,7 @@ fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = tru
         scrimColor = Color.Black.copy(alpha = .35f),
         tonalElevation = 0.dp,
     ) {
-        androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides true, LocalHintInset provides 12.dp) {
             Column(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp).then(if (scroll) Modifier.verticalScroll(rememberScrollState()) else Modifier),
                 content = content,
@@ -322,15 +322,30 @@ fun Sheet(onClose: () -> Unit, scroll: Boolean = true, canDismiss: Boolean = tru
     }
 }
 
-/** 13 grey caption under a group or a sheet's content. */
+/**
+ * How far in from its container a note or a title over a group starts, so that it lies 28 dp from the screen's
+ * edge, where the group titles of a page are ([GLabel]). A container that is already 16 in (a sheet, a form
+ * column) gives 12.
+ */
+val LocalHintInset = androidx.compose.runtime.compositionLocalOf { 28.dp }
+
+/** 分组说明: 13 ink2 under a group, in line with the words of the group titles; [inset] overrides where it starts. */
 @Composable
-fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null) {
-    Text(text, style = T.s13, color = color ?: pal.ink2, modifier = modifier.padding(top = 8.dp))
+fun Hint(text: String, modifier: Modifier = Modifier, color: Color? = null, inset: Dp = LocalHintInset.current) {
+    Text(text, style = T.s13, color = color ?: pal.ink2, modifier = modifier.padding(horizontal = inset).padding(top = 8.dp))
+}
+
+/** A column that is 16 in from the screen's edge, as a form page's: its notes still start 28 in. */
+@Composable
+fun FormColumn(modifier: Modifier = Modifier, horizontalAlignment: Alignment.Horizontal = Alignment.Start, content: @Composable ColumnScope.() -> Unit) {
+    Column(modifier.padding(horizontal = 16.dp), horizontalAlignment = horizontalAlignment) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalHintInset provides 12.dp) { content() }
+    }
 }
 
 @Composable
 fun FieldLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text, style = T.s13, color = pal.ink2, modifier = modifier.padding(top = 12.dp, bottom = 6.dp))
+    Text(text, style = T.s13, color = pal.ink2, modifier = modifier.padding(horizontal = LocalHintInset.current).padding(top = 12.dp, bottom = 6.dp))
 }
 
 /** A choice in a sheet's list: title, optional description, a check when chosen; [icon] goes before the title. */

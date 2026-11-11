@@ -354,7 +354,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                         if (!allRuns && earlier.size > 5) TextAction("查看全部 ${earlier.size} 次", { allRuns = true }, Modifier.fillMaxWidth())
                     }
                 }
-            } else if (result == null && task.active == null) Hint("还没有运行", Modifier.padding(horizontal = 16.dp))
+            } else if (result == null && task.active == null) Hint("还没有运行")
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
                     Row(Modifier.fillMaxWidth().bottomLine(pal.sep).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -381,9 +381,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                     ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { beginEdit("name") }
                 }
             }
-            Hint(scheduleCreation(task, t), Modifier.padding(horizontal = 16.dp))
-            if (!writable) Hint("${machineLabel(state, machine)} 连上后才能修改、运行或删除。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
-            Hint("立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。", Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            Hint(scheduleCreation(task, t))
+            if (!writable) Hint("${machineLabel(state, machine)} 连上后才能修改、运行或删除。", Modifier.padding(bottom = 8.dp))
+            Hint("立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。", Modifier.padding(bottom = 8.dp))
         }
     }
     if (task != null) {
@@ -463,7 +463,7 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             BasicTextField(text, { text = it }, Modifier.weight(1f).fillMaxWidth().padding(16.dp),
                 textStyle = T.s15.copy(color = pal.ink), cursorBrush = SolidColor(pal.blue), readOnly = busy || !writable)
-            if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB", Modifier.padding(16.dp))
+            if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB", Modifier.padding(vertical = 16.dp), inset = 16.dp)
         }
         if (discard) Confirm("放弃修改？", "修改还没有保存。", "放弃", true, { discard = false }) { discard = false; close() }
     }
@@ -570,7 +570,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     Column(Modifier.fillMaxSize().background(pal.paper)) {
         if (current) SheetHead("定时发到这个对话", "取消", onClose) else PageBar("新任务", onClose)
         ConnBanner(state)
-        Column(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScrollFaded().padding(horizontal = 16.dp)) {
+        FormColumn(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScrollFaded()) {
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (blocked != null) Notice(blocked, tone = NoticeTone.WARN)
             FieldLabel("让 agent 做什么")

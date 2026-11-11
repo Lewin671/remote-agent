@@ -219,7 +219,7 @@ fun ProjectList(
     if (pinned.isNotEmpty()) Card(pinned.map { pr -> @Composable { row(pr) } })
     if (titled) Title("其他")
     if (others.isNotEmpty()) Card(others.map { pr -> @Composable { row(pr) } })
-    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(start = 12.dp, bottom = 12.dp))
+    if (q.isNotEmpty() && pinned.isEmpty() && others.isEmpty()) Hint("没有名字或路径里有「$q」的项目", Modifier.padding(bottom = 12.dp))
     Card(listOfNotNull(
         @Composable {
             Row(Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onNew), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -265,7 +265,7 @@ fun ManageProjectsScreen() {
         seenRev = rev
     }
     PageScaffold("项目管理") {
-        Column(Modifier.weight(1f).verticalScrollFaded().padding(horizontal = 16.dp)) {
+        FormColumn(Modifier.weight(1f).verticalScrollFaded()) {
             if (elsewhere) Notice("项目列表已在另一客户端更新", Modifier.padding(vertical = 4.dp), action = "知道了", onAction = { elsewhere = false })
             ProjectList(state, onNew = { adding = true }, card = p.gbg) { pr ->
                 // The name makes the project the home page's scope and goes there (client-v27); it only changes this device.
