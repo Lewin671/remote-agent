@@ -39,6 +39,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -544,16 +546,20 @@ private fun ChatPane(
     // never turn it off, even while the layout has not caught up.
     val followState = remember { Follow() }
     val unseen = remember { NewMessages() }
+    // Which rows are new, to play their entrance (§4 动效); none of the rows a session is opened with.
+    val entrances = remember(s.id) { RowEntrances() }
     fun show(next: ChatProjectionWorker.Rows?) {
         if (next == null || next.version <= rows.value.version) return
         // History joining in front is not new, and the reader stays where they were.
         val joined = joinedRows(rows.value, next)
+        entrances.rows(next.items, joined > 0)
         if (joined > 0 && !followState.on) {
             unseen.joined(joined)
             list.keepPlace(rows.value.items.map { it.key }, next.items.map { it.key }, joined)
-        } else if (joined > 0) {
-            // Following: the end from the first frame of the longer list. Left to the list, it
-            // would keep the index on a long history and show older rows for a frame.
+        } else if (joined > 0 || rows.value.items.isEmpty() && next.items.isNotEmpty()) {
+            // Following: the end from the first frame of the longer list, and of a history shown for the
+            // first time. Left to the list, it would keep the index on a long history and show older
+            // rows for a frame.
             list.requestScrollToItem(next.items.size + d.tools.size + outbox.size + 3)
         }
         rows.value = next
@@ -599,6 +605,8 @@ private fun ChatPane(
     val dragged by list.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged, atBottom) { followState.observe(dragged, atBottom) }
     val follow = followState.on
+    var chatHeight by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    val endIndex by rememberUpdatedState(items.size + d.tools.size + outbox.size + 3)
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     // The dock appearing or going also moves the bottom.
     LaunchedEffect(
@@ -615,6 +623,14 @@ private fun ChatPane(
         if (follow && items.isNotEmpty())
             list.scrollToItem(items.size + d.tools.size + outbox.size + 3)
         if (follow) unseen.saw(items.size)
+        // A bubble opening or the dock coming moves the end for a few frames: stay on it, frame by frame.
+        if (follow && items.isNotEmpty()) list.pinBottom({ endIndex }, { followState.on }, { list.moved() })
+    }
+    // So does the message box growing and shrinking, which changes how tall the chat is.
+    LaunchedEffect(Unit) {
+        snapshotFlow { chatHeight }.collectLatest { h ->
+            if (h > 0 && followState.on && endIndex > 3) list.pinBottom({ endIndex }, { followState.on }, { list.moved() })
+        }
     }
     LaunchedEffect(atBottom) { if (atBottom) unseen.saw(items.size) }
     val jump = ScheduleJump.requested[s.id]
@@ -630,8 +646,13 @@ private fun ChatPane(
     val density = LocalDensity.current
     val dockMax = with(density) { maxOf(240.dp, (shownHeight * 0.6f).toDp()) }
 
+    // What waits under the chat: messages sent from here and messages queued behind the running turn.
+    val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
+    val sentHere = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
+    entrances.outgoing(sentHere.map { "out" + it.requestId } + visiblePending.map { "pending-${it.id}" })
+
     Column(modifier.onSizeChanged { shownHeight = it.height }) {
-        Box(Modifier.weight(1f)) {
+        Box(Modifier.weight(1f).onSizeChanged { chatHeight = it.height }) {
             val chatCtx =
                 ChatContext(
                     s.id,
@@ -661,16 +682,19 @@ private fun ChatPane(
                             )
                         }
                     items(items, key = { it.key }) {
-                        ChatItemView(it, agentName(s.agent()), cwd, home) { requestId, text ->
-                            // A message the session ended before writing: text and images back.
-                            val o = Outbox.find(s.id, requestId)
-                            if (o != null) putBack(remote, s.id, o)
-                            else {
-                                val accepted = d.accepted[requestId]
-                                val input = d.inputDetails[requestId]
-                                putBackReferences(remote, s.id, text,
-                                    accepted?.files?.takeIf { it.isNotEmpty() } ?: input?.filesList.orEmpty(),
-                                    accepted?.imageIds?.takeIf { it.isNotEmpty() } ?: input?.imageIdsList.orEmpty())
+                        val kind = remember(it.key) { entrances.take(it.key) }
+                        Box(Modifier.entrance(kind)) {
+                            ChatItemView(it, agentName(s.agent()), cwd, home, settling = kind == Entrance.SETTLE) { requestId, text ->
+                                // A message the session ended before writing: text and images back.
+                                val o = Outbox.find(s.id, requestId)
+                                if (o != null) putBack(remote, s.id, o)
+                                else {
+                                    val accepted = d.accepted[requestId]
+                                    val input = d.inputDetails[requestId]
+                                    putBackReferences(remote, s.id, text,
+                                        accepted?.files?.takeIf { it.isNotEmpty() } ?: input?.filesList.orEmpty(),
+                                        accepted?.imageIds?.takeIf { it.isNotEmpty() } ?: input?.imageIdsList.orEmpty())
+                                }
                             }
                         }
                     }
@@ -687,35 +711,35 @@ private fun ChatPane(
                                 onAction = { remote.retryEvents(s.id) },
                             )
                         }
-                    val visiblePending =
-                        if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2)
-                        else pendingInputs
                     items(visiblePending.size, key = { "pending-${visiblePending[it].id}" }) { i ->
-                        PendingBubble(
-                            s.id,
-                            visiblePending[i],
-                            events,
-                            i + 1,
-                            pendingInputs.size,
-                            state,
-                            remote,
-                            if (status == Status.STARTING) agentName(s.agent()) else null,
-                        )
+                        Box(Modifier.entrance(remember { entrances.take("pending-${visiblePending[i].id}") })) {
+                            PendingBubble(
+                                s.id,
+                                visiblePending[i],
+                                events,
+                                i + 1,
+                                pendingInputs.size,
+                                state,
+                                remote,
+                                if (status == Status.STARTING) agentName(s.agent()) else null,
+                            )
+                        }
                     }
                     if (pendingInputs.size > 3 && !allPending)
                         item {
                             TextAction("还有 ${pendingInputs.size - 2} 条排队 展开", { allPending = true }, Modifier.padding(horizontal = ChatSide), style = T.s13)
                         }
                     // Messages from this device, until the chat shows them.
-                    val pending = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
-                    items(pending, key = { "out" + it.requestId }) { o ->
-                        OutgoingView(
-                            s.id,
-                            o,
-                            d.inputs[o.requestId],
-                            d.failures[o.requestId],
-                            onTerminal,
-                        )
+                    items(sentHere, key = { "out" + it.requestId }) { o ->
+                        Box(Modifier.entrance(remember { entrances.take("out" + o.requestId) })) {
+                            OutgoingView(
+                                s.id,
+                                o,
+                                d.inputs[o.requestId],
+                                d.failures[o.requestId],
+                                onTerminal,
+                            )
+                        }
                     }
                     item { Spacer(Modifier.height(8.dp)) }
                 }
@@ -723,14 +747,19 @@ private fun ChatPane(
             // The chat fades out under the segmented control and strips, as the content does under glass.
             Box(Modifier.fillMaxWidth().height(12.dp).background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(p.paper, p.paper.copy(alpha = 0f)))))
             val fresh = unseen.count(items.size)
-            // Only for what came in while reading back; the list keeps following otherwise.
-            if (!atBottom && fresh > 0) {
-                GlassCapsule(
-                    { scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } },
-                    Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
-                ) {
+            var shownFresh by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+            if (fresh > 0) shownFresh = fresh
+            // Only for what came in while reading back; the list keeps following otherwise. It rises
+            // in and fades out (§4 动效).
+            Reveal(
+                visible = !follow && !atBottom && fresh > 0,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp),
+                enter = Motion.appear(Motion.BASE, riseDp = Motion.BUBBLE_RISE_DP),
+                exit = Motion.vanish(Motion.BASE, shrink = false),
+            ) {
+                GlassCapsule({ scope.launch { list.animateScrollToItem(list.layoutInfo.totalItemsCount - 1) } }) {
                     Spacer(Modifier.width(6.dp))
-                    IconText(Lucide.ArrowDown, "$fresh 条新消息", p.ink, T.s13)
+                    IconText(Lucide.ArrowDown, "$shownFresh 条新消息", p.ink, T.s13)
                 }
             }
         }
@@ -945,6 +974,7 @@ private fun OutgoingView(
             failed = failed,
             links = links,
             padded = false,
+            animated = true,
         )
     }
 }

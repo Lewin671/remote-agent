@@ -1,6 +1,16 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
@@ -453,6 +463,10 @@ fun MeBubble(
     padded: Boolean = true,
     top: (@Composable () -> Unit)? = null,
     foldScheduled: Boolean = false,
+    /** The status line changes while it is shown (a message being sent): its words cross-fade and it closes when it goes. */
+    animated: Boolean = false,
+    /** This replaces the message just sent from here, whose status line it no longer has: the room it took closes. */
+    settling: Boolean = false,
 ) {
     val p = pal
     var expanded by remember(text) { mutableStateOf(false) }
@@ -468,14 +482,54 @@ fun MeBubble(
                 androidx.compose.foundation.text.selection.SelectionContainer { Text(text, style = T.s17, color = p.ink, maxLines = if (foldScheduled && !expanded) 6 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) long = it.hasVisualOverflow }) }
             }
         }
-        if (caption != null || links.isNotEmpty()) Row(Modifier.padding(top = 6.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (captionIcon != null) {
-                Mark(captionIcon, captionColor ?: p.ink2, iconSize(T.s13))
-                Spacer(Modifier.width(4.dp))
+        val shown = caption != null || links.isNotEmpty()
+        if (animated) {
+            // The words of the line cross-fade (120 ms) and its room opens or closes (200 ms).
+            val state = if (shown) CaptionState(caption, captionColor, captionIcon, links.map { it.first }) else null
+            AnimatedContent(
+                state,
+                contentAlignment = Alignment.TopEnd,
+                transitionSpec = {
+                    (fadeIn(Motion.fadeInSpec(Motion.FAST)) togetherWith fadeOut(Motion.fadeOutSpec(Motion.FAST))) using
+                        SizeTransform(clip = true) { _, _ -> Motion.enter(Motion.BASE) }
+                },
+                label = "status-line",
+            ) { st ->
+                if (st != null) CaptionRow(st.caption, st.color, st.icon, st.links.map { label -> label to (links.firstOrNull { it.first == label }?.second ?: {}) }, foldScheduled, long, expanded) { expanded = !expanded }
             }
-            if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.s13, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded } else Modifier))
-            for ((label, go) in links) Text(label, style = T.s13, color = p.blue, modifier = Modifier.padding(start = 12.dp).heightIn(min = 32.dp).clickable(onClick = go).wrapContentHeight())
+        } else if (shown) CaptionRow(caption, captionColor, captionIcon, links, foldScheduled, long, expanded) { expanded = !expanded }
+        else if (settling) {
+            // The line the sent message had shows as empty room that closes, so the bubble does not jump.
+            val room = remember { Animatable(1f) }
+            LaunchedEffect(Unit) { room.animateTo(0f, Motion.enter(Motion.BASE)) }
+            val px = with(LocalDensity.current) { (6.dp + T.s13.lineHeight.toDp()).toPx() }
+            Spacer(Modifier.layout { m, c -> val pl = m.measure(c); layout(pl.width, (px * room.value).roundToInt()) {} })
         }
+    }
+}
+
+/** What a status line says, without what it does: the words, their colour, the icon before them, and the labels of its links. */
+private data class CaptionState(val caption: String?, val color: Color?, val icon: ImageVector?, val links: List<String>)
+
+@Composable
+private fun CaptionRow(
+    caption: String?,
+    captionColor: Color?,
+    captionIcon: ImageVector?,
+    links: List<Pair<String, () -> Unit>>,
+    foldScheduled: Boolean,
+    long: Boolean,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+) {
+    val p = pal
+    Row(Modifier.padding(top = 6.dp, end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (captionIcon != null) {
+            Mark(captionIcon, captionColor ?: p.ink2, iconSize(T.s13))
+            Spacer(Modifier.width(4.dp))
+        }
+        if (caption != null) Text(caption + if (foldScheduled && long) " · ${if (expanded) "收起" else "展开全文"}" else "", style = T.s13, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable(onClick = onToggle) else Modifier))
+        for ((label, go) in links) Text(label, style = T.s13, color = p.blue, modifier = Modifier.padding(start = 12.dp).heightIn(min = 32.dp).clickable(onClick = go).wrapContentHeight())
     }
 }
 
@@ -539,7 +593,7 @@ fun ToolLine(mark: ImageVector, markColor: Color, title: String, modifier: Modif
 }
 
 @Composable
-fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
+fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String = "", settling: Boolean = false, onPutBack: ((requestId: String, text: String) -> Unit)? = null) {
     val p = pal
     val chat = LocalChat.current
     when (item) {
@@ -549,12 +603,13 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
                 Text(quietScheduledLabel(item.times), Modifier.weight(1f), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Arrow(p.ink2, T.s13, down = !expanded, up = expanded)
             }
-            if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack) }
+            if (expanded) item.original.forEach { ChatItemView(it, agent, cwd, home, onPutBack = onPutBack) }
         }
         is ChatItem.User -> MeBubble(
             sentBubbleText(item.text, item.images.isNotEmpty(), item.files.isNotEmpty()),
             caption = item.from,
             foldScheduled = item.from?.startsWith("定时任务 · ") == true,
+            settling = settling,
             top = if (item.images.isNotEmpty() || item.files.isNotEmpty()) ({ Column {
                 if (item.images.isNotEmpty()) ImageRow(item.images, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(bottom = 4.dp))
                 FileChips(item.files)
