@@ -94,6 +94,12 @@ struct NewTaskScreen: View {
                 return try? await remote.listModels(key.machine, agent: key.agent)
             }
         }
+        .task(id: launch?.machineId) {
+            guard let machine = launch?.machineId else { return }
+            await HomeLaunch.settled(model)
+            if case .getSettings(let r)? = try? await context.remote.machineCommand(machine, getSettingsCommand()).kind,
+               !Task.isCancelled { modelPicker.received(r.settings, machine: machine) }
+        }
         #if DEBUG
         .task {
             // The settings sheet as `-newTaskSheet` names it (model, machine), for screenshots of sample data.
@@ -189,33 +195,46 @@ struct NewTaskCli: View {
                 }
             }
         } label: {
-            HStack(spacing: 4) {
-                AgentMark(agent, style: .subheadline, color: DS.ink2, named: true)
-                Text(agentName(agent)).lineLimit(1)
-                Arrow(DS.ink3, style: .caption2, direction: .down)
+            ViewThatFits(in: .horizontal) {
+                cliLabel(named: true).fixedSize()
+                cliLabel(named: false).fixedSize()
             }
             .newTaskAccessory()
         }
         .accessibilityLabel("CLI：\(agentName(agent))")
         .accessibilityIdentifier("new-task-cli")
     }
+    private func cliLabel(named: Bool) -> some View {
+        HStack(spacing: 4) {
+            AgentMark(agent, style: .subheadline, color: DS.ink2, named: true)
+            if named { Text(agentName(agent)).lineLimit(1) }
+            Arrow(DS.ink3, style: .caption2, direction: .down)
+        }
+    }
+
 }
 
 /// The model in the box, with a small ⌄: opens an anchored model panel.
 struct NewTaskModel: View {
-    let text: String
+    let summary: NewTaskModelSummary
+    let active: Bool
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Text(text).lineLimit(1).truncationMode(.tail)
+                HStack(spacing: 0) {
+                    if !summary.prefix.isEmpty { Text(summary.prefix).fixedSize() }
+                    Text(summary.model).lineLimit(1).truncationMode(.tail)
+                    if !summary.effort.isEmpty { Text(" · " + summary.effort).fixedSize() }
+                }
                 Arrow(DS.ink3, style: .caption2, direction: .down)
             }
             .newTaskAccessory()
+            .background(active ? DS.fill : .clear, in: RoundedRectangle(cornerRadius: 12))
         }
-        .buttonStyle(PressStyle())
-        .accessibilityLabel("模型：\(text)")
+        .buttonStyle(.plain)
+        .accessibilityLabel(summary.accessibilityLabel)
         .accessibilityHint("选择模型和推理强度")
         .accessibilityIdentifier("new-task-model")
     }
@@ -229,5 +248,33 @@ extension View {
             .padding(.horizontal, 6)
             .frame(minHeight: DS.minHit)
             .contentShape(Rectangle())
+    }
+}
+
+/// Measure both complete chips before allocating space: the CLI loses its name
+/// first; the model receives all remaining width and keeps the effort intact.
+struct NewTaskToolsLayout: Layout {
+    static func widths(available: CGFloat, cli: CGFloat, compactCLI: CGFloat, model: CGFloat) -> (cli: CGFloat, model: CGFloat) {
+        let gap: CGFloat = cli > 0 ? 2 : 0
+        let used = cli + gap + model <= available ? cli : compactCLI
+        return (used, min(model, max(0, available - used - gap)))
+    }
+    private func widths(_ proposal: ProposedViewSize, _ views: Subviews) -> (cli: CGFloat, model: CGFloat) {
+        let cli = views.count == 2 ? views[0].sizeThatFits(.unspecified).width : 0
+        let compact = views.count == 2 ? views[0].sizeThatFits(.init(width: 0, height: nil)).width : 0
+        let model = views[views.count - 1].sizeThatFits(.unspecified).width
+        return Self.widths(available: proposal.width ?? cli + model + 2, cli: cli, compactCLI: compact, model: model)
+    }
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let sizes = widths(proposal, subviews)
+        return CGSize(width: sizes.cli + sizes.model + (subviews.count == 2 ? 2 : 0), height: DS.minHit)
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let sizes = widths(.init(width: bounds.width, height: bounds.height), subviews)
+        if subviews.count == 2 {
+            subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: .init(width: sizes.cli, height: bounds.height))
+        }
+        subviews[subviews.count - 1].place(at: CGPoint(x: bounds.minX + sizes.cli + (subviews.count == 2 ? 2 : 0), y: bounds.minY),
+                                         anchor: .topLeading, proposal: .init(width: sizes.model, height: bounds.height))
     }
 }

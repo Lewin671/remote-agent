@@ -45,6 +45,7 @@ struct NewSessionBox: View {
     // Native menus can temporarily collapse the keyboard's prediction strip.
     @State private var cliViewport: CGFloat?
     @State private var keyboardVisible = false
+    @State private var modelPanelHeight: CGFloat = 0
 
     private struct Follow: Equatable {
         var initial: NewConfig?
@@ -160,12 +161,17 @@ struct NewSessionBox: View {
                 } accessories: {
                     AttachMenu(images: images)
                     if let c = config, let parts = sheet.parts {
-                        if parts.cli != nil {
-                            NewTaskCli(agents: agents, agent: c.agent) { switchAgent(draft, c, to: $0) }
-                                .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["cli": $0] }
+                        let summary = newTaskModelSummary(sheet.picker.config ?? c, models: sheet.models.list,
+                                                          settings: sheet.picker.settings(for: c), singleAgent: parts.cli == nil)
+                        NewTaskToolsLayout {
+                            if parts.cli != nil {
+                                NewTaskCli(agents: agents, agent: c.agent) { switchAgent(draft, c, to: $0) }
+                                    .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["cli": $0] }
+                            }
+                            NewTaskModel(summary: summary, active: modelOpen) { toggleModel(draft) }
+                                .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["model": $0] }
                         }
-                        NewTaskModel(text: parts.model) { toggleModel(draft) }
-                            .anchorPreference(key: NewTaskPanelAnchors.self, value: .bounds) { ["model": $0] }
+                        .layoutPriority(1)
                     }
                     Spacer(minLength: 0)
                     Button { start(draft) } label: { InkCircle(symbol: "arrow.up", enabled: canSend) }
@@ -188,14 +194,16 @@ struct NewSessionBox: View {
                         let height = min(600, max(0, box.minY - 8))
                         let width = min(420, max(0, box.width - 24))
                         let rect = CGRect(x: box.minX + 12, y: box.minY - 8 - height, width: width, height: height)
-                        NewTaskOutsideTouches(panel: modelOpen ? rect : nil, chip: geometry[chip],
+                        let panelRect = CGRect(x: rect.minX, y: rect.maxY - modelPanelHeight, width: width, height: modelPanelHeight)
+                        NewTaskOutsideTouches(panel: modelOpen ? panelRect : nil, chip: geometry[chip],
                                               cli: anchors["cli"].map { geometry[$0] },
                                               onCLI: { if keyboardVisible { cliViewport = viewport.size.height } },
                                               onClose: { closeModel(draft) })
                             .allowsHitTesting(false)
                         if modelOpen {
                             NewTaskModelPanel(picker: sheet.picker, models: sheet.models, settled: settled) { closeModel(draft) }
-                                .frame(width: width, height: height)
+                                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { modelPanelHeight = $0 }
+                                .frame(width: width, height: height, alignment: .bottom)
                                 .position(x: rect.midX, y: rect.midY)
                                 .transition(.opacity)
                         }

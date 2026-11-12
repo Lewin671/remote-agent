@@ -21,12 +21,28 @@ final class NewTaskModelPicker {
 
     private(set) var initial: NewConfig?
     var edited: NewConfig?
+    var allModels = false
+    private var settingsMachine: String?
+    private var daemonSettings: PBDaemonSettings?
+    func settings(for config: NewConfig) -> PBDaemonSettings? {
+        settingsMachine == config.machineId ? daemonSettings : nil
+    }
+    func received(_ settings: PBDaemonSettings, machine: String) {
+        settingsMachine = machine
+        daemonSettings = settings
+    }
+    func chooseModel(_ slug: String, models: PBListModelsResponse) {
+        guard let config else { return }
+        edited = chooseNewTaskModel(config, slug: slug, models: models, settings: settings(for: config))
+        allModels = false
+    }
     var isOpen: Bool { initial != nil }
     var config: NewConfig? { edited ?? initial }
 
     func open(_ config: NewConfig) {
         initial = config
         edited = nil
+        allModels = false
     }
 
     /// Follow settings that were still loading on open, but never replace a
@@ -40,6 +56,7 @@ final class NewTaskModelPicker {
     func cancel() {
         initial = nil
         edited = nil
+        allModels = false
     }
 
     /// Consume before dispatching the prefs op. Multiple close notifications
@@ -61,6 +78,7 @@ struct NewTaskPanelAnchors: PreferenceKey {
     }
 }
 
+/// The composer has its own compact controls; the settings sheets keep their layout.
 struct NewTaskModelPanel: View {
     let picker: NewTaskModelPicker
     let models: SummaryModels
@@ -68,28 +86,76 @@ struct NewTaskModelPanel: View {
     let onClose: () -> Void
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
-    @State private var settings: PBDaemonSettings?
     @State private var error = ""
     @AccessibilityFocusState private var announced: Bool
 
     var body: some View {
         if let c = picker.config {
             let blocked = prefsBlocked(model.state)
-            VStack(spacing: 0) {
-                SheetHead("模型", action: "完成", onAction: onClose)
+            NewTaskPanelLayout {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        if picker.allModels {
+                            Button { picker.allModels = false } label: {
+                                Label("全部模型", systemImage: "chevron.left").font(.headline)
+                            }
+                            .buttonStyle(.plain).tint(DS.blue)
+                            .accessibilityIdentifier("new-model-back")
+                        } else {
+                            Text("模型").font(.headline).ink(DS.ink)
+                        }
+                        Spacer()
+                        Button("完成", action: onClose).tint(DS.blue)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .frame(minHeight: 44)
                     .accessibilityFocused($announced)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        if let blocked { Banner(blocked).padding(.bottom, 8) }
-                        if !settled { Hint("正在读取这个项目上次的设置…") }
-                        ModelSettingsBody(config: c, models: models.list, modelsError: error, settings: settings,
-                                          machineName: machineLabel(model.state, id: c.machineId),
-                                          onEdit: { picker.edited = $0 })
-                            .disabled(!settled || blocked != nil)
+                    if let blocked { Banner(blocked).padding(.bottom, 8) }
+                    if !settled { Hint("正在读取这个项目上次的设置…") }
+                    if !picker.allModels, let ms = models.list {
+                        controls(c, ms).disabled(!settled || blocked != nil)
                     }
                 }
-                .scrollBounceBehavior(.basedOnSize)
-                .scrollDismissesKeyboard(.never)
+                if let ms = models.list {
+                    let selected = projectModel(c, models: ms, settings: picker.settings(for: c))
+                    let shown = shownModels(ms.models, picked: c.model.isEmpty ? nil : selected, all: picker.allModels)
+                    let more = !picker.allModels && shown.count < ms.models.count
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            let defaultID = defaultModelName(c, models: ms, settings: picker.settings(for: c))
+                            let standing = findModel(ms.models, id: defaultID) { $0.slug }
+                            let name = standing.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? defaultID
+                            row("默认" + (name.isEmpty ? "" : "（\(name)）"), checked: c.model.isEmpty) { pick("", ms) }
+                            ForEach(shown, id: \.slug) { m in
+                                row(m.displayName.isEmpty ? m.slug : m.displayName,
+                                    checked: !c.model.isEmpty && selected?.slug == m.slug) { pick(m.slug, ms) }
+                            }
+                            if more {
+                                Button { picker.allModels = true } label: {
+                                    HStack {
+                                        Text("全部模型")
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                    }.foregroundStyle(DS.ink2).frame(height: 44).contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("new-model-show-all")
+                            }
+                        }
+                        .font(.subheadline)
+                        .disabled(!settled || blocked != nil)
+                    }
+                    .id(picker.allModels)
+                    .scrollBounceBehavior(.basedOnSize)
+                    .scrollDismissesKeyboard(.never)
+                    .frame(idealHeight: CGFloat(shown.count + 1 + (more ? 1 : 0)) * 44)
+                    .accessibilityIdentifier("new-model-list")
+                } else {
+                    Group {
+                        if !error.isEmpty { Banner("没能读取模型列表，会用 \(agentName(c.agent)) 自己的默认模型：\(error)", tone: .warn) }
+                        else { LoadingRow("读取 \(machineLabel(model.state, id: c.machineId)) 的设置…", inset: 0) }
+                    }.frame(height: 120, alignment: .top)
+                }
             }
             .padding(12)
             .background(DS.popover)
@@ -113,10 +179,119 @@ struct NewTaskModelPanel: View {
                 }
                 guard !Task.isCancelled else { return }
                 if case .getSettings(let r)? = try? await context.remote.machineCommand(c.machineId, getSettingsCommand()).kind,
-                   !Task.isCancelled { settings = r.settings }
+                   !Task.isCancelled { picker.received(r.settings, machine: c.machineId) }
             }
         }
     }
+
+    @ViewBuilder private func controls(_ c: NewConfig, _ ms: PBListModelsResponse) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let effort = effortChoices(c, models: ms, settings: picker.settings(for: c)) {
+                if effort.efforts.count == 1 {
+                    Text("推理强度固定为 \(effort.efforts[0])").font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+                } else {
+                    Text("推理强度").font(.caption).ink(DS.ink2)
+                    NewTaskModelSegments(items: effort.efforts, selected: effort.selected) {
+                        var next = c; next.effort = $0; picker.edited = next
+                    }
+                }
+            }
+            if agentInfo(c.agent).standardContextOption {
+                let window = settingsContext(c, shown: projectModel(c, models: ms, settings: picker.settings(for: c)))
+                if window.fixed {
+                    Text(window.text).font(.footnote).ink(DS.ink2).padding(.vertical, 4)
+                } else {
+                    Text("上下文窗口").font(.caption).ink(DS.ink2)
+                    NewTaskModelSegments(items: ["1M", "标准 200k"], selected: c.standardContext ? "标准 200k" : "1M") {
+                        var next = c; next.standardContext = $0 == "标准 200k"; picker.edited = next
+                    }
+                }
+            }
+        }.accessibilityIdentifier("new-model-controls")
+    }
+
+    private func pick(_ slug: String, _ ms: PBListModelsResponse) {
+        Haptics.selection()
+        picker.chooseModel(slug, models: ms)
+    }
+
+    private func row(_ title: String, checked: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Text(title).lineLimit(1).ink(DS.ink)
+                Spacer(minLength: 0)
+                if checked { Image(systemName: "checkmark").foregroundStyle(DS.blue) }
+            }.frame(height: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(checked ? .isSelected : [])
+    }
+}
+
+private struct NewTaskModelSegments: View {
+    let items: [String]
+    let selected: String
+    let onPick: (String) -> Void
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(items, id: \.self) { item in
+                Button { Haptics.selection(); onPick(item) } label: {
+                    Text(item).font(.footnote).lineLimit(1).minimumScaleFactor(0.75)
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                        .foregroundStyle(item == selected ? DS.blue : DS.ink2)
+                        .background(item == selected ? DS.popover : .clear, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(2).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(item == selected ? .isSelected : [])
+            }
+        }.background(DS.fill, in: RoundedRectangle(cornerRadius: 14))
+    }
+}
+
+/// Pin the header/controls, give only the list the remaining height, and wrap
+/// short lists. The overlay receives the available height, never sizes the composer.
+struct NewTaskPanelLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 320
+        let natural = subviews.map { $0.sizeThatFits(.init(width: width, height: nil)).height }.reduce(0, +)
+        return CGSize(width: width, height: min(natural, proposal.height ?? natural))
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for (index, view) in subviews.enumerated() {
+            let height = index == subviews.count - 1 ? max(0, bounds.maxY - y) : view.sizeThatFits(.init(width: bounds.width, height: nil)).height
+            view.place(at: CGPoint(x: bounds.minX, y: y), anchor: .topLeading, proposal: .init(width: bounds.width, height: height))
+            y += height
+        }
+    }
+}
+
+struct NewTaskModelSummary: Equatable {
+    var model: String
+    var effort = ""
+    var prefix = ""
+    var accessibilityLabel: String { "模型：" + model + (effort.isEmpty ? "" : "，推理强度：" + effort) }
+}
+
+func newTaskModelSummary(_ c: NewConfig, models: PBListModelsResponse?, settings: PBDaemonSettings?, singleAgent: Bool) -> NewTaskModelSummary {
+    let m = models.flatMap { projectModel(c, models: $0, settings: settings) }
+    let id = c.model.isEmpty ? (defaultsFor(settings, agent: c.agent).model.isEmpty ? models?.defaultModel ?? "" : defaultsFor(settings, agent: c.agent).model) : c.model
+    let name = m.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? (id.isEmpty ? (models == nil ? "读取设置…" : "默认模型") : id)
+    let effort = models.flatMap { effortChoices(c, models: $0, settings: settings) }
+    return NewTaskModelSummary(model: name, effort: (effort?.efforts.count ?? 0) > 1 ? effort?.selected ?? "" : "",
+                               prefix: singleAgent ? agentName(c.agent) + " · " : "")
+}
+
+func chooseNewTaskModel(_ c: NewConfig, slug: String, models: PBListModelsResponse, settings: PBDaemonSettings?) -> NewConfig {
+    var next = c
+    next.model = slug
+    next.effort = ""
+    let m = projectModel(next, models: models, settings: settings)
+    let effort = effortChoices(c, models: models, settings: settings)?.selected ?? ""
+    next.effort = m?.efforts.contains(effort) == true ? effort : effortChoices(next, models: models, settings: settings)?.selected ?? ""
+    if m?.autoUnavailable == true && next.mode == .auto { next.mode = nil }
+    return next
 }
 
 /// Observe outside touches without a scrim or a competing SwiftUI gesture.

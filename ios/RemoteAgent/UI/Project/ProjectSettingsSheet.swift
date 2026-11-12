@@ -200,8 +200,8 @@ struct ProjectSettingsSheet: View {
     }
 }
 
-/// Shared by project/scheduling sheets and the new-task panel. Presentation owns
-/// loading, scrolling, focus and commit; these are the same choices everywhere.
+/// The full model controls for project and scheduling sheets. The new-task
+/// composer has its own compact panel; these sheets retain their layout.
 struct ModelSettingsBody: View {
     let config: NewConfig
     let models: PBListModelsResponse?

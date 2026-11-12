@@ -44,6 +44,61 @@ import Testing
         #expect(picker.close(target: original, settled: true, blocked: false) == nil)
     }
 
+    @Test func modelSummaryAndEffortFollowImmediateChoices() {
+        let ms = PBListModelsResponse.with {
+            $0.defaultModel = "first"
+            $0.models = [
+                .with { $0.slug = "first"; $0.displayName = "First model"; $0.efforts = ["low", "medium", "high"]; $0.defaultEffort = "medium" },
+                .with { $0.slug = "second"; $0.efforts = ["low", "high"]; $0.defaultEffort = "low" },
+                .with { $0.slug = "limited"; $0.efforts = ["low", "medium"]; $0.defaultEffort = "medium" },
+                .with { $0.slug = "fixed"; $0.efforts = ["medium"]; $0.defaultEffort = "medium" },
+                .with { $0.slug = "none" },
+            ]
+        }
+        var c = NewConfig(machineId: "mac", cwd: "/work/app")
+        #expect(newTaskModelSummary(c, models: ms, settings: nil, singleAgent: false) == .init(model: "First model", effort: "medium"))
+        #expect(newTaskModelSummary(c, models: nil, settings: nil, singleAgent: true) == .init(model: "读取设置…", prefix: "Codex · "))
+        let settings = withDefaults(PBDaemonSettings(), agent: .codex, model: "second", effort: "high")
+        #expect(newTaskModelSummary(c, models: ms, settings: settings, singleAgent: true) == .init(model: "second", effort: "high", prefix: "Codex · "))
+        #expect(chooseNewTaskModel(c, slug: "first", models: ms, settings: settings).effort == "high")
+        c.model = "second"
+        #expect(chooseNewTaskModel(c, slug: "first", models: ms, settings: nil).effort == "low")
+        c.model = ""
+        c.effort = "high"
+        let picker = NewTaskModelPicker()
+        picker.open(c)
+        picker.allModels = true
+        picker.allModels = false
+        #expect(picker.edited == nil && picker.isOpen)
+        picker.allModels = true
+        picker.chooseModel("second", models: ms)
+        #expect(!picker.allModels && picker.isOpen)
+        #expect(picker.config?.effort == "high")
+        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).accessibilityLabel == "模型：second，推理强度：high")
+        picker.chooseModel("limited", models: ms)
+        #expect(picker.config?.effort == "medium", "an unsupported effort falls back to the new model default")
+        picker.chooseModel("fixed", models: ms)
+        #expect(picker.config?.effort == "medium")
+        #expect(newTaskModelSummary(picker.config!, models: ms, settings: nil, singleAgent: false).effort.isEmpty)
+        picker.chooseModel("none", models: ms)
+        #expect(picker.config?.effort == "")
+        picker.chooseModel("", models: ms)
+        #expect(picker.config?.model == "" && picker.config?.effort == "medium")
+        #expect(picker.close(target: c, settled: true, blocked: false)?.effort == "medium")
+        #expect(picker.close(target: c, settled: true, blocked: false) == nil)
+    }
+
+    @Test func modelToolWidthsDropCLINameBeforeTruncatingModel() {
+        let full = NewTaskToolsLayout.widths(available: 300, cli: 100, compactCLI: 36, model: 180)
+        #expect(full.cli == 100 && full.model == 180)
+        let compact = NewTaskToolsLayout.widths(available: 250, cli: 100, compactCLI: 36, model: 180)
+        #expect(compact.cli == 36 && compact.model == 180)
+        let ellipsized = NewTaskToolsLayout.widths(available: 200, cli: 100, compactCLI: 36, model: 180)
+        #expect(ellipsized.cli == 36 && ellipsized.model == 162)
+        let single = NewTaskToolsLayout.widths(available: 200, cli: 0, compactCLI: 0, model: 280)
+        #expect(single.cli == 0 && single.model == 200)
+    }
+
     @Test func modelRefreshKeepsCachedChoicesEvenWhenRefreshFails() async {
         let models = SummaryModels()
         let key = SummaryModels.Key(machine: "mac", agent: .codex)
