@@ -384,6 +384,10 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       const sid = res.kind.value.session.id;
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
+      if (!remote.sessions.has(sid)) remote.openingSessions.set(sid, {
+        id: sid, machineId: payload.machineId, info: res.kind.value.session,
+        metaRev: 0n, lastSeq: 0n, updatedMs: BigInt(Date.now()), endedMs: 0n,
+      });
       if (!terminal) {
         tray.detach(taken);
         // A different message typed while this request was pending belongs

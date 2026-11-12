@@ -4152,3 +4152,28 @@ it.each(["retap", "outside", "typing", "escape"])("keeps the session draft focus
   expect(input.value).toBe("Keep this draft");
   expect(document.activeElement).toBe(input);
 });
+
+it("hands a new session to its chat with the first prompt before its listing arrives", async () => {
+  const r = demo();
+  const project = "/example/handoff";
+  const go = vi.fn();
+  let ns!: ReturnType<typeof useNewSession>;
+  function StartProbe() {
+    ns = useNewSession(r, project, go, "mac");
+    return null;
+  }
+  mount(<StartProbe />);
+  await act(async () => { await Promise.all([r.listModels("mac", Agent.CODEX), r.settings("mac")]); });
+  const info = create((await import("../gen/remoteagent/v1/local_pb")).SessionSchema, { id: "new-handoff", cwd: project, agent: Agent.CODEX, status: SessionStatus.STARTING });
+  const command = r.machineCommand.bind(r);
+  vi.spyOn(r, "machineCommand").mockImplementation((m, cmd, ...rest) => cmd?.case === "createSession"
+    ? Promise.resolve(create(CommandResultSchema, { kind: { case: "createSession", value: { session: info } } })) : command(m, cmd, ...rest));
+  await act(async () => { await ns.create("第一句话"); });
+  expect(go).toHaveBeenCalledWith("s/new-handoff", true);
+  expect(r.sessions.has(info.id)).toBe(false);
+  expect(r.openingSessions.get(info.id)?.info).toEqual(info);
+  await act(async () => root!.render(<SessionPage remote={r} session={r.openingSessions.get(info.id)!} onBack={() => {}} wide={false} />));
+  expect(host.querySelector(".session")).toBeTruthy();
+  expect(host.querySelector(".me")?.textContent).toContain("第一句话");
+  expect(host.querySelector("textarea")).toBeTruthy();
+});

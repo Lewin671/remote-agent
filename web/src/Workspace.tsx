@@ -81,7 +81,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
   const scheduling = [...remote.machines.keys()].some((id) => remote.supportsSchedules(id));
   const [kind, ...rest] = route.split("/");
   const arg = decodeURIComponent(rest.join("/"));
-  const session = kind === "s" ? remote.sessions.get(arg) : undefined;
+  const session = kind === "s" ? (remote.sessions.get(arg) ?? remote.openingSessions.get(arg)) : undefined;
   const scheduleSession = session?.info?.taskOwned && session.info.scheduledTaskId ? taskRoute(session.machineId, session.info.scheduledTaskId) : undefined;
   const back = () => (history.length > 1 ? history.back() : go(""));
   const main = useMainScrolled(route, wide);

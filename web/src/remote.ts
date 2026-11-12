@@ -761,6 +761,8 @@ export class Remote {
     location.hash = "/s/" + encodeURIComponent(run.session_id);
   }
   sessions = new Map<string, SessionView>();
+  /** Authenticated create replies shown until their encrypted listing arrives. */
+  openingSessions = new Map<string, SessionView>();
   conn: ConnState = "connecting";
   error = "";
   // Whether the stream has been up at least once, and how many attempts
@@ -2475,6 +2477,7 @@ export class Remote {
         };
         this.sessions.set(rs.sessionId, view);
       }
+      this.openingSessions.delete(rs.sessionId);
       view.lastSeq = maxBig(view.lastSeq, rs.lastSeq);
       view.updatedMs = maxBig(view.updatedMs, rs.updatedMs);
       if (rs.meta) {
