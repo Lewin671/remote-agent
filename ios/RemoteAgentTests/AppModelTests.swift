@@ -533,7 +533,7 @@ final class Harness {
         _ = try await h.model.authorityBootstrap.prepareCreation(server: "https://relay.example.com")
         h.model.setForeground(true)
         await eventually("bootstrap") { h.model.authorityBootstrapPending != nil }
-        #expect(try h.model.rejoinAdvice()?.contains("未完成的安全操作") == true)
+        #expect(try h.model.rejoinAdvice()?.text.contains("未完成的安全操作") == true)
         await h.model.logout()
         #expect(h.model.authorityBootstrapPending == nil)
         #expect(h.model.securitySetup == nil)
@@ -546,8 +546,8 @@ final class Harness {
     @Test func unreadableSecurityRequiresConfirmationButDoesNotTrapTheUser() throws {
         let h = Harness(); defer { h.cleanUp() }
         try h.vault.write(.securityState, Data([0]))
-        #expect(try h.model.rejoinAdvice()?.contains("没能读取") == true)
-        #expect(try h.model.rejoinAdvice()?.contains("电脑上的会话不受影响") == true)
+        #expect(try h.model.rejoinAdvice()?.text.contains("没能读取") == true)
+        #expect(try h.model.rejoinAdvice()?.text.contains("电脑上的会话不受影响") == true)
     }
 
     @Test func lateLoginCannotRestoreDiscardedIdentity() async throws {

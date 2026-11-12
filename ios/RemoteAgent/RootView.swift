@@ -62,7 +62,7 @@ struct SetupDiscardButton: View {
     let discard: @MainActor () async -> Void
     @Environment(AppModel.self) private var model
     @State private var asking = false
-    @State private var advice = ""
+    @State private var advice: AppModel.RejoinAdvice?
     @State private var error = ""
     var body: some View {
         if !error.isEmpty { Banner(error, tone: .error) }
@@ -83,7 +83,7 @@ struct SetupDiscardButton: View {
                 }
                 Button("取消", role: .cancel) {}
             } message: {
-                Text(advice)
+                Text(advice?.text ?? "")
             }
     }
 }

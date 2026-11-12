@@ -559,8 +559,21 @@ final class AppModel {
         engine?.retryLogin()
     }
 
+    /// The confirmation captures security facts, independently of its displayed language.
+    enum RejoinAdvice: Equatable {
+        case sensitive(authority: Bool, unresolved: Bool)
+        case unreadable
+        var text: String {
+            switch self {
+            case .sensitive(let authority, let unresolved):
+                AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
+            case .unreadable: "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
+            }
+        }
+    }
+
     /// Confirmation is needed only for management keys or unfinished work.
-    func rejoinAdvice() throws -> String? {
+    func rejoinAdvice() throws -> RejoinAdvice? {
         let vault = parts.storage.vault
         do {
             let pending = try vault.readOperation() != nil || vault.loadRegistrationIntent() != nil
@@ -569,14 +582,13 @@ final class AppModel {
             let admin = state.authorityDeviceId == (account ?? securitySetup)?.deviceId
                 || record.map { $0.memberID == $0.state.core.authorityID } == true
             if pending || admin {
-                return AuthorityAccess.exitAdvice(authority: admin, unresolved: pending)
-                    + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
+                return .sensitive(authority: admin, unresolved: pending)
             }
             return nil
         } catch {
             // An unreadable vault is not proof that there is no management key
             // or unfinished work. Keep an explicit, warned way to erase it.
-            return "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
+            return .unreadable
         }
     }
 

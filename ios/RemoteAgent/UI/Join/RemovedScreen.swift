@@ -7,7 +7,7 @@ struct RemovedScreen: View {
     @State private var leaving = false
     @State private var pending = false
     @State private var verified = false
-    @State private var advice = ""
+    @State private var advice: AppModel.RejoinAdvice?
     @State private var action = ActionRunner()
 
     var body: some View {
@@ -50,7 +50,7 @@ struct RemovedScreen: View {
             } catch { pending = true }
         }
         .confirm(isPresented: $leaving, title: "退出并删除本机密钥？",
-            text: advice,
+            text: advice?.text ?? "",
             confirm: "退出", danger: true) {
                 action.run {
                     guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择加入方式。") }
@@ -64,7 +64,7 @@ struct RemovedScreen: View {
 /// A definitive login rejection before the retained-identity setup form is shown.
 struct RetainedIdentityDeniedScreen: View {
     @Environment(AppModel.self) private var model
-    @State private var advice: String?
+    @State private var advice: AppModel.RejoinAdvice?
     @State private var asking = false
     @State private var action = ActionRunner()
 
@@ -87,7 +87,7 @@ struct RetainedIdentityDeniedScreen: View {
             }.padding(16)
         }
         .confirm(isPresented: $asking, title: "删除本机密钥并重新加入？",
-            text: advice ?? "", confirm: "重新加入", danger: true) {
+            text: advice?.text ?? "", confirm: "重新加入", danger: true) {
                 action.run {
                     guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择加入方式。") }
                     await model.logout(pairing: true)
