@@ -10,6 +10,9 @@ final class BatchALocaleTests: XCTestCase {
             app.launch()
             let cli = app.buttons["new-task-cli"]
             XCTAssertTrue(cli.waitForExistence(timeout: 15))
+            // The demo inherits the latest session's CLI, which varies with the
+            // clock. Choose the long Codex list instead of assuming that default.
+            try pickCli("Codex", in: app)
             let model = app.buttons["new-task-model"]
             XCTAssertTrue(model.waitForExistence(timeout: 5))
             model.tap()
@@ -21,11 +24,7 @@ final class BatchALocaleTests: XCTestCase {
             try capture(app, "\(locale)-all-models")
             app.buttons[locale == "en" ? "Done" : "完成"].tap()
             XCTAssertTrue(app.buttons["new-model-back"].waitForNonExistence(timeout: 5))
-            cli.tap()
-            let claude = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Claude Code")).firstMatch
-            XCTAssertTrue(claude.waitForExistence(timeout: 5))
-            try capture(app, "\(locale)-cli-menu")
-            claude.tap()
+            try pickCli("Claude Code", in: app, captureAs: "\(locale)-cli-menu")
             XCTAssertTrue(model.waitForExistence(timeout: 5))
             model.tap()
             let standard = app.buttons[locale == "en" ? "Standard 200k" : "标准 200k"]
@@ -37,6 +36,17 @@ final class BatchALocaleTests: XCTestCase {
             XCTAssertTrue(app.buttons["1M"].isSelected)
             app.terminate()
         }
+    }
+
+    private func pickCli(_ name: String, in app: XCUIApplication, captureAs screenshot: String? = nil) throws {
+        let cli = app.buttons["new-task-cli"]
+        cli.tap()
+        let option = app.buttons[name]
+        let ready = try XCTUnwrap(option.waitForExistence(timeout: 5) ? option : nil, "CLI menu must offer \(name)")
+        if let screenshot { try capture(app, screenshot) }
+        ready.tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label ENDSWITH %@", name), object: cli)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed, "CLI selection must settle before opening its model list")
     }
 
     private func capture(_ app: XCUIApplication, _ name: String) throws {
