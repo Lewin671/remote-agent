@@ -104,6 +104,7 @@ type Daemon struct {
 	updateIdleSince time.Time
 	cfg             Config
 	ctx             context.Context
+	sessionWorkers  sync.WaitGroup // poll/inject generations and their native approval waiters
 	adapters        []agent.Adapter
 	agents          map[pb.Agent]agent.Adapter
 
@@ -238,10 +239,32 @@ func (d *Daemon) Run(ctx context.Context) error {
 		return errors.New("another remote-agent daemon is already running")
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	d.ctx = ctx
+	var background sync.WaitGroup
+	var stopSchedules, stopIdleClose func()
+	defer func() {
+		// No locks are held while joining: workers can finish event commits or
+		// session lifecycle work here. The daemon lock outlives every worker.
+		cancel()
+		if stopSchedules != nil {
+			stopSchedules()
+		}
+		if stopIdleClose != nil {
+			stopIdleClose()
+		}
+		background.Wait()
+		// HTTP has drained and all producers have stopped; no generation can
+		// be added now. Shutdown detaches workers, never kills native tmux/CLI.
+		d.sessionWorkers.Wait()
+		for _, s := range d.sessions {
+			_ = s.log.Close()
+		}
+	}()
+
 	if err := updater.EnsureState(d.dir); err != nil {
 		return err
 	}
-	d.ctx = ctx
 	d.loadQuotas()
 	// Finish transfer intents before restoring queue refs, without treating
 	// persisted Exited as final: tmux may still be alive and reattach below.
@@ -260,16 +283,14 @@ func (d *Daemon) Run(ctx context.Context) error {
 	if err := d.loadSchedules(); err != nil {
 		return err
 	}
-	stopSchedules := d.startScheduleLoop(ctx)
-	defer stopSchedules()
-	stopIdleClose := d.startIdleCloseLoop(ctx)
-	defer stopIdleClose()
+	stopSchedules = d.startScheduleLoop(ctx)
+	stopIdleClose = d.startIdleCloseLoop(ctx)
 	// Exit/orphan cleanup and image-original LRU require restored liveness and
 	// turn pins for every session. Never start storage GC during restoration.
-	go d.imageGCLoop(ctx.Done())
-	go d.releaseLogsLoop(ctx.Done())
+	background.Go(func() { d.imageGCLoop(ctx.Done()) })
+	background.Go(func() { d.releaseLogsLoop(ctx.Done()) })
 	if d.cfg.Started != nil {
-		go d.cfg.Started(ctx)
+		background.Go(func() { d.cfg.Started(ctx) })
 	}
 
 	sock := filepath.Join(d.dir, "daemon.sock")
@@ -284,19 +305,34 @@ func (d *Daemon) Run(ctx context.Context) error {
 	}
 	defer os.Remove(sock)
 
-	go d.watchUpdateIdle(ctx)
+	background.Go(func() { d.watchUpdateIdle(ctx) })
 	mux := http.NewServeMux()
 	mux.HandleFunc("/update/health", d.updateHealth)
 	mux.Handle(remoteagentv1connect.NewLocalServiceHandler(&handler{d: d}, connect.WithInterceptors(protocol.Local())))
-	srv := &http.Server{Handler: mux, ReadHeaderTimeout: 10 * time.Second}
-	go func() {
-		<-ctx.Done()
-		sctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(sctx)
-	}()
 	slog.Info("daemon listening", "socket", sock)
-	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	return serveLocal(ctx, ln, mux)
+}
+
+// serveLocal cancels request contexts and drains HTTP before returning, even
+// when Serve fails independently of the caller. Shutdown closes the listener
+// first; Serve returning by itself does not mean its handlers have finished.
+func serveLocal(parent context.Context, ln net.Listener, handler http.Handler) error {
+	ctx, cancel := context.WithCancel(parent)
+	defer cancel()
+	srv := &http.Server{
+		Handler: handler, ReadHeaderTimeout: 10 * time.Second,
+		BaseContext: func(net.Listener) context.Context { return ctx },
+	}
+	drained := make(chan struct{})
+	go func() {
+		defer close(drained)
+		<-ctx.Done()
+		_ = srv.Shutdown(context.Background())
+	}()
+	err := srv.Serve(ln)
+	cancel()
+	<-drained
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil

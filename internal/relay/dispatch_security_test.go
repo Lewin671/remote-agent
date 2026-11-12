@@ -61,3 +61,41 @@ func TestForwardFloodIsBoundedAndCancelable(t *testing.T) {
 		t.Fatalf("started %d workers", n)
 	}
 }
+
+func TestForwardReadFailureCancelsAndDrainsHandler(t *testing.T) {
+	entered, canceled, release := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	done := make(chan error, 1)
+	failure := errors.New("stream ended")
+	reads := 0
+	go func() {
+		done <- readForwardCalls(context.Background(), make(chan struct{}, 1), func() (*pb.ServerFrame, error) {
+			reads++
+			if reads == 1 {
+				return &pb.ServerFrame{Kind: &pb.ServerFrame_ForwardCall{ForwardCall: &pb.ForwardCall{CallId: 1}}}, nil
+			}
+			<-entered
+			return nil, failure
+		}, func(ctx context.Context, _ *pb.ForwardCall) {
+			close(entered)
+			<-ctx.Done()
+			close(canceled)
+			<-release
+		})
+	}()
+	select {
+	case <-canceled:
+	case <-time.After(time.Second):
+		close(release)
+		t.Fatal("stream failure did not cancel its handler")
+	}
+	select {
+	case err := <-done:
+		close(release)
+		t.Fatalf("reader returned before handler drain: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(release)
+	if err := <-done; !errors.Is(err, failure) {
+		t.Fatalf("reader error: %v", err)
+	}
+}

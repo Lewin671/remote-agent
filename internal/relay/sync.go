@@ -35,6 +35,9 @@ const (
 // catches up, while this single scheduler notices later resumes and metadata
 // edits.
 func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
+	ctx, cancel := context.WithCancel(ctx)
+	var workers sync.WaitGroup
+	defer func() { cancel(); workers.Wait() }()
 	res, err := c.machine.ListSessionHeads(ctx, connect.NewRequest(&pb.ListSessionHeadsRequest{}))
 	if err != nil {
 		return fmt.Errorf("list session heads: %w", err)
@@ -115,7 +118,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 			if state.completed || head == nil && state.onServer || head != nil && state.after > head.LastSeq {
 				head = &pb.SessionHead{LastSeq: state.after, EndedMs: EndedMs(state.meta), TaskOwned: state.meta.GetTaskOwned(), MetaRevision: head.GetMetaRevision()}
 			}
-			go func(id string, head *pb.SessionHead) {
+			workers.Go(func() {
 				after, info, skipped, err := c.syncSession(ctx, id, head, func() {
 					select {
 					case done <- finished{id: id, healthy: true}:
@@ -126,7 +129,7 @@ func (c *conn) syncLoop(ctx context.Context, sentMeta *pb.MachineMeta) error {
 				case done <- finished{id: id, after: after, info: info, skipped: skipped, err: err}:
 				case <-ctx.Done():
 				}
-			}(id, head)
+			})
 		}
 		select {
 		case <-ctx.Done():

@@ -161,6 +161,7 @@ func sleep(ctx context.Context, d time.Duration) {
 
 // conn is one connected period: the login token, clients and keys.
 type conn struct {
+	terminals         sync.WaitGroup  // added by command handlers, joined after readLoop drains
 	lifetime          context.Context // stream lifetime, independent of one command deadline
 	writes            connectionWrites
 	security          *securitySession
@@ -190,8 +191,11 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	if err != nil {
 		return err
 	}
+	var workers sync.WaitGroup
 	defer func() {
 		cancel()
+		workers.Wait()
+		c.terminals.Wait()
 		c.writes.close()
 		c.security.Close()
 	}()
@@ -217,7 +221,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	}
 	errc := make(chan error, 4)
 	// Start consuming immediately after Ready, including during slow startup RPCs.
-	go func() { errc <- c.readLoop(ctx); cancel() }()
+	workers.Go(func() { errc <- c.readLoop(ctx); cancel() })
 	r.mu.Lock()
 	r.connected = true
 	r.mu.Unlock()
@@ -243,9 +247,9 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 	if err := c.putMachine(ctx, meta); err != nil {
 		return err
 	}
-	go func() { errc <- c.syncLoop(ctx, meta) }()
-	go func() { errc <- c.securitySyncLoop(ctx) }()
-	go func() {
+	workers.Go(func() { errc <- c.syncLoop(ctx, meta) })
+	workers.Go(func() { errc <- c.securitySyncLoop(ctx) })
+	workers.Go(func() {
 		// Keep the connection alive through proxies and notice a dead one.
 		t := time.NewTicker(25 * time.Second)
 		defer t.Stop()
@@ -263,7 +267,7 @@ func (r *Relay) session(ctx context.Context, acct *Account) error {
 				}
 			}
 		}
-	}()
+	})
 	return <-errc
 }
 
@@ -437,6 +441,9 @@ func (c *conn) readLoop(ctx context.Context) error {
 }
 
 func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb.ServerFrame, error), handle func(context.Context, *pb.ForwardCall)) error {
+	ctx, cancel := context.WithCancel(ctx)
+	var calls sync.WaitGroup
+	defer func() { cancel(); calls.Wait() }()
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -457,10 +464,10 @@ func readForwardCalls(ctx context.Context, slots chan struct{}, read func() (*pb
 				<-slots
 				return ctx.Err()
 			}
-			go func() {
+			calls.Go(func() {
 				defer func() { <-slots }()
 				handle(ctx, call)
-			}()
+			})
 		}
 	}
 }

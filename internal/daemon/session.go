@@ -515,11 +515,16 @@ func (s *session) start(ctx context.Context) {
 	ctx, stop := context.WithCancel(ctx)
 	loops := &sessionLoops{stop: stop, done: make(chan struct{})}
 	s.sessionLoops = loops
+	s.d.sessionWorkers.Add(1)
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() { defer wg.Done(); s.pollLoop(ctx) }()
 	go func() { defer wg.Done(); s.injectLoop(ctx) }()
-	go func() { wg.Wait(); close(loops.done) }()
+	go func() {
+		defer s.d.sessionWorkers.Done()
+		wg.Wait()
+		close(loops.done)
+	}()
 }
 
 func (s *session) pollLoop(ctx context.Context) {
@@ -2139,7 +2144,7 @@ func (s *session) checkNativeApproval(styled string) bool {
 	if s.sessionLoops != nil {
 		done = s.sessionLoops.done
 	}
-	go s.waitNativeApproval(a, done)
+	s.d.sessionWorkers.Go(func() { s.waitNativeApproval(a, done) })
 	return true
 }
 

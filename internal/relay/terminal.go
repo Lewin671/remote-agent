@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
@@ -60,15 +61,19 @@ func (c *conn) openTerminal(ctx context.Context, sessionID, streamID string) err
 	if lifetime == nil {
 		lifetime = ctx
 	}
-	go c.serveTerminal(lifetime, ws, t, key, sessionID, streamID)
+	c.terminals.Go(func() { c.serveTerminal(lifetime, ws, t, key, sessionID, streamID) })
 	return nil
 }
 
 func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal, key []byte, sessionID, streamID string) {
 	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	defer ws.CloseNow()
-	defer t.Close()
+	var workers sync.WaitGroup
+	defer func() {
+		cancel()
+		ws.CloseNow()
+		workers.Wait()
+		t.Close()
+	}()
 
 	var seq uint64
 	send := func(f *pb.TerminalFrame) error {
@@ -99,7 +104,7 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 	}
 	historyRequests := make(chan *pb.TerminalHistoryRequest, 1)
 	historyPages := make(chan *pb.TerminalHistoryPage, 1)
-	go func() {
+	workers.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -116,11 +121,11 @@ func (c *conn) serveTerminal(ctx context.Context, ws *websocket.Conn, t Terminal
 				}
 			}
 		}
-	}()
-	go func() {
+	})
+	workers.Go(func() {
 		defer cancel()
 		c.readTerminal(ctx, ws, t, key, sessionID, streamID, historyRequests)
-	}()
+	})
 	for {
 		select {
 		case <-ctx.Done():
