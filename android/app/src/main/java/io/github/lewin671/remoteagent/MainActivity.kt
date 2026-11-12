@@ -9,12 +9,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import io.github.lewin671.remoteagent.ui.Motion
 import androidx.compose.ui.unit.dp
@@ -143,8 +142,7 @@ class MainActivity : ComponentActivity() {
         val nav = rememberNavController()
         val focus = LocalFocusManager.current
         val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-        // Every page change drops the keyboard first, so the page that leaves
-        // does not shrink back under it halfway through the slide.
+        // Start dismissing input and navigating in the same callback; neither waits for the IME.
         val actions = remember(nav, remote) { io.github.lewin671.remoteagent.ui.dismissPageInput(focus, keyboard) }
         val notificationScope = rememberCoroutineScope()
         val target by openSession
@@ -412,17 +410,25 @@ private fun NavGraphBuilder.page(route: String, content: @Composable (NavBackSta
 
 private fun viewer(e: NavBackStackEntry) = e.destination.route?.startsWith("image/") == true
 
-/** The whole-page sheets (design-system §6: 新任务, 新定时) rise from the bottom over the page they leave. */
+/** Whole-page editors need a transition independent of the changing IME height. */
 private fun rises(e: NavBackStackEntry) = e.destination.route.let {
     it != null && (it.startsWith("project/") || it.startsWith("newproject/") || it.startsWith("newtask"))
 }
+
+// Fade through the app background: the two opaque pages never paint their text together.
+// A vertical slide would change distance halfway through as the IME resizes the editor.
+private fun editorEnter(): EnterTransition = if (Motion.reduced) EnterTransition.None else
+    fadeIn(tween(Motion.FAST, delayMillis = Motion.BASE - Motion.FAST, easing = Motion.Decelerate))
+
+private fun editorExit(): ExitTransition = if (Motion.reduced) ExitTransition.None else
+    fadeOut(tween(Motion.BASE - Motion.FAST, easing = Motion.Accelerate))
 
 private fun pageEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     when {
         tabSwitch(from, to) -> EnterTransition.None
         viewer(to) -> fadeIn(viewerFade)
+        rises(to) -> editorEnter()
         Motion.reduced -> fadeIn(pageFade)
-        rises(to) -> slideInVertically(slideIn()) { it }
         else -> slideInHorizontally(slideIn()) { it }
     }
 
@@ -431,14 +437,15 @@ private fun pageExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTransi
         tabSwitch(from, to) -> ExitTransition.None
         // Stays as it is under the viewer fading in.
         viewer(to) -> fadeOut(viewerFade, targetAlpha = 1f)
+        rises(to) -> editorExit()
         Motion.reduced -> fadeOut(pageFade, targetAlpha = 1f)
-        rises(to) -> fadeOut(pageFade, targetAlpha = 1f)
         else -> slideOutHorizontally(slideIn()) { -it / 4 }
     }
 
 private fun pagePopEnter(from: NavBackStackEntry, to: NavBackStackEntry): EnterTransition =
     when {
-        tabSwitch(from, to) || viewer(from) || rises(from) -> EnterTransition.None
+        tabSwitch(from, to) || viewer(from) -> EnterTransition.None
+        rises(from) -> editorEnter()
         Motion.reduced -> fadeIn(pageFade)
         else -> slideInHorizontally(slideIn()) { -it / 4 }
     }
@@ -447,7 +454,7 @@ private fun pagePopExit(from: NavBackStackEntry, to: NavBackStackEntry): ExitTra
     when {
         tabSwitch(from, to) -> ExitTransition.None
         viewer(from) -> fadeOut(Motion.fadeOutSpec(Motion.BASE))
+        rises(from) -> editorExit()
         Motion.reduced -> fadeOut(Motion.fadeOutSpec(Motion.SLOW))
-        rises(from) -> slideOutVertically(slideOut()) { it }
         else -> slideOutHorizontally(slideOut()) { it }
     }
