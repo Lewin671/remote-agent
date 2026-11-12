@@ -26,6 +26,7 @@ class FileCapabilityGateTest {
         try {
             daemon.answer = { _, _ -> CommandResult.getDefaultInstance() }
             daemon.connect()
+            daemon.waitReady()
             for (cmd in listOf(send, create)) for (support in listOf(false, null)) {
                 r.showForTest(state(daemon.id, support))
                 val p = r.prepare(daemon.id, if (cmd.hasSend()) "s" else "", cmd)
@@ -62,7 +63,9 @@ class FileCapabilityGateTest {
         r = Remote(account, http, securityStorage = guarded)
         try {
             daemon.answer = { _, _ -> CommandResult.getDefaultInstance() }
-            daemon.connect(); r.currentToken()
+            daemon.connect()
+            daemon.waitReady()
+            r.currentToken()
             for (cmd in listOf(send, create)) {
                 r.showForTest(state(daemon.id, true))
                 val p = r.prepare(daemon.id, if (cmd.hasSend()) "s" else "", cmd)
@@ -83,6 +86,7 @@ class FileCapabilityGateTest {
         try {
             daemon.answer = { _, _ -> CommandResult.getDefaultInstance() }
             daemon.connect()
+            daemon.waitReady()
             for (cmd in listOf(send, create)) {
                 r.showForTest(state(daemon.id, true))
                 val a = Attempt(); val p = a.next { r.prepare(daemon.id, if (cmd.hasSend()) "s" else "", cmd) }
