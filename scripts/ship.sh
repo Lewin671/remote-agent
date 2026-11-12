@@ -139,7 +139,7 @@ if [ "$web_only" = true ]; then
 	target_protocol=$(git -C "$ROOT" show "$commit:internal/protocol/protocol.go" | sed -n 's/^const Version = //p')
 	[ -n "$previous_protocol" ] && [ "$previous_protocol" = "$target_protocol" ] || fail "web-only deployment cannot change protocol; coordinate a full ship"
 fi
-# The page's main script carries the commit it was built from.
+# One of the page's scripts carries the commit it was built from.
 web_has() {
 	if [ "$web_only" = true ]; then
 		cloudflare_source >/dev/null || return 1
@@ -147,7 +147,8 @@ web_has() {
 		return
 	fi
 	page=$(curl -fsS --retry 2 --max-time 60 "$WEB_URL/?ship=$1") || return 1
-	for js in $(printf '%s' "$page" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js'); do
+	# Which chunk carries it is the bundler's choice, so look in every script the page names.
+	for js in $(printf '%s' "$page" | grep -oE '/assets/[A-Za-z0-9_-]+\.js' | sort -u); do
 		curl -fsS --retry 2 --max-time 180 "$WEB_URL$js" | grep -q "$1" && return 0
 	done
 	return 1
