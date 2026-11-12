@@ -306,7 +306,11 @@ class ImageDraft(
         private set
 
     /** Said once after a pick or a put back: how many did not fit. */
-    var notice by mutableStateOf("")
+    private var restoreNoticeActive = false
+    private var noticeValue by mutableStateOf("")
+    var notice: String
+        get() = noticeValue
+        set(value) { noticeValue = value; restoreNoticeActive = false }
 
     fun add(context: Context, picked: List<Uri>, max: Int, remote: Remote, machine: () -> String?) {
         if (restoring) return
@@ -676,12 +680,12 @@ class ImageDraft(
                 throw e
             } catch (e: Exception) {
                 restoreFailed = true
-                if (account === AccountMemory.token) notice = "待发图片没能恢复，仍可输入，下次编辑或放回时重试"
+                if (account === AccountMemory.token) { notice = "待发图片没能恢复，仍可输入，下次编辑或放回时重试"; restoreNoticeActive = true }
             } finally {
                 restoring = false
                 if (loaded && account === AccountMemory.token) {
                     restoreFailed = false
-                    if (notice.startsWith("待发图片没能恢复")) notice = ""
+                    if (restoreNoticeActive) notice = ""
                     val waiting = afterRestore.toList(); afterRestore.clear()
                     waiting.forEach { it() }
                     persistOrder()
