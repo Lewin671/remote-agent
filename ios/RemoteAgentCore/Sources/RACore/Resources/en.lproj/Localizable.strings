@@ -270,6 +270,7 @@
 "modes_agy_plan_desc" = "Explore read-only and write a plan; after approval, return to the default mode to execute";
 "modes_ask" = "Ask";
 "modes_ask_desc" = "You confirm approval requests; deny on timeout";
+"modes_ask_generic_desc" = "You confirm approval requests";
 "modes_ask_permission_desc" = "You confirm permission requests";
 "modes_auto" = "Auto";
 "modes_auto_desc" = "%1$@ decides, and asks you in the conversation when unsure";

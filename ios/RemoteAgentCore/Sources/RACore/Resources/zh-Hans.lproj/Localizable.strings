@@ -270,6 +270,7 @@
 "modes_agy_plan_desc" = "先只读探索并写方案，批准后回到默认模式执行";
 "modes_ask" = "询问";
 "modes_ask_desc" = "需要审批时由你确认，超时拒绝";
+"modes_ask_generic_desc" = "需要审批时由你确认";
 "modes_ask_permission_desc" = "需要权限时由你确认";
 "modes_auto" = "自动";
 "modes_auto_desc" = "由 %1$@ 自己判断，拿不准的在对话里问你";

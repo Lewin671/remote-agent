@@ -986,6 +986,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "modes.ask_desc" -> {
             resources.getString(R.string.modes_ask_desc)
         }
+        "modes.ask_generic_desc" -> {
+            resources.getString(R.string.modes_ask_generic_desc)
+        }
         "modes.ask_permission_desc" -> {
             resources.getString(R.string.modes_ask_permission_desc)
         }

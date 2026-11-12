@@ -112,6 +112,22 @@
     }
   },
   {
+    "key": "modes.ask_generic_desc",
+    "zh-CN": "需要审批时由你确认",
+    "en": "You confirm approval requests",
+    "notes": "审批模式选择器里「需要确认」模式的说明，用于未识别的 Agent 类型（通用说法）。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "modes.auto",
     "zh-CN": "自动",
     "en": "Auto",

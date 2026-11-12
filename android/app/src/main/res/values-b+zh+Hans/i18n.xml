@@ -355,6 +355,7 @@
     <string name="modes_agy_plan_desc" formatted="false">"先只读探索并写方案，批准后回到默认模式执行"</string>
     <string name="modes_ask" formatted="false">"询问"</string>
     <string name="modes_ask_desc" formatted="false">"需要审批时由你确认，超时拒绝"</string>
+    <string name="modes_ask_generic_desc" formatted="false">"需要审批时由你确认"</string>
     <string name="modes_ask_permission_desc" formatted="false">"需要权限时由你确认"</string>
     <string name="modes_auto" formatted="false">"自动"</string>
     <string name="modes_auto_desc">"由 %1$s 自己判断，拿不准的在对话里问你"</string>

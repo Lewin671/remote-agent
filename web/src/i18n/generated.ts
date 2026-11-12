@@ -308,6 +308,7 @@ export interface MessageArgs {
   "modes.agy_plan_desc": { [name: string]: never };
   "modes.ask": { [name: string]: never };
   "modes.ask_desc": { [name: string]: never };
+  "modes.ask_generic_desc": { [name: string]: never };
   "modes.ask_permission_desc": { [name: string]: never };
   "modes.auto": { [name: string]: never };
   "modes.auto_desc": { agent: string };
@@ -1094,6 +1095,7 @@ export const messages = {
     "modes.agy_plan_desc": "Explore read-only and write a plan; after approval, return to the default mode to execute",
     "modes.ask": "Ask",
     "modes.ask_desc": "You confirm approval requests; deny on timeout",
+    "modes.ask_generic_desc": "You confirm approval requests",
     "modes.ask_permission_desc": "You confirm permission requests",
     "modes.auto": "Auto",
     "modes.auto_desc": "{agent} decides, and asks you in the conversation when unsure",
@@ -1948,6 +1950,7 @@ export const messages = {
     "modes.agy_plan_desc": "先只读探索并写方案，批准后回到默认模式执行",
     "modes.ask": "询问",
     "modes.ask_desc": "需要审批时由你确认，超时拒绝",
+    "modes.ask_generic_desc": "需要审批时由你确认",
     "modes.ask_permission_desc": "需要权限时由你确认",
     "modes.auto": "自动",
     "modes.auto_desc": "由 {agent} 自己判断，拿不准的在对话里问你",

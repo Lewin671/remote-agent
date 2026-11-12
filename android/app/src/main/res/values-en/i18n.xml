@@ -387,6 +387,7 @@
     <string name="modes_agy_plan_desc" formatted="false">"Explore read-only and write a plan; after approval, return to the default mode to execute"</string>
     <string name="modes_ask" formatted="false">"Ask"</string>
     <string name="modes_ask_desc" formatted="false">"You confirm approval requests; deny on timeout"</string>
+    <string name="modes_ask_generic_desc" formatted="false">"You confirm approval requests"</string>
     <string name="modes_ask_permission_desc" formatted="false">"You confirm permission requests"</string>
     <string name="modes_auto" formatted="false">"Auto"</string>
     <string name="modes_auto_desc">"%1$s decides, and asks you in the conversation when unsure"</string>

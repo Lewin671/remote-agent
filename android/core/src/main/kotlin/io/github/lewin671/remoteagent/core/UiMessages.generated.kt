@@ -294,6 +294,7 @@ object UiMessages {
     fun modesAgyPlanDesc(): UiMessage = UiMessage("modes.agy_plan_desc", emptyMap())
     fun modesAsk(): UiMessage = UiMessage("modes.ask", emptyMap())
     fun modesAskDesc(): UiMessage = UiMessage("modes.ask_desc", emptyMap())
+    fun modesAskGenericDesc(): UiMessage = UiMessage("modes.ask_generic_desc", emptyMap())
     fun modesAskPermissionDesc(): UiMessage = UiMessage("modes.ask_permission_desc", emptyMap())
     fun modesAuto(): UiMessage = UiMessage("modes.auto", emptyMap())
     fun modesAutoDesc(agent: String): UiMessage = UiMessage("modes.auto_desc", mapOf("agent" to agent))

@@ -260,7 +260,7 @@ const UNKNOWN_ENTRY: AgentEntry = {
   withDefaults(settings: DaemonSettings): DaemonSettings {
     return settings;
   },
-  get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
+  get askModeDesc() { return i18n.t("modes.ask_generic_desc"); },
   get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
   permissionModeNotice: null,
   showMaxEffort: false,

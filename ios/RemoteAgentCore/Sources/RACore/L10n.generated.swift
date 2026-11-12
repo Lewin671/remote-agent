@@ -1237,6 +1237,10 @@ public enum L10n {
         let key = "modes_ask_desc"
         return format(key, locale: locale, args: [])
     }
+    public static func modesAskGenericDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_ask_generic_desc"
+        return format(key, locale: locale, args: [])
+    }
     public static func modesAskPermissionDesc(locale: String = MessageLocale.current) -> String {
         let key = "modes_ask_permission_desc"
         return format(key, locale: locale, args: [])
