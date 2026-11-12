@@ -189,7 +189,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
       {item.options.map((o, i) => {
         const { text, recommended } = optionLabel(o.label);
         const on = multi ? (frozen ? sent : ticked).includes(i + 1) : sent.includes(i + 1);
-        const status = on && sent.includes(i + 1) && (ans.busy ? "提交中…" : ans.error ? "err" : "");
+        const status = on && sent.includes(i + 1) && (ans.busy ? "sending" : ans.error ? "err" : "");
         return (
           <button
             key={i}
@@ -205,7 +205,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
               {status === "err" && !multi ? (
                 <small className="err">没能提交，终端里的问题可能已经变了</small>
               ) : status && status !== "err" && !multi ? (
-                <small>{status}</small>
+                <small>{status === "sending" ? "提交中…" : ""}</small>
               ) : (
                 o.description && <small>{o.description}</small>
               )}

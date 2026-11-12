@@ -648,12 +648,12 @@ export function contextMode(
   collaboration: string,
   permission = "",
 ): string {
-  if (permission) return permissionModeName(permission);
+  if (permission) return permission;
   if (!reviewer && !policy && !collaboration) return "";
-  if (collaboration === "plan") return "计划";
-  if (sandbox === "danger-full-access" && policy === "never") return "完全放行";
-  if (reviewer === "auto_review") return "自动";
-  return "询问";
+  if (collaboration === "plan") return "plan";
+  if (sandbox === "danger-full-access" && policy === "never") return "bypassPermissions";
+  if (reviewer === "auto_review") return "auto";
+  return "default";
 }
 
 const modeNames: Record<number, string> = {
@@ -667,17 +667,18 @@ export function modeName(m: ApprovalMode): string {
   return modeNames[m] ?? "";
 }
 
-export function modeByName(name: string): ApprovalMode {
-  return (Number(
-    Object.keys(modeNames).find((k) => modeNames[Number(k)] === name),
-  ) || ApprovalMode.UNSPECIFIED) as ApprovalMode;
-}
-
-const modeClass: Record<string, string> = {
-  计划: "m-plan",
-  完全放行: "m-danger",
-  自动: "m-auto",
-  询问: "",
+const permissionModes: Record<string, ApprovalMode> = {
+  default: ApprovalMode.ASK,
+  auto: ApprovalMode.AUTO,
+  plan: ApprovalMode.PLAN,
+  bypassPermissions: ApprovalMode.FULL_ACCESS,
+};
+const modePermissions: Record<number, string> = Object.fromEntries(Object.entries(permissionModes).map(([permission, mode]) => [mode, permission]));
+const modeClass: Record<number, string> = {
+  [ApprovalMode.PLAN]: "m-plan",
+  [ApprovalMode.FULL_ACCESS]: "m-danger",
+  [ApprovalMode.AUTO]: "m-auto",
+  [ApprovalMode.ASK]: "",
 };
 
 export interface ModeChip {
@@ -697,8 +698,9 @@ export function modeOf(s: SessionLike): ModeChip | undefined {
     : i.permissionMode
       ? permissionModeName(i.permissionMode)
       : "";
+  const mode = i.mode || permissionModes[i.permissionMode] || ApprovalMode.UNSPECIFIED;
   return text
-    ? { cls: modeClass[text] ?? "", text, mode: modeByName(text) }
+    ? { cls: modeClass[mode] ?? "", text, mode }
     : undefined;
 }
 
@@ -941,6 +943,8 @@ export interface RunningTool {
   seq: bigint; // the ToolStarted event's
 }
 
+export type TerminalChange = { kind: "mode"; permission: string } | { kind: "model"; model: string; effort: string };
+
 export interface Derived {
   approvals: Map<string, ApprovalRequested>; // pending, in request order
   resolved: Map<string, { decision: ApprovalDecision; message: string }>;
@@ -991,7 +995,7 @@ export interface Derived {
   typedLocally: Set<bigint>;
   // Mode or model changes made in the terminal, by the seq of the context
   // that shows them.
-  terminalChanges: Map<bigint, string>;
+  terminalChanges: Map<bigint, TerminalChange[]>;
   // Context use before and after each compaction, by the event's seq.
   compactions: Map<bigint, { before?: number; after?: number }>;
 }
@@ -1206,7 +1210,7 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         // slug or alias, the context by the CLI's own ID.
         if (k.value.model)
           expected = { model: k.value.model, effort: k.value.effort };
-        if (k.value.mode) mode = modeName(k.value.mode);
+        if (k.value.mode) mode = modePermissions[k.value.mode] ?? "";
         if (k.value.compacted) {
           d.compactions.set(e.seq, { before: usagePercent(d.usage) });
           compacting = e.seq;
@@ -1224,9 +1228,9 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
         const planning =
           c.collaborationMode === "plan" || c.permissionMode === "plan";
         const mm = `${c.model} ${c.effort}`;
-        const changes: string[] = [];
-        if (mode && m && m !== mode && !(mode === "计划" && planned))
-          changes.push(`模式切到了 ${m}`);
+        const changes: TerminalChange[] = [];
+        if (mode && m && m !== mode && !(mode === "plan" && planned))
+          changes.push({ kind: "mode", permission: m });
         if (m && m !== mode) planned = false;
         // Plan mode runs at its own effort; only a model change counts there.
         // A context without a model is Claude Code's mode, read off the
@@ -1241,10 +1245,10 @@ export function derive(events: Event[], agent: Agent = DEFAULT_AGENT): Derived {
           : mm !== model;
         if ((model || expected) && c.model && changed && !planning)
           changes.push(
-            `模型切到了 ${c.model}${c.effort ? " · " + c.effort : ""}`,
+            { kind: "model", model: c.model, effort: c.effort },
           );
         if (c.model && !planning) expected = undefined;
-        if (changes.length) d.terminalChanges.set(e.seq, changes.join("，"));
+        if (changes.length) d.terminalChanges.set(e.seq, changes);
         if (m) mode = m;
         if (!planning && c.model) model = mm;
         break;
@@ -1580,7 +1584,7 @@ function visible(e: Event, d: Derived): boolean {
         InputStatus.NEEDS_TERMINAL,
       ].includes(k.value.status);
     case "settingsChanged":
-      return k.value.compacted || !!k.value.model || !!modeName(k.value.mode);
+      return k.value.compacted || !!k.value.model || Object.hasOwn(modePermissions, k.value.mode);
     case "turnContext":
       return d.terminalChanges.has(e.seq);
     case "sessionState":

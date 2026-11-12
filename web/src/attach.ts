@@ -260,7 +260,7 @@ export class Tray {
     const g = this.invalidate(item);
     this.onChange();
     if (item.remoteOnly) {
-      Object.assign(item, { state: "failed", error: item.kind === "file" ? "这个文件没有本机副本，请移除后重新选择" : "这张图没有本机副本，请移除后重新选择" });
+      Object.assign(item, { state: "failed", error: item.kind === "file" ? "这个文件没有本机副本，请移除后重新选择" : "source_missing" });
       this.onChange();
       return;
     }

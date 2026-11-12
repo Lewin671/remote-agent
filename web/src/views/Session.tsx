@@ -40,6 +40,8 @@ import {
 } from "./Attach";
 import {
   ApprovalDecision,
+  ApprovalMode,
+  OriginKind,
   InputStatus,
   SessionStatus,
   type Agent,
@@ -62,6 +64,7 @@ import {
   inputFailure,
   machineName,
   modeName,
+  permissionModeName,
   modeOf,
   contextPercent,
   CONTEXT_WARN,
@@ -424,7 +427,7 @@ export function SessionPage({
   const modeTail = !ended && known && (
     <>
       {" "}
-      · <span className={known.text === "完全放行" ? "red" : ""}>{known.text}</span>
+      · <span className={known.mode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{known.text}</span>
     </>
   );
   const sub = (
@@ -681,7 +684,7 @@ export function SessionPage({
                     {
                       label: "审批模式",
                       value: mode.text,
-                      red: mode.text === "完全放行",
+                      red: mode.mode === ApprovalMode.FULL_ACCESS,
                       onClick: () => setSheet("mode"),
                     },
                   ]
@@ -1474,7 +1477,7 @@ function Row({
           ? d.typedLocally.has(e.seq)
             ? terminalLabel(machine)
             : ""
-          : label === "本客户端"
+          : e.origin?.kind === OriginKind.CLIENT && e.origin.deviceId === who.ctx.me
             ? ""
             : label;
       const images = k.value.images;
@@ -1755,20 +1758,13 @@ function Row({
       return (
         <div className="sysline">
           {machine} 终端把
-          {(d.terminalChanges.get(e.seq) ?? "").split("，").map((c, i) => {
-            const [what, to] = c.split("切到了 ");
-            return (
-              <span key={i}>
-                {i > 0 && "，"}
-                {what}切到了{" "}
-                <b>
-                  {k.value.model
-                    ? to.split(k.value.model).join(nameModel(k.value.model))
-                    : to}
-                </b>
-              </span>
-            );
-          })}
+          {(d.terminalChanges.get(e.seq) ?? []).map((c, i) => (
+            <span key={i}>
+              {i > 0 && "，"}
+              {c.kind === "mode" ? "模式切到了 " : "模型切到了 "}
+              <b>{c.kind === "mode" ? permissionModeName(c.permission) : nameModel(c.model) + (c.effort ? " · " + c.effort : "")}</b>
+            </span>
+          ))}
         </div>
       );
     case "planProposed":
@@ -1836,8 +1832,7 @@ interface Who {
 
 /** Whether an origin is someone other than this client. */
 function otherThanMe(o: Event["origin"], who: Who): boolean {
-  const l = originLabel(o, who.ctx);
-  return l !== undefined && l !== "本客户端" && l !== "";
+  return o?.kind === OriginKind.LOCAL || (o?.kind === OriginKind.CLIENT && o.deviceId !== who.ctx.me);
 }
 
 /** The input's place when the session cannot take messages: ended, or the

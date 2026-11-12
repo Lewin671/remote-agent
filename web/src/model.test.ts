@@ -481,8 +481,8 @@ describe("approval modes", () => {
       ),
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [2n, "模式切到了 accept edits"],
-      [5n, "模式切到了 计划"],
+      [2n, [{ kind: "mode", permission: "acceptEdits" }]],
+      [5n, [{ kind: "mode", permission: "plan" }]],
     ]);
   });
 
@@ -689,8 +689,8 @@ describe("events", () => {
       ),
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [2n, "模式切到了 自动"],
-      [5n, "模式切到了 计划"],
+      [2n, [{ kind: "mode", permission: "auto" }]],
+      [5n, [{ kind: "mode", permission: "plan" }]],
     ]);
   });
 
@@ -706,7 +706,7 @@ describe("events", () => {
         ctx("gpt-6-sol", "high"), // as chosen here: nothing to note
       ),
     );
-    expect([...d.terminalChanges.entries()]).toEqual([[3n, "模型切到了 gpt-6-luna · low"]]);
+    expect([...d.terminalChanges.entries()]).toEqual([[3n, [{ kind: "model", model: "gpt-6-luna", effort: "low" }]]]);
   });
 
   it("notes nothing when a mode-only context carries the switched model", () => {
@@ -724,8 +724,8 @@ describe("events", () => {
       Agent.CLAUDE,
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [3n, "模式切到了 accept edits"],
-      [5n, "模型切到了 claude-opus-5-5"],
+      [3n, [{ kind: "mode", permission: "acceptEdits" }]],
+      [5n, [{ kind: "model", model: "claude-opus-5-5", effort: "" }]],
     ]);
   });
 
@@ -740,8 +740,8 @@ describe("events", () => {
       ),
     );
     expect([...d.terminalChanges.entries()]).toEqual([
-      [3n, "模型切到了 gpt-6-astra · medium"],
-      [4n, "模型切到了 gpt-6-sol · medium"],
+      [3n, [{ kind: "model", model: "gpt-6-astra", effort: "medium" }]],
+      [4n, [{ kind: "model", model: "gpt-6-sol", effort: "medium" }]],
     ]);
   });
 

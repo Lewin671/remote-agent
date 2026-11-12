@@ -151,7 +151,7 @@ describe("putting a message's images back (review W2, W4)", () => {
     // Another machine cannot get it: it says so rather than sending nothing.
     tray.retarget("vps");
     await vi.waitFor(() => expect(tray.items[0].state).toBe("failed"));
-    expect(tray.items[0].error).toContain("重新选择");
+    expect(tray.items[0].error).toBe("source_missing");
     expect(prepare).not.toHaveBeenCalled();
   });
 });
