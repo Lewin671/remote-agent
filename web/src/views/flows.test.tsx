@@ -4212,3 +4212,16 @@ it("shows 默认 for an unchosen effort, then sends the explicitly selected leve
   await click(sendButton());
   expect(sent).toMatchObject([{ effort: "high", model: "gpt-6-astra" }]);
 });
+
+it("keeps a named quota warning next to its card before the received time", async () => {
+  const r = demo();
+  const { AgentQuotaSchema, QuotaState } = await import("../gen/remoteagent/v1/remote_pb");
+  const now = Date.now();
+  r.machines.get("mac")!.meta!.quotas = [create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "seven_day", usedPercent: 97, windowMinutes: 10080n, resetsAtMs: BigInt(now + 3_600_000) }] })];
+  const { QuotaPage } = await import("./Settings");
+  mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
+  const text = host.textContent!;
+  expect(text).toContain("Claude Code · 7 天额度即将用尽，不会自动切换 CLI 或模型");
+  expect(text.indexOf("Claude Code · 7 天额度即将用尽")).toBeLessThan(text.indexOf("最近收到"));
+  expect(host.querySelector(".qrow.warn .bar i")?.getAttribute("style")).toContain("3%");
+});

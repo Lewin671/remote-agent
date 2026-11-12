@@ -971,6 +971,7 @@ h1, h2, h3 { font-weight: var(--w7); }
 .bar i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
 :is(.qt, .qrow):is(.warn, .full) .bar i { background: var(--orange); }
 :is(.qt, .qrow).stale .bar i { background: var(--faint); }
+.qrow.stale .n { color: var(--faint); }
 :is(.qt, .qrow):is(.warn, .full) .n { color: var(--orange-ink); font-weight: var(--w6); }
 /* Settings: banners under the title, a row's chevron after its value, a
    value that is a segmented control. */

@@ -38,13 +38,14 @@ data class QuotaGroup(
     val title: String,
     val status: QuotaStatus,
     val rows: List<QuotaRow>,
-    /** 最近收到 9:40, or empty. */
-    val received: String,
+    /** 最近收到 9:40, or null. */
+    val received: UiMessage?,
     /** The daemon's words for a failure or no support. */
     val detail: String,
-    /** The numbers are a last record: the machine is offline, or reading failed. */
+    /** Offline, failed, or too old to treat as current. */
     val lastRecord: Boolean,
     val sections: List<QuotaSection> = emptyList(),
+    val freshness: UiMessage? = null,
 )
 
 private val weekdays = listOf("周一", "周二", "周三", "周四", "周五", "周六", "周日")
@@ -65,14 +66,24 @@ private fun nameLabel(w: QuotaWindow): String = when {
 private val beijing: ZoneId = ZoneId.of("Asia/Shanghai")
 
 /** When a reading arrived, in Beijing like the reset times beside it. */
-private fun clockText(ms: Long, now: Long): String {
+private fun received(ms: Long, now: Long, failed: Boolean): UiMessage? {
+    if (ms <= 0) return null
     val t = Instant.ofEpochMilli(ms).atZone(beijing)
-    val today = Instant.ofEpochMilli(now).atZone(beijing).toLocalDate()
     val hm = "${t.hour}:${"%02d".format(t.minute)}"
-    return when (t.toLocalDate()) {
-        today -> hm
-        today.minusDays(1) -> "昨天 $hm"
-        else -> if (t.toLocalDate().isAfter(today)) "${weekdays[t.dayOfWeek.value - 1]} $hm" else "${t.monthValue}月${t.dayOfMonth}日 $hm"
+    return if (t.toLocalDate() == Instant.ofEpochMilli(now).atZone(beijing).toLocalDate()) {
+        if (failed) UiMessages.quotaReceivedSuccess(hm) else UiMessages.quotaReceived(hm)
+    } else {
+        if (failed) UiMessages.quotaReceivedSuccessDate(t.dayOfMonth, t.monthValue, hm) else UiMessages.quotaReceivedDate(t.dayOfMonth, t.monthValue, hm)
+    }
+}
+
+fun quotaFreshness(ms: Long, now: Long): UiMessage? {
+    if (ms <= 0) return UiMessages.quotaUnknownTime()
+    val minutes = ((now - ms).coerceAtLeast(0) / 60_000).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+    return when {
+        minutes < 30 -> null
+        minutes < 60 -> UiMessages.quotaOldMinutes(minutes)
+        else -> UiMessages.quotaOldHours(minutes / 60)
     }
 }
 
@@ -124,7 +135,7 @@ fun quotaGroups(m: MachineView, now: Long): List<QuotaGroup> {
     for (agent in machineAgents(m)) {
         val entries = meta?.quotasList.orEmpty().filter { agentInfo(it.agent).agent == agentInfo(agent).agent }
         if (entries.isEmpty()) {
-            out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), "", "", false)
+            out += QuotaGroup(agent, agentName(agent), QuotaStatus.UNSUPPORTED, emptyList(), null, "", false)
             continue
         }
         for (q in entries) out += group(agent, q, entries.size > 1, m.online, now)
@@ -153,7 +164,8 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
         QuotaState.QUOTA_STATE_UNSUPPORTED -> QuotaStatus.UNSUPPORTED
         else -> QuotaStatus.WAITING
     }
-    val lastRecord = !online || status == QuotaStatus.FAILED
+    val freshness = quotaFreshness(q.observedMs, now)
+    val lastRecord = !online || status == QuotaStatus.FAILED || freshness != null
     val which = when {
         !several -> ""
         q.account.isNotEmpty() -> " · 账户 ${q.account}"
@@ -191,16 +203,16 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
     } else {
         emptyList()
     }
-    val received = if (q.observedMs > 0) (if (status == QuotaStatus.FAILED) "最近成功收到 " else "最近收到 ") + clockText(q.observedMs, now) else ""
-    return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty(), sections)
+    val received = received(q.observedMs, now, status == QuotaStatus.FAILED)
+    return QuotaGroup(agent, title, status, rows, received, q.detail, lastRecord && rows.isNotEmpty(), sections, freshness)
 }
 
 /** The warning above a group: a window used up, or close to it; nothing switches by itself. */
-fun quotaBanner(g: QuotaGroup): String {
+fun quotaBanner(g: QuotaGroup): UiMessage? {
     val got = g.rows.filter { it.percent != null && it.tone != QuotaTone.STALE }
-    got.firstOrNull { it.tone == QuotaTone.FULL }?.let { return "${it.label}额度已用尽" }
-    got.firstOrNull { it.tone == QuotaTone.WARN }?.let { return "${it.label}额度即将用尽" }
-    return ""
+    got.firstOrNull { it.tone == QuotaTone.FULL }?.let { return UiMessages.quotaExhausted(agentName(g.agent), it.label) }
+    got.firstOrNull { it.tone == QuotaTone.WARN }?.let { return UiMessages.quotaWarning(agentName(g.agent), it.label) }
+    return null
 }
 
 /** The device page's line for a CLI: its most-used window, or its state. */
@@ -208,7 +220,7 @@ fun quotaLine(g: QuotaGroup): String = when (g.status) {
     QuotaStatus.UNSUPPORTED -> "暂不支持读取额度"
     QuotaStatus.WAITING -> "暂未获取额度"
     else -> {
-        val got = g.rows.filter { it.left != "未获取" && it.percent != null }
+        val got = g.rows.filter { it.percent != null }
         if (got.isEmpty()) {
             "暂未获取额度" + if (g.lastRecord) "（上次记录）" else ""
         } else {

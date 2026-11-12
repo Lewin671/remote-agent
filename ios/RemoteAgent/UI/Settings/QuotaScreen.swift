@@ -36,7 +36,7 @@ struct QuotaScreen: View {
                 ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in
                     GroupLabel(sub.title + (g.lastRecord && index == 0 ? " · 上次记录" : ""))
                     if index == 0 && g.status == .failed {
-                        GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: DS.red)
+                        GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
                     }
                     GroupCard {
                         for row in sub.rows { QuotaWindow(row: row) }
@@ -46,7 +46,7 @@ struct QuotaScreen: View {
                 GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
                 // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
                 if g.status == .failed {
-                    GroupNote("没能读取 \(agentName(g.agent)) 额度" + (g.detail.isEmpty ? "" : "：\(g.detail)"), color: DS.red)
+                    GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
                 }
                 if g.status == .unsupported || g.status == .waiting || !g.rows.isEmpty {
                     GroupCard {
@@ -56,17 +56,20 @@ struct QuotaScreen: View {
                                 g.detail.or("这台电脑上的 remote-agent 读不到 \(agentName(g.agent)) 的额度。")
                                     + (agentInfo(g.agent).usageHint ?? ""))
                         } else if g.status == .waiting {
-                            QuotaState("暂未获取额度", "等待 \(agentName(g.agent)) 返回额度数据")
+                            QuotaState("暂未获取额度", g.detail.isEmpty ? L10n.quotaWaiting(name: agentName(g.agent)) : g.detail)
                         }
                         for row in g.rows { QuotaWindow(row: row) }
                     }
                 }
             }
-            // When it was heard, once for the group rather than on every row.
-            if !g.rows.isEmpty && !g.received.isEmpty { GroupNote(g.received) }
-            // Used up or close to it; nothing switches CLI or model by itself.
+            // The warning belongs to this card, before observation metadata.
             let banner = quotaBanner(g)
-            if !banner.isEmpty { GroupNote("\(banner)，不会自动切换 CLI 或模型", color: DS.orangeInk) }
+            if !banner.isEmpty { GroupNote(banner, color: DS.orangeInk) }
+            if !g.rows.isEmpty {
+                if !g.freshness.isEmpty { GroupNote(g.freshness) }
+                if !g.received.isEmpty { GroupNote(g.received) }
+            }
+
         }
         if groups.isEmpty { GroupNote("这台电脑还没有报告它装了哪些 CLI") }
         GroupNote("时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。")
@@ -100,7 +103,7 @@ private struct QuotaWindow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        let ink = row.tone == .full || row.tone == .warn ? DS.orangeInk : DS.ink2
+        let ink = row.tone == .full || row.tone == .warn ? DS.orangeInk : row.tone == .stale ? DS.ink3 : DS.ink2
         let fill: Color = switch row.tone {
         case .stale: DS.ink3
         case .normal: DS.ink

@@ -4,6 +4,7 @@
 // trusted. A missing value is never shown as 0%, and a reset time that
 // passed does not mean the quota is back.
 
+import { t } from "./i18n";
 import type { Agent, RateLimit } from "./gen/remoteagent/v1/event_pb";
 import { QuotaState, type AgentQuota, type MachineMeta, type QuotaWindow } from "./gen/remoteagent/v1/remote_pb";
 import { agentInfo, normalizePlanName } from "./agents";
@@ -93,6 +94,7 @@ export interface QuotaView {
   banner: string; // 5 小时额度即将用尽, 额度已用尽
   seen: string; // 最近收到 10:51, once for all the rows
   stale: boolean;
+  freshness: string;
 }
 
 /** A plan as people call it: Pro Lite for prolite, Max for claude_max. */
@@ -101,11 +103,20 @@ export function planName(plan: string, agent?: Agent): string {
 }
 
 /** When a reading arrived, in Beijing like the reset times beside it. */
-function when(ms: number, now: number): string {
+function received(ms: number, now: number, failed: boolean): string {
+  if (ms <= 0) return "";
   const d = beijing(ms);
-  if (dayOf(d) === dayOf(beijing(now))) return clock(d);
-  if (dayOf(d) === dayOf(beijing(now - 86_400_000))) return `昨天 ${clock(d)}`;
-  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${clock(d)}`;
+  const time = clock(d);
+  if (dayOf(d) === dayOf(beijing(now))) return t(failed ? "quota.received_success" : "quota.received", { time });
+  return t(failed ? "quota.received_success_date" : "quota.received_date", { month: d.getUTCMonth() + 1, day: d.getUTCDate(), time });
+}
+
+/** An observation without a timestamp cannot establish current availability. */
+export function quotaFreshness(ms: number, now: number): string {
+  if (ms <= 0) return t("quota.unknown_time");
+  const minutes = Math.floor(Math.max(0, now - ms) / 60_000);
+  if (minutes < 30) return "";
+  return minutes < 60 ? t("quota.old_minutes", { count: minutes }) : t("quota.old_hours", { count: Math.floor(minutes / 60) });
 }
 
 function windowRow(
@@ -149,7 +160,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
     const info = agentInfo(agent);
     const name = info.name;
     const mine = quotas.filter((q) => norm(q.agent) === agent);
-    const base = { agent, head: "", detail: "", error: "", rows: [], groups: [], banner: "", seen: "", stale: false };
+    const base = { agent, head: "", detail: "", error: "", rows: [], groups: [], banner: "", seen: "", stale: false, freshness: "" };
     if (!mine.length) {
       out.push({ ...base, title: name, kind: "unsupported", head: "暂不支持读取额度" });
       continue;
@@ -157,7 +168,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
     for (const q of mine) {
       const who = mine.length > 1 ? (q.account ? ` · 账户 ${q.account}` : q.sourceSessionId ? ` · 会话 ${q.sourceSessionId.slice(-4)}` : "") : "";
       if (q.state === QuotaState.WAITING || (q.state === QuotaState.UNSPECIFIED && !q.windows.length)) {
-        out.push({ ...base, title: name + who, kind: "waiting", head: "暂未获取额度", detail: `等待 ${name} 返回额度数据` });
+        out.push({ ...base, title: name + who, kind: "waiting", head: "暂未获取额度", detail: q.detail || t("quota.waiting", { name }) });
         continue;
       }
       if (q.state === QuotaState.UNSUPPORTED) {
@@ -165,9 +176,9 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
         continue;
       }
       const failed = q.state === QuotaState.FAILED;
-      const stale = failed || !online;
-      const observed = q.observedMs > 0n ? when(Number(q.observedMs), now) : "";
-      const heard = failed ? "最近成功收到" : "最近收到";
+      const freshness = quotaFreshness(Number(q.observedMs), now);
+      const stale = failed || !online || !!freshness;
+      const observed = received(Number(q.observedMs), now, failed);
       const byName = new Map(q.windows.map((w) => [w.name, w]));
       const known = info.quotaWindows;
       // Only the windows the account has: a plan with one window is not
@@ -190,7 +201,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
         }
       }
       if (failed && !q.windows.length) {
-        out.push({ ...base, title: name + who, kind: "failed", error: `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}`, head: "暂未获取额度" });
+        out.push({ ...base, title: name + who, kind: "failed", error: q.detail ? t("quota.failure", { name, detail: q.detail }) : t("quota.failure_no_reason", { name }), head: "暂未获取额度" });
         continue;
       }
       const got = rows.filter((r) => r.percent !== undefined && r.tone !== "stale");
@@ -213,12 +224,13 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
         title,
         kind: failed ? "failed" : "ok",
         head: "暂未获取额度",
-        seen: observed ? `${heard} ${observed}` : "",
-        error: failed ? `没能读取 ${name} 额度${q.detail ? "：" + q.detail : ""}` : "",
+        seen: observed,
+        freshness,
+        error: failed ? q.detail ? t("quota.failure", { name, detail: q.detail }) : t("quota.failure_no_reason", { name }) : "",
         rows,
         groups,
         stale,
-        banner: full ? `${full.label}额度已用尽` : warn ? `${warn.label}额度即将用尽` : "",
+        banner: full ? t("quota.exhausted", { name, window: full.label }) : warn ? t("quota.warning", { name, window: warn.label }) : "",
       });
     }
   }
@@ -230,14 +242,13 @@ export function quotaSummary(views: QuotaView[]): string {
   return views
     .map((v) => {
       if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || "暂未获取额度";
-      const got = v.rows.filter((r) => r.left !== "未获取" && r.percent !== undefined);
+      const got = v.rows.filter((r) => r.percent !== undefined);
       if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
       const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
       // A CLI with several pools (Gemini, 第三方模型) names the pool; the window is on the quota page.
       const pool = tightest.windowName && tightest.label.endsWith(" · " + tightest.windowName) ? tightest.label.slice(0, -(" · " + tightest.windowName).length) : "";
       const win = pool || tightest.windowName || tightest.label;
-      const staleSuffix = v.stale && !tightest.left.includes("上次") ? "（上次记录）" : "";
-      return `${tightest.left} · ${win}${staleSuffix}`;
+      return `${tightest.left} · ${win}`;
     })
     .join("；");
 }

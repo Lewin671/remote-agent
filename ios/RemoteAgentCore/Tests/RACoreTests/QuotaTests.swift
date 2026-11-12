@@ -30,6 +30,7 @@ import Testing
         .with {
             $0.agent = agent
             $0.state = state
+            $0.observedMs = now
             $0.windows = windows
             more(&$0)
         }
@@ -73,7 +74,7 @@ import Testing
         let m = machine(true, quota(.claude, .ok, [w("five_hour", 92.0), w("seven_day", nil)]) { $0.plan = "claude_max"; $0.observedMs = now - 60_000 })
         let g = try claude(m)
         #expect(g.title == "Claude Code · Max")
-        #expect(quotaBanner(g) == "5 小时额度即将用尽")
+        #expect(quotaBanner(g) == "Claude Code · 5 小时额度即将用尽，不会自动切换 CLI 或模型")
         #expect(g.status == .ok)
         #expect(g.rows[0].left == "剩 8%")
         #expect(g.rows[0].tone == .warn)
@@ -116,7 +117,7 @@ import Testing
             #expect(g.rows[0].label == "2 小时")
             #expect(g.rows[0].left == "剩 1%")
             #expect(g.rows[0].tone == .warn)
-            #expect(quotaBanner(g) == "2 小时额度即将用尽")
+            #expect(quotaBanner(g) == "\(agentName(agent)) · 2 小时额度即将用尽，不会自动切换 CLI 或模型")
             // A window the account does not have is not shown as missing.
             #expect(g.rows.count == 1)
         }
@@ -207,6 +208,23 @@ import Testing
         ])
         #expect(quotaLine(v) == "剩 60% · 5 小时")
     }
+    @Test func onlineReadingsAgeAtThirtyMinutesAndEarlierObservationsIncludeDates() throws {
+        let now = Int64(ISO8601DateFormatter().date(from: "2026-11-12T08:16:00Z")!.timeIntervalSince1970 * 1000)
+        var q = quota(.claude, .ok, [w("seven_day", 97, resetIn: 99_999_999_999)])
+        q.observedMs = now - 1_799_999
+        #expect(try claude(machine(true, q), at: now).rows[0].tone == .warn)
+        q.observedMs = now - 1_800_000
+        let old = try claude(machine(true, q), at: now)
+        #expect(old.lastRecord && old.rows[0].tone == .stale)
+        #expect(old.freshness == "30 分钟前的数据，可能已变化")
+        #expect(quotaBanner(old).isEmpty)
+        #expect(quotaFreshness(now - 14 * 3_600_000, now: now) == "14 小时前的数据，可能已变化")
+        q.observedMs = Int64(ISO8601DateFormatter().date(from: "2026-11-11T15:59:00Z")!.timeIntervalSince1970 * 1000)
+        #expect(try claude(machine(true, q), at: now).received == "最近收到 11月11日 23:59")
+        q.observedMs = 0
+        #expect(try claude(machine(true, q), at: now).freshness == "数据时间未知，显示上次记录")
+    }
+
 }
 
 @Suite struct QuotaCardLineTests {

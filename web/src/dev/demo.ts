@@ -20,9 +20,11 @@
 //   ?demo&draft=1&sendmenu=1#/s/s-run       running draft and long-press menu
 //   ?demo&queue-all=1#/s/s-multi           queue, held, paused, other device
 //   ?demo&cancel=failed&queue-all=1#/s/s-multi  cancel retry
+//   ?demo&quota=fresh|old|unsupported|failed|warning#/q/mac  quota states
 //   ?demo&deny=1                          inline optional denial reason
 //   ?demo&longcmd=1#/s/s-appr               an approval of a 40-line command with a long description
 
+import { t } from "../i18n";
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import {
@@ -53,6 +55,7 @@ import {
 import {
   CommandResultSchema,
   CommandSchema,
+  AgentQuotaSchema,
   MachineMetaSchema,
   type CommandResult,
   type TerminalFrame,
@@ -1722,6 +1725,7 @@ export class DemoRemote extends Remote {
             agent: Agent.CODEX,
             state: QuotaState.OK,
             plan: "Pro Lite",
+            observedMs: BigInt(now - min),
             windows: [
               {
                 name: "primary",
@@ -1826,6 +1830,23 @@ export class DemoRemote extends Remote {
             approvalAlways: true,
           },
         });
+        const quotaState = this.opts.get("quota");
+        if (quotaState) {
+          const meta = this.machines.get("mac")!.meta!;
+          meta.quotas = [create(AgentQuotaSchema, {
+            agent: Agent.CODEX, plan: "prolite", state: QuotaState.OK,
+            observedMs: BigInt(now - (quotaState === "old" ? 14 * 60 * min : min)),
+            windows: [{ name: "primary", usedPercent: 29, windowMinutes: 10080n, resetsAtMs: BigInt(now + 6 * 24 * 60 * min) }],
+          }), create(AgentQuotaSchema, {
+            agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now - min),
+            windows: [{ name: "five_hour", usedPercent: 31, windowMinutes: 300n, resetsAtMs: BigInt(now + 74 * min) },
+              { name: "seven_day", usedPercent: quotaState === "warning" ? 97 : 40, windowMinutes: 10080n, resetsAtMs: BigInt(now + 32 * 60 * min) }],
+          }), create(AgentQuotaSchema, {
+            agent: Agent.ANTIGRAVITY,
+            state: quotaState === "unsupported" ? QuotaState.UNSUPPORTED : quotaState === "failed" ? QuotaState.FAILED : QuotaState.WAITING,
+            detail: quotaState === "failed" ? t("quota.read_failed") : "",
+          })];
+        }
         machine("mini", "Mac mini", false);
       }
     }

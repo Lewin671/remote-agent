@@ -28,7 +28,7 @@ it("keeps an old reading as such: offline, or past its reset", () => {
 
 describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
   const at = (h: number, m = 0) => Date.parse("2026-09-30T00:00:00+08:00") + (h * 60 + m) * 60_000;
-  const q = (init: object) => create(AgentQuotaSchema, init as never);
+  const q = (init: object) => create(AgentQuotaSchema, { observedMs: BigInt(now), ...init } as never);
   const w = (name: string, used: number | undefined, resetH: number | undefined, minutes: number) =>
     create(QuotaWindowSchema, { name, usedPercent: used, resetsAtMs: resetH === undefined ? 0n : BigInt(at(resetH, 10)), windowMinutes: BigInt(minutes) });
   const now = at(9, 41);
@@ -48,7 +48,7 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
     expect(v.rows[0]).toMatchObject({ left: "剩 8%", tone: "warn" });
     expect(v.rows[1]).toMatchObject({ label: "7 天", left: "未获取", reset: "" });
     expect(v.rows[1].percent).toBeUndefined();
-    expect(v.banner).toBe("5 小时额度即将用尽");
+    expect(v.banner).toBe("Claude Code · 5 小时额度即将用尽，不会自动切换 CLI 或模型");
     // A window the account does not have is left out: a plan with only a
     // weekly window is not shown a second 7 天 that never arrives.
     const [only] = quotaViews([q({ agent: Agent.CODEX, state: QuotaState.OK, plan: "prolite", observedMs: BigInt(at(9, 40)), windows: [w("primary", 72, 13, 10080)] })], [Agent.CODEX], now, true);
@@ -149,10 +149,10 @@ describe("account quota from MachineMeta.quotas (Go ed1a14d)", () => {
 
 it("uses reported durations and raw percentages for warning thresholds", () => {
   const window = create(QuotaWindowSchema, { name: "primary", usedPercent: 99.6, windowMinutes: 120n });
-  const q = create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.OK, windows: [window] });
+  const q = create(AgentQuotaSchema, { agent: Agent.CODEX, state: QuotaState.OK, observedMs: BigInt(now), windows: [window] });
   const [v] = quotaViews([q], [Agent.CODEX], now, true);
   expect(v.rows[0]).toMatchObject({ label: "2 小时", left: "剩 1%", percent: 99.6, tone: "warn" });
-  expect(v.banner).toBe("2 小时额度即将用尽");
+  expect(v.banner).toBe("Codex · 2 小时额度即将用尽，不会自动切换 CLI 或模型");
   expect(quotaRow(lim(99.6, 120, 60), "5 小时", now, true)).toMatchObject({ left: "剩 1%", tone: "warn" });
   expect(quotaRow(lim(79.6, 120, 60), "5 小时", now, true).tone).toBe("");
   window.usedPercent = 79.6;
@@ -177,4 +177,32 @@ it("says how long until a reset: to the hour from a day on, to the minute below"
   expect(reset(60)).toBe("1 小时 0 分后重置 · 今天 10:40");
   expect(reset(59)).toBe("59 分钟后重置 · 今天 10:39");
   expect(quotaRow(create(RateLimitSchema, { usedPercent: 10, resetsAt: BigInt(Math.floor(now / 1000) + 30) }), "7 天", now, true).reset).toBe("即将重置 · 今天 9:40");
+});
+
+it("ages online readings at 30 minutes, suppresses current warnings, and dates earlier observations", () => {
+  const now = Date.parse("2026-11-12T16:16:00+08:00");
+  const q = create(AgentQuotaSchema, { agent: Agent.CLAUDE, state: QuotaState.OK, observedMs: BigInt(now), windows: [{ name: "seven_day", usedPercent: 97, windowMinutes: 10080n, resetsAtMs: BigInt(now + 86_400_000) }] });
+  const view = () => quotaViews([q], [Agent.CLAUDE], now, true)[0];
+  q.observedMs = BigInt(now - 1_799_999);
+  expect(view().rows[0].tone).toBe("warn");
+  q.observedMs = BigInt(now - 1_800_000);
+  expect(view()).toMatchObject({ stale: true, freshness: "30 分钟前的数据，可能已变化", banner: "" });
+  expect(view().rows[0]).toMatchObject({ tone: "stale", left: "上次剩 3%" });
+  q.observedMs = BigInt(now - 14 * 3_600_000);
+  expect(view().freshness).toBe("14 小时前的数据，可能已变化");
+  q.observedMs = BigInt(Date.parse("2026-11-11T23:59:00+08:00"));
+  expect(view().seen).toBe("最近收到 11月11日 23:59");
+  q.observedMs = 0n;
+  expect(view()).toMatchObject({ stale: true, freshness: "数据时间未知，显示上次记录", seen: "" });
+});
+
+it("matches the screenshot reset arithmetic and Beijing weekdays", () => {
+  const now = Date.parse("2026-11-12T16:16:00+08:00");
+  for (const [reset, expected] of [
+    ["2026-11-18T17:30:00+08:00", "6 天 1 小时后重置 · 11月18日 周三 17:30"],
+    ["2026-11-12T17:30:00+08:00", "1 小时 14 分后重置 · 今天 17:30"],
+    ["2026-11-14T01:00:00+08:00", "1 天 8 小时后重置 · 11月14日 周六 1:00"],
+  ]) {
+    expect(quotaRow(create(RateLimitSchema, { usedPercent: 29, resetsAt: BigInt(Date.parse(reset) / 1000) }), "7 天", now, true).reset).toBe(expected);
+  }
 });

@@ -32,7 +32,7 @@ class QuotaTest {
         val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_CLAUDE }
         // Still Friday in Beijing, so the reset after midnight is not 今天.
         assertEquals("40 分钟后重置 · 10月3日 周六 0:10", g.rows.single().reset)
-        assertEquals("最近收到 23:29", g.received)
+        assertEquals("23:29", g.received?.args?.get("time"))
     }
 
     @Test
@@ -64,7 +64,7 @@ class QuotaTest {
         )
         val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_CLAUDE }
         assertEquals("Claude Code · Max", g.title)
-        assertEquals("5 小时额度即将用尽", quotaBanner(g))
+        assertEquals(mapOf("name" to "Claude Code", "window" to "5 小时"), quotaBanner(g)?.args)
         assertEquals(QuotaStatus.OK, g.status)
         assertEquals("剩 8%", g.rows[0].left)
         assertEquals(QuotaTone.WARN, g.rows[0].tone)
@@ -86,7 +86,7 @@ class QuotaTest {
         assertEquals("上次剩 72%", g.rows[0].left)
         assertEquals(QuotaTone.STALE, g.rows[0].tone)
         assertEquals("上次剩 72% · 5 小时", quotaLine(g))
-        assertTrue(g.received.startsWith("最近成功收到"))
+        assertEquals("quota.received_success", g.received?.key)
         val ok = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 28.0)).build()
         assertEquals(QuotaTone.STALE, quotaGroups(machine(false, ok), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0].tone)
     }
@@ -101,8 +101,8 @@ class QuotaTest {
 
     @Test
     fun accountsThatCannotBeToldApartStayApart() {
-        val a = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setSourceSessionId("aaaa1111bbbb").addWindows(w("five_hour", 10.0)).build()
-        val b = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setAccount("f00dbeef99").addWindows(w("five_hour", 50.0)).build()
+        val a = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).setSourceSessionId("aaaa1111bbbb").addWindows(w("five_hour", 10.0)).build()
+        val b = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).setAccount("f00dbeef99").addWindows(w("five_hour", 50.0)).build()
         val gs = quotaGroups(machine(true, a, b), now).filter { it.agent == Agent.AGENT_CLAUDE }
         assertEquals(listOf("Claude Code · 会话 bbbb", "Claude Code · 账户 f00dbeef99"), gs.map { it.title })
     }
@@ -111,12 +111,12 @@ class QuotaTest {
     fun absentWindowsAreLeftOutAndReportedDurationsAreKept() {
         for ((agent, name) in listOf(Agent.AGENT_CLAUDE to "five_hour", Agent.AGENT_CODEX to "primary")) {
             val window = w(name, 99.6).toBuilder().setWindowMinutes(120).build()
-            val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).addWindows(window).build()
+            val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).addWindows(window).build()
             val g = quotaGroups(machine(true, q), now).single { it.agent == agent }
             assertEquals("2 小时", g.rows[0].label)
             assertEquals("剩 1%", g.rows[0].left)
             assertEquals(QuotaTone.WARN, g.rows[0].tone)
-            assertEquals("2 小时额度即将用尽", quotaBanner(g))
+            assertEquals(mapOf("name" to agentName(agent), "window" to "2 小时"), quotaBanner(g)?.args)
             // A window the account does not have is not shown as missing.
             assertEquals(1, g.rows.size)
         }
@@ -152,7 +152,7 @@ class QuotaTest {
         )
         val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_ANTIGRAVITY }
         assertEquals("Antigravity · Google AI Pro", g.title)
-        assertEquals("最近收到 9:41", g.received)
+        assertEquals("9:41", g.received?.args?.get("time"))
         assertEquals(3, g.sections.size)
         assertEquals("Antigravity · Google AI Pro · Gemini", g.sections[0].title)
         assertEquals(listOf("Gemini · 5 小时", "Gemini · 7 天", "Gemini 4 Argon · 7 天"), g.sections[0].rows.map { it.label })
@@ -162,4 +162,26 @@ class QuotaTest {
         assertEquals(listOf("custom-bucket"), g.sections[2].rows.map { it.label })
         assertEquals("剩 60% · 5 小时", quotaLine(g))
     }
+    @Test
+    fun onlineReadingsAgeAtThirtyMinutesAndEarlierObservationsIncludeDates() {
+        val now = java.time.Instant.parse("2026-11-12T08:16:00Z").toEpochMilli()
+        val q = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK)
+            .addWindows(w("seven_day", 97.0, resetIn = 86_400_000, baseNow = now))
+        fun group() = quotaGroups(machine(true, q.build()), now).single { it.agent == Agent.AGENT_CLAUDE }
+        q.setObservedMs(now - 1_799_999)
+        assertEquals(QuotaTone.WARN, group().rows[0].tone)
+        q.setObservedMs(now - 1_800_000)
+        assertEquals(QuotaTone.STALE, group().rows[0].tone)
+        assertTrue(group().lastRecord)
+        assertEquals("quota.old_minutes", group().freshness?.key)
+        assertEquals(30, group().freshness?.args?.get("count"))
+        assertEquals(null, quotaBanner(group()))
+        assertEquals(14, quotaFreshness(now - 14 * 3_600_000, now)?.args?.get("count"))
+        q.setObservedMs(java.time.Instant.parse("2026-11-11T15:59:00Z").toEpochMilli())
+        assertEquals("quota.received_date", group().received?.key)
+        assertEquals(mapOf("day" to 11, "month" to 11, "time" to "23:59"), group().received?.args)
+        q.setObservedMs(0)
+        assertEquals("quota.unknown_time", group().freshness?.key)
+    }
+
 }

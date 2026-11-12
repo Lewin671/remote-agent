@@ -958,6 +958,7 @@ private fun QuotaRowView(
                     when (r.tone) {
                         io.github.lewin671.remoteagent.core.QuotaTone.FULL,
                         io.github.lewin671.remoteagent.core.QuotaTone.WARN -> p.orangeInk
+                        io.github.lewin671.remoteagent.core.QuotaTone.STALE -> p.faint
                         else -> p.ink2
                     },
             )
@@ -1123,8 +1124,7 @@ fun QuotaScreen(id: String) {
             for (g in groups) {
                 if (g.status == io.github.lewin671.remoteagent.core.QuotaStatus.FAILED)
                     Text(
-                        "没能读取 ${agentName(g.agent)} 额度" +
-                            if (g.detail.isNotEmpty()) "：${g.detail}" else "",
+                        uiText(if (g.detail.isNotEmpty()) UiMessages.quotaFailure(g.detail, agentName(g.agent)) else UiMessages.quotaFailureNoReason(agentName(g.agent))),
                         style = T.s13,
                         color = p.red,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
@@ -1161,7 +1161,7 @@ fun QuotaScreen(id: String) {
                                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                                         Text("暂未获取额度", style = T.s15b, color = p.ink)
                                         Text(
-                                            "等待 ${agentName(g.agent)} 返回额度数据",
+                                            g.detail.ifEmpty { uiText(UiMessages.quotaWaiting(agentName(g.agent))) },
                                             style = T.s12,
                                             color = p.ink2,
                                         )
@@ -1172,26 +1172,21 @@ fun QuotaScreen(id: String) {
                     for (r in g.rows) rows += @Composable { QuotaRowView(r) }
                     if (rows.isNotEmpty()) Group(rows = rows)
                 }
-                // When it was heard, once for the group rather than on every row.
-                if (g.rows.isNotEmpty() && g.received.isNotEmpty())
-                    Text(
-                        g.received,
-                        style = T.s12,
-                        color = p.ink2,
-                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
-                    )
-                // Used up or close to it; nothing switches CLI or model by itself.
-                io.github.lewin671.remoteagent.core
-                    .quotaBanner(g)
-                    .takeIf { it.isNotEmpty() }
-                    ?.let {
-                        Text(
-                            "$it，不会自动切换 CLI 或模型",
-                            style = T.s13,
-                            color = p.orangeInk,
-                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp),
-                        )
+                // The warning stays next to its card, before observation metadata.
+                io.github.lewin671.remoteagent.core.quotaBanner(g)?.let {
+                    Text(uiText(it), style = T.s13, color = p.orangeInk,
+                        modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
+                }
+                if (g.rows.isNotEmpty()) {
+                    g.freshness?.let {
+                        Text(uiText(it), style = T.s12, color = p.ink2,
+                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
                     }
+                    g.received?.let {
+                        Text(uiText(it), style = T.s12, color = p.ink2,
+                            modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
+                    }
+                }
             }
             Text(
                 "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",

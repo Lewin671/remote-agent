@@ -52,7 +52,9 @@ public struct QuotaGroup: Equatable, Sendable {
     public var received: String
     /// The daemon's words for a failure or no support.
     public var detail: String
-    /// The numbers are a last record: the machine is offline, or reading failed.
+    /// Why the observation cannot establish current availability.
+    public var freshness: String = ""
+    /// Offline, failed, or too old to treat as current.
     public var lastRecord: Bool
 
     public init(agent: PBAgent, title: String, status: QuotaStatus, rows: [QuotaRow], subgroups: [QuotaSubgroup] = [], received: String, detail: String, lastRecord: Bool) {
@@ -87,15 +89,20 @@ private func nameLabel(_ w: PBQuotaWindow) -> String {
 private let beijing = TimeZone(identifier: "Asia/Shanghai") ?? TimeZone(secondsFromGMT: 8 * 3600)!
 
 /// When a reading arrived, in Beijing like the reset times beside it.
-private func clockText(_ ms: Int64, now: Int64) -> String {
+private func received(_ ms: Int64, now: Int64, failed: Bool) -> String {
+    guard ms > 0 else { return "" }
     let t = LocalDay(ms: ms, zone: beijing)
-    let today = LocalDay(ms: now, zone: beijing)
-    switch t.epochDay - today.epochDay {
-    case 0: return t.hhmm
-    case -1: return "昨天 \(t.hhmm)"
-    case 1...: return "\(weekdayNames[t.weekdayIndex]) \(t.hhmm)"
-    default: return "\(t.month)月\(t.day)日 \(t.hhmm)"
+    if t.sameDay(LocalDay(ms: now, zone: beijing)) {
+        return failed ? L10n.quotaReceivedSuccess(time: t.hhmm) : L10n.quotaReceived(time: t.hhmm)
     }
+    return failed ? L10n.quotaReceivedSuccessDate(day: t.day, month: t.month, time: t.hhmm) : L10n.quotaReceivedDate(day: t.day, month: t.month, time: t.hhmm)
+}
+
+public func quotaFreshness(_ ms: Int64, now: Int64) -> String {
+    guard ms > 0 else { return L10n.quotaUnknownTime() }
+    let minutes = max(0, now - ms) / 60_000
+    if minutes < 30 { return "" }
+    return minutes < 60 ? L10n.quotaOldMinutes(count: Int(minutes)) : L10n.quotaOldHours(count: Int(minutes / 60))
 }
 
 /// 3 小时 39 分后重置 · 今天 13:20: how long is left, rounded down, then the
@@ -210,7 +217,8 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
     case .unsupported: status = .unsupported
     default: status = .waiting
     }
-    let lastRecord = !online || status == .failed
+    let freshness = quotaFreshness(q.observedMs, now: now)
+    let lastRecord = !online || status == .failed || !freshness.isEmpty
     let which: String
     if !several {
         which = ""
@@ -253,15 +261,17 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
         subgroups = []
     }
 
-    let received = q.observedMs > 0 ? (status == .failed ? "最近成功收到 " : "最近收到 ") + clockText(q.observedMs, now: now) : ""
-    return QuotaGroup(agent: agent, title: title, status: status, rows: rows, subgroups: subgroups, received: received, detail: q.detail, lastRecord: lastRecord && !rows.isEmpty)
+    let received = received(q.observedMs, now: now, failed: status == .failed)
+    var result = QuotaGroup(agent: agent, title: title, status: status, rows: rows, subgroups: subgroups, received: received, detail: q.detail, lastRecord: lastRecord && !rows.isEmpty)
+    result.freshness = freshness
+    return result
 }
 
 /// The warning above a group: a window used up, or close to it; nothing switches by itself.
 public func quotaBanner(_ g: QuotaGroup) -> String {
     let got = g.rows.filter { $0.percent != nil && $0.tone != .stale }
-    if let r = got.first(where: { $0.tone == .full }) { return "\(r.label)额度已用尽" }
-    if let r = got.first(where: { $0.tone == .warn }) { return "\(r.label)额度即将用尽" }
+    if let r = got.first(where: { $0.tone == .full }) { return L10n.quotaExhausted(name: agentName(g.agent), window: r.label) }
+    if let r = got.first(where: { $0.tone == .warn }) { return L10n.quotaWarning(name: agentName(g.agent), window: r.label) }
     return ""
 }
 
@@ -282,7 +292,7 @@ public func quotaLine(_ g: QuotaGroup) -> String {
 /// The summary uses the first most-used reported window, preserving daemon order on ties.
 public func quotaSummaryRow(_ g: QuotaGroup) -> QuotaRow? {
     guard g.status == .ok || g.status == .failed else { return nil }
-    return g.rows.filter { $0.left != "未获取" && $0.percent != nil }.reduce(nil) { best, row in
+    return g.rows.filter { $0.percent != nil }.reduce(nil) { best, row in
         guard let best else { return row }
         return (row.percent ?? -1) > (best.percent ?? -1) ? row : best
     }

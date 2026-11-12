@@ -395,14 +395,14 @@ export function QuotaPage({
                 </div>
               ))
             )}
-            {v.seen && v.rows.length > 0 && (
-              <div className="gf">{v.seen}</div>
-            )}
             {v.banner && (
               <div className="set-banners">
-                <Banner kind="warn">{v.banner}，不会自动切换 CLI 或模型</Banner>
+                <Banner kind="warn">{v.banner}</Banner>
               </div>
             )}
+            {v.freshness && v.rows.length > 0 && <div className="gf">{v.freshness}</div>}
+            {v.seen && v.rows.length > 0 && <div className="gf">{v.seen}</div>}
+
           </div>
         ))}
         <div className="gf">
