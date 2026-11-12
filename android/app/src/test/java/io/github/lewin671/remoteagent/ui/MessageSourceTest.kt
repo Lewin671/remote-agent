@@ -23,7 +23,7 @@ class MessageSourceTest {
 
     @Test fun interruptNotesAlsoHideThisClientsSource() {
         val e = Event.newBuilder().setSeq(1).setTurnEnded(TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_ABORTED)).build()
-        fun note(source: String) = buildChat(listOf(e), derive(listOf(e)), "MacBook", who = { source }).filterIsInstance<ChatItem.TurnEnd>().single().text
+        fun note(source: String) = buildChat(listOf(e), derive(listOf(e)), "MacBook", who = { source }).filterIsInstance<ChatItem.Note>().single().text
         assertEquals("已中断", note("本客户端"))
         assertEquals("已中断（Android · Pixel 9）", note("Android · Pixel 9"))
     }

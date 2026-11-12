@@ -263,8 +263,6 @@ fun buildChat(
     val runSeqs = mutableListOf<Long>()
     var runKey = ""
     val decisions = approvalDecisions(events, d, who)
-    var turnTokens = 0L
-    var lastTotal = 0L
     fun flushRun() {
         when (run.size) {
             0 -> {}
@@ -385,19 +383,12 @@ fun buildChat(
                 flush()
                 out += ChatItem.Plan(k, e.planProposed.text)
             }
-            Event.KindCase.TOKEN_USAGE -> {
-                if (lastTotal > 0) turnTokens += (e.tokenUsage.totalTokens - lastTotal).coerceAtLeast(0)
-                lastTotal = e.tokenUsage.totalTokens
-            }
-            Event.KindCase.TURN_STARTED -> turnTokens = 0
             Event.KindCase.TURN_ENDED -> {
                 flush()
                 val t = e.turnEnded
-                val parts = mutableListOf<String>()
-                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED) parts += "已中断" + (who(e.originOrNull())?.takeIf { it != "本客户端" }?.let { "（$it）" } ?: "")
-                if (t.durationMs > 0) parts += "本轮用时 ${duration(t.durationMs)}"
-                if (turnTokens > 0) parts += if (turnTokens >= 1000) "${(turnTokens + 500) / 1000}k tokens" else "$turnTokens tokens"
-                if (parts.isNotEmpty()) out += ChatItem.TurnEnd(k, parts.joinToString(" · "))
+                if (t.outcome == TurnOutcome.TURN_OUTCOME_ABORTED)
+                    out += ChatItem.Note("$k-interrupted", "已中断" + (who(e.originOrNull())?.takeIf { it != "本客户端" }?.let { "（$it）" } ?: ""))
+                if (t.durationMs > 0) out += ChatItem.TurnEnd(k, "本轮用时 ${duration(t.durationMs)}")
             }
             Event.KindCase.SETTINGS_CHANGED -> {
                 val c = e.settingsChanged

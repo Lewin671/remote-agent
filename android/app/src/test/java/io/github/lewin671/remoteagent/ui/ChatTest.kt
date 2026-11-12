@@ -91,7 +91,15 @@ class ChatTest {
         assertEquals(2, (items[1] as ChatItem.Tools).calls.size)
         assertEquals("done", (items[2] as ChatItem.Agent).text)
         assertEquals("上下文已压缩 · 86% → 14%", (items[3] as ChatItem.Note).text)
-        assertEquals("本轮用时 4 分 12 秒 · 100 tokens", (items[4] as ChatItem.TurnEnd).text)
+        assertEquals("本轮用时 4 分 12 秒", (items[4] as ChatItem.TurnEnd).text)
+    }
+
+    @Test fun interruptedTurnKeepsItsNoticeSeparateFromTheDuration() {
+        val events = listOf(ev(1, Event.newBuilder().setTurnEnded(
+            TurnEnded.newBuilder().setOutcome(io.github.lewin671.remoteagent.proto.TurnOutcome.TURN_OUTCOME_ABORTED).setDurationMs(1000))))
+        val rows = buildChat(events, derive(events), "Example")
+        assertEquals("已中断", (rows[0] as ChatItem.Note).text)
+        assertEquals("本轮用时 1 秒", (rows[1] as ChatItem.TurnEnd).text)
     }
 
     // Ported from "approval records" in web/src/model.test.ts.
