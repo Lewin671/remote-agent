@@ -1516,6 +1516,7 @@ internal fun putBack(
     o: Outgoing,
 ): Boolean {
     val d = ImageDrafts.forSession(sid)
+    if (d.awaitingRestore) { d.whenRestored { putBack(remote, sid, o) }; return true }
     val s = remote.state.value.sessions[sid]
     if (!canRestoreFiles(remote, s?.machineId, o.fileIds.isNotEmpty() || o.images.any { it.isFile }, d)) return false
     val max = maxImages(s?.let { remote.state.value.machines[it.machineId] })
@@ -1539,6 +1540,7 @@ internal fun putBackReferences(
     files: List<io.github.lewin671.remoteagent.proto.SentFile>, imageIds: List<String>,
 ): Boolean {
     val tray = ImageDrafts.forSession(sid)
+    if (tray.awaitingRestore) { tray.whenRestored { putBackReferences(remote, sid, text, files, imageIds) }; return true }
     val target = remote.state.value.sessions[sid]?.machineId
     if (!canRestoreFiles(remote, target, files.isNotEmpty(), tray)) return false
     val machine = remote.state.value.machines[target]

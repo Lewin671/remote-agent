@@ -291,6 +291,16 @@ class ImageDraft(
     var restoring by mutableStateOf(false)
         private set
     private var restoreJob: Job? = null
+    private var restoreFailed = false
+    private var retryRestore: (() -> Unit)? = null
+    internal val awaitingRestore: Boolean get() = restoring || restoreFailed
+    private val afterRestore = ArrayList<() -> Unit>()
+    internal fun whenRestored(work: () -> Unit) {
+        if (awaitingRestore) {
+            afterRestore += work
+            if (!restoring) retryRestore?.invoke()
+        } else work()
+    }
 
     var original by mutableStateOf(false)
         private set
@@ -316,7 +326,11 @@ class ImageDraft(
      * the order of the whole selection. Saves run one at a time, so an
      * older snapshot never lands after a newer one.
      */
-    internal fun persistOrder() = enqueue { saveNow() }
+    internal fun persistOrder() {
+        if (restoring) return
+        if (restoreFailed) { retryRestore?.invoke(); return }
+        enqueue { saveNow() }
+    }
 
     /** Runs [work] after the saves and removals asked for before it. */
     private fun enqueue(work: () -> Unit) {
@@ -339,6 +353,7 @@ class ImageDraft(
     private val waiting = ArrayList<Pair<List<String>, () -> Unit>>()
 
     private fun saveNow() {
+        if (awaitingRestore) return
         runCatching { files.transaction {
             val message = text.value
             if (message != textOnDisk) {
@@ -640,14 +655,15 @@ class ImageDraft(
     ): Job {
         restoring = true
         val account = AccountMemory.token
-        val revision = textRevision
+        retryRestore = { restore(scope, thumb) }
+        var loaded = false
         return scope.launch {
             try {
                 val (kept, message) = withContext(Dispatchers.IO) { loadImages(files, key, thumb) to files.get(key, "text")?.toString(Charsets.UTF_8).orEmpty() }
                 val (list, orig) = kept
                 if (account !== AccountMemory.token) { list.forEach { PendingUris.release(it) }; return@launch }
                 textOnDisk = message
-                if (textRevision == revision) typed.value = message
+                if (textRevision == 0L) typed.value = message
                 original = orig
                 list.forEach { it.restoreToDraft(); PendingUris.retain(it) }
                 images += list
@@ -655,13 +671,21 @@ class ImageDraft(
                     saved += list.filterNot { it.stale }.map { it.id }
                     stale += list.filter { it.stale }.map { it.id }
                 }
-                persistOrder()
+                loaded = true
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (account === AccountMemory.token) notice = "待发图片没能恢复，请重新打开应用后重试"
+                restoreFailed = true
+                if (account === AccountMemory.token) notice = "待发图片没能恢复，仍可输入，下次编辑或放回时重试"
             } finally {
                 restoring = false
+                if (loaded && account === AccountMemory.token) {
+                    restoreFailed = false
+                    if (notice.startsWith("待发图片没能恢复")) notice = ""
+                    val waiting = afterRestore.toList(); afterRestore.clear()
+                    waiting.forEach { it() }
+                    persistOrder()
+                }
             }
         }.also { restoreJob = it }
     }
@@ -669,6 +693,9 @@ class ImageDraft(
     internal fun cancelRestore() {
         restoreJob?.cancel()
         restoreJob = null
+        retryRestore = null
+        restoreFailed = false
+        afterRestore.clear()
         restoring = false
     }
 

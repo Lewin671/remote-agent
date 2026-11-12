@@ -52,6 +52,51 @@ class RestoreImagesTest {
         assertTrue(reads.threads.all { it !== caller })
     }
 
+    @Test fun typingWhileOrderIsBeingReadKeepsTheSavedImagesAndUsesTheNewText() = runBlocking {
+        val backing = MemoryFiles()
+        val image = image()
+        saveImages(backing, "session:typing", listOf(image), true)
+        saveOrder(backing, "session:typing", listOf(image), true)
+        backing.put("session:typing", "text", "saved text".toByteArray())
+        val reads = Reads(backing).apply { block = true }
+        val draft = ImageDraft("session:typing", reads, scope = null)
+        val job = draft.restore(this) { null }
+        try {
+            reads.entered.await()
+            draft.text.value = "typed during restore"
+            assertEquals("saved text", backing.get("session:typing", "text")!!.toString(Charsets.UTF_8))
+        } finally { reads.release.countDown() }
+        job.join()
+        assertEquals(listOf(image.id), draft.images.map { it.id })
+        assertEquals("typed during restore", draft.text.value)
+        assertEquals("typed during restore", backing.get("session:typing", "text")!!.toString(Charsets.UTF_8))
+        assertEquals(listOf(image.id), loadImages(backing, "session:typing").first.map { it.id })
+    }
+
+    @Test fun aFailedRestoreIsRetriedOnEditBeforeAnyDraftOverwrite() = runBlocking {
+        val backing = MemoryFiles()
+        val image = image()
+        saveImages(backing, "session:retry-read", listOf(image), true)
+        saveOrder(backing, "session:retry-read", listOf(image), true)
+        backing.put("session:retry-read", "text", "saved text".toByteArray())
+        var fail = true
+        val reads = object : SealedFiles by backing {
+            override fun get(folder: String, name: String): ByteArray? {
+                if (fail) { fail = false; throw java.io.IOException("temporary read failure") }
+                return backing.get(folder, name)
+            }
+        }
+        val draft = ImageDraft("session:retry-read", reads, scope = null)
+        draft.restore(this) { null }.join()
+        assertTrue(draft.awaitingRestore)
+        draft.text.value = "typed after read failure"
+        kotlinx.coroutines.withTimeout(5000) { while (draft.restoring) kotlinx.coroutines.delay(1) }
+        assertFalse(draft.awaitingRestore)
+        assertEquals(listOf(image.id), draft.images.map { it.id })
+        assertEquals("typed after read failure", draft.text.value)
+        assertEquals("typed after read failure", backing.get("session:retry-read", "text")!!.toString(Charsets.UTF_8))
+    }
+
     @Test
     fun draftFinishingAfterLogoutCannotRestoreOldAccountImages() = runBlocking {
         val backing = MemoryFiles()
