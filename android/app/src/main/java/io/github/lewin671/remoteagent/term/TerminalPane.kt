@@ -172,7 +172,7 @@ internal fun terminalToolbar(state: RemoteTerminal.State, reading: TerminalHisto
  * over it (client-v40 §terminal-history), which is where history is read.
  */
 @Composable
-fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier) {
+fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     val scope = rememberCoroutineScope()
     val term = remember(remote, sessionId) { RemoteTerminal(remote, sessionId, scope) }
     val owner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -245,7 +245,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
 
     Column(modifier) {
         // The chips say the size, and that it changed; nothing pops up over the screen. Dark glass, as the whole terminal is dark.
-        Row(
+        if (!compact) Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -388,6 +388,7 @@ fun TerminalPane(remote: Remote, sessionId: String, sessionRunning: Boolean, mod
             }
         }
         KeyBar(
+            compact = compact,
             enabled = state == RemoteTerminal.State.Live,
             onKey = { key ->
                 if (term.history.state.value.visible) leaveReading()
@@ -419,20 +420,21 @@ private fun FontButton(label: String, said: String, enabled: Boolean, onClick: (
 /**
  * The keys a phone keyboard lacks, on a dark glass bar (client-v58): Esc,
  * the arrows and Enter on the first row; Tab, Ctrl+C and the white 键盘 on
- * the second. Every key is at least 44 × 44.
+ * the second. With the landscape IME open they share one row. Every key is at least 44 × 44.
  */
 @Composable
-private fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit) {
+internal fun KeyBar(enabled: Boolean, onKey: (Key) -> Unit, onKeyboard: () -> Unit, compact: Boolean = false) {
     val p = pal
     Column(
-        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 12.dp)
+        Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = if (compact) 4.dp else 12.dp)
             .glass(p, RoundedCornerShape(27.dp), dark = true).padding(7.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(Modifier.fillMaxWidth().disabledAlpha(enabled), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            for (k in keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
+            for (k in if (compact) keyRows.flatten() else keyRows[0]) KeyButton(k.label, enabled, Modifier.weight(1f), k.icon) { onKey(k) }
+            if (compact) KeyButton("键盘", true, Modifier.weight(1f), Lucide.Keyboard, white = true, onClick = onKeyboard)
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (!compact) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             for (k in keyRows[1]) KeyButton(k.label, enabled, Modifier.weight(1f).disabledAlpha(enabled), k.icon) { onKey(k) }
             KeyButton("键盘", true, Modifier.weight(1.5f), Lucide.Keyboard, named = true, white = true, onClick = onKeyboard)
         }

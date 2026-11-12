@@ -160,12 +160,14 @@ fun SessionScreen(sid: String) {
     val term = tab == 1 && hasTerminal
     val both = tab == 2 && wide && hasTerminal
     BackHandler { if (term) tab = 0 else nav.back() }
+    val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val compactTerminal = term && landscape && WindowInsets.ime.getBottom(LocalDensity.current) > 0
     // The terminal is dark in both themes, up to the screen's edges (design-system §6).
     LightSystemBarIcons(term && !p.dark)
     Column(
         Modifier.fillMaxSize().background(if (term) TermColors.bg else p.paper).windowInsetsPadding(WindowInsets.safeDrawing),
     ) {
-        SessionTopBar(
+        if (!compactTerminal) SessionTopBar(
             state,
             s,
             status,
@@ -173,7 +175,7 @@ fun SessionScreen(sid: String) {
             io.github.lewin671.remoteagent.core.sentMessage(s, events.events),
             dark = term,
         )
-        Segmented(
+        if (!compactTerminal) Segmented(
             if (wide) listOf("聊天", "终端", "并排") else listOf("聊天", "终端"),
             if (term) 1 else if (both) 2 else 0,
             {
@@ -193,6 +195,7 @@ fun SessionScreen(sid: String) {
                 sid,
                 sessionRunning = true,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
+                compact = compactTerminal,
             )
         } else Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f)) {
