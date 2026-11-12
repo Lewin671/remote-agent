@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
 import io.github.lewin671.remoteagent.core.UiMessages
+import io.github.lewin671.remoteagent.core.messageText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -101,6 +102,8 @@ class Outgoing(
         delivering = true
         state = State.SENDING
         error = ""
+        failureDisplay = null
+        failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
         missingImages = false
         try {
             // A definite rejection permits a fresh outer command. The message's dedupe ID and
@@ -118,11 +121,21 @@ class Outgoing(
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
             failureKind = if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-            failureDisplay = io.github.lewin671.remoteagent.core.errorText(e)
-            error = if (missingImages) { if (fileIds.isNotEmpty()) sessionText(UiMessages.attachmentAndroidMissingFiles()) else sessionText(UiMessages.imageAndroidMissingUploads()) } else displayError(e)
+            failureDisplay = if (missingImages) {
+                (if (fileIds.isNotEmpty()) UiMessages.attachmentAndroidMissingFiles() else UiMessages.imageAndroidMissingUploads()).messageText()
+            } else io.github.lewin671.remoteagent.core.errorText(e)
+            error = sessionText(checkNotNull(failureDisplay))
         } finally {
             delivering = false
         }
+    }
+
+    /** The disk record contains intent, not a previous error or a settled outcome. */
+    internal fun restoreUnconfirmed() {
+        state = State.UNKNOWN
+        failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
+        failureDisplay = UiMessages.composerAndroidRestartUnknown().messageText()
+        error = sessionText(checkNotNull(failureDisplay))
     }
 
     internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest): io.github.lewin671.remoteagent.core.PreparedCommand {
@@ -251,9 +264,7 @@ class OutgoingRecords(private val files: SealedFiles) {
             }
             Outgoing(req, text, ids, images, original, mode, fileIds, deadline, machine, commandId).apply {
                 // From a run that ended: whether it reached the computer is not known.
-                state = Outgoing.State.UNKNOWN
-                error = sessionText(UiMessages.composerAndroidRestartUnknown())
-                failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN
+                restoreUnconfirmed()
             }
         }
     }

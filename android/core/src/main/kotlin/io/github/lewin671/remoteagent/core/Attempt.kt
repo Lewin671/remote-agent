@@ -25,7 +25,7 @@ class Attempt {
 
     /** What to send: an earlier command whose outcome is unknown wins over a new one. */
     fun next(make: () -> PreparedCommand): PreparedCommand {
-        if (expired) throw CommandException(CommandException.UNKNOWN, EXPIRED_UNKNOWN, failureKind = CommandFailureKind.UNKNOWN)
+        if (expired) throw CommandException(CommandException.UNKNOWN, EXPIRED_UNKNOWN)
         return pending ?: make().also { pending = it }
     }
 
@@ -40,13 +40,13 @@ class Attempt {
             uncertain(error) -> frozen = true
             frozen && expiry(error) -> {
                 expired = true
-                return CommandException(CommandException.UNKNOWN, EXPIRED_UNKNOWN, failureKind = CommandFailureKind.UNKNOWN)
+                return CommandException(CommandException.UNKNOWN, EXPIRED_UNKNOWN)
             }
             // Once unknown, only the daemon's own answer settles it; any
             // other failure (a network error, a failed login) leaves it
             // unknown, to be retried under the same request ID.
             frozen && !(error is CommandException && error.fromDaemon) ->
-                return CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, failureKind = CommandFailureKind.UNKNOWN)
+                return CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, failureKind = (error as? CommandException)?.failureKind ?: CommandFailureKind.RAW)
             else -> abandon()
         }
         return error

@@ -23,6 +23,11 @@ internal fun deliveryFailure(reason: String, uncertain: Boolean,
     return SendFeedback(copy(if (uncertain) UiMessages.composerMaybeFailure(short) else UiMessages.composerSendFailure(short)), uncertain)
 }
 
+/** The same projection is used by the session row and by restoration/retry regression tests. */
+internal fun outgoingFailure(outgoing: Outgoing, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): SendFeedback =
+    deliveryFailure(outgoing.failureDisplay?.resolve(copy) ?: outgoing.error,
+        outgoing.state == Outgoing.State.UNKNOWN, kind = outgoing.failureKind, copy = copy)
+
 internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =
     if (status == InputStatus.INPUT_STATUS_UNCONFIRMED) SendFeedback(copy(UiMessages.composerMaybeFailure(copy(UiMessages.queueAndroidUnconfirmed()))), true)
     else deliveryFailure(copy(failureText(reason, agent, copy = copy)), status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL, copy = copy)
