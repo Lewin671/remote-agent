@@ -44,7 +44,17 @@ final class SessionStore {
     @ObservationIgnored private var loadedDrafts = Set<String>()
     @ObservationIgnored private var pendingDraftEdits = Set<String>()
     @ObservationIgnored private var forgottenDrafts = Set<String>()
-    private(set) var draftErrors: [String: String] = [:]
+    private enum DraftError {
+        case restore, save
+        var text: String {
+            switch self {
+            case .restore: return L10n.composerIosDraftRestoreFailed()
+            case .save: return L10n.composerIosDraftSaveFailed()
+            }
+        }
+    }
+    private var draftErrorStates: [String: DraftError] = [:]
+    var draftErrors: [String: String] { draftErrorStates.mapValues(\.text) }
 
     init(draftFiles: (any RACore.SealedFiles)? = nil, draftQueue: DispatchQueue? = DispatchQueue(label: "remote-agent.draft-text")) {
         self.draftFiles = draftFiles
@@ -125,12 +135,11 @@ final class SessionStore {
             do {
                 let saved = try draftFiles.get(folder: "composer-text", name: draftName(sid)).flatMap { String(data: $0, encoding: .utf8) }
                 loadedDrafts.insert(sid)
-                draftErrors[sid] = nil
+                draftErrorStates[sid] = nil
                 if pendingDraftEdits.remove(sid) != nil { persistDraftText(sid, drafts[sid] ?? "") }
                 else { drafts[sid] = saved }
             } catch {
-                let message = "草稿没能恢复，下次打开或编辑时重试"
-                if draftErrors[sid] != message { draftErrors[sid] = message }
+                if draftErrorStates[sid] != .restore { draftErrorStates[sid] = .restore }
             }
         }
         return drafts[sid] ?? ""
@@ -158,7 +167,7 @@ final class SessionStore {
         }
         let finish: @MainActor @Sendable (Bool) -> Void = { [weak self] saved in
             guard let self, !self.forgottenDrafts.contains(sid) else { return }
-            self.draftErrors[sid] = saved ? nil : "草稿没能保存到本机，关闭应用前请保留文字"
+            self.draftErrorStates[sid] = saved ? nil : .save
         }
         if let draftQueue {
             draftQueue.async { let saved = write(); DispatchQueue.main.async { finish(saved) } }
@@ -168,7 +177,7 @@ final class SessionStore {
     func forgetSession(_ sid: String) {
         guard forgottenDrafts.insert(sid).inserted else { return }
         drafts[sid] = nil
-        draftErrors[sid] = nil
+        draftErrorStates[sid] = nil
         outbox[sid] = nil
         prompts[sid] = nil
         guard let draftFiles else { return }
@@ -269,7 +278,7 @@ final class SessionStore {
                 o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
                     ce?.message.contains("is not on this machine; upload it again") == true
                 // Put back, the text and the images stay and the images go up again.
-                o.error = o.missingImages ? (o.fileIds.isEmpty ? "图片不在电脑上" : o.imageIds.isEmpty ? "文件不在电脑上" : "附件不在电脑上") : errorText(error)
+                o.error = errorText(error)
             }
             delivering.remove(o.requestId)
         }
@@ -456,7 +465,7 @@ final class SessionStore {
                 }
                 let result = try await commands.forward(prepared, retryOfUnknown: retry)
                 f.attempt.settle()
-                guard let made = forkedSession(result) else { throw CommandError("internal", "意外的回复") }
+                guard let made = forkedSession(result) else { throw CommandError("internal", L10n.newSessionUnexpectedReply()) }
                 return made
             } catch {
                 f.error = errorText(f.attempt.settle(error) ?? error)

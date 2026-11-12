@@ -84,7 +84,7 @@ struct PendingDock<Content: View, Actions: View>: View {
     @ViewBuilder private func rest(_ brief: String) -> some View {
         Group {
             if open {
-                let count = more > 0 ? "还有 \(more) 项" : ""
+                let count = more > 0 ? L10n.dockMore(count: Int(more)) : ""
                 let gap = !count.isEmpty && !note.text.isEmpty ? " · " : ""
                 Text("\(Text(count + gap).foregroundStyle(DS.ink2))\(Text(note.text).foregroundStyle(note.urgent ? DS.orange : DS.ink2))")
                     .font(.footnote).lineLimit(1).frame(idealWidth: 0)
@@ -92,7 +92,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                 HStack(spacing: 0) {
                     Text(brief).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).frame(idealWidth: 0)
                     if more > 0 {
-                        Text((brief.isEmpty ? "" : " · ") + "还有 \(more) 项").font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
+                        Text((brief.isEmpty ? "" : " · ") + L10n.dockMore(count: Int(more))).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
                     }
                 }
             }
@@ -150,7 +150,7 @@ struct PendingDock<Content: View, Actions: View>: View {
 
     private var toggleText: some View {
         HStack(spacing: 2) {
-            Text(open ? "收起" : "处理")
+            Text(open ? L10n.markdownCollapse() : L10n.dockHandle())
             Image(systemName: open ? "chevron.up" : "chevron.down").imageScale(.small)
         }
         .font(.footnote)
@@ -196,7 +196,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
-                    .accessibilityHint("收起")
+                    .accessibilityHint(L10n.markdownCollapse())
                     extra
                     Button(action: toggle) {
                         toggleText.frame(minHeight: DS.minHit).contentShape(Rectangle())
@@ -212,7 +212,7 @@ struct PendingDock<Content: View, Actions: View>: View {
                 }
                 .buttonStyle(PressStyle())
                 .accessibilityElement(children: .combine)
-                .accessibilityHint(open ? "收起" : "处理")
+                .accessibilityHint(open ? L10n.markdownCollapse() : L10n.dockHandle())
             }
             if open {
                 VStack(spacing: 0) {
@@ -292,7 +292,7 @@ struct ApprovalDeadline: Equatable {
     init?(_ a: PBApprovalRequested, now: Int64) {
         guard a.hasDeadline else { return nil }
         let deadline = a.deadline.seconds * 1000
-        text = "剩 \(minutesLeft(deadlineMs: deadline, now: now)) 分钟"
+        text = L10n.homeIosApprovalRemaining(count: Int(minutesLeft(deadlineMs: deadline, now: now)))
         last = deadline - now < 60_000
     }
 }
@@ -435,7 +435,7 @@ struct QuestionBody: View {
             .accessibilityAddTraits(.isHeader)
         if !full && longQuestion(cur) {
             Button(action: onLong) {
-                ArrowText("展开全文", style: .subheadline.weight(.semibold)).padding(.bottom, 4)
+                ArrowText(L10n.markdownExpand(), style: .subheadline.weight(.semibold)).padding(.bottom, 4)
                     .padding(.vertical, 12).contentShape(Rectangle()).padding(.vertical, -12)
             }
             .buttonStyle(PressStyle())
@@ -463,9 +463,9 @@ struct QuestionBody: View {
                 .joined(separator: "、")
             Banner(
                 answer.attempt.expired
-                    ? "不确定「\(shown)」有没有提交，它已过期，不会再重发。请去终端看看"
-                    : "上次的回答「\(shown)」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
-                tone: .error, action: answer.attempt.expired ? "放弃" : nil,
+                    ? L10n.dockIosQuestionExpired(answer: shown)
+                    : L10n.dockIosQuestionUnknown(answer: shown),
+                tone: .error, action: answer.attempt.expired ? L10n.newSessionIosAbandon() : nil,
                 onAction: {
                     store.abandon(answer)
                     act.error = ""
@@ -473,14 +473,14 @@ struct QuestionBody: View {
             )
             .padding(.top, 6)
         } else if !act.error.isEmpty {
-            Banner("没能提交，终端里的问题可能已经变了：\(act.error)", tone: .error).padding(.top, 6)
+            Banner(L10n.dockIosQuestionFailed(reason: act.error), tone: .error).padding(.top, 6)
         }
     }
 
     @ViewBuilder private func actions(_ cur: PBQuestion) -> some View {
         if cur.multiSelect {
             let picked = store.multiPick["\(qid)#\(index)"] ?? []
-            let label = act.running ? "提交中…" : picked.isEmpty ? "选好后提交" : "提交 \(picked.count) 项"
+            let label = act.running ? L10n.dockSubmitting() : picked.isEmpty ? L10n.dockSelectThenSubmit() : L10n.dockSubmitSelected(count: Int(picked.count))
             Group {
                 if full {
                     Btn(label, kind: .primary, enabled: !act.running && !picked.isEmpty) { submit(picked.sorted(), cur) }
@@ -492,9 +492,9 @@ struct QuestionBody: View {
                 }
             }
             .padding(.top, 6)
-            DockFoot(picked.isEmpty ? "" : "已选 \(picked.count) 项", link: "其他回答：去终端", arrow: true, onLink: onTerminal)
+            DockFoot(picked.isEmpty ? "" : L10n.dockSelected(count: Int(picked.count)), link: L10n.dockOtherTerminal(), arrow: true, onLink: onTerminal)
         } else {
-            DockFoot("都不合适？", link: "其他回答：去终端", arrow: true, onLink: onTerminal)
+            DockFoot(L10n.dockNoneFit(), link: L10n.dockOtherTerminal(), arrow: true, onLink: onTerminal)
         }
     }
 }
@@ -526,10 +526,10 @@ private struct QuestionOptionRow: View {
                 VStack(alignment: .leading, spacing: 1) {
                     Text(label.label).font(dark ? .body : .footnote).foregroundStyle(ink)
                     if !option.description_p.isEmpty { Text(option.description_p).font(dark ? .footnote : .caption).foregroundStyle(second) }
-                    if submitting { Text("提交中…").font(.caption).foregroundStyle(second) }
+                    if submitting { Text(L10n.dockSubmitting()).font(.caption).foregroundStyle(second) }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                if label.recommended { Text("推荐").font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : DS.blue) }
+                if label.recommended { Text(L10n.dockRecommended()).font(.caption.weight(.semibold)).foregroundStyle(dark ? (selected ? Color.black : DS.blue) : DS.blue) }
             }
             .multilineTextAlignment(.leading)
             .padding(.horizontal, dark ? 14 : 11).padding(.vertical, dark ? 11 : 8)
@@ -573,7 +573,7 @@ struct QuestionDock: View {
 
 /// 第 1 题，共 3 题 · 可多选: where the user is among several questions, and whether this one takes several answers.
 func questionProgress(count: Int, at index: Int, multi: Bool) -> String {
-    [count > 1 ? "第 \(index + 1) 题，共 \(count) 题" : "", multi ? "可多选" : ""].filter { !$0.isEmpty }.joined(separator: " · ")
+    [count > 1 ? L10n.dockQuestionProgress(count: Int(count), index: Int(index + 1)) : "", multi ? L10n.dockMultiselect() : ""].filter { !$0.isEmpty }.joined(separator: " · ")
 }
 
 // MARK: Plans
@@ -594,7 +594,7 @@ struct PlanDock: View {
         PendingDock(
             .plan(text: text), agent: agentName(session.agent), more: more, open: $open, onOpen: onOpen,
             // In the open line before 收起, as on the web (design-system §6).
-            extra: AnyView(TextAction("展开全文", style: .subheadline, alignment: .trailing, arrow: true, action: onFull))
+            extra: AnyView(TextAction(L10n.markdownExpand(), style: .subheadline, alignment: .trailing, arrow: true, action: onFull))
         ) {
             // The whole plan, scrolling with the dock's body; 展开全文 is the page that draws it as written.
             Text(planPreview(text, lines: .max)).font(.subheadline).lineSpacing(3).foregroundStyle(DS.ink)
@@ -642,7 +642,7 @@ struct PlanButtons: View {
         if full {
             Btns {
                 Btn(agentInfo(session.agent).planKeepLabel, enabled: !act.running) { answer(.keepPlanning) }
-                Btn(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
+                Btn(act.running ? L10n.dockSubmitting() : agentInfo(session.agent).planApproveLabel, kind: .primary, enabled: !act.running) { answer(.implement) }
             }
         } else {
             ViewThatFits(in: .horizontal) {
@@ -654,16 +654,16 @@ struct PlanButtons: View {
             Text(note).font(.footnote).ink(DS.ink2).padding(.top, 7)
         }
         if full && agentInfo(session.agent).planClearContext {
-            DockFoot("", link: "清空上下文后执行") { answer(.clearAndImplement) }
+            DockFoot("", link: L10n.dockPlanClear()) { answer(.clearAndImplement) }
                 .disabled(act.running)
         }
-        if !act.error.isEmpty { Banner("没能提交：\(act.error)", tone: .error).padding(.top, 8) }
+        if !act.error.isEmpty { Banner(L10n.dockSubmitFailed(reason: act.error), tone: .error).padding(.top, 8) }
     }
 
     /// On the dark card: 批准 is the white one.
     @ViewBuilder private var darkChoices: some View {
         Button(agentInfo(session.agent).planKeepLabel) { answer(.keepPlanning) }.buttonStyle(.darkCard()).disabled(act.running)
-        Button(act.running ? "提交中…" : agentInfo(session.agent).planApproveLabel) { answer(.implement) }
+        Button(act.running ? L10n.dockSubmitting() : agentInfo(session.agent).planApproveLabel) { answer(.implement) }
             .buttonStyle(.darkCard(primary: true)).disabled(act.running)
     }
 }
@@ -681,13 +681,13 @@ struct PopupDock: View {
     var body: some View {
         let agent = agentName(session.agent)
         PendingDock(
-            .popup(title: title), agent: agent, more: more, note: DockNote(text: "\(agent) 在等你"), open: $open, onOpen: onOpen
+            .popup(title: title), agent: agent, more: more, note: DockNote(text: L10n.dockAgentWaiting(agent: agent)), open: $open, onOpen: onOpen
         ) {
             if !title.isEmpty { Text(title).font(.body.weight(.medium)).foregroundStyle(DS.ink).padding(.bottom, 6) }
             let hint = popupHint(agent: session.agent, detail: title)
             if !hint.isEmpty { Text(hint).font(.footnote).foregroundStyle(DS.orangeInk) }
         } actions: {
-            Button("去终端处理", action: onTerminal).buttonStyle(.darkCard(primary: true))
+            Button(L10n.dockHandleTerminal(), action: onTerminal).buttonStyle(.darkCard(primary: true))
         }
     }
 }

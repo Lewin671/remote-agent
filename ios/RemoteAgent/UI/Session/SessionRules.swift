@@ -61,28 +61,28 @@ struct ChatScroll: Equatable, Sendable {
 func pendingLabel(
     _ p: PendingInput, cancel: SessionStore.CancelState?, resuming: Bool, resumeFailed: Bool, starting: String?
 ) -> String {
-    if cancel == .canceling { return "正在取消…" }
-    if case .failed = cancel { return "取消没成功，仍在排队" }
-    if resuming { return "正在发送…" }
-    if resumeFailed { return "发送没成功，仍已暂停" }
-    if p.paused { return "已暂停" }
-    if p.held { return "插入这一轮" }
-    if p.mode == .queue { return "这一轮结束后发" }
+    if cancel == .canceling { return L10n.queueCanceling() }
+    if case .failed = cancel { return L10n.queueCancelFailed() }
+    if resuming { return L10n.queueResuming() }
+    if resumeFailed { return L10n.queueResumeFailed() }
+    if p.paused { return L10n.queuePaused() }
+    if p.held { return L10n.queueInsert() }
+    if p.mode == .queue { return L10n.queueAfterTurn() }
     // No turn to insert into yet: the CLI is still coming up.
-    if let starting { return "等 \(starting) 就绪后发出" }
-    return "插入这一轮"
+    if let starting { return L10n.queueAgentReady(agent: starting) }
+    return L10n.queueInsert()
 }
 
 func scheduledPendingLabel(_ pending: PendingInput, label: String) -> String? {
     guard let origin = pending.origin, !origin.scheduledRunID.isEmpty else { return nil }
     let time = pending.time > 0 ? " · " + scheduleTime(Date(timeIntervalSince1970: Double(pending.time) / 1000)) : ""
-    return "定时任务" + time + " · " + label
+    return L10n.queueIosScheduledLabel(label: label, time: time)
 }
 
 /// Its place while more than one waits, followed by the sender when it was
 /// another client. Paused, held and canceling messages do not show a place.
 func pendingSuffix(_ p: PendingInput, origin: String?, index: Int, of count: Int, cancel: SessionStore.CancelState? = nil) -> String {
-    let position = count > 1 && index > 0 && !p.paused && !p.held && cancel == nil ? " · 第 \(index) 条" : ""
+    let position = count > 1 && index > 0 && !p.paused && !p.held && cancel == nil ? L10n.queueRank(rank: Int(index)) : ""
     return position + (origin.map { " · " + $0 } ?? "")
 }
 
@@ -98,10 +98,10 @@ enum OutgoingAction: Equatable, Sendable {
 
     var label: String {
         switch self {
-        case .retry: "重试"
-        case .remove: "移除此提示"
-        case .putBack: "放回输入框"
-        case .terminal: "去终端"
+        case .retry: L10n.commonRetry()
+        case .remove: L10n.sessionDismissNotice()
+        case .putBack: L10n.composerRestore()
+        case .terminal: L10n.sessionGoTerminal()
         }
     }
 }
@@ -142,8 +142,8 @@ func outgoingNote(
         break
     }
     switch state {
-    case .sending: return OutgoingNote(caption: "发送中…", sending: true, failed: failed)
-    case .sent: return OutgoingNote(caption: "已送达电脑", failed: failed)
+    case .sending: return OutgoingNote(caption: L10n.composerSending(), sending: true, failed: failed)
+    case .sent: return OutgoingNote(caption: L10n.sessionDelivered(), failed: failed)
     // The same request again: the daemon runs a request ID at most once.
     // 「可能没发出去」 already says that it is not known whether the computer ran it.
     case .unknown:
@@ -168,8 +168,8 @@ func outgoingShown(input: PBInputStatus?) -> Bool {
 /// The placeholder of the message box: it follows what the message will do (wait for the answer, go to
 /// the plan), never what is running, so it does not change while a turn's tools start and stop.
 func composerPlaceholder(questionPending: Bool, planOpen: Bool) -> String {
-    if questionPending { return "排队发送，回答后继续" }
-    return planOpen ? "补充你对计划的要求…" : "消息"
+    if questionPending { return L10n.composerQueueAfterAnswer() }
+    return planOpen ? L10n.composerPlanPlaceholder() : L10n.composerMessage()
 }
 
 /// Whether what is in the box can be sent now.
@@ -182,7 +182,7 @@ func slashWarning(_ text: String) -> Bool {
     text.drop { $0.isWhitespace }.hasPrefix("/")
 }
 
-let slashWarningText = "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"
+var slashWarningText: String { L10n.composerSlashNote() }
 
 // MARK: The navigation bar
 
@@ -237,12 +237,12 @@ struct MenuSetting: Equatable, Sendable {
 /// its context is when that is known.
 func menuSettings(mode: ModeLabel?, model: String, effort: String, percent: Int?) -> [MenuSetting] {
     var out = [MenuSetting]()
-    if let mode { out.append(MenuSetting(text: "审批模式", value: mode.text, danger: mode.mode == .full, opens: .mode)) }
+    if let mode { out.append(MenuSetting(text: L10n.modesTitle(), value: mode.text, danger: mode.mode == .full, opens: .mode)) }
     out.append(
         model.isEmpty
-            ? MenuSetting(text: "会话设置", value: "", opens: .model)
-            : MenuSetting(text: "模型", value: model + (effort.isEmpty ? "" : " · \(effort)"), opens: .model))
-    if let percent { out.append(MenuSetting(text: "上下文", value: "\(percent)%", warn: percent > 80, opens: .model)) }
+            ? MenuSetting(text: L10n.sessionSettings(), value: "", opens: .model)
+            : MenuSetting(text: L10n.modelsTitle(), value: model + (effort.isEmpty ? "" : " · \(effort)"), opens: .model))
+    if let percent { out.append(MenuSetting(text: L10n.sessionContext(), value: "\(percent)%", warn: percent > 80, opens: .model)) }
     return out
 }
 
@@ -250,7 +250,7 @@ func menuSettings(mode: ModeLabel?, model: String, effort: String, percent: Int?
 struct ForkAction: Equatable, Sendable {
     enum Tap: Equatable, Sendable { case fork, abandon }
 
-    var text = "分叉会话"
+    var text = L10n.sessionFork()
     var note = ""
     /// The note is something that went wrong, not when the row can be used.
     var noteError = false
@@ -265,14 +265,14 @@ struct ForkAction: Equatable, Sendable {
 /// request has expired the row gives it up, and only the tap after that
 /// asks for a new fork.
 func forkAction(blocked: String?, running: Bool, error: String, frozen: Bool, expired: Bool) -> ForkAction {
-    if running { return ForkAction(text: "正在分叉…", busy: true) }
+    if running { return ForkAction(text: L10n.sessionForking(), busy: true) }
     if let blocked { return ForkAction(note: blocked, enabled: false) }
     if expired {
         return ForkAction(
-            text: "放弃上次的分叉", note: "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表", noteError: true, tap: .abandon)
+            text: L10n.sessionAbandonFork(), note: L10n.sessionForkExpired(), noteError: true, tap: .abandon)
     }
-    if frozen { return ForkAction(note: "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次", noteError: true) }
-    return ForkAction(note: error.isEmpty ? "" : "没能分叉：\(error)", noteError: true)
+    if frozen { return ForkAction(note: L10n.sessionForkUnknown(), noteError: true) }
+    return ForkAction(note: error.isEmpty ? "" : L10n.sessionForkFailed(reason: error), noteError: true)
 }
 
 // MARK: In place of the message box
@@ -286,28 +286,29 @@ private let loginShellTimeoutDetail = "did not start the CLI within"
 /// What the card says when a session ended, and whether it can be resumed from here now.
 func endedText(detail: String, scheduledClosed: Bool = false, idleClosed: Bool = false, unlinked: Bool, machineOnline: Bool, machine: String) -> String {
     let how = exitReason(detail, scheduledClosed: scheduledClosed, idleClosed: idleClosed)
-    if unlinked { return how + "连上服务器后才能恢复。" }
-    if machineOnline { return how + "恢复会在 \(machine) 上用同样的设置重新打开它，聊天记录都在。" }
-    return how + "\(machine) 不在线，连上后才能恢复。"
+    if unlinked { return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionConnectResume()) }
+    if machineOnline { return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionResumeNote(name: machine)) }
+    return L10n.sessionIosEndedRecovery(reason: how, recovery: L10n.sessionOfflineResume(name: machine))
 }
 
 /// Why the session ended, in plain words. A login shell that could not start
 /// the CLI says so in the daemon's own words (they name the command or the
 /// timeout), with what the user can do about it.
 func exitReason(_ detail: String, scheduledClosed: Bool = false, idleClosed: Bool = false) -> String {
-    if detail == "stopped" && scheduledClosed { return "定时任务运行已结束，会话自动关闭了。" }
-    if detail == "stopped" && idleClosed { return "会话长时间没有活动，已自动结束。" }
-    if detail == "stopped" { return "会话是被手动结束的。" }
+    if detail == "stopped" && scheduledClosed { return L10n.sessionScheduledClosed() }
+    if detail == "stopped" && idleClosed { return L10n.sessionIdleClosed() }
+    if detail == "stopped" { return L10n.sessionManuallyClosed() }
     if detail.hasPrefix(loginShellDetail) {
-        let stuck = detail.contains(loginShellTimeoutDetail) ? "，可能卡在等待输入" : ""
-        return "电脑上的登录 shell 没能启动 CLI（\(detail)）\(stuck)。请检查电脑上的 shell 配置，比如 ~/.zshrc。"
+        return detail.contains(loginShellTimeoutDetail)
+            ? L10n.sessionShellTimeout(detail: detail)
+            : L10n.sessionShellFailed(detail: detail)
     }
-    return "tmux 会话已经不在了。"
+    return L10n.sessionTmuxMissing()
 }
 
 /// What the card says when the session's computer is away. `lastSeen` is when it went, in words, or "".
 func offlineText(lastSeen: String) -> String {
-    (lastSeen.isEmpty ? "" : lastSeen + "断开，") + "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。"
+    L10n.sessionOfflineNote(lastSeen: lastSeen.isEmpty ? "" : L10n.sessionDisconnectedAgo(time: lastSeen))
 }
 
 // MARK: Telling VoiceOver what arrived
@@ -339,6 +340,6 @@ struct LiveAnnouncer: Equatable, Sendable {
         }
         guard newReply, case .agent = last, now - lastAt >= Self.gapMs else { return nil }
         lastAt = now
-        return "\(agent) 回复了"
+        return L10n.sessionIosReplyArrived(agent: agent)
     }
 }

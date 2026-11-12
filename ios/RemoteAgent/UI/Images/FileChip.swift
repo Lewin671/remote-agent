@@ -12,9 +12,9 @@ struct FileChip: View {
 
     private var status: String {
         switch state {
-        case .processing: return " · 准备中"
-        case .uploading(let progress): return " · 上传 \(Int((progress * 100).rounded()))%"
-        case .failed: return " · 上传失败"
+        case .processing: return L10n.attachmentIosPreparing()
+        case .uploading(let progress): return L10n.attachmentIosUploadProgress(percent: Int(Int((progress * 100).rounded())))
+        case .failed: return L10n.attachmentIosUploadFailed()
         default: return ""
         }
     }
@@ -28,7 +28,7 @@ struct FileChip: View {
                 Text(fileSize(size) + status).font(.footnote).ink(DS.ink2)
                 if case .uploading(let progress) = state {
                     ProgressView(value: Double(progress)).tint(DS.blue)
-                        .accessibilityLabel("文件上传进度")
+                        .accessibilityLabel(L10n.attachmentFileProgress())
                 }
                 if case .failed(let reason) = state {
                     Text(reason).font(.footnote).ink(DS.red).fixedSize(horizontal: false, vertical: true)
@@ -36,11 +36,11 @@ struct FileChip: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             if case .failed = state, let retry {
-                Button("重试", action: retry).font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
+                Button(L10n.commonRetry(), action: retry).font(.footnote).ink(DS.blue).frame(minWidth: DS.minHit, minHeight: DS.minHit)
             }
             if let remove {
                 Button(action: remove) { SymbolImage("xmark", size: 16, color: DS.ink2).hitTarget() }
-                    .accessibilityLabel("移除文件 \(name)")
+                    .accessibilityLabel(L10n.attachmentRemoveFile(name: name))
             }
         }
         .buttonStyle(PressStyle())

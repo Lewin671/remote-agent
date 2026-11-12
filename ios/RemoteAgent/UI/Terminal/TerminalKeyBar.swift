@@ -29,7 +29,7 @@ struct TerminalKeyBar: View {
                 ForEach(terminalKeyRows[1], id: \.label) { key in
                     KeyButton(label: key.label, icon: icon(key), enabled: enabled) { onKey(key) }
                 }
-                KeyButton(label: "键盘", icon: "keyboard", named: true, light: true, enabled: true, hint: "显示或收起键盘", action: onKeyboard)
+                KeyButton(label: L10n.terminalKeyboard(), icon: "keyboard", named: true, light: true, enabled: true, hint: L10n.terminalIosKeyboardHint(), action: onKeyboard)
             }
         }
         .padding(6)
@@ -40,7 +40,7 @@ struct TerminalKeyBar: View {
         .frame(height: Self.height)
         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("终端按键")
+        .accessibilityLabel(L10n.terminalIosKeys())
     }
 
     private func icon(_ key: TerminalKey) -> String? { key.icon }

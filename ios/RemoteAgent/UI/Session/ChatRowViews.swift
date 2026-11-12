@@ -90,8 +90,8 @@ struct ChatRowView: View, Equatable {
                 }
                 .messageMenu(m.text, actions: actions)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? "图片" : "文件") : m.text)
-                .accessibilityValue(m.from ?? "你发的消息")
+                .accessibilityLabel(m.text.isEmpty ? (m.files.isEmpty ? L10n.imageTitle() : L10n.attachmentFile()) : m.text)
+                .accessibilityValue(m.from ?? L10n.sessionIosYourMessage())
             }
         case .agent(let m):
             // The row's own menu answers the long press (复制, and 选择文字 for a part of it), not the text's.
@@ -100,7 +100,7 @@ struct ChatRowView: View, Equatable {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .messageMenu(m.text, actions: actions)
                 .accessibilityElement(children: .contain)
-                .accessibilityLabel("\(agentName(env.agent)) 的回复")
+                .accessibilityLabel(L10n.sessionIosAgentReply(agent: agentName(env.agent)))
         case .asyncQuestion(let m):
             VStack(alignment: .leading, spacing: 8) {
                 ForEach(Array(m.questions.enumerated()), id: \.offset) { _, q in
@@ -120,9 +120,9 @@ struct ChatRowView: View, Equatable {
             .padding(.horizontal, chatMargin).padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .leading)
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("\(agentName(env.agent)) 的回复")
+            .accessibilityLabel(L10n.sessionIosAgentReply(agent: agentName(env.agent)))
         case .thought(let t):
-            ChatExpandable("思考过程", key: t.key) {
+            ChatExpandable(L10n.sessionIosReasoning(), key: t.key) {
                 Text(t.text).font(.subheadline).ink(DS.ink2).padding(.bottom, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -166,8 +166,8 @@ struct ChatRowView: View, Equatable {
             PlanCard(key: p.key, text: p.text)
         case .unsent(let u):
             ChatBubble(
-                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? "一条排队的消息" : nil), caption: notSentText("会话已结束"), captionColor: DS.red,
-                links: u.text.map { text in [ChatLink("放回输入框") { actions.putBack(u.requestId, text, u.files) }] } ?? []) { FileChips(files: u.files) }
+                u.text?.isEmpty == false ? u.text : (u.files.isEmpty ? L10n.queueIosMessage() : nil), caption: notSentText(L10n.sessionEnded()), captionColor: DS.red,
+                links: u.text.map { text in [ChatLink(L10n.composerRestore()) { actions.putBack(u.requestId, text, u.files) }] } ?? []) { FileChips(files: u.files) }
         case .turnEnd(let t):
             ChatSepLine(t.text)
         case .fork(let f):
@@ -186,14 +186,14 @@ extension View {
         } else {
             contextMenu {
                 Button(L10n.commonCopy()) { UIPasteboard.general.string = text }
-                Button("选择文字") { actions.select(text) }
+                Button(L10n.sessionIosSelectText()) { actions.select(text) }
             } preview: {
                 // A full reply's snapshot can fill the screen and looks like
                 // selectable text, but is only the menu's inert preview.
                 MessageMenuPreview(text: text)
             }
             .accessibilityAction(named: L10n.commonCopy()) { UIPasteboard.general.string = text }
-            .accessibilityAction(named: "选择文字") { actions.select(text) }
+            .accessibilityAction(named: L10n.sessionIosSelectText()) { actions.select(text) }
         }
     }
 }
@@ -391,7 +391,7 @@ private struct ForkRow: View {
         HStack(spacing: 8) {
             Rule().frame(minWidth: 16)
             HStack(spacing: 4) {
-                Text("\(item.time) 分叉自").font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
+                Text(L10n.sessionIosForkPrefix(time: item.time)).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1).fixedSize()
                 if item.sourceId.isEmpty {
                     Text(title).font(.footnote).foregroundStyle(DS.ink2).lineLimit(1)
                 } else {
@@ -472,16 +472,16 @@ struct ChatToolLine<Trailing: View>: View {
         .padding(.vertical, 4)
         .frame(minHeight: 20)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(markWord + title)
+        .accessibilityLabel(markedTitle)
         .accessibilityValue(meta)
     }
 
     /// The mark in a word, for VoiceOver: a row is not told apart by colour or shape alone.
-    private var markWord: String {
-        if mark == "checkmark" { return "已完成，" }
-        if mark == "xmark" { return "失败，" }
-        if mark == Mark.progress { return "进行中，" }
-        return ""
+    private var markedTitle: String {
+        if mark == "checkmark" { return L10n.toolsIosCompletedLabel(title: title) }
+        if mark == "xmark" { return L10n.toolsIosFailedLabel(title: title) }
+        if mark == Mark.progress { return L10n.toolsIosRunningLabel(title: title) }
+        return title
     }
 }
 
@@ -525,7 +525,7 @@ private struct ExpandableToolRow<Preview: View>: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressStyle())
-            .accessibilityValue(expanded ? "已展开" : "已折叠")
+            .accessibilityValue(expanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
             if expanded {
                 ToolSelectableCommand(text: text, onTap: toggle)
                     .background(DS.gbg, in: RoundedRectangle(cornerRadius: 16))
@@ -606,7 +606,7 @@ private struct DoneToolRow: View {
     var body: some View {
         let ok = toolOk(call)
         // A failed call shows its exit code and, when it needed one, its approval: 退出码 7 · 已允许.
-        let parts = [!ok && call.hasExitCode ? "退出码 \(call.exitCode)" : "", decision].filter { !$0.isEmpty }
+        let parts = [!ok && call.hasExitCode ? L10n.toolsExitCode(code: String(call.exitCode)) : "", decision].filter { !$0.isEmpty }
         let meta = parts.isEmpty ? (call.durationMs >= 1000 ? "\(call.durationMs / 1000)s" : "") : parts.joined(separator: " · ")
         ChatToolLine(
             ok ? "checkmark" : "xmark", color: ok ? DS.ink3 : DS.red,
@@ -627,8 +627,8 @@ private struct BackgroundToolRow: View {
         let generic = (call.title.isEmpty || raw(call.title)) && raw(call.itemType)
         ChatToolLine(
             Mark.progress, color: DS.ink,
-            title: generic ? "后台运行" : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
-            meta: generic ? "" : "后台运行")
+            title: generic ? L10n.toolsBackground() : firstLine(toolTitle(call, cwd: env.cwd, home: env.home)),
+            meta: generic ? "" : L10n.toolsBackground())
     }
 }
 
@@ -644,7 +644,7 @@ private struct RunningToolRow: View {
         let title = firstLine(toolTitle(tool, cwd: env.cwd, home: env.home))
         if item.unfinished && env.noResult.contains(tool.seq) {
             // The turn completed without this tool's result: say only that.
-            ChatToolLine(Mark.progress, color: DS.faint, title: title, meta: "等待同步")
+            ChatToolLine(Mark.progress, color: DS.faint, title: title, meta: L10n.toolsWaitingSync())
         } else {
             let state = state
             if state == .running {
@@ -659,7 +659,7 @@ private struct RunningToolRow: View {
             } else {
                 ChatToolLine(
                     Mark.progress, color: DS.ink, title: title,
-                    meta: state == .sync ? "等待同步" : item.unfinished ? "后台运行" : state.text)
+                    meta: state == .sync ? L10n.toolsWaitingSync() : item.unfinished ? L10n.toolsBackground() : state.text)
             }
         }
     }
@@ -695,7 +695,7 @@ private struct ToolGroupRow: View {
                 .padding(.vertical, 8).contentShape(Rectangle()).padding(.vertical, -8)
             }
             .buttonStyle(PressStyle())
-            .accessibilityHint(isOpen ? "收起" : "展开")
+            .accessibilityHint(isOpen ? L10n.markdownCollapse() : L10n.sessionIosExpand())
             if isOpen {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
@@ -747,7 +747,7 @@ struct ChatExpandable<Content: View>: View {
             Button {
                 withAnimation(reduceMotion ? nil : Motion.enter()) { open.toggle(key) }
             } label: {
-                ArrowText(isOpen ? "收起\(title)" : title, color: DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
+                ArrowText(isOpen ? L10n.sessionIosCollapseTitle(title: title) : title, color: DS.ink2, style: .subheadline, direction: isOpen ? .up : .down)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 6).contentShape(Rectangle()).padding(.vertical, -6)
@@ -769,7 +769,7 @@ private struct PlanCard: View {
     var body: some View {
         let isOpen = open.isOpen(key)
         VStack(alignment: .leading, spacing: 0) {
-            Text("计划").font(.subheadline.weight(.semibold)).ink(DS.ink2).accessibilityAddTraits(.isHeader)
+            Text(L10n.modesPlan()).font(.subheadline.weight(.semibold)).ink(DS.ink2).accessibilityAddTraits(.isHeader)
             Group {
                 if isOpen {
                     MarkdownView(text)
@@ -784,7 +784,7 @@ private struct PlanCard: View {
                 Button {
                     open.toggle(key)
                 } label: {
-                    ArrowText(isOpen ? "收起" : "展开全文", style: .subheadline.weight(.semibold), direction: isOpen ? .up : .down)
+                    ArrowText(isOpen ? L10n.markdownCollapse() : L10n.markdownExpand(), style: .subheadline.weight(.semibold), direction: isOpen ? .up : .down)
                         .padding(.top, 4).padding(.vertical, 10).contentShape(Rectangle()).padding(.vertical, -10)
                 }
                 .buttonStyle(PressStyle())

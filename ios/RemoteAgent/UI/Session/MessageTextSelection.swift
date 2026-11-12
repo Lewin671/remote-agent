@@ -28,8 +28,8 @@ struct MessageTextSelection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                SheetHead("选择文字", action: L10n.commonDone(), onAction: onDone)
-                Text("长按文字，再拖动两端选择要复制的内容")
+                SheetHead(L10n.sessionIosSelectText(), action: L10n.commonDone(), onAction: onDone)
+                Text(L10n.sessionIosSelectTextHint())
                     .font(.subheadline).ink(DS.ink2)
                     .padding(.bottom, 10)
             }
@@ -59,7 +59,7 @@ struct MessageSelectableText: UIViewRepresentable {
         view.textContainerInset = UIEdgeInsets(top: 8, left: 16, bottom: 24, right: 16)
         view.textContainer.lineFragmentPadding = 0
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        view.accessibilityLabel = "消息文字"
+        view.accessibilityLabel = L10n.sessionIosMessageText()
         return view
     }
 

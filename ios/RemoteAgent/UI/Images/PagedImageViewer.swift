@@ -36,7 +36,7 @@ struct PagedImageViewer<Picture: View, Info: View>: View {
             ZStack {
                 if count > 0 {
                     Text("\(page + 1) / \(count)").font(.body).ink(ViewerInk.text)
-                        .accessibilityLabel("第 \(page + 1) 张，共 \(count) 张")
+                        .accessibilityLabel(L10n.imageIosPage(count: Int(count), index: Int(page + 1)))
                 }
                 HStack {
                     Button(action: onClose) { SymbolImage("xmark", size: 22, color: ViewerInk.text).hitTarget() }

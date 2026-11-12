@@ -8,10 +8,10 @@ public enum ToolState: Sendable {
 
     public var text: String {
         switch self {
-        case .running: return "处理中"
-        case .approval: return "等待审批"
-        case .sync: return "等待同步"
-        case .unconfirmed: return "状态待确认"
+        case .running: return L10n.toolsIosProcessing()
+        case .approval: return L10n.listStateApproval()
+        case .sync: return L10n.toolsWaitingSync()
+        case .unconfirmed: return L10n.toolsIosUnconfirmed()
         }
     }
 }
@@ -29,5 +29,5 @@ public func toolTimer(_ t: RunningTool, state: ToolState, now: Int64, frozenAt: 
     if state == .unconfirmed || state == .approval { return "—" }
     guard let ms = toolElapsed(t, now: now, frozenAt: frozenAt) else { return "" }
     // Says what the time is: how long it has been running.
-    return "已运行 " + clock(ms)
+    return L10n.toolsElapsed(duration: clock(ms))
 }

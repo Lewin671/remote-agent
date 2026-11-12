@@ -127,18 +127,18 @@ enum TerminalHistoryText {
         var linkAttributes = attributes
         linkAttributes[.foregroundColor] = online ? link : self.status
         linkAttributes[.link] = retryURL
-        out.append(NSAttributedString(string: "重试", attributes: linkAttributes))
+        out.append(NSAttributedString(string: L10n.commonRetry(), attributes: linkAttributes))
         return out
     }
 
     private static func statusText(_ status: TerminalHistory.Status) -> String {
         switch status {
         case .none: ""
-        case .earlier: "读取更早的记录…"
-        case .failed: "读取失败"
-        case .expired: "记录已过期，回到实时后重新往上滑"
-        case .start: "已经是保留的最早记录"
-        case .disconnected: "终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的"
+        case .earlier: L10n.terminalEarlier()
+        case .failed: L10n.terminalReadFailed()
+        case .expired: L10n.terminalHistoryExpired()
+        case .start: L10n.terminalHistoryStart()
+        case .disconnected: L10n.terminalHistoryClosed()
         }
     }
 

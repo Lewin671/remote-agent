@@ -465,7 +465,7 @@ public func modeChoices(_ c: NewConfig, models: PBListModelsResponse?, settings:
         + newSessionModes.map { m in
             let disabled = m == .auto && off
             return ApprovalModeChoice(
-                mode: m, title: m.text, desc: disabled ? autoHelp : modeHelp(m).replacingOccurrences(of: "CLI", with: name),
+                mode: m, title: m.text, desc: disabled ? autoHelp : modeHelp(m, agent: name),
                 enabled: !disabled, checked: c.mode == m)
         }
 }

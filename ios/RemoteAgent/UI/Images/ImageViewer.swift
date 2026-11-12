@@ -109,10 +109,10 @@ struct ViewerPage: View {
                 )
                 .ignoresSafeArea()
                 .accessibilityElement()
-                .accessibilityLabel(ref.path.isEmpty ? "图片" : fileName(ref.path))
-                .accessibilityValue(big == .loading ? "正在下载大图" : note ?? "")
+                .accessibilityLabel(ref.path.isEmpty ? L10n.imageTitle() : fileName(ref.path))
+                .accessibilityValue(big == .loading ? L10n.imageIosDownloading() : note ?? "")
                 .accessibilityAddTraits(.isImage)
-                .accessibilityAction(named: "放大或还原") { zoomToggles += 1 }
+                .accessibilityAction(named: L10n.imageIosZoom()) { zoomToggles += 1 }
             } else {
                 // Not even a preview: the file's name is all there is.
                 Text(fileName(ref.path)).font(.footnote.monospaced()).ink(ViewerInk.text).multilineTextAlignment(
@@ -140,7 +140,7 @@ struct ViewerPage: View {
                 }
                 .buttonStyle(PressStyle())
                 .disabled(!retry)
-                .accessibilityHint(retry ? "重试" : "")
+                .accessibilityHint(retry ? L10n.commonRetry() : "")
                 .padding(.horizontal, 24)
                 // Under the bar with the close button and the count.
                 .padding(.top, 56)

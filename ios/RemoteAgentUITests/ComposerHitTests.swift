@@ -16,11 +16,12 @@ final class ComposerHitTests: XCTestCase {
     private func sendFrame(_ app: XCUIApplication) throws -> CGRect {
         // The invisible Command-Return shortcut can also appear in the AX
         // tree on multiline drafts. Touch the rightmost visible control.
-        // Resolve frames, not an index-bound XCUIElement: the shortcut can
+        // Use the visible control’s stable identifier, then resolve frames rather
+        // than an index-bound XCUIElement: the shortcut can
         // enter the tree between snapshots and shift that element's index.
         var frame: CGRect?
         let ready = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
-            frame = app.buttons.matching(identifier: "发送").allElementsBoundByIndex.map(\.frame)
+            frame = app.buttons.matching(identifier: "session-send").allElementsBoundByIndex.map(\.frame)
                 .filter { !$0.isEmpty && $0.minX.isFinite && $0.minY.isFinite && $0.midX > app.frame.width * 0.75 }
                 .max { $0.midX < $1.midX }
             return frame != nil

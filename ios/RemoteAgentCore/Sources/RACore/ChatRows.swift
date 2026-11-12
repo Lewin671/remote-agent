@@ -21,13 +21,13 @@ public struct StartPrompt: Equatable, Sendable {
 }
 
 /// What stands under a message that did not go: 「没发出去：<原因>」.
-public func notSentText(_ why: String) -> String { "没发出去：\(why)" }
+public func notSentText(_ why: String) -> String { L10n.composerSendFailure(reason: why) }
 
 /// What stands under a message that may not have gone: 「可能没发出去：<原因>」.
-public func maybeNotSentText(_ why: String) -> String { "可能没发出去：\(why)" }
+public func maybeNotSentText(_ why: String) -> String { L10n.composerMaybeFailure(reason: why) }
 
 /// Why a message written to the terminal may not have gone: the CLI did not say it took it.
-public let unconfirmedText = "已送到终端但没确认"
+public var unconfirmedText: String { L10n.composerIosUnconfirmed() }
 
 /// A new session's acknowledged prompt until history records it; never resend it here.
 public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>, d: Derived, localIds: Set<String>, agent: PBAgent) -> StartPrompt? {
@@ -43,7 +43,7 @@ public func pendingStartPrompt(_ prompt: String?, events: some Sequence<PBEvent>
     case .unconfirmed: return StartPrompt(text: prompt, caption: maybeNotSentText(unconfirmedText), warning: true)
     // Still waiting: the pending bubble shows it, with what it waits for and a way to cancel.
     case .queued, .heldByCli: return nil
-    default: return StartPrompt(text: prompt, caption: "已送达电脑")
+    default: return StartPrompt(text: prompt, caption: L10n.sessionDelivered())
     }
 }
 
@@ -281,7 +281,7 @@ public enum ChatItem: Equatable, Sendable, Identifiable {
 /// its ID when opened (architecture §8 「按 ID 取」).
 public func forkSource(_ item: ChatItem.Fork, sessions: [String: SessionView], zone: TimeZone = .current) -> String {
     if let s = sessions[item.sourceId], s.info != nil { return titleOf(s, zone: zone) }
-    return plain(item.sourceTitle).ifEmpty("另一个会话")
+    return plain(item.sourceTitle).ifEmpty(L10n.sessionOtherSession())
 }
 
 public func toolOk(_ t: PBToolCall) -> Bool { t.status != "failed" && (!t.hasExitCode || t.exitCode == 0) }
@@ -301,12 +301,12 @@ private func rawItemType(_ s: String) -> Bool { s == "ToolCall" || s == "Command
 
 private func toolTitle(kind: PBToolKind, title: String, itemType: String, cwd: String, home: String) -> String {
     // A file edit's title is one path, spaces and all.
-    if kind == .fileChange { return "编辑 " + shortenPath(title, cwd: cwd, home: home) }
+    if kind == .fileChange { return L10n.toolsEditFile(path: shortenPath(title, cwd: cwd, home: home)) }
     let fallback: String
     if rawItemType(itemType) {
-        fallback = kind == .command ? "命令" : "工具"
+        fallback = kind == .command ? L10n.toolsCommand() : L10n.toolsTool()
     } else {
-        fallback = itemType.ifEmpty("工具")
+        fallback = itemType.ifEmpty(L10n.toolsTool())
     }
     return shortenPaths((rawItemType(title) ? "" : title).ifEmpty(fallback), cwd: cwd, home: home)
 }
@@ -317,7 +317,7 @@ private func toolTitle(kind: PBToolKind, title: String, itemType: String, cwd: S
 public func toolRaw(_ t: PBToolCall, cwd: String, home: String) -> String {
     if !t.input.isEmpty && t.input != t.title { return t.input }
     if rawItemType(t.title) || (t.title.isEmpty && rawItemType(t.itemType)) { return "" }
-    let asIs = t.kind == .fileChange ? "编辑 " + t.title : t.title.ifEmpty(t.itemType)
+    let asIs = t.kind == .fileChange ? L10n.toolsEditFile(path: t.title) : t.title.ifEmpty(t.itemType)
     return asIs != toolTitle(t, cwd: cwd, home: home) ? t.title.ifEmpty(t.itemType) : ""
 }
 
@@ -325,14 +325,14 @@ public func toolRaw(_ t: PBToolCall, cwd: String, home: String) -> String {
 public func toolsSummary(_ calls: [PBToolCall]) -> String {
     let what: String
     if calls.allSatisfy({ $0.kind == .command }) {
-        what = "运行了 \(calls.count) 条命令"
+        what = L10n.toolsCompletedCommands(count: Int(calls.count))
     } else if calls.allSatisfy({ $0.kind == .fileChange }) {
-        what = "编辑了 \(calls.count) 个文件"
+        what = L10n.toolsCompletedFiles(count: Int(calls.count))
     } else {
-        what = "完成了 \(calls.count) 个工具调用"
+        what = L10n.toolsCompletedCalls(count: Int(calls.count))
     }
     let images = calls.reduce(0) { $0 + $1.images.count }
-    return what + (images > 0 ? " · \(images) 张截图" : "")
+    return what + (images > 0 ? L10n.imageScreenshots(count: Int(images)) : "")
 }
 
 /// Canceled, or answered in the CLI's own prompt: the call that follows shows what happened.
@@ -511,10 +511,10 @@ public func buildChat(
                 .user(
                     .init(
                         key: k, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq), time: eventTime(e),
-                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                        from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
         case .scheduledNotification(let notification):
             flush()
-            out.append(.note(.init(key: k, text: "通知你：" + notification.text)))
+            out.append(.note(.init(key: k, text: L10n.sessionNotification(text: notification.text))))
         case .agentMessage(let m):
             if !m.text.jvmIsBlank {
                 flush()
@@ -551,7 +551,7 @@ public func buildChat(
                 .note(
                     .init(
                         key: k,
-                        text: (answers.isEmpty ? "已回答提问" : "已回答：" + answers.joined(separator: "、")) + (by.map { " · \($0)" } ?? ""),
+                        text: (answers.isEmpty ? L10n.sessionIosAnswered() : L10n.sessionIosAnswerValues(answers: answers.joined(separator: L10n.commonListSeparator()))) + (by.map { " · \($0)" } ?? ""),
                         icon: .check, tone: 1)))
         case .imageGenerated(let g):
             if !g.images.isEmpty {
@@ -569,21 +569,21 @@ public func buildChat(
         case .turnEnded(let t):
             flush()
             var parts = [String]()
-            if t.outcome == .aborted { parts.append("已中断" + (who(e.originOrNil).map { "（\($0)）" } ?? "")) }
-            if t.durationMs > 0 { parts.append("本轮用时 " + duration(t.durationMs)) }
-            if turnTokens > 0 { parts.append(turnTokens >= 1000 ? "\((turnTokens + 500) / 1000)k tokens" : "\(turnTokens) tokens") }
+            if t.outcome == .aborted { parts.append(who(e.originOrNil).map { L10n.sessionIosInterruptedBy(origin: $0) } ?? L10n.sessionInterrupted()) }
+            if t.durationMs > 0 { parts.append(L10n.sessionTurnDuration(duration: duration(t.durationMs))) }
+            if turnTokens > 0 { parts.append(turnTokens >= 1000 ? L10n.sessionIosTurnKTokens(count: Int((turnTokens + 500) / 1000)) : L10n.sessionIosTurnTokens(count: Int(turnTokens))) }
             if !parts.isEmpty { out.append(.turnEnd(.init(key: k, text: parts.joined(separator: " · ")))) }
         case .settingsChanged(let c):
             let by = who(e.originOrNil)
             let text: String?
             if c.compacted {
                 if let usage = d.compactions[e.seq], let before = usage.before, let after = usage.after {
-                    text = "上下文已压缩 · \(before)% → \(after)%"
-                } else { text = "上下文已压缩" }
+                    text = L10n.sessionIosCompactedUsage(after: Int(after), before: Int(before))
+                } else { text = L10n.sessionCompacted() }
             } else if !c.model.isEmpty {
-                text = (by.map { "\($0) 将模型切到 " } ?? "切换到 ") + c.model + (c.effort.isEmpty ? "" : " · \(c.effort)")
+                text = (by.map { L10n.sessionModelChangedBy(origin: $0, value: c.model) } ?? L10n.sessionModelChanged(value: c.model)) + (c.effort.isEmpty ? "" : " · \(c.effort)")
             } else {
-                text = modeOf(c.mode).map { (by.map { "\($0) 将模式切到 " } ?? "模式切换到 ") + $0.text }
+                text = modeOf(c.mode).map { mode in by.map { origin in L10n.sessionModeChangedBy(origin: origin, value: mode.text) } ?? L10n.sessionModeChanged(value: mode.text) }
             }
             if let text {
                 flush()
@@ -592,12 +592,12 @@ public func buildChat(
         case .turnContext:
             if let change = d.terminalChanges[e.seq] {
                 flush()
-                out.append(.note(.init(key: k, text: "\(machine) 终端里\(change.map(\.text).joined(separator: "，"))")))
+                out.append(.note(.init(key: k, text: L10n.sessionIosTerminalChanges(changes: change.map(\.text).joined(separator: L10n.commonIosSpokenSeparator()), machine: machine))))
             }
         case .sessionState(let s):
             if s.status == .exited {
                 flush()
-                out.append(.turnEnd(.init(key: k, text: dateTime(eventTime(e), now: now, zone: zone) + " 结束")))
+                out.append(.turnEnd(.init(key: k, text: L10n.sessionIosEndedAt(time: dateTime(eventTime(e), now: now, zone: zone)))))
             }
         case .sessionForked(let f):
             flush()
@@ -619,9 +619,9 @@ func sender(_ e: PBEvent, d: Derived, machine: String, who: (PBOrigin?) -> Strin
 /// 12 秒, 4 分 12 秒, 1 小时 3 分: how long a turn took.
 public func duration(_ ms: Int64) -> String {
     let s = ms / 1000
-    if s < 60 { return "\(s) 秒" }
-    if s < 3600 { return "\(s / 60) 分 \(s % 60) 秒" }
-    return "\(s / 3600) 小时 \(s % 3600 / 60) 分"
+    if s < 60 { return L10n.timeDurationSeconds(count: Int(s)) }
+    if s < 3600 { return L10n.timeDurationMinutesSeconds(minutes: Int(s / 60), seconds: Int(s % 60)) }
+    return L10n.timeDurationHoursMinutes(hours: Int(s / 3600), minutes: Int(s % 3600 / 60))
 }
 
 /// Ordinary messages append without rebuilding old rows. State-changing events use the full builder.
@@ -691,7 +691,7 @@ public struct ChatProjection: Sendable {
                         .user(
                             .init(
                                 key: key, text: imageText(withoutFileLines(m.text, files: m.files), refs: m.images), local: d.typedLocally.contains(e.seq),
-                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
+                                time: eventTime(e), from: e.origin.scheduledRunID.isEmpty ? sender(e, d: d, machine: machine, who: who) : L10n.sessionScheduledAt(time: scheduleTime(Date(timeIntervalSince1970: Double(eventTime(e)) / 1000), zone: zone)), images: m.images, files: m.files, seq: e.seq, scheduledRunID: e.origin.scheduledRunID)))
                 case .agentMessage(let m): if !m.text.jvmIsBlank { items.append(.agent(.init(key: key, text: m.text))) }
                 case .reasoning(let r): if !r.text.jvmIsBlank { items.append(.thought(.init(key: key, text: r.text))) }
                 default: break

@@ -36,14 +36,14 @@ public func aspect(_ ref: PBImageRef) -> Double {
 }
 
 /// A file's name from its path, for an image shown by name only.
-public func fileName(_ path: String) -> String { (path.split(ascii: UInt8(ascii: "/")).last ?? "").ifEmpty("图片") }
+public func fileName(_ path: String) -> String { (path.split(ascii: UInt8(ascii: "/")).last ?? "").ifEmpty(L10n.imageTitle()) }
 
 /// What each approval mode means, under its name in the mode sheet.
-public func modeHelp(_ m: Mode) -> String {
+public func modeHelp(_ m: Mode, agent: String = "CLI") -> String {
     switch m {
-    case .ask: return "需要审批时由你确认，超时拒绝"
-    case .auto: return "由 CLI 自己判断，拿不准的在对话里问你"
-    case .plan: return "只读和出计划，你批准后才开始改"
-    case .full: return "所有操作都不审批"
+    case .ask: return L10n.modesAskDesc()
+    case .auto: return L10n.modesAutoDesc(agent: agent)
+    case .plan: return L10n.modesPlanDesc()
+    case .full: return L10n.modesSkipAll()
     }
 }

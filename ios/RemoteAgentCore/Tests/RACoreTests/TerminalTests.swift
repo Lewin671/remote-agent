@@ -10,8 +10,8 @@ import Testing
     private func snapshot(_ f: inout FitTracker, _ size: TerminalSize) -> Bool { f.onSnapshot(size) }
 
     @Test func arrowsFollowTheCursorKeyMode() throws {
-        let left = try #require(terminalKeyRows[0].first { $0.label == "左" })
-        let right = try #require(terminalKeyRows[0].first { $0.label == "右" })
+        let left = try #require(terminalKeyRows[0].first { $0.label == L10n.terminalLeft() })
+        let right = try #require(terminalKeyRows[0].first { $0.label == L10n.terminalRight() })
         #expect(terminalKeySequence(left, appCursor: false) == "\u{1b}[D")
         #expect(terminalKeySequence(left, appCursor: true) == "\u{1b}OD")
         #expect(terminalKeySequence(right, appCursor: false) == "\u{1b}[C")

@@ -108,7 +108,7 @@ private struct ChatThumb: View {
                     } else {
                         // Not even a preview: the file's name is all there is.
                         VStack(spacing: 0) {
-                            Text(ref.sync == .nameOnly ? "图片没有同步" : "没有预览").font(.caption2).ink(DS.ink2)
+                            Text(ref.sync == .nameOnly ? L10n.imageUnsynced() : L10n.imageIosNoPreview()).font(.caption2).ink(DS.ink2)
                             if !ref.path.isEmpty { Text(fileName(ref.path)).font(.caption2).ink(DS.ink3).lineLimit(2) }
                         }
                         .multilineTextAlignment(.center).padding(6)
@@ -119,7 +119,7 @@ private struct ChatThumb: View {
                     // On a thumbnail too narrow for the words the viewer says it instead.
                     if ref.sync == .previewOnly && more == 0 {
                         ViewThatFits(in: .horizontal) {
-                            badge("只有预览").fixedSize()
+                            badge(L10n.imagePreviewOnly()).fixedSize()
                             Color.clear.frame(width: 0, height: 0)
                         }
                     }
@@ -133,9 +133,9 @@ private struct ChatThumb: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
-        .accessibilityLabel(more > 0 ? "图片，还有 \(more) 张" : ref.cliIndex > 0 ? "图片 \(ref.cliIndex)" : "图片")
+        .accessibilityLabel(more > 0 ? L10n.imageIosMoreImages(count: Int(more)) : ref.cliIndex > 0 ? L10n.imageNumbered(index: Int(ref.cliIndex)) : L10n.imageTitle())
         .accessibilityValue(ref.path.isEmpty ? "" : fileName(ref.path))
-        .accessibilityHint("打开图片")
+        .accessibilityHint(L10n.imageIosOpen())
     }
 }
 
@@ -159,7 +159,7 @@ struct GeneratedCard: View {
                             if let preview {
                                 Image(uiImage: preview).resizable().scaledToFit()
                             } else {
-                                Text("没有预览").font(.subheadline).ink(DS.ink2)
+                                Text(L10n.imageIosNoPreview()).font(.subheadline).ink(DS.ink2)
                             }
                         }
                         .clipShape(RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous))
@@ -167,18 +167,18 @@ struct GeneratedCard: View {
                         .frame(maxHeight: 420)
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityLabel("生成的图片")
-                .accessibilityHint("打开图片")
+                .accessibilityLabel(L10n.imageGenerated())
+                .accessibilityHint(L10n.imageIosOpen())
             }
             HStack(spacing: 8) {
                 let first = item.images.first
                 let size = first.map { $0.width > 0 ? " · \($0.width) × \($0.height)" : "" } ?? ""
-                Text("生成的图片\(size)").font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L10n.imageIosGeneratedSize(size: size)).font(.footnote).ink(DS.ink2).frame(maxWidth: .infinity, alignment: .leading)
                 if !item.prompt.isEmpty {
                     Button {
                         open.toggle(item.key)
                     } label: {
-                        ArrowText("提示词", style: .footnote, direction: isOpen ? .up : .down)
+                        ArrowText(L10n.imagePrompt(), style: .footnote, direction: isOpen ? .up : .down)
                             .padding(.vertical, 14).contentShape(Rectangle()).padding(.vertical, -14)
                     }
                     .buttonStyle(PressStyle())

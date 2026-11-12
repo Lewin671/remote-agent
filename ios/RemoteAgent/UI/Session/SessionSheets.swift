@@ -42,12 +42,12 @@ struct SessionModeSheet: View {
         let pm = session.info?.permissionMode ?? ""
         let outside = !pm.isEmpty && permissionMode(pm) == nil ? (pm == "acceptEdits" ? "accept edits" : pm) : nil
         Group {
-            SheetHead("审批模式")
-            if let outside { Text("当前：\(outside)（在终端设置）").font(.footnote).ink(DS.ink2).padding(.bottom, 4) }
+            SheetHead(L10n.modesTitle())
+            if let outside { Text(L10n.modesCurrentTerminal(mode: outside)).font(.footnote).ink(DS.ink2).padding(.bottom, 4) }
             ForEach(Array(Mode.allCases.enumerated()), id: \.offset) { i, m in
                 let reason = unavailableReason(m)
                 let off = reason != nil
-                let help = reason ?? modeHelp(m).replacingOccurrences(of: "CLI", with: agentName(session.agent))
+                let help = reason ?? modeHelp(m, agent: agentName(session.agent))
                 ListItem(
                     m.text, desc: help, checked: m == current, enabled: !off, danger: m == .full && !off,
                     last: i == Mode.allCases.count - 1,
@@ -58,13 +58,13 @@ struct SessionModeSheet: View {
                             if m == .full && current != .full { confirmFull = true } else { set(m) }
                         })
             }
-            Hint(outside.map { "照实显示终端中的模式；不提供切到 \($0) 的按钮。" } ?? "只改当前会话")
-            if act.running { Hint("正在切换…") }
-            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: DS.red) }
+            Hint(outside.map { L10n.modesIosOutsideNote(mode: $0) } ?? L10n.sessionOnlyCurrent())
+            if act.running { Hint(L10n.modesSwitching()) }
+            if !act.error.isEmpty { Hint(L10n.modesSwitchFailed(reason: act.error), color: DS.red) }
         }
         .confirm(
-            isPresented: $confirmFull, title: "切到完全放行？", text: "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
-            confirm: "切换", danger: true
+            isPresented: $confirmFull, title: L10n.modesFullTitle(), text: L10n.modesFullCurrentNote(),
+            confirm: L10n.modesSwitch(), danger: true
         ) { set(.full) }
         .task { if startConfirm && unavailableReason(.full) == nil { confirmFull = true } }
         .task {
@@ -111,12 +111,12 @@ struct SessionModelSheet: View {
 
     var body: some View {
         let (remote, sid) = (context.remote, session.id)
-        SheetHead("会话设置")
+        SheetHead(L10n.sessionSettings())
         if let percent = contextPercent(session), let info = session.info {
             ContextBox(
                 percent: percent,
-                detail: info.contextWindow > 0 ? "上下文 \(info.contextTokens / 1000)k / \(info.contextWindow / 1000)k" : "上下文占用",
-                action: compact.running ? "正在压缩…" : "压缩", enabled: !running && !compact.running
+                detail: info.contextWindow > 0 ? L10n.sessionIosContextUsage(total: Int(info.contextWindow / 1000), used: Int(info.contextTokens / 1000)) : L10n.sessionIosContextOccupancy(),
+                action: compact.running ? L10n.sessionCompacting() : L10n.sessionCompact(), enabled: !running && !compact.running
             ) {
                 compact.run({
                     var cmd = PBCommand()
@@ -124,32 +124,32 @@ struct SessionModelSheet: View {
                     try await remote.command(sid, cmd)
                 }, onDone: { onClose() })
             }
-            if !compact.error.isEmpty { Hint("没能压缩：\(compact.error)", color: DS.red) }
+            if !compact.error.isEmpty { Hint(L10n.sessionCompactFailed(reason: compact.error), color: DS.red) }
         }
         if !agentInfo(session.agent).switchesModelInSession {
             let cur = findModel(models?.models ?? [], id: session.info?.model ?? "") { $0.slug }
             let modelTitle = (cur?.displayName).flatMap { $0.isEmpty ? nil : $0 }
                 ?? (session.info?.model).flatMap { $0.isEmpty ? nil : $0 }
-                ?? "默认模型"
+                ?? L10n.newSessionDefaultModel()
             let effortTitle = (session.info?.effort).flatMap { $0.isEmpty ? nil : $0 }
                 ?? (cur?.defaultEffort).flatMap { $0.isEmpty ? nil : $0 }
-                ?? "默认"
-            FieldLabel("模型")
-            ListItem(modelTitle, desc: "运行中不能换模型，新建会话时可选", enabled: false, last: true)
-            FieldLabel("推理强度")
-            ListItem(effortTitle, desc: "运行中不能换推理强度", enabled: false, last: true)
+                ?? L10n.modelsDefault()
+            FieldLabel(L10n.modelsTitle())
+            ListItem(modelTitle, desc: L10n.sessionModelLocked(), enabled: false, last: true)
+            FieldLabel(L10n.modelsEffort())
+            ListItem(effortTitle, desc: L10n.sessionEffortLocked(), enabled: false, last: true)
         } else {
-            FieldLabel("模型")
+            FieldLabel(L10n.modelsTitle())
             if !loadError.isEmpty {
-                Banner("没能读取模型列表：\(loadError)", tone: .error, action: "重试") { attempt += 1 }
+                Banner(L10n.sessionIosModelsFailed(reason: loadError), tone: .error, action: L10n.commonRetry()) { attempt += 1 }
             } else if let models {
                 list(models.models)
             } else {
                 LoadingRow(inset: 0)
             }
-            Hint(running ? "只在空闲时能切换；这一轮结束后再选" : "仅显示当前模型支持的档位；空闲时点选提交，等电脑确认后更新实际值。")
-            if act.running { Hint("正在切换…") }
-            if !act.error.isEmpty { Hint("没能切换：\(act.error)", color: DS.red) }
+            Hint(running ? L10n.sessionIosChangeIdle() : L10n.sessionIosEffortNote())
+            if act.running { Hint(L10n.modesSwitching()) }
+            if !act.error.isEmpty { Hint(L10n.modesSwitchFailed(reason: act.error), color: DS.red) }
         }
         // Read again each time the sheet opens: the computer's list changes with the CLI.
         Color.clear.frame(height: 0).task(id: attempt) {
@@ -173,7 +173,7 @@ struct SessionModelSheet: View {
             let top = m.efforts.last
             ListItem(
                 m.displayName.isEmpty ? m.slug : m.displayName, checked: m.slug == picked, enabled: !running && !act.running,
-                small: m.efforts.isEmpty ? "无推理强度" : top.flatMap { $0 == "high" ? nil : "最高 \($0)" },
+                small: m.efforts.isEmpty ? L10n.sessionNoEffort() : top.flatMap { $0 == "high" ? nil : L10n.sessionMaxEffort(effort: $0) },
                 last: i == shown.count - 1 && few
             ) {
                 picked = m.slug
@@ -181,9 +181,9 @@ struct SessionModelSheet: View {
                 if m.efforts.isEmpty && m.slug != current?.slug { setModel(m.slug, "") }
             }
         }
-        if !few { TextAction("全部模型", style: .body, arrow: true) { all = true } }
+        if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
         if let chosen = offered.first(where: { $0.slug == picked }), !chosen.efforts.isEmpty {
-            FieldLabel("推理强度")
+            FieldLabel(L10n.modelsEffort())
             ChoiceGrid(
                 chosen.efforts, selected: chosen.slug == current?.slug ? session.info?.effort : nil, enabled: !running && !act.running
             ) { setModel(chosen.slug, $0) }
@@ -206,7 +206,7 @@ private struct SessionRename: ViewModifier {
         let initial = renameInitial(session)
         let (remote, sid) = (context.remote, session.id)
         content.inputAlert(
-            isPresented: $isPresented, title: "重命名会话", initial: initial, placeholder: "标题", text: "留空保存会恢复自动标题",
+            isPresented: $isPresented, title: L10n.sessionRenameTitle(), initial: initial, placeholder: L10n.sessionIosTitleField(), text: L10n.sessionAutoTitleHint(),
             limit: .max, lines: 1...1, filter: titleInput, debugSignal: "session.rename.save", debugText: { SessionDebug.text }
         ) { typed in
             // The same title again is a cancel.

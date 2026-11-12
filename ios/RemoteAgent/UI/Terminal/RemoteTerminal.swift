@@ -36,7 +36,7 @@ final class RemoteTerminal {
         var release: @MainActor (UUID) -> Void
     }
 
-    static let paused = "终端已暂停，连接恢复后会重新获取画面"
+    static var paused: String { L10n.terminalIosPaused() }
     private nonisolated static let frameInterval = 0.033
 
     let history = TerminalHistory()

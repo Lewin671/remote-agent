@@ -169,6 +169,81 @@
     }
   },
   {
+    "key": "composer.ios_connect_send",
+    "zh-CN": "连上服务器后才能发送",
+    "en": "Connect to the server to send",
+    "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.ios_draft_restore_failed",
+    "zh-CN": "草稿没能恢复，下次打开或编辑时重试",
+    "en": "Could not restore the draft. Reopen or edit it to retry.",
+    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.ios_draft_save_failed",
+    "zh-CN": "草稿没能保存到本机，关闭应用前请保留文字",
+    "en": "Could not save the draft on this device. Keep a copy before closing the app.",
+    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.ios_not_sent",
+    "zh-CN": "这条没有发出：{reason}",
+    "en": "This message was not sent: {reason}",
+    "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.ios_unconfirmed",
+    "zh-CN": "已送到终端但没确认",
+    "en": "Delivered to terminal but unconfirmed",
+    "notes": "ChatRows.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "composer.maybe_failure",
     "zh-CN": "可能没发出去：{reason}",
     "en": "Possibly not sent: {reason}",

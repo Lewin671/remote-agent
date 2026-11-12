@@ -268,5 +268,20 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Model.kt",
     "literal": "MCP",
     "reason": "Native tool protocol/brand identifier, preserved verbatim."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/ChatRowViews.swift",
+    "literal": "xmark",
+    "reason": "SF Symbol identifier selecting the tool-status icon; never displayed as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionSheets.swift",
+    "literal": "session.rename.save",
+    "reason": "DEBUG notification signal identifier; never displayed as text."
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Session/SessionComposer.swift",
+    "literal": "session-send",
+    "reason": "Accessibility identifier for the visible send control, distinct from the hidden keyboard shortcut; never displayed to users."
   }
 ]

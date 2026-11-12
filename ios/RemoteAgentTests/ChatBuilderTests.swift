@@ -146,10 +146,10 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
             return m.from
         }
         // Before the device list is read nothing is known of who it was.
-        #expect(await from(params) == "另一客户端")
+        #expect(await from(params) == L10n.sessionOriginOther())
         // A device the list does not have was removed: no part of its ID is shown.
         params.devices = ["bbbb000000005678": DeviceView(id: "bbbb000000005678", kind: .client, createdMs: 0)]
-        #expect(await from(params) == "已移除的设备")
+        #expect(await from(params) == L10n.sessionOriginRemoved())
         // The device list arrives: the same history reads differently, so the rows are built again.
         params.devices = [
             "aaaa000000001234": DeviceView(
@@ -404,4 +404,64 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(commandOf(kind: .fileChange, title: "/work/full/path", input: "{}") == "/work/full/path")
     }
 
+}
+
+@Suite struct SessionLocaleBuilderTests {
+    @Test func changingLocaleRebuildsLabelsAndPreservesUserContentAndMarkdown() async {
+        let parses = Parses()
+        let builder = ChatBuilder(parse: parses.parse)
+        let list = PagedList(events([
+            user("用户原文 / raw input"), reply("**CLI 原文**"),
+            .settingsChanged(.with { $0.mode = .fullAccess }),
+        ]))
+        let zh = await MessageLocale.$overrideForTesting.withValue("zh-CN") {
+            await builder.build(list, ChatParams())
+        }
+        let en = await MessageLocale.$overrideForTesting.withValue("en") {
+            await builder.build(list, ChatParams())
+        }
+        #expect(zh.rows.map(\.id) == en.rows.map(\.id))
+        guard case .user(var zhUser) = zh.rows[0].item, case .user(var enUser) = en.rows[0].item else {
+            Issue.record("Expected the unchanged user message"); return
+        }
+        #expect(zhUser.from == L10n.sessionTerminal(locale: "zh-CN"))
+        #expect(enUser.from == L10n.sessionTerminal(locale: "en"))
+        zhUser.from = nil
+        enUser.from = nil
+        #expect(zhUser == enUser)
+        #expect(zh.rows[0].blocks == en.rows[0].blocks)
+        #expect(zh.rows[1] == en.rows[1])
+        #expect(zh.rows[2] != en.rows[2])
+        #expect(parses.all == ["**CLI 原文**"])
+    }
+
+    @MainActor @Test func englishLabelsDoNotChangeQueueOrFullAccessBehavior() {
+        MessageLocale.$overrideForTesting.withValue("en") {
+            let paused = PendingInput(id: "queued", text: "draft", mode: .queue, paused: true, held: false, origin: nil)
+            #expect(pendingLabel(paused, cancel: nil, resuming: false, resumeFailed: false, starting: nil) == L10n.queuePaused())
+            #expect(pendingSuffix(paused, origin: nil, index: 2, of: 3).isEmpty)
+            // Deliberately misleading labels: only the mode enum decides the warning colour.
+            let full = ModeLabel(text: L10n.modesAsk(), mode: .full)
+            #expect(sessionSubtitle(status: .idle, mode: full).danger)
+            #expect(menuSettings(mode: full, model: "", effort: "", percent: nil).first?.danger == true)
+            let ask = ModeLabel(text: L10n.modesFullAccess(), mode: .ask)
+            #expect(!sessionSubtitle(status: .idle, mode: ask).danger)
+        }
+    }
+
+    @MainActor @Test func aNewNoticeSurvivesAnOldDismissalAndResolvesInBothLanguages() {
+        let remote = try! Remote(
+            account: Account(server: "https://example.com", root: Data(count: 32), deviceSeed: Data(count: 32), deviceId: "00112233445566778899aabbccddeeff"),
+            http: AppModel.http)
+        ImageCenter.install(remote: remote, files: VolatileFiles(), live: false)
+        defer { ImageCenter.remove(remote) }
+        let center = ImageCenter.of(remote)
+        center.say("draft", AttachmentNotice.maxImages(6))
+        let previous = center.notices["draft"]!.id
+        center.say("draft", AttachmentNotice.maxFiles(3))
+        center.clearNotice("draft", id: previous)
+        #expect(center.notices["draft"] != nil)
+        #expect(MessageLocale.$overrideForTesting.withValue("zh-CN") { center.notices["draft"]?.text } == L10n.attachmentMaxFiles(count: 3))
+        #expect(MessageLocale.$overrideForTesting.withValue("en") { center.notices["draft"]?.text } == L10n.attachmentMaxFiles(count: 3, locale: "en"))
+    }
 }

@@ -34,4 +34,43 @@ import UIKit
             #expect(L10n.commonCancel(locale: locale) == (locale == "en" ? "Cancel" : "取消"))
         }
     }
+    /// File chips use the real components; the errors remain raw fixture details for batch C.
+    @MainActor @Test func sessionFileChipsInBothLanguages() throws {
+        for locale in ["zh-CN", "en"] {
+            try MessageLocale.$overrideForTesting.withValue(locale) {
+                let content = VStack(alignment: .leading, spacing: 16) {
+                    FileChip(name: "report.pdf", size: 2048, state: .processing, remove: {})
+                    FileChip(name: "source.zip", size: 4096, state: .uploading(progress: 0.42), remove: {})
+                    FileChip(name: "notes.txt", size: 256, state: .failed(error: "fixture detail"), retry: {}, remove: {})
+                }
+                .padding(16).frame(width: 375).background(Color.white)
+                .environment(\.locale, Locale(identifier: locale))
+                .environment(\.colorScheme, .light)
+                // ImageRenderer uses a placeholder for the UIKit-backed ProgressView.
+                // A real hosting window captures the native control as displayed.
+                let scene = try #require(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+                let previous = scene.windows.first(where: \.isKeyWindow)
+                let host = UIHostingController(rootView: content)
+                host.safeAreaRegions = []
+                let size = host.sizeThatFits(in: CGSize(width: 375, height: 1000))
+                let window = UIWindow(windowScene: scene)
+                window.frame = CGRect(origin: .zero, size: size)
+                window.rootViewController = host
+                window.makeKeyAndVisible()
+                defer { window.isHidden = true; previous?.makeKeyAndVisible() }
+                host.view.frame = window.bounds
+                host.view.setNeedsLayout()
+                host.view.layoutIfNeeded()
+                let renderer = UIGraphicsImageRenderer(size: size)
+                let picture = renderer.image { _ in
+                    window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+                }
+                let data = try #require(picture.pngData())
+                let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                try data.write(to: directory.appendingPathComponent("session-files-\(locale).png"))
+            }
+        }
+    }
+
 }

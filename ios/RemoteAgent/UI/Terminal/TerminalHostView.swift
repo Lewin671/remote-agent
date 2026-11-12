@@ -186,8 +186,8 @@ final class TerminalHostView: UIView {
         terminal.addGestureRecognizer(pull)
 
         isAccessibilityElement = true
-        accessibilityLabel = "终端画面"
-        accessibilityHint = "轻点两下调出键盘。方向键、回车和 Ctrl+C 在下面的按键栏"
+        accessibilityLabel = L10n.terminalIosScreen()
+        accessibilityHint = L10n.terminalIosScreenHint()
 
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(keyboardMoved(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)

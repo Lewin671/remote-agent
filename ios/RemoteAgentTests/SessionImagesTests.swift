@@ -459,13 +459,14 @@ import UIKit
         let c = center()
         let key = ImageCenter.sessionKey(sid)
         c.plus(key, blocked: "MacBook 离线，连上后才能添加图片", max: 6)
-        #expect(c.notices[key] == "MacBook 离线，连上后才能添加图片" && c.picking[key] == nil)
+        #expect(c.notices[key]?.text == L10n.attachmentComputerOffline(name: "MacBook") && c.picking[key] == nil)
         c.draft(key).append((1...6).map { ready("i\($0)") })
         c.plus(key, blocked: nil, max: 6)
-        #expect(c.notices[key] == "一条消息最多 6 张" && c.picking[key] == nil)
-        c.clearNotice(key, was: "别的话")
+        #expect(c.notices[key]?.text == L10n.attachmentMaxImages(count: 6) && c.picking[key] == nil)
+        let noticeID = c.notices[key]!.id
+        c.clearNotice(key, id: UUID())
         #expect(c.notices[key] != nil)
-        c.clearNotice(key, was: "一条消息最多 6 张")
+        c.clearNotice(key, id: noticeID)
         #expect(c.notices[key] == nil)
     }
 

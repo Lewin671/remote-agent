@@ -32,7 +32,7 @@ import Testing
                   .with { $0.command = "complete"; $0.toolInputJson = "cut" + marker }] {
             let before = try a.serializedData()
             #expect(approvalTruncated(a))
-            #expect(approvalTruncatedMessage == "内容被截断，请在终端查看")
+            #expect(approvalTruncatedMessage == L10n.approvalTruncated())
             #expect(try a.serializedData() == before)
         }
     }
@@ -134,10 +134,10 @@ import Testing
         st.prefs = .empty
         #expect(prefsBlocked(st) == nil)
         #expect(fileName("/tmp/a/shot.png") == "shot.png")
-        #expect(fileName("/tmp/a/") == "图片")
+        #expect(fileName("/tmp/a/") == L10n.imageTitle())
         #expect(aspect(.with { $0.width = 400; $0.height = 100 }) == 2.5)
         #expect(aspect(.with { $0.previewWidth = 30; $0.previewHeight = 40; $0.width = 400; $0.height = 100 }) == 0.75)
         #expect(aspect(PBImageRef()) == 4.0 / 3.0)
-        #expect(modeHelp(.full) == "所有操作都不审批")
+        #expect(modeHelp(.full) == L10n.modesSkipAll())
     }
 }

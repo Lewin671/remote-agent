@@ -516,25 +516,25 @@ struct ChatPane: View {
         }
         if chat.historyPartial && chat.error == nil && chat.fetchError == nil {
             items.append(ChatCollectionItem("chat-history") {
-                Text("历史记录尚未读全。").font(.subheadline).ink(DS.ink2).padding(.horizontal, chatMargin)
+                Text(L10n.sessionIosHistoryPartial()).font(.subheadline).ink(DS.ink2).padding(.horizontal, chatMargin)
             })
         }
         if chat.unavailableCount > 0 {
             items.append(ChatCollectionItem("chat-unavailable") {
-                Text("恢复前有 \(chat.unavailableCount) 条记录不可读；后续可读记录照常显示。")
+                Text(L10n.sessionHistoryUnavailable(count: Int(chat.unavailableCount)))
                     .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16)
             })
         }
         if let message = ImageCenter.of(context.remote).outgoingRestoreErrors[sid] {
             items.append(ChatCollectionItem("chat-outgoing-restore-error") {
-                Banner(message, tone: .error, action: "重试") {
+                Banner(message, tone: .error, action: L10n.commonRetry()) {
                     ImageCenter.of(context.remote).restoreOutgoing(sid, store: context.sessionStore)
                 }.padding(.horizontal, chatMargin)
             })
         }
         if let message = chat.liveError {
             items.append(ChatCollectionItem("chat-live-error") {
-                Banner(message, tone: .error, action: "重试") { context.remote.retryEvents(sid) }
+                Banner(message, tone: .error, action: L10n.commonRetry()) { context.remote.retryEvents(sid) }
                     .padding(.horizontal, chatMargin)
             })
         }
@@ -549,7 +549,7 @@ struct ChatPane: View {
         }
         if let failure = chat.error ?? (online ? chat.fetchError : nil) {
             items.append(ChatCollectionItem("chat-fetch-error") {
-                Banner("后面的记录没读到：\(failure)", tone: .error, action: "重试") { context.remote.retryEvents(sid) }
+                Banner(L10n.sessionIosHistoryFailed(reason: failure), tone: .error, action: L10n.commonRetry()) { context.remote.retryEvents(sid) }
                     .padding(.horizontal, chatMargin).padding(.vertical, 8)
             })
         }
@@ -562,7 +562,7 @@ struct ChatPane: View {
         }
         if visible.count < pending.count {
             items.append(ChatCollectionItem("chat-more-pending") {
-                TextAction("还有 \(pending.count - 2) 条排队 展开", style: .footnote.weight(.semibold), alignment: .trailing) { allPending = true }
+                TextAction(L10n.queueMore(count: Int(pending.count - 2)), style: .footnote.weight(.semibold), alignment: .trailing) { allPending = true }
                     .frame(maxWidth: .infinity, alignment: .trailing).padding(.horizontal, chatMargin)
             })
         }
@@ -591,7 +591,7 @@ struct ChatPane: View {
     @ViewBuilder private func pill(_ action: @escaping () -> Void) -> some View {
         if tracker.fresh > 0 {
             Button(action: action) {
-                Label("\(tracker.fresh) 条新消息", systemImage: "arrow.down")
+                Label(L10n.sessionNewMessages(count: Int(tracker.fresh)), systemImage: "arrow.down")
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(DS.ink)
                     .padding(.horizontal, 14)
@@ -612,7 +612,7 @@ struct ChatPane: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("回到最新消息")
+            .accessibilityLabel(L10n.sessionIosLatest())
             .transition(Motion.appear(rise: Motion.bubbleRise))
         }
     }
@@ -624,14 +624,14 @@ struct ChatPane: View {
         let name = machineLabel(state, id: session.machineId)
         if status == .exited {
             VStack(spacing: 0) {
-                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
+                if session.info?.taskOwned == true { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 EndedCard(scheduledClosed: d.scheduledClosed, idleClosed: d.idleClosed, session: session, machine: machine, name: name)
             }
         } else if status == .offline {
             Ticking { now in
                 let seen = machine?.lastSeenMs ?? 0
                 SessionEndCard(
-                    "\(name) 不在线",
+                    L10n.newSessionMachineOffline(name: name),
                     text: offlineText(lastSeen: seen > 0 ? whenText(seen, now: now) : "")
                 ) { EmptyView() }
             }
@@ -680,7 +680,7 @@ struct ChatPane: View {
                     // answered, it fades and closes (§4 动效, 停靠卡).
                     .transition(Motion.roomy(rise: Motion.dockRise))
                 }
-                if session.info?.taskOwned == true { Text("回复后，这个对话会移到会话列表").font(.footnote).foregroundStyle(DS.ink2).padding(8) }
+                if session.info?.taskOwned == true { Text(L10n.sessionReplyMoves()).font(.footnote).foregroundStyle(DS.ink2).padding(8) }
                 SessionComposer(session: session, status: status, derived: d, focus: $typing, onSent: followEnd)
             }
             .animation(dock.first == nil ? Motion.exit() : Motion.enter(), value: dock.first?.id)
@@ -723,7 +723,7 @@ private struct PendingBubble: View {
                     expanded.toggle()
                 } label: {
                     ChatBubble(
-                        pending.text.isEmpty ? (pending.files.isEmpty ? "（图片）" : nil) : pending.text, pending: true,
+                        pending.text.isEmpty ? (pending.files.isEmpty ? L10n.imageIosPlaceholder() : nil) : pending.text, pending: true,
                         lines: expanded ? nil : 4, padded: false
                     ) {
                         SessionImages.PendingThumbs(session: sid, requestId: id)
@@ -733,7 +733,7 @@ private struct PendingBubble: View {
                     .opacity(canceling ? 0.5 : 1)
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityHint(expanded ? "收起" : "展开全文")
+                .accessibilityHint(expanded ? L10n.markdownCollapse() : L10n.markdownExpand())
                 HStack(spacing: 6) {
                     // The note gives way; what can be done stays.
                     Text(scheduledPendingLabel(pending, label: label) ?? (label + pendingSuffix(pending, origin: origin, index: index, of: count, cancel: cancel)))
@@ -741,7 +741,7 @@ private struct PendingBubble: View {
                         .frame(maxWidth: .infinity, alignment: .trailing)
                     if pending.paused && !canceling {
                         TextAction(
-                            resume.error.isEmpty ? "发送" : "重试", style: .footnote.weight(.semibold),
+                            resume.error.isEmpty ? L10n.composerSend() : L10n.commonRetry(), style: .footnote.weight(.semibold),
                             enabled: online && !resume.running, alignment: .center
                         ) {
                             resume.run {
@@ -756,7 +756,7 @@ private struct PendingBubble: View {
                     }
                     if !canceling {
                         TextAction(
-                            cancelFailed ? "重试" : "取消", style: .footnote.weight(.semibold), enabled: online,
+                            cancelFailed ? L10n.commonRetry() : L10n.commonCancel(), style: .footnote.weight(.semibold), enabled: online,
                             alignment: .trailing
                         ) {
                             store.cancel(remote, sid: sid, requestId: id)
@@ -883,20 +883,20 @@ private struct EndedCard: View {
         let state = model.state
         let reachable = machine?.online == true && !state.unlinked
         SessionEndCard(
-            act.running ? "正在恢复…" : "会话已结束",
+            act.running ? L10n.sessionResuming() : L10n.sessionEnded(),
             text: endedText(
                 detail: session.info?.statusDetail ?? "", scheduledClosed: scheduledClosed, idleClosed: idleClosed, unlinked: state.unlinked,
                 machineOnline: machine?.online == true, machine: name),
             mark: act.running ? .running : .idle
         ) {
             if reachable && !act.running {
-                InkButton(act.error.isEmpty ? "恢复会话" : "再试一次") {
+                InkButton(act.error.isEmpty ? L10n.sessionResume() : L10n.sessionTryAgain()) {
                     restore()
                 }
                 .disabled(state.conn != .online)
             }
             if !act.error.isEmpty {
-                Text("恢复失败：\(act.error)").font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
+                Text(L10n.sessionIosResumeFailed(reason: act.error)).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
             }
         }
         .debugSignal("session.restore") { if reachable { restore() } }

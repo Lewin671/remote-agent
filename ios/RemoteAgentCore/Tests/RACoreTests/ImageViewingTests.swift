@@ -22,10 +22,10 @@ import Testing
     @Test func eachStateSaysWhatIsThereToSee() {
         #expect(viewerNote(.loading, sync: .synced) == nil)
         #expect(viewerNote(.ready, sync: .synced) == nil)
-        #expect(viewerNote(.notSynced, sync: .previewOnly) == "只有预览，原图在电脑上")
-        #expect(viewerNote(.notSynced, sync: .nameOnly) == "图片没有同步：只有文件名，原图在电脑上")
-        #expect(viewerNote(.expired, sync: .synced) == "大图已过期，只剩预览")
-        #expect(viewerNote(.offline, sync: .synced) == "连上后加载")
+        #expect(viewerNote(.notSynced, sync: .previewOnly) == L10n.imageOriginalOnComputer())
+        #expect(viewerNote(.notSynced, sync: .nameOnly) == L10n.imageIosNameOnly())
+        #expect(viewerNote(.expired, sync: .synced) == L10n.imageOriginalExpired())
+        #expect(viewerNote(.offline, sync: .synced) == L10n.imageLoadConnected())
         #expect(viewerNote(.failed(why: "超时"), sync: .synced) == "没能下载：超时 · 点按重试")
         #expect(viewerNote(.corrupt(why: "图片内容和格式对不上"), sync: .synced) == "图片校验失败：图片内容和格式对不上")
     }
@@ -78,8 +78,8 @@ import Testing
         #expect(viewerSource(ref { $0.source = .tool }, agent: .codex) == "Codex 查看的图片")
         #expect(viewerSource(ref { $0.source = .generated }, agent: .codex) == "Codex 生成的图片")
         #expect(viewerSource(ref { $0.source = .tool }, agent: .claude) == "Claude Code 查看的图片")
-        #expect(viewerSource(ref { $0.source = .user }, agent: .claude) == "用户粘贴")
-        #expect(viewerSource(ref(), agent: .claude) == "用户粘贴")
+        #expect(viewerSource(ref { $0.source = .user }, agent: .claude) == L10n.imageIosUserPaste())
+        #expect(viewerSource(ref(), agent: .claude) == L10n.imageIosUserPaste())
     }
 
     @Test func theSizeIsTheOneOnTheComputer() {

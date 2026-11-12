@@ -449,6 +449,353 @@
     }
   },
   {
+    "key": "attachment.ios_choose_machine",
+    "zh-CN": "先选一台电脑",
+    "en": "Choose a computer first",
+    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_choose_photos",
+    "zh-CN": "从相册选择",
+    "en": "Choose from Photos",
+    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_clipboard_empty",
+    "zh-CN": "剪贴板里没有图片",
+    "en": "No images in clipboard",
+    "notes": "iOS 会话附件提示或图片占位符。保持原中文，正文允许多行；index 来自 CLI 图片编号原串，保留前导零。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} / {limit} 个文件"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Files: {count} / {limit}",
+        "other": "Files: {count} / {limit}"
+      }
+    },
+    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：count 为当前 UI 的整数数量/序号/进度（不改变取整规则）；limit 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "limit": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_missing",
+    "zh-CN": "文件不在电脑上",
+    "en": "File is not on the computer",
+    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_files_limit_notice",
+    "zh-CN": {
+      "plural": "limit",
+      "forms": {
+        "other": "一条消息最多 {limit} 个文件，多选的文件没有加入"
+      }
+    },
+    "en": {
+      "plural": "limit",
+      "forms": {
+        "one": "Up to {limit} file per message. Extra file were not added.",
+        "other": "Up to {limit} files per message. Extra files were not added."
+      }
+    },
+    "notes": " iOS 会话/附件显示边界；中文原句不变。提示正文允许多行，按钮与读屏标签保持现有空间。 参数：limit 为当前数量（保留原整数规则）。",
+    "params": {
+      "limit": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_image_missing",
+    "zh-CN": "图片不在电脑上",
+    "en": "Image is not on the computer",
+    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_missing",
+    "zh-CN": "附件不在电脑上",
+    "en": "Attachment is not on the computer",
+    "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_not_saved",
+    "zh-CN": "这张图未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失",
+    "en": "This image was not saved on the phone. Check available storage. You can still send it now, but it may be lost when the app closes.",
+    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_paste_clipboard",
+    "zh-CN": "粘贴剪贴板里的图片",
+    "en": "Paste images from clipboard",
+    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_paste_image",
+    "zh-CN": "粘贴图片",
+    "en": "Paste image",
+    "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_photos",
+    "zh-CN": "照片",
+    "en": "Photos",
+    "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_preparing",
+    "zh-CN": " · 准备中",
+    "en": " · Preparing",
+    "notes": "FileChip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_restore_files_limit",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "放回后会超过 {count} 个文件，先移除一些再放回"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Restoring would exceed {count} file. Remove some first.",
+        "other": "Restoring would exceed {count} files. Remove some first."
+      }
+    },
+    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：count 为当前整数数量，保留原阈值。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_restore_images_limit",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "输入框里已有 {have} 张图，放回这 {count} 张会超过 {limit} 张。先移除一些再放回"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Images already in composer: {have}. Restoring {count} image would exceed {limit}. Remove some first.",
+        "other": "Images already in composer: {have}. Restoring {count} images would exceed {limit}. Remove some first."
+      }
+    },
+    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：have 为当前整数数量，保留原阈值；count 为当前整数数量，保留原阈值；limit 为当前整数数量，保留原阈值。",
+    "params": {
+      "have": {
+        "type": "integer",
+        "example": 2
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "limit": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_restore_unavailable",
+    "zh-CN": "待发附件尚未恢复，请重试后再放回",
+    "en": "Pending attachments have not been restored. Retry before putting them back.",
+    "notes": " iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_source_unreadable",
+    "zh-CN": "读不到源文件，请重新选择",
+    "en": "Cannot read the source file. Choose it again.",
+    "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_upload_failed",
+    "zh-CN": " · 上传失败",
+    "en": " · Upload failed",
+    "notes": "FileChip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_upload_progress",
+    "zh-CN": " · 上传 {percent}%",
+    "en": " · Upload {percent}%",
+    "notes": "FileChip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：percent 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.max_files",
     "zh-CN": {
       "plural": "count",

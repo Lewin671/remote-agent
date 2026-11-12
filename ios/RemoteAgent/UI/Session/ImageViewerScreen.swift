@@ -32,7 +32,7 @@ struct ImageViewerScreen: View {
         let shown = page.flatMap { all.indices.contains($0) ? all[$0] : nil }
         PagedImageViewer(count: page == nil ? 0 : all.count,
             selection: Binding(get: { page ?? 0 }, set: { page = $0 }),
-            empty: s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…", onClose: { nav.back() },
+            empty: s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory(), onClose: { nav.back() },
             picture: { i, drag in
                 ViewerPage(loader: loader, image: all[i], online: state.conn == .online, current: i == page, pokes: pokes,
                     onDrag: { drag.wrappedValue = $0 }, onClose: { nav.back() })
@@ -92,8 +92,8 @@ struct ImageViewerScreen: View {
             }
             if !details.isEmpty { Text(details).font(.footnote).ink(ViewerInk.meta).lineLimit(large ? 3 : 1) }
             let actions = Group {
-                action(saving ? "保存中…" : L10n.commonSave(), enabled: !saving) { save(image, loader) }
-                action("分享", enabled: true) {
+                action(saving ? L10n.commonIosSaving() : L10n.commonSave(), enabled: !saving) { save(image, loader) }
+                action(L10n.imageShare(), enabled: true) {
                     if let picture = ImageLeaving.picture(ref, loader: loader) { sharing = picture }
                 }
                 if !message.isEmpty { Text(message).font(.footnote).ink(ViewerInk.text).padding(.vertical, 4) }
@@ -128,12 +128,12 @@ struct ImageViewerScreen: View {
         Task {
             do {
                 try await ImageLeaving.save(picture)
-                message = "已保存到相册"
+                message = L10n.imageIosSaved()
                 Haptics.confirm()
             } catch is PhotoAccessDenied {
-                message = "没有相册权限，没能保存"
+                message = L10n.imageIosSavePermission()
             } catch {
-                message = "没能保存：\(errorText(error))"
+                message = L10n.commonIosSaveFailed(reason: errorText(error))
             }
             saving = false
         }

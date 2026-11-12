@@ -149,7 +149,12 @@ final class ImageCenter {
     #endif
 
     private var thumbs: [String: UIImage] = [:]
-    private(set) var notices: [String: String] = [:]
+    struct Notice: Identifiable {
+        let id = UUID()
+        let message: AttachmentNotice
+        var text: String { message.text }
+    }
+    private(set) var notices: [String: Notice] = [:]
     private(set) var outgoingRestoreErrors: [String: String] = [:]
     var picking: [String: Pick] = [:]
 
@@ -340,7 +345,7 @@ final class ImageCenter {
         } else if filesSupported {
             picking[key] = .attachments
         } else if draft(key).photos.count >= max {
-            say(key, "一条消息最多 \(max) 张")
+            say(key, .maxImages(max))
         } else {
             // Asking whether the clipboard has an image does not read it, so nothing is asked of the user yet.
             picking[key] = UIPasteboard.general.hasImages ? .choose : .photos
@@ -353,7 +358,7 @@ final class ImageCenter {
         let d = draft(key)
         let imagesFull = d.photos.count >= max
         let filesFull = !fileSupported(machine) || d.documents.count >= fileLimit(for: machine)
-        if imagesFull && filesFull { return say(key, "一条消息最多 \(max) 张") }
+        if imagesFull && filesFull { return say(key, .maxImages(max)) }
         picking[key] = .photos
     }
 
@@ -362,7 +367,7 @@ final class ImageCenter {
         if let blocked { return say(key, blocked) }
         if let why = fileUploadBlocked(machine, online: true) { return say(key, why) }
         let limit = fileLimit(for: machine)
-        if draft(key).documents.count >= limit { return say(key, "一条消息最多 \(limit) 个文件") }
+        if draft(key).documents.count >= limit { return say(key, .maxFiles(limit)) }
         picking[key] = .documents
     }
 
@@ -398,14 +403,14 @@ final class ImageCenter {
                 while let url = left.first {
                     guard !closed else { return }
                     if d.documents.count >= limit {
-                        say(key, "一条消息最多 \(limit) 个文件，多选的文件没有加入")
+                        say(key, .filesDropped(limit))
                         break
                     }
                     do {
                         let file = try await Task.detached { try PickedFile(url: url, maxBytes: bytes) }.value
                         guard !closed else { return }
                         guard d.documents.count < limit else {
-                            say(key, "一条消息最多 \(limit) 个文件")
+                            say(key, .maxFiles(limit))
                             break
                         }
                         left.removeFirst()
@@ -453,7 +458,7 @@ final class ImageCenter {
             $0.hasItemConformingToTypeIdentifier(UTType.image.identifier)
         }
         if providers.isEmpty {
-            say(key, "剪贴板里没有图片")
+            say(key, .clipboardEmpty)
         } else {
             add(key, providers.map { .provider($0) }, max: max)
         }
@@ -544,11 +549,15 @@ final class ImageCenter {
 
     /// A one-line reason shown by the strip, e.g. why ＋ does nothing.
     func say(_ key: String, _ text: String) {
-        notices[key] = text
+        notices[key] = Notice(message: .raw(text))
     }
 
-    func clearNotice(_ key: String, was text: String) {
-        if notices[key] == text { notices[key] = nil }
+    func say(_ key: String, _ message: AttachmentNotice) {
+        notices[key] = Notice(message: message)
+    }
+
+    func clearNotice(_ key: String, id: UUID) {
+        if notices[key]?.id == id { notices[key] = nil }
     }
 
     // MARK: Messages with images

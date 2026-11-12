@@ -451,6 +451,152 @@
     }
   },
   {
+    "key": "tools.ios_background_command",
+    "zh-CN": "后台命令",
+    "en": "Background command",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_background_title",
+    "zh-CN": "{title}（后台）",
+    "en": "{title} (background)",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_completed_label",
+    "zh-CN": "已完成，{title}",
+    "en": "Completed, {title}",
+    "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_edit",
+    "zh-CN": "编辑",
+    "en": "Edit",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_failed_label",
+    "zh-CN": "失败，{title}",
+    "en": "Failed, {title}",
+    "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_processing",
+    "zh-CN": "处理中",
+    "en": "Processing",
+    "notes": "RunningTools.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_running_label",
+    "zh-CN": "进行中，{title}",
+    "en": "In progress, {title}",
+    "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：title 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_search",
+    "zh-CN": "搜索",
+    "en": "Search",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.ios_unconfirmed",
+    "zh-CN": "状态待确认",
+    "en": "Status unconfirmed",
+    "notes": "RunningTools.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "tools.tool",
     "zh-CN": "工具",
     "en": "Tool",

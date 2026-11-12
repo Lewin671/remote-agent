@@ -327,6 +327,91 @@
     }
   },
   {
+    "key": "dock.ios_keep_planning",
+    "zh-CN": "继续规划…",
+    "en": "Keep planning…",
+    "notes": "Agents.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.ios_question_answered",
+    "zh-CN": "这个问题已经回答了。",
+    "en": "This question has already been answered.",
+    "notes": "QuestionScreen.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.ios_question_expired",
+    "zh-CN": "不确定「{answer}」有没有提交，它已过期，不会再重发。请去终端看看",
+    "en": "It is unclear whether “{answer}” was submitted. It has expired and will not be resent. Check the terminal.",
+    "notes": "SessionDock.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：answer 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "answer": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.ios_question_failed",
+    "zh-CN": "没能提交，终端里的问题可能已经变了：{reason}",
+    "en": "Could not submit; the terminal question may have changed: {reason}",
+    "notes": "SessionDock.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：reason 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.ios_question_unknown",
+    "zh-CN": "上次的回答「{answer}」没能确认，终端里的问题可能已经变了。再点任一选项会重发同一个回答",
+    "en": "The previous answer “{answer}” could not be confirmed; the terminal question may have changed. Tap any option to resend the same answer.",
+    "notes": "SessionDock.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：answer 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "answer": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "dock.more",
     "zh-CN": {
       "plural": "count",

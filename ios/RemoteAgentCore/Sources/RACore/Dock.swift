@@ -33,12 +33,12 @@ public func dockSummary(_ item: DockItem, agent: String) -> (label: String, brie
     switch item {
     case .approval(let a):
         if isSkeleton(a) { return (skeletonMessage, "") }
-        return (a.command.isEmpty ? "请求权限" : "请求执行", approvalDisplay(a.command.ifEmpty(a.toolName)).jvmLines()[0])
+        return (a.command.isEmpty ? L10n.listStateIosRequestPermission() : L10n.listStateIosRequestCommand(), approvalDisplay(a.command.ifEmpty(a.toolName)).jvmLines()[0])
     case .question(let q):
         if isSkeleton(q) { return (skeletonMessage, "") }
-        return ("\(agent) 在问你", q.questions.first?.text.jvmLines()[0] ?? "")
-    case .plan(let text): return (isSkeleton(text) ? skeletonMessage : "计划待批准", "")
-    case .popup(let title): return ("终端里有弹窗", title)
+        return (L10n.listStateAgentAsking(agent: agent), q.questions.first?.text.jvmLines()[0] ?? "")
+    case .plan(let text): return (isSkeleton(text) ? skeletonMessage : L10n.listStatePlan(), "")
+    case .popup(let title): return (L10n.listStatePopup(), title)
     }
 }
 

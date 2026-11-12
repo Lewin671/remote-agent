@@ -38,10 +38,10 @@ struct ImageStrip: View {
 
     var body: some View {
         let draft = center.draft(key)
-        let notice = center.notices[key]
+        let notice = center.notices[key]?.text
         VStack(alignment: .leading, spacing: 0) {
             if let error = draft.restoreError {
-                Banner(error, tone: .error, action: "重试") { center.retryDraft(key) }
+                Banner(error, tone: .error, action: L10n.commonRetry()) { center.retryDraft(key) }
             }
             if draft.photos.isEmpty {
                 if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice) { line(text, DS.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
@@ -69,8 +69,8 @@ struct ImageStrip: View {
                                      retry: { center.retry(key, item) }, remove: { center.remove(key, item) })
                         }
                     }
-                    Text("文件原样发送，包含其中的元数据。").font(.footnote).ink(DS.ink2)
-                    Text("\(draft.documents.count) / \(fileLimit(for: machine)) 个文件").font(.footnote).ink(DS.ink2)
+                    Text(L10n.attachmentMetadata()).font(.footnote).ink(DS.ink2)
+                    Text(L10n.attachmentIosFileCount(count: Int(draft.documents.count), limit: Int(fileLimit(for: machine)))).font(.footnote).ink(DS.ink2)
                 }
                 .padding(.horizontal, 6).padding(.vertical, 6)
             }
@@ -86,10 +86,10 @@ struct ImageStrip: View {
             if phase == .active { center.aim(key, at: machineId, blocked: blocked != nil, machine: machine) }
         }
         // A reason is said for a moment, not kept under the box.
-        .task(id: notice) {
-            guard let notice else { return }
+        .task(id: center.notices[key]?.id) {
+            guard let noticeID = center.notices[key]?.id else { return }
             try? await Task.sleep(for: .seconds(4))
-            if !Task.isCancelled { center.clearNotice(key, was: notice) }
+            if !Task.isCancelled { center.clearNotice(key, id: noticeID) }
         }
     }
 
@@ -136,7 +136,7 @@ struct ImageStrip: View {
                 Circle()
                     .strokeBorder(draft.original ? DS.blue : DS.ink2, lineWidth: draft.original ? 4 : 1.5)
                     .frame(width: 14, height: 14)
-                Text(draft.original ? "原图 · 共 \(megabytes) MB" : "原图").font(.footnote).ink(DS.ink2)
+                Text(draft.original ? L10n.imageIosOriginalTotal(size: megabytes) : L10n.imageOriginal()).font(.footnote).ink(DS.ink2)
             }
             .frame(minHeight: DS.minHit)
             .contentShape(Rectangle())
@@ -145,12 +145,12 @@ struct ImageStrip: View {
         .disabled(!canChange)
         .opacity(canChange ? 1 : 0.4)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("原图")
-        .accessibilityValue(draft.original ? "已选，共 \(megabytes) MB" : "未选")
-        .accessibilityHint(canChange ? "只对这一条消息生效" : "这些图片是上次留下的，不能再换成原图或压缩图")
+        .accessibilityLabel(L10n.imageOriginal())
+        .accessibilityValue(draft.original ? L10n.imageIosOriginalSelected(size: megabytes) : L10n.imageIosUnselected())
+        .accessibilityHint(canChange ? L10n.imageIosOnlyMessage() : L10n.imageIosRetainedOriginal())
         .accessibilityAddTraits(.isToggle)
         let count = Text("\(draft.photos.count) / \(max)").font(.footnote).ink(DS.ink2)
-            .accessibilityLabel("已选 \(draft.photos.count) 张，最多 \(max) 张")
+            .accessibilityLabel(L10n.imageIosSelectedCount(count: Int(draft.photos.count), limit: Int(max)))
         return ViewThatFits(in: .horizontal) {
             HStack(spacing: 8) {
                 toggle
@@ -206,10 +206,10 @@ private struct DraftThumb: View {
             }
             .buttonStyle(.plain).padding(.top, geometry.thumbnail.minY)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("图片 \(index)，共 \(count) 张")
+            .accessibilityLabel(L10n.imagePosition(count: Int(count), index: Int(index)))
             .accessibilityValue(draftImageState(image))
-            .accessibilityHint(failed ? "查看原因和可用操作" : "查看大图")
-            .accessibilityAction(named: "移除图片 \(index)", onRemove)
+            .accessibilityHint(failed ? L10n.imageIosActionsHint() : L10n.imageIosViewFull())
+            .accessibilityAction(named: L10n.imageRemoveIndex(index: Int(index)), onRemove)
             Button(action: onRemove) {
                 SymbolImage("xmark", size: 12, color: Color.white)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
@@ -218,7 +218,7 @@ private struct DraftThumb: View {
                     .offset(x: -13, y: 13).frame(width: geometry.hit, height: geometry.hit).contentShape(Rectangle())
             }
             .buttonStyle(PressStyle()).offset(x: geometry.remove.minX)
-            .accessibilityLabel("移除图片 \(index)")
+            .accessibilityLabel(L10n.imageRemoveIndex(index: Int(index)))
         }
         .frame(width: geometry.cell.width, height: geometry.cell.height, alignment: .topLeading)
     }
@@ -244,7 +244,7 @@ private struct DraftThumb: View {
             Color.black.opacity(0.6)
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                Text("失败").font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+                Text(L10n.attachmentFailed()).font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
             }
         case .ready:
             EmptyView()
@@ -273,17 +273,17 @@ private struct ImagePickerHost: ViewModifier {
             .actionMenu(
                 isPresented: Binding(get: { center.picking[key] == .choose || center.picking[key] == .attachments }, set: { if !$0, center.picking[key] == .choose || center.picking[key] == .attachments { center.picking[key] = nil } }),
                 actions: center.picking[key] == .attachments ? [
-                    SheetAction("图片") {
+                    SheetAction(L10n.imageTitle()) {
                         next = .photos
                         if center.draft(key).photos.count >= max {
-                            center.say(key, "一条消息最多 \(max) 张")
+                            center.say(key, .maxImages(max))
                             next = nil
                         } else if UIPasteboard.general.hasImages { next = .choose }
                     },
-                    SheetAction("文件") { next = .documents },
+                    SheetAction(L10n.attachmentFile()) { next = .documents },
                 ] : [
-                    SheetAction("从相册选择") { next = .photos },
-                    SheetAction("粘贴剪贴板里的图片") { center.paste(key, max: max) },
+                    SheetAction(L10n.attachmentIosChoosePhotos()) { next = .photos },
+                    SheetAction(L10n.attachmentIosPasteClipboard()) { center.paste(key, max: max) },
                 ]
             )
             .onChange(of: center.picking[key]) { _, now in
@@ -301,7 +301,7 @@ private struct ImagePickerHost: ViewModifier {
             ) { result in
                 switch result {
                 case .success(let urls): center.addFiles(key, urls, machine: machine, online: blocked == nil)
-                case .failure: center.say(key, "读不到源文件，请重新选择")
+                case .failure: center.say(key, L10n.attachmentIosSourceUnreadable())
                 }
             }
             .photosPicker(
@@ -343,7 +343,7 @@ struct OutgoingImageThumbs: View {
                         if let thumb = center.thumb(img) {
                             Image(uiImage: thumb).resizable().scaledToFill()
                         } else {
-                            Text("图片").font(.footnote).ink(DS.ink2)
+                            Text(L10n.imageTitle()).font(.footnote).ink(DS.ink2)
                         }
                     }
                     .frame(width: 56, height: 56)
@@ -352,7 +352,7 @@ struct OutgoingImageThumbs: View {
             }
             .padding(.bottom, 4)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(photos.count) 张图片")
+            .accessibilityLabel(L10n.imageCount(count: Int(photos.count)))
         }
     }
 }

@@ -7,7 +7,7 @@ public struct ImageProblem: Equatable, Sendable {
     public let retryable: Bool
 }
 
-public let originalImageHint = "原图保住画质；CLI 仍可能缩小过大的图片。"
+public var originalImageHint: String { L10n.imageOriginalHint() }
 
 /// Codec, transport and OS details stay out of image captions.
 public func imageProblem(_ error: String) -> ImageProblem {
@@ -22,7 +22,7 @@ public func imageProblem(_ error: String) -> ImageProblem {
     return ImageProblem(kind: .failed, message: "这张图片处理失败", retryable: false)
 }
 
-public func imageFailureLine(_ errors: [String], locale: String = "zh-CN") -> String {
+public func imageFailureLine(_ errors: [String], locale: String = MessageLocale.current) -> String {
     let problems = errors.map { imageProblem($0) }
     guard let first = problems.first else { return "" }
     return Set(problems.map(\.kind)).count == 1 ? first.message : L10n.imageAttachFailed(count: errors.count, locale: locale)

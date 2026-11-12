@@ -30,7 +30,7 @@ struct SessionScreen: View {
             } else {
                 // Not held here: asked for by its ID, and only the server saying it has none makes it missing.
                 SessionAbsent(lookup: finder.lookup) { attempt += 1 }
-                    .navBar("会话")
+                    .navBar(L10n.homeSessionsTab())
             }
         }
         .sessionLookup(id, attempt: attempt, into: finder)
@@ -56,11 +56,11 @@ struct SessionAbsent: View {
                 if let note {
                     Text(note).font(.headline).ink(DS.ink).multilineTextAlignment(.center).accessibilityAddTraits(.isHeader)
                     // The server could not be asked: it is asked again by itself, and at once on a tap.
-                    if case .failed = lookup { TextAction("重试", alignment: .center, action: onRetry) }
-                    TextAction("返回", alignment: .center) { nav.back() }
+                    if case .failed = lookup { TextAction(L10n.commonRetry(), alignment: .center, action: onRetry) }
+                    TextAction(L10n.commonBack(), alignment: .center) { nav.back() }
                 } else {
                     Mark(Mark.progress, color: DS.ink2, size: 22, relativeTo: .body)
-                    Text(online ? "读取中…" : "连上服务器后读取这个会话").font(.subheadline).ink(DS.ink2).padding(.top, 12)
+                    Text(online ? L10n.projectsReadingDirectory() : L10n.sessionIosConnectRead()).font(.subheadline).ink(DS.ink2).padding(.top, 12)
                         .multilineTextAlignment(.center)
                 }
                 Spacer(minLength: 24)
@@ -150,7 +150,7 @@ private struct SessionPage: View {
         let wide = width == .regular
         let both = wide && tab == 2 && hasTerminal
         let term = tab == 1 && hasTerminal
-        let views = wide ? ["聊天", "终端", "并排"] : ["聊天", "终端"]
+        let views = wide ? [L10n.sessionChat(), L10n.sessionTerminal(), L10n.sessionSplit()] : [L10n.sessionChat(), L10n.sessionTerminal()]
         let view = Binding(get: { both ? 2 : term ? 1 : 0 }, set: { pick($0) })
         let live = status != .exited && status != .offline
         let mode = status == .exited ? nil : modeLabel(s)
@@ -228,8 +228,8 @@ private struct SessionPage: View {
                             if high { Circle().fill(DS.orange).frame(width: 7, height: 7).offset(x: 5, y: -5) }
                         }
                 }
-                .accessibilityLabel("更多")
-                .accessibilityValue(high ? "有需要注意的项" : "")
+                .accessibilityLabel(L10n.commonIosMore())
+                .accessibilityValue(high ? L10n.commonIosAttention() : "")
             }
         }
         .toolbarBackground(.hidden, for: .navigationBar)
@@ -276,9 +276,9 @@ private struct SessionPage: View {
         }
         .sessionRename(isPresented: $rename, session: s)
         .confirm(
-            isPresented: $confirmStop, title: "结束这个会话？",
-            text: "\(machineLabel(state, id: s.machineId)) 上的 \(agentName(s.agent)) 会被关掉，聊天记录保留，之后可以恢复。",
-            confirm: "结束", danger: true
+            isPresented: $confirmStop, title: L10n.sessionEndTitle(),
+            text: L10n.sessionEndNote(agent: agentName(s.agent), name: machineLabel(state, id: s.machineId)),
+            confirm: L10n.sessionEnd(), danger: true
         ) {
             command(act) { $0.stopSession = .with { $0.sessionID = sid } }
         }
@@ -348,14 +348,14 @@ private struct SessionPage: View {
                 })
             }
         }
-        list.append(SheetAction("项目设置", enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
+        list.append(SheetAction(L10n.projectsIosSettings(), enabled: !forking && projectConfig(state, key: projectKey(s)) != nil) {
             afterMenu { projectSettings = ProjectSettingsRequest() }
         })
-        list.append(SheetAction("定时发送…", enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : "需要更新 remote-agent") {
+        list.append(SheetAction(L10n.sessionScheduleSend(), enabled: reachable && state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true, note: state.machines[s.machineId]?.meta?.capabilities.scheduledTasks == true ? "" : L10n.sessionIosUpdateRequired()) {
             afterMenu { scheduleSending = true }
         })
         if reachable {
-            list.append(SheetAction("重命名", enabled: !forking) { afterMenu { rename = true } })
+            list.append(SheetAction(L10n.sessionRename(), enabled: !forking) { afterMenu { rename = true } })
             if agentInfo(s.agent).forks {
                 // A fork starts at once, in the menu: its row shows the progress, and a failure under it.
                 let row = forkAction(blocked: forkBlock, running: forking, error: fork.error, frozen: fork.frozen, expired: fork.expired)
@@ -374,12 +374,12 @@ private struct SessionPage: View {
             }
         }
         if running {
-            list.append(SheetAction("中断", danger: true, enabled: !forking) {
+            list.append(SheetAction(L10n.sessionInterrupt(), danger: true, enabled: !forking) {
                 command(act) { $0.interrupt = .with { $0.sessionID = sid } }
             })
         }
         if status != .exited {
-            end.append(SheetAction("结束会话…", danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
+            end.append(SheetAction(L10n.sessionEndAction(), danger: true, enabled: !forking) { afterMenu { confirmStop = true } })
         }
         return [settings, list, end]
     }

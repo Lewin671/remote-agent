@@ -488,6 +488,254 @@
     }
   },
   {
+    "key": "terminal.ios_fit_hint",
+    "zh-CN": "把电脑上的终端调整成这块屏幕放得下的尺寸",
+    "en": "Resize the terminal on the computer to fit this screen",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_font",
+    "zh-CN": "字号",
+    "en": "Font size",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_font_larger",
+    "zh-CN": "增大字号",
+    "en": "Increase font size",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_font_smaller",
+    "zh-CN": "减小字号",
+    "en": "Decrease font size",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_font_value",
+    "zh-CN": "字号 {size}",
+    "en": "Font size {size}",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：size 为当前 UI 的整数数量/序号/进度（不改变取整规则）。",
+    "params": {
+      "size": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_hide_details",
+    "zh-CN": "收起详情",
+    "en": "Hide details",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_keyboard_hint",
+    "zh-CN": "显示或收起键盘",
+    "en": "Show or hide keyboard",
+    "notes": "TerminalKeyBar.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_keys",
+    "zh-CN": "终端按键",
+    "en": "Terminal keys",
+    "notes": "TerminalKeyBar.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_leave_history",
+    "zh-CN": "离开回看，回到实时画面",
+    "en": "Leave history and return to the live screen",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_not_running",
+    "zh-CN": "会话不在运行。",
+    "en": "Session is not running.",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_paused",
+    "zh-CN": "终端已暂停，连接恢复后会重新获取画面",
+    "en": "Terminal paused. The screen will reload when the connection recovers.",
+    "notes": "RemoteTerminal.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_restore_hint",
+    "zh-CN": "让电脑上的终端回到原来的尺寸",
+    "en": "Restore the terminal on the computer to its original size",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_retry_history",
+    "zh-CN": "再读一次这台终端的记录",
+    "en": "Read this terminal’s history again",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_screen",
+    "zh-CN": "终端画面",
+    "en": "Terminal screen",
+    "notes": "TerminalHostView.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_screen_hint",
+    "zh-CN": "轻点两下调出键盘。方向键、回车和 Ctrl+C 在下面的按键栏",
+    "en": "Double-tap to show the keyboard. Arrow keys, Enter, and Ctrl+C are in the key bar below.",
+    "notes": "TerminalHostView.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_size_changed",
+    "zh-CN": "远端尺寸已变化 · {size}",
+    "en": "Remote size changed · {size}",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：size 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.ios_wait_connection",
+    "zh-CN": "等待服务器连接恢复后，会重新获取终端画面。",
+    "en": "The terminal screen will reload when the server connection recovers.",
+    "notes": "TerminalPane.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "terminal.keyboard",
     "zh-CN": "键盘",
     "en": "Keyboard",

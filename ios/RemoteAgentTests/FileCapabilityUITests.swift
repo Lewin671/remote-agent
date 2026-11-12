@@ -48,7 +48,7 @@ import Testing
         #expect(!restored && draft.images.isEmpty && p.imageId == "file-1")
         #expect(store.draft("s") == "existing text" && store.find("s", requestId: o.requestId) === o)
         #expect(try OutgoingRecords(files: files).load(sid: "s").count == 1)
-        #expect(center.notices["session:s"]?.contains("更新") == true)
+        #expect(center.notices["session:s"]?.text.contains("更新") == true)
     }
 
     @Test(arguments: [Outgoing.State.failed, .unknown])
@@ -69,7 +69,7 @@ import Testing
         await center.restoredDraft(draft.key); store.setDraft("s", "existing")
         #expect(!center.putBack(sid: "s", text: "restore", files: [.with { $0.name = "report.csv"; $0.fileID = "file-1" }], store: store))
         #expect(draft.images.isEmpty && store.draft("s") == "existing")
-        #expect(center.notices[draft.key]?.contains("更新") == true)
+        #expect(center.notices[draft.key]?.text.contains("更新") == true)
         // Empty attachments still permit restoring a plain text message.
         #expect(center.putBack(sid: "s", text: "plain", files: [], store: store))
         #expect(store.draft("s") == "existing\nplain")

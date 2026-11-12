@@ -18,7 +18,7 @@ import Testing
         // Waiting: the pending bubble shows it, not a second copy here.
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .submitted
-        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == "已送达电脑")
+        #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == L10n.sessionDelivered())
         let recorded = [PBEvent.with { $0.userMessage = .with { $0.text = "first" } }]
         #expect(pendingStartPrompt("first", events: recorded, d: d, localIds: ["later-local"], agent: .claude) == nil)
         d.inputs["start"] = .canceled
@@ -31,7 +31,7 @@ import Testing
         d.inputs["start"] = .unconfirmed
         let unsure = try #require(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude))
         #expect(unsure.warning && !unsure.failed)
-        #expect(unsure.caption == "可能没发出去：已送到终端但没确认")
+        #expect(unsure.caption == L10n.composerUnconfirmed())
         d.inputs["start"] = .needsTerminal
         d.failures["start"] = "write_failed"
         #expect(pendingStartPrompt("first", events: [], d: d, localIds: ["later-local"], agent: .claude)?.caption == "可能没发出去：写入终端失败")
@@ -65,7 +65,7 @@ import Testing
         #expect(forkSource(want, sessions: [:]) == "登录接口偶尔超时")
         var untitled = want
         untitled.sourceTitle = ""
-        #expect(forkSource(untitled, sessions: [:]) == "另一个会话")
+        #expect(forkSource(untitled, sessions: [:]) == L10n.sessionOtherSession())
     }
 
     private func tool(_ title: String, _ kind: PBToolKind = .command, _ more: @escaping (inout PBToolCall) -> Void = { _ in }) -> PBEvent.OneOf_Kind {
@@ -217,10 +217,10 @@ import Testing
 
     @Test func rawCodexItemTypesAreNotToolTitles() {
         let generic = PBToolCall.with { $0.kind = .other; $0.itemType = "ToolCall"; $0.title = "ToolCall" }
-        #expect(toolTitle(generic, cwd: "") == "工具")
+        #expect(toolTitle(generic, cwd: "") == L10n.toolsTool())
         #expect(toolRaw(generic, cwd: "", home: "") == "")
         let command = PBToolCall.with { $0.kind = .command; $0.itemType = "CommandExecution"; $0.title = "CommandExecution" }
-        #expect(toolTitle(command, cwd: "") == "命令")
+        #expect(toolTitle(command, cwd: "") == L10n.toolsCommand())
     }
 
     @Test func namesARunningCallAsWhenItIsDone() throws {
@@ -332,7 +332,7 @@ import Testing
         }
         let tool = try #require(tools.count == 1 ? tools[0] : nil)
         #expect(tool.background)
-        #expect(tool.decision == "已允许")
+        #expect(tool.decision == L10n.approvalAllowed())
     }
 }
 

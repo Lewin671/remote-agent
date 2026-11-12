@@ -413,6 +413,72 @@
     }
   },
   {
+    "key": "approval.ios_always_prefix",
+    "zh-CN": "`{command}` 开头的命令以后不再问",
+    "en": "Never ask again for commands starting with `{command}`",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：command 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.ios_decision_deny",
+    "zh-CN": "拒绝",
+    "en": "Deny",
+    "notes": " iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.ios_expired",
+    "zh-CN": "不确定「{decision}」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝",
+    "en": "It is unclear whether “{decision}” arrived. It has expired and will not be resent. Approval requests are automatically denied after the timeout.",
+    "notes": "ApprovalCard.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：decision 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "decision": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.ios_unknown_result",
+    "zh-CN": "结果未知",
+    "en": "Unknown result",
+    "notes": " iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "approval.reason_placeholder",
     "zh-CN": "说说该怎么做，可以不填",
     "en": "Suggest what to do instead (optional)",

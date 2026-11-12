@@ -21,11 +21,11 @@ public enum BigImage: Equatable, Sendable {
 public func viewerNote(_ big: BigImage, sync: PBImageSync) -> String? {
     switch big {
     case .loading, .ready: return nil
-    case .notSynced: return sync == .nameOnly ? "图片没有同步：只有文件名，原图在电脑上" : "只有预览，原图在电脑上"
-    case .expired: return "大图已过期，只剩预览"
-    case .offline: return "连上后加载"
-    case .failed(let why): return "没能下载：\(why) · 点按重试"
-    case .corrupt(let why): return why == retiredHistoryError ? why : "图片校验失败：\(why)"
+    case .notSynced: return sync == .nameOnly ? L10n.imageIosNameOnly() : L10n.imageOriginalOnComputer()
+    case .expired: return L10n.imageOriginalExpired()
+    case .offline: return L10n.imageLoadConnected()
+    case .failed(let why): return L10n.imageIosDownloadFailed(reason: why)
+    case .corrupt(let why): return why == retiredHistoryError ? why : L10n.imageIosVerificationFailed(reason: why)
     }
 }
 
@@ -65,9 +65,9 @@ public func viewerStart(_ all: [SessionImage], seq: UInt64, index: Int) -> Int {
 /// Who put the image in the session, in words.
 public func viewerSource(_ ref: PBImageRef, agent: PBAgent) -> String {
     switch ref.source {
-    case .tool: return "\(agentName(agent)) 查看的图片"
-    case .generated: return "\(agentName(agent)) 生成的图片"
-    default: return "用户粘贴"
+    case .tool: return L10n.imageIosViewedBy(agent: agentName(agent))
+    case .generated: return L10n.imageIosGeneratedBy(agent: agentName(agent))
+    default: return L10n.imageIosUserPaste()
     }
 }
 

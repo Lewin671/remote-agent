@@ -56,21 +56,18 @@ public func wentToBackground(_ c: PBToolCall) -> Bool {
 
 /// Why a call is in the background and what that means, as the web client says it.
 public func backgroundNote(_ b: PBToolBackground) -> String {
-    let rest = "它什么时候结束这里不知道，请到终端确认。"
-    let why: String
     switch b {
-    case .requested: why = "按模型的要求在后台运行；"
-    case .timedOut: why = "运行超时后被移到后台继续运行；"
-    case .byUser: why = "在电脑终端里被移到后台（Ctrl+B）；"
-    case .stillRunning: why = "这一轮结束时它仍在运行；"
-    default: why = "调用已返回，命令转到了后台；"
+    case .requested: return L10n.toolsBackgroundAgent()
+    case .timedOut: return L10n.toolsBackgroundTimeout()
+    case .byUser: return L10n.toolsBackgroundTerminal()
+    case .stillRunning: return L10n.toolsBackgroundTurn()
+    default: return L10n.toolsBackgroundReturned()
     }
-    return why + rest
 }
 
 /// A background call's title: 后台命令 for a shell call, else the tool's name with （后台）.
 public func backgroundTitle(kind: PBToolKind, itemType: String, agent: PBAgent) -> String {
-    kind == .command || kind == .unspecified ? "后台命令" : "\(toolLabel(kind: kind, itemType: itemType, agent: agent))（后台）"
+    kind == .command || kind == .unspecified ? L10n.toolsIosBackgroundCommand() : L10n.toolsIosBackgroundTitle(title: toolLabel(kind: kind, itemType: itemType, agent: agent))
 }
 
 /// A tool whose end is not known (architecture §13, 工具执行反馈): its call
@@ -198,8 +195,8 @@ public enum TerminalChange: Equatable, Sendable {
 
     public var text: String {
         switch self {
-        case .mode(let mode): return "模式切到了 \(mode.text)"
-        case .model(let model, let effort): return "模型切到了 \(model)" + (effort.isEmpty ? "" : " · \(effort)")
+        case .mode(let mode): return L10n.sessionTerminalModeChange(value: mode.text)
+        case .model(let model, let effort): return L10n.sessionTerminalModelChange(value: model) + (effort.isEmpty ? "" : " · \(effort)")
         }
     }
 }
@@ -482,11 +479,11 @@ public func clock(_ ms: Int64) -> String {
 public func toolLabel(kind: PBToolKind, itemType: String, agent: PBAgent) -> String {
     if agentInfo(agent).toolLabelFromItemType && !itemType.isEmpty { return itemType }
     switch kind {
-    case .command: return "命令"
-    case .fileChange: return "编辑"
+    case .command: return L10n.toolsCommand()
+    case .fileChange: return L10n.toolsIosEdit()
     case .mcp: return "MCP"
-    case .webSearch: return "搜索"
-    default: return "工具"
+    case .webSearch: return L10n.toolsIosSearch()
+    default: return L10n.toolsTool()
     }
 }
 
@@ -494,11 +491,11 @@ public func eventTime(_ e: PBEvent) -> Int64 { e.hasTime ? timestampMs(e.time) :
 
 public func decisionText(_ d: PBApprovalDecision) -> String {
     switch d {
-    case .allow, .allowAlways: return "已允许"
-    case .deny: return "已拒绝"
-    case .timeout: return "超时，已拒绝"
-    case .canceled: return "已取消"
-    case .terminal: return "已在终端处理"
+    case .allow, .allowAlways: return L10n.approvalAllowed()
+    case .deny: return L10n.approvalDenied()
+    case .timeout: return L10n.approvalTimedOut()
+    case .canceled: return L10n.queueCanceled()
+    case .terminal: return L10n.approvalInTerminal()
     default: return ""
     }
 }
@@ -516,13 +513,13 @@ public func optionLabel(_ label: String) -> (label: String, recommended: Bool) {
 /// Why a message was not submitted (InputState.reason), in words.
 public func failureText(reason: String, agent: PBAgent) -> String {
     switch reason {
-    case "image_not_recognized": return "\(agentName(agent)) 没认出图片"
-    case "input_changed": return "无法确认终端输入框的内容"
-    case "timeout": return "等终端就绪超时"
-    case "restarted": return "电脑上的 remote-agent 写入时重启了"
-    case "write_failed": return "写入终端失败"
-    case "exited": return "会话已结束"
-    default: return "没有写进终端"
+    case "image_not_recognized": return L10n.composerImagesUnrecognized(agent: agentName(agent))
+    case "input_changed": return L10n.composerInputUnconfirmed()
+    case "timeout": return L10n.composerReadyTimeout()
+    case "restarted": return L10n.composerComputerRestarted()
+    case "write_failed": return L10n.composerWriteFailed()
+    case "exited": return L10n.sessionEnded()
+    default: return L10n.composerNotWritten()
     }
 }
 
@@ -569,9 +566,9 @@ private let alwaysAccess = Rx("(?:Yes, and )?always allow access to (\(Jre.dot)+
 
 /// CLI's native second approval option, translated only when its form is known.
 public func approvalAlwaysText(_ message: String) -> String {
-    if let m = alwaysCommands.matchEntire(message) { return "`\(m.text(1).trimming(ascii: UInt8(ascii: "`")))` 开头的命令以后不再问" }
-    if let m = alwaysAccess.matchEntire(message) { return "本项目访问 \(m.text(1)) 以后不再问" }
-    if message.jvmContainsIgnoringCase("accept edits") { return "本会话自动接受编辑" }
+    if let m = alwaysCommands.matchEntire(message) { return L10n.approvalIosAlwaysPrefix(command: m.text(1).trimming(ascii: UInt8(ascii: "`"))) }
+    if let m = alwaysAccess.matchEntire(message) { return L10n.approvalAlwaysDirectory(path: m.text(1)) }
+    if message.jvmContainsIgnoringCase("accept edits") { return L10n.approvalAutoEdits() }
     return message
 }
 
@@ -590,19 +587,19 @@ public struct QueueWhy: Equatable, Sendable {
 
 public func queueWhy(_ s: SessionView, status: Status) -> QueueWhy {
     switch s.info?.inputWait {
-    case "draft": return QueueWhy(short: "终端里有草稿", long: "终端里有没发出的草稿，发完或清掉后再发")
-    case "popup": return QueueWhy(short: "就绪后发送", long: "等终端里的弹窗处理完")
-    case "unrecognized": return QueueWhy(short: "已暂停", long: "认不出输入框，已暂停")
+    case "draft": return QueueWhy(short: L10n.queueIosTerminalDraftShort(), long: L10n.queueTerminalDraft())
+    case "popup": return QueueWhy(short: L10n.queueWhenReady(), long: L10n.queueIosPopupWait())
+    case "unrecognized": return QueueWhy(short: L10n.queuePaused(), long: L10n.queueUnrecognized())
     default: break
     }
     switch status {
-    case .question: return QueueWhy(short: "回答后继续", long: "等提问回答完")
-    case .approval: return QueueWhy(short: "审批后继续", long: "等审批处理完")
-    case .plan: return QueueWhy(short: "处理计划后继续", long: "等计划处理完")
-    case .popup: return QueueWhy(short: "就绪后发送", long: "等终端里的弹窗处理完")
-    case .running: return QueueWhy(short: "本轮结束后发送", long: "等待本轮结束")
-    case .starting: return QueueWhy(short: "就绪后发送", long: "等 \(agentName(s.agent)) 就绪")
-    default: return QueueWhy(short: "即将发送", long: "等待输入框就绪")
+    case .question: return QueueWhy(short: L10n.queueIosAfterAnswer(), long: L10n.queueIosQuestionWait())
+    case .approval: return QueueWhy(short: L10n.queueIosAfterApproval(), long: L10n.queueIosApprovalWait())
+    case .plan: return QueueWhy(short: L10n.queueIosAfterPlan(), long: L10n.queueIosPlanWait())
+    case .popup: return QueueWhy(short: L10n.queueWhenReady(), long: L10n.queueIosPopupWait())
+    case .running: return QueueWhy(short: L10n.queueAfterCurrentTurn(), long: L10n.queueIosTurnWait())
+    case .starting: return QueueWhy(short: L10n.queueWhenReady(), long: L10n.queueIosAgentWait(agent: agentName(s.agent)))
+    default: return QueueWhy(short: L10n.queueIosSendingSoon(), long: L10n.queueIosInputWait())
     }
 }
 

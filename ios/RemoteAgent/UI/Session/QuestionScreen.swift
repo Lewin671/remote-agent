@@ -45,11 +45,11 @@ struct QuestionScreen: View {
                     .topLine()
                 } else {
                     // Answered already, here, on another client or in the terminal: the card is withdrawn everywhere.
-                    PageNote(d.answered[question] != nil ? "这个问题已经回答了。" : s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…")
+                    PageNote(d.answered[question] != nil ? L10n.dockIosQuestionAnswered() : s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
                 }
             }
         }
-        .navBar("回答提问", subtitle: s.map { titleOf($0) + " · " + agentName($0.agent) })
+        .navBar(L10n.dockAnswerTitle(), subtitle: s.map { titleOf($0) + " · " + agentName($0.agent) })
         .followSession(session, chat: chat, finder: finder)
     }
 }

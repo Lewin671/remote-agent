@@ -81,6 +81,22 @@ public enum L10n {
         let key = "approval_in_terminal"
         return format(key, locale: locale, args: [])
     }
+    public static func approvalIosAlwaysPrefix(command: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_ios_always_prefix"
+        return format(key, locale: locale, args: [command])
+    }
+    public static func approvalIosDecisionDeny(locale: String = MessageLocale.current) -> String {
+        let key = "approval_ios_decision_deny"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalIosExpired(decision: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_ios_expired"
+        return format(key, locale: locale, args: [decision])
+    }
+    public static func approvalIosUnknownResult(locale: String = MessageLocale.current) -> String {
+        let key = "approval_ios_unknown_result"
+        return format(key, locale: locale, args: [])
+    }
     public static func approvalReasonPlaceholder(locale: String = MessageLocale.current) -> String {
         let key = "approval_reason_placeholder"
         return format(key, locale: locale, args: [])
@@ -148,6 +164,82 @@ public enum L10n {
     public static func attachmentImagesLimit(count: Int, limit: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_images_limit"
         return format(key, locale: locale, args: [Int64(count), Int64(limit)])
+    }
+    public static func attachmentIosChooseMachine(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_choose_machine"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosChoosePhotos(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_choose_photos"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosClipboardEmpty(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_clipboard_empty"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosFileCount(count: Int, limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_count"
+        return format(key, locale: locale, args: [Int64(count), Int64(limit)])
+    }
+    public static func attachmentIosFileMissing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosFilesLimitNotice(limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_files_limit_notice"
+        return format(key, locale: locale, args: [Int64(limit)])
+    }
+    public static func attachmentIosImageMissing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_image_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosMissing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosNotSaved(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_not_saved"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPasteClipboard(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_paste_clipboard"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPasteImage(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_paste_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPhotos(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_photos"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPreparing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_preparing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosRestoreFilesLimit(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_restore_files_limit"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func attachmentIosRestoreImagesLimit(count: Int, have: Int, limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_restore_images_limit"
+        return format(key, locale: locale, args: [Int64(count), Int64(have), Int64(limit)])
+    }
+    public static func attachmentIosRestoreUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_restore_unavailable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosSourceUnreadable(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_source_unreadable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosUploadFailed(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_upload_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosUploadProgress(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_upload_progress"
+        return format(key, locale: locale, args: [Int64(percent)])
     }
     public static func attachmentMaxFiles(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_max_files"
@@ -349,6 +441,26 @@ public enum L10n {
         let key = "composer_insert_now"
         return format(key, locale: locale, args: [])
     }
+    public static func composerIosConnectSend(locale: String = MessageLocale.current) -> String {
+        let key = "composer_ios_connect_send"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerIosDraftRestoreFailed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_ios_draft_restore_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerIosDraftSaveFailed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_ios_draft_save_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerIosNotSent(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_ios_not_sent"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func composerIosUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_ios_unconfirmed"
+        return format(key, locale: locale, args: [])
+    }
     public static func composerMaybeFailure(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "composer_maybe_failure"
         return format(key, locale: locale, args: [reason])
@@ -540,6 +652,26 @@ public enum L10n {
     public static func dockHandleTerminal(locale: String = MessageLocale.current) -> String {
         let key = "dock_handle_terminal"
         return format(key, locale: locale, args: [])
+    }
+    public static func dockIosKeepPlanning(locale: String = MessageLocale.current) -> String {
+        let key = "dock_ios_keep_planning"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockIosQuestionAnswered(locale: String = MessageLocale.current) -> String {
+        let key = "dock_ios_question_answered"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockIosQuestionExpired(answer: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_ios_question_expired"
+        return format(key, locale: locale, args: [answer])
+    }
+    public static func dockIosQuestionFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_ios_question_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func dockIosQuestionUnknown(answer: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_ios_question_unknown"
+        return format(key, locale: locale, args: [answer])
     }
     public static func dockMore(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "dock_more"
@@ -903,6 +1035,114 @@ public enum L10n {
     }
     public static func imageGenerated(locale: String = MessageLocale.current) -> String {
         let key = "image_generated"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosActionsHint(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_actions_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosDownloadFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_download_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func imageIosDownloading(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_downloading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosEmpty(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_empty"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosGeneratedBy(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_generated_by"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func imageIosGeneratedSize(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_generated_size"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func imageIosMoreImages(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_more_images"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageIosNameOnly(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_name_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosNoPreview(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_no_preview"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosOnlyMessage(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_only_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosOpen(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_open"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosOriginalSelected(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_original_selected"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func imageIosOriginalTotal(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_original_total"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func imageIosPage(count: Int, index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_page"
+        return format(key, locale: locale, args: [Int64(count), Int64(index)])
+    }
+    public static func imageIosPlaceholder(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_placeholder"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosPlaceholderIndex(index: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_placeholder_index"
+        return format(key, locale: locale, args: [index])
+    }
+    public static func imageIosRetainedOriginal(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_retained_original"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosSavePermission(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_save_permission"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosSaved(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_saved"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosSelectedCount(count: Int, limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_selected_count"
+        return format(key, locale: locale, args: [Int64(count), Int64(limit)])
+    }
+    public static func imageIosUnselected(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_unselected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosUploadProgress(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_upload_progress"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func imageIosUserPaste(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_user_paste"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosVerificationFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_verification_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func imageIosViewFull(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_view_full"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosViewedBy(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_viewed_by"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func imageIosZoom(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_zoom"
         return format(key, locale: locale, args: [])
     }
     public static func imageLoadConnected(locale: String = MessageLocale.current) -> String {
@@ -1288,6 +1528,10 @@ public enum L10n {
     public static func modesFullUnavailable(locale: String = MessageLocale.current) -> String {
         let key = "modes_full_unavailable"
         return format(key, locale: locale, args: [])
+    }
+    public static func modesIosOutsideNote(mode: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_ios_outside_note"
+        return format(key, locale: locale, args: [mode])
     }
     public static func modesLocked(locale: String = MessageLocale.current) -> String {
         let key = "modes_locked"
@@ -1865,6 +2109,62 @@ public enum L10n {
         let key = "queue_insert"
         return format(key, locale: locale, args: [])
     }
+    public static func queueIosAfterAnswer(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_after_answer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosAfterApproval(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_after_approval"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosAfterPlan(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_after_plan"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosAgentWait(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_agent_wait"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func queueIosApprovalWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_approval_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosInputWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_input_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosMessage(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosPlanWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_plan_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosPopupWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_popup_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosQuestionWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_question_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosScheduledLabel(label: String, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_scheduled_label"
+        return format(key, locale: locale, args: [label, time])
+    }
+    public static func queueIosSendingSoon(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_sending_soon"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosTerminalDraftShort(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_terminal_draft_short"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueIosTurnWait(locale: String = MessageLocale.current) -> String {
+        let key = "queue_ios_turn_wait"
+        return format(key, locale: locale, args: [])
+    }
     public static func queueMore(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "queue_more"
         return format(key, locale: locale, args: [Int64(count)])
@@ -2139,6 +2439,150 @@ public enum L10n {
     }
     public static func sessionInterrupted(locale: String = MessageLocale.current) -> String {
         let key = "session_interrupted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosAgentReply(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_agent_reply"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func sessionIosAnswerValues(answers: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_answer_values"
+        return format(key, locale: locale, args: [answers])
+    }
+    public static func sessionIosAnswered(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_answered"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosChangeIdle(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_change_idle"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosCollapseTitle(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_collapse_title"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func sessionIosCollapsed(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_collapsed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosCompactedUsage(after: Int, before: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_compacted_usage"
+        return format(key, locale: locale, args: [Int64(after), Int64(before)])
+    }
+    public static func sessionIosConnectRead(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_connect_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosContextOccupancy(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_context_occupancy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosContextUsage(total: Int, used: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_context_usage"
+        return format(key, locale: locale, args: [Int64(total), Int64(used)])
+    }
+    public static func sessionIosEffortNote(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_effort_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosEndedAt(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_ended_at"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func sessionIosEndedRecovery(reason: String, recovery: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_ended_recovery"
+        return format(key, locale: locale, args: [reason, recovery])
+    }
+    public static func sessionIosExpand(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_expand"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosForkConnect(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_fork_connect"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosForkPrefix(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_fork_prefix"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func sessionIosHistoryFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_history_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionIosHistoryPartial(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_history_partial"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosInterruptFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_interrupt_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionIosInterruptedBy(origin: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_interrupted_by"
+        return format(key, locale: locale, args: [origin])
+    }
+    public static func sessionIosLatest(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_latest"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosLookupFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_lookup_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionIosMessageText(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_message_text"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosMissing(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosModelsFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_models_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionIosReasoning(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_reasoning"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosReplyArrived(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_reply_arrived"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func sessionIosResumeFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_resume_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionIosSelectText(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_select_text"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosSelectTextHint(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_select_text_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosTerminalChanges(changes: String, machine: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_terminal_changes"
+        return format(key, locale: locale, args: [changes, machine])
+    }
+    public static func sessionIosTitleField(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_title_field"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosTurnKTokens(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_turn_k_tokens"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sessionIosTurnTokens(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_turn_tokens"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sessionIosUpdateRequired(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_update_required"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIosYourMessage(locale: String = MessageLocale.current) -> String {
+        let key = "session_ios_your_message"
         return format(key, locale: locale, args: [])
     }
     public static func sessionLatest(locale: String = MessageLocale.current) -> String {
@@ -2461,6 +2905,74 @@ public enum L10n {
         let key = "terminal_history_start"
         return format(key, locale: locale, args: [])
     }
+    public static func terminalIosFitHint(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_fit_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosFont(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_font"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosFontLarger(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_font_larger"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosFontSmaller(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_font_smaller"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosFontValue(size: Int, locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_font_value"
+        return format(key, locale: locale, args: [Int64(size)])
+    }
+    public static func terminalIosHideDetails(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_hide_details"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosKeyboardHint(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_keyboard_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosKeys(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_keys"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosLeaveHistory(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_leave_history"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosNotRunning(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_not_running"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosPaused(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_paused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosRestoreHint(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_restore_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosRetryHistory(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_retry_history"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosScreen(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_screen"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosScreenHint(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_screen_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalIosSizeChanged(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_size_changed"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func terminalIosWaitConnection(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_ios_wait_connection"
+        return format(key, locale: locale, args: [])
+    }
     public static func terminalKeyboard(locale: String = MessageLocale.current) -> String {
         let key = "terminal_keyboard"
         return format(key, locale: locale, args: [])
@@ -2638,6 +3150,42 @@ public enum L10n {
     public static func toolsExitCode(code: String, locale: String = MessageLocale.current) -> String {
         let key = "tools_exit_code"
         return format(key, locale: locale, args: [code])
+    }
+    public static func toolsIosBackgroundCommand(locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_background_command"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsIosBackgroundTitle(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_background_title"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func toolsIosCompletedLabel(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_completed_label"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func toolsIosEdit(locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_edit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsIosFailedLabel(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_failed_label"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func toolsIosProcessing(locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_processing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsIosRunningLabel(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_running_label"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func toolsIosSearch(locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_search"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsIosUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "tools_ios_unconfirmed"
+        return format(key, locale: locale, args: [])
     }
     public static func toolsTool(locale: String = MessageLocale.current) -> String {
         let key = "tools_tool"

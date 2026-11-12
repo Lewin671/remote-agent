@@ -114,11 +114,11 @@ struct TerminalPane: View {
         let open = terminal.history.open
         let size = "\(terminal.size.cols)×\(terminal.size.rows)"
         let text =
-            if open { "回看中 · 只读" }
-            else if state != .live { "终端" }
-            else if terminal.resizedElsewhere { "远端尺寸已变化 · \(size)" }
-            else if terminal.fitted { "已适配这块屏幕 · \(size)" }
-            else { "电脑上 \(size)" }
+            if open { L10n.terminalReadonly() }
+            else if state != .live { L10n.sessionTerminal() }
+            else if terminal.resizedElsewhere { L10n.terminalIosSizeChanged(size: size) }
+            else if terminal.fitted { L10n.terminalFittedSize(cols: terminal.size.cols, rows: terminal.size.rows) }
+            else { L10n.terminalComputerDimensions(cols: terminal.size.cols, rows: terminal.size.rows) }
         return HStack(spacing: 8) {
             Text(text).font(.footnote).ink(TermColors.tool)
                 .lineLimit(2)
@@ -129,9 +129,9 @@ struct TerminalPane: View {
                 } label: {
                     Group {
                         if terminal.fitted || terminal.resizedElsewhere {
-                            Text(terminal.fitted ? "还原" : "适配").font(.footnote.weight(.semibold)).ink(TermColors.link)
+                            Text(terminal.fitted ? L10n.terminalRestore() : L10n.terminalFitShort()).font(.footnote.weight(.semibold)).ink(TermColors.link)
                         } else {
-                            IconText("arrow.up.left.and.arrow.down.right", "适配我的屏幕", color: TermColors.link, style: .footnote.weight(.semibold))
+                            IconText("arrow.up.left.and.arrow.down.right", L10n.terminalFit(), color: TermColors.link, style: .footnote.weight(.semibold))
                         }
                     }
                     .lineLimit(1).minimumScaleFactor(0.7)
@@ -140,7 +140,7 @@ struct TerminalPane: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityHint(terminal.fitted ? "让电脑上的终端回到原来的尺寸" : "把电脑上的终端调整成这块屏幕放得下的尺寸")
+                .accessibilityHint(terminal.fitted ? L10n.terminalIosRestoreHint() : L10n.terminalIosFitHint())
             }
         }
         .padding(.leading, 12).padding(.trailing, 4)
@@ -156,18 +156,18 @@ struct TerminalPane: View {
     private func openingLine(_ opening: TerminalHistory.Opening) -> some View {
         HStack(spacing: 8) {
             if opening == .failed {
-                Text("读取失败").font(.footnote).ink(TermColors.tool)
+                Text(L10n.terminalReadFailed()).font(.footnote).ink(TermColors.tool)
                 Button {
                     terminal.retryHistory()
                 } label: {
-                    Text("重试").font(.footnote.weight(.semibold)).ink(TermColors.link)
+                    Text(L10n.commonRetry()).font(.footnote.weight(.semibold)).ink(TermColors.link)
                         .padding(.vertical, 6)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityHint("再读一次这台终端的记录")
+                .accessibilityHint(L10n.terminalIosRetryHistory())
             } else {
-                Text("读取记录…").font(.footnote).ink(TermColors.tool)
+                Text(L10n.terminalReading()).font(.footnote).ink(TermColors.tool)
             }
             Spacer(minLength: 0)
         }
@@ -187,11 +187,11 @@ struct TerminalPane: View {
                 if terminal.history.hasNewOutput {
                     HStack(spacing: 6) {
                         Circle().fill(TermColors.link).frame(width: 7, height: 7)
-                        Text("有新输出").font(.subheadline.weight(.semibold)).ink(TermColors.fg)
+                        Text(L10n.terminalFresh()).font(.subheadline.weight(.semibold)).ink(TermColors.fg)
                         SymbolImage("arrow.down", size: 15, color: TermColors.fg)
                     }
                 } else {
-                    IconText("arrow.down", "回到实时", color: TermColors.fg, style: .subheadline.weight(.semibold))
+                    IconText("arrow.down", L10n.terminalLive(), color: TermColors.fg, style: .subheadline.weight(.semibold))
                 }
             }
             .lineLimit(1)
@@ -203,16 +203,16 @@ struct TerminalPane: View {
         }
         .buttonStyle(PressStyle())
         .padding(12)
-        .accessibilityLabel(terminal.history.hasNewOutput ? "有新输出，回到实时" : "回到实时")
-        .accessibilityHint("离开回看，回到实时画面")
+        .accessibilityLabel(terminal.history.hasNewOutput ? L10n.terminalFreshLive() : L10n.terminalLive())
+        .accessibilityHint(L10n.terminalIosLeaveHistory())
     }
 
     private var fontRow: some View {
         HStack(spacing: 20) {
-            Text("字号").font(TerminalPane.fontStyle).ink(TermColors.dim).frame(maxWidth: .infinity, alignment: .leading)
-            fontButton("A−", "减小字号", font > TerminalFont.sizes.lowerBound) { setFont(font - 1) }
-            Text("\(font)").font(TerminalPane.fontStyle).ink(TermColors.dim).accessibilityLabel("字号 \(font)")
-            fontButton("A+", "增大字号", font < TerminalFont.sizes.upperBound) { setFont(font + 1) }
+            Text(L10n.terminalIosFont()).font(TerminalPane.fontStyle).ink(TermColors.dim).frame(maxWidth: .infinity, alignment: .leading)
+            fontButton("A−", L10n.terminalIosFontSmaller(), font > TerminalFont.sizes.lowerBound) { setFont(font - 1) }
+            Text("\(font)").font(TerminalPane.fontStyle).ink(TermColors.dim).accessibilityLabel(L10n.terminalIosFontValue(size: Int(font)))
+            fontButton("A+", L10n.terminalIosFontLarger(), font < TerminalFont.sizes.upperBound) { setFont(font + 1) }
         }
         .lineLimit(1)
         .padding(.horizontal, 12)
@@ -248,21 +248,21 @@ struct TerminalPane: View {
         VStack(alignment: .leading, spacing: 0) {
             switch state {
             case .connecting:
-                IconText(Mark.progress, "连接终端…", color: TermColors.dim, style: .subheadline)
+                IconText(Mark.progress, L10n.terminalConnecting(), color: TermColors.dim, style: .subheadline)
             case .closed(let reason):
-                Text("终端连接断开了").font(.body.weight(.semibold)).ink(TermColors.fg)
+                Text(L10n.terminalClosed()).font(.body.weight(.semibold)).ink(TermColors.fg)
                     .accessibilityAddTraits(.isHeader)
                 Text(
-                    !online ? "等待服务器连接恢复后，会重新获取终端画面。"
-                        : running ? "下面是断开前的画面。会话还在运行，聊天照常更新。" : "会话不在运行。"
+                    !online ? L10n.terminalIosWaitConnection()
+                        : running ? L10n.terminalClosedRunningNote() : L10n.terminalIosNotRunning()
                 )
                 .font(.subheadline).ink(TermColors.dim)
                 .padding(.top, 6).padding(.bottom, 14)
-                Btn("重新连接", kind: .primary, enabled: online) { if online { open() } }
+                Btn(L10n.terminalReconnect(), kind: .primary, enabled: online) { if online { open() } }
                 Button {
                     details.toggle()
                 } label: {
-                    Text(details ? "收起详情" : "查看详情").font(.footnote).ink(TermColors.link)
+                    Text(details ? L10n.terminalIosHideDetails() : L10n.terminalViewDetails()).font(.footnote).ink(TermColors.link)
                         .frame(minHeight: DS.minHit, alignment: .leading)
                         .contentShape(Rectangle())
                 }

@@ -190,11 +190,11 @@ public func needsUpload(_ img: PendingImage, machineId: String, now: Int64 = Int
 
 /// Whether a machine takes images, and if not, why, in words.
 public func uploadBlocked(_ m: MachineView?, online: Bool, name: String) -> String? {
-    guard let m else { return "先选一台电脑" }
-    guard let caps = capabilities(m) else { return "还没读到 \(name) 的信息，稍后才能添加图片" }
+    guard let m else { return L10n.attachmentIosChooseMachine() }
+    guard let caps = capabilities(m) else { return L10n.attachmentComputerUnread(name: name) }
     // The daemon's folder has spaces in its path, which the CLIs do not take.
-    if !caps.imageUpload { return "\(name) 上 remote-agent 的目录路径带空格，不能发图片" }
-    if !m.online || !online { return "\(name) 离线，连上后才能添加图片" }
+    if !caps.imageUpload { return L10n.attachmentPathSpaces(name: name) }
+    if !m.online || !online { return L10n.attachmentComputerOffline(name: name) }
     return nil
 }
 
@@ -280,6 +280,29 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
     }
 }
 
+/// Product-owned notices retain structured arguments until their display boundary.
+public enum AttachmentNotice: Equatable, Sendable {
+    case raw(String)
+    case maxImages(Int), maxFiles(Int), filesDropped(Int), clipboardEmpty
+    case maxImagesDropped(limit: Int, count: Int)
+    case restoreUnavailable, restoreImages(have: Int, count: Int, limit: Int), restoreFiles(Int), notSaved
+
+    public var text: String {
+        switch self {
+        case .raw(let text): return text
+        case .maxImages(let count): return L10n.attachmentMaxImages(count: count)
+        case .maxFiles(let count): return L10n.attachmentMaxFiles(count: count)
+        case .filesDropped(let count): return L10n.attachmentIosFilesLimitNotice(limit: count)
+        case .clipboardEmpty: return L10n.attachmentIosClipboardEmpty()
+        case .maxImagesDropped(let limit, let count): return L10n.attachmentImagesLimit(count: count, limit: limit)
+        case .restoreUnavailable: return L10n.attachmentIosRestoreUnavailable()
+        case .restoreImages(let have, let count, let limit): return L10n.attachmentIosRestoreImagesLimit(count: count, have: have, limit: limit)
+        case .restoreFiles(let count): return L10n.attachmentIosRestoreFilesLimit(count: count)
+        case .notSaved: return L10n.attachmentIosNotSaved()
+        }
+    }
+}
+
 /// The images of one draft (a session's message box or a project's new-session card).
 @MainActor @Observable
 public final class ImageDraft {
@@ -306,7 +329,11 @@ public final class ImageDraft {
     public private(set) var original = false
 
     /// Said once after a pick or a put back: how many did not fit.
-    public var notice = ""
+    public var noticeMessage: AttachmentNotice = .raw("")
+    public var notice: String {
+        get { noticeMessage.text }
+        set { noticeMessage = .raw(newValue) }
+    }
 
     /// `saves`: the queue the sealed files are written and removed on, serial
     /// so that an older snapshot never lands after a newer one nor after the
@@ -321,7 +348,7 @@ public final class ImageDraft {
     /// `max`, with `notice` saying how many did not.
     public func admit<T>(_ picked: [T], max: Int) -> [T] {
         let (taken, left) = takePicked(have: photos.count, picked: picked, max: max)
-        notice = left > 0 ? "一条消息最多 \(max) 张，多选的 \(left) 张没有加入" : ""
+        noticeMessage = left > 0 ? .maxImagesDropped(limit: max, count: left) : .raw("")
         return taken
     }
 
@@ -403,7 +430,7 @@ public final class ImageDraft {
         let mine = ids.filter { saved[$0] == save }
         if failure != nil {
             for id in mine { saved[id] = nil }
-            notice = "这张图未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"
+            noticeMessage = .notSaved
         } else {
             landed.formUnion(mine)
             settle()
@@ -520,14 +547,14 @@ public final class ImageDraft {
     @discardableResult
     public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
         if back.isEmpty { return true }
-        guard !restoring, restoreError == nil else { notice = "待发附件尚未恢复，请重试后再放回"; return false }
+        guard !restoring, restoreError == nil else { noticeMessage = .restoreUnavailable; return false }
         let backPhotos = back.filter { !$0.isFile }.count
         if photos.count + backPhotos > max {
-            notice = "输入框里已有 \(photos.count) 张图，放回这 \(backPhotos) 张会超过 \(max) 张。先移除一些再放回"
+            noticeMessage = .restoreImages(have: photos.count, count: backPhotos, limit: max)
             return false
         }
         if documents.count + back.filter(\.isFile).count > maxFiles {
-            notice = "放回后会超过 \(maxFiles) 个文件，先移除一些再放回"
+            noticeMessage = .restoreFiles(maxFiles)
             return false
         }
         if photos.isEmpty { original = wereOriginal ?? original }
@@ -612,7 +639,16 @@ public final class Outgoing: Identifiable {
     public nonisolated let mode: PBSendMode
 
     public var state = State.sending
-    public var error = ""
+    private var rawError = ""
+    public var error: String {
+        get {
+            guard missingImages else { return rawError }
+            if fileIds.isEmpty { return L10n.attachmentIosImageMissing() }
+            if imageIds.isEmpty { return L10n.attachmentIosFileMissing() }
+            return L10n.attachmentIosMissing()
+        }
+        set { rawError = newValue }
+    }
     public var missingImages = false
     public var hasLocalAttachments: Bool { !images.isEmpty && images.allSatisfy(\.hasSource) }
     public var canPutBack: Bool { (state == .failed || state == .unknown) && (hasLocalAttachments || (imageIds.isEmpty && fileIds.isEmpty && !text.isEmpty)) }

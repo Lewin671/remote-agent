@@ -84,7 +84,7 @@ import Testing
         #expect(toolTimer(tool, state: .running, now: 133_000, frozenAt: 0) == "已运行 2:12")
         #expect(toolTimer(tool, state: .sync, now: 133_000, frozenAt: 61_000) == "已运行 1:00")
         #expect(toolTimer(RunningTool(title: "x", callId: "", since: 0), state: .running, now: 9, frozenAt: 0) == "")
-        #expect(ToolState.unconfirmed.text == "状态待确认")
+        #expect(ToolState.unconfirmed.text == L10n.toolsIosUnconfirmed())
     }
 }
 
@@ -103,8 +103,8 @@ import Testing
         #expect(tool.key == "e2")
         #expect(tool.background)
         #expect(!items.contains { if case .running = $0 { return true } else { return false } })
-        #expect(backgroundNote(tool.call.background) == "这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。")
-        #expect(backgroundTitle(kind: .command, itemType: "Bash", agent: .claude) == "后台命令")
+        #expect(backgroundNote(tool.call.background) == L10n.toolsBackgroundTurn())
+        #expect(backgroundTitle(kind: .command, itemType: "Bash", agent: .claude) == L10n.toolsIosBackgroundCommand())
         #expect(backgroundTitle(kind: .other, itemType: "Task", agent: .claude) == "Task（后台）")
     }
 }

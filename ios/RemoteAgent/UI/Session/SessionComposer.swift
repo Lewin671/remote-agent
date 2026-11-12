@@ -48,17 +48,17 @@ struct SessionComposeBox<Top: View>: View {
             Button(action: onInterrupt) { InkCircle(symbol: "stop.fill", enabled: canInterrupt) }
                 .buttonStyle(PressScale())
                 .disabled(!canInterrupt)
-                .accessibilityLabel("中断")
+                .accessibilityLabel(L10n.sessionInterrupt())
         } else if let onQueue, canSend {
             // A tap sends; a long press opens the choice, as the system's own send buttons do.
             Menu {
                 Button(action: onSend) {
-                    Text("现在插入这一轮")
-                    Text("点 ↑ 就是这个")
+                    Text(L10n.composerInsertNow())
+                    Text(L10n.composerInsertHint())
                 }
                 Button(action: onQueue) {
-                    Text("这一轮结束后再发")
-                    Text("先排队，结束后按顺序发出")
+                    Text(L10n.composerAfterTurn())
+                    Text(L10n.composerQueueHint())
                 }
             } label: {
                 InkCircle(symbol: "arrow.up")
@@ -67,20 +67,22 @@ struct SessionComposeBox<Top: View>: View {
             }
             .menuOrder(.fixed)
             .buttonStyle(PressScale())
-            .accessibilityLabel("发送")
-            .accessibilityHint("插入这一轮")
-            .accessibilityAction(named: "这一轮结束后再发", onQueue)
+            .accessibilityLabel(L10n.composerSend())
+            .accessibilityIdentifier("session-send")
+            .accessibilityHint(L10n.queueInsert())
+            .accessibilityAction(named: L10n.composerAfterTurn(), onQueue)
         } else {
             Button(action: onSend) { InkCircle(symbol: "arrow.up", enabled: canSend) }
                 .buttonStyle(PressScale())
                 .disabled(!canSend)
-                .accessibilityLabel("发送")
+                .accessibilityLabel(L10n.composerSend())
+            .accessibilityIdentifier("session-send")
                 .accessibilityHint(sendHint)
         }
     }
 
     var body: some View {
-        MessageCapsule(text: $text, placeholder: placeholder, label: "消息", focus: focus, heightChanges: "\(hasDraft)\(text)") {
+        MessageCapsule(text: $text, placeholder: placeholder, label: L10n.composerMessage(), focus: focus, heightChanges: "\(hasDraft)\(text)") {
             top
         } plus: {
             attach
@@ -89,7 +91,7 @@ struct SessionComposeBox<Top: View>: View {
         }
         // A keyboard attached to an iPad or a Mac sends with ⌘↩; Return alone is a new line, as on the screen keyboard.
         .background {
-            Button("发送", action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
+            Button(L10n.composerSend(), action: onSend).keyboardShortcut(.return, modifiers: .command).disabled(!canSend)
                 .opacity(0).accessibilityHidden(true)
         }
     }
@@ -110,22 +112,22 @@ struct AttachMenu: View {
         if images.blocked != nil || (!files && !paste) {
             Button { images.pickLibrary() } label: { PlusCircle(dimmed: images.blocked != nil) }
                 .buttonStyle(.plain)
-                .accessibilityLabel("添加图片")
+                .accessibilityLabel(L10n.imageAdd())
         } else {
             Menu {
-                Button { images.pickLibrary() } label: { Label(files ? "照片和视频" : "照片", systemImage: "photo") }
+                Button { images.pickLibrary() } label: { Label(files ? L10n.attachmentPhotosVideos() : L10n.attachmentIosPhotos(), systemImage: "photo") }
                 if files {
-                    Button { images.pickFiles() } label: { Label("文件", systemImage: "doc") }
+                    Button { images.pickFiles() } label: { Label(L10n.attachmentFile(), systemImage: "doc") }
                 }
                 if paste {
-                    Button { images.paste() } label: { Label("粘贴图片", systemImage: "doc.on.clipboard") }
+                    Button { images.paste() } label: { Label(L10n.attachmentIosPasteImage(), systemImage: "doc.on.clipboard") }
                 }
-                if files { Section { Text("文件原样发送，包含其中的元数据。") } }
+                if files { Section { Text(L10n.attachmentMetadata()) } }
             } label: {
                 PlusCircle()
             }
             .menuOrder(.fixed)
-            .accessibilityLabel("添加附件")
+            .accessibilityLabel(L10n.newSessionIosAttach())
         }
     }
 }
@@ -164,7 +166,7 @@ struct SessionComposer: View {
             case .success:
                 if store.draft(sid).jvmTrim() == message { store.setDraft(sid, "") }
             case .failure(let error):
-                notice = "这条没有发出：\(errorText(error))"
+                notice = L10n.composerIosNotSent(reason: errorText(error))
             }
         }
         // The message's images are being kept before it is sent (`SessionStore.isKeeping`).
@@ -207,7 +209,7 @@ struct SessionComposer: View {
                 canInterrupt: online && !interrupt.running,
                 hasDraft: !text.jvmIsBlank || attached,
                 focus: focus,
-                sendHint: online ? "" : "连上服务器后才能发送"
+                sendHint: online ? "" : L10n.composerIosConnectSend()
             ) {
                 images.strip(session: (sid, store))
             }
@@ -225,7 +227,7 @@ struct SessionComposer: View {
             if !notice.isEmpty { Notice(notice, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
             if let error = store.draftErrors[sid] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
             if !interrupt.error.isEmpty {
-                Notice("没能中断：\(interrupt.error)", tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
+                Notice(L10n.sessionIosInterruptFailed(reason: interrupt.error), tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
             }
             if slashWarning(text) {
                 Text(slashWarningText).font(.footnote).foregroundStyle(DS.orangeInk)

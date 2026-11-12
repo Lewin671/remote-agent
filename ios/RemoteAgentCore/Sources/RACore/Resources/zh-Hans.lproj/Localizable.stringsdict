@@ -30,6 +30,62 @@
 			<string>一条消息最多 %2$lld 张，多选的 %1$lld 张没有加入</string>
 		</dict>
 	</dict>
+	<key>attachment_ios_file_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld / %2$lld 个文件</string>
+		</dict>
+	</dict>
+	<key>attachment_ios_files_limit_notice</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@limit@</string>
+		<key>limit</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>一条消息最多 %1$lld 个文件，多选的文件没有加入</string>
+		</dict>
+	</dict>
+	<key>attachment_ios_restore_files_limit</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>放回后会超过 %1$lld 个文件，先移除一些再放回</string>
+		</dict>
+	</dict>
+	<key>attachment_ios_restore_images_limit</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>输入框里已有 %2$lld 张图，放回这 %1$lld 张会超过 %3$lld 张。先移除一些再放回</string>
+		</dict>
+	</dict>
 	<key>attachment_max_files</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -408,6 +464,48 @@
 			<string>%1$lld 张图片</string>
 		</dict>
 	</dict>
+	<key>image_ios_more_images</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>图片，还有 %1$lld 张</string>
+		</dict>
+	</dict>
+	<key>image_ios_page</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>第 %2$lld 张，共 %1$lld 张</string>
+		</dict>
+	</dict>
+	<key>image_ios_selected_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>已选 %1$lld 张，最多 %2$lld 张</string>
+		</dict>
+	</dict>
 	<key>image_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -630,6 +728,34 @@
 			<string>lld</string>
 			<key>other</key>
 			<string>恢复前有 %1$lld 条记录不可读；后续可读记录照常显示。</string>
+		</dict>
+	</dict>
+	<key>session_ios_turn_k_tokens</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lldk tokens</string>
+		</dict>
+	</dict>
+	<key>session_ios_turn_tokens</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld tokens</string>
 		</dict>
 	</dict>
 	<key>session_new_messages</key>

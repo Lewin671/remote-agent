@@ -30,9 +30,9 @@ public struct TerminalKey: Sendable, Equatable {
 
 public var terminalKeyRows: [[TerminalKey]] { [
     [
-        .text("Esc", "\u{1b}"), .arrow("左", "D", icon: "arrow.left"), .arrow("上", "A", icon: "arrow.up"),
-        .arrow("下", "B", icon: "arrow.down"), .arrow("右", "C", icon: "arrow.right"),
-        .text("回车", "\r", icon: "return"),
+        .text("Esc", "\u{1b}"), .arrow(L10n.terminalLeft(), "D", icon: "arrow.left"), .arrow(L10n.terminalUp(), "A", icon: "arrow.up"),
+        .arrow(L10n.terminalDown(), "B", icon: "arrow.down"), .arrow(L10n.terminalRight(), "C", icon: "arrow.right"),
+        .text(L10n.terminalEnter(), "\r", icon: "return"),
     ],
     [.text("Tab", "\t"), .text("Ctrl+C", "\u{03}")],
 ] }

@@ -6,7 +6,7 @@ public struct SilentScheduledGroup: Equatable, Sendable, Identifiable {
     public var lastSeq: UInt64
     public var times: [Int64]
     public var id: String { "scheduled-\(firstSeq)" }
-    public var text: String { times.map { scheduleTime(Date(timeIntervalSince1970: Double($0) / 1000)) }.joined(separator: "、") + " 定时检查 · 没有新回复" }
+    public var text: String { L10n.sessionQuietChecks(times: times.map { scheduleTime(Date(timeIntervalSince1970: Double($0) / 1000)) }.joined(separator: L10n.commonListSeparator())) }
 }
 /// Only explicit, completed scheduled rounds fold. Content outside those boundaries stays visible,
 /// including autonomous followups, a later notification and oversized-content placeholders.

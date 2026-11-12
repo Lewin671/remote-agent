@@ -157,8 +157,8 @@ private struct TerminalDebugSignals: ViewModifier {
     @Binding var details: Bool
     let reconnect: () -> Void
 
-    private func key(_ label: String) {
-        if let key = terminalKeyRows.joined().first(where: { $0.label == label }) { terminal.send(key) }
+    private func key(_ kind: TerminalKey.Kind) {
+        if let key = terminalKeyRows.joined().first(where: { $0.kind == kind }) { terminal.send(key) }
     }
 
     private func setFont(_ points: Int) {
@@ -178,14 +178,14 @@ private struct TerminalDebugSignals: ViewModifier {
                 view.insertText(lines[1])
             }
             .debugSignal("term.paste") { view.send(txt: TerminalDebug.input) }
-            .debugSignal("term.enter") { key("回车") }
-            .debugSignal("term.esc") { key("Esc") }
-            .debugSignal("term.tab") { key("Tab") }
-            .debugSignal("term.ctrlc") { key("Ctrl+C") }
-            .debugSignal("term.left") { key("左") }
-            .debugSignal("term.up") { key("上") }
-            .debugSignal("term.down") { key("下") }
-            .debugSignal("term.right") { key("右") }
+            .debugSignal("term.enter") { key(.text("\r")) }
+            .debugSignal("term.esc") { key(.text("\u{1b}")) }
+            .debugSignal("term.tab") { key(.text("\t")) }
+            .debugSignal("term.ctrlc") { key(.text("\u{03}")) }
+            .debugSignal("term.left") { key(.arrow("D")) }
+            .debugSignal("term.up") { key(.arrow("A")) }
+            .debugSignal("term.down") { key(.arrow("B")) }
+            .debugSignal("term.right") { key(.arrow("C")) }
             .debugSignal("term.keyboard") { terminal.host.toggleKeyboard() }
             .debugSignal("term.fit") { terminal.toggleFit() }
             .debugSignal("term.fontUp") { setFont(font + 1) }

@@ -559,7 +559,7 @@ public func imageText(_ text: String, refs: [PBImageRef]) -> String {
     }
     let laterRefs = placeholder.findAll(t).contains(where: isKnown)
     let base = laterRefs ? text : t.jvmTrimStart()
-    return placeholder.replace(base) { m in isKnown(m) ? "图 \(m.text(1))" : m.value }
+    return placeholder.replace(base) { m in isKnown(m) ? L10n.imageIosPlaceholderIndex(index: m.text(1)) : m.value }
 }
 
 /// Most pixels an image is decoded at on the phone, whatever its size: 40 MP, ARGB, is 160 MB.

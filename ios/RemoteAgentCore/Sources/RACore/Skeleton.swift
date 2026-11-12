@@ -1,7 +1,7 @@
 import RAProto
 
 public let skeletonNote = "\n…（remote-agent：内容过大，请在终端查看/回答）"
-public let skeletonMessage = "内容过大，请在终端查看/回答"
+public var skeletonMessage: String { L10n.sessionSkeleton() }
 public func isSkeleton(_ text: String) -> Bool { text.hasSuffix(skeletonNote) }
 public func isSkeleton(_ a: PBApprovalRequested) -> Bool {
   [a.description_p, a.approvalID, a.command, a.toolInputJson, a.inputDigest].contains(

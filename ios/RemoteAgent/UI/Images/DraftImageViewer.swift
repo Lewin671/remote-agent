@@ -19,7 +19,7 @@ struct DraftImageViewer: View {
 
     var body: some View {
         let images = center.draft(key).photos
-        PagedImageViewer(count: images.count, selection: $page, empty: "没有图片", onClose: onClose,
+        PagedImageViewer(count: images.count, selection: $page, empty: L10n.imageIosEmpty(), onClose: onClose,
             picture: { i, drag in
                 DraftViewerPage(center: center, image: images[i], current: i == page, pokes: pokes,
                     onDrag: { drag.wrappedValue = $0 }, onClose: onClose)
@@ -28,7 +28,7 @@ struct DraftImageViewer: View {
                 let img = images[i]
                 let failure: ImageProblem? = { if case .failed(let error) = img.state { return imageProblem(error) }; return nil }()
                 return VStack(alignment: .leading, spacing: 8) {
-                    Text("图片 \(i + 1)，共 \(images.count) 张").font(.subheadline.weight(.semibold))
+                    Text(L10n.imagePosition(count: Int(images.count), index: Int(i + 1))).font(.subheadline.weight(.semibold))
                     Text(failure?.message ?? draftImageState(img)).font(.body)
                     HStack(spacing: 24) {
                         if failure?.retryable == true { action(L10n.commonRetry()) { center.retry(key, img) } }
@@ -56,10 +56,10 @@ struct DraftImageViewer: View {
 
 @MainActor func draftImageState(_ image: PendingImage) -> String {
     switch image.state {
-    case .processing: "正在处理"
-    case .uploading(let progress): "正在传到电脑，\(Int(progress * 100))%"
-    case .ready: "已传到电脑"
-    case .failed(let error): "失败：\(imageProblem(error).message)"
+    case .processing: L10n.imagePreparing()
+    case .uploading(let progress): L10n.imageIosUploadProgress(percent: Int(Int(progress * 100)))
+    case .ready: L10n.imageUploaded()
+    case .failed(let error): L10n.attachmentFailure(reason: imageProblem(error).message)
     }
 }
 
@@ -78,8 +78,8 @@ private struct DraftViewerPage: View {
         ZStack {
             if let shown = sharp ?? center.thumb(image) {
                 ZoomableImage(image: shown, zoomToggles: zoom, reduceMotion: reduceMotion, onDrag: onDrag, onClose: onClose)
-                    .ignoresSafeArea().accessibilityLabel("待发送的图片")
-            } else { Text(image.state == .processing ? "正在处理" : "没有预览").foregroundStyle(ViewerInk.text) }
+                    .ignoresSafeArea().accessibilityLabel(L10n.imageDraft())
+            } else { Text(image.state == .processing ? L10n.imagePreparing() : L10n.imageIosNoPreview()).foregroundStyle(ViewerInk.text) }
         }
         .task(id: "\(image.id)/\(image.generation)/\(image.processed?.bytes.count ?? 0)") {
             guard let processed = image.processed else { return }

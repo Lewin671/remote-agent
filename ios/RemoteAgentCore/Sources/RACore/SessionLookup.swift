@@ -51,8 +51,8 @@ public func lookUpSession(
 /// What a page about a session says instead of its content while the session is not held; nil while it is only being read.
 public func lookupNote(_ l: SessionLookup?) -> String? {
     switch l {
-    case .missing?: return "找不到这个会话"
-    case .failed(let reason)?: return "没能读取这个会话：\(reason)"
+    case .missing?: return L10n.sessionIosMissing()
+    case .failed(let reason)?: return L10n.sessionIosLookupFailed(reason: reason)
     default: return nil
     }
 }

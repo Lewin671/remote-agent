@@ -182,16 +182,16 @@ extension Ref<LiveAnnouncer> {
 
 @Suite struct SessionWordsTests {
     @Test func scheduledCloseUsesExplicitCauseAndKeepsManualWording() {
-        #expect(exitReason("stopped", scheduledClosed: true) == "定时任务运行已结束，会话自动关闭了。")
-        #expect(exitReason("stopped", scheduledClosed: false) == "会话是被手动结束的。")
-        #expect(exitReason("tmux session gone", scheduledClosed: true) == "tmux 会话已经不在了。")
+        #expect(exitReason("stopped", scheduledClosed: true) == L10n.sessionScheduledClosed())
+        #expect(exitReason("stopped", scheduledClosed: false) == L10n.sessionManuallyClosed())
+        #expect(exitReason("tmux session gone", scheduledClosed: true) == L10n.sessionTmuxMissing())
         #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("定时任务运行已结束，会话自动关闭了。"))
     }
 
     @Test func idleCloseUsesExplicitCause() {
-        #expect(exitReason("stopped", idleClosed: true) == "会话长时间没有活动，已自动结束。")
-        #expect(exitReason("stopped", idleClosed: false) == "会话是被手动结束的。")
-        #expect(exitReason("tmux session gone", idleClosed: true) == "tmux 会话已经不在了。")
+        #expect(exitReason("stopped", idleClosed: true) == L10n.sessionIdleClosed())
+        #expect(exitReason("stopped", idleClosed: false) == L10n.sessionManuallyClosed())
+        #expect(exitReason("tmux session gone", idleClosed: true) == L10n.sessionTmuxMissing())
         #expect(endedText(detail: "stopped", idleClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("会话长时间没有活动，已自动结束。"))
     }
 
@@ -203,16 +203,16 @@ extension Ref<LiveAnnouncer> {
         func label(_ p: PendingInput, cancel: SessionStore.CancelState? = nil, resuming: Bool = false, failed: Bool = false, starting: String? = nil) -> String {
             pendingLabel(p, cancel: cancel, resuming: resuming, resumeFailed: failed, starting: starting)
         }
-        #expect(label(pending()) == "插入这一轮")
-        #expect(label(pending(mode: .queue)) == "这一轮结束后发")
-        #expect(label(pending(held: true)) == "插入这一轮")
-        #expect(label(pending(mode: .queue, paused: true)) == "已暂停")
+        #expect(label(pending()) == L10n.queueInsert())
+        #expect(label(pending(mode: .queue)) == L10n.queueAfterTurn())
+        #expect(label(pending(held: true)) == L10n.queueInsert())
+        #expect(label(pending(mode: .queue, paused: true)) == L10n.queuePaused())
         #expect(label(pending(), starting: "Codex") == "等 Codex 就绪后发出")
-        #expect(label(pending(mode: .queue), starting: "Codex") == "这一轮结束后发")
-        #expect(label(pending(paused: true), resuming: true) == "正在发送…")
-        #expect(label(pending(paused: true), failed: true) == "发送没成功，仍已暂停")
-        #expect(label(pending(paused: true), cancel: .canceling, resuming: true) == "正在取消…")
-        #expect(label(pending(), cancel: .failed("x")) == "取消没成功，仍在排队")
+        #expect(label(pending(mode: .queue), starting: "Codex") == L10n.queueAfterTurn())
+        #expect(label(pending(paused: true), resuming: true) == L10n.queueResuming())
+        #expect(label(pending(paused: true), failed: true) == L10n.queueResumeFailed())
+        #expect(label(pending(paused: true), cancel: .canceling, resuming: true) == L10n.queueCanceling())
+        #expect(label(pending(), cancel: .failed("x")) == L10n.queueCancelFailed())
     }
 
     @Test func aWaitingMessageNamesAnotherSenderOrItsPlace() {
@@ -271,10 +271,10 @@ extension Ref<LiveAnnouncer> {
     }
 
     @Test func theBoxSaysOnlyWhatTheMessageWillDo() {
-        #expect(composerPlaceholder(questionPending: false, planOpen: false) == "消息", "tools starting and stopping never change it")
-        #expect(composerPlaceholder(questionPending: true, planOpen: false) == "排队发送，回答后继续")
-        #expect(composerPlaceholder(questionPending: false, planOpen: true) == "补充你对计划的要求…")
-        #expect(composerPlaceholder(questionPending: true, planOpen: true) == "排队发送，回答后继续")
+        #expect(composerPlaceholder(questionPending: false, planOpen: false) == L10n.composerMessage(), "tools starting and stopping never change it")
+        #expect(composerPlaceholder(questionPending: true, planOpen: false) == L10n.composerQueueAfterAnswer())
+        #expect(composerPlaceholder(questionPending: false, planOpen: true) == L10n.composerPlanPlaceholder())
+        #expect(composerPlaceholder(questionPending: true, planOpen: true) == L10n.composerQueueAfterAnswer())
     }
 
     @Test func sendingNeedsTextAConnectionAndAComputerThatSpeaksTheSameProtocol() {
@@ -315,12 +315,12 @@ extension Ref<LiveAnnouncer> {
         #expect(sessionSubtitle(status: .running, mode: ask) == SessionSubtitle(status: "运行中", mode: "询问", danger: false))
         #expect(sessionSubtitle(status: .approval, mode: full) == SessionSubtitle(status: "等待审批", mode: "完全放行", danger: true))
         #expect(sessionSubtitle(status: .approval, mode: full).text == "等待审批 · 完全放行")
-        #expect(sessionSubtitle(status: .exited, mode: full).text == "已结束")
-        #expect(sessionSubtitle(status: .starting, mode: nil).text == "启动中")
+        #expect(sessionSubtitle(status: .exited, mode: full).text == L10n.listStateEnded())
+        #expect(sessionSubtitle(status: .starting, mode: nil).text == L10n.listStateStarting())
         #expect(sessionSubtitle(status: .starting, mode: ask).text == "启动中 · 询问")
         // A mode that could not be read is not written at all.
         #expect(sessionSubtitle(status: .idle, mode: nil) == SessionSubtitle(status: "空闲", mode: "", danger: false))
-        #expect(sessionSubtitle(status: .running, mode: nil).text == "运行中")
+        #expect(sessionSubtitle(status: .running, mode: nil).text == L10n.listStateRunning())
         #expect(sessionSubtitle(status: .idle, mode: ModeLabel(text: "acceptEdits", mode: nil)).text == "空闲 · acceptEdits")
         #expect(sessionSubtitle(status: .unlinked, mode: ask).text == "未连接 · 询问")
     }
@@ -345,8 +345,8 @@ extension Ref<LiveAnnouncer> {
         #expect(endedText(detail: "the login shell did not start the CLI", unlinked: false, machineOnline: true, machine: "MacBook")
             == "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。恢复会在 MacBook 上用同样的设置重新打开它，聊天记录都在。")
         // Every other detail keeps the words the card had before.
-        #expect(exitReason("stopped") == "会话是被手动结束的。")
-        #expect(exitReason("tmux session gone") == "tmux 会话已经不在了。")
+        #expect(exitReason("stopped") == L10n.sessionManuallyClosed())
+        #expect(exitReason("tmux session gone") == L10n.sessionTmuxMissing())
     }
 
     @Test func voiceOverIsToldOfRepliesAndOfWhatWaitsButNotOfEverything() {
@@ -389,11 +389,11 @@ extension Ref<LiveAnnouncer> {
         // It may have happened: the row never promises a new fork, only the same request again.
         let unsure = row(error: "不确定电脑有没有执行", frozen: true)
         #expect(unsure.tap == .fork && unsure.enabled && unsure.noteError)
-        #expect(unsure.note == "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次")
+        #expect(unsure.note == L10n.sessionForkUnknown())
         // Expired: it cannot be asked again, so the tap gives it up and nothing is sent.
         let gone = row(error: "x", frozen: true, expired: true)
-        #expect(gone.text == "放弃上次的分叉" && gone.tap == .abandon && gone.enabled)
-        #expect(gone.note == "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表")
+        #expect(gone.text == L10n.sessionAbandonFork() && gone.tap == .abandon && gone.enabled)
+        #expect(gone.note == L10n.sessionForkExpired())
     }
 
     @Test func anApprovalIsHeadedByWhatItAsksFor() {
@@ -401,7 +401,7 @@ extension Ref<LiveAnnouncer> {
             $0.command = "curl https://example.com\u{202E}"
             $0.toolName = "Bash"
         }
-        #expect(approvalHead(command) == "请求执行")
+        #expect(approvalHead(command) == L10n.listStateIosRequestCommand())
         #expect(approvalBody(command) == "curl https://example.com\\u202e", "what a command hides is spelled out")
         let tool = PBApprovalRequested.with {
             $0.toolName = "WebFetch"

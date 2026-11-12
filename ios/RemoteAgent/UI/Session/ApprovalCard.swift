@@ -42,7 +42,7 @@ struct ApprovalDecision: View {
         let always = capabilities(state.machines[session.machineId])?.approvalAlways == true
         VStack(alignment: .leading, spacing: 0) {
             if denying {
-                TextField("说说该怎么做，可以不填", text: reason, axis: .vertical)
+                TextField(L10n.approvalReasonPlaceholder(), text: reason, axis: .vertical)
                     .lineLimit(1...4)
                     .font(.body)
                     .foregroundStyle(DS.ink)
@@ -50,7 +50,7 @@ struct ApprovalDecision: View {
                     .padding(.horizontal, 14).padding(.vertical, 13)
                     .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.Radius.command, style: .continuous))
                     .padding(.bottom, 12)
-                    .accessibilityLabel("不允许的理由")
+                    .accessibilityLabel(L10n.approvalDenialReason())
                     .onAppear { reasonFocus = true }
             }
             ViewThatFits(in: .horizontal) {
@@ -59,7 +59,7 @@ struct ApprovalDecision: View {
             }
             // Nothing can be decided now: the line that would allow is not offered, as the buttons are greyed.
             if always && !denying && !cut && !truncated && !locked {
-                LinkButton("允许，这类请求以后不再问") { decide(true, always: true) }
+                LinkButton(L10n.approvalAlwaysAllow()) { decide(true, always: true) }
                     .font(.subheadline)
                     .frame(maxWidth: .infinity)
                     .padding(.bottom, -8)
@@ -74,15 +74,15 @@ struct ApprovalDecision: View {
 
     @ViewBuilder private func row(locked: Bool, blocked: Bool) -> some View {
         if denying {
-            Button("取消") { denying = false }.buttonStyle(.darkCard())
-            Button("不允许") { decide(false, message: context.sessionStore.reason(approval.approvalID).jvmTrim()) }
+            Button(L10n.commonCancel()) { denying = false }.buttonStyle(.darkCard())
+            Button(L10n.approvalDeny()) { decide(false, message: context.sessionStore.reason(approval.approvalID).jvmTrim()) }
                 .buttonStyle(.darkCard(primary: true)).disabled(locked)
         } else {
-            Button("不允许") { denying = true }.buttonStyle(.darkCard()).disabled(locked)
+            Button(L10n.approvalDeny()) { denying = true }.buttonStyle(.darkCard()).disabled(locked)
             if cut {
-                Button("看完整命令", action: onFull).buttonStyle(.darkCard(primary: true))
+                Button(L10n.approvalFullCommand(), action: onFull).buttonStyle(.darkCard(primary: true))
             } else {
-                Button("允许") { decide(true) }.buttonStyle(.darkCard(primary: true)).disabled(locked || blocked)
+                Button(L10n.approvalAllow()) { decide(true) }.buttonStyle(.darkCard(primary: true)).disabled(locked || blocked)
             }
         }
     }
@@ -122,18 +122,18 @@ struct ApprovalSubmitted: View {
         let allow = (r.running ? chosen : nil) ?? r.allow
         let failed = !r.running && (r.frozen || !r.error.isEmpty)
         let why: String = r.expired
-            ? "不确定「\(allow ? "允许" : "拒绝")」有没有送到，它已过期，不会再重发。审批超时后会自动拒绝"
-            : "没送到电脑：\(r.error.isEmpty ? "结果未知" : r.error)"
+            ? L10n.approvalIosExpired(decision: allow ? L10n.approvalAllow() : L10n.approvalIosDecisionDeny())
+            : L10n.approvalDeliveryFailed(reason: r.error.isEmpty ? L10n.approvalIosUnknownResult() : r.error)
         DarkCard(floating: floating) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 StatusMark(.waiting)
                 Text(approvalHead(approval)).fontWeight(.semibold).foregroundStyle(DS.orange).lineLimit(1).layoutPriority(1)
-                Text(failed ? why : allow ? "已允许" : "已拒绝")
+                Text(failed ? why : allow ? L10n.approvalAllowed() : L10n.approvalDenied())
                     .foregroundStyle(failed ? DS.red : DS.ink2)
                     .frame(maxWidth: .infinity, alignment: .trailing)
                     .multilineTextAlignment(.trailing)
                 if failed && !r.expired {
-                    LinkButton("重试") {
+                    LinkButton(L10n.commonRetry()) {
                         context.sessionStore.retryDecision(
                             context.remote, machineId: session.machineId, sid: session.id, approvalId: approval.approvalID)
                     }
@@ -156,7 +156,7 @@ struct ApprovalContent: View {
             if isSkeleton(approval) {
                 Text(skeletonMessage).font(.subheadline).foregroundStyle(DS.ink2)
             } else {
-                CommandBlock(approvalBody(approval)).accessibilityLabel("命令：" + approvalBody(approval))
+                CommandBlock(approvalBody(approval)).accessibilityLabel(L10n.listStateIosCommandLabel(command: approvalBody(approval)))
                 if approvalTruncated(approval) {
                     Text(approvalTruncatedMessage).font(.footnote).foregroundStyle(DS.red).padding(.top, 8)
                 }

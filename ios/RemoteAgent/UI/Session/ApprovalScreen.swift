@@ -56,12 +56,12 @@ struct ApprovalScreen: View {
                     } else if let outcome = d.resolved[approval] {
                         handled(outcome, by: d.resolvedBy[approval], machine: s.map { machineLabel(state, id: $0.machineId) } ?? "")
                     } else {
-                        PageNote(s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…")
+                        PageNote(s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
                     }
                 }
             }
             .navBar(
-                "审批详情", subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") },
+                L10n.approvalDetails(), subtitle: s.map { titleOf($0) + (a.flatMap { ApprovalDeadline($0, now: now) }.map { " · \($0.text)" } ?? "") },
                 // Orange in its last minute, as on the dock and the home page's card.
                 subtitleColor: a.flatMap { ApprovalDeadline($0, now: now) }?.last == true ? DS.orangeInk : nil)
         }
@@ -74,7 +74,7 @@ struct ApprovalScreen: View {
         let how = [decisionText(outcome.decision), who ?? ""].filter { !$0.isEmpty }.joined(separator: " · ")
         let kept = context.sessionStore.reason(approval)
         VStack(spacing: 0) {
-            Text("这条审批已经处理了。").font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
+            Text(L10n.sessionApprovalResolved()).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
             if !how.isEmpty { Text(how).font(.footnote).ink(DS.ink2).multilineTextAlignment(.center).padding(.top, 4) }
             if !kept.isEmpty {
                 // What was being typed is the user's: kept to be copied, not sent anywhere.

@@ -89,8 +89,8 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
         sessionNeedsModelList: Bool,
         switchesModelInSession: Bool,
         forks: Bool,
-        planKeepLabel: String = "继续规划…",
-        planApproveLabel: String = "批准执行",
+        planKeepLabel: String = L10n.dockIosKeepPlanning(),
+        planApproveLabel: String = L10n.approvalApproveExecute(),
         planName: @escaping @Sendable (String) -> String,
         modelLabel: @escaping @Sendable (String) -> String,
         defaults: @escaping @Sendable (PBDaemonSettings?) -> PBAgentDefaults,
@@ -204,17 +204,17 @@ private var CLAUDE_ENTRY: AgentEntry { AgentEntry(
     quotaWindow: { fixedWindowLabel($0) },
     toolLabelFromItemType: true,
     planClearContext: false,
-    planNote: "批准后使用询问模式",
+    planNote: L10n.dockClaudePlanNote(),
     standardContextOption: true,
     autoMayBeUnavailable: true,
-    trustFolderHint: "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
+    trustFolderHint: L10n.dockTrustFolder(),
     usageHint: " 可在本机 Claude Code 中查看 /usage。",
     reconcilesUnclaimedInput: true,
     sessionNeedsModelList: true,
     switchesModelInSession: true,
     forks: true,
-    planKeepLabel: "修改计划…",
-    planApproveLabel: "批准",
+    planKeepLabel: L10n.modesPlanEdit(),
+    planApproveLabel: L10n.approvalApprove(),
     planName: { normalizePlanName($0) },
     modelLabel: { $0 },
     defaults: { settings in
@@ -241,7 +241,7 @@ private var ANTIGRAVITY_ENTRY: AgentEntry { AgentEntry(
     },
     toolLabelFromItemType: false,
     planClearContext: false,
-    planNote: "批准后回到默认模式（询问）",
+    planNote: L10n.dockAgyPlanNote(),
     standardContextOption: false,
     autoMayBeUnavailable: true,
     trustFolderHint: nil,
@@ -250,8 +250,8 @@ private var ANTIGRAVITY_ENTRY: AgentEntry { AgentEntry(
     sessionNeedsModelList: true,
     switchesModelInSession: false,
     forks: false,
-    planKeepLabel: "修改计划…",
-    planApproveLabel: "批准",
+    planKeepLabel: L10n.modesPlanEdit(),
+    planApproveLabel: L10n.approvalApprove(),
     planName: { $0 },
     modelLabel: { $0 },
     defaults: { settings in
@@ -293,7 +293,7 @@ private func unknownEntry(agent: PBAgent) -> AgentEntry {
     )
 }
 
-public let AGENTS: [AgentEntry] = [CODEX_ENTRY, CLAUDE_ENTRY, ANTIGRAVITY_ENTRY]
+public var AGENTS: [AgentEntry] { [CODEX_ENTRY, CLAUDE_ENTRY, ANTIGRAVITY_ENTRY] }
 
 public let defaultAgent: PBAgent = CODEX_ENTRY.agent
 public let DEFAULT_AGENT: PBAgent = defaultAgent

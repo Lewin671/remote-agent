@@ -36,6 +36,7 @@ struct ChatRow: Identifiable, Equatable, Sendable {
 /// What the rows depend on besides the events: how the session's computer
 /// and CLI are named, who is who, and what this client sent.
 struct ChatParams: Equatable, Sendable {
+    var locale = MessageLocale.current
     var agent = defaultAgent
     var machine = ""
     var cwd = ""
@@ -102,6 +103,7 @@ actor ChatBuilder {
             locale: MessageLocale.current, agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
             devices: p.devices, texts: p.texts,
             prompt: p.prompt, initialId: initialId)
+        let localeChanged = key?.locale != next.locale
         // Rows name clients and carry the texts sent from here: when those
         // change, the rows kept from before may say something else.
         if next != key {
@@ -117,7 +119,7 @@ actor ChatBuilder {
         let groups = fold.update(events)
         // Nothing new (a live snapshot that changed nothing): the rows are the
         // same array, which the screen compares at no cost.
-        if items != self.items || groups != self.groups {
+        if localeChanged || items != self.items || groups != self.groups {
             self.items = items
             self.groups = groups
             rows = self.rows(items, groups)
@@ -416,9 +418,9 @@ private struct SessionFollow: ViewModifier {
             .task(id: Key(sid: sid, held: session != nil)) {
                 await chat.follow(context.remote, sid)
             }
-            .onChange(of: session?.agent, initial: true) { _, agent in
-                // Which CLI it is decides how its events are read.
-                chat.use(ChatParams(agent: agent ?? defaultAgent, me: context.me))
+            .onChange(of: ChatParams(agent: session?.agent ?? defaultAgent, me: context.me), initial: true) { _, params in
+                // The CLI and display language decide how the cached rows are read.
+                chat.use(params)
             }
             .sessionLookup(sid, into: finder)
             .sessionSamples(sid)

@@ -412,6 +412,216 @@
     }
   },
   {
+    "key": "queue.ios_after_answer",
+    "zh-CN": "回答后继续",
+    "en": "Continue after answering",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_after_approval",
+    "zh-CN": "审批后继续",
+    "en": "Continue after approval",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_after_plan",
+    "zh-CN": "处理计划后继续",
+    "en": "Continue after handling the plan",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_agent_wait",
+    "zh-CN": "等 {agent} 就绪",
+    "en": "Waiting for {agent} to be ready",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 参数：agent 为调用处的显示值；用户、CLI 内容和错误详情保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_approval_wait",
+    "zh-CN": "等审批处理完",
+    "en": "Waiting for approval",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_input_wait",
+    "zh-CN": "等待输入框就绪",
+    "en": "Waiting for the input field to be ready",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_message",
+    "zh-CN": "一条排队的消息",
+    "en": "A queued message",
+    "notes": "ChatRowViews.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_plan_wait",
+    "zh-CN": "等计划处理完",
+    "en": "Waiting for the plan to be handled",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_popup_wait",
+    "zh-CN": "等终端里的弹窗处理完",
+    "en": "Waiting for the terminal popup to be handled",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_question_wait",
+    "zh-CN": "等提问回答完",
+    "en": "Waiting for the question to be answered",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_scheduled_label",
+    "zh-CN": "定时任务{time} · {label}",
+    "en": "Scheduled task{time} · {label}",
+    "notes": "排队消息的定时来源、可选时间与状态；time 为空或带原来的分隔符，label 是当前队列状态。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 参数：time 为调用处的显示值，用户/CLI 原文不翻译；label 为调用处的显示值，用户/CLI 原文不翻译。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "label": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_sending_soon",
+    "zh-CN": "即将发送",
+    "en": "Sending soon",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_terminal_draft_short",
+    "zh-CN": "终端里有草稿",
+    "en": "Draft in terminal",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.ios_turn_wait",
+    "zh-CN": "等待本轮结束",
+    "en": "Waiting for this turn to end",
+    "notes": "ChatState.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "queue.more",
     "zh-CN": {
       "plural": "count",

@@ -36,11 +36,11 @@ struct PlanScreen: View {
                         .topLine()
                     }
                 } else {
-                    PageNote(s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…")
+                    PageNote(s == nil ? lookupNote(finder.lookup) ?? L10n.projectsReadingDirectory() : L10n.projectsReadingDirectory())
                 }
             }
         }
-        .navBar("计划", subtitle: s.map { titleOf($0) })
+        .navBar(L10n.modesPlan(), subtitle: s.map { titleOf($0) })
         .followSession(session, chat: chat, finder: finder)
     }
 }

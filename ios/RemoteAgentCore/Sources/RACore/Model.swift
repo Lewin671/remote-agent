@@ -151,12 +151,12 @@ public func sentMessage(_ s: SessionView, events: some Sequence<PBEvent>) -> Boo
 /// do not come here; they read as not up yet.
 public func forkBlocked(status: Status, running: Bool, sent: Bool) -> String? {
     switch status {
-    case .running, .approval, .question: return "这一轮结束后可用"
-    case .plan, .popup: return "处理完等待事项后可用"
-    case .starting, .loading, .offline: return "启动完成后可用"
-    case .unlinked: return "连上服务器后可用"
-    case .idle: return running ? "这一轮结束后可用" : !sent ? "发过消息后可用" : nil
-    case .exited: return !sent ? "发过消息后可用" : nil
+    case .running, .approval, .question: return L10n.sessionForkAfterTurn()
+    case .plan, .popup: return L10n.sessionForkAfterPending()
+    case .starting, .loading, .offline: return L10n.sessionForkAfterStart()
+    case .unlinked: return L10n.sessionIosForkConnect()
+    case .idle: return running ? L10n.sessionForkAfterTurn() : !sent ? L10n.sessionForkAfterMessage() : nil
+    case .exited: return !sent ? L10n.sessionForkAfterMessage() : nil
     }
 }
 
@@ -234,10 +234,10 @@ public enum Mode: CaseIterable, Sendable {
 
     public var text: String {
         switch self {
-        case .ask: return "询问"
-        case .auto: return "自动"
-        case .plan: return "计划"
-        case .full: return "完全放行"
+        case .ask: return L10n.modesAsk()
+        case .auto: return L10n.modesAuto()
+        case .plan: return L10n.modesPlan()
+        case .full: return L10n.modesFullAccess()
         }
     }
 
@@ -476,7 +476,7 @@ public func shortId(_ id: String) -> String { id.jvmTakeLast(4) }
 /// the event does not say or this client did it: what was done here is
 /// not labelled. Only a signed client is named, and only by the account's
 /// device list; one the list no longer has was removed, and anything
-/// unsure is "另一客户端", never a guess. Typing on the computer is
+/// unsure is L10n.sessionOriginOther(), never a guess. Typing on the computer is
 /// "<machine> 终端", as is a message the client tells was typed there
 /// (`typedHere`).
 public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine: String) -> String? {
@@ -485,9 +485,9 @@ public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine:
     case .client:
         if o.deviceID == me { return nil }
         // Before the device list is read nothing is known of who it was.
-        if o.deviceID.isEmpty || state.devices.isEmpty { return "另一客户端" }
+        if o.deviceID.isEmpty || state.devices.isEmpty { return L10n.sessionOriginOther() }
         if let d = state.devices[o.deviceID] { return clientName(d, id: o.deviceID, among: state.devices) }
-        return "已移除的设备"
+        return L10n.sessionOriginRemoved()
     case .local: return terminalLabel(machine)
     default: return nil
     }
@@ -495,7 +495,7 @@ public func originLabel(_ o: PBOrigin?, state: RemoteState, me: String, machine:
 
 /// Who typed a message in the computer's terminal: 「MacBook 终端」.
 public func terminalLabel(_ machine: String) -> String {
-    machine.isEmpty ? "终端" : "\(machine) 终端"
+    machine.isEmpty ? L10n.sessionTerminal() : L10n.sessionOriginTerminal(name: machine)
 }
 
 extension PBEvent {
@@ -533,11 +533,11 @@ public let standardWindow: Int64 = 200_000
 
 /// Capability restrictions reported for this session take precedence over model restrictions.
 public func sessionModeUnavailableReason(_ mode: Mode, session: SessionView, models: [PBModelInfo]?) -> String? {
-    if session.info?.modeLocked == true { return "本会话以完全放行启动，不能切换审批模式" }
-    if mode == .full && session.info?.fullAccessUnavailable == true { return "本会话启动时未启用；需要时新建会话选择" }
+    if session.info?.modeLocked == true { return L10n.modesLocked() }
+    if mode == .full && session.info?.fullAccessUnavailable == true { return L10n.modesFullUnavailable() }
     if mode == .auto {
-        if allAutoUnavailable(models) { return "当前账户不支持自动模式" }
-        if autoUnavailable(models, model: session.info?.model ?? "") { return "当前模型不支持" }
+        if allAutoUnavailable(models) { return L10n.modesAccountUnsupported() }
+        if autoUnavailable(models, model: session.info?.model ?? "") { return L10n.modesModelUnsupported() }
     }
     return nil
 }
