@@ -1674,12 +1674,18 @@ fun currentActions(
             details.remove(id)
         }
         for ((id, status) in observed.inputs) if (!newerInput(id)) inputs[id] = status
-        for ((id, input) in observed.inputDetails) if (!newerInput(id))
+        for ((id, input) in observed.inputDetails) if (!newerInput(id)) {
             details[id] = retainInputDetails(input, details[id])
+            if (input.stage != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED)
+                accepted[id]?.let { accepted[id] = it.copy(stage = input.stage) }
+        }
         for ((id, input) in observed.accepted) {
             if (newerInput(id)) continue
             val prior = accepted[id]
-            accepted[id] = if (prior != null && observed.inputs[id] == InputStatus.INPUT_STATUS_HELD_BY_CLI) retainAccepted(prior, input) else input
+            // Live text is a bounded preview. History owns the accepted payload and sender.
+            accepted[id] = prior?.copy(
+                stage = input.stage.takeIf { it != io.github.lewin671.remoteagent.proto.InputStage.INPUT_STAGE_UNSPECIFIED } ?: prior.stage,
+            ) ?: input
         }
     }
     return Derived(

@@ -63,6 +63,7 @@ tasks.test {
     // The test vectors are shared with Go and TypeScript.
     inputs.file(rootProject.file("../testdata/projection/vectors.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("projectionVectors", rootProject.file("../testdata/projection/vectors.json").absolutePath)
+    inputs.file(rootProject.file("../testdata/projection/live-inputs.json")).withPathSensitivity(PathSensitivity.NONE)
     inputs.file(rootProject.file("../testdata/schedules/clients.json")).withPathSensitivity(PathSensitivity.NONE)
     systemProperty("scheduleClients", rootProject.file("../testdata/schedules/clients.json").absolutePath)
     systemProperty("vectors", rootProject.file("../internal/e2e/testdata/vectors.json").absolutePath)

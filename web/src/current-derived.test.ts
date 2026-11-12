@@ -47,3 +47,24 @@ it("reuses historical and live projections, invalidating only their actual input
   r.sessions.get("s-run")!.checkpoint = create(LiveSnapshotSchema);
   expect(current()).not.toBe(observed);
 });
+
+// The same hand-reviewed history/live oracle is read by all three clients.
+import liveInputs from "../../testdata/projection/live-inputs.json";
+import { fromJson, type JsonValue } from "@bufbuild/protobuf";
+for (const v of liveInputs.vectors) it(`shared live inputs: ${v.name}`, () => {
+  const r = DemoRemote.create(new URLSearchParams());
+  const history = v.history.map(e => fromJson(EventSchema, e as JsonValue));
+  (r as any).liveSnapshots.set("s-run", fromJson(LiveSnapshotSchema, v.live as JsonValue));
+  const d = derive(history);
+  const out = Remote.prototype.currentDerived.call(r, "s-run", d);
+  expect(out.plan).toBeUndefined();
+  expect([...out.inputs].map(([id, status]) => {
+    const a = out.accepted.get(id);
+    return { id, status, stage: out.stages.get(id) ?? 0,
+      mode: status === InputStatus.UNCONFIRMED ? 0 : a?.mode ?? 0, paused: out.paused.has(id),
+      text: a?.text ?? "", images: a?.imageIds ?? [],
+      files: (a?.files ?? []).map(f => ({ fileId: f.fileId, name: f.name, sizeBytes: String(f.sizeBytes) })),
+      origin: { kind: a?.origin?.kind ?? 0, deviceId: a?.origin?.deviceId ?? "" } };
+  })).toEqual(v.expected);
+  expect(d.accepted.get("queued")?.text).toBe(history[0]?.kind.case === "inputState" ? history[0].kind.value.text : undefined);
+});

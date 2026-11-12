@@ -69,4 +69,29 @@ class ProjectionVectorsTest {
             }
         }
     }
+    @Test fun sharedLiveInputVectors() {
+        val file = File(File(System.getProperty("projectionVectors")).parentFile, "live-inputs.json")
+        val corpus = Json.parseToJsonElement(file.readText()).jsonObject
+        for (item in corpus.getValue("vectors").jsonArray) {
+            val v = item.jsonObject
+            val events = v.getValue("history").jsonArray.map { protoJson(Event.getDefaultInstance(), it.jsonObject) as Event }
+            val live = protoJson(LiveSnapshot.getDefaultInstance(), v.getValue("live").jsonObject) as LiveSnapshot
+            val d = currentActions(derive(events), live, events)
+            assertEquals(null, d.plan)
+            val actual = buildJsonArray { for ((id, status) in d.inputs) add(buildJsonObject {
+                val a = d.accepted[id]
+                val detail = d.inputDetails[id]
+                put("id", id); put("status", status.number)
+                put("stage", if (detail == null) 0 else a?.stage?.number ?: detail.stageValue)
+                put("mode", detail?.modeValue ?: 0); put("paused", detail?.paused ?: false)
+                put("text", a?.text ?: ""); put("images", JsonArray((a?.imageIds ?: emptyList()).map(::JsonPrimitive)))
+                put("files", buildJsonArray { for (f in a?.files ?: emptyList()) add(buildJsonObject {
+                    put("fileId", f.fileId); put("name", f.name); put("sizeBytes", f.sizeBytes.toString())
+                }) })
+                put("origin", buildJsonObject { put("kind", a?.origin?.kindValue ?: 0); put("deviceId", a?.origin?.deviceId ?: "") })
+            }) }
+            assertEquals(v.getValue("name").jsonPrimitive.content, v.getValue("expected"), actual)
+        }
+    }
+
 }

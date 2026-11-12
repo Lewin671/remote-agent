@@ -78,4 +78,33 @@ import Testing
             }
         }
     }
+    @Test func sharedLiveInputVectors() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let data = try Data(contentsOf: root.appendingPathComponent("testdata/projection/live-inputs.json"))
+        let corpus = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        for v in try #require(corpus["vectors"] as? [[String: Any]]) {
+            let events = try (v["history"] as! [[String: Any]]).map {
+                try PBEvent(jsonUTF8Data: JSONSerialization.data(withJSONObject: $0))
+            }
+            let live = try PBLiveSnapshot(jsonUTF8Data: JSONSerialization.data(withJSONObject: v["live"]!))
+            let history = derive(events)
+            let d = currentActions(history, live: live, events: events)
+             #expect(d.plan == nil)
+            let actual = d.inputs.entries.map { id, status -> [String: Any] in
+                let a = d.accepted[id]
+                let detail = d.inputDetails[id]
+                // Swift keeps file metadata in inputDetails rather than Accepted.
+                let files = detail?.files ?? history.inputDetails[id]?.files ?? []
+                return ["id": id, "status": status.rawValue,
+                        "stage": detail == nil ? 0 : (a?.stage ?? detail!.stage).rawValue,
+                        "mode": detail?.mode.rawValue ?? 0, "paused": detail?.paused ?? false,
+                        "text": a?.text ?? "", "images": a?.imageIds ?? [],
+                        "files": files.map { ["fileId": $0.fileID, "name": $0.name, "sizeBytes": String($0.sizeBytes)] },
+                        "origin": ["kind": a?.origin?.kind.rawValue ?? 0, "deviceId": a?.origin?.deviceID ?? ""]]
+            }
+            #expect(actual as NSArray == v["expected"] as! NSArray, "\(v["name"]!)")
+        }
+    }
+
 }

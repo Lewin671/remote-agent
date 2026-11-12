@@ -2947,14 +2947,20 @@ export class Remote {
     for (const [id, accepted] of observed.accepted) {
       if (newerInput(id)) continue;
       const prior = out.accepted.get(id);
-      // Held snapshots fill gaps in history, but their text may be truncated.
+      // Snapshots fill gaps in history, but their text may be truncated.
       // Keep known accepted content/origin; only its live delivery mode changes.
       out.accepted.set(id,
-        prior && observed.inputs.get(id) === InputStatus.HELD_BY_CLI
+        prior
           ? { ...prior, mode: accepted.mode || prior.mode }
           : accepted);
     }
     for (const event of live.actions) {
+      if (event.kind.case === "inputState") {
+        const state = event.kind.value;
+        const accepted = out.accepted.get(state.requestId);
+        if (accepted && state.mode && !newerInput(state.requestId))
+          out.accepted.set(state.requestId, { ...accepted, mode: state.mode });
+      }
       if (event.kind.case === "approvalRequested")
         out.approvals.set(event.kind.value.approvalId, event.kind.value);
       if (event.kind.case === "questionAsked" && !event.kind.value.async)

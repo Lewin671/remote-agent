@@ -49,3 +49,13 @@ keep every one visible with the same warning; interactive skeletons offer no
 remote answer. These fixtures include rewritten ID markers for the two kinds
 without a payload text field. This is a rendering/marker contract, not a
 transport or real CLI test.
+
+`live-inputs.json` supplies history + an authenticated live snapshot + manually
+specified merged inputs to Web `currentDerived`, Kotlin `currentActions`, and
+Swift `currentActions`. It covers bounded queued/held previews, retained text,
+images, files and sender, explicit false pause, sparse stage/mode, missing
+history/live entries, and history newer than the snapshot watermark. The closed
+plan case has no pending plan reference. Swift stores files in input details;
+for absent live entries the runner checks the retained historical file metadata.
+These are merge tests, not transport tests. Run the Web `current-derived.test.ts`,
+Kotlin `ProjectionVectorsTest`, and Swift `ProjectionVectorsTests` runners.
