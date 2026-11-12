@@ -841,6 +841,60 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             resources.getString(R.string.projects_view_sessions, name)
         }
+        "quota.exhausted" -> {
+            val name = message.args.getValue("name") as String
+            val window = message.args.getValue("window") as String
+            resources.getString(R.string.quota_exhausted, name, window)
+        }
+        "quota.failure" -> {
+            val detail = message.args.getValue("detail") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.quota_failure, detail, name)
+        }
+        "quota.failure_no_reason" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.quota_failure_no_reason, name)
+        }
+        "quota.old_hours" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_old_hours, count, count)
+        }
+        "quota.old_minutes" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_old_minutes, count, count)
+        }
+        "quota.received" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.quota_received, time)
+        }
+        "quota.received_date" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.quota_received_date, day, month, time)
+        }
+        "quota.received_success" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.quota_received_success, time)
+        }
+        "quota.received_success_date" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.quota_received_success_date, day, month, time)
+        }
+        "quota.unknown_time" -> {
+            resources.getString(R.string.quota_unknown_time)
+        }
+        "quota.waiting" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.quota_waiting, name)
+        }
+        "quota.warning" -> {
+            val name = message.args.getValue("name") as String
+            val window = message.args.getValue("window") as String
+            resources.getString(R.string.quota_warning, name, window)
+        }
         "time.hours_ago" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.time_hours_ago, count, count)

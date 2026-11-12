@@ -307,6 +307,24 @@
     <string name="projects_unpin" formatted="false">"Unpin"</string>
     <string name="projects_use_directory">"Use folder %1$s"</string>
     <string name="projects_view_sessions">"View sessions in %1$s"</string>
+    <string name="quota_exhausted">"%1$s · %2$s quota is exhausted. CLI and model will not switch automatically."</string>
+    <string name="quota_failure">"Could not read %2$s quota: %1$s"</string>
+    <string name="quota_failure_no_reason">"Could not read %1$s quota"</string>
+    <plurals name="quota_old_hours">
+        <item quantity="one">"Data from %1$d hour ago; may have changed"</item>
+        <item quantity="other">"Data from %1$d hours ago; may have changed"</item>
+    </plurals>
+    <plurals name="quota_old_minutes">
+        <item quantity="one">"Data from %1$d minute ago; may have changed"</item>
+        <item quantity="other">"Data from %1$d minutes ago; may have changed"</item>
+    </plurals>
+    <string name="quota_received">"Last received %1$s"</string>
+    <string name="quota_received_date">"Last received %2$d/%1$d %3$s"</string>
+    <string name="quota_received_success">"Last successfully received %1$s"</string>
+    <string name="quota_received_success_date">"Last successfully received %2$d/%1$d %3$s"</string>
+    <string name="quota_unknown_time" formatted="false">"Observation time unknown; showing the last record"</string>
+    <string name="quota_waiting">"No quota received from %1$s. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page."</string>
+    <string name="quota_warning">"%1$s · %2$s quota is nearly exhausted. CLI and model will not switch automatically."</string>
     <plurals name="time_hours_ago">
         <item quantity="one">"%1$d hour ago"</item>
         <item quantity="other">"%1$d hours ago"</item>

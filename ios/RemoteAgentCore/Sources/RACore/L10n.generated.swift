@@ -785,6 +785,54 @@ public enum L10n {
         let key = "projects_view_sessions"
         return format(key, locale: locale, args: [name])
     }
+    public static func quotaExhausted(name: String, window: String, locale: String = "zh-CN") -> String {
+        let key = "quota_exhausted"
+        return format(key, locale: locale, args: [name, window])
+    }
+    public static func quotaFailure(detail: String, name: String, locale: String = "zh-CN") -> String {
+        let key = "quota_failure"
+        return format(key, locale: locale, args: [detail, name])
+    }
+    public static func quotaFailureNoReason(name: String, locale: String = "zh-CN") -> String {
+        let key = "quota_failure_no_reason"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func quotaOldHours(count: Int, locale: String = "zh-CN") -> String {
+        let key = "quota_old_hours"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func quotaOldMinutes(count: Int, locale: String = "zh-CN") -> String {
+        let key = "quota_old_minutes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func quotaReceived(time: String, locale: String = "zh-CN") -> String {
+        let key = "quota_received"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func quotaReceivedDate(day: Int, month: Int, time: String, locale: String = "zh-CN") -> String {
+        let key = "quota_received_date"
+        return format(key, locale: locale, args: [Int64(day), Int64(month), time])
+    }
+    public static func quotaReceivedSuccess(time: String, locale: String = "zh-CN") -> String {
+        let key = "quota_received_success"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func quotaReceivedSuccessDate(day: Int, month: Int, time: String, locale: String = "zh-CN") -> String {
+        let key = "quota_received_success_date"
+        return format(key, locale: locale, args: [Int64(day), Int64(month), time])
+    }
+    public static func quotaUnknownTime(locale: String = "zh-CN") -> String {
+        let key = "quota_unknown_time"
+        return format(key, locale: locale, args: [])
+    }
+    public static func quotaWaiting(name: String, locale: String = "zh-CN") -> String {
+        let key = "quota_waiting"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func quotaWarning(name: String, window: String, locale: String = "zh-CN") -> String {
+        let key = "quota_warning"
+        return format(key, locale: locale, args: [name, window])
+    }
     public static func timeHoursAgo(count: Int, locale: String = "zh-CN") -> String {
         let key = "time_hours_ago"
         return format(key, locale: locale, args: [Int64(count)])

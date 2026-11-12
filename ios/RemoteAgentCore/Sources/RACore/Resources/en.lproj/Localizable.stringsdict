@@ -306,6 +306,38 @@
 			<string>%1$lld pending</string>
 		</dict>
 	</dict>
+	<key>quota_old_hours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Data from %1$lld hour ago; may have changed</string>
+			<key>other</key>
+			<string>Data from %1$lld hours ago; may have changed</string>
+		</dict>
+	</dict>
+	<key>quota_old_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Data from %1$lld minute ago; may have changed</string>
+			<key>other</key>
+			<string>Data from %1$lld minutes ago; may have changed</string>
+		</dict>
+	</dict>
 	<key>time_hours_ago</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>

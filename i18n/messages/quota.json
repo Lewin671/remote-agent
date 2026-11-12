@@ -1,0 +1,328 @@
+[
+  {
+    "key": "quota.old_minutes",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟前的数据，可能已变化"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Data from {count} minute ago; may have changed",
+        "other": "Data from {count} minutes ago; may have changed"
+      }
+    },
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 14
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.old_hours",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 小时前的数据，可能已变化"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Data from {count} hour ago; may have changed",
+        "other": "Data from {count} hours ago; may have changed"
+      }
+    },
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 14
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.unknown_time",
+    "zh-CN": "数据时间未知，显示上次记录",
+    "en": "Observation time unknown; showing the last record",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.received",
+    "zh-CN": "最近收到 {time}",
+    "en": "Last received {time}",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "16:16"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.received_success",
+    "zh-CN": "最近成功收到 {time}",
+    "en": "Last successfully received {time}",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "16:16"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.warning",
+    "zh-CN": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
+    "en": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      },
+      "window": {
+        "type": "string",
+        "example": "7 天"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.exhausted",
+    "zh-CN": "{name} · {window}额度已用尽，不会自动切换 CLI 或模型",
+    "en": "{name} · {window} quota is exhausted. CLI and model will not switch automatically.",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      },
+      "window": {
+        "type": "string",
+        "example": "7 天"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.waiting",
+    "zh-CN": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
+    "en": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.read_failed",
+    "zh-CN": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。",
+    "en": "Could not parse CLI status line data. Check the CLI version and session settings.",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {},
+    "platforms": [
+      "web",
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.managed",
+    "zh-CN": "托管设置覆盖了状态栏，无法读取额度。",
+    "en": "Managed settings override the status line, so quota cannot be read.",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {},
+    "platforms": [
+      "go"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.failure",
+    "zh-CN": "没能读取 {name} 额度：{detail}",
+    "en": "Could not read {name} quota: {detail}",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Status line unavailable"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.failure_no_reason",
+    "zh-CN": "没能读取 {name} 额度",
+    "en": "Could not read {name} quota",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Claude Code"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.received_date",
+    "zh-CN": "最近收到 {month}月{day}日 {time}",
+    "en": "Last received {month}/{day} {time}",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "month": {
+        "type": "integer",
+        "example": 11
+      },
+      "day": {
+        "type": "integer",
+        "example": 12
+      },
+      "time": {
+        "type": "string",
+        "example": "16:16"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.received_success_date",
+    "zh-CN": "最近成功收到 {month}月{day}日 {time}",
+    "en": "Last successfully received {month}/{day} {time}",
+    "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+    "params": {
+      "month": {
+        "type": "integer",
+        "example": 11
+      },
+      "day": {
+        "type": "integer",
+        "example": 12
+      },
+      "time": {
+        "type": "string",
+        "example": "16:16"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

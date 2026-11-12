@@ -164,3 +164,11 @@ func CommonSave(locale string) string {
 func ImageAttachFailed(locale string, count int) string {
 	return render(locale, "image.attach_failed", map[string]any{"count": count})
 }
+
+func QuotaManaged(locale string) string {
+	return render(locale, "quota.managed", map[string]any{})
+}
+
+func QuotaReadFailed(locale string) string {
+	return render(locale, "quota.read_failed", map[string]any{})
+}

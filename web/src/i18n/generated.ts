@@ -230,6 +230,19 @@ export interface MessageArgs {
   "projects.unpin": { [name: string]: never };
   "projects.use_directory": { name: string };
   "projects.view_sessions": { name: string };
+  "quota.exhausted": { name: string; window: string };
+  "quota.failure": { detail: string; name: string };
+  "quota.failure_no_reason": { name: string };
+  "quota.old_hours": { count: number };
+  "quota.old_minutes": { count: number };
+  "quota.read_failed": { [name: string]: never };
+  "quota.received": { time: string };
+  "quota.received_date": { day: number; month: number; time: string };
+  "quota.received_success": { time: string };
+  "quota.received_success_date": { day: number; month: number; time: string };
+  "quota.unknown_time": { [name: string]: never };
+  "quota.waiting": { name: string };
+  "quota.warning": { name: string; window: string };
   "time.hours_ago": { count: number };
   "time.just_now": { [name: string]: never };
   "time.last_week": { [name: string]: never };
@@ -551,6 +564,31 @@ export const messages = {
     "projects.unpin": "Unpin",
     "projects.use_directory": "Use folder {name}",
     "projects.view_sessions": "View sessions in {name}",
+    "quota.exhausted": "{name} · {window} quota is exhausted. CLI and model will not switch automatically.",
+    "quota.failure": "Could not read {name} quota: {detail}",
+    "quota.failure_no_reason": "Could not read {name} quota",
+    "quota.old_hours": {
+      "forms": {
+        "one": "Data from {count} hour ago; may have changed",
+        "other": "Data from {count} hours ago; may have changed"
+      },
+      "plural": "count"
+    },
+    "quota.old_minutes": {
+      "forms": {
+        "one": "Data from {count} minute ago; may have changed",
+        "other": "Data from {count} minutes ago; may have changed"
+      },
+      "plural": "count"
+    },
+    "quota.read_failed": "Could not parse CLI status line data. Check the CLI version and session settings.",
+    "quota.received": "Last received {time}",
+    "quota.received_date": "Last received {month}/{day} {time}",
+    "quota.received_success": "Last successfully received {time}",
+    "quota.received_success_date": "Last successfully received {month}/{day} {time}",
+    "quota.unknown_time": "Observation time unknown; showing the last record",
+    "quota.waiting": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
+    "quota.warning": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
     "time.hours_ago": {
       "forms": {
         "one": "{count} hour ago",
@@ -875,6 +913,29 @@ export const messages = {
     "projects.unpin": "取消常用",
     "projects.use_directory": "用 {name} 这个目录",
     "projects.view_sessions": "看 {name} 的会话",
+    "quota.exhausted": "{name} · {window}额度已用尽，不会自动切换 CLI 或模型",
+    "quota.failure": "没能读取 {name} 额度：{detail}",
+    "quota.failure_no_reason": "没能读取 {name} 额度",
+    "quota.old_hours": {
+      "forms": {
+        "other": "{count} 小时前的数据，可能已变化"
+      },
+      "plural": "count"
+    },
+    "quota.old_minutes": {
+      "forms": {
+        "other": "{count} 分钟前的数据，可能已变化"
+      },
+      "plural": "count"
+    },
+    "quota.read_failed": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。",
+    "quota.received": "最近收到 {time}",
+    "quota.received_date": "最近收到 {month}月{day}日 {time}",
+    "quota.received_success": "最近成功收到 {time}",
+    "quota.received_success_date": "最近成功收到 {month}月{day}日 {time}",
+    "quota.unknown_time": "数据时间未知，显示上次记录",
+    "quota.waiting": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
+    "quota.warning": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
     "time.hours_ago": {
       "forms": {
         "other": "{count} 小时前"

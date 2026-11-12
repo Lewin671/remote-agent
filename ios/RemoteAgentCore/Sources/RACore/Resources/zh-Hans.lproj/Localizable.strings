@@ -173,6 +173,16 @@
 "projects_unpin" = "取消常用";
 "projects_use_directory" = "用 %1$@ 这个目录";
 "projects_view_sessions" = "看 %1$@ 的会话";
+"quota_exhausted" = "%1$@ · %2$@额度已用尽，不会自动切换 CLI 或模型";
+"quota_failure" = "没能读取 %2$@ 额度：%1$@";
+"quota_failure_no_reason" = "没能读取 %1$@ 额度";
+"quota_received" = "最近收到 %1$@";
+"quota_received_date" = "最近收到 %2$lld月%1$lld日 %3$@";
+"quota_received_success" = "最近成功收到 %1$@";
+"quota_received_success_date" = "最近成功收到 %2$lld月%1$lld日 %3$@";
+"quota_unknown_time" = "数据时间未知，显示上次记录";
+"quota_waiting" = "尚未收到 %1$@ 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。";
+"quota_warning" = "%1$@ · %2$@额度即将用尽，不会自动切换 CLI 或模型";
 "time_just_now" = "刚刚";
 "time_last_week" = "近 7 天";
 "time_month_day" = "%2$lld月%1$lld日";

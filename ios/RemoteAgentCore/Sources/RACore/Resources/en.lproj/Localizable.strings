@@ -173,6 +173,16 @@
 "projects_unpin" = "Unpin";
 "projects_use_directory" = "Use folder %1$@";
 "projects_view_sessions" = "View sessions in %1$@";
+"quota_exhausted" = "%1$@ · %2$@ quota is exhausted. CLI and model will not switch automatically.";
+"quota_failure" = "Could not read %2$@ quota: %1$@";
+"quota_failure_no_reason" = "Could not read %1$@ quota";
+"quota_received" = "Last received %1$@";
+"quota_received_date" = "Last received %2$lld/%1$lld %3$@";
+"quota_received_success" = "Last successfully received %1$@";
+"quota_received_success_date" = "Last successfully received %2$lld/%1$lld %3$@";
+"quota_unknown_time" = "Observation time unknown; showing the last record";
+"quota_waiting" = "No quota received from %1$@. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.";
+"quota_warning" = "%1$@ · %2$@ quota is nearly exhausted. CLI and model will not switch automatically.";
 "time_just_now" = "Just now";
 "time_last_week" = "Last 7 days";
 "time_month_day" = "%2$lld/%1$lld";

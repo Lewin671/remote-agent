@@ -238,6 +238,35 @@
         },
         "plural": "count"
       }
+    },
+    "quota.managed": {
+      "en": "Managed settings override the status line, so quota cannot be read.",
+      "key": "quota.managed",
+      "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+      "params": {},
+      "platforms": [
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "托管设置覆盖了状态栏，无法读取额度。"
+    },
+    "quota.read_failed": {
+      "en": "Could not parse CLI status line data. Check the CLI version and session settings.",
+      "key": "quota.read_failed",
+      "notes": "账户额度页；三端共用。name 是 CLI 名称，window 是来源窗口名，time 为北京时间，detail 为不含账户或会话内容的诊断。旧数据不表示当前可用额度。",
+      "params": {},
+      "platforms": [
+        "web",
+        "go"
+      ],
+      "status": {
+        "en": "draft",
+        "zh-CN": "source"
+      },
+      "zh-CN": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。"
     }
   }
 }

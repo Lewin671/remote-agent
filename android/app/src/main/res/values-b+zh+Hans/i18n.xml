@@ -286,6 +286,22 @@
     <string name="projects_unpin" formatted="false">"取消常用"</string>
     <string name="projects_use_directory">"用 %1$s 这个目录"</string>
     <string name="projects_view_sessions">"看 %1$s 的会话"</string>
+    <string name="quota_exhausted">"%1$s · %2$s额度已用尽，不会自动切换 CLI 或模型"</string>
+    <string name="quota_failure">"没能读取 %2$s 额度：%1$s"</string>
+    <string name="quota_failure_no_reason">"没能读取 %1$s 额度"</string>
+    <plurals name="quota_old_hours">
+        <item quantity="other">"%1$d 小时前的数据，可能已变化"</item>
+    </plurals>
+    <plurals name="quota_old_minutes">
+        <item quantity="other">"%1$d 分钟前的数据，可能已变化"</item>
+    </plurals>
+    <string name="quota_received">"最近收到 %1$s"</string>
+    <string name="quota_received_date">"最近收到 %2$d月%1$d日 %3$s"</string>
+    <string name="quota_received_success">"最近成功收到 %1$s"</string>
+    <string name="quota_received_success_date">"最近成功收到 %2$d月%1$d日 %3$s"</string>
+    <string name="quota_unknown_time" formatted="false">"数据时间未知，显示上次记录"</string>
+    <string name="quota_waiting">"尚未收到 %1$s 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。"</string>
+    <string name="quota_warning">"%1$s · %2$s额度即将用尽，不会自动切换 CLI 或模型"</string>
     <plurals name="time_hours_ago">
         <item quantity="other">"%1$d 小时前"</item>
     </plurals>

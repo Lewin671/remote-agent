@@ -268,6 +268,34 @@
 			<string>%1$lld 个待处理</string>
 		</dict>
 	</dict>
+	<key>quota_old_hours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 小时前的数据，可能已变化</string>
+		</dict>
+	</dict>
+	<key>quota_old_minutes</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>other</key>
+			<string>%1$lld 分钟前的数据，可能已变化</string>
+		</dict>
+	</dict>
 	<key>time_hours_ago</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
