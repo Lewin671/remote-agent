@@ -46,7 +46,7 @@ type StartPayload = { machineId: string; req: CreateReq };
  * unknown, and the wide home shows one project after another in one box. */
 class Start {
   readonly attempt = new Attempt<StartPayload>();
-  images: { key: string; prepared?: import("../attach").Prepared }[] = [];
+  images: { item: import("../attach").TrayItem; key: string; prepared?: import("../attach").Prepared }[] = [];
   /** Its request is on its way. Nothing else is started in the project
    * meanwhile, whichever page is open. */
   running = false;
@@ -369,8 +369,9 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
     // While an earlier attempt's outcome is unknown, only it is retried.
     const retry = current.frozen;
     const sent = current.next(payloadFor(prompt));
-    if (!retry) { start.page = { local, picked: pick, latched: held }; start.images = tray.items.map((i) => ({ key: i.key, prepared: i.prepared })); }
+    if (!retry) { start.page = { local, picked: pick, latched: held }; start.images = tray.items.map((i) => ({ item: i, key: i.key, prepared: i.prepared })); }
     const { payload, slot } = sent;
+    const taken = start.images.map((i) => i.item);
     const open = fromHere(go);
     start.running = true;
     remote.touch();
@@ -384,7 +385,7 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
       if (payload.req.prompt) remote.prompts.set(sid, payload.req.prompt);
       remote.created.add(sid);
       if (!terminal) {
-        tray.clear();
+        tray.detach(taken);
         // A different message typed while this request was pending belongs
         // to the next session, even if its page has since been left.
         if (remote.drafts.get(draftKey)?.trim() === payload.req.prompt) remote.drafts.delete(draftKey);

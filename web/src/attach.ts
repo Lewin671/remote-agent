@@ -184,6 +184,16 @@ export class Tray {
     return !!i.prepared && i.preparedOriginal === this.original;
   }
 
+  /** A successful request consumes only the items it held when frozen. */
+  detach(taken: readonly TrayItem[]) {
+    const mine = new Set(taken);
+    this.items = this.items.filter((item) => !mine.has(item));
+    for (const item of taken) this.gen.delete(item.key);
+    this.note = "";
+    if (!this.items.length) this.original = false;
+    this.onChange();
+  }
+
   /** After sending: the images are the message's now, nothing to drop. */
   clear() {
     this.items = [];

@@ -2529,6 +2529,52 @@ it("keeps the same proportions, height and four-picture fold before and after co
   expect(host.querySelector(".more")!.textContent).toBe("+2");
 });
 
+it("consumes only the new-session request's attachments and keeps later disk drafts", async () => {
+  const { IDBKeyRange } = await import("fake-indexeddb");
+  const { storedSecurity } = await import("../test/stored-security-fixture");
+  const { ComposerDraftStore } = await import("../composer-drafts");
+  const f = await storedSecurity();
+  vi.stubGlobal("IDBKeyRange", IDBKeyRange);
+  try {
+    const account = { server: "https://relay.example.com", deviceId: f.memberID } as import("../storage").StoredAccount;
+    const disk = new ComposerDraftStore(account);
+    const r = demo();
+    (r as any).localDrafts = disk;
+    r.machines.get("mac")!.meta!.capabilities!.fileUpload = true;
+    r.prepareImage = async () => ({ bytes: new Uint8Array([1]), format: "png", width: 1, height: 1 });
+    let uploads = 0;
+    r.uploadImage = async (_m, p) => ({ imageId: "image-" + ++uploads, fileId: p.format === "file" ? "file-" + uploads : undefined, expiresMs: Date.now() + 100000 });
+    const waiting = barrier();
+    let sent = false;
+    r.machineCommand = async (m: string, cmd: CommandKind) => {
+      if (cmd?.case === "createSession") { sent = true; await waiting.wait; }
+      return DemoRemote.prototype.machineCommand.call(r, m, cmd);
+    };
+    const key = "new:/Users/me/Code/foo";
+    mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
+    const tray = r.trays.get(key)!;
+    await vi.waitFor(() => expect(tray.restoring).toBe(false));
+    await act(async () => {
+      tray.add([new File(["sent image"], "sent.png", { type: "image/png" })]);
+      tray.addFiles([new File(["sent file"], "sent.txt")]);
+    });
+    await vi.waitFor(() => expect(tray.ready()).toBe(true));
+    await click(sendButton());
+    await vi.waitFor(() => expect(sent).toBe(true));
+    await act(async () => {
+      tray.add([new File(["next image"], "next.png", { type: "image/png" })]);
+      tray.addFiles([new File(["next file"], "next.txt")]);
+    });
+    await vi.waitFor(() => expect(tray.ready()).toBe(true));
+    await act(async () => { waiting.release(); });
+    await vi.waitFor(() => expect(tray.items.map(i => (i.file as File).name)).toEqual(["next.png", "next.txt"]));
+    await r.persistDraft(key);
+    const restored = await new ComposerDraftStore(account).read(key);
+    expect(restored?.items.map(i => i.name)).toEqual(["next.png", "next.txt"]);
+    expect(await Promise.all(restored!.items.map(i => i.file.text()))).toEqual(["next image", "next file"]);
+  } finally { vi.useRealTimers(); vi.unstubAllGlobals(); }
+});
+
 describe("an image-only new-session draft (review B8)", () => {
   const pick = () =>
     act(async () => {
