@@ -355,7 +355,7 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 				}
 			}
 			prev := schedule.Clone(t)
-			notifyChanged := t.Spec.Notify != updateSpec.Notify
+			notifyChanged := effectiveNotify(t.Spec.Notify) != effectiveNotify(updateSpec.Notify)
 			t.Spec.Title, t.Spec.Notify = updateSpec.Title, updateSpec.Notify
 			if scope == "" && notifyChanged {
 				takeOverScheduledTask(t, origin)
@@ -499,9 +499,20 @@ func (d *Daemon) scheduleCommandAdmittedContext(ctx context.Context, q *pb.Sched
 	return json.Marshal(t)
 }
 
+// effectiveNotify compares notification behavior without rewriting the stored
+// definition: omission and an explicit "finish" select the same policy.
+func effectiveNotify(notify string) string {
+	if notify == "" {
+		return "finish"
+	}
+	return notify
+}
+
 // Compare the complete public definition, so new Spec fields cannot silently
 // become lightweight-update exceptions. JSON matches the public definition.
 func onlyScheduleTitleOrNotifyChanged(before, after schedule.Spec) bool {
+	// Keep identical updates on the definition/replan path. A different
+	// spelling of the default is a lightweight edit, just like a title edit.
 	if before.Title == after.Title && before.Notify == after.Notify {
 		return false
 	}
@@ -925,7 +936,7 @@ func (d *Daemon) prepareScheduledDispatchesContext(ctx context.Context, now time
 						}
 					}
 				} else {
-					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: t.Spec.Notify != "agent_only", NotificationSessionID: scheduleNotificationSession(t)}
+					t.Active = &schedule.Run{ID: newID(8), RequestID: "schedule-" + newID(16), ScheduledAt: *t.NextRunAt, StartedAt: now, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: effectiveNotify(t.Spec.Notify) == "finish", NotificationSessionID: scheduleNotificationSession(t)}
 					t.Status = "dispatching"
 					t.Dispatches++
 					if t.Spec.Trigger.Type == "calendar" {
@@ -968,7 +979,7 @@ func (d *Daemon) prepareManualDispatch(t *schedule.Task, now time.Time) (bool, b
 	}
 	request := t.ManualRequest
 	t.ManualRequest = nil
-	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: t.Spec.Notify != "agent_only", NotificationSessionID: scheduleNotificationSession(t)}
+	run := schedule.Run{ID: newID(8), RequestID: request.RequestID, ScheduledAt: request.RequestedAt, StartedAt: now, Manual: true, RetryFailed: request.RetryFailed, Status: "dispatching", TargetType: t.Spec.Target.Type, TaskTitle: t.Spec.Title, NotifyOnFinish: effectiveNotify(t.Spec.Notify) == "finish", NotificationSessionID: scheduleNotificationSession(t)}
 	late := t.Spec.LateSeconds
 	if late == 0 {
 		late = 86400
