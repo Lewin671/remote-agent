@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.ContextWrapper
 import io.github.lewin671.remoteagent.RaApp
 import org.robolectric.RuntimeEnvironment
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
@@ -266,6 +268,70 @@ class NewTaskPageTest {
         Assert.assertTrue(effortLayout.getLineRight(0) <= effortLayout.size.width)
         Assert.assertFalse(layout("new-model-effort").isLineEllipsized(0))
         ui.onNodeWithTag("new-model-effort").assertTextEquals(" · medium")
+    }
+
+    private fun toolRow(width: Int, model: String) {
+        ui.setContent { RaTheme(ThemeMode.LIGHT) {
+            NewTaskTools(Agent.AGENT_CLAUDE, NewTaskModelSummary(model, "medium"), false, {}, {}, Modifier.width(width.dp))
+        } }
+    }
+
+    private fun modelTextLayout(): TextLayoutResult {
+        val results = mutableListOf<TextLayoutResult>()
+        ui.onNodeWithTag("new-model-name", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(results) }
+        return results.single()
+    }
+
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test fun toolRowKeepsFullCliAndSummaryWhenBothFit() {
+        toolRow(340, "Opus 5.5")
+        ui.onNodeWithTag("new-agent").assertTextContains("Claude Code")
+        Assert.assertFalse(modelTextLayout().isLineEllipsized(0))
+    }
+
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test fun toolRowCollapsesCliBeforeTruncatingModel() {
+        toolRow(260, "Opus 5.5")
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+            .assert(hasText("Claude Code").not())
+        Assert.assertFalse(modelTextLayout().isLineEllipsized(0))
+        ui.onNodeWithTag("new-model-effort", useUnmergedTree = true).assertTextEquals(" · medium")
+    }
+
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Test fun toolRowTruncatesLongModelAfterCollapsingCliKeepingUsefulPrefixAndEffort() {
+        // Comparable to the space between the attachment/send buttons on a narrow phone.
+        toolRow(220, "Opus 5.5 with a very long model name")
+        ui.onNodeWithTag("new-agent").assertContentDescriptionEquals("CLI：Claude Code")
+            .assert(hasText("Claude Code").not())
+        val layout = modelTextLayout()
+        Assert.assertTrue(layout.isLineEllipsized(0))
+        Assert.assertTrue(layout.getLineEnd(0, visibleEnd = true) >= 6)
+        val effort = mutableListOf<TextLayoutResult>()
+        ui.onNodeWithTag("new-model-effort", useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(effort) }
+        Assert.assertTrue(effort.single().getLineRight(0) <= effort.single().size.width)
+        Assert.assertFalse(effort.single().isLineEllipsized(0))
+    }
+
+    @Test fun effortAndContextStayFixedWhileModelListScrolls() {
+        ui.setContent { RaTheme(ThemeMode.LIGHT) {
+            Column(Modifier.width(360.dp).height(254.dp)) {
+                NewTaskModelPanel(NewConfig("a", path, Agent.AGENT_CLAUDE, model = "first"), models, "", null,
+                    "test computer", true, {}, edit = {})
+            }
+        } }
+        val controls = ui.onNodeWithTag("new-model-controls")
+        val before = controls.fetchSemanticsNode().boundsInRoot
+        val header = ui.onNodeWithText("模型").fetchSemanticsNode().boundsInRoot
+        ui.onNodeWithTag("new-model-show-all").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("推理强度").assertIsDisplayed()
+        ui.onNodeWithText("上下文窗口").assertIsDisplayed()
+        ui.onNodeWithText("1M").assertIsDisplayed()
+        ui.onNodeWithText("标准 200k").assertIsDisplayed()
+        Assert.assertEquals(before, controls.fetchSemanticsNode().boundsInRoot)
+        Assert.assertEquals(header, ui.onNodeWithText("模型").fetchSemanticsNode().boundsInRoot)
     }
 
     @Test fun oneComputerHasNoSecondLine() {

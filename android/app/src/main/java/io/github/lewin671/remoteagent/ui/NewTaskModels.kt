@@ -12,6 +12,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
@@ -53,6 +58,51 @@ internal fun NewTaskModelLabel(summary: NewTaskModelSummary, modifier: Modifier 
     }
 }
 
+/** Measure the actual chip contents before giving space to the CLI name. The model
+ * gets all remaining width after collapsing the CLI, so its effort stays whole and
+ * even an ellipsized model retains a useful prefix on narrow phone tool rows. */
+@Composable
+internal fun NewTaskTools(
+    agent: Agent?, summary: NewTaskModelSummary, modelOpen: Boolean,
+    onAgent: () -> Unit, onModel: () -> Unit,
+    modifier: Modifier = Modifier, agentModifier: Modifier = Modifier, modelModifier: Modifier = Modifier,
+) {
+    SubcomposeLayout(modifier) { constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val gap = if (agent == null) 0 else 2.dp.roundToPx()
+        val modelMeasurable = subcompose("model") {
+            BoxTool(onModel, summary.accessibilityLabel, modelModifier.testTag("new-model"), active = modelOpen) {
+                NewTaskModelLabel(summary, Modifier.weight(1f, fill = false))
+            }
+        }.single()
+        val modelWidth = modelMeasurable.maxIntrinsicWidth(Constraints.Infinity)
+        // The unplaced probe has no tags, gestures with side effects, or accessibility nodes.
+        val fullAgentWidth = if (agent == null) 0 else subcompose("agent-width") {
+            BoxTool({}, "", Modifier.clearAndSetSemantics {}) { AgentToolLabel(agent, compact = false) }
+        }.single().maxIntrinsicWidth(Constraints.Infinity)
+        val compact = fullAgentWidth + gap + modelWidth > constraints.maxWidth
+        val agentPlaceable = if (agent == null) null else subcompose("agent") {
+            BoxTool(onAgent, "CLI：${agentName(agent)}", agentModifier.testTag("new-agent")) {
+                AgentToolLabel(agent, compact)
+            }
+        }.single().measure(loose)
+        val modelPlaceable = modelMeasurable.measure(loose.copy(
+            maxWidth = (constraints.maxWidth - (agentPlaceable?.width ?: 0) - gap).coerceAtLeast(0),
+        ))
+        val height = maxOf(agentPlaceable?.height ?: 0, modelPlaceable.height)
+        layout(constraints.constrainWidth((agentPlaceable?.width ?: 0) + gap + modelPlaceable.width), constraints.constrainHeight(height)) {
+            agentPlaceable?.placeRelative(0, (height - agentPlaceable.height) / 2)
+            modelPlaceable.placeRelative((agentPlaceable?.width ?: 0) + gap, (height - modelPlaceable.height) / 2)
+        }
+    }
+}
+
+@Composable
+private fun RowScope.AgentToolLabel(agent: Agent, compact: Boolean) {
+    AgentMark(agent, T.s15, pal.ink2)
+    if (!compact) Text(agentName(agent), style = T.s15, color = pal.ink2, maxLines = 1)
+}
+
 internal fun chooseNewTaskModel(c: NewConfig, slug: String, models: ListModelsResponse, settings: DaemonSettings?): NewConfig {
     val next = c.copy(model = slug, effort = "")
     val model = projectModel(next, models, settings)
@@ -80,7 +130,7 @@ internal fun ColumnScope.NewTaskModelPanel(
     }
     // fill=false lets the popup wrap short content; long lists use only the available space.
     key(all) {
-        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).testTag(if (all) "new-model-all" else "new-model-main")) {
+        Column(Modifier.weight(1f, fill = false).testTag(if (all) "new-model-all" else "new-model-main")) {
             notice()
             when {
                 models == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
@@ -89,7 +139,7 @@ internal fun ColumnScope.NewTaskModelPanel(
                 }
                 else -> {
                     val model = projectModel(c, models, settings)
-                    if (!all) {
+                    if (!all) Column(Modifier.testTag("new-model-controls")) {
                         when (model?.effortsCount) {
                             null, 0 -> Unit
                             1 -> Text("推理强度固定为 ${model.effortsList[0]}", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
@@ -107,20 +157,23 @@ internal fun ColumnScope.NewTaskModelPanel(
                             }
                         }
                     }
-                    val shown = shownModels(models.modelsList, model.takeIf { c.model.isNotEmpty() }, all)
-                    val default = defaultsFor(settings, c.agent).model.ifEmpty { models.defaultModel }
-                    val defaultName = findModel(models.modelsList, default) { it.slug }?.let { it.displayName.ifEmpty { it.slug } } ?: default
-                    fun pick(slug: String) { edit(chooseNewTaskModel(c, slug, models, settings)); all = false }
-                    Column(Modifier.selectableGroup()) {
-                        ModelPanelRow("默认" + if (defaultName.isNotEmpty()) "（$defaultName）" else "", c.model.isEmpty(), enabled) { pick("") }
-                        shown.forEach { m -> ModelPanelRow(m.displayName.ifEmpty { m.slug }, c.model.isNotEmpty() && model?.slug == m.slug, enabled) { pick(m.slug) } }
-                    }
-                    if (!all && shown.size < models.modelsCount) Row(
-                        Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { all = true }.testTag("new-model-show-all"),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text("全部模型", style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
-                        Ic(Lucide.ChevronRight, 18.dp, pal.ink3)
+                    // The header and frequently changed controls stay in view; only the list scrolls.
+                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).testTag("new-model-list")) {
+                        val shown = shownModels(models.modelsList, model.takeIf { c.model.isNotEmpty() }, all)
+                        val default = defaultsFor(settings, c.agent).model.ifEmpty { models.defaultModel }
+                        val defaultName = findModel(models.modelsList, default) { it.slug }?.let { it.displayName.ifEmpty { it.slug } } ?: default
+                        fun pick(slug: String) { edit(chooseNewTaskModel(c, slug, models, settings)); all = false }
+                        Column(Modifier.selectableGroup()) {
+                            ModelPanelRow("默认" + if (defaultName.isNotEmpty()) "（$defaultName）" else "", c.model.isEmpty(), enabled) { pick("") }
+                            shown.forEach { m -> ModelPanelRow(m.displayName.ifEmpty { m.slug }, c.model.isNotEmpty() && model?.slug == m.slug, enabled) { pick(m.slug) } }
+                        }
+                        if (!all && shown.size < models.modelsCount) Row(
+                            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { all = true }.testTag("new-model-show-all"),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text("全部模型", style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
+                            Ic(Lucide.ChevronRight, 18.dp, pal.ink3)
+                        }
                     }
                 }
             }

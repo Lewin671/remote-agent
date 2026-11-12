@@ -741,20 +741,17 @@ fun NewSessionBox(
             hasDraft = drafting,
             top = { ImageStrip(images, remote, machine, maxImages(machine?.let { state.machines[it] })) },
             tools = {
-                if (c != null && agents.size > 1) BoxTool({ picker.toggle("agent") }, "CLI：${agentName(c.agent)}", Modifier.onGloballyPositioned { picker.agent = it.boundsInWindow() }.testTag("new-agent")) {
-                    AgentMark(c.agent, T.s15, p.ink2)
-                    Text(agentName(c.agent), style = T.s15, color = p.ink2, maxLines = 1)
-                }
                 // Pending choices are visible immediately; persistence still happens only on close.
                 val current = edited ?: c
-                if (current != null) {
-                    val summary = newTaskModelSummary(current, models, settings, modelsRead, agents.size == 1)
-                    BoxTool({ picker.toggle("model") }, summary.accessibilityLabel,
-                        Modifier.weight(1f, fill = false).onGloballyPositioned { picker.model = it.boundsInWindow() }.testTag("new-model"),
-                        active = picker.open == "model") {
-                        NewTaskModelLabel(summary, Modifier.weight(1f, fill = false))
-                    }
-                }
+                if (current != null) NewTaskTools(
+                    agent = current.agent.takeIf { agents.size > 1 },
+                    summary = newTaskModelSummary(current, models, settings, modelsRead, agents.size == 1),
+                    modelOpen = picker.open == "model",
+                    onAgent = { picker.toggle("agent") }, onModel = { picker.toggle("model") },
+                    modifier = Modifier.weight(1f, fill = false),
+                    agentModifier = Modifier.onGloballyPositioned { picker.agent = it.boundsInWindow() },
+                    modelModifier = Modifier.onGloballyPositioned { picker.model = it.boundsInWindow() },
+                )
             },
         )
     }
@@ -788,7 +785,7 @@ fun NewSessionBox(
 
 /** The CLI or the model in the new task's box: no fill, 15 ink2, a small down arrow, 40 tall. */
 @Composable
-private fun BoxTool(onClick: () -> Unit, label: String, modifier: Modifier = Modifier, active: Boolean = false, content: @Composable RowScope.() -> Unit) {
+internal fun BoxTool(onClick: () -> Unit, label: String, modifier: Modifier = Modifier, active: Boolean = false, content: @Composable RowScope.() -> Unit) {
     Row(
         modifier.heightIn(min = 40.dp).clip(Radii.Pill)
             .then(if (active) Modifier.background(pal.fill).semantics { selected = true } else Modifier)
