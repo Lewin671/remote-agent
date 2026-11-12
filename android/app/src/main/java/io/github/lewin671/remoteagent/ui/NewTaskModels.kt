@@ -13,6 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.constrainWidth
@@ -111,6 +116,9 @@ internal fun chooseNewTaskModel(c: NewConfig, slug: String, models: ListModelsRe
         mode = c.mode?.takeUnless { model?.autoUnavailable == true && it == Mode.AUTO })
 }
 
+internal fun shouldPinModelControls(bodyHeight: Int, controlsHeight: Int, rowHeight: Int, padding: Int): Boolean =
+    rowHeight > 0 && bodyHeight - controlsHeight >= rowHeight * 2 + padding
+
 /** Compact composer-only layout. Project and scheduled-task settings keep ModelSettingsBody. */
 @Composable
 internal fun ColumnScope.NewTaskModelPanel(
@@ -130,49 +138,65 @@ internal fun ColumnScope.NewTaskModelPanel(
     }
     // fill=false lets the popup wrap short content; long lists use only the available space.
     key(all) {
-        Column(Modifier.weight(1f, fill = false).testTag(if (all) "new-model-all" else "new-model-main")) {
-            notice()
-            when {
-                models == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
-                models == null -> Box(Modifier.fillMaxWidth().height(120.dp)) {
-                    Text("读取 $machineName 的设置…", style = T.s13, color = pal.ink2)
-                }
-                else -> {
-                    val model = projectModel(c, models, settings)
-                    if (!all) Column(Modifier.testTag("new-model-controls")) {
-                        when (model?.effortsCount) {
-                            null, 0 -> Unit
-                            1 -> Text("推理强度固定为 ${model.effortsList[0]}", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
-                            else -> {
-                                Text("推理强度", style = T.s12, color = pal.ink2)
-                                ModelSegments(model.effortsList, newTaskEffort(c, models, settings), enabled) { edit(c.copy(effort = it)) }
-                            }
-                        }
-                        if (agentInfo(c.agent).standardContextOption) {
-                            if (model != null && model.contextWindow in 1..STANDARD_WINDOW) {
-                                Text("标准 200k · 这个模型只有标准窗口", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
-                            } else {
-                                Text("上下文窗口", style = T.s12, color = pal.ink2, modifier = Modifier.padding(top = 4.dp))
-                                ModelSegments(listOf("1M", "标准 200k"), if (c.standardContext) "标准 200k" else "1M", enabled) { edit(c.copy(standardContext = it == "标准 200k")) }
-                            }
-                        }
+        BoxWithConstraints(Modifier.weight(1f, fill = false)) {
+            val density = LocalDensity.current
+            val scroll = rememberScrollState()
+            var noticeHeight by remember { mutableIntStateOf(0) }
+            var controlsHeight by remember { mutableIntStateOf(0) }
+            var rowHeight by remember { mutableIntStateOf(0) }
+            val pinned = shouldPinModelControls(with(density) { maxHeight.roundToPx() } - noticeHeight,
+                controlsHeight, rowHeight, with(density) { 8.dp.roundToPx() })
+            // Keep one scroll owner and the same children when the available height changes.
+            // Offsetting the controls leaves the list's layout and scroll position unchanged.
+            Column(Modifier.verticalScroll(scroll).testTag(if (all) "new-model-all" else "new-model-main")) {
+                Box(Modifier.onSizeChanged { noticeHeight = it.height }) { notice() }
+                when {
+                    models == null && modelsError.isNotEmpty() -> Notice("没能读取模型列表，会用 ${agentName(c.agent)} 自己的默认模型：$modelsError", tone = NoticeTone.WARN)
+                    models == null -> Box(Modifier.fillMaxWidth().height(120.dp)) {
+                        Text("读取 $machineName 的设置…", style = T.s13, color = pal.ink2)
                     }
-                    // The header and frequently changed controls stay in view; only the list scrolls.
-                    Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()).testTag("new-model-list")) {
-                        val shown = shownModels(models.modelsList, model.takeIf { c.model.isNotEmpty() }, all)
-                        val default = defaultsFor(settings, c.agent).model.ifEmpty { models.defaultModel }
-                        val defaultName = findModel(models.modelsList, default) { it.slug }?.let { it.displayName.ifEmpty { it.slug } } ?: default
-                        fun pick(slug: String) { edit(chooseNewTaskModel(c, slug, models, settings)); all = false }
-                        Column(Modifier.selectableGroup()) {
-                            ModelPanelRow("默认" + if (defaultName.isNotEmpty()) "（$defaultName）" else "", c.model.isEmpty(), enabled) { pick("") }
-                            shown.forEach { m -> ModelPanelRow(m.displayName.ifEmpty { m.slug }, c.model.isNotEmpty() && model?.slug == m.slug, enabled) { pick(m.slug) } }
+                    else -> {
+                        val model = projectModel(c, models, settings)
+                        if (!all) Column(Modifier
+                            .onSizeChanged { controlsHeight = it.height }
+                            .offset { IntOffset(0, if (pinned) (scroll.value - noticeHeight).coerceAtLeast(0) else 0) }
+                            .zIndex(1f)
+                            .background(if (pal.dark) Color(0xFF2B2B30) else Color.White)
+                            .testTag("new-model-controls")) {
+                            when (model?.effortsCount) {
+                                null, 0 -> Unit
+                                1 -> Text("推理强度固定为 ${model.effortsList[0]}", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
+                                else -> {
+                                    Text("推理强度", style = T.s12, color = pal.ink2)
+                                    ModelSegments(model.effortsList, newTaskEffort(c, models, settings), enabled) { edit(c.copy(effort = it)) }
+                                }
+                            }
+                            if (agentInfo(c.agent).standardContextOption) {
+                                if (model != null && model.contextWindow in 1..STANDARD_WINDOW) {
+                                    Text("标准 200k · 这个模型只有标准窗口", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
+                                } else {
+                                    Text("上下文窗口", style = T.s12, color = pal.ink2, modifier = Modifier.padding(top = 4.dp))
+                                    ModelSegments(listOf("1M", "标准 200k"), if (c.standardContext) "标准 200k" else "1M", enabled) { edit(c.copy(standardContext = it == "标准 200k")) }
+                                }
+                            }
                         }
-                        if (!all && shown.size < models.modelsCount) Row(
-                            Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { all = true }.testTag("new-model-show-all"),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text("全部模型", style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
-                            Ic(Lucide.ChevronRight, 18.dp, pal.ink3)
+                        Column(Modifier.testTag("new-model-list")) {
+                            val shown = shownModels(models.modelsList, model.takeIf { c.model.isNotEmpty() }, all)
+                            val default = defaultsFor(settings, c.agent).model.ifEmpty { models.defaultModel }
+                            val defaultName = findModel(models.modelsList, default) { it.slug }?.let { it.displayName.ifEmpty { it.slug } } ?: default
+                            fun pick(slug: String) { edit(chooseNewTaskModel(c, slug, models, settings)); all = false }
+                            Column(Modifier.selectableGroup()) {
+                                ModelPanelRow("默认" + if (defaultName.isNotEmpty()) "（$defaultName）" else "", c.model.isEmpty(), enabled,
+                                    Modifier.onSizeChanged { rowHeight = it.height }) { pick("") }
+                                shown.forEach { m -> ModelPanelRow(m.displayName.ifEmpty { m.slug }, c.model.isNotEmpty() && model?.slug == m.slug, enabled) { pick(m.slug) } }
+                            }
+                            if (!all && shown.size < models.modelsCount) Row(
+                                Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { all = true }.testTag("new-model-show-all"),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text("全部模型", style = T.s15, color = pal.ink2, modifier = Modifier.weight(1f))
+                                Ic(Lucide.ChevronRight, 18.dp, pal.ink3)
+                            }
                         }
                     }
                 }
@@ -182,8 +206,8 @@ internal fun ColumnScope.NewTaskModelPanel(
 }
 
 @Composable
-private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(Radii.R14)
+private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Row(modifier.fillMaxWidth().heightIn(min = 44.dp).clip(Radii.R14)
         .selectable(selected = checked, enabled = enabled, role = Role.RadioButton, onClick = onClick),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(name, style = T.s15, color = if (enabled) pal.ink else pal.ink3, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))

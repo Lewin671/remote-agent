@@ -315,9 +315,15 @@ class NewTaskPageTest {
         Assert.assertFalse(effort.single().isLineEllipsized(0))
     }
 
+    @Test fun pinsOnlyWithSpaceForTwoModelRowsAndPadding() {
+        Assert.assertTrue(shouldPinModelControls(228, 132, 44, 8))
+        Assert.assertFalse(shouldPinModelControls(227, 132, 44, 8))
+        Assert.assertFalse(shouldPinModelControls(228, 132, 52, 8))
+    }
+
     @Test fun effortAndContextStayFixedWhileModelListScrolls() {
         ui.setContent { RaTheme(ThemeMode.LIGHT) {
-            Column(Modifier.width(360.dp).height(254.dp)) {
+            Column(Modifier.width(360.dp).height(320.dp)) {
                 NewTaskModelPanel(NewConfig("a", path, Agent.AGENT_CLAUDE, model = "first"), models, "", null,
                     "test computer", true, {}, edit = {})
             }
