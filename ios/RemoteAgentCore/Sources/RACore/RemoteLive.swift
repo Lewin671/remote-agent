@@ -9,7 +9,7 @@ func isObservedAction(_ command: PBCommand) -> Bool {
 }
 func observedCommand(_ command: PBCommand, snapshot: PBLiveSnapshot?) throws -> PBCommand {
     guard isObservedAction(command) else { return command }
-    guard let snapshot else { throw CommandError("failed_precondition", "当前请求尚未由电脑核实") }
+    guard let snapshot else { throw CommandError("failed_precondition", L10nMessage.errorsIosTheCurrentRequestHasNotBeenVerifiedByThe()) }
     var result = command
     switch command.kind {
     case .resolveApproval(let request)?:
@@ -123,7 +123,7 @@ public func currentActions(
 
 extension Remote {
     func fetchLiveSnapshot(_ sid: String) async throws -> PBLiveSnapshot {
-        guard let session = sessions[sid] else { throw CommandError("not_found", "未知会话") }
+        guard let session = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
         var command = PBCommand()
         command.getLiveSnapshot.sessionID = sid
         let reply = try await forward(
@@ -142,7 +142,7 @@ extension Remote {
         } catch {
             guard !closed else { return }
             liveSnapshots[sid] = nil
-            liveErrors[sid] = "无法核实电脑上的待处理请求，请重试或在电脑终端处理"
+            liveErrors[sid] = L10n.errorsPendingRequestsOnTheComputerCouldNotBeVerified()
         }
         if liveSessionEnded(sid) { clearEndedLiveState(sid) }
         else if let buffer = buffers[sid] { publishEvents(sid, buffer) }

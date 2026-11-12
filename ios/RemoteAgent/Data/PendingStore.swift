@@ -96,12 +96,12 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
             let file = dir.appending(path: name)
             let replacing = Int64((try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
             guard ImageDiskPolicy.bytes(directory) - replacing + Int64(sealed.count) <= limit else {
-                throw UserError("手机待发图片空间不足，请发送或移除旧草稿")
+                throw UserError(L10nMessage.attachmentIosThisPhoneSPendingImageStorageIsFullSend())
             }
             do {
                 try sealed.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             } catch {
-                throw UserError("没能保存待发图片")
+                throw UserError(L10nMessage.attachmentIosCouldNotSavePendingImages())
             }
             touch(dir)
         }
@@ -115,7 +115,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
             do { sealed = try Data(contentsOf: dir.appending(path: name)) }
             catch where Self.isMissing(error) { return nil }
             // Reading must never create a replacement key or erase old ciphertext.
-            guard let key = try storedKey() else { throw UserError("待发附件密钥不可用，请稍后重试") }
+            guard let key = try storedKey() else { throw UserError(L10nMessage.attachmentIosPendingAttachmentKeysAreUnavailableRetryShortly()) }
             let plain = try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
             touch(dir)
             return plain
@@ -207,7 +207,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
 
     private func seal(_ plain: Data) throws -> Data {
         // Nonce, ciphertext and tag in one piece, as Android writes them.
-        guard let combined = try AES.GCM.seal(plain, using: key()).combined else { throw UserError("没能保存待发图片") }
+        guard let combined = try AES.GCM.seal(plain, using: key()).combined else { throw UserError(L10nMessage.attachmentIosCouldNotSavePendingImages()) }
         return combined
     }
 
@@ -225,7 +225,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         // An unavailable key is a recovery failure, not permission to erase drafts.
         do {
             guard try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty else {
-                throw UserError("待发附件密钥不可用，请稍后重试")
+                throw UserError(L10nMessage.attachmentIosPendingAttachmentKeysAreUnavailableRetryShortly())
             }
         } catch where Self.isMissing(error) {}
         let fresh = randomBytes(keySize)
@@ -244,7 +244,7 @@ struct PendingScope: SealedFiles {
 
     func put(folder: String, name: String, data: Data) throws {
         let stored: Void? = try store.current(epoch) { try store.put(folder: folder, name: name, data: data) }
-        if stored == nil { throw UserError("已退出账户") }
+        if stored == nil { throw UserError(L10nMessage.attachmentIosSignedOutOfTheAccount()) }
     }
 
     func get(folder: String, name: String) throws -> Data? {

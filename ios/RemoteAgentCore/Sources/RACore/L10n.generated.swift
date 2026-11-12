@@ -2,7 +2,7 @@
 import Foundation
 
 public enum L10n {
-    private static func format(_ key: String, locale: String, args: [CVarArg]) -> String {
+    fileprivate static func format(_ key: String, locale: String, args: [CVarArg]) -> String {
         let language = MessageLocale.resolve(locale, system: [])
         let tag = MessageLocale.appleTags[language]!
         guard let path = Bundle.module.path(forResource: tag, ofType: "lproj"),
@@ -165,6 +165,10 @@ public enum L10n {
         let key = "attachment_images_limit"
         return format(key, locale: locale, args: [Int64(count), Int64(limit)])
     }
+    public static func attachmentIosCannotReadTheSourceFileRemoveItAndSelect(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_cannot_read_the_source_file_remove_it_and_select"
+        return format(key, locale: locale, args: [])
+    }
     public static func attachmentIosChooseMachine(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_choose_machine"
         return format(key, locale: locale, args: [])
@@ -177,6 +181,26 @@ public enum L10n {
         let key = "attachment_ios_clipboard_empty"
         return format(key, locale: locale, args: [])
     }
+    public static func attachmentIosComputerOfflineConnectToAddFiles(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_computer_offline_connect_to_add_files"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosCouldNotConnectToTheComputerRetryTheUpload(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_could_not_connect_to_the_computer_retry_the_upload"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosCouldNotCreateTheLocalCacheDirectory(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_could_not_create_the_local_cache_directory"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func attachmentIosCouldNotRestorePendingAttachmentsRetry(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_could_not_restore_pending_attachments_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosCouldNotSavePendingImages(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_could_not_save_pending_images"
+        return format(key, locale: locale, args: [])
+    }
     public static func attachmentIosFileCount(count: Int, limit: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_file_count"
         return format(key, locale: locale, args: [Int64(count), Int64(limit)])
@@ -185,9 +209,33 @@ public enum L10n {
         let key = "attachment_ios_file_missing"
         return format(key, locale: locale, args: [])
     }
+    public static func attachmentIosFileTooLargeEachFileMayBeAtMost(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_too_large_each_file_may_be_at_most"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func attachmentIosFileUploadFailedRetryOrSelectTheFileAgain(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_upload_failed_retry_or_select_the_file_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosFileUploadIsNotAuthorizedCheckDeviceAuthorization(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_upload_is_not_authorized_check_device_authorization"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosFileUploadStateWasNotSaved(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_upload_state_was_not_saved"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_file_verification_failed_the_file_may_have_changed_select"
+        return format(key, locale: locale, args: [])
+    }
     public static func attachmentIosFilesLimitNotice(limit: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_files_limit_notice"
         return format(key, locale: locale, args: [Int64(limit)])
+    }
+    public static func attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_folders_cannot_be_sent_directly_compress_the_folder_and"
+        return format(key, locale: locale, args: [])
     }
     public static func attachmentIosImageMissing(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_image_missing"
@@ -207,6 +255,14 @@ public enum L10n {
     }
     public static func attachmentIosPasteImage(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_paste_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPendingAttachmentKeysAreUnavailableRetryShortly(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_pending_attachment_keys_are_unavailable_retry_shortly"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosPendingAttachmentsHaveNotBeenRestoredRetry(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_pending_attachments_have_not_been_restored_retry"
         return format(key, locale: locale, args: [])
     }
     public static func attachmentIosPhotos(locale: String = MessageLocale.current) -> String {
@@ -229,8 +285,48 @@ public enum L10n {
         let key = "attachment_ios_restore_unavailable"
         return format(key, locale: locale, args: [])
     }
+    public static func attachmentIosSignedOutOfTheAccount(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_signed_out_of_the_account"
+        return format(key, locale: locale, args: [])
+    }
     public static func attachmentIosSourceUnreadable(locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_source_unreadable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheComputerDidNotConfirmUploadCompletionRetry(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_computer_did_not_confirm_upload_completion_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheComputerDidNotProvideAFileId(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_computer_did_not_provide_a_file_id"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheComputerReportedInvalidUploadProgress(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_computer_reported_invalid_upload_progress"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheComputerSAttachmentStorageIsFullClearSpace(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_computer_s_attachment_storage_is_full_clear_space"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheFileChangedAfterSelectionSelectItAgain(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_file_changed_after_selection_select_it_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosTheFileOnTheComputerExpiredRetryTheUpload(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_the_file_on_the_computer_expired_retry_the_upload"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosThisComputerHasNotDeclaredFileUploadSupportUpdate(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_this_computer_has_not_declared_file_upload_support_update"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentIosThisPhoneSPendingImageStorageIsFullSend(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_this_phone_s_pending_image_storage_is_full_send"
         return format(key, locale: locale, args: [])
     }
     public static func attachmentIosUploadFailed(locale: String = MessageLocale.current) -> String {
@@ -240,6 +336,10 @@ public enum L10n {
     public static func attachmentIosUploadProgress(percent: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_ios_upload_progress"
         return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func attachmentIosVerifyTheFileOnTheComputer(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_ios_verify_the_file_on_the_computer"
+        return format(key, locale: locale, args: [])
     }
     public static func attachmentMaxFiles(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "attachment_max_files"
@@ -353,12 +453,20 @@ public enum L10n {
         let key = "common_ios_attention"
         return format(key, locale: locale, args: [])
     }
+    public static func commonIosListSeparator(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_list_separator"
+        return format(key, locale: locale, args: [])
+    }
     public static func commonIosLoading(locale: String = MessageLocale.current) -> String {
         let key = "common_ios_loading"
         return format(key, locale: locale, args: [])
     }
     public static func commonIosMore(locale: String = MessageLocale.current) -> String {
         let key = "common_ios_more"
+        return format(key, locale: locale, args: [])
+    }
+    public static func commonIosNoteSeparator(locale: String = MessageLocale.current) -> String {
+        let key = "common_ios_note_separator"
         return format(key, locale: locale, args: [])
     }
     public static func commonIosOffline(locale: String = MessageLocale.current) -> String {
@@ -945,6 +1053,222 @@ public enum L10n {
         let key = "errors_invalid_session_seed"
         return format(key, locale: locale, args: [])
     }
+    public static func errorsIosAlreadyRegisteringWaitForTheResult(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_already_registering_wait_for_the_result"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosCannotFindTheServerCheckYourNetwork(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_cannot_find_the_server_check_your_network"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCannotOpenTheComputerSReplyCommandExecutionIs(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_cannot_open_the_computer_s_reply_command_execution_is"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCliSOwnMode(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_cli_s_own_mode"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCouldNotLoadHistory(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_could_not_load_history"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosCouldNotLoadTheSessionList(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_could_not_load_the_session_list"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCouldNotReadThisPhoneSAccountStateManagement(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_could_not_read_this_phone_s_account_state_management"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoBadKeyNonceSize(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_bad_key_nonce_size"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoBadSessionKey(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_bad_session_key"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoBadSessionSeed(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_bad_session_seed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoEnvelopeDoesNotOpen(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_envelope_does_not_open"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoEnvelopeLocation(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_envelope_location"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoMalformedContent(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_malformed_content"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoMalformedHeader(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_malformed_header"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosCryptoRootKeyBytes(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_root_key_bytes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func errorsIosCryptoSigningSeedBytes(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_signing_seed_bytes"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func errorsIosCryptoUnsupportedEnvelopeVersion(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_crypto_unsupported_envelope_version"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosExpiredControlRenewal(renewal: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_expired_control_renewal"
+        return format(key, locale: locale, args: [renewal])
+    }
+    public static func errorsIosHistoryIsDiscontinuousRetryLoading(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_history_is_discontinuous_retry_loading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosImageContentDoesNotMatchItsFormat(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_image_content_does_not_match_its_format"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosImageContentOrOriginCouldNotBeVerified(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_image_content_or_origin_could_not_be_verified"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosInvalidServerAddress(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_invalid_server_address"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_joining_canceled_the_old_request_may_still_occupy_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosKContext(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_k_context"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosLoginExpired(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_login_expired"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosMContext(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_m_context"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosNetworkUnavailableTheCommandWasNotSent(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_network_unavailable_the_command_was_not_sent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosNoVerifiableExecutionResultReceivedRetryTheSameRequest(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_no_verifiable_execution_result_received_retry_the_same_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosNotConnectedToTheServer(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_not_connected_to_the_server"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosNotConnectedToTheServerConnectToMakeChanges(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_not_connected_to_the_server_connect_to_make_changes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosOnlyTheDeviceItselfCanChangeItsName(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_only_the_device_itself_can_change_its_name"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_other_clients_kept_changing_project_preferences_changes_could_not"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosProjectSettingsMayDiffer(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_project_settings_may_differ"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosRecoveryRequestStateMayBeOutOfDateConnect(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_recovery_request_state_may_be_out_of_date_connect"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_remote_control_expired_saving_changes_session_control_and_new"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosSecureConnectionFailed(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_secure_connection_failed"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosTerminalClosed(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_terminal_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosTerminalConnectionDropped(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_terminal_connection_dropped"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosTerminalInputFailedToSendStopped(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_terminal_input_failed_to_send_stopped"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosTerminalInputWaitingToSendStopped(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_terminal_input_waiting_to_send_stopped"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosTheCurrentRequestHasNotBeenVerifiedByThe(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_current_request_has_not_been_verified_by_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_original_request_and_keys_are_retained_retry_if"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_previous_operation_is_unconfirmed_and_has_expired_it"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosThePreviousResultIsStillUncertain(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_previous_result_is_still_uncertain"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosThePreviousResultIsStillUncertainRetryingSendsThe(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_previous_result_is_still_uncertain_retrying_sends_the"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_the_request_may_have_arrived_but_login_then_failed"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosThisAppVersionIsOutOfDateUpdateAnd(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_this_app_version_is_out_of_date_update_and"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosThisCommandExpiredAndWasNotSent(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_this_command_expired_and_was_not_sent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosThisDeletesTheAccountKeysAndCacheOnThis(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_this_deletes_the_account_keys_and_cache_on_this"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosThisDeviceIsOver5MinutesBehindTheSecurity(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_this_device_is_over_5_minutes_behind_the_security"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosThisDirectoryDoesNotExist(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_this_directory_does_not_exist"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosToday(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_today"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func errorsIosUnknownSession(locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_unknown_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func errorsIosUnsureWhetherTheComputerExecutedThis(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "errors_ios_unsure_whether_the_computer_executed_this"
+        return format(key, locale: locale, args: [value])
+    }
     public static func errorsItMayHaveBeenDeletedOrBelongToA(locale: String = MessageLocale.current) -> String {
         let key = "errors_it_may_have_been_deleted_or_belong_to_a"
         return format(key, locale: locale, args: [])
@@ -1517,6 +1841,62 @@ public enum L10n {
         let key = "image_ios_actions_hint"
         return format(key, locale: locale, args: [])
     }
+    public static func imageIosAttachmentStorage(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_attachment_storage"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func imageIosAttachmentsExceedThisComputerSFileCountOrSize(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_attachments_exceed_this_computer_s_file_count_or_size"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_attachments_need_uploading_again_complete_the_upload_before_sending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosCannotDecodeImage(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_cannot_decode_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosCannotDecodeThisImage(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_cannot_decode_this_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosCannotReadThisImage(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_cannot_read_this_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosCannotReadThisVideoSelectItAgain(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_cannot_read_this_video_select_it_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosClearViewingCache(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_clear_viewing_cache"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosClearViewingCache200(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_clear_viewing_cache_200"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosClearing(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_clearing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosConvertedToKeepingOriginalDimensions(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_converted_to_keeping_original_dimensions"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func imageIosCouldNotEncodeThisImage(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_could_not_encode_this_image"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosCouldNotFinishClearing(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_could_not_finish_clearing"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func imageIosCouldNotRestorePendingRecordsRetry(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_could_not_restore_pending_records_retry"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageIosDownloadFailed(reason: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_download_failed"
         return format(key, locale: locale, args: [reason])
@@ -1525,9 +1905,17 @@ public enum L10n {
         let key = "image_ios_downloading"
         return format(key, locale: locale, args: [])
     }
+    public static func imageIosDraftsAreClearedAfter7IdleDaysUnconfirmedMessages(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageIosEmpty(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_empty"
         return format(key, locale: locale, args: [])
+    }
+    public static func imageIosFullSizeImagesViewedOnWillBeClearedAnd(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_full_size_images_viewed_on_will_be_cleared_and"
+        return format(key, locale: locale, args: [value])
     }
     public static func imageIosGeneratedBy(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_generated_by"
@@ -1537,6 +1925,22 @@ public enum L10n {
         let key = "image_ios_generated_size"
         return format(key, locale: locale, args: [size])
     }
+    public static func imageIosGifContainsAnUnrecognizedBlock(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_gif_contains_an_unrecognized_block"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosGifIsTruncated(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_gif_is_truncated"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosImageExceedsMb(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_image_exceeds_mb"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageIosImageHasNoDimensions(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_image_has_no_dimensions"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageIosMoreImages(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_more_images"
         return format(key, locale: locale, args: [Int64(count)])
@@ -1545,8 +1949,28 @@ public enum L10n {
         let key = "image_ios_name_only"
         return format(key, locale: locale, args: [])
     }
+    public static func imageIosNeedsUploadingToTheComputerAgain(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_needs_uploading_to_the_computer_again"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageIosNoPreview(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_no_preview"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosNotAReadableGif(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_not_a_readable_gif"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosNotAReadableJpeg(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_not_a_readable_jpeg"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosNotAReadablePng(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_not_a_readable_png"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosNotAReadableWebp(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_not_a_readable_webp"
         return format(key, locale: locale, args: [])
     }
     public static func imageIosOnlyMessage(locale: String = MessageLocale.current) -> String {
@@ -1556,6 +1980,10 @@ public enum L10n {
     public static func imageIosOpen(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_open"
         return format(key, locale: locale, args: [])
+    }
+    public static func imageIosOriginalExceedsMb(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_original_exceeds_mb"
+        return format(key, locale: locale, args: [Int64(count)])
     }
     public static func imageIosOriginalSelected(size: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_original_selected"
@@ -1569,6 +1997,14 @@ public enum L10n {
         let key = "image_ios_page"
         return format(key, locale: locale, args: [Int64(count), Int64(index)])
     }
+    public static func imageIosPendingAndUnconfirmedAttachments(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_pending_and_unconfirmed_attachments"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosPixelsExceedThisPhoneSLimitReducedTo1(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_pixels_exceed_this_phone_s_limit_reduced_to_1"
+        return format(key, locale: locale, args: [value])
+    }
     public static func imageIosPlaceholder(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_placeholder"
         return format(key, locale: locale, args: [])
@@ -1576,6 +2012,10 @@ public enum L10n {
     public static func imageIosPlaceholderIndex(index: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_placeholder_index"
         return format(key, locale: locale, args: [index])
+    }
+    public static func imageIosReEncodedAtHighestQualityAfterCorrectingOrientation(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_re_encoded_at_highest_quality_after_correcting_orientation"
+        return format(key, locale: locale, args: [])
     }
     public static func imageIosRetainedOriginal(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_retained_original"
@@ -1593,8 +2033,28 @@ public enum L10n {
         let key = "image_ios_selected_count"
         return format(key, locale: locale, args: [Int64(count), Int64(limit)])
     }
+    public static func imageIosSessionRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_session_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosTheComputerDidNotProvideAnImageId(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_the_computer_did_not_provide_an_image_id"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosThisComputerDoesNotSupportFileUploads(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_this_computer_does_not_support_file_uploads"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosThisComputerDoesNotSupportTheseFilesCheckTheir(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_this_computer_does_not_support_these_files_check_their"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageIosUnselected(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_unselected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageIosUnsupportedImageFormat(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_unsupported_image_format"
         return format(key, locale: locale, args: [])
     }
     public static func imageIosUploadProgress(percent: Int, locale: String = MessageLocale.current) -> String {
@@ -1616,6 +2076,10 @@ public enum L10n {
     public static func imageIosViewedBy(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "image_ios_viewed_by"
         return format(key, locale: locale, args: [agent])
+    }
+    public static func imageIosViewingCache(locale: String = MessageLocale.current) -> String {
+        let key = "image_ios_viewing_cache"
+        return format(key, locale: locale, args: [])
     }
     public static func imageIosZoom(locale: String = MessageLocale.current) -> String {
         let key = "image_ios_zoom"
@@ -2200,6 +2664,10 @@ public enum L10n {
     public static func newSessionIosCliLabel(locale: String = MessageLocale.current) -> String {
         let key = "new_session_ios_cli_label"
         return format(key, locale: locale, args: [])
+    }
+    public static func newSessionIosCliNamed(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "new_session_ios_cli_named"
+        return format(key, locale: locale, args: [name])
     }
     public static func newSessionIosComputerLabel(name: String, locale: String = MessageLocale.current) -> String {
         let key = "new_session_ios_computer_label"
@@ -2797,6 +3265,26 @@ public enum L10n {
         let key = "quota_hr"
         return format(key, locale: locale, args: [Int64(count)])
     }
+    public static func quotaIosComputerOfflineShowingTheLastReading(locale: String = MessageLocale.current) -> String {
+        let key = "quota_ios_computer_offline_showing_the_last_reading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func quotaIosRemoteAgentOnThisComputerCannotReadSQuota(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "quota_ios_remote_agent_on_this_computer_cannot_read_s_quota"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func quotaIosThisComputerHasNotReportedWhichClisAreInstalled(locale: String = MessageLocale.current) -> String {
+        let key = "quota_ios_this_computer_has_not_reported_which_clis_are_installed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func quotaIosThisComputerWasRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "quota_ios_this_computer_was_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func quotaIosViewUsageInLocalClaudeCode(locale: String = MessageLocale.current) -> String {
+        let key = "quota_ios_view_usage_in_local_claude_code"
+        return format(key, locale: locale, args: [])
+    }
     public static func quotaLastReading(locale: String = MessageLocale.current) -> String {
         let key = "quota_last_reading"
         return format(key, locale: locale, args: [])
@@ -3147,6 +3635,274 @@ public enum L10n {
     }
     public static func scheduleIntervalMinutes(locale: String = MessageLocale.current) -> String {
         let key = "schedule_interval_minutes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosAbandonOriginalRequest(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_abandon_original_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosAgentNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_agent_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosAgentNotificationCompletionNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_agent_notification_completion_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosAttentionOnce(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_attention_once"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func scheduleIosBeijing(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_beijing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosBerlin(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_berlin"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosCannotRequestNotification(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_cannot_request_notification"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosChooseAProject(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_choose_a_project"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosChooseAProjectFirst(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_choose_a_project_first"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosChooseAValidIanaTimeZone(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_choose_a_valid_iana_time_zone"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosChooseOnceDailyWeeklyOrEvery(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_choose_once_daily_weekly_or_every"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosConfirmThePreviousChangeSResultFirst(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_confirm_the_previous_change_s_result_first"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosConnectToEditRunOrDelete(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_connect_to_edit_run_or_delete"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func scheduleIosDays(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_days"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosDeleteThisTask(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_delete_this_task"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosEachRunOpensANewConversationGroupedUnderThis(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_each_run_opens_a_new_conversation_grouped_under_this"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosEndTimeMustBeInTheFuture(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_end_time_must_be_in_the_future"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosEnterAValidInterval(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_enter_a_valid_interval"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosFriday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_friday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosHongKong(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_hong_kong"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosHours(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_hours"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosInterval(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_interval"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosLoadingModels(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_loading_models"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosLoadingTasks(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_loading_tasks"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosLondon(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_london"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosLosAngeles(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_los_angeles"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosManageScheduledTask(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_manage_scheduled_task"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosMinutes(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_minutes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosMmmD(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_mmm_d"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosMmmDYyyy(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_mmm_d_yyyy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosMonday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_monday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosNeedsAttention(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_needs_attention"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosNeedsYourAttention(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_needs_your_attention"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosNewYork(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_new_york"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosNext(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_next"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func scheduleIosOpenTheTaskEditorFirst(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_open_the_task_editor_first"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosRead(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosReadFullText(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_read_full_text"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosRecent(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_recent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosRunCountMustBeGreaterThan0(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_run_count_must_be_greater_than_0"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosRunOnceNowDoesNotCountTowardAutomaticRuns(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_run_once_now_does_not_count_toward_automatic_runs"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSaturday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_saturday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSearchIanaTimeZones(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_search_iana_time_zones"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSeconds(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_seconds"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSingapore(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_singapore"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSunday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_sunday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosSydney(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_sydney"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTakeAction(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_take_action"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTakeoverNotice(notice: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_takeover_notice"
+        return format(key, locale: locale, args: [notice])
+    }
+    public static func scheduleIosTaskDetails(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_task_details"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTaskNotFound(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_task_not_found"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTheComputerDidNotReturnATaskList(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_the_computer_did_not_return_a_task_list"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTheComputerIsOfflineConnectToMakeChanges(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_the_computer_is_offline_connect_to_make_changes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_the_computer_may_have_already_executed_it_check_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTheTaskIsStoredOnThisComputerChangesOnly(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_the_task_is_stored_on_this_computer_changes_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosThursday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_thursday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTime(detail: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_time"
+        return format(key, locale: locale, args: [detail, value])
+    }
+    public static func scheduleIosTokyo(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_tokyo"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosTuesday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_tuesday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosUnit(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_unit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosUnread(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_unread"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosUnsavedChangesWillBeLost(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_unsaved_changes_will_be_lost"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_update_remote_agent_on_this_computer_to_use_scheduled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosUpdateRemoteAgentToUseScheduledTasks(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_update_remote_agent_to_use_scheduled_tasks"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosWednesday(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_wednesday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func scheduleIosWhatToCheckNotifyMeWhenThereAreResults(locale: String = MessageLocale.current) -> String {
+        let key = "schedule_ios_what_to_check_notify_me_when_there_are_results"
         return format(key, locale: locale, args: [])
     }
     public static func scheduleLastResult(result: String, time: String, locale: String = MessageLocale.current) -> String {
@@ -3967,6 +4723,550 @@ public enum L10n {
     }
     public static func securityInvalidRecoveryCode(locale: String = MessageLocale.current) -> String {
         let key = "security_invalid_recovery_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_a_security_operation_is_unfinished_retry_or_verify_its"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAbandonThisSecurityOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_abandon_this_security_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAccountPublicKeyInformationRestoredYouCanPrepareTo(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_account_public_key_information_restored_you_can_prepare_to"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAddAnotherDevice(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_add_another_device"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_after_removal_this_device_can_no_longer_operate_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAllDevicesWillDisconnectDataOnTheRelayCannot(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_all_devices_will_disconnect_data_on_the_relay_cannot"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAllowCameraAccess(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_allow_camera_access"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosApprovedVerifyingDeliveryToTheDeviceContinueTheOriginal(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_approved_verifying_delivery_to_the_device_continue_the_original"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_automatically_renews_when_you_return_to_the_managing_client"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCameraAccessIsRequiredToScanYouCanAlso(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_camera_access_is_required_to_scan_you_can_also"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCameraPreviewLookingForAPairingQrCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_camera_preview_looking_for_a_pairing_qr_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCanTakeEffectAt(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_can_take_effect_at"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func securityIosCannotAccountKeysWhileTheDeviceIsLockedUnlock(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_cannot_account_keys_while_the_device_is_locked_unlock"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func securityIosCannotReadAccountKeysFromKeychainRejoinTheAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_cannot_read_account_keys_from_keychain_rejoin_the_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCompareTheManagingClientS4PatternsIfThey(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_compare_the_managing_client_s_4_patterns_if_they"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCompletingTakeoverWaitingForRemoteControlRenewal(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_completing_takeover_waiting_for_remote_control_renewal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosComputerRecordsDeleted(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_computer_records_deleted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosConfirmPermanentDeletion(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_confirm_permanent_deletion"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosConnecting(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_connecting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosContinueCreatingAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_continue_creating_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosContinueOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_continue_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosContinueTheAccountCreationRecoveryOrSuccessorDraft(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_continue_the_account_creation_recovery_or_successor_draft"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCopyPairingCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_copy_pairing_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCouldNotAccountKeysInKeychain(detail: String, extra: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_could_not_account_keys_in_keychain"
+        return format(key, locale: locale, args: [detail, extra, value])
+    }
+    public static func securityIosCouldNotVerifyTheCurrentSecurityStateTheOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_could_not_verify_the_current_security_state_the_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosCurrentRecoveryCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_current_recovery_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeleteAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_delete_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeleteFromTheCurrentAccountSManagingClientIf(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_delete_from_the_current_account_s_managing_client_if"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeleteThisComputerSRecords(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_delete_this_computer_s_records"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeleting(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_deleting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDemoDataWillNotSendADeletionRequest(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_demo_data_will_not_send_a_deletion_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeviceJoined(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_device_joined"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosDeviceRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_device_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosEnter8DigitPairingCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_enter_8_digit_pairing_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosEnterDeleteAccountToConfirm(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_enter_delete_account_to_confirm"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosEnterDeleteAccountToConfirm136(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_enter_delete_account_to_confirm_136"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosFinishOrAbandonUnfinishedAccountSecurityOperationsBeforeDeleting(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_finish_or_abandon_unfinished_account_security_operations_before_deleting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosGenerateAnotherPairingCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_generate_another_pairing_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosIUnderstandThereIsNoBackupReplaceTheCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_i_understand_there_is_no_backup_replace_the_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosIfSuccessorPreparationReportsAMissingAccountPublicKey(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_if_successor_preparation_reports_a_missing_account_public_key"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosIfTheNetworkDropsAfterTheRequestIsSent(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_if_the_network_drops_after_the_request_is_sent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosInvalidPairingApproval(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_invalid_pairing_approval"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosJoinedButCouldNotSaveAccountKeys(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_joined_but_could_not_save_account_keys"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func securityIosJoiningAnExistingAccountRequiresManagingClientApprovalUse(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_joining_an_existing_account_requires_managing_client_approval_use"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosJoiningCanceled(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_joining_canceled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosManagementTransferred(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_management_transferred"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosManagementTransferredThisDeviceWasRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_management_transferred_this_device_was_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosNotReadYet(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_not_read_yet"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosOnTheManagingClientOpenSettingsAddDeviceScan(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_on_the_managing_client_open_settings_add_device_scan"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosOpenSettingsAccountSecurityAndTapRenewNow(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_open_settings_account_security_and_tap_renew_now"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosOpenToRenew(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_open_to_renew"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func securityIosOriginalCliSessionsAndProjectFilesOnComputersAnd(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_original_cli_sessions_and_project_files_on_computers_and"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosOriginalSecurityOperationVerifiedThisDeviceNoLongerHas(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_original_security_operation_verified_this_device_no_longer_has"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairAgainAndPreserveIdentity(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pair_again_and_preserve_identity"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairPatterns(patterns: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pair_patterns"
+        return format(key, locale: locale, args: [patterns])
+    }
+    public static func securityIosPairingAbandonedYouCanGenerateANewPairingCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_abandoned_you_can_generate_a_new_pairing_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingApprovalDoesNotMatchThisDevice(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_approval_does_not_match_this_device"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingApprovalDoesNotMatchThisDeviceHasExpired(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_approval_does_not_match_this_device_has_expired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingCanceledExplicitlyRemoveTheApprovedCandidateBeforeStarting(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_canceled_explicitly_remove_the_approved_candidate_before_starting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingCommitmentChangedAfterTheEphemeralPublicKeyWas(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_commitment_changed_after_the_ephemeral_public_key_was"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingCommitmentMismatch(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_commitment_mismatch"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPairingDeliveryOnAnotherServerIsUnfinished(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_pairing_delivery_on_another_server_is_unfinished"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPatternsAreNotConfirmedLocallySecureBindingStopped(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_patterns_are_not_confirmed_locally_secure_binding_stopped"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPermanentlyDeleteAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_permanently_delete_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPermanentlyDeleteTheEntireAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_permanently_delete_the_entire_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPlaceTheManagingClientSPairingQrCodeIn(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_place_the_managing_client_s_pairing_qr_code_in"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPrepareAccount(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_prepare_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPrivacyShield(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_privacy_shield"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPublicationResultUnverifiedContinueTheOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_publication_result_unverified_continue_the_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPublish(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_publish"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosPublishNewRecoveryCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_publish_new_recovery_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRead(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_read"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRecoveryCodeBackupIsUnconfirmedReplaceTheCodeAnd(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_recovery_code_backup_is_unconfirmed_replace_the_code_and"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRecoveryCodeConfirmedSavedOfflineContinueTheOriginalRequest(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_recovery_code_confirmed_saved_offline_continue_the_original_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRecoveryRequest(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_recovery_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRecoveryRequestVetoedTheOldRecoveryCodeIsInvalid(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_recovery_request_vetoed_the_old_recovery_code_is_invalid"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRefreshRecoveryStatus(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_refresh_recovery_status"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRejoinFromOriginalRecords(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_rejoin_from_original_records"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRemoteControlRenewed(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_remote_control_renewed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRemoveUndeliveredCandidate(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_remove_undelivered_candidate"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRenewalResultUnverifiedContinueTheOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_renewal_result_unverified_continue_the_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRenewing(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_renewing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosReplaceCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_replace_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRequestManagementTakeoverWithYourOfflineRecoveryCodeWait(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_request_management_takeover_with_your_offline_recovery_code_wait"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRestoreAccountPublicKeyInformation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_restore_account_public_key_information"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosRestoreInformation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_restore_information"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSaveTheNewRecoveryCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_save_the_new_recovery_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSaveTheRecoveryCodeOfflineFirst(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_save_the_recovery_code_offline_first"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosScanQrCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_scan_qr_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSecurityOperationStateChangedChooseHowToExitAgain(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_security_operation_state_changed_choose_how_to_exit_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSecurityOperationStateChangedChooseHowToJoinAgain(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_security_operation_state_changed_choose_how_to_join_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSecurityStateIsUnverifiedTheOperationWasNotSent(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_security_state_is_unverified_the_operation_was_not_sent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSetupToken(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_setup_token"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSetupTokenIfRequired(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_setup_token_if_required"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSubmitAndVerifyOriginalRequest(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_submit_and_verify_original_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSuccessorDevice(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_successor_device"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosSuccessorPreparationResultUnverifiedContinueTheOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_successor_preparation_result_unverified_continue_the_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheApprovedCandidateWithoutConfirmedDeliveryWillBeExplicitly(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_approved_candidate_without_confirmed_delivery_will_be_explicitly"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheCurrentRequestChangedReviewItAgain(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_current_request_changed_review_it_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheIosAppHasNoBackgroundSecurityAlertsOpen(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_ios_app_has_no_background_security_alerts_open"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheManagingClientSTrustInformationDoesNotMatch(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_managing_client_s_trust_information_does_not_match"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheNewRecoveryCodeIsActiveTheOldCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_new_recovery_code_is_active_the_old_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheNewStateDidNotAddThisDevice(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_new_state_did_not_add_this_device"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheOldRecoveryCodeIsImmediatelyInvalidatedAndPending(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_old_recovery_code_is_immediately_invalidated_and_pending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheOriginalDeviceIdentityKeysAndHistoryArePreserved(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_original_device_identity_keys_and_history_are_preserved"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheOriginalRequestIsRetainedContinueTheOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_original_request_is_retained_continue_the_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThePairingPayloadSAccountDiffersFromTheOne(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_pairing_payload_s_account_differs_from_the_one"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThePairingPayloadSStateChainIsIncomplete(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_pairing_payload_s_state_chain_is_incomplete"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThePhoneSSecurityStateIsOver5Minutes(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_phone_s_security_state_is_over_5_minutes"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThePreviouslyDisplayedRecoveryCodeCannotBeShownAgain(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_previously_displayed_recovery_code_cannot_be_shown_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheSecurityStateChainIsTooLongToJoin(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_security_state_chain_is_too_long_to_join"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheServerRejectedThisDeviceSLogin(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_server_rejected_this_device_s_login"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheServerReturnedAnUnexpectedDeviceTypePairingStopped(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_server_returned_an_unexpected_device_type_pairing_stopped"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheSuccessorSPublicKeyMayAlreadyBePublished(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_successor_s_public_key_may_already_be_published"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTheSuccessorSPublicKeyMayAlreadyBePublished278(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_the_successor_s_public_key_may_already_be_published_278"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeletesTheEntireAccountOnTheCurrentRelay(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_deletes_the_entire_account_on_the_current_relay"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeviceHasNoAvailableCameraGoBackTo(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_device_has_no_available_camera_go_back_to"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeviceIsOver5MinutesBehindTheSecurity(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_device_is_over_5_minutes_behind_the_security"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeviceIsTheSoleManagingClientTransferManagement(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_device_is_the_sole_managing_client_transfer_management"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeviceSAccountKeysAndCacheWillBe(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_device_s_account_keys_and_cache_will_be"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisDeviceWasRemovedTheSuccessorIsNowThe(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_device_was_removed_the_successor_is_now_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisIpad(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_ipad"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisIsNotARemoteAgentPairingQrCode(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_is_not_a_remote_agent_pairing_qr_code"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisPhone(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_phone"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosThisPhoneSAccountKeysAndCacheWillBe(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_this_phone_s_account_keys_and_cache_will_be"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTooManyAttemptsWaitAMinuteAndRetry(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_too_many_attempts_wait_a_minute_and_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTransferManagement(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_transfer_management"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTransferResultUnverifiedContinueTheOriginalOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_transfer_result_unverified_continue_the_original_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosTransferTo(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_transfer_to"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func securityIosUnknownError(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_unknown_error"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosUnsureWhetherJoinedCheckTheClientListInThe(detail: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_unsure_whether_joined_check_the_client_list_in_the"
+        return format(key, locale: locale, args: [detail, value])
+    }
+    public static func securityIosVerifyAndAbandon(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_verify_and_abandon"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosVerifyOriginalSecurityOperation(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_verify_original_security_operation"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosVerifyVetoAndAbandonOriginalRequest(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_verify_veto_and_abandon_original_request"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosWaitingForManagingClientApprovalAndBinding(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_waiting_for_managing_client_approval_and_binding"
+        return format(key, locale: locale, args: [])
+    }
+    public static func securityIosWaitingForThe48HourRecoveryWindowTheCurrent(locale: String = MessageLocale.current) -> String {
+        let key = "security_ios_waiting_for_the_48_hour_recovery_window_the_current"
         return format(key, locale: locale, args: [])
     }
     public static func securityItMayHaveBeenRemovedOrTheServiceMay(locale: String = MessageLocale.current) -> String {
@@ -5309,6 +6609,230 @@ public enum L10n {
         let key = "settings_idle_close_off"
         return format(key, locale: locale, args: [])
     }
+    public static func settingsIosApprovalsQuestionsAndPlansWaitingForYouAppearAt(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosClearReclaimableImages(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_clear_reclaimable_images"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosCliVersions(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_cli_versions"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosComputerSessionsDoNotDependOnAlertsUnansweredApprovals(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_computer_sessions_do_not_depend_on_alerts_unanswered_approvals"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosConnectToTheServerToReadAndEditNew(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_connect_to_the_server_to_read_and_edit_new"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosCopyDeviceId(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_copy_device_id"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosCurrentClient(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_current_client"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosDefaultModelForNewSessions(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_default_model_for_new_sessions"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsIosDefaultSOwnConfiguration(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_default_s_own_configuration"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsIosDeleteEntireAccount(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_delete_entire_account"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosExitAndDeleteLocalKeysFromSettings(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_exit_and_delete_local_keys_from_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosFontsUseTheSystemSSfProPingfangAnd(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_fonts_use_the_system_s_sf_pro_pingfang_and"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_for_unverified_versions_run_remote_agent_doctor_on_the"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosHowManySessionsAreWaitingForYou(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_how_many_sessions_are_waiting_for_you"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosHowToKnowSomethingNeedsAttentionNow(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_how_to_know_something_needs_attention_now"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosIconsAndLibraries(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_icons_and_libraries"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosImagesAreStoredOnThisComputerImagesBeingSent(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_images_are_stored_on_this_computer_images_being_sent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosIsOfflineConnectToReadAndEditNewSession(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_is_offline_connect_to_read_and_edit_new_session"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsIosLeaveBlankForTheDefaultName(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_leave_blank_for_the_default_name"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosLibrariesResolvedWithDependencies(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_libraries_resolved_with_dependencies"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosLicenseTextIsNotBundledWithTheApp(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_license_text_is_not_bundled_with_the_app"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosLocalCiphertextCache(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_local_ciphertext_cache"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosLocalStorage(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_local_storage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosNameSetInSettings(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_name_set_in_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosNamesSyncEncryptedToOtherClientsTheServerCannot(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_names_sync_encrypted_to_other_clients_the_server_cannot"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosNoComputersYet(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_no_computers_yet"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosNotifications(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_notifications"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosOpenSourceLicenses(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_open_source_licenses"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosOtherClients(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_other_clients"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosPrivacyPolicy(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_privacy_policy"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosProtocolMessageEncoding(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_protocol_message_encoding"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosReload(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_reload"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosSaving(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_saving"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosServerCommunication(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_server_communication"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosSupportAndFeedback(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_support_and_feedback"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosSystem(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_system"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosTheAndroidAppAndHomeScreenWebAppCan(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_the_android_app_and_home_screen_web_app_can"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosTheComputerMayBeAsleepOfflineOrNotRunning(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_the_computer_may_be_asleep_offline_or_not_running"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosTheNumberOnTheSessionsTab(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_the_number_on_the_sessions_tab"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosTheTimeOnTheRightIsTheLastUse(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_the_time_on_the_right_is_the_last_use"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosTheseLibrariesAreUsedByOptionalPartsOfConnect(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_these_libraries_are_used_by_optional_parts_of_connect"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosThisChangeWasNotSavedTheComputerStillHas(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_this_change_was_not_saved_the_computer_still_has"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosThisClientIsNotInTheCurrentTrustedDirectory(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_this_client_is_not_in_the_current_trusted_directory"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosThisComputerIsNotInTheCurrentTrustedDirectory(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_this_computer_is_not_in_the_current_trusted_directory"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosThisIosVersionCannotSendAlertsYetYouWill(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosType(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_type"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosUnansweredApprovalsAreDeniedAfterThisTime(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_unanswered_approvals_are_denied_after_this_time"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_unknown"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_unsure_whether_the_computer_saved_this_change_reload_to"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosUnverified(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_unverified"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosVerified(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_verified"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosVersion(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_version"
+        return format(key, locale: locale, args: [])
+    }
+    public static func settingsIosWhenUnspecifiedUses(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_when_unspecified_uses"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func settingsIosWhileTheAppIsOpen(locale: String = MessageLocale.current) -> String {
+        let key = "settings_ios_while_the_app_is_open"
+        return format(key, locale: locale, args: [])
+    }
     public static func settingsIphonePushHelp(locale: String = MessageLocale.current) -> String {
         let key = "settings_iphone_push_help"
         return format(key, locale: locale, args: [])
@@ -5567,6 +7091,14 @@ public enum L10n {
     }
     public static func startupInstallDescription(locale: String = MessageLocale.current) -> String {
         let key = "startup_install_description"
+        return format(key, locale: locale, args: [])
+    }
+    public static func startupIosCameraUsage(locale: String = MessageLocale.current) -> String {
+        let key = "startup_ios_camera_usage"
+        return format(key, locale: locale, args: [])
+    }
+    public static func startupIosPhotoLibraryAddUsage(locale: String = MessageLocale.current) -> String {
+        let key = "startup_ios_photo_library_add_usage"
         return format(key, locale: locale, args: [])
     }
     public static func startupJavascriptRequired(locale: String = MessageLocale.current) -> String {
@@ -5966,6 +7498,7514 @@ public enum L10n {
     public static func toolsWaitingSync(locale: String = MessageLocale.current) -> String {
         let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
+    }
+}
+public enum L10nMessage {
+    public static func approvalAllow() -> LocalizedMessage {
+        let key = "approval_allow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalAllowed() -> LocalizedMessage {
+        let key = "approval_allowed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalAlwaysAllow() -> LocalizedMessage {
+        let key = "approval_always_allow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalAlwaysAllowed() -> LocalizedMessage {
+        let key = "approval_always_allowed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalAlwaysDirectory(path: String) -> LocalizedMessage {
+        let key = "approval_always_directory"
+        return LocalizedMessage(key: key, arguments: [.string(path)])
+    }
+    public static func approvalAlwaysPrefix(command: String) -> LocalizedMessage {
+        let key = "approval_always_prefix"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func approvalApprove() -> LocalizedMessage {
+        let key = "approval_approve"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalApproveExecute() -> LocalizedMessage {
+        let key = "approval_approve_execute"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalAutoEdits() -> LocalizedMessage {
+        let key = "approval_auto_edits"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalDeliveryFailed(reason: String) -> LocalizedMessage {
+        let key = "approval_delivery_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func approvalDenialReason() -> LocalizedMessage {
+        let key = "approval_denial_reason"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalDenied() -> LocalizedMessage {
+        let key = "approval_denied"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalDeny() -> LocalizedMessage {
+        let key = "approval_deny"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalDetails() -> LocalizedMessage {
+        let key = "approval_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalExpired() -> LocalizedMessage {
+        let key = "approval_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalFullCommand() -> LocalizedMessage {
+        let key = "approval_full_command"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalInTerminal() -> LocalizedMessage {
+        let key = "approval_in_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalIosAlwaysPrefix(command: String) -> LocalizedMessage {
+        let key = "approval_ios_always_prefix"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func approvalIosDecisionDeny() -> LocalizedMessage {
+        let key = "approval_ios_decision_deny"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalIosExpired(decision: String) -> LocalizedMessage {
+        let key = "approval_ios_expired"
+        return LocalizedMessage(key: key, arguments: [.string(decision)])
+    }
+    public static func approvalIosUnknownResult() -> LocalizedMessage {
+        let key = "approval_ios_unknown_result"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalReasonPlaceholder() -> LocalizedMessage {
+        let key = "approval_reason_placeholder"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalSecondsLeft(count: Int) -> LocalizedMessage {
+        let key = "approval_seconds_left"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func approvalTimedOut() -> LocalizedMessage {
+        let key = "approval_timed_out"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalTimeoutNote(remaining: String) -> LocalizedMessage {
+        let key = "approval_timeout_note"
+        return LocalizedMessage(key: key, arguments: [.string(remaining)])
+    }
+    public static func approvalTitle() -> LocalizedMessage {
+        let key = "approval_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func approvalTruncated() -> LocalizedMessage {
+        let key = "approval_truncated"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentComputerOffline(name: String) -> LocalizedMessage {
+        let key = "attachment_computer_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func attachmentComputerUnread(name: String) -> LocalizedMessage {
+        let key = "attachment_computer_unread"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func attachmentDisconnected() -> LocalizedMessage {
+        let key = "attachment_disconnected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentFailed() -> LocalizedMessage {
+        let key = "attachment_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentFailedSendHint(reason: String) -> LocalizedMessage {
+        let key = "attachment_failed_send_hint"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func attachmentFailure(reason: String) -> LocalizedMessage {
+        let key = "attachment_failure"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func attachmentFile() -> LocalizedMessage {
+        let key = "attachment_file"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentFileMissing() -> LocalizedMessage {
+        let key = "attachment_file_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentFileProgress() -> LocalizedMessage {
+        let key = "attachment_file_progress"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentFilenameLimit() -> LocalizedMessage {
+        let key = "attachment_filename_limit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentImagesLimit(count: Int, limit: Int) -> LocalizedMessage {
+        let key = "attachment_images_limit"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(limit))])
+    }
+    public static func attachmentIosCannotReadTheSourceFileRemoveItAndSelect() -> LocalizedMessage {
+        let key = "attachment_ios_cannot_read_the_source_file_remove_it_and_select"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosChooseMachine() -> LocalizedMessage {
+        let key = "attachment_ios_choose_machine"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosChoosePhotos() -> LocalizedMessage {
+        let key = "attachment_ios_choose_photos"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosClipboardEmpty() -> LocalizedMessage {
+        let key = "attachment_ios_clipboard_empty"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosComputerOfflineConnectToAddFiles() -> LocalizedMessage {
+        let key = "attachment_ios_computer_offline_connect_to_add_files"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosCouldNotConnectToTheComputerRetryTheUpload() -> LocalizedMessage {
+        let key = "attachment_ios_could_not_connect_to_the_computer_retry_the_upload"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosCouldNotCreateTheLocalCacheDirectory(value: String) -> LocalizedMessage {
+        let key = "attachment_ios_could_not_create_the_local_cache_directory"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func attachmentIosCouldNotRestorePendingAttachmentsRetry() -> LocalizedMessage {
+        let key = "attachment_ios_could_not_restore_pending_attachments_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosCouldNotSavePendingImages() -> LocalizedMessage {
+        let key = "attachment_ios_could_not_save_pending_images"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosFileCount(count: Int, limit: Int) -> LocalizedMessage {
+        let key = "attachment_ios_file_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(limit))])
+    }
+    public static func attachmentIosFileMissing() -> LocalizedMessage {
+        let key = "attachment_ios_file_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosFileTooLargeEachFileMayBeAtMost(value: String) -> LocalizedMessage {
+        let key = "attachment_ios_file_too_large_each_file_may_be_at_most"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func attachmentIosFileUploadFailedRetryOrSelectTheFileAgain() -> LocalizedMessage {
+        let key = "attachment_ios_file_upload_failed_retry_or_select_the_file_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosFileUploadIsNotAuthorizedCheckDeviceAuthorization() -> LocalizedMessage {
+        let key = "attachment_ios_file_upload_is_not_authorized_check_device_authorization"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosFileUploadStateWasNotSaved(value: String) -> LocalizedMessage {
+        let key = "attachment_ios_file_upload_state_was_not_saved"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect() -> LocalizedMessage {
+        let key = "attachment_ios_file_verification_failed_the_file_may_have_changed_select"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosFilesLimitNotice(limit: Int) -> LocalizedMessage {
+        let key = "attachment_ios_files_limit_notice"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(limit))])
+    }
+    public static func attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd() -> LocalizedMessage {
+        let key = "attachment_ios_folders_cannot_be_sent_directly_compress_the_folder_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosImageMissing() -> LocalizedMessage {
+        let key = "attachment_ios_image_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosMissing() -> LocalizedMessage {
+        let key = "attachment_ios_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosNotSaved() -> LocalizedMessage {
+        let key = "attachment_ios_not_saved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPasteClipboard() -> LocalizedMessage {
+        let key = "attachment_ios_paste_clipboard"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPasteImage() -> LocalizedMessage {
+        let key = "attachment_ios_paste_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPendingAttachmentKeysAreUnavailableRetryShortly() -> LocalizedMessage {
+        let key = "attachment_ios_pending_attachment_keys_are_unavailable_retry_shortly"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPendingAttachmentsHaveNotBeenRestoredRetry() -> LocalizedMessage {
+        let key = "attachment_ios_pending_attachments_have_not_been_restored_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPhotos() -> LocalizedMessage {
+        let key = "attachment_ios_photos"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosPreparing() -> LocalizedMessage {
+        let key = "attachment_ios_preparing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosRestoreFilesLimit(count: Int) -> LocalizedMessage {
+        let key = "attachment_ios_restore_files_limit"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func attachmentIosRestoreImagesLimit(count: Int, have: Int, limit: Int) -> LocalizedMessage {
+        let key = "attachment_ios_restore_images_limit"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(have)), .integer(Int64(limit))])
+    }
+    public static func attachmentIosRestoreUnavailable() -> LocalizedMessage {
+        let key = "attachment_ios_restore_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosSignedOutOfTheAccount() -> LocalizedMessage {
+        let key = "attachment_ios_signed_out_of_the_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosSourceUnreadable() -> LocalizedMessage {
+        let key = "attachment_ios_source_unreadable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed() -> LocalizedMessage {
+        let key = "attachment_ios_the_app_restarted_delivery_of_this_message_is_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheComputerDidNotConfirmUploadCompletionRetry() -> LocalizedMessage {
+        let key = "attachment_ios_the_computer_did_not_confirm_upload_completion_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheComputerDidNotProvideAFileId() -> LocalizedMessage {
+        let key = "attachment_ios_the_computer_did_not_provide_a_file_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheComputerReportedInvalidUploadProgress() -> LocalizedMessage {
+        let key = "attachment_ios_the_computer_reported_invalid_upload_progress"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheComputerSAttachmentStorageIsFullClearSpace() -> LocalizedMessage {
+        let key = "attachment_ios_the_computer_s_attachment_storage_is_full_clear_space"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheFileChangedAfterSelectionSelectItAgain() -> LocalizedMessage {
+        let key = "attachment_ios_the_file_changed_after_selection_select_it_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosTheFileOnTheComputerExpiredRetryTheUpload() -> LocalizedMessage {
+        let key = "attachment_ios_the_file_on_the_computer_expired_retry_the_upload"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosThisComputerHasNotDeclaredFileUploadSupportUpdate() -> LocalizedMessage {
+        let key = "attachment_ios_this_computer_has_not_declared_file_upload_support_update"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosThisPhoneSPendingImageStorageIsFullSend() -> LocalizedMessage {
+        let key = "attachment_ios_this_phone_s_pending_image_storage_is_full_send"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosUploadFailed() -> LocalizedMessage {
+        let key = "attachment_ios_upload_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentIosUploadProgress(percent: Int) -> LocalizedMessage {
+        let key = "attachment_ios_upload_progress"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func attachmentIosVerifyTheFileOnTheComputer() -> LocalizedMessage {
+        let key = "attachment_ios_verify_the_file_on_the_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentMaxFiles(count: Int) -> LocalizedMessage {
+        let key = "attachment_max_files"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func attachmentMaxImages(count: Int) -> LocalizedMessage {
+        let key = "attachment_max_images"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func attachmentMetadata() -> LocalizedMessage {
+        let key = "attachment_metadata"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentNamedSizeLimit(limit: Int, name: String) -> LocalizedMessage {
+        let key = "attachment_named_size_limit"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(limit)), .string(name)])
+    }
+    public static func attachmentPathSpaces(name: String) -> LocalizedMessage {
+        let key = "attachment_path_spaces"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func attachmentPhotosVideos() -> LocalizedMessage {
+        let key = "attachment_photos_videos"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentPreparing() -> LocalizedMessage {
+        let key = "attachment_preparing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentReadFailed() -> LocalizedMessage {
+        let key = "attachment_read_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentReleaseToAdd() -> LocalizedMessage {
+        let key = "attachment_release_to_add"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentRemoveFile(name: String) -> LocalizedMessage {
+        let key = "attachment_remove_file"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func attachmentRemoveVideo(name: String) -> LocalizedMessage {
+        let key = "attachment_remove_video"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func attachmentSizeLimit(limit: Int) -> LocalizedMessage {
+        let key = "attachment_size_limit"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(limit))])
+    }
+    public static func attachmentUpdateRequired() -> LocalizedMessage {
+        let key = "attachment_update_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentUploadFailed() -> LocalizedMessage {
+        let key = "attachment_upload_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentUploadProgress(percent: Int) -> LocalizedMessage {
+        let key = "attachment_upload_progress"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func attachmentUploading() -> LocalizedMessage {
+        let key = "attachment_uploading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func attachmentZipFolder() -> LocalizedMessage {
+        let key = "attachment_zip_folder"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonAllProjectsAvatar() -> LocalizedMessage {
+        let key = "common_all_projects_avatar"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonBack() -> LocalizedMessage {
+        let key = "common_back"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonCancel() -> LocalizedMessage {
+        let key = "common_cancel"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonClearSearch() -> LocalizedMessage {
+        let key = "common_clear_search"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonClose() -> LocalizedMessage {
+        let key = "common_close"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonCopied() -> LocalizedMessage {
+        let key = "common_copied"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonCopy() -> LocalizedMessage {
+        let key = "common_copy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonDetails() -> LocalizedMessage {
+        let key = "common_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonDone() -> LocalizedMessage {
+        let key = "common_done"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonGotIt() -> LocalizedMessage {
+        let key = "common_got_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosAttention() -> LocalizedMessage {
+        let key = "common_ios_attention"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosListSeparator() -> LocalizedMessage {
+        let key = "common_ios_list_separator"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosLoading() -> LocalizedMessage {
+        let key = "common_ios_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosMore() -> LocalizedMessage {
+        let key = "common_ios_more"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosNoteSeparator() -> LocalizedMessage {
+        let key = "common_ios_note_separator"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosOffline() -> LocalizedMessage {
+        let key = "common_ios_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosOnline() -> LocalizedMessage {
+        let key = "common_ios_online"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosSaveFailed(reason: String) -> LocalizedMessage {
+        let key = "common_ios_save_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func commonIosSaving() -> LocalizedMessage {
+        let key = "common_ios_saving"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonIosSpokenSeparator() -> LocalizedMessage {
+        let key = "common_ios_spoken_separator"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonListSeparator() -> LocalizedMessage {
+        let key = "common_list_separator"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonLoading() -> LocalizedMessage {
+        let key = "common_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonMachine() -> LocalizedMessage {
+        let key = "common_machine"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonReload() -> LocalizedMessage {
+        let key = "common_reload"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonRemove() -> LocalizedMessage {
+        let key = "common_remove"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonRetry() -> LocalizedMessage {
+        let key = "common_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonSave() -> LocalizedMessage {
+        let key = "common_save"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonSettings() -> LocalizedMessage {
+        let key = "common_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func commonUnknownComputer() -> LocalizedMessage {
+        let key = "common_unknown_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerAfterTurn() -> LocalizedMessage {
+        let key = "composer_after_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerAwaitRecord(agent: String) -> LocalizedMessage {
+        let key = "composer_await_record"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func composerComputerRestarted() -> LocalizedMessage {
+        let key = "composer_computer_restarted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerImagesUnrecognized(agent: String) -> LocalizedMessage {
+        let key = "composer_images_unrecognized"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func composerInputUnconfirmed() -> LocalizedMessage {
+        let key = "composer_input_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerInsertHint() -> LocalizedMessage {
+        let key = "composer_insert_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerInsertNow() -> LocalizedMessage {
+        let key = "composer_insert_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerIosConnectSend() -> LocalizedMessage {
+        let key = "composer_ios_connect_send"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerIosDraftRestoreFailed() -> LocalizedMessage {
+        let key = "composer_ios_draft_restore_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerIosDraftSaveFailed() -> LocalizedMessage {
+        let key = "composer_ios_draft_save_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerIosNotSent(reason: String) -> LocalizedMessage {
+        let key = "composer_ios_not_sent"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func composerIosUnconfirmed() -> LocalizedMessage {
+        let key = "composer_ios_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerMaybeFailure(reason: String) -> LocalizedMessage {
+        let key = "composer_maybe_failure"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func composerMessage() -> LocalizedMessage {
+        let key = "composer_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerMessageFallback() -> LocalizedMessage {
+        let key = "composer_message_fallback"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerMessageUnconfirmed() -> LocalizedMessage {
+        let key = "composer_message_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerNotWritten() -> LocalizedMessage {
+        let key = "composer_not_written"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerPlanPlaceholder() -> LocalizedMessage {
+        let key = "composer_plan_placeholder"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerQueueAfterAnswer() -> LocalizedMessage {
+        let key = "composer_queue_after_answer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerQueueHint() -> LocalizedMessage {
+        let key = "composer_queue_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerReadyTimeout() -> LocalizedMessage {
+        let key = "composer_ready_timeout"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerResent() -> LocalizedMessage {
+        let key = "composer_resent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerRestore() -> LocalizedMessage {
+        let key = "composer_restore"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerRestoreFilesFull(count: Int) -> LocalizedMessage {
+        let key = "composer_restore_files_full"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func composerRestoreImagesFull(count: Int, existing: Int) -> LocalizedMessage {
+        let key = "composer_restore_images_full"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(existing))])
+    }
+    public static func composerSend() -> LocalizedMessage {
+        let key = "composer_send"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerSendFailure(reason: String) -> LocalizedMessage {
+        let key = "composer_send_failure"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func composerSending() -> LocalizedMessage {
+        let key = "composer_sending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerShortcut(keys: String) -> LocalizedMessage {
+        let key = "composer_shortcut"
+        return LocalizedMessage(key: key, arguments: [.string(keys)])
+    }
+    public static func composerSlashNote() -> LocalizedMessage {
+        let key = "composer_slash_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerSlashTitle() -> LocalizedMessage {
+        let key = "composer_slash_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerUnconfirmed() -> LocalizedMessage {
+        let key = "composer_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func composerWriteFailed() -> LocalizedMessage {
+        let key = "composer_write_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionChecking() -> LocalizedMessage {
+        let key = "connection_checking"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionConnected() -> LocalizedMessage {
+        let key = "connection_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionConnecting() -> LocalizedMessage {
+        let key = "connection_connecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionConnectingConnCheck() -> LocalizedMessage {
+        let key = "connection_connecting_conn_check"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionConnectingConnCheckLabel() -> LocalizedMessage {
+        let key = "connection_connecting_conn_check_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionIosDisconnectedAt(time: String) -> LocalizedMessage {
+        let key = "connection_ios_disconnected_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func connectionIosExplanation() -> LocalizedMessage {
+        let key = "connection_ios_explanation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionIosHost(host: String) -> LocalizedMessage {
+        let key = "connection_ios_host"
+        return LocalizedMessage(key: key, arguments: [.string(host)])
+    }
+    public static func connectionIosNoResponse() -> LocalizedMessage {
+        let key = "connection_ios_no_response"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionIosReason(reason: String) -> LocalizedMessage {
+        let key = "connection_ios_reason"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func connectionIosRetryNow() -> LocalizedMessage {
+        let key = "connection_ios_retry_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionIosServerError(reason: String) -> LocalizedMessage {
+        let key = "connection_ios_server_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func connectionLastFailure(value: String) -> LocalizedMessage {
+        let key = "connection_last_failure"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func connectionLatencyIsOneRoundTripTheServerRowMeasures() -> LocalizedMessage {
+        let key = "connection_latency_is_one_round_trip_the_server_row_measures"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionLivePush() -> LocalizedMessage {
+        let key = "connection_live_push"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionLivePushIsNotConnected() -> LocalizedMessage {
+        let key = "connection_live_push_is_not_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionLivePushIsNotConnectedSessionChangesMayBe(value: String) -> LocalizedMessage {
+        let key = "connection_live_push_is_not_connected_session_changes_may_be"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func connectionLocalNetwork() -> LocalizedMessage {
+        let key = "connection_local_network"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNetworkRequired() -> LocalizedMessage {
+        let key = "connection_network_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNoNetwork() -> LocalizedMessage {
+        let key = "connection_no_network"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNoNetworkEmpty() -> LocalizedMessage {
+        let key = "connection_no_network_empty"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNoNetworkPrevious() -> LocalizedMessage {
+        let key = "connection_no_network_previous"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNoResponse() -> LocalizedMessage {
+        let key = "connection_no_response"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNoServer() -> LocalizedMessage {
+        let key = "connection_no_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionNotChecked() -> LocalizedMessage {
+        let key = "connection_not_checked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionPreviousBelow() -> LocalizedMessage {
+        let key = "connection_previous_below"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionReconnectNow() -> LocalizedMessage {
+        let key = "connection_reconnect_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionReconnecting() -> LocalizedMessage {
+        let key = "connection_reconnecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionReconnectingConnCheck() -> LocalizedMessage {
+        let key = "connection_reconnecting_conn_check"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionReconnectingConnCheckLabel() -> LocalizedMessage {
+        let key = "connection_reconnecting_conn_check_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionRetryingPrevious() -> LocalizedMessage {
+        let key = "connection_retrying_previous"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionSecElapsed(count: Int, detail: String, previousFailure: String, value: String) -> LocalizedMessage {
+        let key = "connection_sec_elapsed"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(detail), .string(previousFailure), .string(value)])
+    }
+    public static func connectionServerDetails(reason: String) -> LocalizedMessage {
+        let key = "connection_server_details"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func connectionServerRetrying() -> LocalizedMessage {
+        let key = "connection_server_retrying"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionSlow() -> LocalizedMessage {
+        let key = "connection_slow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionTestAgain() -> LocalizedMessage {
+        let key = "connection_test_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionThisDeviceHasNoNetworkItWillReconnectWhen() -> LocalizedMessage {
+        let key = "connection_this_device_has_no_network_it_will_reconnect_when"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionUnavailable() -> LocalizedMessage {
+        let key = "connection_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionUnreachable() -> LocalizedMessage {
+        let key = "connection_unreachable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func connectionWorking() -> LocalizedMessage {
+        let key = "connection_working"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockAgentWaiting(agent: String) -> LocalizedMessage {
+        let key = "dock_agent_waiting"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func dockAgyPlanNote() -> LocalizedMessage {
+        let key = "dock_agy_plan_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockAnswerTitle() -> LocalizedMessage {
+        let key = "dock_answer_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockAnswerUnknown() -> LocalizedMessage {
+        let key = "dock_answer_unknown"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockAnswered(answers: String) -> LocalizedMessage {
+        let key = "dock_answered"
+        return LocalizedMessage(key: key, arguments: [.string(answers)])
+    }
+    public static func dockClaudePlanNote() -> LocalizedMessage {
+        let key = "dock_claude_plan_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockHandle() -> LocalizedMessage {
+        let key = "dock_handle"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockHandleTerminal() -> LocalizedMessage {
+        let key = "dock_handle_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockIosKeepPlanning() -> LocalizedMessage {
+        let key = "dock_ios_keep_planning"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockIosQuestionAnswered() -> LocalizedMessage {
+        let key = "dock_ios_question_answered"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockIosQuestionExpired(answer: String) -> LocalizedMessage {
+        let key = "dock_ios_question_expired"
+        return LocalizedMessage(key: key, arguments: [.string(answer)])
+    }
+    public static func dockIosQuestionFailed(reason: String) -> LocalizedMessage {
+        let key = "dock_ios_question_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func dockIosQuestionUnknown(answer: String) -> LocalizedMessage {
+        let key = "dock_ios_question_unknown"
+        return LocalizedMessage(key: key, arguments: [.string(answer)])
+    }
+    public static func dockMore(count: Int) -> LocalizedMessage {
+        let key = "dock_more"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func dockMultiselect() -> LocalizedMessage {
+        let key = "dock_multiselect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockNoneFit() -> LocalizedMessage {
+        let key = "dock_none_fit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockOtherTerminal() -> LocalizedMessage {
+        let key = "dock_other_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanAnswered() -> LocalizedMessage {
+        let key = "dock_plan_answered"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanClear() -> LocalizedMessage {
+        let key = "dock_plan_clear"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanClearRecord() -> LocalizedMessage {
+        let key = "dock_plan_clear_record"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanFull() -> LocalizedMessage {
+        let key = "dock_plan_full"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanImplementRecord() -> LocalizedMessage {
+        let key = "dock_plan_implement_record"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanKeep() -> LocalizedMessage {
+        let key = "dock_plan_keep"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockPlanTitle(title: String) -> LocalizedMessage {
+        let key = "dock_plan_title"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func dockPlanUnread() -> LocalizedMessage {
+        let key = "dock_plan_unread"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockQuestionChanged() -> LocalizedMessage {
+        let key = "dock_question_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockQuestionProgress(count: Int, index: Int) -> LocalizedMessage {
+        let key = "dock_question_progress"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(index))])
+    }
+    public static func dockRecommended() -> LocalizedMessage {
+        let key = "dock_recommended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockSelectThenSubmit() -> LocalizedMessage {
+        let key = "dock_select_then_submit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockSelected(count: Int) -> LocalizedMessage {
+        let key = "dock_selected"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func dockSubmitFailed(reason: String) -> LocalizedMessage {
+        let key = "dock_submit_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func dockSubmitFailedEdit(reason: String) -> LocalizedMessage {
+        let key = "dock_submit_failed_edit"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func dockSubmitSelected(count: Int) -> LocalizedMessage {
+        let key = "dock_submit_selected"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func dockSubmitting() -> LocalizedMessage {
+        let key = "dock_submitting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockTrustFolder() -> LocalizedMessage {
+        let key = "dock_trust_folder"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func dockWaitingConfirmation() -> LocalizedMessage {
+        let key = "dock_waiting_confirmation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsAccountCreationDraftPreservedContinueTheOriginalCreationFlow() -> LocalizedMessage {
+        let key = "errors_account_creation_draft_preserved_continue_the_original_creation_flow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsCannotConnectToTerminal() -> LocalizedMessage {
+        let key = "errors_cannot_connect_to_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsCannotSignWithTheCurrentSecurityStateTheOperation() -> LocalizedMessage {
+        let key = "errors_cannot_sign_with_the_current_security_state_the_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsConnectionDroppedMidway() -> LocalizedMessage {
+        let key = "errors_connection_dropped_midway"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsConnectionTimedOut() -> LocalizedMessage {
+        let key = "errors_connection_timed_out"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsConnectionTimedOutReconnecting() -> LocalizedMessage {
+        let key = "errors_connection_timed_out_reconnecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsCurrentMembershipCouldNotBeVerified() -> LocalizedMessage {
+        let key = "errors_current_membership_could_not_be_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsDeviceDirectoryStateChanged() -> LocalizedMessage {
+        let key = "errors_device_directory_state_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsDeviceInformationCouldNotBeVerified() -> LocalizedMessage {
+        let key = "errors_device_information_could_not_be_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsDeviceInformationIsChangingRetry() -> LocalizedMessage {
+        let key = "errors_device_information_is_changing_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsDeviceRegistrationIsUnfinishedRetryItFirst() -> LocalizedMessage {
+        let key = "errors_device_registration_is_unfinished_retry_it_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsDisconnectedFromServer() -> LocalizedMessage {
+        let key = "errors_disconnected_from_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsEmergencyRecoveryDraftPreservedContinueCheckingWaitingOrCompleting() -> LocalizedMessage {
+        let key = "errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsEstablishingPushConnection() -> LocalizedMessage {
+        let key = "errors_establishing_push_connection"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsHistoryCouldNotContinueLoadingRetry() -> LocalizedMessage {
+        let key = "errors_history_could_not_continue_loading_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsHistoryHasAGapRetry() -> LocalizedMessage {
+        let key = "errors_history_has_a_gap_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe() -> LocalizedMessage {
+        let key = "errors_history_keys_unavailable_records_from_before_recovery_cannot_be"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidCiphertextCurrentStateCheckpointMismatch() -> LocalizedMessage {
+        let key = "errors_invalid_ciphertext_current_state_checkpoint_mismatch"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed() -> LocalizedMessage {
+        let key = "errors_invalid_ciphertext_signature_key_or_content_verification_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidCurrentRequestSnapshot() -> LocalizedMessage {
+        let key = "errors_invalid_current_request_snapshot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidPairingApprovalSignature() -> LocalizedMessage {
+        let key = "errors_invalid_pairing_approval_signature"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidPushFrame() -> LocalizedMessage {
+        let key = "errors_invalid_push_frame"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsInvalidSessionSeed() -> LocalizedMessage {
+        let key = "errors_invalid_session_seed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosAlreadyRegisteringWaitForTheResult(value: String) -> LocalizedMessage {
+        let key = "errors_ios_already_registering_wait_for_the_result"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosCannotFindTheServerCheckYourNetwork() -> LocalizedMessage {
+        let key = "errors_ios_cannot_find_the_server_check_your_network"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCannotOpenTheComputerSReplyCommandExecutionIs() -> LocalizedMessage {
+        let key = "errors_ios_cannot_open_the_computer_s_reply_command_execution_is"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCliSOwnMode() -> LocalizedMessage {
+        let key = "errors_ios_cli_s_own_mode"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCouldNotLoadHistory(value: String) -> LocalizedMessage {
+        let key = "errors_ios_could_not_load_history"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosCouldNotLoadTheSessionList() -> LocalizedMessage {
+        let key = "errors_ios_could_not_load_the_session_list"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCouldNotReadThisPhoneSAccountStateManagement() -> LocalizedMessage {
+        let key = "errors_ios_could_not_read_this_phone_s_account_state_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoBadKeyNonceSize() -> LocalizedMessage {
+        let key = "errors_ios_crypto_bad_key_nonce_size"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoBadSessionKey() -> LocalizedMessage {
+        let key = "errors_ios_crypto_bad_session_key"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoBadSessionSeed() -> LocalizedMessage {
+        let key = "errors_ios_crypto_bad_session_seed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoEnvelopeDoesNotOpen() -> LocalizedMessage {
+        let key = "errors_ios_crypto_envelope_does_not_open"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoEnvelopeLocation() -> LocalizedMessage {
+        let key = "errors_ios_crypto_envelope_location"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoMalformedContent() -> LocalizedMessage {
+        let key = "errors_ios_crypto_malformed_content"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoMalformedHeader() -> LocalizedMessage {
+        let key = "errors_ios_crypto_malformed_header"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosCryptoRootKeyBytes(count: Int) -> LocalizedMessage {
+        let key = "errors_ios_crypto_root_key_bytes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func errorsIosCryptoSigningSeedBytes(count: Int) -> LocalizedMessage {
+        let key = "errors_ios_crypto_signing_seed_bytes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func errorsIosCryptoUnsupportedEnvelopeVersion() -> LocalizedMessage {
+        let key = "errors_ios_crypto_unsupported_envelope_version"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosExpiredControlRenewal(renewal: String) -> LocalizedMessage {
+        let key = "errors_ios_expired_control_renewal"
+        return LocalizedMessage(key: key, arguments: [.string(renewal)])
+    }
+    public static func errorsIosHistoryIsDiscontinuousRetryLoading() -> LocalizedMessage {
+        let key = "errors_ios_history_is_discontinuous_retry_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosImageContentDoesNotMatchItsFormat() -> LocalizedMessage {
+        let key = "errors_ios_image_content_does_not_match_its_format"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosImageContentOrOriginCouldNotBeVerified() -> LocalizedMessage {
+        let key = "errors_ios_image_content_or_origin_could_not_be_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosInvalidServerAddress() -> LocalizedMessage {
+        let key = "errors_ios_invalid_server_address"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe() -> LocalizedMessage {
+        let key = "errors_ios_joining_canceled_the_old_request_may_still_occupy_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosKContext(value: String) -> LocalizedMessage {
+        let key = "errors_ios_k_context"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosLoginExpired(value: String) -> LocalizedMessage {
+        let key = "errors_ios_login_expired"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosMContext(value: String) -> LocalizedMessage {
+        let key = "errors_ios_m_context"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosNetworkUnavailableTheCommandWasNotSent() -> LocalizedMessage {
+        let key = "errors_ios_network_unavailable_the_command_was_not_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosNoVerifiableExecutionResultReceivedRetryTheSameRequest() -> LocalizedMessage {
+        let key = "errors_ios_no_verifiable_execution_result_received_retry_the_same_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosNotConnectedToTheServer() -> LocalizedMessage {
+        let key = "errors_ios_not_connected_to_the_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosNotConnectedToTheServerConnectToMakeChanges() -> LocalizedMessage {
+        let key = "errors_ios_not_connected_to_the_server_connect_to_make_changes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosOnlyTheDeviceItselfCanChangeItsName() -> LocalizedMessage {
+        let key = "errors_ios_only_the_device_itself_can_change_its_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot() -> LocalizedMessage {
+        let key = "errors_ios_other_clients_kept_changing_project_preferences_changes_could_not"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosProjectSettingsMayDiffer() -> LocalizedMessage {
+        let key = "errors_ios_project_settings_may_differ"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosRecoveryRequestStateMayBeOutOfDateConnect() -> LocalizedMessage {
+        let key = "errors_ios_recovery_request_state_may_be_out_of_date_connect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew() -> LocalizedMessage {
+        let key = "errors_ios_remote_control_expired_saving_changes_session_control_and_new"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosSecureConnectionFailed(value: String) -> LocalizedMessage {
+        let key = "errors_ios_secure_connection_failed"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosTerminalClosed() -> LocalizedMessage {
+        let key = "errors_ios_terminal_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosTerminalConnectionDropped(value: String) -> LocalizedMessage {
+        let key = "errors_ios_terminal_connection_dropped"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosTerminalInputFailedToSendStopped() -> LocalizedMessage {
+        let key = "errors_ios_terminal_input_failed_to_send_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosTerminalInputWaitingToSendStopped() -> LocalizedMessage {
+        let key = "errors_ios_terminal_input_waiting_to_send_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosTheCurrentRequestHasNotBeenVerifiedByThe() -> LocalizedMessage {
+        let key = "errors_ios_the_current_request_has_not_been_verified_by_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: String) -> LocalizedMessage {
+        let key = "errors_ios_the_original_request_and_keys_are_retained_retry_if"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt() -> LocalizedMessage {
+        let key = "errors_ios_the_previous_operation_is_unconfirmed_and_has_expired_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosThePreviousResultIsStillUncertain(value: String) -> LocalizedMessage {
+        let key = "errors_ios_the_previous_result_is_still_uncertain"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosThePreviousResultIsStillUncertainRetryingSendsThe(value: String) -> LocalizedMessage {
+        let key = "errors_ios_the_previous_result_is_still_uncertain_retrying_sends_the"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String) -> LocalizedMessage {
+        let key = "errors_ios_the_request_may_have_arrived_but_login_then_failed"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosThisAppVersionIsOutOfDateUpdateAnd() -> LocalizedMessage {
+        let key = "errors_ios_this_app_version_is_out_of_date_update_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosThisCommandExpiredAndWasNotSent() -> LocalizedMessage {
+        let key = "errors_ios_this_command_expired_and_was_not_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosThisDeletesTheAccountKeysAndCacheOnThis() -> LocalizedMessage {
+        let key = "errors_ios_this_deletes_the_account_keys_and_cache_on_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosThisDeviceIsOver5MinutesBehindTheSecurity() -> LocalizedMessage {
+        let key = "errors_ios_this_device_is_over_5_minutes_behind_the_security"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosThisDirectoryDoesNotExist() -> LocalizedMessage {
+        let key = "errors_ios_this_directory_does_not_exist"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosToday(value: String) -> LocalizedMessage {
+        let key = "errors_ios_today"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsIosUnknownSession() -> LocalizedMessage {
+        let key = "errors_ios_unknown_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsIosUnsureWhetherTheComputerExecutedThis(value: String) -> LocalizedMessage {
+        let key = "errors_ios_unsure_whether_the_computer_executed_this"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsItMayHaveBeenDeletedOrBelongToA() -> LocalizedMessage {
+        let key = "errors_it_may_have_been_deleted_or_belong_to_a"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd() -> LocalizedMessage {
+        let key = "errors_membership_chain_conflict_security_operations_stopped_verify_devices_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsNamesCanOnlyBeChangedOnThatDevice() -> LocalizedMessage {
+        let key = "errors_names_can_only_be_changed_on_that_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsNetworkChangedReconnecting() -> LocalizedMessage {
+        let key = "errors_network_changed_reconnecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsOtherClientsKeptChangingTheProjectListChangesCould() -> LocalizedMessage {
+        let key = "errors_other_clients_kept_changing_the_project_list_changes_could"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsPendingRequestsOnTheComputerCouldNotBeVerified() -> LocalizedMessage {
+        let key = "errors_pending_requests_on_the_computer_could_not_be_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsProjectPreferencesFormatIsNotSupported() -> LocalizedMessage {
+        let key = "errors_project_preferences_format_is_not_supported"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsPushBacklogReconnecting() -> LocalizedMessage {
+        let key = "errors_push_backlog_reconnecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsQueuedRecordsCouldNotBeRestoredYouCanStill() -> LocalizedMessage {
+        let key = "errors_queued_records_could_not_be_restored_you_can_still"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsQueuedRecordsCouldNotBeSavedLocallyMessagesWill() -> LocalizedMessage {
+        let key = "errors_queued_records_could_not_be_saved_locally_messages_will"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsReadingLocalState() -> LocalizedMessage {
+        let key = "errors_reading_local_state"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsRemoteAgentOnIsOutOfDateUpdateIt(value: String) -> LocalizedMessage {
+        let key = "errors_remote_agent_on_is_out_of_date_update_it"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsRemoteControlExpiredControlAndNewUploadsArePaused() -> LocalizedMessage {
+        let key = "errors_remote_control_expired_control_and_new_uploads_are_paused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsRemoteControlExpiredSavingChangesSessionControlAndNew() -> LocalizedMessage {
+        let key = "errors_remote_control_expired_saving_changes_session_control_and_new"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsSecurityBodyTypeOrDirectionMismatch() -> LocalizedMessage {
+        let key = "errors_security_body_type_or_direction_mismatch"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsSecurityEnvelopeMissing() -> LocalizedMessage {
+        let key = "errors_security_envelope_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsServerReturned(value: String) -> LocalizedMessage {
+        let key = "errors_server_returned"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsSessionKeyEnvelopeMissing() -> LocalizedMessage {
+        let key = "errors_session_key_envelope_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsSetupRequestPreserved(reason: String) -> LocalizedMessage {
+        let key = "errors_setup_request_preserved"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func errorsSigningIn() -> LocalizedMessage {
+        let key = "errors_signing_in"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsSyncingDeviceState() -> LocalizedMessage {
+        let key = "errors_syncing_device_state"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalConnectionCanceled() -> LocalizedMessage {
+        let key = "errors_terminal_connection_canceled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalConnectionClosed() -> LocalizedMessage {
+        let key = "errors_terminal_connection_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalConnectionDropped() -> LocalizedMessage {
+        let key = "errors_terminal_connection_dropped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalConnectionTimedOutReconnect() -> LocalizedMessage {
+        let key = "errors_terminal_connection_timed_out_reconnect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalFramesAreOutOfOrder() -> LocalizedMessage {
+        let key = "errors_terminal_frames_are_out_of_order"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTerminalOutputBacklogReconnectForTheLatestDisplay() -> LocalizedMessage {
+        let key = "errors_terminal_output_backlog_reconnect_for_the_latest_display"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerDidNotReturnATask() -> LocalizedMessage {
+        let key = "errors_the_computer_did_not_return_a_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerDidNotReturnATaskList() -> LocalizedMessage {
+        let key = "errors_the_computer_did_not_return_a_task_list"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerDidNotReturnAnAttachmentId() -> LocalizedMessage {
+        let key = "errors_the_computer_did_not_return_an_attachment_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerIsOfflineConnectToEditTasks() -> LocalizedMessage {
+        let key = "errors_the_computer_is_offline_connect_to_edit_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerIsOfflineTheCommandWasNotSent() -> LocalizedMessage {
+        let key = "errors_the_computer_is_offline_the_command_was_not_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerIsStillVerifyingAttachmentsRetryShortly() -> LocalizedMessage {
+        let key = "errors_the_computer_is_still_verifying_attachments_retry_shortly"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheComputerSReplyCouldNotBeVerifiedCommand() -> LocalizedMessage {
+        let key = "errors_the_computer_s_reply_could_not_be_verified_command"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheCurrentRequestCouldNotBeVerifiedAgain() -> LocalizedMessage {
+        let key = "errors_the_current_request_could_not_be_verified_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheDeviceDirectoryResponseIsOutOfDate() -> LocalizedMessage {
+        let key = "errors_the_device_directory_response_is_out_of_date"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheDraftCouldNotBeRestoredYouCanStill() -> LocalizedMessage {
+        let key = "errors_the_draft_could_not_be_restored_you_can_still"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheDraftCouldNotBeSavedLocallyKeepThe() -> LocalizedMessage {
+        let key = "errors_the_draft_could_not_be_saved_locally_keep_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheDraftCouldNotBeSavedTheOriginalMessage() -> LocalizedMessage {
+        let key = "errors_the_draft_could_not_be_saved_the_original_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheEventSPositionWasChanged() -> LocalizedMessage {
+        let key = "errors_the_event_s_position_was_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThePlanDisplayChangedReviewItAgain() -> LocalizedMessage {
+        let key = "errors_the_plan_display_changed_review_it_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThePreviousOperationSOutcomeIsStillUnknownReload() -> LocalizedMessage {
+        let key = "errors_the_previous_operation_s_outcome_is_still_unknown_reload"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThePreviousRequestSOutcomeIsStillUnknownCannot() -> LocalizedMessage {
+        let key = "errors_the_previous_request_s_outcome_is_still_unknown_cannot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheRecoveryObjectWasUpdatedConcurrentlyRetryingOnThe() -> LocalizedMessage {
+        let key = "errors_the_recovery_object_was_updated_concurrently_retrying_on_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheRelayDidNotProvideAVerifiableExecutionResult() -> LocalizedMessage {
+        let key = "errors_the_relay_did_not_provide_a_verifiable_execution_result"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheRequestOnTheComputerChangedReviewItAgain() -> LocalizedMessage {
+        let key = "errors_the_request_on_the_computer_changed_review_it_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheServerAddressCannotIncludeAUsernameOrPassword() -> LocalizedMessage {
+        let key = "errors_the_server_address_cannot_include_a_username_or_password"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheServerDoesNotRecognizeThisDeviceItMay() -> LocalizedMessage {
+        let key = "errors_the_server_does_not_recognize_this_device_it_may"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheServerMustUseHttps() -> LocalizedMessage {
+        let key = "errors_the_server_must_use_https"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheServerReturnedAnUnexpectedDeviceId() -> LocalizedMessage {
+        let key = "errors_the_server_returned_an_unexpected_device_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheSessionRecordSComputerWasChanged() -> LocalizedMessage {
+        let key = "errors_the_session_record_s_computer_was_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheTaskListReturnedByTheComputerCouldNot() -> LocalizedMessage {
+        let key = "errors_the_task_list_returned_by_the_computer_could_not"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTheTaskWasJustChangedUpdatedToTheLatest() -> LocalizedMessage {
+        let key = "errors_the_task_was_just_changed_updated_to_the_latest"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisBrowserHasAlreadyJoinedAnAccountOpenThis() -> LocalizedMessage {
+        let key = "errors_this_browser_has_already_joined_an_account_open_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisDeviceSClockIsBehindTheAccountState() -> LocalizedMessage {
+        let key = "errors_this_device_s_clock_is_behind_the_account_state"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisDeviceSClockIsBehindTheAccountStateRemote() -> LocalizedMessage {
+        let key = "errors_this_device_s_clock_is_behind_the_account_state_remote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisDeviceSSecurityStateCouldNotBeVerified() -> LocalizedMessage {
+        let key = "errors_this_device_s_security_state_could_not_be_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisHistoryUsesAnOldEncryptionFormatAndCan() -> LocalizedMessage {
+        let key = "errors_this_history_uses_an_old_encryption_format_and_can"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisIsNotARemoteAgentAccountKey() -> LocalizedMessage {
+        let key = "errors_this_is_not_a_remote_agent_account_key"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisPageIsOutOfDateRefreshOrUpdate() -> LocalizedMessage {
+        let key = "errors_this_page_is_out_of_date_refresh_or_update"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisRequestCanNoLongerBeActedOn() -> LocalizedMessage {
+        let key = "errors_this_request_can_no_longer_be_acted_on"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsThisRequestHasNotBeenVerifiedByTheComputer() -> LocalizedMessage {
+        let key = "errors_this_request_has_not_been_verified_by_the_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsTimedOutReconnecting(value: String) -> LocalizedMessage {
+        let key = "errors_timed_out_reconnecting"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func errorsUpdateRemoteAgentOnThisComputerToUseScheduled() -> LocalizedMessage {
+        let key = "errors_update_remote_agent_on_this_computer_to_use_scheduled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsUploadMadeNoProgress() -> LocalizedMessage {
+        let key = "errors_upload_made_no_progress"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsWaitingForTheOwningComputerToUpdateTheCurrent() -> LocalizedMessage {
+        let key = "errors_waiting_for_the_owning_computer_to_update_the_current"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote() -> LocalizedMessage {
+        let key = "errors_waiting_for_the_owning_computer_to_update_the_current_remote"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeAddDevice() -> LocalizedMessage {
+        let key = "home_add_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeAddViaManager(name: String) -> LocalizedMessage {
+        let key = "home_add_via_manager"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func homeAllProjects() -> LocalizedMessage {
+        let key = "home_all_projects"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeChooseScope() -> LocalizedMessage {
+        let key = "home_choose_scope"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeClearFilter() -> LocalizedMessage {
+        let key = "home_clear_filter"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeComputerRunsCli() -> LocalizedMessage {
+        let key = "home_computer_runs_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeConnectionCheck() -> LocalizedMessage {
+        let key = "home_connection_check"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeConnectionLabel(state: String) -> LocalizedMessage {
+        let key = "home_connection_label"
+        return LocalizedMessage(key: key, arguments: [.string(state)])
+    }
+    public static func homeFilterTitle() -> LocalizedMessage {
+        let key = "home_filter_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeForked() -> LocalizedMessage {
+        let key = "home_forked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIdleCount(count: Int) -> LocalizedMessage {
+        let key = "home_idle_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeIosAddComputer() -> LocalizedMessage {
+        let key = "home_ios_add_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosApprovalRemaining(count: Int) -> LocalizedMessage {
+        let key = "home_ios_approval_remaining"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeIosApprovalTimeout(count: Int) -> LocalizedMessage {
+        let key = "home_ios_approval_timeout"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeIosBadgeSessions(count: Int) -> LocalizedMessage {
+        let key = "home_ios_badge_sessions"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeIosBadgeTasks(count: Int) -> LocalizedMessage {
+        let key = "home_ios_badge_tasks"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeIosChangeScope() -> LocalizedMessage {
+        let key = "home_ios_change_scope"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosChooseSession() -> LocalizedMessage {
+        let key = "home_ios_choose_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosChooseTask() -> LocalizedMessage {
+        let key = "home_ios_choose_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosEarlierFailed(reason: String) -> LocalizedMessage {
+        let key = "home_ios_earlier_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func homeIosEarlierOffline() -> LocalizedMessage {
+        let key = "home_ios_earlier_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosListFailed(reason: String) -> LocalizedMessage {
+        let key = "home_ios_list_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func homeIosNewResults() -> LocalizedMessage {
+        let key = "home_ios_new_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosNoOnline() -> LocalizedMessage {
+        let key = "home_ios_no_online"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosOpenSession() -> LocalizedMessage {
+        let key = "home_ios_open_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeIosScopeStart() -> LocalizedMessage {
+        let key = "home_ios_scope_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeListFailed(reason: String) -> LocalizedMessage {
+        let key = "home_list_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func homeLive() -> LocalizedMessage {
+        let key = "home_live"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeLoadingEarlier() -> LocalizedMessage {
+        let key = "home_loading_earlier"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeManageProjects() -> LocalizedMessage {
+        let key = "home_manage_projects"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeMatches(count: Int, query: String) -> LocalizedMessage {
+        let key = "home_matches"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(query)])
+    }
+    public static func homeMatchesLoading(count: Int, query: String) -> LocalizedMessage {
+        let key = "home_matches_loading"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(query)])
+    }
+    public static func homeMoreLive(count: Int) -> LocalizedMessage {
+        let key = "home_more_live"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeMoreWaiting(count: Int) -> LocalizedMessage {
+        let key = "home_more_waiting"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeNewSchedule() -> LocalizedMessage {
+        let key = "home_new_schedule"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeNewTask() -> LocalizedMessage {
+        let key = "home_new_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeNoMatches(query: String) -> LocalizedMessage {
+        let key = "home_no_matches"
+        return LocalizedMessage(key: key, arguments: [.string(query)])
+    }
+    public static func homeNoOnlineComputer(command: String) -> LocalizedMessage {
+        let key = "home_no_online_computer"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func homeNoSessions() -> LocalizedMessage {
+        let key = "home_no_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeNothingWaiting() -> LocalizedMessage {
+        let key = "home_nothing_waiting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeOnlineNewTask(name: String) -> LocalizedMessage {
+        let key = "home_online_new_task"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func homeOnlineStart(name: String) -> LocalizedMessage {
+        let key = "home_online_start"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func homeOtherIdle(count: Int) -> LocalizedMessage {
+        let key = "home_other_idle"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homePendingLabel(count: Int) -> LocalizedMessage {
+        let key = "home_pending_label"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeProjectNoSessions() -> LocalizedMessage {
+        let key = "home_project_no_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeRunningAndIdle(count: Int, idle: Int) -> LocalizedMessage {
+        let key = "home_running_and_idle"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(idle))])
+    }
+    public static func homeRunningCount(count: Int) -> LocalizedMessage {
+        let key = "home_running_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeScheduledFrequency(frequency: String) -> LocalizedMessage {
+        let key = "home_scheduled_frequency"
+        return LocalizedMessage(key: key, arguments: [.string(frequency)])
+    }
+    public static func homeScheduledTasks(count: Int) -> LocalizedMessage {
+        let key = "home_scheduled_tasks"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeSchedulesTab() -> LocalizedMessage {
+        let key = "home_schedules_tab"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeScopeLabel(name: String) -> LocalizedMessage {
+        let key = "home_scope_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func homeSessionsOrSchedules() -> LocalizedMessage {
+        let key = "home_sessions_or_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeSessionsTab() -> LocalizedMessage {
+        let key = "home_sessions_tab"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeSessionsUnavailable() -> LocalizedMessage {
+        let key = "home_sessions_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeStartFirst() -> LocalizedMessage {
+        let key = "home_start_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeTotal(count: Int) -> LocalizedMessage {
+        let key = "home_total"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeTotalLoadEarlier(count: Int) -> LocalizedMessage {
+        let key = "home_total_load_earlier"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func homeUpdateReady() -> LocalizedMessage {
+        let key = "home_update_ready"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func homeWaitingCount(count: Int) -> LocalizedMessage {
+        let key = "home_waiting_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageAdd() -> LocalizedMessage {
+        let key = "image_add"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageAttachFailed(count: Int) -> LocalizedMessage {
+        let key = "image_attach_failed"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageBackMessage() -> LocalizedMessage {
+        let key = "image_back_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageCannotReadThisImage() -> LocalizedMessage {
+        let key = "image_cannot_read_this_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageCannotReadThisImageTryJpegOrPngInstead() -> LocalizedMessage {
+        let key = "image_cannot_read_this_image_try_jpeg_or_png_instead"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageConvertFailed() -> LocalizedMessage {
+        let key = "image_convert_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageCopyFailed(reason: String) -> LocalizedMessage {
+        let key = "image_copy_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func imageCount(count: Int) -> LocalizedMessage {
+        let key = "image_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageDownloadRetry() -> LocalizedMessage {
+        let key = "image_download_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageDraft() -> LocalizedMessage {
+        let key = "image_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageGenerated() -> LocalizedMessage {
+        let key = "image_generated"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageImageDimensionsAreTooLarge() -> LocalizedMessage {
+        let key = "image_image_dimensions_are_too_large"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageImageDimensionsAreTooLargeResizeItAndRetry() -> LocalizedMessage {
+        let key = "image_image_dimensions_are_too_large_resize_it_and_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageImageDimensionsAreTooLargeSendACompressedVersion() -> LocalizedMessage {
+        let key = "image_image_dimensions_are_too_large_send_a_compressed_version"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageImageExceeds20Mb() -> LocalizedMessage {
+        let key = "image_image_exceeds_20_mb"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageImageExceeds20MbTurnOffOriginalAndSend() -> LocalizedMessage {
+        let key = "image_image_exceeds_20_mb_turn_off_original_and_send"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosActionsHint() -> LocalizedMessage {
+        let key = "image_ios_actions_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosAttachmentStorage(value: String) -> LocalizedMessage {
+        let key = "image_ios_attachment_storage"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func imageIosAttachmentsExceedThisComputerSFileCountOrSize() -> LocalizedMessage {
+        let key = "image_ios_attachments_exceed_this_computer_s_file_count_or_size"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending() -> LocalizedMessage {
+        let key = "image_ios_attachments_need_uploading_again_complete_the_upload_before_sending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosCannotDecodeImage() -> LocalizedMessage {
+        let key = "image_ios_cannot_decode_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosCannotDecodeThisImage() -> LocalizedMessage {
+        let key = "image_ios_cannot_decode_this_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosCannotReadThisImage() -> LocalizedMessage {
+        let key = "image_ios_cannot_read_this_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosCannotReadThisVideoSelectItAgain() -> LocalizedMessage {
+        let key = "image_ios_cannot_read_this_video_select_it_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosClearViewingCache() -> LocalizedMessage {
+        let key = "image_ios_clear_viewing_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosClearViewingCache200() -> LocalizedMessage {
+        let key = "image_ios_clear_viewing_cache_200"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosClearing() -> LocalizedMessage {
+        let key = "image_ios_clearing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosConvertedToKeepingOriginalDimensions(value: String) -> LocalizedMessage {
+        let key = "image_ios_converted_to_keeping_original_dimensions"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func imageIosCouldNotEncodeThisImage() -> LocalizedMessage {
+        let key = "image_ios_could_not_encode_this_image"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosCouldNotFinishClearing(value: String) -> LocalizedMessage {
+        let key = "image_ios_could_not_finish_clearing"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func imageIosCouldNotRestorePendingRecordsRetry() -> LocalizedMessage {
+        let key = "image_ios_could_not_restore_pending_records_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosDownloadFailed(reason: String) -> LocalizedMessage {
+        let key = "image_ios_download_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func imageIosDownloading() -> LocalizedMessage {
+        let key = "image_ios_downloading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosDraftsAreClearedAfter7IdleDaysUnconfirmedMessages() -> LocalizedMessage {
+        let key = "image_ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosEmpty() -> LocalizedMessage {
+        let key = "image_ios_empty"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosFullSizeImagesViewedOnWillBeClearedAnd(value: String) -> LocalizedMessage {
+        let key = "image_ios_full_size_images_viewed_on_will_be_cleared_and"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func imageIosGeneratedBy(agent: String) -> LocalizedMessage {
+        let key = "image_ios_generated_by"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func imageIosGeneratedSize(size: String) -> LocalizedMessage {
+        let key = "image_ios_generated_size"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func imageIosGifContainsAnUnrecognizedBlock() -> LocalizedMessage {
+        let key = "image_ios_gif_contains_an_unrecognized_block"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosGifIsTruncated() -> LocalizedMessage {
+        let key = "image_ios_gif_is_truncated"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosImageExceedsMb(count: Int) -> LocalizedMessage {
+        let key = "image_ios_image_exceeds_mb"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageIosImageHasNoDimensions() -> LocalizedMessage {
+        let key = "image_ios_image_has_no_dimensions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosMoreImages(count: Int) -> LocalizedMessage {
+        let key = "image_ios_more_images"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageIosNameOnly() -> LocalizedMessage {
+        let key = "image_ios_name_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNeedsUploadingToTheComputerAgain() -> LocalizedMessage {
+        let key = "image_ios_needs_uploading_to_the_computer_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNoPreview() -> LocalizedMessage {
+        let key = "image_ios_no_preview"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNotAReadableGif() -> LocalizedMessage {
+        let key = "image_ios_not_a_readable_gif"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNotAReadableJpeg() -> LocalizedMessage {
+        let key = "image_ios_not_a_readable_jpeg"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNotAReadablePng() -> LocalizedMessage {
+        let key = "image_ios_not_a_readable_png"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosNotAReadableWebp() -> LocalizedMessage {
+        let key = "image_ios_not_a_readable_webp"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosOnlyMessage() -> LocalizedMessage {
+        let key = "image_ios_only_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosOpen() -> LocalizedMessage {
+        let key = "image_ios_open"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosOriginalExceedsMb(count: Int) -> LocalizedMessage {
+        let key = "image_ios_original_exceeds_mb"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageIosOriginalSelected(size: String) -> LocalizedMessage {
+        let key = "image_ios_original_selected"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func imageIosOriginalTotal(size: String) -> LocalizedMessage {
+        let key = "image_ios_original_total"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func imageIosPage(count: Int, index: Int) -> LocalizedMessage {
+        let key = "image_ios_page"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(index))])
+    }
+    public static func imageIosPendingAndUnconfirmedAttachments() -> LocalizedMessage {
+        let key = "image_ios_pending_and_unconfirmed_attachments"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosPixelsExceedThisPhoneSLimitReducedTo1(value: String) -> LocalizedMessage {
+        let key = "image_ios_pixels_exceed_this_phone_s_limit_reduced_to_1"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func imageIosPlaceholder() -> LocalizedMessage {
+        let key = "image_ios_placeholder"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosPlaceholderIndex(index: String) -> LocalizedMessage {
+        let key = "image_ios_placeholder_index"
+        return LocalizedMessage(key: key, arguments: [.string(index)])
+    }
+    public static func imageIosReEncodedAtHighestQualityAfterCorrectingOrientation() -> LocalizedMessage {
+        let key = "image_ios_re_encoded_at_highest_quality_after_correcting_orientation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosRetainedOriginal() -> LocalizedMessage {
+        let key = "image_ios_retained_original"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosSavePermission() -> LocalizedMessage {
+        let key = "image_ios_save_permission"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosSaved() -> LocalizedMessage {
+        let key = "image_ios_saved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosSelectedCount(count: Int, limit: Int) -> LocalizedMessage {
+        let key = "image_ios_selected_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(limit))])
+    }
+    public static func imageIosSessionRemoved() -> LocalizedMessage {
+        let key = "image_ios_session_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosTheComputerDidNotProvideAnImageId() -> LocalizedMessage {
+        let key = "image_ios_the_computer_did_not_provide_an_image_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosThisComputerDoesNotSupportFileUploads() -> LocalizedMessage {
+        let key = "image_ios_this_computer_does_not_support_file_uploads"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosThisComputerDoesNotSupportTheseFilesCheckTheir() -> LocalizedMessage {
+        let key = "image_ios_this_computer_does_not_support_these_files_check_their"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosUnselected() -> LocalizedMessage {
+        let key = "image_ios_unselected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosUnsupportedImageFormat() -> LocalizedMessage {
+        let key = "image_ios_unsupported_image_format"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosUploadProgress(percent: Int) -> LocalizedMessage {
+        let key = "image_ios_upload_progress"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func imageIosUserPaste() -> LocalizedMessage {
+        let key = "image_ios_user_paste"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosVerificationFailed(reason: String) -> LocalizedMessage {
+        let key = "image_ios_verification_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func imageIosViewFull() -> LocalizedMessage {
+        let key = "image_ios_view_full"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosViewedBy(agent: String) -> LocalizedMessage {
+        let key = "image_ios_viewed_by"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func imageIosViewingCache() -> LocalizedMessage {
+        let key = "image_ios_viewing_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageIosZoom() -> LocalizedMessage {
+        let key = "image_ios_zoom"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageLoadConnected() -> LocalizedMessage {
+        let key = "image_load_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageMore(count: Int) -> LocalizedMessage {
+        let key = "image_more"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageNamed(name: String) -> LocalizedMessage {
+        let key = "image_named"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func imageNext() -> LocalizedMessage {
+        let key = "image_next"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageNumbered(index: Int) -> LocalizedMessage {
+        let key = "image_numbered"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(index))])
+    }
+    public static func imageOriginal() -> LocalizedMessage {
+        let key = "image_original"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageOriginalExpired() -> LocalizedMessage {
+        let key = "image_original_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageOriginalHint() -> LocalizedMessage {
+        let key = "image_original_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageOriginalMissing() -> LocalizedMessage {
+        let key = "image_original_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageOriginalNotUploaded() -> LocalizedMessage {
+        let key = "image_original_not_uploaded"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageOriginalOnComputer() -> LocalizedMessage {
+        let key = "image_original_on_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imagePlaceholder(index: Int) -> LocalizedMessage {
+        let key = "image_placeholder"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(index))])
+    }
+    public static func imagePosition(count: Int, index: Int) -> LocalizedMessage {
+        let key = "image_position"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(index))])
+    }
+    public static func imagePositionState(count: Int, index: Int, state: String) -> LocalizedMessage {
+        let key = "image_position_state"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(index)), .string(state)])
+    }
+    public static func imagePreparing() -> LocalizedMessage {
+        let key = "image_preparing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imagePreviewOnly() -> LocalizedMessage {
+        let key = "image_preview_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imagePrevious() -> LocalizedMessage {
+        let key = "image_previous"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imagePrompt() -> LocalizedMessage {
+        let key = "image_prompt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageRemoveIndex(index: Int) -> LocalizedMessage {
+        let key = "image_remove_index"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(index))])
+    }
+    public static func imageScreenshots(count: Int) -> LocalizedMessage {
+        let key = "image_screenshots"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func imageShare() -> LocalizedMessage {
+        let key = "image_share"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageShareFailed(reason: String) -> LocalizedMessage {
+        let key = "image_share_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func imageTheComputerSAttachmentStorageIsFullClearSpace() -> LocalizedMessage {
+        let key = "image_the_computer_s_attachment_storage_is_full_clear_space"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageTheImageCouldNotReachTheComputerRetryWhen() -> LocalizedMessage {
+        let key = "image_the_image_could_not_reach_the_computer_retry_when"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageThisImageCouldNotBeProcessed() -> LocalizedMessage {
+        let key = "image_this_image_could_not_be_processed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageThisImageFormatIsNotSupported() -> LocalizedMessage {
+        let key = "image_this_image_format_is_not_supported"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageThisImageHasNoLocalCopyRemoveItAnd() -> LocalizedMessage {
+        let key = "image_this_image_has_no_local_copy_remove_it_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageTitle() -> LocalizedMessage {
+        let key = "image_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageToolSource(agent: String) -> LocalizedMessage {
+        let key = "image_tool_source"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func imageTotalSize(size: String) -> LocalizedMessage {
+        let key = "image_total_size"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func imageUnsynced() -> LocalizedMessage {
+        let key = "image_unsynced"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageUploaded() -> LocalizedMessage {
+        let key = "image_uploaded"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageUploading() -> LocalizedMessage {
+        let key = "image_uploading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageUserSource() -> LocalizedMessage {
+        let key = "image_user_source"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageVerificationFailed() -> LocalizedMessage {
+        let key = "image_verification_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func imageView() -> LocalizedMessage {
+        let key = "image_view"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateAgentAsking(agent: String) -> LocalizedMessage {
+        let key = "list_state_agent_asking"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func listStateApproval() -> LocalizedMessage {
+        let key = "list_state_approval"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateEnded() -> LocalizedMessage {
+        let key = "list_state_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateIdle() -> LocalizedMessage {
+        let key = "list_state_idle"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateIosCommandLabel(command: String) -> LocalizedMessage {
+        let key = "list_state_ios_command_label"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func listStateIosNewSession() -> LocalizedMessage {
+        let key = "list_state_ios_new_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateIosRequestCommand() -> LocalizedMessage {
+        let key = "list_state_ios_request_command"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateIosRequestPermission() -> LocalizedMessage {
+        let key = "list_state_ios_request_permission"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateNoMessage() -> LocalizedMessage {
+        let key = "list_state_no_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateOffline() -> LocalizedMessage {
+        let key = "list_state_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStatePlan() -> LocalizedMessage {
+        let key = "list_state_plan"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStatePopup() -> LocalizedMessage {
+        let key = "list_state_popup"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateQuestion() -> LocalizedMessage {
+        let key = "list_state_question"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateRequestCommand(command: String) -> LocalizedMessage {
+        let key = "list_state_request_command"
+        return LocalizedMessage(key: key, arguments: [.string(command)])
+    }
+    public static func listStateRequestPermission(tool: String) -> LocalizedMessage {
+        let key = "list_state_request_permission"
+        return LocalizedMessage(key: key, arguments: [.string(tool)])
+    }
+    public static func listStateRunning() -> LocalizedMessage {
+        let key = "list_state_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateStarting() -> LocalizedMessage {
+        let key = "list_state_starting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func listStateUnlinked() -> LocalizedMessage {
+        let key = "list_state_unlinked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownCollapse() -> LocalizedMessage {
+        let key = "markdown_collapse"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownCopyCode() -> LocalizedMessage {
+        let key = "markdown_copy_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownCopyFailed() -> LocalizedMessage {
+        let key = "markdown_copy_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownExpand() -> LocalizedMessage {
+        let key = "markdown_expand"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownIosHiddenLines(count: Int) -> LocalizedMessage {
+        let key = "markdown_ios_hidden_lines"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func markdownIosTaskDone() -> LocalizedMessage {
+        let key = "markdown_ios_task_done"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownIosTaskTodo() -> LocalizedMessage {
+        let key = "markdown_ios_task_todo"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func markdownLineCount(count: Int) -> LocalizedMessage {
+        let key = "markdown_line_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func modelsAll() -> LocalizedMessage {
+        let key = "models_all"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsBack() -> LocalizedMessage {
+        let key = "models_back"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsContextSize(size: String) -> LocalizedMessage {
+        let key = "models_context_size"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func modelsContextWindow() -> LocalizedMessage {
+        let key = "models_context_window"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsDefault() -> LocalizedMessage {
+        let key = "models_default"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsDefaultNamed(model: String) -> LocalizedMessage {
+        let key = "models_default_named"
+        return LocalizedMessage(key: key, arguments: [.string(model)])
+    }
+    public static func modelsEffort() -> LocalizedMessage {
+        let key = "models_effort"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsEffortDefault() -> LocalizedMessage {
+        let key = "models_effort_default"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsExtendedWindow() -> LocalizedMessage {
+        let key = "models_extended_window"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsFixedEffort(effort: String) -> LocalizedMessage {
+        let key = "models_fixed_effort"
+        return LocalizedMessage(key: key, arguments: [.string(effort)])
+    }
+    public static func modelsIosChooseHint() -> LocalizedMessage {
+        let key = "models_ios_choose_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsIosLoadFailed(agent: String, reason: String) -> LocalizedMessage {
+        let key = "models_ios_load_failed"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(reason)])
+    }
+    public static func modelsIosPicker() -> LocalizedMessage {
+        let key = "models_ios_picker"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsIosReadingMachine(name: String) -> LocalizedMessage {
+        let key = "models_ios_reading_machine"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func modelsLoadFailedDefault(agent: String) -> LocalizedMessage {
+        let key = "models_load_failed_default"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func modelsStandardOnly() -> LocalizedMessage {
+        let key = "models_standard_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsStandardWindow() -> LocalizedMessage {
+        let key = "models_standard_window"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsSummaryEffortLabel(effort: String, model: String) -> LocalizedMessage {
+        let key = "models_summary_effort_label"
+        return LocalizedMessage(key: key, arguments: [.string(effort), .string(model)])
+    }
+    public static func modelsSummaryLabel(model: String) -> LocalizedMessage {
+        let key = "models_summary_label"
+        return LocalizedMessage(key: key, arguments: [.string(model)])
+    }
+    public static func modelsTitle() -> LocalizedMessage {
+        let key = "models_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modelsUnknownCli() -> LocalizedMessage {
+        let key = "models_unknown_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAccountNoAuto() -> LocalizedMessage {
+        let key = "modes_account_no_auto"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAccountUnsupported() -> LocalizedMessage {
+        let key = "modes_account_unsupported"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAgentOwn(agent: String) -> LocalizedMessage {
+        let key = "modes_agent_own"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func modesAgyAskDesc() -> LocalizedMessage {
+        let key = "modes_agy_ask_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAgyPlanDesc() -> LocalizedMessage {
+        let key = "modes_agy_plan_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAsk() -> LocalizedMessage {
+        let key = "modes_ask"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAskDesc() -> LocalizedMessage {
+        let key = "modes_ask_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAskGenericDesc() -> LocalizedMessage {
+        let key = "modes_ask_generic_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAskPermissionDesc() -> LocalizedMessage {
+        let key = "modes_ask_permission_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAuto() -> LocalizedMessage {
+        let key = "modes_auto"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesAutoDesc(agent: String) -> LocalizedMessage {
+        let key = "modes_auto_desc"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func modesCurrentTerminal(mode: String) -> LocalizedMessage {
+        let key = "modes_current_terminal"
+        return LocalizedMessage(key: key, arguments: [.string(mode)])
+    }
+    public static func modesDefaultAgent(agent: String) -> LocalizedMessage {
+        let key = "modes_default_agent"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func modesDefaultNamed(mode: String) -> LocalizedMessage {
+        let key = "modes_default_named"
+        return LocalizedMessage(key: key, arguments: [.string(mode)])
+    }
+    public static func modesDefaultVaries(mode: String) -> LocalizedMessage {
+        let key = "modes_default_varies"
+        return LocalizedMessage(key: key, arguments: [.string(mode)])
+    }
+    public static func modesFullAccess() -> LocalizedMessage {
+        let key = "modes_full_access"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesFullCurrentNote() -> LocalizedMessage {
+        let key = "modes_full_current_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesFullNewNote() -> LocalizedMessage {
+        let key = "modes_full_new_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesFullTitle() -> LocalizedMessage {
+        let key = "modes_full_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesFullUnavailable() -> LocalizedMessage {
+        let key = "modes_full_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesIosOutsideNote(mode: String) -> LocalizedMessage {
+        let key = "modes_ios_outside_note"
+        return LocalizedMessage(key: key, arguments: [.string(mode)])
+    }
+    public static func modesLocked() -> LocalizedMessage {
+        let key = "modes_locked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesLockedNote() -> LocalizedMessage {
+        let key = "modes_locked_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesModelNoAuto() -> LocalizedMessage {
+        let key = "modes_model_no_auto"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesModelUnsupported() -> LocalizedMessage {
+        let key = "modes_model_unsupported"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesPermissionNotice() -> LocalizedMessage {
+        let key = "modes_permission_notice"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesPlan() -> LocalizedMessage {
+        let key = "modes_plan"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesPlanDesc() -> LocalizedMessage {
+        let key = "modes_plan_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesPlanEdit() -> LocalizedMessage {
+        let key = "modes_plan_edit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesPlanProposeDesc() -> LocalizedMessage {
+        let key = "modes_plan_propose_desc"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesSkipAll() -> LocalizedMessage {
+        let key = "modes_skip_all"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesSwitch() -> LocalizedMessage {
+        let key = "modes_switch"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesSwitchFailed(reason: String) -> LocalizedMessage {
+        let key = "modes_switch_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func modesSwitching() -> LocalizedMessage {
+        let key = "modes_switching"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func modesTitle() -> LocalizedMessage {
+        let key = "modes_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionAbandonStart() -> LocalizedMessage {
+        let key = "new_session_abandon_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionAccountNoAuto(name: String) -> LocalizedMessage {
+        let key = "new_session_account_no_auto"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionAttachmentsMoved(name: String) -> LocalizedMessage {
+        let key = "new_session_attachments_moved"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionChangeDefaults() -> LocalizedMessage {
+        let key = "new_session_change_defaults"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionChangeMachine() -> LocalizedMessage {
+        let key = "new_session_change_machine"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionChangeModel() -> LocalizedMessage {
+        let key = "new_session_change_model"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionChooseCli() -> LocalizedMessage {
+        let key = "new_session_choose_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionCliFallback(agent: String, missing: String, name: String) -> LocalizedMessage {
+        let key = "new_session_cli_fallback"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(missing), .string(name)])
+    }
+    public static func newSessionCliLabel(agent: String) -> LocalizedMessage {
+        let key = "new_session_cli_label"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func newSessionCliPickerLabel() -> LocalizedMessage {
+        let key = "new_session_cli_picker_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionConfigFallback() -> LocalizedMessage {
+        let key = "new_session_config_fallback"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionDefaultModel() -> LocalizedMessage {
+        let key = "new_session_default_model"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionDisconnected() -> LocalizedMessage {
+        let key = "new_session_disconnected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionEachCliHasItsOwnSettingsChooseTheCli() -> LocalizedMessage {
+        let key = "new_session_each_cli_has_its_own_settings_choose_the_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionExpiredStart() -> LocalizedMessage {
+        let key = "new_session_expired_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionFirstMessage() -> LocalizedMessage {
+        let key = "new_session_first_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionFixedEffort(effort: String) -> LocalizedMessage {
+        let key = "new_session_fixed_effort"
+        return LocalizedMessage(key: key, arguments: [.string(effort)])
+    }
+    public static func newSessionFollowCli() -> LocalizedMessage {
+        let key = "new_session_follow_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionFollowSConfiguration(value: String) -> LocalizedMessage {
+        let key = "new_session_follow_s_configuration"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func newSessionInstalled(agents: String) -> LocalizedMessage {
+        let key = "new_session_installed"
+        return LocalizedMessage(key: key, arguments: [.string(agents)])
+    }
+    public static func newSessionInstalledFallback(agent: String, agents: String, missing: String) -> LocalizedMessage {
+        let key = "new_session_installed_fallback"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(agents), .string(missing)])
+    }
+    public static func newSessionIosAbandon() -> LocalizedMessage {
+        let key = "new_session_ios_abandon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosAttach() -> LocalizedMessage {
+        let key = "new_session_ios_attach"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosChangeComputer() -> LocalizedMessage {
+        let key = "new_session_ios_change_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosChangeProject() -> LocalizedMessage {
+        let key = "new_session_ios_change_project"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosChooseProject() -> LocalizedMessage {
+        let key = "new_session_ios_choose_project"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosCliLabel() -> LocalizedMessage {
+        let key = "new_session_ios_cli_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosCliNamed(name: String) -> LocalizedMessage {
+        let key = "new_session_ios_cli_named"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionIosComputerLabel(name: String) -> LocalizedMessage {
+        let key = "new_session_ios_computer_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionIosDescribe() -> LocalizedMessage {
+        let key = "new_session_ios_describe"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosDraftKept() -> LocalizedMessage {
+        let key = "new_session_ios_draft_kept"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosExpiredStart(prompt: String) -> LocalizedMessage {
+        let key = "new_session_ios_expired_start"
+        return LocalizedMessage(key: key, arguments: [.string(prompt)])
+    }
+    public static func newSessionIosMachineUnavailable() -> LocalizedMessage {
+        let key = "new_session_ios_machine_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosOfflineDraft(name: String) -> LocalizedMessage {
+        let key = "new_session_ios_offline_draft"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionIosOfflineNoStart(name: String) -> LocalizedMessage {
+        let key = "new_session_ios_offline_no_start"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionIosOtherOffline(name: String) -> LocalizedMessage {
+        let key = "new_session_ios_other_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionIosPromptLabel() -> LocalizedMessage {
+        let key = "new_session_ios_prompt_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosSettingsLabel(summary: String) -> LocalizedMessage {
+        let key = "new_session_ios_settings_label"
+        return LocalizedMessage(key: key, arguments: [.string(summary)])
+    }
+    public static func newSessionIosStart() -> LocalizedMessage {
+        let key = "new_session_ios_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosUnknownStart() -> LocalizedMessage {
+        let key = "new_session_ios_unknown_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionIosWhere() -> LocalizedMessage {
+        let key = "new_session_ios_where"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionLocation(project: String) -> LocalizedMessage {
+        let key = "new_session_location"
+        return LocalizedMessage(key: key, arguments: [.string(project)])
+    }
+    public static func newSessionLocationCli(cli: String, project: String) -> LocalizedMessage {
+        let key = "new_session_location_cli"
+        return LocalizedMessage(key: key, arguments: [.string(cli), .string(project)])
+    }
+    public static func newSessionLocationMachine(machine: String, project: String) -> LocalizedMessage {
+        let key = "new_session_location_machine"
+        return LocalizedMessage(key: key, arguments: [.string(machine), .string(project)])
+    }
+    public static func newSessionLocationMachineCli(cli: String, machine: String, project: String) -> LocalizedMessage {
+        let key = "new_session_location_machine_cli"
+        return LocalizedMessage(key: key, arguments: [.string(cli), .string(machine), .string(project)])
+    }
+    public static func newSessionMachineLabel(name: String) -> LocalizedMessage {
+        let key = "new_session_machine_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionMachineOffline(name: String) -> LocalizedMessage {
+        let key = "new_session_machine_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionMachineProjectDefaults(name: String) -> LocalizedMessage {
+        let key = "new_session_machine_project_defaults"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionModelListDefault(name: String) -> LocalizedMessage {
+        let key = "new_session_model_list_default"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionModelNoAuto(name: String) -> LocalizedMessage {
+        let key = "new_session_model_no_auto"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionOfflineLastSeen(time: String) -> LocalizedMessage {
+        let key = "new_session_offline_last_seen"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func newSessionOfflineNoStart() -> LocalizedMessage {
+        let key = "new_session_offline_no_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionOfflineWithDraft(name: String) -> LocalizedMessage {
+        let key = "new_session_offline_with_draft"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionOnlyAffectsFutureSessionsActiveSessionsStayUnchangedSynced() -> LocalizedMessage {
+        let key = "new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionOnlyChangesThisTaskExistingConversationsKeepTheirSettings() -> LocalizedMessage {
+        let key = "new_session_only_changes_this_task_existing_conversations_keep_their_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionPermissions() -> LocalizedMessage {
+        let key = "new_session_permissions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionProjectLabel(name: String) -> LocalizedMessage {
+        let key = "new_session_project_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionProjectSessionLabel(name: String) -> LocalizedMessage {
+        let key = "new_session_project_session_label"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionPrompt() -> LocalizedMessage {
+        let key = "new_session_prompt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionReadingModels() -> LocalizedMessage {
+        let key = "new_session_reading_models"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionReadingPrevious() -> LocalizedMessage {
+        let key = "new_session_reading_previous"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionReadingSettings() -> LocalizedMessage {
+        let key = "new_session_reading_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionRemovedBlocked() -> LocalizedMessage {
+        let key = "new_session_removed_blocked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionRetrySave() -> LocalizedMessage {
+        let key = "new_session_retry_save"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionSaveFailed() -> LocalizedMessage {
+        let key = "new_session_save_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionStart() -> LocalizedMessage {
+        let key = "new_session_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionStartFailed(reason: String) -> LocalizedMessage {
+        let key = "new_session_start_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func newSessionStartShortcut(keys: String) -> LocalizedMessage {
+        let key = "new_session_start_shortcut"
+        return LocalizedMessage(key: key, arguments: [.string(keys)])
+    }
+    public static func newSessionStartUnknown(reason: String) -> LocalizedMessage {
+        let key = "new_session_start_unknown"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func newSessionStartingOn(name: String) -> LocalizedMessage {
+        let key = "new_session_starting_on"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func newSessionTaskSettings() -> LocalizedMessage {
+        let key = "new_session_task_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionThisModelHasNoAutoMode() -> LocalizedMessage {
+        let key = "new_session_this_model_has_no_auto_mode"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionUnconfirmedStart() -> LocalizedMessage {
+        let key = "new_session_unconfirmed_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionUnexpectedReply() -> LocalizedMessage {
+        let key = "new_session_unexpected_reply"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func newSessionUseMachine(name: String) -> LocalizedMessage {
+        let key = "new_session_use_machine"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func notificationsScheduledTasksHaveNewResults() -> LocalizedMessage {
+        let key = "notifications_scheduled_tasks_have_new_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func notificationsTheBrowserDidNotAllowNotifications() -> LocalizedMessage {
+        let key = "notifications_the_browser_did_not_allow_notifications"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsAddAgain() -> LocalizedMessage {
+        let key = "projects_add_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsAdding() -> LocalizedMessage {
+        let key = "projects_adding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsChangedElsewhere() -> LocalizedMessage {
+        let key = "projects_changed_elsewhere"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsChoose() -> LocalizedMessage {
+        let key = "projects_choose"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsChooseDirectory() -> LocalizedMessage {
+        let key = "projects_choose_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsComputerOffline() -> LocalizedMessage {
+        let key = "projects_computer_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsConnectToEdit() -> LocalizedMessage {
+        let key = "projects_connect_to_edit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsCount(count: Int) -> LocalizedMessage {
+        let key = "projects_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func projectsDirectoryFailed(reason: String) -> LocalizedMessage {
+        let key = "projects_directory_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func projectsIosActivePrefix(count: Int) -> LocalizedMessage {
+        let key = "projects_ios_active_prefix"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func projectsIosAdding() -> LocalizedMessage {
+        let key = "projects_ios_adding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosCollapsed() -> LocalizedMessage {
+        let key = "projects_ios_collapsed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosCurrentDirectory(path: String) -> LocalizedMessage {
+        let key = "projects_ios_current_directory"
+        return LocalizedMessage(key: key, arguments: [.string(path)])
+    }
+    public static func projectsIosEndedCount(count: Int) -> LocalizedMessage {
+        let key = "projects_ios_ended_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func projectsIosExpanded() -> LocalizedMessage {
+        let key = "projects_ios_expanded"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosMachineDefaults() -> LocalizedMessage {
+        let key = "projects_ios_machine_defaults"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosNoOnline() -> LocalizedMessage {
+        let key = "projects_ios_no_online"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosNoSessions() -> LocalizedMessage {
+        let key = "projects_ios_no_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosReadingCli(agent: String) -> LocalizedMessage {
+        let key = "projects_ios_reading_cli"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func projectsIosRecentEnded() -> LocalizedMessage {
+        let key = "projects_ios_recent_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosSavingSettings() -> LocalizedMessage {
+        let key = "projects_ios_saving_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosSettings() -> LocalizedMessage {
+        let key = "projects_ios_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosSettingsFailed(reason: String) -> LocalizedMessage {
+        let key = "projects_ios_settings_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func projectsIosSyncing() -> LocalizedMessage {
+        let key = "projects_ios_syncing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsIosViewHome() -> LocalizedMessage {
+        let key = "projects_ios_view_home"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsLiveCount(count: Int) -> LocalizedMessage {
+        let key = "projects_live_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func projectsLoadFailed() -> LocalizedMessage {
+        let key = "projects_load_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsLoading() -> LocalizedMessage {
+        let key = "projects_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsManage() -> LocalizedMessage {
+        let key = "projects_manage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsManageNamed(name: String) -> LocalizedMessage {
+        let key = "projects_manage_named"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func projectsNew() -> LocalizedMessage {
+        let key = "projects_new"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsNewChooseDirectory() -> LocalizedMessage {
+        let key = "projects_new_choose_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsNoOnlineComputers() -> LocalizedMessage {
+        let key = "projects_no_online_computers"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsNoSubdirectories() -> LocalizedMessage {
+        let key = "projects_no_subdirectories"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsOthers() -> LocalizedMessage {
+        let key = "projects_others"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsParentDirectory() -> LocalizedMessage {
+        let key = "projects_parent_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsPendingAndLive(count: Int, live: Int) -> LocalizedMessage {
+        let key = "projects_pending_and_live"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(live))])
+    }
+    public static func projectsPendingCount(count: Int) -> LocalizedMessage {
+        let key = "projects_pending_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func projectsPin() -> LocalizedMessage {
+        let key = "projects_pin"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsPinned() -> LocalizedMessage {
+        let key = "projects_pinned"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsReadingDirectory() -> LocalizedMessage {
+        let key = "projects_reading_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsRemoveAction() -> LocalizedMessage {
+        let key = "projects_remove_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsRemoveExplanation() -> LocalizedMessage {
+        let key = "projects_remove_explanation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsRemoveNote() -> LocalizedMessage {
+        let key = "projects_remove_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsRemoveTitle(name: String) -> LocalizedMessage {
+        let key = "projects_remove_title"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func projectsRemoved() -> LocalizedMessage {
+        let key = "projects_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsSaveFailed(reason: String) -> LocalizedMessage {
+        let key = "projects_save_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func projectsSearch() -> LocalizedMessage {
+        let key = "projects_search"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsSearchEmpty(query: String) -> LocalizedMessage {
+        let key = "projects_search_empty"
+        return LocalizedMessage(key: key, arguments: [.string(query)])
+    }
+    public static func projectsSyncing() -> LocalizedMessage {
+        let key = "projects_syncing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsUnknown() -> LocalizedMessage {
+        let key = "projects_unknown"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsUnpin() -> LocalizedMessage {
+        let key = "projects_unpin"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func projectsUseDirectory(name: String) -> LocalizedMessage {
+        let key = "projects_use_directory"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func projectsViewSessions(name: String) -> LocalizedMessage {
+        let key = "projects_view_sessions"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func queueAfterCurrentTurn() -> LocalizedMessage {
+        let key = "queue_after_current_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueAfterStart() -> LocalizedMessage {
+        let key = "queue_after_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueAfterTurn() -> LocalizedMessage {
+        let key = "queue_after_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueAgentReady(agent: String) -> LocalizedMessage {
+        let key = "queue_agent_ready"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func queueAlreadySubmitted() -> LocalizedMessage {
+        let key = "queue_already_submitted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueCancelFailed() -> LocalizedMessage {
+        let key = "queue_cancel_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueCanceled() -> LocalizedMessage {
+        let key = "queue_canceled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueCanceledElsewhere() -> LocalizedMessage {
+        let key = "queue_canceled_elsewhere"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueCanceledRecord() -> LocalizedMessage {
+        let key = "queue_canceled_record"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueCanceling() -> LocalizedMessage {
+        let key = "queue_canceling"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueImagesRecognized() -> LocalizedMessage {
+        let key = "queue_images_recognized"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueInsert() -> LocalizedMessage {
+        let key = "queue_insert"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosAfterAnswer() -> LocalizedMessage {
+        let key = "queue_ios_after_answer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosAfterApproval() -> LocalizedMessage {
+        let key = "queue_ios_after_approval"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosAfterPlan() -> LocalizedMessage {
+        let key = "queue_ios_after_plan"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosAgentWait(agent: String) -> LocalizedMessage {
+        let key = "queue_ios_agent_wait"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func queueIosApprovalWait() -> LocalizedMessage {
+        let key = "queue_ios_approval_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosInputWait() -> LocalizedMessage {
+        let key = "queue_ios_input_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosMessage() -> LocalizedMessage {
+        let key = "queue_ios_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosPlanWait() -> LocalizedMessage {
+        let key = "queue_ios_plan_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosPopupWait() -> LocalizedMessage {
+        let key = "queue_ios_popup_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosQuestionWait() -> LocalizedMessage {
+        let key = "queue_ios_question_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosScheduledLabel(label: String, time: String) -> LocalizedMessage {
+        let key = "queue_ios_scheduled_label"
+        return LocalizedMessage(key: key, arguments: [.string(label), .string(time)])
+    }
+    public static func queueIosSendingSoon() -> LocalizedMessage {
+        let key = "queue_ios_sending_soon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosTerminalDraftShort() -> LocalizedMessage {
+        let key = "queue_ios_terminal_draft_short"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueIosTurnWait() -> LocalizedMessage {
+        let key = "queue_ios_turn_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueMore(count: Int) -> LocalizedMessage {
+        let key = "queue_more"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func queueOtherMessage() -> LocalizedMessage {
+        let key = "queue_other_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queuePastingImages() -> LocalizedMessage {
+        let key = "queue_pasting_images"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queuePaused() -> LocalizedMessage {
+        let key = "queue_paused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueRank(rank: Int) -> LocalizedMessage {
+        let key = "queue_rank"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(rank))])
+    }
+    public static func queueResumeFailed() -> LocalizedMessage {
+        let key = "queue_resume_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueResuming() -> LocalizedMessage {
+        let key = "queue_resuming"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueScheduled(time: String) -> LocalizedMessage {
+        let key = "queue_scheduled"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func queueSubmitting() -> LocalizedMessage {
+        let key = "queue_submitting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueTerminalDraft() -> LocalizedMessage {
+        let key = "queue_terminal_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueUnrecognized() -> LocalizedMessage {
+        let key = "queue_unrecognized"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func queueWhenReady() -> LocalizedMessage {
+        let key = "queue_when_ready"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaAccount(value: String) -> LocalizedMessage {
+        let key = "quota_account"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaAwaitingUpdate() -> LocalizedMessage {
+        let key = "quota_awaiting_update"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaDays(count: Int) -> LocalizedMessage {
+        let key = "quota_days"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaExhausted(name: String, window: String) -> LocalizedMessage {
+        let key = "quota_exhausted"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(window)])
+    }
+    public static func quotaExhaustedQuota() -> LocalizedMessage {
+        let key = "quota_exhausted_quota"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaFailure(detail: String, name: String) -> LocalizedMessage {
+        let key = "quota_failure"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(name)])
+    }
+    public static func quotaFailureNoReason(name: String) -> LocalizedMessage {
+        let key = "quota_failure_no_reason"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func quotaHr(count: Int) -> LocalizedMessage {
+        let key = "quota_hr"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaIosComputerOfflineShowingTheLastReading() -> LocalizedMessage {
+        let key = "quota_ios_computer_offline_showing_the_last_reading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaIosRemoteAgentOnThisComputerCannotReadSQuota(value: String) -> LocalizedMessage {
+        let key = "quota_ios_remote_agent_on_this_computer_cannot_read_s_quota"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaIosThisComputerHasNotReportedWhichClisAreInstalled() -> LocalizedMessage {
+        let key = "quota_ios_this_computer_has_not_reported_which_clis_are_installed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaIosThisComputerWasRemoved() -> LocalizedMessage {
+        let key = "quota_ios_this_computer_was_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaIosViewUsageInLocalClaudeCode() -> LocalizedMessage {
+        let key = "quota_ios_view_usage_in_local_claude_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaLastReading() -> LocalizedMessage {
+        let key = "quota_last_reading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaLastReadingComputerOfflineMayHaveChanged() -> LocalizedMessage {
+        let key = "quota_last_reading_computer_offline_may_have_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaLastReadingResetTimePassedButQuotaRecoveryIs(value: String) -> LocalizedMessage {
+        let key = "quota_last_reading_reset_time_passed_but_quota_recovery_is"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaLeft(value: String) -> LocalizedMessage {
+        let key = "quota_left"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaMin(count: Int) -> LocalizedMessage {
+        let key = "quota_min"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaNamedDays(count: Int, name: String) -> LocalizedMessage {
+        let key = "quota_named_days"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name)])
+    }
+    public static func quotaNamedHours(count: Int, name: String) -> LocalizedMessage {
+        let key = "quota_named_hours"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(name)])
+    }
+    public static func quotaNoDataReceivedForThisQuota() -> LocalizedMessage {
+        let key = "quota_no_data_received_for_this_quota"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaOldHours(count: Int) -> LocalizedMessage {
+        let key = "quota_old_hours"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaOldMinutes(count: Int) -> LocalizedMessage {
+        let key = "quota_old_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaPreviously(value: String) -> LocalizedMessage {
+        let key = "quota_previously"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaPreviouslyResetTimePassedButQuotaRecoveryIsUnconfirmed(value: String) -> LocalizedMessage {
+        let key = "quota_previously_reset_time_passed_but_quota_recovery_is_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaQuotaLookupIsNotSupportedYet() -> LocalizedMessage {
+        let key = "quota_quota_lookup_is_not_supported_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaQuotaNotAvailableYet() -> LocalizedMessage {
+        let key = "quota_quota_not_available_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaReceived(time: String) -> LocalizedMessage {
+        let key = "quota_received"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func quotaReceivedDate(day: Int, month: Int, time: String) -> LocalizedMessage {
+        let key = "quota_received_date"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .string(time)])
+    }
+    public static func quotaReceivedSuccess(time: String) -> LocalizedMessage {
+        let key = "quota_received_success"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func quotaReceivedSuccessDate(day: Int, month: Int, time: String) -> LocalizedMessage {
+        let key = "quota_received_success_date"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .string(time)])
+    }
+    public static func quotaResetsInDaysHr(count: Int, detail: Int) -> LocalizedMessage {
+        let key = "quota_resets_in_days_hr"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .integer(Int64(detail))])
+    }
+    public static func quotaResetsInHrMin(count: Int, detail: String) -> LocalizedMessage {
+        let key = "quota_resets_in_hr_min"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(detail)])
+    }
+    public static func quotaResetsInMin(count: Int) -> LocalizedMessage {
+        let key = "quota_resets_in_min"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func quotaResettingSoon() -> LocalizedMessage {
+        let key = "quota_resetting_soon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaSession(value: String) -> LocalizedMessage {
+        let key = "quota_session"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func quotaThirdPartyModels() -> LocalizedMessage {
+        let key = "quota_third_party_models"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaThirdPartyModelsClaudeGptOss() -> LocalizedMessage {
+        let key = "quota_third_party_models_claude_gpt_oss"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaUnavailable() -> LocalizedMessage {
+        let key = "quota_unavailable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaUnavailablePrevious() -> LocalizedMessage {
+        let key = "quota_unavailable_previous"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaUnknownTime() -> LocalizedMessage {
+        let key = "quota_unknown_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func quotaWaiting(name: String) -> LocalizedMessage {
+        let key = "quota_waiting"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func quotaWarning(name: String, window: String) -> LocalizedMessage {
+        let key = "quota_warning"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(window)])
+    }
+    public static func scheduleAfterARunCount() -> LocalizedMessage {
+        let key = "schedule_after_a_run_count"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAfterCurrentTurn(count: Int) -> LocalizedMessage {
+        let key = "schedule_after_current_turn"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleAfterEachTurn(count: Int) -> LocalizedMessage {
+        let key = "schedule_after_each_turn"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleAfterTurnEnds() -> LocalizedMessage {
+        let key = "schedule_after_turn_ends"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleAfterTurnReplace(frequency: String) -> LocalizedMessage {
+        let key = "schedule_after_turn_replace"
+        return LocalizedMessage(key: key, arguments: [.string(frequency)])
+    }
+    public static func scheduleAttentionOnce(reason: String) -> LocalizedMessage {
+        let key = "schedule_attention_once"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func scheduleAttentionResume(reason: String) -> LocalizedMessage {
+        let key = "schedule_attention_resume"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func scheduleAttentionUncertain(reason: String) -> LocalizedMessage {
+        let key = "schedule_attention_uncertain"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func scheduleBeijingTime() -> LocalizedMessage {
+        let key = "schedule_beijing_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleChooseAValidDateAndTime() -> LocalizedMessage {
+        let key = "schedule_choose_a_valid_date_and_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleChooseAskAutoOrFullAccessScheduledTasksCannot() -> LocalizedMessage {
+        let key = "schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleComputerAndModel() -> LocalizedMessage {
+        let key = "schedule_computer_and_model"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleConnectToEditRunOrDelete() -> LocalizedMessage {
+        let key = "schedule_connect_to_edit_run_or_delete"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleContinuingTakesOverTheTaskAndRunsItWith() -> LocalizedMessage {
+        let key = "schedule_continuing_takes_over_the_task_and_runs_it_with"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleConversation() -> LocalizedMessage {
+        let key = "schedule_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCouldNotRun() -> LocalizedMessage {
+        let key = "schedule_could_not_run"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCount() -> LocalizedMessage {
+        let key = "schedule_count"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCreate() -> LocalizedMessage {
+        let key = "schedule_create"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCreatedByTheAgentInAConversation() -> LocalizedMessage {
+        let key = "schedule_created_by_the_agent_in_a_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCreatedByYou() -> LocalizedMessage {
+        let key = "schedule_created_by_you"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleCreating() -> LocalizedMessage {
+        let key = "schedule_creating"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDaily() -> LocalizedMessage {
+        let key = "schedule_daily"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDailyAt(time: String) -> LocalizedMessage {
+        let key = "schedule_daily_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func scheduleDateAndTime() -> LocalizedMessage {
+        let key = "schedule_date_and_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDaylightSavingTimeSkipsThisTimeInTheSelected() -> LocalizedMessage {
+        let key = "schedule_daylight_saving_time_skips_this_time_in_the_selected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDelete() -> LocalizedMessage {
+        let key = "schedule_delete"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDeleteTask() -> LocalizedMessage {
+        let key = "schedule_delete_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDeleteTaskSchedules() -> LocalizedMessage {
+        let key = "schedule_delete_task_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDeleted() -> LocalizedMessage {
+        let key = "schedule_deleted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDeliveryBeforeTheComputerRestartedCouldNotBeConfirmed() -> LocalizedMessage {
+        let key = "schedule_delivery_before_the_computer_restarted_could_not_be_confirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDescribeTheScheduledWorkAndAskTheAgentTo() -> LocalizedMessage {
+        let key = "schedule_describe_the_scheduled_work_and_ask_the_agent_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDiscardChanges() -> LocalizedMessage {
+        let key = "schedule_discard_changes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleDiscardChangesScheduleText() -> LocalizedMessage {
+        let key = "schedule_discard_changes_schedule_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEachRunOpensANewConversationGroupedUnderThis() -> LocalizedMessage {
+        let key = "schedule_each_run_opens_a_new_conversation_grouped_under_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEachRunOpensANewConversationGroupedUnderThisSchedules() -> LocalizedMessage {
+        let key = "schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEarlier() -> LocalizedMessage {
+        let key = "schedule_earlier"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEndDate() -> LocalizedMessage {
+        let key = "schedule_end_date"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEndTime() -> LocalizedMessage {
+        let key = "schedule_end_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEnded() -> LocalizedMessage {
+        let key = "schedule_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEvery() -> LocalizedMessage {
+        let key = "schedule_every"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleEveryDays(count: Int) -> LocalizedMessage {
+        let key = "schedule_every_days"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleEveryHr(count: Int) -> LocalizedMessage {
+        let key = "schedule_every_hr"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleEveryMin(count: Int) -> LocalizedMessage {
+        let key = "schedule_every_min"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleEverySec(count: Int) -> LocalizedMessage {
+        let key = "schedule_every_sec"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleExecutionFailed() -> LocalizedMessage {
+        let key = "schedule_execution_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleExecutionFailedTheTaskStopped() -> LocalizedMessage {
+        let key = "schedule_execution_failed_the_task_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleExecutionInterrupted() -> LocalizedMessage {
+        let key = "schedule_execution_interrupted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleExecutionInterruptedTheTaskStopped() -> LocalizedMessage {
+        let key = "schedule_execution_interrupted_the_task_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleExecutionOutcomeIsUnconfirmed() -> LocalizedMessage {
+        let key = "schedule_execution_outcome_is_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleFrequency() -> LocalizedMessage {
+        let key = "schedule_frequency"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleFri() -> LocalizedMessage {
+        let key = "schedule_fri"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleHasNotRunYet() -> LocalizedMessage {
+        let key = "schedule_has_not_run_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleHongKongTime() -> LocalizedMessage {
+        let key = "schedule_hong_kong_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleHourly() -> LocalizedMessage {
+        let key = "schedule_hourly"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIfBlankUses(value: String) -> LocalizedMessage {
+        let key = "schedule_if_blank_uses"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleIn(value: String) -> LocalizedMessage {
+        let key = "schedule_in"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleInConversation() -> LocalizedMessage {
+        let key = "schedule_in_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIntervalMinutes() -> LocalizedMessage {
+        let key = "schedule_interval_minutes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosAbandonOriginalRequest() -> LocalizedMessage {
+        let key = "schedule_ios_abandon_original_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosAgentNotification() -> LocalizedMessage {
+        let key = "schedule_ios_agent_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosAgentNotificationCompletionNotification() -> LocalizedMessage {
+        let key = "schedule_ios_agent_notification_completion_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosAttentionOnce(reason: String) -> LocalizedMessage {
+        let key = "schedule_ios_attention_once"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func scheduleIosBeijing() -> LocalizedMessage {
+        let key = "schedule_ios_beijing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosBerlin() -> LocalizedMessage {
+        let key = "schedule_ios_berlin"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosCannotRequestNotification() -> LocalizedMessage {
+        let key = "schedule_ios_cannot_request_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosChooseAProject() -> LocalizedMessage {
+        let key = "schedule_ios_choose_a_project"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosChooseAProjectFirst() -> LocalizedMessage {
+        let key = "schedule_ios_choose_a_project_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosChooseAValidIanaTimeZone() -> LocalizedMessage {
+        let key = "schedule_ios_choose_a_valid_iana_time_zone"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosChooseOnceDailyWeeklyOrEvery() -> LocalizedMessage {
+        let key = "schedule_ios_choose_once_daily_weekly_or_every"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosConfirmThePreviousChangeSResultFirst() -> LocalizedMessage {
+        let key = "schedule_ios_confirm_the_previous_change_s_result_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosConnectToEditRunOrDelete(value: String) -> LocalizedMessage {
+        let key = "schedule_ios_connect_to_edit_run_or_delete"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleIosDays() -> LocalizedMessage {
+        let key = "schedule_ios_days"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosDeleteThisTask() -> LocalizedMessage {
+        let key = "schedule_ios_delete_this_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosEachRunOpensANewConversationGroupedUnderThis() -> LocalizedMessage {
+        let key = "schedule_ios_each_run_opens_a_new_conversation_grouped_under_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosEndTimeMustBeInTheFuture() -> LocalizedMessage {
+        let key = "schedule_ios_end_time_must_be_in_the_future"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosEnterAValidInterval() -> LocalizedMessage {
+        let key = "schedule_ios_enter_a_valid_interval"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosFriday() -> LocalizedMessage {
+        let key = "schedule_ios_friday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosHongKong() -> LocalizedMessage {
+        let key = "schedule_ios_hong_kong"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosHours() -> LocalizedMessage {
+        let key = "schedule_ios_hours"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosInterval() -> LocalizedMessage {
+        let key = "schedule_ios_interval"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosLoadingModels() -> LocalizedMessage {
+        let key = "schedule_ios_loading_models"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosLoadingTasks() -> LocalizedMessage {
+        let key = "schedule_ios_loading_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosLondon() -> LocalizedMessage {
+        let key = "schedule_ios_london"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosLosAngeles() -> LocalizedMessage {
+        let key = "schedule_ios_los_angeles"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosManageScheduledTask() -> LocalizedMessage {
+        let key = "schedule_ios_manage_scheduled_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosMinutes() -> LocalizedMessage {
+        let key = "schedule_ios_minutes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosMmmD() -> LocalizedMessage {
+        let key = "schedule_ios_mmm_d"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosMmmDYyyy() -> LocalizedMessage {
+        let key = "schedule_ios_mmm_d_yyyy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosMonday() -> LocalizedMessage {
+        let key = "schedule_ios_monday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosNeedsAttention() -> LocalizedMessage {
+        let key = "schedule_ios_needs_attention"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosNeedsYourAttention() -> LocalizedMessage {
+        let key = "schedule_ios_needs_your_attention"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosNewYork() -> LocalizedMessage {
+        let key = "schedule_ios_new_york"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosNext(value: String) -> LocalizedMessage {
+        let key = "schedule_ios_next"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleIosOpenTheTaskEditorFirst() -> LocalizedMessage {
+        let key = "schedule_ios_open_the_task_editor_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosRead() -> LocalizedMessage {
+        let key = "schedule_ios_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosReadFullText() -> LocalizedMessage {
+        let key = "schedule_ios_read_full_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosRecent() -> LocalizedMessage {
+        let key = "schedule_ios_recent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosRunCountMustBeGreaterThan0() -> LocalizedMessage {
+        let key = "schedule_ios_run_count_must_be_greater_than_0"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosRunOnceNowDoesNotCountTowardAutomaticRuns() -> LocalizedMessage {
+        let key = "schedule_ios_run_once_now_does_not_count_toward_automatic_runs"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSaturday() -> LocalizedMessage {
+        let key = "schedule_ios_saturday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSearchIanaTimeZones() -> LocalizedMessage {
+        let key = "schedule_ios_search_iana_time_zones"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSeconds() -> LocalizedMessage {
+        let key = "schedule_ios_seconds"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSingapore() -> LocalizedMessage {
+        let key = "schedule_ios_singapore"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations() -> LocalizedMessage {
+        let key = "schedule_ios_stops_future_automatic_runs_messages_already_sent_and_conversations"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSunday() -> LocalizedMessage {
+        let key = "schedule_ios_sunday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosSydney() -> LocalizedMessage {
+        let key = "schedule_ios_sydney"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTakeAction() -> LocalizedMessage {
+        let key = "schedule_ios_take_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTakeoverNotice(notice: String) -> LocalizedMessage {
+        let key = "schedule_ios_takeover_notice"
+        return LocalizedMessage(key: key, arguments: [.string(notice)])
+    }
+    public static func scheduleIosTaskDetails() -> LocalizedMessage {
+        let key = "schedule_ios_task_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTaskNotFound() -> LocalizedMessage {
+        let key = "schedule_ios_task_not_found"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTheComputerDidNotReturnATaskList() -> LocalizedMessage {
+        let key = "schedule_ios_the_computer_did_not_return_a_task_list"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTheComputerIsOfflineConnectToMakeChanges() -> LocalizedMessage {
+        let key = "schedule_ios_the_computer_is_offline_connect_to_make_changes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe() -> LocalizedMessage {
+        let key = "schedule_ios_the_computer_may_have_already_executed_it_check_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTheTaskIsStoredOnThisComputerChangesOnly() -> LocalizedMessage {
+        let key = "schedule_ios_the_task_is_stored_on_this_computer_changes_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosThursday() -> LocalizedMessage {
+        let key = "schedule_ios_thursday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTime(detail: String, value: String) -> LocalizedMessage {
+        let key = "schedule_ios_time"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
+    }
+    public static func scheduleIosTokyo() -> LocalizedMessage {
+        let key = "schedule_ios_tokyo"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosTuesday() -> LocalizedMessage {
+        let key = "schedule_ios_tuesday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosUnit() -> LocalizedMessage {
+        let key = "schedule_ios_unit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosUnread() -> LocalizedMessage {
+        let key = "schedule_ios_unread"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosUnsavedChangesWillBeLost() -> LocalizedMessage {
+        let key = "schedule_ios_unsaved_changes_will_be_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled() -> LocalizedMessage {
+        let key = "schedule_ios_update_remote_agent_on_this_computer_to_use_scheduled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosUpdateRemoteAgentToUseScheduledTasks() -> LocalizedMessage {
+        let key = "schedule_ios_update_remote_agent_to_use_scheduled_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosWednesday() -> LocalizedMessage {
+        let key = "schedule_ios_wednesday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleIosWhatToCheckNotifyMeWhenThereAreResults() -> LocalizedMessage {
+        let key = "schedule_ios_what_to_check_notify_me_when_there_are_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleLastResult(result: String, time: String) -> LocalizedMessage {
+        let key = "schedule_last_result"
+        return LocalizedMessage(key: key, arguments: [.string(result), .string(time)])
+    }
+    public static func scheduleLastResultDetail(detail: String, result: String, time: String) -> LocalizedMessage {
+        let key = "schedule_last_result_detail"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(result), .string(time)])
+    }
+    public static func scheduleLatestSummary(summary: String, time: String) -> LocalizedMessage {
+        let key = "schedule_latest_summary"
+        return LocalizedMessage(key: key, arguments: [.string(summary), .string(time)])
+    }
+    public static func scheduleLeaveBlankToUseTheMessageSFirstSentence() -> LocalizedMessage {
+        let key = "schedule_leave_blank_to_use_the_message_s_first_sentence"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleLimitsBoth(count: Int, time: String) -> LocalizedMessage {
+        let key = "schedule_limits_both"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(time)])
+    }
+    public static func scheduleListFailed(name: String, reason: String) -> LocalizedMessage {
+        let key = "schedule_list_failed"
+        return LocalizedMessage(key: key, arguments: [.string(name), .string(reason)])
+    }
+    public static func scheduleLondonTime() -> LocalizedMessage {
+        let key = "schedule_london_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleLosAngelesTime() -> LocalizedMessage {
+        let key = "schedule_los_angeles_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleManage() -> LocalizedMessage {
+        let key = "schedule_manage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMarkAllAsRead() -> LocalizedMessage {
+        let key = "schedule_mark_all_as_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMarkAsRead() -> LocalizedMessage {
+        let key = "schedule_mark_as_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMarkAsUnread() -> LocalizedMessage {
+        let key = "schedule_mark_as_unread"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMessagesGoToTheCurrentConversationAndWaitFor() -> LocalizedMessage {
+        let key = "schedule_messages_go_to_the_current_conversation_and_wait_for"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMessagesWillGoToTheCurrentConversationAndWait() -> LocalizedMessage {
+        let key = "schedule_messages_will_go_to_the_current_conversation_and_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMissingTarget(reason: String) -> LocalizedMessage {
+        let key = "schedule_missing_target"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func scheduleMissingTargetRun(reason: String, time: String) -> LocalizedMessage {
+        let key = "schedule_missing_target_run"
+        return LocalizedMessage(key: key, arguments: [.string(reason), .string(time)])
+    }
+    public static func scheduleModelAndPermissions() -> LocalizedMessage {
+        let key = "schedule_model_and_permissions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMon() -> LocalizedMessage {
+        let key = "schedule_mon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleMoreNewResults(count: Int) -> LocalizedMessage {
+        let key = "schedule_more_new_results"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleNeedsYourAttention() -> LocalizedMessage {
+        let key = "schedule_needs_your_attention"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNever() -> LocalizedMessage {
+        let key = "schedule_never"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNewResults(count: Int) -> LocalizedMessage {
+        let key = "schedule_new_results"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleNewResultsSchedules() -> LocalizedMessage {
+        let key = "schedule_new_results_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNewYorkTime() -> LocalizedMessage {
+        let key = "schedule_new_york_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNext(value: String) -> LocalizedMessage {
+        let key = "schedule_next"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleNextRunPending() -> LocalizedMessage {
+        let key = "schedule_next_run_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoApprovalIsRequiredForAnyOperationWheneverThis() -> LocalizedMessage {
+        let key = "schedule_no_approval_is_required_for_any_operation_whenever_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoApprovalWillBeRequiredForFutureRunsExisting() -> LocalizedMessage {
+        let key = "schedule_no_approval_will_be_required_for_future_runs_existing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoNewResults() -> LocalizedMessage {
+        let key = "schedule_no_new_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoNotification() -> LocalizedMessage {
+        let key = "schedule_no_notification"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoResultsYet() -> LocalizedMessage {
+        let key = "schedule_no_results_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNoRunsNext(time: String) -> LocalizedMessage {
+        let key = "schedule_no_runs_next"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func scheduleNoScheduledTasksYet() -> LocalizedMessage {
+        let key = "schedule_no_scheduled_tasks_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNotConnectedShowingThePreviousState() -> LocalizedMessage {
+        let key = "schedule_not_connected_showing_the_previous_state"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNotifiedYou() -> LocalizedMessage {
+        let key = "schedule_notified_you"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNotifyOnCompletion() -> LocalizedMessage {
+        let key = "schedule_notify_on_completion"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleNotifyOnCompletionByDefaultWhenOffOnlyThe() -> LocalizedMessage {
+        let key = "schedule_notify_on_completion_by_default_when_off_only_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleOnceAt(time: String) -> LocalizedMessage {
+        let key = "schedule_once_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func scheduleOnceSchedules() -> LocalizedMessage {
+        let key = "schedule_once_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleOnlyChangesThisTaskItStillRunsOnThe() -> LocalizedMessage {
+        let key = "schedule_only_changes_this_task_it_still_runs_on_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleOtherTasks() -> LocalizedMessage {
+        let key = "schedule_other_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func schedulePause() -> LocalizedMessage {
+        let key = "schedule_pause"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func schedulePausedTheScheduleExpiredInTheMeantime() -> LocalizedMessage {
+        let key = "schedule_paused_the_schedule_expired_in_the_meantime"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func schedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions() -> LocalizedMessage {
+        let key = "schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleProject() -> LocalizedMessage {
+        let key = "schedule_project"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleQuietRuns(count: Int, day: String) -> LocalizedMessage {
+        let key = "schedule_quiet_runs"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(day)])
+    }
+    public static func scheduleReadFullText() -> LocalizedMessage {
+        let key = "schedule_read_full_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleReadingTasks() -> LocalizedMessage {
+        let key = "schedule_reading_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleReasonReturnedByTheComputer(value: String) -> LocalizedMessage {
+        let key = "schedule_reason_returned_by_the_computer"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleRenameTask() -> LocalizedMessage {
+        let key = "schedule_rename_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRequestedARunNowTheAutomaticScheduleIsUnchanged() -> LocalizedMessage {
+        let key = "schedule_requested_a_run_now_the_automatic_schedule_is_unchanged"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleResume() -> LocalizedMessage {
+        let key = "schedule_resume"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRetryCreation() -> LocalizedMessage {
+        let key = "schedule_retry_creation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRetrySameRequest() -> LocalizedMessage {
+        let key = "schedule_retry_same_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunIn() -> LocalizedMessage {
+        let key = "schedule_run_in"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunOnceNow() -> LocalizedMessage {
+        let key = "schedule_run_once_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunWithFullAccess() -> LocalizedMessage {
+        let key = "schedule_run_with_full_access"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunning() -> LocalizedMessage {
+        let key = "schedule_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunningSchedules() -> LocalizedMessage {
+        let key = "schedule_running_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleRunningSince(time: String) -> LocalizedMessage {
+        let key = "schedule_running_since"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func scheduleRunsCount(count: Int) -> LocalizedMessage {
+        let key = "schedule_runs_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleRunsTodayNoneNotifiedYou(count: Int) -> LocalizedMessage {
+        let key = "schedule_runs_today_none_notified_you"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleRunsTotal(count: Int) -> LocalizedMessage {
+        let key = "schedule_runs_total"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleSat() -> LocalizedMessage {
+        let key = "schedule_sat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSavingBlankUsesTheMessageSFirstSentence() -> LocalizedMessage {
+        let key = "schedule_saving_blank_uses_the_message_s_first_sentence"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleScheduleMessagesToThisConversation() -> LocalizedMessage {
+        let key = "schedule_schedule_messages_to_this_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSelectAFutureTime() -> LocalizedMessage {
+        let key = "schedule_select_a_future_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSelectATime() -> LocalizedMessage {
+        let key = "schedule_select_a_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSelectAtLeastOneDay() -> LocalizedMessage {
+        let key = "schedule_select_at_least_one_day"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSelectExplicitPermissionsBeforeCreatingAScheduledTask() -> LocalizedMessage {
+        let key = "schedule_select_explicit_permissions_before_creating_a_scheduled_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSelectPermissions() -> LocalizedMessage {
+        let key = "schedule_select_permissions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSendTo(detail: String, value: String) -> LocalizedMessage {
+        let key = "schedule_send_to"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
+    }
+    public static func scheduleSendToSchedules() -> LocalizedMessage {
+        let key = "schedule_send_to_schedules"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSingaporeTime() -> LocalizedMessage {
+        let key = "schedule_singapore_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleSkipped() -> LocalizedMessage {
+        let key = "schedule_skipped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleStarting() -> LocalizedMessage {
+        let key = "schedule_starting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleStopped() -> LocalizedMessage {
+        let key = "schedule_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleStoppedCount(count: Int, total: String) -> LocalizedMessage {
+        let key = "schedule_stopped_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(total)])
+    }
+    public static func scheduleStopsAutomaticRunsExistingConversationsRemain() -> LocalizedMessage {
+        let key = "schedule_stops_automatic_runs_existing_conversations_remain"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleStripCount(count: Int, state: String) -> LocalizedMessage {
+        let key = "schedule_strip_count"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count)), .string(state)])
+    }
+    public static func scheduleStripSingle(frequency: String, state: String) -> LocalizedMessage {
+        let key = "schedule_strip_single"
+        return LocalizedMessage(key: key, arguments: [.string(frequency), .string(state)])
+    }
+    public static func scheduleSun() -> LocalizedMessage {
+        let key = "schedule_sun"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTakeAction() -> LocalizedMessage {
+        let key = "schedule_take_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTaskCreationPermissionsChanged() -> LocalizedMessage {
+        let key = "schedule_task_creation_permissions_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTaskCreationPermissionsChangedTheTaskStopped() -> LocalizedMessage {
+        let key = "schedule_task_creation_permissions_changed_the_task_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTaskName() -> LocalizedMessage {
+        let key = "schedule_task_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTasksDoNotRunWhileTheComputerSleepsOr() -> LocalizedMessage {
+        let key = "schedule_tasks_do_not_run_while_the_computer_sleeps_or"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTellTheAgentInAConversationCheckForMe() -> LocalizedMessage {
+        let key = "schedule_tell_the_agent_in_a_conversation_check_for_me"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheAgentCreatedTaskIntervalIsTooShort() -> LocalizedMessage {
+        let key = "schedule_the_agent_created_task_interval_is_too_short"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheAgentCreatedTaskIntervalIsTooShortThe() -> LocalizedMessage {
+        let key = "schedule_the_agent_created_task_interval_is_too_short_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheCatchUpWindowExpiredThisRunWasSkipped() -> LocalizedMessage {
+        let key = "schedule_the_catch_up_window_expired_this_run_was_skipped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheComputerIsOfflineConnectToCreateTasks() -> LocalizedMessage {
+        let key = "schedule_the_computer_is_offline_connect_to_create_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheFirstRunIsAfterAFullIntervalTo() -> LocalizedMessage {
+        let key = "schedule_the_first_run_is_after_a_full_interval_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheIntervalMustBeAtLeast1Second() -> LocalizedMessage {
+        let key = "schedule_the_interval_must_be_at_least_1_second"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheMessageCouldNotBeQueued() -> LocalizedMessage {
+        let key = "schedule_the_message_could_not_be_queued"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheMessageWasNotDeliveredToTheCli() -> LocalizedMessage {
+        let key = "schedule_the_message_was_not_delivered_to_the_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleThePreviousCreationResultIsUnconfirmedRetryingUsesThe() -> LocalizedMessage {
+        let key = "schedule_the_previous_creation_result_is_unconfirmed_retrying_uses_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleThePreviousOperationSResultIsUnconfirmedVerifyThe() -> LocalizedMessage {
+        let key = "schedule_the_previous_operation_s_result_is_unconfirmed_verify_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheRelaySSessionLimitHasBeenReached() -> LocalizedMessage {
+        let key = "schedule_the_relay_s_session_limit_has_been_reached"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheRunCountMustBeAPositiveInteger() -> LocalizedMessage {
+        let key = "schedule_the_run_count_must_be_a_positive_integer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheRunningConversationCouldNotBeFound() -> LocalizedMessage {
+        let key = "schedule_the_running_conversation_could_not_be_found"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheRunningConversationEnded() -> LocalizedMessage {
+        let key = "schedule_the_running_conversation_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheScheduledMessageIsPausedResumeOrCancelIt() -> LocalizedMessage {
+        let key = "schedule_the_scheduled_message_is_paused_resume_or_cancel_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheScheduledMessageWasCanceledBeforeDelivery() -> LocalizedMessage {
+        let key = "schedule_the_scheduled_message_was_canceled_before_delivery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheScheduledMessageWasCanceledBeforeDeliveryTheTask() -> LocalizedMessage {
+        let key = "schedule_the_scheduled_message_was_canceled_before_delivery_the_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTheseChangesWillNotBeSaved() -> LocalizedMessage {
+        let key = "schedule_these_changes_will_not_be_saved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleThisConversationSScheduledTasks() -> LocalizedMessage {
+        let key = "schedule_this_conversation_s_scheduled_tasks"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleThisTaskCouldNotBeFoundIfTheComputer() -> LocalizedMessage {
+        let key = "schedule_this_task_could_not_be_found_if_the_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleThu() -> LocalizedMessage {
+        let key = "schedule_thu"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTime() -> LocalizedMessage {
+        let key = "schedule_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTimeZone() -> LocalizedMessage {
+        let key = "schedule_time_zone"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTokyoTime() -> LocalizedMessage {
+        let key = "schedule_tokyo_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTooLongMaximum32Kb() -> LocalizedMessage {
+        let key = "schedule_too_long_maximum_32_kb"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleTue() -> LocalizedMessage {
+        let key = "schedule_tue"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleUnconfirmed() -> LocalizedMessage {
+        let key = "schedule_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleUnreadOnEntry() -> LocalizedMessage {
+        let key = "schedule_unread_on_entry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleUntil(value: String) -> LocalizedMessage {
+        let key = "schedule_until"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func scheduleUpdateRemoteAgentOnTheComputerToUseScheduled() -> LocalizedMessage {
+        let key = "schedule_update_remote_agent_on_the_computer_to_use_scheduled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleUpdateRemoteAgentOnThisComputerToUseScheduled() -> LocalizedMessage {
+        let key = "schedule_update_remote_agent_on_this_computer_to_use_scheduled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleVerifiedAbandonRequest() -> LocalizedMessage {
+        let key = "schedule_verified_abandon_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleVerifyCurrentPermissionsInTheConversation() -> LocalizedMessage {
+        let key = "schedule_verify_current_permissions_in_the_conversation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleViewAllRuns(count: Int) -> LocalizedMessage {
+        let key = "schedule_view_all_runs"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func scheduleWaitingForResults() -> LocalizedMessage {
+        let key = "schedule_waiting_for_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWaitingForTheCurrentTurnToEnd() -> LocalizedMessage {
+        let key = "schedule_waiting_for_the_current_turn_to_end"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWed() -> LocalizedMessage {
+        let key = "schedule_wed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWeekdaysOnly() -> LocalizedMessage {
+        let key = "schedule_weekdays_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWeeklyAt(days: String, time: String) -> LocalizedMessage {
+        let key = "schedule_weekly_at"
+        return LocalizedMessage(key: key, arguments: [.string(days), .string(time)])
+    }
+    public static func scheduleWeeklyOn() -> LocalizedMessage {
+        let key = "schedule_weekly_on"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWhatShouldTheAgentDo() -> LocalizedMessage {
+        let key = "schedule_what_should_the_agent_do"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWhen() -> LocalizedMessage {
+        let key = "schedule_when"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func scheduleWorkdaysAt(time: String) -> LocalizedMessage {
+        let key = "schedule_workdays_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func securityASecurityOperationIsUnfinishedContinueItFirst() -> LocalizedMessage {
+        let key = "security_a_security_operation_is_unfinished_continue_it_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityASecurityOperationIsUnfinishedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_a_security_operation_is_unfinished_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAbandonThisSuccessionPreparation() -> LocalizedMessage {
+        let key = "security_abandon_this_succession_preparation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAbandonThisSuccessionPreparationSecurity() -> LocalizedMessage {
+        let key = "security_abandon_this_succession_preparation_security"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAbandonUnpublishedRecoveryCode() -> LocalizedMessage {
+        let key = "security_abandon_unpublished_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAbandonUnsignedDraft() -> LocalizedMessage {
+        let key = "security_abandon_unsigned_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAbandonUnsignedOperation() -> LocalizedMessage {
+        let key = "security_abandon_unsigned_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAccountPublicKeyMissingPairAgainOrUseA() -> LocalizedMessage {
+        let key = "security_account_public_key_missing_pair_again_or_use_a"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAccountPublicKeyRestored() -> LocalizedMessage {
+        let key = "security_account_public_key_restored"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAccountSecurity() -> LocalizedMessage {
+        let key = "security_account_security"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAddOnAuthority(name: String) -> LocalizedMessage {
+        let key = "security_add_on_authority"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func securityAdded(value: String) -> LocalizedMessage {
+        let key = "security_added"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityAfterRemovingThisUnfinishedPairingGenerateANewCode() -> LocalizedMessage {
+        let key = "security_after_removing_this_unfinished_pairing_generate_a_new_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAfterSubmissionWait48HoursTheCurrentManagingClient() -> LocalizedMessage {
+        let key = "security_after_submission_wait_48_hours_the_current_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAllowToJoin() -> LocalizedMessage {
+        let key = "security_allow_to_join"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAnotherPairingDraftIsUnfinished() -> LocalizedMessage {
+        let key = "security_another_pairing_draft_is_unfinished"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAnotherPairingDraftIsUnfinishedCompleteThisPairingOr() -> LocalizedMessage {
+        let key = "security_another_pairing_draft_is_unfinished_complete_this_pairing_or"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAnotherSecurityOperationIsUnfinished() -> LocalizedMessage {
+        let key = "security_another_security_operation_is_unfinished"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityApplyAgain() -> LocalizedMessage {
+        let key = "security_apply_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityApplyAgainWithTheCurrentRecoveryCode() -> LocalizedMessage {
+        let key = "security_apply_again_with_the_current_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityApprovedWaitingForTheNewDeviceToFinishBinding() -> LocalizedMessage {
+        let key = "security_approved_waiting_for_the_new_device_to_finish_binding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAskedTheBrowserToRetainData() -> LocalizedMessage {
+        let key = "security_asked_the_browser_to_retain_data"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityAutomaticallyRenewsWhenYouReturnToTheManagingClient() -> LocalizedMessage {
+        let key = "security_automatically_renews_when_you_return_to_the_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityBeforeSuccessionPairAgainAfterwardEnterTheNewRecovery() -> LocalizedMessage {
+        let key = "security_before_succession_pair_again_afterward_enter_the_new_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityBrowser() -> LocalizedMessage {
+        let key = "security_browser"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCancelPairing() -> LocalizedMessage {
+        let key = "security_cancel_pairing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityClient() -> LocalizedMessage {
+        let key = "security_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityComparePatterns() -> LocalizedMessage {
+        let key = "security_compare_patterns"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCompareThe4PatternsOnTheNewDeviceConfirm() -> LocalizedMessage {
+        let key = "security_compare_the_4_patterns_on_the_new_device_confirm"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCompareTheManagingClientS4PatternsIfThey() -> LocalizedMessage {
+        let key = "security_compare_the_managing_client_s_4_patterns_if_they"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCompleteRecovery() -> LocalizedMessage {
+        let key = "security_complete_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCompletingTakeoverKeepThisPageInTheForegroundAnd() -> LocalizedMessage {
+        let key = "security_completing_takeover_keep_this_page_in_the_foreground_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityComputerRunRemoteAgentAccountJoinAndEnterThe() -> LocalizedMessage {
+        let key = "security_computer_run_remote_agent_account_join_and_enter_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityComputersCanOnlyRunClisAndCannotTakeOver() -> LocalizedMessage {
+        let key = "security_computers_can_only_run_clis_and_cannot_take_over"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityConfirmExit() -> LocalizedMessage {
+        let key = "security_confirm_exit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery(value: String) -> LocalizedMessage {
+        let key = "security_confirm_that_the_successor_device_saved_the_new_recovery"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityConfirmThePatternsOnTheNewDeviceBeforeApproving() -> LocalizedMessage {
+        let key = "security_confirm_the_patterns_on_the_new_device_before_approving"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityConfirmThePatternsOnThisDeviceFirst() -> LocalizedMessage {
+        let key = "security_confirm_the_patterns_on_this_device_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityConfirmTransfer() -> LocalizedMessage {
+        let key = "security_confirm_transfer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityConfirmedHereWaitingForManagingClientApprovalAndBinding() -> LocalizedMessage {
+        let key = "security_confirmed_here_waiting_for_managing_client_approval_and_binding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityContinueCreation() -> LocalizedMessage {
+        let key = "security_continue_creation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityContinueOriginalDraft() -> LocalizedMessage {
+        let key = "security_continue_original_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityContinueTheOriginalRecoveryOrExplicitlyAbandonTheRejected() -> LocalizedMessage {
+        let key = "security_continue_the_original_recovery_or_explicitly_abandon_the_rejected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityControlAiCodingClisOnYourComputerFromAny() -> LocalizedMessage {
+        let key = "security_control_ai_coding_clis_on_your_computer_from_any"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCreateAccount() -> LocalizedMessage {
+        let key = "security_create_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityCurrentManagingClient() -> LocalizedMessage {
+        let key = "security_current_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeleteLocalKeysAndRejoin() -> LocalizedMessage {
+        let key = "security_delete_local_keys_and_rejoin"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeleteRecords() -> LocalizedMessage {
+        let key = "security_delete_records"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeleteThisComputerSRecords() -> LocalizedMessage {
+        let key = "security_delete_this_computer_s_records"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeleteThisComputerSRecordsDeviceManagement() -> LocalizedMessage {
+        let key = "security_delete_this_computer_s_records_device_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeviceInformationChangedTheOriginalTransferRequestWasNot() -> LocalizedMessage {
+        let key = "security_device_information_changed_the_original_transfer_request_was_not"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDeviceJoined() -> LocalizedMessage {
+        let key = "security_device_joined"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityDuration48Hours() -> LocalizedMessage {
+        let key = "security_duration_48_hours"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityEligibleAt(value: String) -> LocalizedMessage {
+        let key = "security_eligible_at"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityExit() -> LocalizedMessage {
+        let key = "security_exit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityExitAndDeleteLocalKeys() -> LocalizedMessage {
+        let key = "security_exit_and_delete_local_keys"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityExitAndStartOver() -> LocalizedMessage {
+        let key = "security_exit_and_start_over"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityExitThisBrowser() -> LocalizedMessage {
+        let key = "security_exit_this_browser"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityExiting() -> LocalizedMessage {
+        let key = "security_exiting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityExitingDeletesLocalKeysYouWillNeedToPair() -> LocalizedMessage {
+        let key = "security_exiting_deletes_local_keys_you_will_need_to_pair"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityFinishDeviceRegistrationFirst() -> LocalizedMessage {
+        let key = "security_finish_device_registration_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityFinishTheCurrentSecurityOperationBeforeRenewing() -> LocalizedMessage {
+        let key = "security_finish_the_current_security_operation_before_renewing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityFinishTheCurrentSecurityOperationFirst() -> LocalizedMessage {
+        let key = "security_finish_the_current_security_operation_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityFinishTheOriginalSecurityOperationFirst() -> LocalizedMessage {
+        let key = "security_finish_the_original_security_operation_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityGenerateAndSaveARecoveryCodeOnTheSuccessor() -> LocalizedMessage {
+        let key = "security_generate_and_save_a_recovery_code_on_the_successor"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityGenerateNewRecoveryCode() -> LocalizedMessage {
+        let key = "security_generate_new_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityGeneratePairingCode() -> LocalizedMessage {
+        let key = "security_generate_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityGenerateRecoveryCode() -> LocalizedMessage {
+        let key = "security_generate_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityGenerating() -> LocalizedMessage {
+        let key = "security_generating"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityISavedTheNewRecoveryCodeOffline() -> LocalizedMessage {
+        let key = "security_i_saved_the_new_recovery_code_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIfThisBrowserIsAlreadyAMemberRecoveryWill() -> LocalizedMessage {
+        let key = "security_if_this_browser_is_already_a_member_recovery_will"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityInvalidPairingKey() -> LocalizedMessage {
+        let key = "security_invalid_pairing_key"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityInvalidPairingTrustInformation() -> LocalizedMessage {
+        let key = "security_invalid_pairing_trust_information"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityInvalidRecoveryCode() -> LocalizedMessage {
+        let key = "security_invalid_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts() -> LocalizedMessage {
+        let key = "security_ios_a_security_operation_is_unfinished_retry_or_verify_its"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAbandonThisSecurityOperation() -> LocalizedMessage {
+        let key = "security_ios_abandon_this_security_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAccountPublicKeyInformationRestoredYouCanPrepareTo() -> LocalizedMessage {
+        let key = "security_ios_account_public_key_information_restored_you_can_prepare_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAddAnotherDevice() -> LocalizedMessage {
+        let key = "security_ios_add_another_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAfterRemovalThisDeviceCanNoLongerOperateThe() -> LocalizedMessage {
+        let key = "security_ios_after_removal_this_device_can_no_longer_operate_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAllDevicesWillDisconnectDataOnTheRelayCannot() -> LocalizedMessage {
+        let key = "security_ios_all_devices_will_disconnect_data_on_the_relay_cannot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAllowCameraAccess() -> LocalizedMessage {
+        let key = "security_ios_allow_camera_access"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosApprovedVerifyingDeliveryToTheDeviceContinueTheOriginal() -> LocalizedMessage {
+        let key = "security_ios_approved_verifying_delivery_to_the_device_continue_the_original"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosAutomaticallyRenewsWhenYouReturnToTheManagingClient() -> LocalizedMessage {
+        let key = "security_ios_automatically_renews_when_you_return_to_the_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCameraAccessIsRequiredToScanYouCanAlso() -> LocalizedMessage {
+        let key = "security_ios_camera_access_is_required_to_scan_you_can_also"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCameraPreviewLookingForAPairingQrCode() -> LocalizedMessage {
+        let key = "security_ios_camera_preview_looking_for_a_pairing_qr_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCanTakeEffectAt(value: String) -> LocalizedMessage {
+        let key = "security_ios_can_take_effect_at"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityIosCannotAccountKeysWhileTheDeviceIsLockedUnlock(value: String) -> LocalizedMessage {
+        let key = "security_ios_cannot_account_keys_while_the_device_is_locked_unlock"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityIosCannotReadAccountKeysFromKeychainRejoinTheAccount() -> LocalizedMessage {
+        let key = "security_ios_cannot_read_account_keys_from_keychain_rejoin_the_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCompareTheManagingClientS4PatternsIfThey() -> LocalizedMessage {
+        let key = "security_ios_compare_the_managing_client_s_4_patterns_if_they"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCompletingTakeoverWaitingForRemoteControlRenewal() -> LocalizedMessage {
+        let key = "security_ios_completing_takeover_waiting_for_remote_control_renewal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosComputerRecordsDeleted() -> LocalizedMessage {
+        let key = "security_ios_computer_records_deleted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosConfirmPermanentDeletion() -> LocalizedMessage {
+        let key = "security_ios_confirm_permanent_deletion"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosConnecting() -> LocalizedMessage {
+        let key = "security_ios_connecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosContinueCreatingAccount() -> LocalizedMessage {
+        let key = "security_ios_continue_creating_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosContinueOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_continue_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosContinueTheAccountCreationRecoveryOrSuccessorDraft() -> LocalizedMessage {
+        let key = "security_ios_continue_the_account_creation_recovery_or_successor_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCopyPairingCode() -> LocalizedMessage {
+        let key = "security_ios_copy_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCouldNotAccountKeysInKeychain(detail: String, extra: String, value: String) -> LocalizedMessage {
+        let key = "security_ios_could_not_account_keys_in_keychain"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(extra), .string(value)])
+    }
+    public static func securityIosCouldNotVerifyTheCurrentSecurityStateTheOperation() -> LocalizedMessage {
+        let key = "security_ios_could_not_verify_the_current_security_state_the_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosCurrentRecoveryCode() -> LocalizedMessage {
+        let key = "security_ios_current_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeleteAccount() -> LocalizedMessage {
+        let key = "security_ios_delete_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeleteFromTheCurrentAccountSManagingClientIf() -> LocalizedMessage {
+        let key = "security_ios_delete_from_the_current_account_s_managing_client_if"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeleteThisComputerSRecords() -> LocalizedMessage {
+        let key = "security_ios_delete_this_computer_s_records"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeleting() -> LocalizedMessage {
+        let key = "security_ios_deleting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDemoDataWillNotSendADeletionRequest() -> LocalizedMessage {
+        let key = "security_ios_demo_data_will_not_send_a_deletion_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeviceJoined() -> LocalizedMessage {
+        let key = "security_ios_device_joined"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosDeviceRemoved() -> LocalizedMessage {
+        let key = "security_ios_device_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosEnter8DigitPairingCode() -> LocalizedMessage {
+        let key = "security_ios_enter_8_digit_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosEnterDeleteAccountToConfirm() -> LocalizedMessage {
+        let key = "security_ios_enter_delete_account_to_confirm"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosEnterDeleteAccountToConfirm136() -> LocalizedMessage {
+        let key = "security_ios_enter_delete_account_to_confirm_136"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosFinishOrAbandonUnfinishedAccountSecurityOperationsBeforeDeleting() -> LocalizedMessage {
+        let key = "security_ios_finish_or_abandon_unfinished_account_security_operations_before_deleting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosGenerateAnotherPairingCode() -> LocalizedMessage {
+        let key = "security_ios_generate_another_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosIUnderstandThereIsNoBackupReplaceTheCode() -> LocalizedMessage {
+        let key = "security_ios_i_understand_there_is_no_backup_replace_the_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosIfSuccessorPreparationReportsAMissingAccountPublicKey() -> LocalizedMessage {
+        let key = "security_ios_if_successor_preparation_reports_a_missing_account_public_key"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosIfTheNetworkDropsAfterTheRequestIsSent() -> LocalizedMessage {
+        let key = "security_ios_if_the_network_drops_after_the_request_is_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosInvalidPairingApproval() -> LocalizedMessage {
+        let key = "security_ios_invalid_pairing_approval"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosJoinedButCouldNotSaveAccountKeys(value: String) -> LocalizedMessage {
+        let key = "security_ios_joined_but_could_not_save_account_keys"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityIosJoiningAnExistingAccountRequiresManagingClientApprovalUse() -> LocalizedMessage {
+        let key = "security_ios_joining_an_existing_account_requires_managing_client_approval_use"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosJoiningCanceled() -> LocalizedMessage {
+        let key = "security_ios_joining_canceled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosManagementTransferred() -> LocalizedMessage {
+        let key = "security_ios_management_transferred"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosManagementTransferredThisDeviceWasRemoved() -> LocalizedMessage {
+        let key = "security_ios_management_transferred_this_device_was_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosNotReadYet() -> LocalizedMessage {
+        let key = "security_ios_not_read_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosOnTheManagingClientOpenSettingsAddDeviceScan() -> LocalizedMessage {
+        let key = "security_ios_on_the_managing_client_open_settings_add_device_scan"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosOpenSettingsAccountSecurityAndTapRenewNow() -> LocalizedMessage {
+        let key = "security_ios_open_settings_account_security_and_tap_renew_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosOpenToRenew(value: String) -> LocalizedMessage {
+        let key = "security_ios_open_to_renew"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityIosOriginalCliSessionsAndProjectFilesOnComputersAnd() -> LocalizedMessage {
+        let key = "security_ios_original_cli_sessions_and_project_files_on_computers_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosOriginalSecurityOperationVerifiedThisDeviceNoLongerHas() -> LocalizedMessage {
+        let key = "security_ios_original_security_operation_verified_this_device_no_longer_has"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairAgainAndPreserveIdentity() -> LocalizedMessage {
+        let key = "security_ios_pair_again_and_preserve_identity"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairPatterns(patterns: String) -> LocalizedMessage {
+        let key = "security_ios_pair_patterns"
+        return LocalizedMessage(key: key, arguments: [.string(patterns)])
+    }
+    public static func securityIosPairingAbandonedYouCanGenerateANewPairingCode() -> LocalizedMessage {
+        let key = "security_ios_pairing_abandoned_you_can_generate_a_new_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingApprovalDoesNotMatchThisDevice() -> LocalizedMessage {
+        let key = "security_ios_pairing_approval_does_not_match_this_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingApprovalDoesNotMatchThisDeviceHasExpired() -> LocalizedMessage {
+        let key = "security_ios_pairing_approval_does_not_match_this_device_has_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingCanceledExplicitlyRemoveTheApprovedCandidateBeforeStarting() -> LocalizedMessage {
+        let key = "security_ios_pairing_canceled_explicitly_remove_the_approved_candidate_before_starting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingCommitmentChangedAfterTheEphemeralPublicKeyWas() -> LocalizedMessage {
+        let key = "security_ios_pairing_commitment_changed_after_the_ephemeral_public_key_was"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingCommitmentMismatch() -> LocalizedMessage {
+        let key = "security_ios_pairing_commitment_mismatch"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPairingDeliveryOnAnotherServerIsUnfinished() -> LocalizedMessage {
+        let key = "security_ios_pairing_delivery_on_another_server_is_unfinished"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPatternsAreNotConfirmedLocallySecureBindingStopped() -> LocalizedMessage {
+        let key = "security_ios_patterns_are_not_confirmed_locally_secure_binding_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPermanentlyDeleteAccount() -> LocalizedMessage {
+        let key = "security_ios_permanently_delete_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPermanentlyDeleteTheEntireAccount() -> LocalizedMessage {
+        let key = "security_ios_permanently_delete_the_entire_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPlaceTheManagingClientSPairingQrCodeIn() -> LocalizedMessage {
+        let key = "security_ios_place_the_managing_client_s_pairing_qr_code_in"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPrepareAccount() -> LocalizedMessage {
+        let key = "security_ios_prepare_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPrivacyShield() -> LocalizedMessage {
+        let key = "security_ios_privacy_shield"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPublicationResultUnverifiedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_publication_result_unverified_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPublish() -> LocalizedMessage {
+        let key = "security_ios_publish"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosPublishNewRecoveryCode() -> LocalizedMessage {
+        let key = "security_ios_publish_new_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRead() -> LocalizedMessage {
+        let key = "security_ios_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRecoveryCodeBackupIsUnconfirmedReplaceTheCodeAnd() -> LocalizedMessage {
+        let key = "security_ios_recovery_code_backup_is_unconfirmed_replace_the_code_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRecoveryCodeConfirmedSavedOfflineContinueTheOriginalRequest() -> LocalizedMessage {
+        let key = "security_ios_recovery_code_confirmed_saved_offline_continue_the_original_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRecoveryRequest() -> LocalizedMessage {
+        let key = "security_ios_recovery_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRecoveryRequestVetoedTheOldRecoveryCodeIsInvalid() -> LocalizedMessage {
+        let key = "security_ios_recovery_request_vetoed_the_old_recovery_code_is_invalid"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRefreshRecoveryStatus() -> LocalizedMessage {
+        let key = "security_ios_refresh_recovery_status"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRejoinFromOriginalRecords() -> LocalizedMessage {
+        let key = "security_ios_rejoin_from_original_records"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRemoteControlRenewed() -> LocalizedMessage {
+        let key = "security_ios_remote_control_renewed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRemoveUndeliveredCandidate() -> LocalizedMessage {
+        let key = "security_ios_remove_undelivered_candidate"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRenewalResultUnverifiedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_renewal_result_unverified_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRenewing() -> LocalizedMessage {
+        let key = "security_ios_renewing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosReplaceCode() -> LocalizedMessage {
+        let key = "security_ios_replace_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRequestManagementTakeoverWithYourOfflineRecoveryCodeWait() -> LocalizedMessage {
+        let key = "security_ios_request_management_takeover_with_your_offline_recovery_code_wait"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRestoreAccountPublicKeyInformation() -> LocalizedMessage {
+        let key = "security_ios_restore_account_public_key_information"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosRestoreInformation() -> LocalizedMessage {
+        let key = "security_ios_restore_information"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSaveTheNewRecoveryCode() -> LocalizedMessage {
+        let key = "security_ios_save_the_new_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSaveTheRecoveryCodeOfflineFirst() -> LocalizedMessage {
+        let key = "security_ios_save_the_recovery_code_offline_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosScanQrCode() -> LocalizedMessage {
+        let key = "security_ios_scan_qr_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSecurityOperationStateChangedChooseHowToExitAgain() -> LocalizedMessage {
+        let key = "security_ios_security_operation_state_changed_choose_how_to_exit_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSecurityOperationStateChangedChooseHowToJoinAgain() -> LocalizedMessage {
+        let key = "security_ios_security_operation_state_changed_choose_how_to_join_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSecurityStateIsUnverifiedTheOperationWasNotSent() -> LocalizedMessage {
+        let key = "security_ios_security_state_is_unverified_the_operation_was_not_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSetupToken() -> LocalizedMessage {
+        let key = "security_ios_setup_token"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSetupTokenIfRequired() -> LocalizedMessage {
+        let key = "security_ios_setup_token_if_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSubmitAndVerifyOriginalRequest() -> LocalizedMessage {
+        let key = "security_ios_submit_and_verify_original_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSuccessorDevice() -> LocalizedMessage {
+        let key = "security_ios_successor_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosSuccessorPreparationResultUnverifiedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_successor_preparation_result_unverified_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheApprovedCandidateWithoutConfirmedDeliveryWillBeExplicitly() -> LocalizedMessage {
+        let key = "security_ios_the_approved_candidate_without_confirmed_delivery_will_be_explicitly"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheCurrentRequestChangedReviewItAgain() -> LocalizedMessage {
+        let key = "security_ios_the_current_request_changed_review_it_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheIosAppHasNoBackgroundSecurityAlertsOpen() -> LocalizedMessage {
+        let key = "security_ios_the_ios_app_has_no_background_security_alerts_open"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheManagingClientSTrustInformationDoesNotMatch() -> LocalizedMessage {
+        let key = "security_ios_the_managing_client_s_trust_information_does_not_match"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheNewRecoveryCodeIsActiveTheOldCode() -> LocalizedMessage {
+        let key = "security_ios_the_new_recovery_code_is_active_the_old_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheNewStateDidNotAddThisDevice() -> LocalizedMessage {
+        let key = "security_ios_the_new_state_did_not_add_this_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheOldRecoveryCodeIsImmediatelyInvalidatedAndPending() -> LocalizedMessage {
+        let key = "security_ios_the_old_recovery_code_is_immediately_invalidated_and_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheOriginalDeviceIdentityKeysAndHistoryArePreserved() -> LocalizedMessage {
+        let key = "security_ios_the_original_device_identity_keys_and_history_are_preserved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheOriginalRequestIsRetainedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_the_original_request_is_retained_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThePairingPayloadSAccountDiffersFromTheOne() -> LocalizedMessage {
+        let key = "security_ios_the_pairing_payload_s_account_differs_from_the_one"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThePairingPayloadSStateChainIsIncomplete() -> LocalizedMessage {
+        let key = "security_ios_the_pairing_payload_s_state_chain_is_incomplete"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThePhoneSSecurityStateIsOver5Minutes() -> LocalizedMessage {
+        let key = "security_ios_the_phone_s_security_state_is_over_5_minutes"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThePreviouslyDisplayedRecoveryCodeCannotBeShownAgain() -> LocalizedMessage {
+        let key = "security_ios_the_previously_displayed_recovery_code_cannot_be_shown_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheSecurityStateChainIsTooLongToJoin() -> LocalizedMessage {
+        let key = "security_ios_the_security_state_chain_is_too_long_to_join"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheServerRejectedThisDeviceSLogin() -> LocalizedMessage {
+        let key = "security_ios_the_server_rejected_this_device_s_login"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheServerReturnedAnUnexpectedDeviceTypePairingStopped() -> LocalizedMessage {
+        let key = "security_ios_the_server_returned_an_unexpected_device_type_pairing_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheSuccessorSPublicKeyMayAlreadyBePublished() -> LocalizedMessage {
+        let key = "security_ios_the_successor_s_public_key_may_already_be_published"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTheSuccessorSPublicKeyMayAlreadyBePublished278() -> LocalizedMessage {
+        let key = "security_ios_the_successor_s_public_key_may_already_be_published_278"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeletesTheEntireAccountOnTheCurrentRelay() -> LocalizedMessage {
+        let key = "security_ios_this_deletes_the_entire_account_on_the_current_relay"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeviceHasNoAvailableCameraGoBackTo() -> LocalizedMessage {
+        let key = "security_ios_this_device_has_no_available_camera_go_back_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeviceIsOver5MinutesBehindTheSecurity() -> LocalizedMessage {
+        let key = "security_ios_this_device_is_over_5_minutes_behind_the_security"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeviceIsTheSoleManagingClientTransferManagement() -> LocalizedMessage {
+        let key = "security_ios_this_device_is_the_sole_managing_client_transfer_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeviceSAccountKeysAndCacheWillBe() -> LocalizedMessage {
+        let key = "security_ios_this_device_s_account_keys_and_cache_will_be"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisDeviceWasRemovedTheSuccessorIsNowThe() -> LocalizedMessage {
+        let key = "security_ios_this_device_was_removed_the_successor_is_now_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisIpad() -> LocalizedMessage {
+        let key = "security_ios_this_ipad"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisIsNotARemoteAgentPairingQrCode() -> LocalizedMessage {
+        let key = "security_ios_this_is_not_a_remote_agent_pairing_qr_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisPhone() -> LocalizedMessage {
+        let key = "security_ios_this_phone"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosThisPhoneSAccountKeysAndCacheWillBe() -> LocalizedMessage {
+        let key = "security_ios_this_phone_s_account_keys_and_cache_will_be"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTooManyAttemptsWaitAMinuteAndRetry() -> LocalizedMessage {
+        let key = "security_ios_too_many_attempts_wait_a_minute_and_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTransferManagement() -> LocalizedMessage {
+        let key = "security_ios_transfer_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTransferResultUnverifiedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_ios_transfer_result_unverified_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosTransferTo(value: String) -> LocalizedMessage {
+        let key = "security_ios_transfer_to"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityIosUnknownError() -> LocalizedMessage {
+        let key = "security_ios_unknown_error"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosUnsureWhetherJoinedCheckTheClientListInThe(detail: String, value: String) -> LocalizedMessage {
+        let key = "security_ios_unsure_whether_joined_check_the_client_list_in_the"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
+    }
+    public static func securityIosVerifyAndAbandon() -> LocalizedMessage {
+        let key = "security_ios_verify_and_abandon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosVerifyOriginalSecurityOperation() -> LocalizedMessage {
+        let key = "security_ios_verify_original_security_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosVerifyVetoAndAbandonOriginalRequest() -> LocalizedMessage {
+        let key = "security_ios_verify_veto_and_abandon_original_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosWaitingForManagingClientApprovalAndBinding() -> LocalizedMessage {
+        let key = "security_ios_waiting_for_managing_client_approval_and_binding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityIosWaitingForThe48HourRecoveryWindowTheCurrent() -> LocalizedMessage {
+        let key = "security_ios_waiting_for_the_48_hour_recovery_window_the_current"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityItMayHaveBeenRemovedOrTheServiceMay() -> LocalizedMessage {
+        let key = "security_it_may_have_been_removed_or_the_service_may"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityJoin() -> LocalizedMessage {
+        let key = "security_join"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityJoinAccount() -> LocalizedMessage {
+        let key = "security_join_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityJoinAnExistingAccount() -> LocalizedMessage {
+        let key = "security_join_an_existing_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityJoinWithACodeFromTheManagingClient() -> LocalizedMessage {
+        let key = "security_join_with_a_code_from_the_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityLoading() -> LocalizedMessage {
+        let key = "security_loading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityManageOnAuthority(name: String) -> LocalizedMessage {
+        let key = "security_manage_on_authority"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func securityManagementTransferredWaitingForTheSuccessorToCompleteTakeover() -> LocalizedMessage {
+        let key = "security_management_transferred_waiting_for_the_successor_to_complete_takeover"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityNewRecoveryCode() -> LocalizedMessage {
+        let key = "security_new_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityNewRecoveryCodeShownOnlyOnce() -> LocalizedMessage {
+        let key = "security_new_recovery_code_shown_only_once"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityNothingIsPublishedBeforeYouSaveItAnUnpublished() -> LocalizedMessage {
+        let key = "security_nothing_is_published_before_you_save_it_an_unpublished"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOnTheManagingClientOpenSettingsAddDeviceAnd() -> LocalizedMessage {
+        let key = "security_on_the_managing_client_open_settings_add_device_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts() -> LocalizedMessage {
+        let key = "security_once_the_successor_device_joins_and_confirms_saving_its"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOneTimeSecuritySetup() -> LocalizedMessage {
+        let key = "security_one_time_security_setup"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOnlyARemovedComputerSArchiveCanBeRejoined() -> LocalizedMessage {
+        let key = "security_only_a_removed_computer_s_archive_can_be_rejoined"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOnlyThisComputerCanRejoinItsOriginalArchiveWith() -> LocalizedMessage {
+        let key = "security_only_this_computer_can_rejoin_its_original_archive_with"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityOpenToRenew(value: String) -> LocalizedMessage {
+        let key = "security_open_to_renew"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityOriginalRecoveryCode() -> LocalizedMessage {
+        let key = "security_original_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairAgain() -> LocalizedMessage {
+        let key = "security_pair_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairValidUntil(time: String) -> LocalizedMessage {
+        let key = "security_pair_valid_until"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func securityPaired() -> LocalizedMessage {
+        let key = "security_paired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingApprovalDoesNotMatchThisDeviceOrHas() -> LocalizedMessage {
+        let key = "security_pairing_approval_does_not_match_this_device_or_has"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingCanceled() -> LocalizedMessage {
+        let key = "security_pairing_canceled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingCode() -> LocalizedMessage {
+        let key = "security_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingCommitmentMismatchPairingStopped() -> LocalizedMessage {
+        let key = "security_pairing_commitment_mismatch_pairing_stopped"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingDeliveryExpiredExplicitlyRemoveTheUnfinishedCandidateBefore() -> LocalizedMessage {
+        let key = "security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingExpired() -> LocalizedMessage {
+        let key = "security_pairing_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingExpiredOrWasCanceled() -> LocalizedMessage {
+        let key = "security_pairing_expired_or_was_canceled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingWasCanceledExplicitlyRemoveTheUnfinishedCandidateBefore() -> LocalizedMessage {
+        let key = "security_pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPairingWasCanceledOrExpired() -> LocalizedMessage {
+        let key = "security_pairing_was_canceled_or_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPatternsDifferReturnToCodeEntry() -> LocalizedMessage {
+        let key = "security_patterns_differ_return_to_code_entry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPatternsMatchTheNewDeviceConfirmedFirst() -> LocalizedMessage {
+        let key = "security_patterns_match_the_new_device_confirmed_first"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPatternsMatchTrustAndContinue() -> LocalizedMessage {
+        let key = "security_patterns_match_trust_and_continue"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPrepareRecovery() -> LocalizedMessage {
+        let key = "security_prepare_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityProcessing() -> LocalizedMessage {
+        let key = "security_processing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityPublishing() -> LocalizedMessage {
+        let key = "security_publishing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityQrCodeForAddingADevice() -> LocalizedMessage {
+        let key = "security_qr_code_for_adding_a_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReEnter() -> LocalizedMessage {
+        let key = "security_re_enter"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReading() -> LocalizedMessage {
+        let key = "security_reading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoverManagementWithARecoveryCode() -> LocalizedMessage {
+        let key = "security_recover_management_with_a_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryCode() -> LocalizedMessage {
+        let key = "security_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryCodeForRestoringPublicInformation() -> LocalizedMessage {
+        let key = "security_recovery_code_for_restoring_public_information"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent() -> LocalizedMessage {
+        let key = "security_recovery_code_saved_and_confirmed_waiting_for_the_current"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryCodeUpdatedThePreviousCodeAndPendingRecovery() -> LocalizedMessage {
+        let key = "security_recovery_code_updated_the_previous_code_and_pending_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryIsPendingOrItsOutcomeIsUnknownAnd() -> LocalizedMessage {
+        let key = "security_recovery_is_pending_or_its_outcome_is_unknown_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryRequestPending() -> LocalizedMessage {
+        let key = "security_recovery_request_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryRequestPendingEligibleAt(value: String) -> LocalizedMessage {
+        let key = "security_recovery_request_pending_eligible_at"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityRecoveryWasRejectedExplicitlyApplyAgain() -> LocalizedMessage {
+        let key = "security_recovery_was_rejected_explicitly_apply_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRecoveryWasRejectedYouCanApplyAgain() -> LocalizedMessage {
+        let key = "security_recovery_was_rejected_you_can_apply_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRefreshSuccessorDevices() -> LocalizedMessage {
+        let key = "security_refresh_successor_devices"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRegenerateRecoveryCode() -> LocalizedMessage {
+        let key = "security_regenerate_recovery_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRegistrationOnAnotherServerIsUnfinishedRetryItOr() -> LocalizedMessage {
+        let key = "security_registration_on_another_server_is_unfinished_retry_it_or"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRegistrationProofOfWorkExpiredRetryTheOriginalDraft() -> LocalizedMessage {
+        let key = "security_registration_proof_of_work_expired_retry_the_original_draft"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRegistrationProofOfWorkIsInvalidOrExpired() -> LocalizedMessage {
+        let key = "security_registration_proof_of_work_is_invalid_or_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReject() -> LocalizedMessage {
+        let key = "security_reject"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRejoin() -> LocalizedMessage {
+        let key = "security_rejoin"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRejoinAndResumeSessions() -> LocalizedMessage {
+        let key = "security_rejoin_and_resume_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRejoinWithAPairingCode() -> LocalizedMessage {
+        let key = "security_rejoin_with_a_pairing_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoteControlExpiry() -> LocalizedMessage {
+        let key = "security_remote_control_expiry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoteControlExpiryNotReceivedYet() -> LocalizedMessage {
+        let key = "security_remote_control_expiry_not_received_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoteControlRenewed() -> LocalizedMessage {
+        let key = "security_remote_control_renewed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemovalImmediatelyStopsRemoteAccessFromThisDeviceThe() -> LocalizedMessage {
+        let key = "security_removal_immediately_stops_remote_access_from_this_device_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoveDevice() -> LocalizedMessage {
+        let key = "security_remove_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoveDeviceDeviceManagement() -> LocalizedMessage {
+        let key = "security_remove_device_device_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRemoveUnfinishedPairing() -> LocalizedMessage {
+        let key = "security_remove_unfinished_pairing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRenewNow() -> LocalizedMessage {
+        let key = "security_renew_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode() -> LocalizedMessage {
+        let key = "security_replacing_the_recovery_code_immediately_invalidates_the_old_code"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRestoreAccountPublicKey() -> LocalizedMessage {
+        let key = "security_restore_account_public_key"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityRestorePublicInformation() -> LocalizedMessage {
+        let key = "security_restore_public_information"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReturnToAccountCreationOrRecoveryToContinueThe() -> LocalizedMessage {
+        let key = "security_return_to_account_creation_or_recovery_to_continue_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityReturningStopsThisWaitRejectTheOldRequestOn() -> LocalizedMessage {
+        let key = "security_returning_stops_this_wait_reject_the_old_request_on"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySaveTheNewRecoveryCodeFirstThenAskThe() -> LocalizedMessage {
+        let key = "security_save_the_new_recovery_code_first_then_ask_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySaveTheRecoveryCodeOfflineAnyoneWithItCan() -> LocalizedMessage {
+        let key = "security_save_the_recovery_code_offline_anyone_with_it_can"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySavedNotifyManagingClient() -> LocalizedMessage {
+        let key = "security_saved_notify_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySavedPublishReplacement() -> LocalizedMessage {
+        let key = "security_saved_publish_replacement"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySecuritySetupMustUseTheOriginalAccountSServer() -> LocalizedMessage {
+        let key = "security_security_setup_must_use_the_original_account_s_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySecurityStateMayBeOutOfDateConnectAnd() -> LocalizedMessage {
+        let key = "security_security_state_may_be_out_of_date_connect_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityServer() -> LocalizedMessage {
+        let key = "security_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySetupTokenOptionalWithOpenRegistration() -> LocalizedMessage {
+        let key = "security_setup_token_optional_with_open_registration"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String) -> LocalizedMessage {
+        let key = "security_someone_is_requesting_management_takeover_with_a_recovery_code"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func securityStartOver() -> LocalizedMessage {
+        let key = "security_start_over"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityStoppedWaitingRejectTheOldRequestOnTheManaging() -> LocalizedMessage {
+        let key = "security_stopped_waiting_reject_the_old_request_on_the_managing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySubmitOrCheckOriginalRecovery() -> LocalizedMessage {
+        let key = "security_submit_or_check_original_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securitySuccessIsUncertainConnectionLost() -> LocalizedMessage {
+        let key = "security_success_is_uncertain_connection_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTakeOverManagement() -> LocalizedMessage {
+        let key = "security_take_over_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThe48HourWaitHasNotEnded() -> LocalizedMessage {
+        let key = "security_the_48_hour_wait_has_not_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheAccountBelongsToAnotherServer() -> LocalizedMessage {
+        let key = "security_the_account_belongs_to_another_server"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheAccountDoesNotMatchTheManagingClientS() -> LocalizedMessage {
+        let key = "security_the_account_does_not_match_the_managing_client_s"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheAccountKeysAndCacheInThisBrowserWill() -> LocalizedMessage {
+        let key = "security_the_account_keys_and_cache_in_this_browser_will"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheAccountSStateChainIsTooLongTo() -> LocalizedMessage {
+        let key = "security_the_account_s_state_chain_is_too_long_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheBrowserDidNotPromiseToRetainData() -> LocalizedMessage {
+        let key = "security_the_browser_did_not_promise_to_retain_data"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheComputerSArchiveWasDeletedJoinAsA() -> LocalizedMessage {
+        let key = "security_the_computer_s_archive_was_deleted_join_as_a"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheJoinReceiptDoesNotContainTheCorrectIdentity() -> LocalizedMessage {
+        let key = "security_the_join_receipt_does_not_contain_the_correct_identity"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheLocalAccountUnfinishedRegistrationAndSecurityOperationsWill() -> LocalizedMessage {
+        let key = "security_the_local_account_unfinished_registration_and_security_operations_will"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheLocalSecurityStateIsDamagedAndCannotBe() -> LocalizedMessage {
+        let key = "security_the_local_security_state_is_damaged_and_cannot_be"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheManagingClientCanceledPairing() -> LocalizedMessage {
+        let key = "security_the_managing_client_canceled_pairing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheManagingClientCannotBeRemovedDirectlyTransferManagement() -> LocalizedMessage {
+        let key = "security_the_managing_client_cannot_be_removed_directly_transfer_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheManagingClientCannotBeRemovedDirectlyTransferManagementDeviceManagement() -> LocalizedMessage {
+        let key = "security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheManagingClientSTrustInformationDoesNotMatch() -> LocalizedMessage {
+        let key = "security_the_managing_client_s_trust_information_does_not_match"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheNewRecoveryCodeBackupIsUnconfirmedReplaceThe() -> LocalizedMessage {
+        let key = "security_the_new_recovery_code_backup_is_unconfirmed_replace_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOriginalCreationDraftIsPreservedContinueWithThe() -> LocalizedMessage {
+        let key = "security_the_original_creation_draft_is_preserved_continue_with_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOriginalDeviceIdentityKeysAndHistoryArePreserved() -> LocalizedMessage {
+        let key = "security_the_original_device_identity_keys_and_history_are_preserved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOriginalDevicePublicKeyDoesNotMatchThe() -> LocalizedMessage {
+        let key = "security_the_original_device_public_key_does_not_match_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOriginalOperationIsUnfinishedContinueVerifying() -> LocalizedMessage {
+        let key = "security_the_original_operation_is_unfinished_continue_verifying"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOriginalRecoveryDraftIsPreservedTheNewRecovery() -> LocalizedMessage {
+        let key = "security_the_original_recovery_draft_is_preserved_the_new_recovery"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheOtherDeviceRefusedThisJoinRequest() -> LocalizedMessage {
+        let key = "security_the_other_device_refused_this_join_request"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePageIsPausedReturnToTheForegroundTo() -> LocalizedMessage {
+        let key = "security_the_page_is_paused_return_to_the_foreground_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePairingCodeBelongsToAnotherSecurityDomainOriginal() -> LocalizedMessage {
+        let key = "security_the_pairing_code_belongs_to_another_security_domain_original"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePairingCodeIsWrongOrHasAlreadyBeen() -> LocalizedMessage {
+        let key = "security_the_pairing_code_is_wrong_or_has_already_been"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePairingDraftConflictsWithTheCurrentIdentity() -> LocalizedMessage {
+        let key = "security_the_pairing_draft_conflicts_with_the_current_identity"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePairingReceiptWasApprovedByADeviceOther() -> LocalizedMessage {
+        let key = "security_the_pairing_receipt_was_approved_by_a_device_other"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThePublicKeyMayAlreadyBePublishedAbandoningOnly() -> LocalizedMessage {
+        let key = "security_the_public_key_may_already_be_published_abandoning_only"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheRecoverySignatureHasNotBeenSavedReEnter() -> LocalizedMessage {
+        let key = "security_the_recovery_signature_has_not_been_saved_re_enter"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe() -> LocalizedMessage {
+        let key = "security_the_security_operation_s_outcome_is_unverified_continue_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheServerDoesNotRecognizeThisDevice() -> LocalizedMessage {
+        let key = "security_the_server_does_not_recognize_this_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheServerReplacedThePairingCommitmentAfterReceivingThe() -> LocalizedMessage {
+        let key = "security_the_server_replaced_the_pairing_commitment_after_receiving_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheServerReturnedInformationForADifferentDeviceFrom() -> LocalizedMessage {
+        let key = "security_the_server_returned_information_for_a_different_device_from"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheUnpublishedPairingDraftExpiredYouCanExplicitlyAbandon() -> LocalizedMessage {
+        let key = "security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTheUnpublishedPairingDraftWasCanceledOrItsCandidate() -> LocalizedMessage {
+        let key = "security_the_unpublished_pairing_draft_was_canceled_or_its_candidate"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisBrowserDoesNotSupportWebLocksItCannot() -> LocalizedMessage {
+        let key = "security_this_browser_does_not_support_web_locks_it_cannot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisBrowserIsTheOnlyManagingClientTransferManagement() -> LocalizedMessage {
+        let key = "security_this_browser_is_the_only_managing_client_transfer_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisBrowserSOriginalPublicKeyCouldNotBe() -> LocalizedMessage {
+        let key = "security_this_browser_s_original_public_key_could_not_be"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisBrowserWillBeTheOnlyManagingClientClearing() -> LocalizedMessage {
+        let key = "security_this_browser_will_be_the_only_managing_client_clearing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeletesTheAccountKeysAndCacheOnThis() -> LocalizedMessage {
+        let key = "security_this_deletes_the_account_keys_and_cache_on_this"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDevice() -> LocalizedMessage {
+        let key = "security_this_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeviceBecomesTheManagingClient() -> LocalizedMessage {
+        let key = "security_this_device_becomes_the_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeviceHasAnUnfinishedJoinRequestDeletingIt() -> LocalizedMessage {
+        let key = "security_this_device_has_an_unfinished_join_request_deleting_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeviceManagesTheAccount() -> LocalizedMessage {
+        let key = "security_this_device_manages_the_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisDeviceSClockIsBehindTheManagingClient() -> LocalizedMessage {
+        let key = "security_this_device_s_clock_is_behind_the_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisPageAndTheServerOrPairingDeviceUse() -> LocalizedMessage {
+        let key = "security_this_page_and_the_server_or_pairing_device_use"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisPairingExpiredGenerateANewCodeOnThe() -> LocalizedMessage {
+        let key = "security_this_pairing_expired_generate_a_new_code_on_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityThisPermanentlyDeletesSessionsEventsAndImagesOnThe() -> LocalizedMessage {
+        let key = "security_this_permanently_deletes_sessions_events_and_images_on_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTooManyAttemptsWaitAMinuteAndRetry() -> LocalizedMessage {
+        let key = "security_too_many_attempts_wait_a_minute_and_retry"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTransferManagement() -> LocalizedMessage {
+        let key = "security_transfer_management"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTransferResultUnverifiedContinueTheOriginalOperation() -> LocalizedMessage {
+        let key = "security_transfer_result_unverified_continue_the_original_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityTransferTo() -> LocalizedMessage {
+        let key = "security_transfer_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityUnfinishedSecurityOperation() -> LocalizedMessage {
+        let key = "security_unfinished_security_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityUnknownType() -> LocalizedMessage {
+        let key = "security_unknown_type"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityUseWhenTheManagingClientIsLost() -> LocalizedMessage {
+        let key = "security_use_when_the_managing_client_is_lost"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityUsed(detail: String, value: String) -> LocalizedMessage {
+        let key = "security_used"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
+    }
+    public static func securityVerifyAndContinue() -> LocalizedMessage {
+        let key = "security_verify_and_continue"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityVerifyingManagementIdentityAndUnfinishedSecurityOperations() -> LocalizedMessage {
+        let key = "security_verifying_management_identity_and_unfinished_security_operations"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityWaitingForComparison() -> LocalizedMessage {
+        let key = "security_waiting_for_comparison"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityWaitingForTheNewDeviceToEnterThePairing() -> LocalizedMessage {
+        let key = "security_waiting_for_the_new_device_to_enter_the_pairing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func securityWaitingForTheSuccessorDeviceToGenerateAndSave() -> LocalizedMessage {
+        let key = "security_waiting_for_the_successor_device_to_generate_and_save"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionAbandonFork() -> LocalizedMessage {
+        let key = "session_abandon_fork"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionActionFailed(action: String, reason: String) -> LocalizedMessage {
+        let key = "session_action_failed"
+        return LocalizedMessage(key: key, arguments: [.string(action), .string(reason)])
+    }
+    public static func sessionApprovalResolved() -> LocalizedMessage {
+        let key = "session_approval_resolved"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionAutoTitleHint() -> LocalizedMessage {
+        let key = "session_auto_title_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionBackTask() -> LocalizedMessage {
+        let key = "session_back_task"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionChat() -> LocalizedMessage {
+        let key = "session_chat"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionCompact() -> LocalizedMessage {
+        let key = "session_compact"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionCompactFailed(reason: String) -> LocalizedMessage {
+        let key = "session_compact_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionCompacted() -> LocalizedMessage {
+        let key = "session_compacted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionCompacting() -> LocalizedMessage {
+        let key = "session_compacting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionConnectResume() -> LocalizedMessage {
+        let key = "session_connect_resume"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionContext() -> LocalizedMessage {
+        let key = "session_context"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionContextTokens(total: String, used: String) -> LocalizedMessage {
+        let key = "session_context_tokens"
+        return LocalizedMessage(key: key, arguments: [.string(total), .string(used)])
+    }
+    public static func sessionContextUsed(percent: Int) -> LocalizedMessage {
+        let key = "session_context_used"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func sessionDelivered() -> LocalizedMessage {
+        let key = "session_delivered"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionDisconnectedAgo(time: String) -> LocalizedMessage {
+        let key = "session_disconnected_ago"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func sessionDismissNotice() -> LocalizedMessage {
+        let key = "session_dismiss_notice"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEffortLocked() -> LocalizedMessage {
+        let key = "session_effort_locked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEnd() -> LocalizedMessage {
+        let key = "session_end"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEndAction() -> LocalizedMessage {
+        let key = "session_end_action"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEndNote(agent: String, name: String) -> LocalizedMessage {
+        let key = "session_end_note"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(name)])
+    }
+    public static func sessionEndSession() -> LocalizedMessage {
+        let key = "session_end_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEndTitle() -> LocalizedMessage {
+        let key = "session_end_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEnded() -> LocalizedMessage {
+        let key = "session_ended"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEndedAt(time: String) -> LocalizedMessage {
+        let key = "session_ended_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func sessionEndedMessageFailed() -> LocalizedMessage {
+        let key = "session_ended_message_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionEndedSendFailed() -> LocalizedMessage {
+        let key = "session_ended_send_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionFork() -> LocalizedMessage {
+        let key = "session_fork"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkAfterMessage() -> LocalizedMessage {
+        let key = "session_fork_after_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkAfterPending() -> LocalizedMessage {
+        let key = "session_fork_after_pending"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkAfterStart() -> LocalizedMessage {
+        let key = "session_fork_after_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkAfterTurn() -> LocalizedMessage {
+        let key = "session_fork_after_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkExpired() -> LocalizedMessage {
+        let key = "session_fork_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkFailed(reason: String) -> LocalizedMessage {
+        let key = "session_fork_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionForkUnknown() -> LocalizedMessage {
+        let key = "session_fork_unknown"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionForkedFrom(source: String, time: String) -> LocalizedMessage {
+        let key = "session_forked_from"
+        return LocalizedMessage(key: key, arguments: [.string(source), .string(time)])
+    }
+    public static func sessionForking() -> LocalizedMessage {
+        let key = "session_forking"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionGoTerminal() -> LocalizedMessage {
+        let key = "session_go_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionHistoryTailMissing() -> LocalizedMessage {
+        let key = "session_history_tail_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionHistoryUnavailable(count: Int) -> LocalizedMessage {
+        let key = "session_history_unavailable"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sessionHistoryUnreadable() -> LocalizedMessage {
+        let key = "session_history_unreadable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIdleClosed() -> LocalizedMessage {
+        let key = "session_idle_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionInterrupt() -> LocalizedMessage {
+        let key = "session_interrupt"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionInterruptTurn() -> LocalizedMessage {
+        let key = "session_interrupt_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionInterrupted() -> LocalizedMessage {
+        let key = "session_interrupted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosAgentReply(agent: String) -> LocalizedMessage {
+        let key = "session_ios_agent_reply"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func sessionIosAnswerValues(answers: String) -> LocalizedMessage {
+        let key = "session_ios_answer_values"
+        return LocalizedMessage(key: key, arguments: [.string(answers)])
+    }
+    public static func sessionIosAnswered() -> LocalizedMessage {
+        let key = "session_ios_answered"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosChangeIdle() -> LocalizedMessage {
+        let key = "session_ios_change_idle"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosCollapseTitle(title: String) -> LocalizedMessage {
+        let key = "session_ios_collapse_title"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func sessionIosCollapsed() -> LocalizedMessage {
+        let key = "session_ios_collapsed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosCompactedUsage(after: Int, before: Int) -> LocalizedMessage {
+        let key = "session_ios_compacted_usage"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(after)), .integer(Int64(before))])
+    }
+    public static func sessionIosConnectRead() -> LocalizedMessage {
+        let key = "session_ios_connect_read"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosContextOccupancy() -> LocalizedMessage {
+        let key = "session_ios_context_occupancy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosContextUsage(total: Int, used: Int) -> LocalizedMessage {
+        let key = "session_ios_context_usage"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(total)), .integer(Int64(used))])
+    }
+    public static func sessionIosEffortNote() -> LocalizedMessage {
+        let key = "session_ios_effort_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosEndedAt(time: String) -> LocalizedMessage {
+        let key = "session_ios_ended_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func sessionIosEndedRecovery(reason: String, recovery: String) -> LocalizedMessage {
+        let key = "session_ios_ended_recovery"
+        return LocalizedMessage(key: key, arguments: [.string(reason), .string(recovery)])
+    }
+    public static func sessionIosExpand() -> LocalizedMessage {
+        let key = "session_ios_expand"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosForkConnect() -> LocalizedMessage {
+        let key = "session_ios_fork_connect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosForkPrefix(time: String) -> LocalizedMessage {
+        let key = "session_ios_fork_prefix"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func sessionIosHistoryFailed(reason: String) -> LocalizedMessage {
+        let key = "session_ios_history_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionIosHistoryPartial() -> LocalizedMessage {
+        let key = "session_ios_history_partial"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosInterruptFailed(reason: String) -> LocalizedMessage {
+        let key = "session_ios_interrupt_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionIosInterruptedBy(origin: String) -> LocalizedMessage {
+        let key = "session_ios_interrupted_by"
+        return LocalizedMessage(key: key, arguments: [.string(origin)])
+    }
+    public static func sessionIosLatest() -> LocalizedMessage {
+        let key = "session_ios_latest"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosLookupFailed(reason: String) -> LocalizedMessage {
+        let key = "session_ios_lookup_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionIosMessageText() -> LocalizedMessage {
+        let key = "session_ios_message_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosMissing() -> LocalizedMessage {
+        let key = "session_ios_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosModelsFailed(reason: String) -> LocalizedMessage {
+        let key = "session_ios_models_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionIosReasoning() -> LocalizedMessage {
+        let key = "session_ios_reasoning"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosReplyArrived(agent: String) -> LocalizedMessage {
+        let key = "session_ios_reply_arrived"
+        return LocalizedMessage(key: key, arguments: [.string(agent)])
+    }
+    public static func sessionIosResumeFailed(reason: String) -> LocalizedMessage {
+        let key = "session_ios_resume_failed"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func sessionIosSelectText() -> LocalizedMessage {
+        let key = "session_ios_select_text"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosSelectTextHint() -> LocalizedMessage {
+        let key = "session_ios_select_text_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosTerminalChanges(changes: String, machine: String) -> LocalizedMessage {
+        let key = "session_ios_terminal_changes"
+        return LocalizedMessage(key: key, arguments: [.string(changes), .string(machine)])
+    }
+    public static func sessionIosTitleField() -> LocalizedMessage {
+        let key = "session_ios_title_field"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosTurnKTokens(count: Int) -> LocalizedMessage {
+        let key = "session_ios_turn_k_tokens"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sessionIosTurnTokens(count: Int) -> LocalizedMessage {
+        let key = "session_ios_turn_tokens"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sessionIosUpdateRequired() -> LocalizedMessage {
+        let key = "session_ios_update_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionIosYourMessage() -> LocalizedMessage {
+        let key = "session_ios_your_message"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionLatest() -> LocalizedMessage {
+        let key = "session_latest"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionLoadingEarlier() -> LocalizedMessage {
+        let key = "session_loading_earlier"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionManuallyClosed() -> LocalizedMessage {
+        let key = "session_manually_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionMaxEffort(effort: String) -> LocalizedMessage {
+        let key = "session_max_effort"
+        return LocalizedMessage(key: key, arguments: [.string(effort)])
+    }
+    public static func sessionModeChanged(value: String) -> LocalizedMessage {
+        let key = "session_mode_changed"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func sessionModeChangedBy(origin: String, value: String) -> LocalizedMessage {
+        let key = "session_mode_changed_by"
+        return LocalizedMessage(key: key, arguments: [.string(origin), .string(value)])
+    }
+    public static func sessionModelChanged(value: String) -> LocalizedMessage {
+        let key = "session_model_changed"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func sessionModelChangedBy(origin: String, value: String) -> LocalizedMessage {
+        let key = "session_model_changed_by"
+        return LocalizedMessage(key: key, arguments: [.string(origin), .string(value)])
+    }
+    public static func sessionModelLocked() -> LocalizedMessage {
+        let key = "session_model_locked"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionModelSwitchFailed(model: String, reason: String) -> LocalizedMessage {
+        let key = "session_model_switch_failed"
+        return LocalizedMessage(key: key, arguments: [.string(model), .string(reason)])
+    }
+    public static func sessionModelsFailed() -> LocalizedMessage {
+        let key = "session_models_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionMoreContext(percent: Int) -> LocalizedMessage {
+        let key = "session_more_context"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(percent))])
+    }
+    public static func sessionNewMessages(count: Int) -> LocalizedMessage {
+        let key = "session_new_messages"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func sessionNoEffort() -> LocalizedMessage {
+        let key = "session_no_effort"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionNoEffortAdjustment(model: String) -> LocalizedMessage {
+        let key = "session_no_effort_adjustment"
+        return LocalizedMessage(key: key, arguments: [.string(model)])
+    }
+    public static func sessionNotRunning() -> LocalizedMessage {
+        let key = "session_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionNotification(text: String) -> LocalizedMessage {
+        let key = "session_notification"
+        return LocalizedMessage(key: key, arguments: [.string(text)])
+    }
+    public static func sessionOfflineNote(lastSeen: String) -> LocalizedMessage {
+        let key = "session_offline_note"
+        return LocalizedMessage(key: key, arguments: [.string(lastSeen)])
+    }
+    public static func sessionOfflineResume(name: String) -> LocalizedMessage {
+        let key = "session_offline_resume"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func sessionOnlyCurrent() -> LocalizedMessage {
+        let key = "session_only_current"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionOriginElsewhere() -> LocalizedMessage {
+        let key = "session_origin_elsewhere"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionOriginOther() -> LocalizedMessage {
+        let key = "session_origin_other"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionOriginRemoved() -> LocalizedMessage {
+        let key = "session_origin_removed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionOriginSelf() -> LocalizedMessage {
+        let key = "session_origin_self"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionOriginTerminal(name: String) -> LocalizedMessage {
+        let key = "session_origin_terminal"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func sessionOtherSession() -> LocalizedMessage {
+        let key = "session_other_session"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionQuietChecks(times: String) -> LocalizedMessage {
+        let key = "session_quiet_checks"
+        return LocalizedMessage(key: key, arguments: [.string(times)])
+    }
+    public static func sessionReadingModels() -> LocalizedMessage {
+        let key = "session_reading_models"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionRename() -> LocalizedMessage {
+        let key = "session_rename"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionRenameTitle() -> LocalizedMessage {
+        let key = "session_rename_title"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionReopenAgent(agent: String, name: String) -> LocalizedMessage {
+        let key = "session_reopen_agent"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(name)])
+    }
+    public static func sessionReplyMoves() -> LocalizedMessage {
+        let key = "session_reply_moves"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionRestoreOtherFiles() -> LocalizedMessage {
+        let key = "session_restore_other_files"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionRestoreOtherImages() -> LocalizedMessage {
+        let key = "session_restore_other_images"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionResume() -> LocalizedMessage {
+        let key = "session_resume"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionResumeFailed() -> LocalizedMessage {
+        let key = "session_resume_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionResumeNote(name: String) -> LocalizedMessage {
+        let key = "session_resume_note"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func sessionResuming() -> LocalizedMessage {
+        let key = "session_resuming"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionScheduleSend() -> LocalizedMessage {
+        let key = "session_schedule_send"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionScheduledAt(time: String) -> LocalizedMessage {
+        let key = "session_scheduled_at"
+        return LocalizedMessage(key: key, arguments: [.string(time)])
+    }
+    public static func sessionScheduledClosed() -> LocalizedMessage {
+        let key = "session_scheduled_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionSettings() -> LocalizedMessage {
+        let key = "session_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionShellFailed(detail: String) -> LocalizedMessage {
+        let key = "session_shell_failed"
+        return LocalizedMessage(key: key, arguments: [.string(detail)])
+    }
+    public static func sessionShellTimeout(detail: String) -> LocalizedMessage {
+        let key = "session_shell_timeout"
+        return LocalizedMessage(key: key, arguments: [.string(detail)])
+    }
+    public static func sessionSkeleton() -> LocalizedMessage {
+        let key = "session_skeleton"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionSplit() -> LocalizedMessage {
+        let key = "session_split"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionStartingAgent(agent: String, name: String) -> LocalizedMessage {
+        let key = "session_starting_agent"
+        return LocalizedMessage(key: key, arguments: [.string(agent), .string(name)])
+    }
+    public static func sessionSwitchAfterTurn() -> LocalizedMessage {
+        let key = "session_switch_after_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionSwitchConnected() -> LocalizedMessage {
+        let key = "session_switch_connected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionSwitchIdle() -> LocalizedMessage {
+        let key = "session_switch_idle"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionSwitchingModel(model: String) -> LocalizedMessage {
+        let key = "session_switching_model"
+        return LocalizedMessage(key: key, arguments: [.string(model)])
+    }
+    public static func sessionTerminal() -> LocalizedMessage {
+        let key = "session_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionTerminalChanges(changes: String, name: String) -> LocalizedMessage {
+        let key = "session_terminal_changes"
+        return LocalizedMessage(key: key, arguments: [.string(changes), .string(name)])
+    }
+    public static func sessionTerminalModeChange(value: String) -> LocalizedMessage {
+        let key = "session_terminal_mode_change"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func sessionTerminalModelChange(value: String) -> LocalizedMessage {
+        let key = "session_terminal_model_change"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func sessionThinking() -> LocalizedMessage {
+        let key = "session_thinking"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionTitleLabel() -> LocalizedMessage {
+        let key = "session_title_label"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionTmuxMissing() -> LocalizedMessage {
+        let key = "session_tmux_missing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionTryAgain() -> LocalizedMessage {
+        let key = "session_try_again"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionTurnDuration(duration: String) -> LocalizedMessage {
+        let key = "session_turn_duration"
+        return LocalizedMessage(key: key, arguments: [.string(duration)])
+    }
+    public static func sessionUpdateComputer() -> LocalizedMessage {
+        let key = "session_update_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func sessionView() -> LocalizedMessage {
+        let key = "session_view"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAbout() -> LocalizedMessage {
+        let key = "settings_about"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAccount() -> LocalizedMessage {
+        let key = "settings_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAccountQuota() -> LocalizedMessage {
+        let key = "settings_account_quota"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAdded() -> LocalizedMessage {
+        let key = "settings_added"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAllClients() -> LocalizedMessage {
+        let key = "settings_all_clients"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAllDevices() -> LocalizedMessage {
+        let key = "settings_all_devices"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAppearance() -> LocalizedMessage {
+        let key = "settings_appearance"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsApprovalTimeout() -> LocalizedMessage {
+        let key = "settings_approval_timeout"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAttachmentStorage() -> LocalizedMessage {
+        let key = "settings_attachment_storage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAttachmentsAreStoredOnThisComputerSessionFilesRemain() -> LocalizedMessage {
+        let key = "settings_attachments_are_stored_on_this_computer_session_files_remain"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsAutomaticallyEndIdleSessions() -> LocalizedMessage {
+        let key = "settings_automatically_end_idle_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCanClear(value: String) -> LocalizedMessage {
+        let key = "settings_can_clear"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsCanFree(value: String) -> LocalizedMessage {
+        let key = "settings_can_free"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsCannotReceive() -> LocalizedMessage {
+        let key = "settings_cannot_receive"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCannotSignInToTheRelayRightNow() -> LocalizedMessage {
+        let key = "settings_cannot_sign_in_to_the_relay_right_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCheckForUpdates() -> LocalizedMessage {
+        let key = "settings_check_for_updates"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsChecking() -> LocalizedMessage {
+        let key = "settings_checking"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClear() -> LocalizedMessage {
+        let key = "settings_clear"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClearReclaimableAttachmentsAndCache() -> LocalizedMessage {
+        let key = "settings_clear_reclaimable_attachments_and_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClearSettings() -> LocalizedMessage {
+        let key = "settings_clear_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClearsReclaimableOriginalsPreviewsAndUnsyncedLargeImageCache() -> LocalizedMessage {
+        let key = "settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCliVersion(name: String) -> LocalizedMessage {
+        let key = "settings_cli_version"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsClientName() -> LocalizedMessage {
+        let key = "settings_client_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsClientsControlSessions() -> LocalizedMessage {
+        let key = "settings_clients_control_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsComputer() -> LocalizedMessage {
+        let key = "settings_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsComputerOfflineShowingTheLastReading() -> LocalizedMessage {
+        let key = "settings_computer_offline_showing_the_last_reading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsComputerSettingsOffline(name: String) -> LocalizedMessage {
+        let key = "settings_computer_settings_offline"
+        return LocalizedMessage(key: key, arguments: [.string(name)])
+    }
+    public static func settingsComputersRunClis() -> LocalizedMessage {
+        let key = "settings_computers_run_clis"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCouldNotDownloadRetryLater() -> LocalizedMessage {
+        let key = "settings_could_not_download_retry_later"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCouldNotReadTheDeviceList() -> LocalizedMessage {
+        let key = "settings_could_not_read_the_device_list"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsCurrent() -> LocalizedMessage {
+        let key = "settings_current"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDark() -> LocalizedMessage {
+        let key = "settings_dark"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDefault() -> LocalizedMessage {
+        let key = "settings_default"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDefaultApprovalMode() -> LocalizedMessage {
+        let key = "settings_default_approval_mode"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDefaultReasoningEffort() -> LocalizedMessage {
+        let key = "settings_default_reasoning_effort"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDetails() -> LocalizedMessage {
+        let key = "settings_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDeviceId() -> LocalizedMessage {
+        let key = "settings_device_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDeviceNotFound() -> LocalizedMessage {
+        let key = "settings_device_not_found"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsDevices() -> LocalizedMessage {
+        let key = "settings_devices"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsEnable() -> LocalizedMessage {
+        let key = "settings_enable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsEnableSecurityNotifications() -> LocalizedMessage {
+        let key = "settings_enable_security_notifications"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsEnabled() -> LocalizedMessage {
+        let key = "settings_enabled"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsExitAndDeleteLocalKeys() -> LocalizedMessage {
+        let key = "settings_exit_and_delete_local_keys"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsFollowConfiguration(value: String) -> LocalizedMessage {
+        let key = "settings_follow_configuration"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsFollowConfigurationSettings() -> LocalizedMessage {
+        let key = "settings_follow_configuration_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsHowToEnable() -> LocalizedMessage {
+        let key = "settings_how_to_enable"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIdleCloseOff() -> LocalizedMessage {
+        let key = "settings_idle_close_off"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosApprovalsQuestionsAndPlansWaitingForYouAppearAt() -> LocalizedMessage {
+        let key = "settings_ios_approvals_questions_and_plans_waiting_for_you_appear_at"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosClearReclaimableImages() -> LocalizedMessage {
+        let key = "settings_ios_clear_reclaimable_images"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages() -> LocalizedMessage {
+        let key = "settings_ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosCliVersions() -> LocalizedMessage {
+        let key = "settings_ios_cli_versions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosComputerSessionsDoNotDependOnAlertsUnansweredApprovals() -> LocalizedMessage {
+        let key = "settings_ios_computer_sessions_do_not_depend_on_alerts_unanswered_approvals"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosConnectToTheServerToReadAndEditNew() -> LocalizedMessage {
+        let key = "settings_ios_connect_to_the_server_to_read_and_edit_new"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosCopyDeviceId() -> LocalizedMessage {
+        let key = "settings_ios_copy_device_id"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosCurrentClient() -> LocalizedMessage {
+        let key = "settings_ios_current_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosDefaultModelForNewSessions(value: String) -> LocalizedMessage {
+        let key = "settings_ios_default_model_for_new_sessions"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsIosDefaultSOwnConfiguration(value: String) -> LocalizedMessage {
+        let key = "settings_ios_default_s_own_configuration"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsIosDeleteEntireAccount() -> LocalizedMessage {
+        let key = "settings_ios_delete_entire_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosExitAndDeleteLocalKeysFromSettings() -> LocalizedMessage {
+        let key = "settings_ios_exit_and_delete_local_keys_from_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosFontsUseTheSystemSSfProPingfangAnd() -> LocalizedMessage {
+        let key = "settings_ios_fonts_use_the_system_s_sf_pro_pingfang_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe() -> LocalizedMessage {
+        let key = "settings_ios_for_unverified_versions_run_remote_agent_doctor_on_the"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosHowManySessionsAreWaitingForYou() -> LocalizedMessage {
+        let key = "settings_ios_how_many_sessions_are_waiting_for_you"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosHowToKnowSomethingNeedsAttentionNow() -> LocalizedMessage {
+        let key = "settings_ios_how_to_know_something_needs_attention_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosIconsAndLibraries() -> LocalizedMessage {
+        let key = "settings_ios_icons_and_libraries"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosImagesAreStoredOnThisComputerImagesBeingSent() -> LocalizedMessage {
+        let key = "settings_ios_images_are_stored_on_this_computer_images_being_sent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosIsOfflineConnectToReadAndEditNewSession(value: String) -> LocalizedMessage {
+        let key = "settings_ios_is_offline_connect_to_read_and_edit_new_session"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsIosLeaveBlankForTheDefaultName() -> LocalizedMessage {
+        let key = "settings_ios_leave_blank_for_the_default_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosLibrariesResolvedWithDependencies() -> LocalizedMessage {
+        let key = "settings_ios_libraries_resolved_with_dependencies"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosLicenseTextIsNotBundledWithTheApp() -> LocalizedMessage {
+        let key = "settings_ios_license_text_is_not_bundled_with_the_app"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosLocalCiphertextCache() -> LocalizedMessage {
+        let key = "settings_ios_local_ciphertext_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosLocalStorage() -> LocalizedMessage {
+        let key = "settings_ios_local_storage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosNameSetInSettings() -> LocalizedMessage {
+        let key = "settings_ios_name_set_in_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosNamesSyncEncryptedToOtherClientsTheServerCannot() -> LocalizedMessage {
+        let key = "settings_ios_names_sync_encrypted_to_other_clients_the_server_cannot"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosNoComputersYet() -> LocalizedMessage {
+        let key = "settings_ios_no_computers_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosNotifications() -> LocalizedMessage {
+        let key = "settings_ios_notifications"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosOpenSourceLicenses() -> LocalizedMessage {
+        let key = "settings_ios_open_source_licenses"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosOtherClients() -> LocalizedMessage {
+        let key = "settings_ios_other_clients"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosPrivacyPolicy() -> LocalizedMessage {
+        let key = "settings_ios_privacy_policy"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosProtocolMessageEncoding() -> LocalizedMessage {
+        let key = "settings_ios_protocol_message_encoding"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosReload() -> LocalizedMessage {
+        let key = "settings_ios_reload"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosSaving() -> LocalizedMessage {
+        let key = "settings_ios_saving"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosServerCommunication() -> LocalizedMessage {
+        let key = "settings_ios_server_communication"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning() -> LocalizedMessage {
+        let key = "settings_ios_sessions_end_automatically_after_this_much_inactivity_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosSupportAndFeedback() -> LocalizedMessage {
+        let key = "settings_ios_support_and_feedback"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosSystem() -> LocalizedMessage {
+        let key = "settings_ios_system"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosTheAndroidAppAndHomeScreenWebAppCan() -> LocalizedMessage {
+        let key = "settings_ios_the_android_app_and_home_screen_web_app_can"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosTheComputerMayBeAsleepOfflineOrNotRunning() -> LocalizedMessage {
+        let key = "settings_ios_the_computer_may_be_asleep_offline_or_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosTheNumberOnTheSessionsTab() -> LocalizedMessage {
+        let key = "settings_ios_the_number_on_the_sessions_tab"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosTheTimeOnTheRightIsTheLastUse() -> LocalizedMessage {
+        let key = "settings_ios_the_time_on_the_right_is_the_last_use"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosTheseLibrariesAreUsedByOptionalPartsOfConnect() -> LocalizedMessage {
+        let key = "settings_ios_these_libraries_are_used_by_optional_parts_of_connect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosThisChangeWasNotSavedTheComputerStillHas() -> LocalizedMessage {
+        let key = "settings_ios_this_change_was_not_saved_the_computer_still_has"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosThisClientIsNotInTheCurrentTrustedDirectory() -> LocalizedMessage {
+        let key = "settings_ios_this_client_is_not_in_the_current_trusted_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosThisComputerIsNotInTheCurrentTrustedDirectory() -> LocalizedMessage {
+        let key = "settings_ios_this_computer_is_not_in_the_current_trusted_directory"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosThisIosVersionCannotSendAlertsYetYouWill() -> LocalizedMessage {
+        let key = "settings_ios_this_ios_version_cannot_send_alerts_yet_you_will"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosType() -> LocalizedMessage {
+        let key = "settings_ios_type"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosUnansweredApprovalsAreDeniedAfterThisTime() -> LocalizedMessage {
+        let key = "settings_ios_unanswered_approvals_are_denied_after_this_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosUnknown() -> LocalizedMessage {
+        let key = "settings_ios_unknown"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo() -> LocalizedMessage {
+        let key = "settings_ios_unsure_whether_the_computer_saved_this_change_reload_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosUnverified() -> LocalizedMessage {
+        let key = "settings_ios_unverified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosVerified() -> LocalizedMessage {
+        let key = "settings_ios_verified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosVersion() -> LocalizedMessage {
+        let key = "settings_ios_version"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIosWhenUnspecifiedUses(value: String) -> LocalizedMessage {
+        let key = "settings_ios_when_unspecified_uses"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsIosWhileTheAppIsOpen() -> LocalizedMessage {
+        let key = "settings_ios_while_the_app_is_open"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsIphonePushHelp() -> LocalizedMessage {
+        let key = "settings_iphone_push_help"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLastUsed() -> LocalizedMessage {
+        let key = "settings_last_used"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLessThan01Mib() -> LocalizedMessage {
+        let key = "settings_less_than_0_1_mib"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsLight() -> LocalizedMessage {
+        let key = "settings_light"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsManagingClient() -> LocalizedMessage {
+        let key = "settings_managing_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsMin() -> LocalizedMessage {
+        let key = "settings_min"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsName() -> LocalizedMessage {
+        let key = "settings_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNameChangesSyncToOtherClients() -> LocalizedMessage {
+        let key = "settings_name_changes_sync_to_other_clients"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNameSaveError(reason: String) -> LocalizedMessage {
+        let key = "settings_name_save_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func settingsNamesSyncEncryptedTheServerCannotReadThemLeave() -> LocalizedMessage {
+        let key = "settings_names_sync_encrypted_the_server_cannot_read_them_leave"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNewProjectDefaults() -> LocalizedMessage {
+        let key = "settings_new_project_defaults"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNewProjectDefaultsSettings(value: String) -> LocalizedMessage {
+        let key = "settings_new_project_defaults_settings"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsNoComputersYet() -> LocalizedMessage {
+        let key = "settings_no_computers_yet"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNoRecord() -> LocalizedMessage {
+        let key = "settings_no_record"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNothingToClear() -> LocalizedMessage {
+        let key = "settings_nothing_to_clear"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationPermissionHelp() -> LocalizedMessage {
+        let key = "settings_notification_permission_help"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNotificationsOnThisClient() -> LocalizedMessage {
+        let key = "settings_notifications_on_this_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsNow() -> LocalizedMessage {
+        let key = "settings_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsOffline() -> LocalizedMessage {
+        let key = "settings_offline"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsOnIphoneAddToHomeScreenAndOpenFrom() -> LocalizedMessage {
+        let key = "settings_on_iphone_add_to_home_screen_and_open_from"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsOnline(value: String) -> LocalizedMessage {
+        let key = "settings_online"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsPairedClient() -> LocalizedMessage {
+        let key = "settings_paired_client"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsPreviewCache() -> LocalizedMessage {
+        let key = "settings_preview_cache"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsReadError(reason: String) -> LocalizedMessage {
+        let key = "settings_read_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func settingsRejoinAccount() -> LocalizedMessage {
+        let key = "settings_rejoin_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsRestoreDefaultName() -> LocalizedMessage {
+        let key = "settings_restore_default_name"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsRunsOn() -> LocalizedMessage {
+        let key = "settings_runs_on"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSaveError(reason: String) -> LocalizedMessage {
+        let key = "settings_save_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func settingsScheduledTaskResults() -> LocalizedMessage {
+        let key = "settings_scheduled_task_results"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSecurityNotifications() -> LocalizedMessage {
+        let key = "settings_security_notifications"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSecurityNotificationsAreIndependentOfSessionAlertsDeliveryIs() -> LocalizedMessage {
+        let key = "settings_security_notifications_are_independent_of_session_alerts_delivery_is"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSessionAlertsAreOffYouWillNotBeNotified() -> LocalizedMessage {
+        let key = "settings_session_alerts_are_off_you_will_not_be_notified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning() -> LocalizedMessage {
+        let key = "settings_sessions_end_automatically_after_this_much_inactivity_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSetTheNameAndNotificationPreferencesOnThatDevice() -> LocalizedMessage {
+        let key = "settings_set_the_name_and_notification_preferences_on_that_device"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSignedAccountStateConfirmsThisDeviceWasRemovedSessions() -> LocalizedMessage {
+        let key = "settings_signed_account_state_confirms_this_device_was_removed_sessions"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsStorageLimit() -> LocalizedMessage {
+        let key = "settings_storage_limit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsSubscriptionError(reason: String) -> LocalizedMessage {
+        let key = "settings_subscription_error"
+        return LocalizedMessage(key: key, arguments: [.string(reason)])
+    }
+    public static func settingsTheAccountKeysInThisBrowserWillBeDeleted() -> LocalizedMessage {
+        let key = "settings_the_account_keys_in_this_browser_will_be_deleted"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheBrowserDeniedNotificationPermission() -> LocalizedMessage {
+        let key = "settings_the_browser_denied_notification_permission"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheDeviceMayHaveBeenRemovedTheServiceReset() -> LocalizedMessage {
+        let key = "settings_the_device_may_have_been_removed_the_service_reset"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheNewDeviceHasNotFinishedJoiningIfIt() -> LocalizedMessage {
+        let key = "settings_the_new_device_has_not_finished_joining_if_it"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheOriginalOperationIsUnfinishedContinueVerifying() -> LocalizedMessage {
+        let key = "settings_the_original_operation_is_unfinished_continue_verifying"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheOriginalSecurityOperationIsVerifiedCompleteYouCan() -> LocalizedMessage {
+        let key = "settings_the_original_security_operation_is_verified_complete_you_can"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheTimeOnTheRightIsTheLastUse() -> LocalizedMessage {
+        let key = "settings_the_time_on_the_right_is_the_last_use"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTheme() -> LocalizedMessage {
+        let key = "settings_theme"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsThemeAuto() -> LocalizedMessage {
+        let key = "settings_theme_auto"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsThisBrowserDoesNotSupportPushNotifications() -> LocalizedMessage {
+        let key = "settings_this_browser_does_not_support_push_notifications"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsThisDeviceWasRemovedFromTheAccount() -> LocalizedMessage {
+        let key = "settings_this_device_was_removed_from_the_account"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsTimesAreShownInBeijingTimeQuotasBelongTo() -> LocalizedMessage {
+        let key = "settings_times_are_shown_in_beijing_time_quotas_belong_to"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUnansweredApprovalsAreDeniedAfterThisTime() -> LocalizedMessage {
+        let key = "settings_unanswered_approvals_are_denied_after_this_time"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUnfinishedPairing() -> LocalizedMessage {
+        let key = "settings_unfinished_pairing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUnfinishedPairingSettings() -> LocalizedMessage {
+        let key = "settings_unfinished_pairing_settings"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUnnamed() -> LocalizedMessage {
+        let key = "settings_unnamed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUnverified() -> LocalizedMessage {
+        let key = "settings_unverified"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUpToDate() -> LocalizedMessage {
+        let key = "settings_up_to_date"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUploadedImagesAndFiles() -> LocalizedMessage {
+        let key = "settings_uploaded_images_and_files"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsUploading(value: String) -> LocalizedMessage {
+        let key = "settings_uploading"
+        return LocalizedMessage(key: key, arguments: [.string(value)])
+    }
+    public static func settingsUseCliDefaultsForNewProjects() -> LocalizedMessage {
+        let key = "settings_use_cli_defaults_for_new_projects"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsVerifyAndContinueSecurityOperation() -> LocalizedMessage {
+        let key = "settings_verify_and_continue_security_operation"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsVersionUnverifiedRunRemoteAgentDoctorOnThisComputer() -> LocalizedMessage {
+        let key = "settings_version_unverified_run_remote_agent_doctor_on_this_computer"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsViewUsageInTheLocalCli() -> LocalizedMessage {
+        let key = "settings_view_usage_in_the_local_cli"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsWhenATurnEnds() -> LocalizedMessage {
+        let key = "settings_when_a_turn_ends"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsWhenINeedToAct() -> LocalizedMessage {
+        let key = "settings_when_i_need_to_act"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func settingsWhenUnspecifiedUses() -> LocalizedMessage {
+        let key = "settings_when_unspecified_uses"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupInstallDescription() -> LocalizedMessage {
+        let key = "startup_install_description"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupIosCameraUsage() -> LocalizedMessage {
+        let key = "startup_ios_camera_usage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupIosPhotoLibraryAddUsage() -> LocalizedMessage {
+        let key = "startup_ios_photo_library_add_usage"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupJavascriptRequired() -> LocalizedMessage {
+        let key = "startup_javascript_required"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupOpening() -> LocalizedMessage {
+        let key = "startup_opening"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupOpeningRemoteAgent() -> LocalizedMessage {
+        let key = "startup_opening_remote_agent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupPageUpdated() -> LocalizedMessage {
+        let key = "startup_page_updated"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupThePageCouldNotLoadCheckYourConnectionAnd() -> LocalizedMessage {
+        let key = "startup_the_page_could_not_load_check_your_connection_and"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func startupThisPartCouldNotBeFetchedReloadToContinue() -> LocalizedMessage {
+        let key = "startup_this_part_could_not_be_fetched_reload_to_continue"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalClosed() -> LocalizedMessage {
+        let key = "terminal_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalClosedEndedNote() -> LocalizedMessage {
+        let key = "terminal_closed_ended_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalClosedRunningNote() -> LocalizedMessage {
+        let key = "terminal_closed_running_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalComputerDimensions(cols: Int, rows: Int) -> LocalizedMessage {
+        let key = "terminal_computer_dimensions"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
+    }
+    public static func terminalConnecting() -> LocalizedMessage {
+        let key = "terminal_connecting"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalDisconnected() -> LocalizedMessage {
+        let key = "terminal_disconnected"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalDown() -> LocalizedMessage {
+        let key = "terminal_down"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalEarlier() -> LocalizedMessage {
+        let key = "terminal_earlier"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalEnter() -> LocalizedMessage {
+        let key = "terminal_enter"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalFit() -> LocalizedMessage {
+        let key = "terminal_fit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalFitShort() -> LocalizedMessage {
+        let key = "terminal_fit_short"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalFittedSize(cols: Int, rows: Int) -> LocalizedMessage {
+        let key = "terminal_fitted_size"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
+    }
+    public static func terminalFresh() -> LocalizedMessage {
+        let key = "terminal_fresh"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalFreshLive() -> LocalizedMessage {
+        let key = "terminal_fresh_live"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalHistory() -> LocalizedMessage {
+        let key = "terminal_history"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalHistoryClosed() -> LocalizedMessage {
+        let key = "terminal_history_closed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalHistoryExpired() -> LocalizedMessage {
+        let key = "terminal_history_expired"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalHistoryStart() -> LocalizedMessage {
+        let key = "terminal_history_start"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosFitHint() -> LocalizedMessage {
+        let key = "terminal_ios_fit_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosFont() -> LocalizedMessage {
+        let key = "terminal_ios_font"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosFontLarger() -> LocalizedMessage {
+        let key = "terminal_ios_font_larger"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosFontSmaller() -> LocalizedMessage {
+        let key = "terminal_ios_font_smaller"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosFontValue(size: Int) -> LocalizedMessage {
+        let key = "terminal_ios_font_value"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(size))])
+    }
+    public static func terminalIosHideDetails() -> LocalizedMessage {
+        let key = "terminal_ios_hide_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosKeyboardHint() -> LocalizedMessage {
+        let key = "terminal_ios_keyboard_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosKeys() -> LocalizedMessage {
+        let key = "terminal_ios_keys"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosLeaveHistory() -> LocalizedMessage {
+        let key = "terminal_ios_leave_history"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosNotRunning() -> LocalizedMessage {
+        let key = "terminal_ios_not_running"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosPaused() -> LocalizedMessage {
+        let key = "terminal_ios_paused"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosRestoreHint() -> LocalizedMessage {
+        let key = "terminal_ios_restore_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosRetryHistory() -> LocalizedMessage {
+        let key = "terminal_ios_retry_history"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosScreen() -> LocalizedMessage {
+        let key = "terminal_ios_screen"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosScreenHint() -> LocalizedMessage {
+        let key = "terminal_ios_screen_hint"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalIosSizeChanged(size: String) -> LocalizedMessage {
+        let key = "terminal_ios_size_changed"
+        return LocalizedMessage(key: key, arguments: [.string(size)])
+    }
+    public static func terminalIosWaitConnection() -> LocalizedMessage {
+        let key = "terminal_ios_wait_connection"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalKeyboard() -> LocalizedMessage {
+        let key = "terminal_keyboard"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalLeft() -> LocalizedMessage {
+        let key = "terminal_left"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalLive() -> LocalizedMessage {
+        let key = "terminal_live"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalReadFailed() -> LocalizedMessage {
+        let key = "terminal_read_failed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalReading() -> LocalizedMessage {
+        let key = "terminal_reading"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalReadonly() -> LocalizedMessage {
+        let key = "terminal_readonly"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalReconnect() -> LocalizedMessage {
+        let key = "terminal_reconnect"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalRemoteDimensions(cols: Int, rows: Int) -> LocalizedMessage {
+        let key = "terminal_remote_dimensions"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(cols)), .integer(Int64(rows))])
+    }
+    public static func terminalRestore() -> LocalizedMessage {
+        let key = "terminal_restore"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalRight() -> LocalizedMessage {
+        let key = "terminal_right"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalSizeChanged() -> LocalizedMessage {
+        let key = "terminal_size_changed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalSizeNote() -> LocalizedMessage {
+        let key = "terminal_size_note"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalUp() -> LocalizedMessage {
+        let key = "terminal_up"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func terminalViewDetails() -> LocalizedMessage {
+        let key = "terminal_view_details"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeCalendarDateYear(day: Int, month: Int, year: Int) -> LocalizedMessage {
+        let key = "time_calendar_date_year"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .integer(Int64(year))])
+    }
+    public static func timeDurationHoursMinutes(hours: Int, minutes: Int) -> LocalizedMessage {
+        let key = "time_duration_hours_minutes"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(hours)), .integer(Int64(minutes))])
+    }
+    public static func timeDurationMinutesSeconds(minutes: Int, seconds: Int) -> LocalizedMessage {
+        let key = "time_duration_minutes_seconds"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(minutes)), .integer(Int64(seconds))])
+    }
+    public static func timeDurationSeconds(count: Int) -> LocalizedMessage {
+        let key = "time_duration_seconds"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func timeHoursAgo(count: Int) -> LocalizedMessage {
+        let key = "time_hours_ago"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func timeIosDateTime(day: Int, month: Int, time: String) -> LocalizedMessage {
+        let key = "time_ios_date_time"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month)), .string(time)])
+    }
+    public static func timeJustNow() -> LocalizedMessage {
+        let key = "time_just_now"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeLastWeek() -> LocalizedMessage {
+        let key = "time_last_week"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeMinutesAgo(count: Int) -> LocalizedMessage {
+        let key = "time_minutes_ago"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func timeMonthDay(day: Int, month: Int) -> LocalizedMessage {
+        let key = "time_month_day"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(day)), .integer(Int64(month))])
+    }
+    public static func timeMonthGroup(month: Int) -> LocalizedMessage {
+        let key = "time_month_group"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(month))])
+    }
+    public static func timeToday() -> LocalizedMessage {
+        let key = "time_today"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeTodayClock(detail: String, value: String) -> LocalizedMessage {
+        let key = "time_today_clock"
+        return LocalizedMessage(key: key, arguments: [.string(detail), .string(value)])
+    }
+    public static func timeTomorrow() -> LocalizedMessage {
+        let key = "time_tomorrow"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func timeWeekday(day: String) -> LocalizedMessage {
+        let key: String
+        switch day {
+        case "fri": key = "time_weekday_fri"
+        case "mon": key = "time_weekday_mon"
+        case "sat": key = "time_weekday_sat"
+        case "sun": key = "time_weekday_sun"
+        case "thu": key = "time_weekday_thu"
+        case "tue": key = "time_weekday_tue"
+        case "wed": key = "time_weekday_wed"
+        default: key = "time_weekday_other"
+        }
+        return LocalizedMessage(key: key, arguments: [.string(day)])
+    }
+    public static func timeYearMonthGroup(month: Int, year: Int) -> LocalizedMessage {
+        let key = "time_year_month_group"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(month)), .integer(Int64(year))])
+    }
+    public static func timeYesterday() -> LocalizedMessage {
+        let key = "time_yesterday"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackground() -> LocalizedMessage {
+        let key = "tools_background"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackgroundAgent() -> LocalizedMessage {
+        let key = "tools_background_agent"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackgroundReturned() -> LocalizedMessage {
+        let key = "tools_background_returned"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackgroundTerminal() -> LocalizedMessage {
+        let key = "tools_background_terminal"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackgroundTimeout() -> LocalizedMessage {
+        let key = "tools_background_timeout"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsBackgroundTurn() -> LocalizedMessage {
+        let key = "tools_background_turn"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsCommand() -> LocalizedMessage {
+        let key = "tools_command"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsCompletedCalls(count: Int) -> LocalizedMessage {
+        let key = "tools_completed_calls"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func toolsCompletedCommands(count: Int) -> LocalizedMessage {
+        let key = "tools_completed_commands"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func toolsCompletedFiles(count: Int) -> LocalizedMessage {
+        let key = "tools_completed_files"
+        return LocalizedMessage(key: key, arguments: [.integer(Int64(count))])
+    }
+    public static func toolsEditFile(path: String) -> LocalizedMessage {
+        let key = "tools_edit_file"
+        return LocalizedMessage(key: key, arguments: [.string(path)])
+    }
+    public static func toolsElapsed(duration: String) -> LocalizedMessage {
+        let key = "tools_elapsed"
+        return LocalizedMessage(key: key, arguments: [.string(duration)])
+    }
+    public static func toolsElapsedSync(elapsed: String) -> LocalizedMessage {
+        let key = "tools_elapsed_sync"
+        return LocalizedMessage(key: key, arguments: [.string(elapsed)])
+    }
+    public static func toolsExitCode(code: String) -> LocalizedMessage {
+        let key = "tools_exit_code"
+        return LocalizedMessage(key: key, arguments: [.string(code)])
+    }
+    public static func toolsIosBackgroundCommand() -> LocalizedMessage {
+        let key = "tools_ios_background_command"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsIosBackgroundTitle(title: String) -> LocalizedMessage {
+        let key = "tools_ios_background_title"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func toolsIosCompletedLabel(title: String) -> LocalizedMessage {
+        let key = "tools_ios_completed_label"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func toolsIosEdit() -> LocalizedMessage {
+        let key = "tools_ios_edit"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsIosFailedLabel(title: String) -> LocalizedMessage {
+        let key = "tools_ios_failed_label"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func toolsIosProcessing() -> LocalizedMessage {
+        let key = "tools_ios_processing"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsIosRunningLabel(title: String) -> LocalizedMessage {
+        let key = "tools_ios_running_label"
+        return LocalizedMessage(key: key, arguments: [.string(title)])
+    }
+    public static func toolsIosSearch() -> LocalizedMessage {
+        let key = "tools_ios_search"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsIosUnconfirmed() -> LocalizedMessage {
+        let key = "tools_ios_unconfirmed"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsTool() -> LocalizedMessage {
+        let key = "tools_tool"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+    public static func toolsWaitingSync() -> LocalizedMessage {
+        let key = "tools_waiting_sync"
+        return LocalizedMessage(key: key, arguments: [])
+    }
+}
+
+/// Local product text keeps its resource key and captured arguments until display.
+/// Raw daemon, CLI, user and OS text remains byte-for-byte as received.
+public struct LocalizedMessage: Equatable, Sendable {
+    fileprivate enum Argument: Equatable, Sendable {
+        case string(String), integer(Int64), number(Double)
+        var value: CVarArg {
+            switch self { case .string(let v): v; case .integer(let v): v; case .number(let v): v }
+        }
+    }
+    fileprivate var key: String?
+    fileprivate var arguments: [Argument] = []
+    private var raw: String = ""
+    fileprivate init(key: String, arguments: [Argument]) { self.key = key; self.arguments = arguments }
+    public init(raw: String) { self.raw = raw }
+    public func resolve(locale: String = MessageLocale.current) -> String {
+        guard let key else { return raw }
+        return L10n.format(key, locale: locale, args: arguments.map(\.value))
     }
 }
 

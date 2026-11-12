@@ -200,7 +200,7 @@ extension Remote {
             if !listedBefore && firstPage { return next != nil }
             if conn != .online {
                 // Nothing is asked for in the background, or over a connection that is gone.
-                pageError = "没有连上服务器"
+                pageError = L10n.errorsIosNotConnectedToTheServer()
                 throw CommandError(CommandError.unavailable, pageError)
             }
             if !firstPage {
@@ -209,7 +209,7 @@ extension Remote {
                 // Asked for again meanwhile: that one is waited for above.
                 if listsInFlight > 0 || firstPage { continue }
                 throw CommandError(
-                    CommandError.unavailable, pageError.isEmpty ? "没能读取会话列表" : pageError)
+                    CommandError.unavailable, pageError.isEmpty ? L10n.errorsIosCouldNotLoadTheSessionList() : pageError)
             }
             guard let after = next else { return false }
             let epoch = listing
@@ -344,25 +344,25 @@ extension Remote {
                 if let held = sessions[sid], held.machineId != rs.machineID {
                     let (_, info) = try await openSecureMessage(envelope:rs.meta,want:Place(.sessionMeta,machineId:rs.machineID,sessionId:sid),as:PBSession.self)
                     let origins = try await securitySession().replacementOrigins(target:rs.machineID,proofs:info.machineReplacements)
-                    guard origins.contains(held.machineId) else {throw OpenError("会话记录的机器被改动")}
+                    guard origins.contains(held.machineId) else {throw OpenError(L10n.errorsTheSessionRecordSComputerWasChanged())}
                 }
                 let opened = try await securitySession().openHistory(rs.key)
                 let h = projection(opened.0), raw = opened.1
                 try Envelopes.expect(h, Place(.sessionKey, machineId: rs.machineID, sessionId: sid))
-                if raw.count != keySize { throw OpenError("bad session key") }
+                if raw.count != keySize { throw OpenError(L10nMessage.errorsIosCryptoBadSessionKey()) }
                 guard (removedPushes[rs.machineID] ?? 0) == removal,
                     (trustedMembers[rs.machineID]?.kind == 1 || archiveMachines.contains(rs.machineID))
                 else { return }
                 sessionKeys[sid] = raw
                 view = SessionView(id: sid, machineId: rs.machineID)
             }
-            if view.machineId != rs.machineID { throw OpenError("会话记录的机器被改动") }
+            if view.machineId != rs.machineID { throw OpenError(L10n.errorsTheSessionRecordSComputerWasChanged()) }
             view.lastSeq = max(view.lastSeq, rs.lastSeq)
             view.updatedMs = max(view.updatedMs, rs.updatedMs)
             var store = sessions[sid] == nil
             if store { view.listedEndedMs = rs.endedMs }
             if rs.hasMeta {
-                guard sessionKeys[sid] != nil else { throw OpenError("bad session seed") }
+                guard sessionKeys[sid] != nil else { throw OpenError(L10nMessage.errorsIosCryptoBadSessionSeed()) }
                 let (h, info) = try await openSecureMessage(
                     envelope: rs.meta,
                     want: Place(.sessionMeta, machineId: rs.machineID, sessionId: sid),
@@ -462,7 +462,7 @@ extension Remote {
         } catch { report(error) }
     }
     public func changePrefs(_ op: PrefsOp) async throws {
-        guard conn == .online else { throw CommandError("unavailable", "没有连上服务器，连上后才能修改") }
+        guard conn == .online else { throw CommandError("unavailable", L10nMessage.errorsIosNotConnectedToTheServerConnectToMakeChanges()) }
         let operation = newRequestId()
         for _ in 0..<5 {
             try await refreshTrustedDirectory()
@@ -516,7 +516,7 @@ extension Remote {
     /// name for another member can only be set on that member's own device.
     public func renameDevice(_ id: String, name: String) async throws {
         guard id == account.deviceId else {
-            throw CommandError("failed_precondition", "设备名称只能由该设备自己设置")
+            throw CommandError("failed_precondition", L10nMessage.errorsIosOnlyTheDeviceItselfCanChangeItsName())
         }
         try await changeDeviceMeta(id) { $0.name = name }
     }
@@ -533,7 +533,7 @@ extension Remote {
     {
         for _ in 0..<5 {
             try await refreshTrustedDirectory()
-            guard let base = devices[id] else { throw CommandError("not_found", "没有这台设备") }
+            guard let base = devices[id] else { throw CommandError("not_found", L10nMessage.settingsDeviceNotFound()) }
             var meta = base.meta ?? PBDeviceMeta()
             change(&meta)
             do {
@@ -552,6 +552,6 @@ extension Remote {
                 return
             } catch DeviceSecurity.Failure.conflict { continue }
         }
-        throw CommandError("aborted", "设备信息正在变化，请重试")
+        throw CommandError("aborted", L10nMessage.errorsDeviceInformationIsChangingRetry())
     }
 }

@@ -185,14 +185,14 @@ extension Ref<LiveAnnouncer> {
         #expect(exitReason("stopped", scheduledClosed: true) == L10n.sessionScheduledClosed())
         #expect(exitReason("stopped", scheduledClosed: false) == L10n.sessionManuallyClosed())
         #expect(exitReason("tmux session gone", scheduledClosed: true) == L10n.sessionTmuxMissing())
-        #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("定时任务运行已结束，会话自动关闭了。"))
+        #expect(endedText(detail: "stopped", scheduledClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix(L10n.sessionScheduledClosed()))
     }
 
     @Test func idleCloseUsesExplicitCause() {
         #expect(exitReason("stopped", idleClosed: true) == L10n.sessionIdleClosed())
         #expect(exitReason("stopped", idleClosed: false) == L10n.sessionManuallyClosed())
         #expect(exitReason("tmux session gone", idleClosed: true) == L10n.sessionTmuxMissing())
-        #expect(endedText(detail: "stopped", idleClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix("会话长时间没有活动，已自动结束。"))
+        #expect(endedText(detail: "stopped", idleClosed: true, unlinked: false, machineOnline: true, machine: "Computer").hasPrefix(L10n.sessionIdleClosed()))
     }
 
     private func pending(mode: PBSendMode = .steer, paused: Bool = false, held: Bool = false) -> PendingInput {
@@ -237,8 +237,8 @@ extension Ref<LiveAnnouncer> {
         func note(_ state: Outgoing.State, _ input: PBInputStatus? = nil, failure: String? = nil, error: String = "原因") -> OutgoingNote {
             outgoingNote(state: state, error: error, input: input, failure: failure, agent: .claude)
         }
-        #expect(note(.sending) == OutgoingNote(caption: "发送中…", sending: true))
-        #expect(note(.sent) == OutgoingNote(caption: "已送达电脑"))
+        #expect(note(.sending) == OutgoingNote(caption: L10n.composerSending(), sending: true))
+        #expect(note(.sent) == OutgoingNote(caption: L10n.sessionDelivered()))
         // Did not go: red, with a short reason.
         #expect(note(.failed) == OutgoingNote(caption: "没发出去：原因", tone: .error, failed: true, actions: [.retry, .remove]))
         #expect(note(.sent, .failed, failure: "input_changed") == OutgoingNote(
@@ -307,21 +307,21 @@ extension Ref<LiveAnnouncer> {
             MenuSetting(text: "上下文", value: "86%", warn: true, opens: .model),
         ])
         // A mode that could not be read has no row, a model not reported yet is 会话设置, an unknown context is left out.
-        #expect(menuSettings(mode: nil, model: "", effort: "", percent: nil) == [MenuSetting(text: "会话设置", value: "", opens: .model)])
-        #expect(menuSettings(mode: ModeLabel(text: "询问", mode: .ask), model: "opus", effort: "", percent: 12).map(\.value) == ["询问", "opus", "12%"])
+        #expect(menuSettings(mode: nil, model: "", effort: "", percent: nil) == [MenuSetting(text: L10n.sessionSettings(), value: "", opens: .model)])
+        #expect(menuSettings(mode: ModeLabel(text: L10n.modesAsk(), mode: .ask), model: "opus", effort: "", percent: 12).map(\.value) == [L10n.modesAsk(), "opus", "12%"])
     }
 
     @Test func theBarsSecondLineIsTheStateThenTheMode() {
         let ask = ModeLabel(text: "询问", mode: .ask)
         let full = ModeLabel(text: "完全放行", mode: .full)
-        #expect(sessionSubtitle(status: .running, mode: ask) == SessionSubtitle(status: "运行中", mode: "询问", danger: false))
-        #expect(sessionSubtitle(status: .approval, mode: full) == SessionSubtitle(status: "等待审批", mode: "完全放行", danger: true))
+        #expect(sessionSubtitle(status: .running, mode: ask) == SessionSubtitle(status: L10n.listStateRunning(), mode: L10n.modesAsk(), danger: false))
+        #expect(sessionSubtitle(status: .approval, mode: full) == SessionSubtitle(status: L10n.listStateApproval(), mode: L10n.modesFullAccess(), danger: true))
         #expect(sessionSubtitle(status: .approval, mode: full).text == "等待审批 · 完全放行")
         #expect(sessionSubtitle(status: .exited, mode: full).text == L10n.listStateEnded())
         #expect(sessionSubtitle(status: .starting, mode: nil).text == L10n.listStateStarting())
         #expect(sessionSubtitle(status: .starting, mode: ask).text == "启动中 · 询问")
         // A mode that could not be read is not written at all.
-        #expect(sessionSubtitle(status: .idle, mode: nil) == SessionSubtitle(status: "空闲", mode: "", danger: false))
+        #expect(sessionSubtitle(status: .idle, mode: nil) == SessionSubtitle(status: L10n.listStateIdle(), mode: "", danger: false))
         #expect(sessionSubtitle(status: .running, mode: nil).text == L10n.listStateRunning())
         #expect(sessionSubtitle(status: .idle, mode: ModeLabel(text: "acceptEdits", mode: nil)).text == "空闲 · acceptEdits")
         #expect(sessionSubtitle(status: .unlinked, mode: ask).text == "未连接 · 询问")
@@ -384,10 +384,10 @@ extension Ref<LiveAnnouncer> {
         func row(blocked: String? = nil, running: Bool = false, error: String = "", frozen: Bool = false, expired: Bool = false) -> ForkAction {
             forkAction(blocked: blocked, running: running, error: error, frozen: frozen, expired: expired)
         }
-        #expect(row() == ForkAction(text: "分叉会话", note: "", noteError: true, enabled: true, busy: false, tap: .fork))
-        #expect(row(running: true, error: "x", frozen: true) == ForkAction(text: "正在分叉…", busy: true))
-        #expect(row(blocked: "这一轮结束后可用", frozen: true) == ForkAction(note: "这一轮结束后可用", enabled: false))
-        #expect(row(error: "电脑不在线") == ForkAction(note: "没能分叉：电脑不在线", noteError: true))
+        #expect(row() == ForkAction(text: L10n.sessionFork(), note: "", noteError: true, enabled: true, busy: false, tap: .fork))
+        #expect(row(running: true, error: "x", frozen: true) == ForkAction(text: L10n.sessionForking(), busy: true))
+        #expect(row(blocked: L10n.sessionForkAfterTurn(), frozen: true) == ForkAction(note: L10n.sessionForkAfterTurn(), enabled: false))
+        #expect(row(error: L10n.projectsComputerOffline()) == ForkAction(note: "没能分叉：电脑不在线", noteError: true))
         // It may have happened: the row never promises a new fork, only the same request again.
         let unsure = row(error: "不确定电脑有没有执行", frozen: true)
         #expect(unsure.tap == .fork && unsure.enabled && unsure.noteError)

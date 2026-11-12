@@ -9,13 +9,13 @@ public func scheduleCommand(operation: String, taskID: String = "", spec: Schedu
     return c
 }
 public func decodeScheduleList(_ result: PBCommandResult) throws -> [ScheduleTask] {
-    guard case .schedule(let r) = result.kind else { throw UserError("电脑没有返回任务列表") }
+    guard case .schedule(let r) = result.kind else { throw UserError(L10nMessage.errorsTheComputerDidNotReturnATaskList()) }
     struct List: Decodable {
         var tasks: [ScheduleTask]?
         enum CodingKeys: String, CodingKey { case tasks }
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            guard c.contains(.tasks) else { throw UserError("电脑返回的不是任务列表") }
+            guard c.contains(.tasks) else { throw UserError(L10nMessage.scheduleIosTheComputerDidNotReturnATaskList()) }
             tasks = try c.decodeIfPresent([ScheduleTask].self, forKey: .tasks)
         }
     }

@@ -168,7 +168,7 @@ final class FakeJoin: @unchecked Sendable {
         ] {
             m.showScanner()
             m.scanned(text)
-            #expect(m.step == .form && m.notice == "这不是 remote-agent 的配对二维码" && m.noticeIsError)
+            #expect(m.step == .form && m.notice == L10n.securityIosThisIsNotARemoteAgentPairingQrCode() && m.noticeIsError)
         }
         #expect(fake.pairings.isEmpty)
     }
@@ -195,12 +195,12 @@ final class FakeJoin: @unchecked Sendable {
         #expect(
             m.step == .form && m.code.isEmpty && m.server == "https://ra.example.com" && !m.canJoin)
         // It says what this device did, and that the other one still holds the request.
-        #expect(m.notice == "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码")
+        #expect(m.notice == L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe())
         #expect(!m.noticeIsError)
         // The pairing ending because it was stopped changes nothing on the page.
         p.end.resume(throwing: PairError("已取消"))
         try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(m.notice.hasPrefix("已取消本次加入") && m.step == .form)
+        #expect(m.notice.hasPrefix(L10n.securityIosJoiningCanceled()) && m.step == .form)
         #expect(joined.accounts.isEmpty)
         // Pictures that arrive late are not shown.
         p.onEmoji(["🐶", "🐱", "🐭", "🐹"])
@@ -228,7 +228,7 @@ final class FakeJoin: @unchecked Sendable {
         let (m, p) = await started()
         p.end.resume(throwing: PairError("配对码不对，或者已经用过了"))
         await eventually("failed") { m.step == .form }
-        #expect(m.notice == "配对码不对，或者已经用过了" && m.noticeIsError)
+        #expect(m.notice == L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen() && m.noticeIsError)
         #expect(m.code == "48291756")
     }
 

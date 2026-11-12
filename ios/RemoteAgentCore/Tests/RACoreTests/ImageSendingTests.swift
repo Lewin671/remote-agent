@@ -152,7 +152,7 @@ private final class FakeSources: @unchecked Sendable {
         let (u, d) = (uploads(), draft())
         let img = u.add(d, uris: ["picked:a"], machine: { nil })[0]
         await settled(img)
-        #expect(img.state == .failed(error: "先选一台电脑"))
+        #expect(img.state == .failed(error: L10n.attachmentIosChooseMachine()))
         #expect(img.processed != nil)
         u.retry(d, img, machine: { "mac" })
         await settled(img)
@@ -166,7 +166,7 @@ private final class FakeSources: @unchecked Sendable {
         sources.breakIt("picked:a")
         let img = u.add(d, uris: ["picked:a"], machine: { "mac" })[0]
         await settled(img)
-        #expect(img.state == .failed(error: "解不出这张图片"))
+        #expect(img.state == .failed(error: L10n.imageIosCannotDecodeThisImage()))
         #expect(img.processed == nil)
         sources.mend("picked:a")
         u.retry(d, img, machine: { "mac" })
@@ -238,7 +238,7 @@ private final class FakeSources: @unchecked Sendable {
         let d = draft()
         try d.restore()
         #expect(d.images.map(\.id) == [img.id])
-        #expect(d.images[0].state == .failed(error: "需要重新传到电脑"))
+        #expect(d.images[0].state == .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain()))
         u.sendAll(d, machineId: "mac")
         await settled(d.images[0])
         #expect(d.ready(machineId: "mac"))

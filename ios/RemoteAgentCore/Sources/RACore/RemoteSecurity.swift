@@ -38,7 +38,7 @@ extension Remote {
     func authorizationStateHash() async throws -> Data {
         do { return try await securitySession().headStateHash() } catch {
             if error is CancellationError { throw error }
-            throw CommandError("authorization_unavailable", "未能核实当前安全状态，操作没有发出；请重试")
+            throw CommandError("authorization_unavailable", L10nMessage.securityIosCouldNotVerifyTheCurrentSecurityStateTheOperation())
         }
     }
     func authorizePrepared(_ p: PreparedCommand, verifyObservation: Bool = true) async throws
@@ -50,13 +50,13 @@ extension Remote {
             throw e
         } catch DeviceSecurity.Failure.lease {
             let renewal = authorityDeviceId == account.deviceId
-                ? "请在「设置 › 账户安全」点「现在续期」"
-                : "请打开\(clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices))续期"
+                ? L10n.securityIosOpenSettingsAccountSecurityAndTapRenewNow()
+                : L10n.securityIosOpenToRenew(value: String(describing: clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)))
             throw CommandError(
-                "failed_precondition", "远程控制有效期已过，控制和新内容上传已暂停；" + renewal)
+                "failed_precondition", L10nMessage.errorsIosExpiredControlRenewal(renewal: renewal))
         } catch {
             if error is CancellationError { throw error }
-            throw CommandError("authorization_unavailable", "安全状态尚未核实，操作没有发出；请重试")
+            throw CommandError("authorization_unavailable", L10nMessage.securityIosSecurityStateIsUnverifiedTheOperationWasNotSent())
         }
     }
     private func authorizeIntent(_ p: PreparedCommand, verifyObservation: Bool) async throws
@@ -64,7 +64,7 @@ extension Remote {
     {
         guard clockWarning.isEmpty else {
             throw CommandError(
-                "failed_precondition", "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试")
+                "failed_precondition", L10n.securityIosThisDeviceIsOver5MinutesBehindTheSecurity())
         }
         let client = try securitySession()
         let cmd = p.command
@@ -72,7 +72,7 @@ extension Remote {
             let fresh = try await fetchLiveSnapshot(p.sessionId)
             let verified = try observedCommand(cmd, snapshot: fresh)
             guard verified == cmd else {
-                throw CommandError("failed_precondition", "当前请求已变化，请重新核对")
+                throw CommandError("failed_precondition", L10nMessage.securityIosTheCurrentRequestChangedReviewItAgain())
             }
         }
         return try await client.seal(

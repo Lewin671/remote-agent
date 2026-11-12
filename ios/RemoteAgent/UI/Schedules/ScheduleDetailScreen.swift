@@ -8,7 +8,7 @@ import SwiftUI
     private(set) var task: ScheduleTask?
     func open(_ task: ScheduleTask) { self.task = task }
     func command(spec: ScheduleSpec) throws -> PBCommand {
-        guard let task else { throw UserError("请先打开任务编辑器") }
+        guard let task else { throw UserError(L10nMessage.scheduleIosOpenTheTaskEditorFirst()) }
         return try scheduleCommand(operation: "update", taskID: task.id, spec: spec, revision: task.revision)
     }
 }
@@ -17,19 +17,19 @@ func scheduleStopBanner(_ task: ScheduleTask, now: Date = Date(), zone: TimeZone
     if task.missingTarget {
         let failedAt = task.history.first { $0.status == "failed" && $0.reason == task.reason }
             .flatMap { scheduleDate($0.startedAt) }
-        let prefix = failedAt.map { scheduleMoment($0, now: now, zone: zone) + " 的运行失败，" } ?? ""
-        return prefix + "任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"
+        let reason = scheduleReason("execution_session_missing")
+        return failedAt.map { L10n.scheduleMissingTargetRun(reason: reason, time: scheduleMoment($0, now: now, zone: zone)) } ?? L10n.scheduleMissingTarget(reason: reason)
     }
-    let continuation: String
+    let reason = scheduleReason(task.reason)
+    let notice: String
     if task.status == "uncertain" {
-        continuation = "继续可能重复执行上次的消息，请先打开运行记录核实。"
+        notice = L10n.scheduleAttentionUncertain(reason: reason)
     } else if task.status == "failed" && task.oneShot {
-        continuation = "可立即额外执行一次，或改时间重排。"
+        notice = L10n.scheduleIosAttentionOnce(reason: reason)
     } else {
-        continuation = "恢复或重新安排后从下一次自动时间开始，不重发上次消息。"
+        notice = L10n.scheduleAttentionResume(reason: reason)
     }
-    return scheduleReason(task.reason) + "。" + continuation + (task.reason == "agent_schedule_permissions_changed"
-        ? "继续会由你接管任务，按任务中显示的权限运行。" : "")
+    return task.reason == "agent_schedule_permissions_changed" ? L10n.scheduleIosTakeoverNotice(notice: notice) : notice
 }
 
 struct ScheduleDetailScreen: View {
@@ -61,7 +61,7 @@ struct ScheduleDetailScreen: View {
                         if let task {
                             content(task, mutation: mutation)
                         } else {
-                            Text(store.loading.contains(machine) ? "读取任务…" : "找不到这个任务").font(.body).ink(DS.ink2).padding(32)
+                            Text(store.loading.contains(machine) ? L10n.scheduleIosLoadingTasks() : L10n.scheduleIosTaskNotFound()).font(.body).ink(DS.ink2).padding(32)
                         }
                         Color.clear.frame(height: 1).id("schedule-detail-end")
                     }
@@ -72,7 +72,7 @@ struct ScheduleDetailScreen: View {
         .background(ScheduleConflictObserver(mutation: mutation) {
             timing = false; targetEdit = false; permissions = false; rename = false; message = false
         })
-        .navBar(task?.spec.title ?? "任务详情", subtitle: task.map { detailSubtitle($0) }, onMore: { menu = true })
+        .navBar(task?.spec.title ?? L10n.scheduleIosTaskDetails(), subtitle: task.map { detailSubtitle($0) }, onMore: { menu = true })
         .actionMenu(isPresented: $menu, actions: task.map { menuActions($0, mutation: mutation) } ?? []) {
             if let task {
                 VStack(alignment: .leading, spacing: 4) {
@@ -102,7 +102,7 @@ struct ScheduleDetailScreen: View {
                 }), fixedMachine: machine) { permissions = false }
             }
         }
-        .inputAlert(isPresented: $rename, title: "重命名任务", initial: editor.task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: L10n.commonSave(), text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
+        .inputAlert(isPresented: $rename, title: L10n.scheduleRenameTask(), initial: editor.task?.spec.title ?? "", placeholder: L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence(), confirm: L10n.commonSave(), text: L10n.scheduleSavingBlankUsesTheMessageSFirstSentence(), limit: 60, lines: 1...1, save: { typed in
             guard let task = editor.task else { return }
             var spec = task.spec; spec.title = scheduleTitle(typed, message: task.spec.message)
             guard spec.title != task.spec.title else { return }
@@ -116,7 +116,7 @@ struct ScheduleDetailScreen: View {
                     onClose: { message = false })
             }
         }
-        .confirm(isPresented: $delete, title: "删除这个任务？", text: "停止之后的自动运行。已发出的消息和已开的对话会保留。", confirm: "删除", danger: true) {
+        .confirm(isPresented: $delete, title: L10n.scheduleIosDeleteThisTask(), text: L10n.scheduleIosStopsFutureAutomaticRunsMessagesAlreadySentAndConversations(), confirm: L10n.scheduleDelete(), danger: true) {
             if let task { perform(task, operation: "cancel", done: { nav.back(from: page) }) }
         }
         .debugSignal("schedule.more") { menu = true }
@@ -162,20 +162,20 @@ struct ScheduleDetailScreen: View {
             }
             if !mutation.error.isEmpty { Banner(mutation.error, tone: .error).padding(16) }
             if mutation.frozen {
-                TextAction("重试同一请求", enabled: online && !mutation.running && !mutation.expired) { perform(task, operation: "get") }.padding(.horizontal, 16)
-                Hint("电脑上可能已经执行，请先查看最新任务状态。").padding(.horizontal, 16)
-                TextAction("放弃原请求", enabled: online && !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
+                TextAction(L10n.scheduleRetrySameRequest(), enabled: online && !mutation.running && !mutation.expired) { perform(task, operation: "get") }.padding(.horizontal, 16)
+                Hint(L10n.scheduleIosTheComputerMayHaveAlreadyExecutedItCheckThe()).padding(.horizontal, 16)
+                TextAction(L10n.scheduleIosAbandonOriginalRequest(), enabled: online && !mutation.running) { mutation.abandon() }.padding(.horizontal, 16)
             }
             if context.schedules.hasNewDetailResult {
-                TextAction("有新结果") { context.schedules.refreshDetailResult(machine: machine, task: id) }
+                TextAction(L10n.homeIosNewResults()) { context.schedules.refreshDetailResult(machine: machine, task: id) }
                     .padding(.horizontal, 16)
             }
             if let running = task.running {
                 HStack(spacing: 6) {
                     SymbolImage(Mark.progress, style: .subheadline, color: DS.blue)
-                    Text("正在运行 · " + scheduleTime(running.date) + " 开始").font(.subheadline).ink(DS.blue)
+                    Text(L10n.scheduleRunningSince(time: String(describing: scheduleTime(running.date)))).font(.subheadline).ink(DS.blue)
                     Spacer(minLength: 0)
-                    if !(running.sessionID ?? "").isEmpty { TextAction("对话", arrow: true) { open(running) } }
+                    if !(running.sessionID ?? "").isEmpty { TextAction(L10n.scheduleConversation(), arrow: true) { open(running) } }
                 }.padding(16).background(DS.gbg, in: RoundedRectangle(cornerRadius: DS.Radius.group))
                     .padding(.horizontal, 16).padding(.top, 16)
             }
@@ -188,42 +188,42 @@ struct ScheduleDetailScreen: View {
             let earlier = task.earlierRuns(resultID: displayedResult?.id)
             if !earlier.isEmpty {
                 HStack {
-                    Text("更早").font(.subheadline).ink(DS.ink2)
+                    Text(L10n.scheduleEarlier()).font(.subheadline).ink(DS.ink2)
                     Spacer()
-                    Text("\(earlier.count) 次").font(.subheadline).ink(DS.ink2)
+                    Text(L10n.scheduleRunsCount(count: Int(earlier.count))).font(.subheadline).ink(DS.ink2)
                 }.padding(.horizontal, 30).padding(.top, 20).padding(.bottom, 6)
                 history(task, runs: earlier)
             }
             GroupCard {
                 VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text("让 agent 做什么").font(.subheadline.weight(.semibold)).ink(DS.ink)
+                    Text(L10n.scheduleWhatShouldTheAgentDo()).font(.subheadline.weight(.semibold)).ink(DS.ink)
                     Spacer()
-                    TextAction("编辑", enabled: mutable) { editor.open(task); message = true }
+                    TextAction(L10n.toolsIosEdit(), enabled: mutable) { editor.open(task); message = true }
                 }.padding(.horizontal, 14)
                 Text(task.spec.message).font(.body).ink(DS.ink).lineLimit(3)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(14)
                 }
             }.padding(.top, 16).padding(.bottom, 16)
-            GroupLabel("设置")
+            GroupLabel(L10n.commonSettings())
             GroupCard {
-                GRow("什么时候", value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
-                ToggleRow("完成后通知", isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
+                GRow(L10n.scheduleWhen(), value: scheduleFrequency(task.spec.trigger, includeZone: true), chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil)
+                ToggleRow(L10n.scheduleNotifyOnCompletion(), isOn: Binding(get: { task.spec.notifyOnFinish }, set: { on in var spec = task.spec; spec.notifyOnFinish = on; update(task, spec: spec) })).disabled(!access.rename)
                 let limits = scheduleLimits(task.spec.trigger)
-                if !limits.isEmpty { GRow("结束", value: limits, chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
+                if !limits.isEmpty { GRow(L10n.sessionEnd(), value: limits, chevron: mutable, onTap: mutable ? { editor.open(task); timing = true } : nil) }
                 if task.spec.target.type == "new_session" {
-                    GRow("在哪运行", value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
-                    GRow("权限", value: permission(task), chevron: mutable, valueColor: task.spec.target.mode == "full" ? DS.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
+                    GRow(L10n.scheduleRunIn(), value: scheduleLocation(task, state: model.state, machine: machine), chevron: mutable, onTap: mutable ? { editor.open(task); targetEdit = true } : nil)
+                    GRow(L10n.newSessionPermissions(), value: permission(task), chevron: mutable, valueColor: task.spec.target.mode == "full" ? DS.red : nil, onTap: mutable ? { editor.open(task); permissions = true } : nil)
                 } else {
-                    GRow("发到", value: scheduleDestination(task, state: model.state), chevron: online && !task.missingTarget, onTap: online && !task.missingTarget ? {
+                    GRow(L10n.scheduleSendToSchedules(), value: scheduleDestination(task, state: model.state), chevron: online && !task.missingTarget, onTap: online && !task.missingTarget ? {
                         if let sid = task.spec.target.session { nav.open(.session(id: sid)) }
                     } : nil)
-                    GRow("权限", value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? DS.red : nil)
+                    GRow(L10n.newSessionPermissions(), value: permission(task), valueColor: targetSession(task).map { modeOf($0) == .full } == true ? DS.red : nil)
                 }
-                GRow("任务名", value: task.spec.title, chevron: access.rename, valueLines: 1, onTap: access.rename ? { editor.open(task); rename = true } : nil)
+                GRow(L10n.scheduleTaskName(), value: task.spec.title, chevron: access.rename, valueLines: 1, onTap: access.rename ? { editor.open(task); rename = true } : nil)
             }
-            Hint((task.spec.target.type == "new_session" ? "每次新开一个对话，归在这个任务下面。" : "消息发到当前对话，等待当前轮结束。") + " " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16).padding(.bottom, 16)
-            if !online { Hint(machineLabel(model.state, id: machine) + " 连上后才能修改、运行或删除。").padding(.horizontal, 16).padding(.bottom, 16) }
+            Hint((task.spec.target.type == "new_session" ? L10n.scheduleEachRunOpensANewConversationGroupedUnderThis() : L10n.scheduleMessagesGoToTheCurrentConversationAndWaitFor()) + " " + task.creator + (task.createdAt.isEmpty ? "" : " · " + (scheduleDate(task.createdAt).map { scheduleMoment($0) } ?? ""))).padding(.horizontal, 16).padding(.bottom, 16)
+            if !online { Hint(L10n.scheduleIosConnectToEditRunOrDelete(value: String(describing: machineLabel(model.state, id: machine)))).padding(.horizontal, 16).padding(.bottom, 16) }
         }
     }
     private func recover(_ task: ScheduleTask) {
@@ -234,20 +234,20 @@ struct ScheduleDetailScreen: View {
     }
     private func targetSession(_ task: ScheduleTask) -> SessionView? { task.spec.target.session.flatMap { model.state.sessions[$0] } }
     private func permission(_ task: ScheduleTask) -> String {
-        if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? "请在对话里核实当前权限" }
-        return ["ask": "询问", "auto": "自动", "full": "完全放行"][task.spec.target.mode ?? ""] ?? "跟随 CLI 设置"
+        if task.spec.target.type == "resume_session" { return targetSession(task).flatMap { modeLabel($0) }?.text ?? L10n.scheduleVerifyCurrentPermissionsInTheConversation() }
+        return ["ask": L10n.modesAsk(), "auto": L10n.modesAuto(), "full": L10n.modesFullAccess()][task.spec.target.mode ?? ""] ?? L10n.newSessionFollowCli()
     }
     @ViewBuilder private func history(_ task: ScheduleTask, runs: [ScheduleRun]) -> some View {
         let groups = scheduleHistoryGroups(runs)
         GroupCard {
-            if groups.isEmpty { GRow("还没有运行") }
+            if groups.isEmpty { GRow(L10n.scheduleHasNotRunYet()) }
             if allHistory {
                 ForEach(runs) { run in record(run, task: task) }
             } else {
                 ForEach(Array(groups.prefix(5))) { group in
                     let run = group.runs[0]
                     if group.folded {
-                        GRow(scheduleDay(run.notificationTime) + " · \(group.runs.count) 次，都没有通知", sub: "最近一次 \(scheduleTime(run.notificationTime))：\(run.foldedSummary)", chevron: false) {
+                        GRow(L10n.scheduleQuietRuns(count: Int(group.runs.count), day: String(describing: scheduleDay(run.notificationTime))), sub: L10n.scheduleLatestSummary(summary: String(describing: run.foldedSummary), time: String(describing: scheduleTime(run.notificationTime))), chevron: false) {
                             if expanded.contains(group.id) { expanded.remove(group.id) } else { expanded.insert(group.id) }
                         }.trailing { Arrow(DS.ink2, direction: expanded.contains(group.id) ? .up : .down) }
                         if expanded.contains(group.id) { ForEach(group.runs) { record($0, task: task) } }
@@ -255,7 +255,7 @@ struct ScheduleDetailScreen: View {
                 }
             }
             if groups.count > 5 && !allHistory {
-                GRow("查看全部 \(runs.count) 次", action: true) { allHistory = true }
+                GRow(L10n.scheduleViewAllRuns(count: Int(runs.count)), action: true) { allHistory = true }
             }
         }
     }
@@ -265,7 +265,7 @@ struct ScheduleDetailScreen: View {
             HStack(alignment: .top, spacing: 0) {
                 ZStack {
                     if context.schedules.wasUnreadOnEntry(machine: machine, task: id, run: run.id) {
-                        Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读")
+                        Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel(L10n.scheduleUnreadOnEntry())
                     }
                 }.frame(width: 22, height: 20)
                 VStack(alignment: .leading, spacing: 4) {
@@ -278,19 +278,19 @@ struct ScheduleDetailScreen: View {
         }.buttonStyle(RowPressStyle()).disabled(sid.isEmpty).accessibilityElement(children: .combine)
     }
     private func detailSubtitle(_ task: ScheduleTask) -> String {
-        if task.group == .attention { return "已停下" }
+        if task.group == .attention { return L10n.scheduleStopped() }
         let frequency = scheduleListFrequency(task.spec.trigger)
-        if task.spec.target.type == "resume_session" { return frequency + " · 发到「" + scheduleDestination(task, state: model.state) + "」" }
-        return frequency + (task.nextRunAt.flatMap(scheduleDate).map { " · 下次 " + scheduleMoment($0) } ?? "")
+        if task.spec.target.type == "resume_session" { return L10n.scheduleSendTo(detail: String(describing: scheduleDestination(task, state: model.state)), value: String(describing: frequency)) }
+        return frequency + (task.nextRunAt.flatMap(scheduleDate).map { L10n.scheduleIosNext(value: String(describing: scheduleMoment($0))) } ?? "")
     }
     private func menuActions(_ task: ScheduleTask, mutation: ScheduleMutation) -> [SheetAction] {
         let online = context.schedules.online(machine)
         let access = ScheduleEditAccess(task: task, online: online, saving: mutation.running, unknown: mutation.frozen)
-        var actions = [SheetAction("立即运行一次", enabled: access.run || (access.rename && task.oneShot && task.status == "failed" && task.active == nil && task.manualRequest == nil)) {
+        var actions = [SheetAction(L10n.scheduleRunOnceNow(), enabled: access.run || (access.rename && task.oneShot && task.status == "failed" && task.active == nil && task.manualRequest == nil)) {
             perform(task, operation: "run")
         }]
         if task.latestNotification != nil {
-            actions.append(SheetAction("标为未读") {
+            actions.append(SheetAction(L10n.scheduleMarkAsUnread()) {
                 afterMenu {
                     markScheduleUnreadAndBack(machine: machine, taskID: id, store: context.schedules, nav: nav, page: page)
                 }
@@ -302,7 +302,7 @@ struct ScheduleDetailScreen: View {
                 else { perform(task, operation: "pause") }
             })
         }
-        actions.append(SheetAction("删除任务…", danger: true, enabled: online && !mutation.running && !mutation.frozen) { afterMenu { delete = true } })
+        actions.append(SheetAction(L10n.scheduleDeleteTask(), danger: true, enabled: online && !mutation.running && !mutation.frozen) { afterMenu { delete = true } })
         return actions
     }
     private func afterMenu(_ action: @escaping @MainActor () -> Void) {
@@ -314,7 +314,7 @@ struct ScheduleDetailScreen: View {
         nav.open(.session(id: sid))
     }
     private func save(_ task: ScheduleTask, spec: ScheduleSpec) async throws {
-        guard context.schedules.online(machine) else { throw UserError("电脑不在线，连上后才能修改") }
+        guard context.schedules.online(machine) else { throw UserError(L10nMessage.scheduleIosTheComputerIsOfflineConnectToMakeChanges()) }
         try await context.scheduleMutations.of(machine + "/" + id).execute(remote: context.remote, machine: machine, command: {
             try editor.command(spec: spec)
         }, refresh: { await context.schedules.refresh(machine) })

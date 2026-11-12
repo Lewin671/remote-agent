@@ -19,7 +19,7 @@ import os
 
 /// How this device is called in the join flow's sentences.
 @MainActor var thisDeviceWord: String {
-    UIDevice.current.userInterfaceIdiom == .pad ? "这台 iPad" : "这台手机"
+    UIDevice.current.userInterfaceIdiom == .pad ? L10n.securityIosThisIpad() : L10n.securityIosThisPhone()
 }
 
 /// The calls that reach the server, so that the rules are tested without one.
@@ -36,7 +36,7 @@ struct JoinCalls: Sendable {
         JoinCalls(
             byPairing: { link, onEmoji, stopped, onRegistering, confirm in
                 if let delivery = try vault.loadPairDeliveryReceipt() {
-                    guard delivery.intent.targetServer == link.server else { throw PairError("另一个服务器的配对收件尚未完成") }
+                    guard delivery.intent.targetServer == link.server else { throw PairError(L10nMessage.securityIosPairingDeliveryOnAnotherServerIsUnfinished()) }
                     onRegistering()
                     let account = try await delivery.resume(http: http) { account, record in
                         // The registration receipt remains until this retry succeeds.
@@ -47,7 +47,7 @@ struct JoinCalls: Sendable {
                     return account
                 }
                 if let pending = try vault.loadRegistrationIntent() {
-                    guard pending.targetServer == link.server else { throw PairError("另一个服务器的注册尚未完成，请先重试或退出并重新开始") }
+                    guard pending.targetServer == link.server else { throw PairError(L10nMessage.securityRegistrationOnAnotherServerIsUnfinishedRetryItOr()) }
                     onRegistering()
                     let account = try await pending.resume(http: http) { account,record in try vault.saveRegistrationBootstrap(account,record:record) }
                     try vault.clearRegistrationIntent(pending)
@@ -232,7 +232,7 @@ final class JoinModel {
     func scanned(_ text: String) {
         guard step == .scan else { return }
         guard let link = PairLink.parse(text) else {
-            notice = "这不是 remote-agent 的配对二维码"
+            notice = L10n.securityIosThisIsNotARemoteAgentPairingQrCode()
             noticeIsError = true
             step = .form
             return
@@ -296,7 +296,7 @@ final class JoinModel {
         if attempt.registering {
             // Whatever the page says now, this is what is known of the device.
             if current { self.attempt = nil }
-            notice = "不确定\(thisDeviceWord)有没有加入：\(errorText(error))。可以在管理端的设置里看看客户端列表"
+            notice = L10n.securityIosUnsureWhetherJoinedCheckTheClientListInThe(detail: String(describing: errorText(error)), value: String(describing: thisDeviceWord))
             noticeIsError = true
             if current { step = .form }
             return
@@ -319,13 +319,13 @@ final class JoinModel {
             return
         }
         guard attempt.stop() else {
-            notice = "已经在登记\(thisDeviceWord)，稍等结果"
+            notice = L10n.errorsIosAlreadyRegisteringWaitForTheResult(value: String(describing: thisDeviceWord))
             noticeIsError = false
             return
         }
         self.attempt = nil
         typeCode("")
-        notice = "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码"
+        notice = L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe()
         noticeIsError = false
         step = .form
     }
@@ -335,7 +335,7 @@ final class JoinModel {
     func joinWithSecret() {
         secret = ""
         step = .form
-        notice = "加入已有账户需要在管理端批准，请使用配对码。"
+        notice = L10n.securityIosJoiningAnExistingAccountRequiresManagingClientApprovalUse()
         noticeIsError = true
     }
 
@@ -347,7 +347,7 @@ final class JoinModel {
             try await onJoined(account)
         } catch {
             // Registered, but the Keychain did not keep the keys.
-            notice = "已经加入，但没能保存账户密钥：\(errorText(error))"
+            notice = L10n.securityIosJoinedButCouldNotSaveAccountKeys(value: String(describing: errorText(error)))
             noticeIsError = true
             step = .form
         }

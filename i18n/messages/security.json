@@ -5677,5 +5677,1961 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "security.ios_a_security_operation_is_unfinished_retry_or_verify_its",
+    "zh-CN": "还有未完成的安全操作。请先重试或在管理端核实结果；退出后，这台手机将无法继续原操作。",
+    "en": "A security operation is unfinished. Retry or verify its result on the managing client first. After exiting, this phone cannot continue the original operation.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_abandon_this_security_operation",
+    "zh-CN": "放弃此安全操作？",
+    "en": "Abandon this security operation?",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_account_public_key_information_restored_you_can_prepare_to",
+    "zh-CN": "账户公钥资料已补齐，可以准备接任。",
+    "en": "Account public key information restored. You can prepare to take over.",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_add_another_device",
+    "zh-CN": "添加另一台设备",
+    "en": "Add another device",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_after_removal_this_device_can_no_longer_operate_the",
+    "zh-CN": "移除后，这台设备不能再操作账户。电脑本地文件保留，中继上的档案可另行删除。",
+    "en": "After removal, this device can no longer operate the account. Local computer files remain. Records on the relay can be deleted separately.",
+    "notes": "iOS DeviceManagementActions.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_all_devices_will_disconnect_data_on_the_relay_cannot",
+    "zh-CN": "所有设备将断开，中继上的数据无法恢复。",
+    "en": "All devices will disconnect. Data on the relay cannot be recovered.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_allow_camera_access",
+    "zh-CN": "允许使用相机",
+    "en": "Allow camera access",
+    "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_approved_verifying_delivery_to_the_device_continue_the_original",
+    "zh-CN": "已批准，正在核实设备是否收到。请继续原操作。",
+    "en": "Approved. Verifying delivery to the device. Continue the original operation.",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_automatically_renews_when_you_return_to_the_managing_client",
+    "zh-CN": "回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。",
+    "en": "Automatically renews when you return to the managing client. Remote control pauses after expiry; chat and history remain available.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_camera_access_is_required_to_scan_you_can_also",
+    "zh-CN": "需要相机权限才能扫码；也可以返回手动输入配对码。",
+    "en": "Camera access is required to scan. You can also go back and enter the pairing code manually.",
+    "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_camera_preview_looking_for_a_pairing_qr_code",
+    "zh-CN": "相机画面，正在找配对二维码",
+    "en": "Camera preview, looking for a pairing QR code",
+    "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_can_take_effect_at",
+    "zh-CN": "可生效时间：{value}",
+    "en": "Can take effect at: {value}",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 securityTime(recovery.readyMs)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_cannot_account_keys_while_the_device_is_locked_unlock",
+    "zh-CN": "设备锁定时不能{value}账户密钥，解锁后再试",
+    "en": "Cannot {value} account keys while the device is locked. Unlock it and retry.",
+    "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 operation.text；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_cannot_read_account_keys_from_keychain_rejoin_the_account",
+    "zh-CN": "钥匙串里的账户密钥读不出来，需要重新加入账户",
+    "en": "Cannot read account keys from Keychain. Rejoin the account.",
+    "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_compare_the_managing_client_s_4_patterns_if_they",
+    "zh-CN": "核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。",
+    "en": "Compare the managing client’s 4 patterns. If they match, confirm here first, then allow on the managing client.",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_completing_takeover_waiting_for_remote_control_renewal",
+    "zh-CN": "正在完成接管，等待远程控制续期。",
+    "en": "Completing takeover. Waiting for remote control renewal.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_computer_records_deleted",
+    "zh-CN": "电脑记录已删除。",
+    "en": "Computer records deleted.",
+    "notes": "iOS DeviceManagementActions.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_confirm_permanent_deletion",
+    "zh-CN": "确认永久删除",
+    "en": "Confirm permanent deletion",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_connecting",
+    "zh-CN": "正在连接…",
+    "en": "Connecting…",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_continue_creating_account",
+    "zh-CN": "继续创建账户",
+    "en": "Continue creating account",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_continue_original_operation",
+    "zh-CN": "继续原操作",
+    "en": "Continue original operation",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_continue_the_account_creation_recovery_or_successor_draft",
+    "zh-CN": "请继续账户创建、恢复或接任草稿",
+    "en": "Continue the account creation, recovery, or successor draft",
+    "notes": "iOS AuthorityCoordinator.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_copy_pairing_code",
+    "zh-CN": "复制配对码",
+    "en": "Copy pairing code",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_could_not_account_keys_in_keychain",
+    "zh-CN": "没能{value}钥匙串里的账户密钥：{detail}（{extra}）",
+    "en": "Could not {value} account keys in Keychain: {detail} ({extra})",
+    "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 operation.text；detail = Swift 插值 detail；extra = Swift 插值 status；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      },
+      "extra": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_could_not_verify_the_current_security_state_the_operation",
+    "zh-CN": "未能核实当前安全状态，操作没有发出；请重试",
+    "en": "Could not verify the current security state. The operation was not sent; retry.",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_current_recovery_code",
+    "zh-CN": "当前恢复码",
+    "en": "Current recovery code",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_delete_account",
+    "zh-CN": "删除账户",
+    "en": "Delete account",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_delete_from_the_current_account_s_managing_client_if",
+    "zh-CN": "请在当前账户的管理端执行删除。若管理端已丢失，请先在首次使用页面通过恢复码找回管理权。",
+    "en": "Delete from the current account’s managing client. If it is lost, recover management with your recovery code on the first-use screen first.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_delete_this_computer_s_records",
+    "zh-CN": "删除这台电脑的记录？",
+    "en": "Delete this computer’s records?",
+    "notes": "iOS DeviceManagementActions.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_deleting",
+    "zh-CN": "正在删除…",
+    "en": "Deleting…",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_demo_data_will_not_send_a_deletion_request",
+    "zh-CN": "示例数据不会发出删除请求。",
+    "en": "Demo data will not send a deletion request.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_device_joined",
+    "zh-CN": "设备已加入。",
+    "en": "Device joined.",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_device_removed",
+    "zh-CN": "设备已移除。",
+    "en": "Device removed.",
+    "notes": "iOS DeviceManagementActions.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_enter_8_digit_pairing_code",
+    "zh-CN": "输入 8 位配对码",
+    "en": "Enter 8-digit pairing code",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_enter_delete_account_to_confirm",
+    "zh-CN": "输入“删除账户”以确认",
+    "en": "Enter “Delete account” to confirm",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_enter_delete_account_to_confirm_136",
+    "zh-CN": "输入删除账户以确认",
+    "en": "Enter Delete account to confirm",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_finish_or_abandon_unfinished_account_security_operations_before_deleting",
+    "zh-CN": "请先完成或放弃未完成的账户安全操作，再删除账户。",
+    "en": "Finish or abandon unfinished account security operations before deleting the account.",
+    "notes": "iOS AccountDeletion.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_generate_another_pairing_code",
+    "zh-CN": "重新生成配对码",
+    "en": "Generate another pairing code",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_i_understand_there_is_no_backup_replace_the_code",
+    "zh-CN": "我知道尚未备份，完成后立即换码",
+    "en": "I understand there is no backup; replace the code immediately afterward",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_if_successor_preparation_reports_a_missing_account_public_key",
+    "zh-CN": "如果接任准备提示缺少账户公钥，请重新配对一次；也可输入当前恢复码，只补齐公钥资料，不发起恢复申请。",
+    "en": "If successor preparation reports a missing account public key, pair again. Alternatively, enter the current recovery code to restore only public key information without requesting recovery.",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_if_the_network_drops_after_the_request_is_sent",
+    "zh-CN": "如果请求发出后网络中断，账户可能已经删除。本机密钥暂时保留；重新连接核对状态，确认后可退出并清除本机密钥。",
+    "en": "If the network drops after the request is sent, the account may already be deleted. Local keys are retained for now. Reconnect to verify, then exit and clear local keys after confirming.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_invalid_pairing_approval",
+    "zh-CN": "配对批准无效",
+    "en": "Invalid pairing approval",
+    "notes": "iOS Approval.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_joined_but_could_not_save_account_keys",
+    "zh-CN": "已经加入，但没能保存账户密钥：{value}",
+    "en": "Joined, but could not save account keys: {value}",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_joining_an_existing_account_requires_managing_client_approval_use",
+    "zh-CN": "加入已有账户需要在管理端批准，请使用配对码。",
+    "en": "Joining an existing account requires managing client approval. Use a pairing code.",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_joining_canceled",
+    "zh-CN": "已取消本次加入",
+    "en": "Joining canceled",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_management_transferred",
+    "zh-CN": "已交接管理权",
+    "en": "Management transferred",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_management_transferred_this_device_was_removed",
+    "zh-CN": "已交接管理权，本机已移除。",
+    "en": "Management transferred. This device was removed.",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_not_read_yet",
+    "zh-CN": "尚未读取",
+    "en": "Not read yet",
+    "notes": "iOS SecurityTime.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_on_the_managing_client_open_settings_add_device_scan",
+    "zh-CN": "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
+    "en": "On the managing client, open Settings › Add device. Scan its QR code or enter its 8-digit pairing code here.",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_open_settings_account_security_and_tap_renew_now",
+    "zh-CN": "请在「设置 › 账户安全」点「现在续期」",
+    "en": "Open Settings › Account security and tap Renew now",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_open_to_renew",
+    "zh-CN": "请打开{value}续期",
+    "en": "Open {value} to renew",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 clientName(devices[authorityDeviceId], id: authorityDeviceId, among: devices)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_original_cli_sessions_and_project_files_on_computers_and",
+    "zh-CN": "电脑上的原始 CLI 会话和项目文件，以及其他设备已下载的本地副本，不会被远程删除。为防止旧设备身份重新注册，中继仍保留最小的设备撤销标记。",
+    "en": "Original CLI sessions and project files on computers, and local copies downloaded on other devices, will not be remotely deleted. The relay retains minimal device revocation markers to prevent old device identities from registering again.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_original_security_operation_verified_this_device_no_longer_has",
+    "zh-CN": "原安全操作已核实。本机已不再拥有管理权。",
+    "en": "Original security operation verified. This device no longer has management authority.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pair_again_and_preserve_identity",
+    "zh-CN": "重新配对并保留身份",
+    "en": "Pair again and preserve identity",
+    "notes": "iOS RePairScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pair_patterns",
+    "zh-CN": "4 个图案：{patterns}",
+    "en": "4 patterns: {patterns}",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。配对图案的读屏整句；patterns 为协议给出的四个 emoji，原样保留。",
+    "params": {
+      "patterns": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_abandoned_you_can_generate_a_new_pairing_code",
+    "zh-CN": "配对已放弃，可以重新生成配对码。",
+    "en": "Pairing abandoned. You can generate a new pairing code.",
+    "notes": "iOS AddDeviceScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_approval_does_not_match_this_device",
+    "zh-CN": "配对批准与这台设备不匹配",
+    "en": "Pairing approval does not match this device",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_approval_does_not_match_this_device_has_expired",
+    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
+    "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
+    "notes": "iOS Approval.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_canceled_explicitly_remove_the_approved_candidate_before_starting",
+    "zh-CN": "配对已取消；请明确移除已批准候选后重新开始",
+    "en": "Pairing canceled. Explicitly remove the approved candidate before starting over.",
+    "notes": "iOS AuthorityCoordinator.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_commitment_changed_after_the_ephemeral_public_key_was",
+    "zh-CN": "临时公钥公开后配对承诺发生变化",
+    "en": "Pairing commitment changed after the ephemeral public key was revealed",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_commitment_mismatch",
+    "zh-CN": "配对承诺不匹配",
+    "en": "Pairing commitment mismatch",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_pairing_delivery_on_another_server_is_unfinished",
+    "zh-CN": "另一个服务器的配对收件尚未完成",
+    "en": "Pairing delivery on another server is unfinished",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_patterns_are_not_confirmed_locally_secure_binding_stopped",
+    "zh-CN": "本机未确认图案，已停止安全绑定",
+    "en": "Patterns are not confirmed locally. Secure binding stopped.",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_permanently_delete_account",
+    "zh-CN": "永久删除账户",
+    "en": "Permanently delete account",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_permanently_delete_the_entire_account",
+    "zh-CN": "永久删除整个账户？",
+    "en": "Permanently delete the entire account?",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_place_the_managing_client_s_pairing_qr_code_in",
+    "zh-CN": "把管理端的配对二维码放进框里",
+    "en": "Place the managing client’s pairing QR code in the frame",
+    "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_prepare_account",
+    "zh-CN": "准备账户",
+    "en": "Prepare account",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_privacy_shield",
+    "zh-CN": "隐私遮罩",
+    "en": "Privacy shield",
+    "notes": "iOS PrivacyShield.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_publication_result_unverified_continue_the_original_operation",
+    "zh-CN": "发布结果尚未核实，请继续原操作。",
+    "en": "Publication result unverified. Continue the original operation.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_publish",
+    "zh-CN": "发布",
+    "en": "Publish",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_publish_new_recovery_code",
+    "zh-CN": "发布新恢复码？",
+    "en": "Publish new recovery code?",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_read",
+    "zh-CN": "读取",
+    "en": "read",
+    "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_recovery_code_backup_is_unconfirmed_replace_the_code_and",
+    "zh-CN": "恢复码尚未确认备份，请立即更换并离线保存。",
+    "en": "Recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_recovery_code_confirmed_saved_offline_continue_the_original_request",
+    "zh-CN": "恢复码已确认离线保存。继续原请求，不会生成另一份恢复码。",
+    "en": "Recovery code confirmed saved offline. Continue the original request without generating another code.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_recovery_request",
+    "zh-CN": "恢复申请",
+    "en": "Recovery request",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_recovery_request_vetoed_the_old_recovery_code_is_invalid",
+    "zh-CN": "恢复申请已被否决。旧恢复码已经作废。",
+    "en": "Recovery request vetoed. The old recovery code is invalid.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_refresh_recovery_status",
+    "zh-CN": "刷新恢复状态",
+    "en": "Refresh recovery status",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_rejoin_from_original_records",
+    "zh-CN": "从原档案重新加入",
+    "en": "Rejoin from original records",
+    "notes": "iOS DeviceManagementActions.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_remote_control_renewed",
+    "zh-CN": "远程控制已续期。",
+    "en": "Remote control renewed.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_remove_undelivered_candidate",
+    "zh-CN": "移除未收件候选…",
+    "en": "Remove undelivered candidate…",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_renewal_result_unverified_continue_the_original_operation",
+    "zh-CN": "续期结果尚未核实，请继续原操作。",
+    "en": "Renewal result unverified. Continue the original operation.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_renewing",
+    "zh-CN": "续期中…",
+    "en": "Renewing…",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_replace_code",
+    "zh-CN": "换码",
+    "en": "Replace code",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_request_management_takeover_with_your_offline_recovery_code_wait",
+    "zh-CN": "用离线保存的恢复码申请接管。等待 48 小时，期间当前管理端可以否决。恢复后会产生历史边界，部分旧内容可能无法读取。",
+    "en": "Request management takeover with your offline recovery code. Wait 48 hours; the current managing client can veto during this time. Recovery creates a history boundary, and some older content may become unreadable.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_restore_account_public_key_information",
+    "zh-CN": "补齐账户公钥资料",
+    "en": "Restore account public key information",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_restore_information",
+    "zh-CN": "补齐资料",
+    "en": "Restore information",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_save_the_new_recovery_code",
+    "zh-CN": "保存新的恢复码",
+    "en": "Save the new recovery code",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_save_the_recovery_code_offline_first",
+    "zh-CN": "请先离线保存恢复码。",
+    "en": "Save the recovery code offline first.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_scan_qr_code",
+    "zh-CN": "扫描二维码",
+    "en": "Scan QR code",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_security_operation_state_changed_choose_how_to_exit_again",
+    "zh-CN": "安全操作状态已变化，请重新选择退出。",
+    "en": "Security operation state changed. Choose how to exit again.",
+    "notes": "iOS RootView.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_security_operation_state_changed_choose_how_to_join_again",
+    "zh-CN": "安全操作状态已变化，请重新选择加入方式。",
+    "en": "Security operation state changed. Choose how to join again.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_security_state_is_unverified_the_operation_was_not_sent",
+    "zh-CN": "安全状态尚未核实，操作没有发出；请重试",
+    "en": "Security state is unverified. The operation was not sent; retry.",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_setup_token",
+    "zh-CN": "设置令牌",
+    "en": "Setup token",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_setup_token_if_required",
+    "zh-CN": "设置令牌（如需要）",
+    "en": "Setup token (if required)",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_submit_and_verify_original_request",
+    "zh-CN": "提交并核实原申请",
+    "en": "Submit and verify original request",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_successor_device",
+    "zh-CN": "接任设备",
+    "en": "Successor device",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_successor_preparation_result_unverified_continue_the_original_operation",
+    "zh-CN": "接任准备结果尚未核实，请继续原操作。",
+    "en": "Successor preparation result unverified. Continue the original operation.",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_approved_candidate_without_confirmed_delivery_will_be_explicitly",
+    "zh-CN": "已批准但未收件的候选会被明确移除，需要重新配对。",
+    "en": "The approved candidate without confirmed delivery will be explicitly removed and must pair again.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_current_request_changed_review_it_again",
+    "zh-CN": "当前请求已变化，请重新核对",
+    "en": "The current request changed. Review it again.",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_ios_app_has_no_background_security_alerts_open",
+    "zh-CN": "iOS 版没有后台安全提醒，建议每天打开一次，以免错过恢复申请。",
+    "en": "The iOS app has no background security alerts. Open it daily to avoid missing recovery requests.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_managing_client_s_trust_information_does_not_match",
+    "zh-CN": "管理端的信任信息与承诺不匹配",
+    "en": "The managing client’s trust information does not match its commitment",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_new_recovery_code_is_active_the_old_code",
+    "zh-CN": "新恢复码已生效，旧码已作废。",
+    "en": "The new recovery code is active. The old code is invalid.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_new_state_did_not_add_this_device",
+    "zh-CN": "新状态没有把这台设备加进去",
+    "en": "The new state did not add this device",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_old_recovery_code_is_immediately_invalidated_and_pending",
+    "zh-CN": "旧恢复码立即作废，正在等待的恢复申请会被否决。",
+    "en": "The old recovery code is immediately invalidated and pending recovery requests will be vetoed.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_original_device_identity_keys_and_history_are_preserved",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。",
+    "en": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, scan or enter its code, then compare four patterns to finish binding. This is only needed once.",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_original_request_is_retained_continue_the_original_operation",
+    "zh-CN": " 原请求已保留，请继续原操作。",
+    "en": " The original request is retained. Continue the original operation.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_pairing_payload_s_account_differs_from_the_one",
+    "zh-CN": "配对载荷的账户与本机核对的不一致",
+    "en": "The pairing payload’s account differs from the one verified locally",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_pairing_payload_s_state_chain_is_incomplete",
+    "zh-CN": "配对载荷的状态链不完整",
+    "en": "The pairing payload’s state chain is incomplete",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_phone_s_security_state_is_over_5_minutes",
+    "zh-CN": "手机的安全状态时间比本机快 5 分钟以上，请校准时间后重试",
+    "en": "The phone’s security state is over 5 minutes ahead of this device. Correct the clock and retry.",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_previously_displayed_recovery_code_cannot_be_shown_again",
+    "zh-CN": "上次显示的恢复码无法再次显示。先核实并完成原请求，再立即更换恢复码。",
+    "en": "The previously displayed recovery code cannot be shown again. Verify and finish the original request, then replace the code immediately.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_security_state_chain_is_too_long_to_join",
+    "zh-CN": "安全状态链太长，无法加入账户；请在管理端重建账户",
+    "en": "The security state chain is too long to join. Rebuild the account on the managing client.",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_server_rejected_this_device_s_login",
+    "zh-CN": "服务器拒绝了这台设备的登录",
+    "en": "The server rejected this device’s login",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_server_returned_an_unexpected_device_type_pairing_stopped",
+    "zh-CN": "服务器返回了意外的设备类型，已停止配对",
+    "en": "The server returned an unexpected device type. Pairing stopped.",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_successor_s_public_key_may_already_be_published",
+    "zh-CN": "接任公钥可能已经发布；放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期，请保留已保存的恢复码。",
+    "en": "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control. Keep the saved recovery code.",
+    "notes": "iOS AccountSecurityScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_the_successor_s_public_key_may_already_be_published_278",
+    "zh-CN": "接任公钥可能已经发布；放弃只清除本机准备，不会撤回公钥。请保留恢复码并明确确认后再放弃。",
+    "en": "The successor’s public key may already be published. Abandoning only clears local preparation and does not withdraw the key. Keep the recovery code and explicitly confirm before abandoning.",
+    "notes": "iOS AuthorityRecovery.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_deletes_the_entire_account_on_the_current_relay",
+    "zh-CN": "这会删除当前中继上的整个账户、设备登记、加密会话记录、图片、文件块和账户设置，并使所有已配对设备断开。这不是退出登录，删除后无法用恢复码找回。",
+    "en": "This deletes the entire account on the current relay, device registrations, encrypted session records, images, file chunks, and account settings, and disconnects all paired devices. This is permanent account deletion; a recovery code cannot restore it.",
+    "notes": "iOS AccountDeletionScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_device_has_no_available_camera_go_back_to",
+    "zh-CN": "这台设备没有可用的相机；可以返回手动输入配对码。",
+    "en": "This device has no available camera. Go back to enter the pairing code manually.",
+    "notes": "iOS QRScanner.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_device_is_over_5_minutes_behind_the_security",
+    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；请校准系统时间后重试",
+    "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
+    "notes": "iOS RemoteSecurity.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_device_is_the_sole_managing_client_transfer_management",
+    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "en": "This device is the sole managing client. Transfer management first if possible. Exiting deletes management keys; without a recovery code backup, management will be lost.",
+    "notes": "iOS AuthorityAccess.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_device_s_account_keys_and_cache_will_be",
+    "zh-CN": "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
+    "en": "This device’s account keys and cache will be deleted before joining with a pairing code.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_device_was_removed_the_successor_is_now_the",
+    "zh-CN": "本机已移除，接任设备成为唯一管理端。要再次加入，请重新配对。",
+    "en": "This device was removed. The successor is now the sole managing client. Pair again to rejoin.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_ipad",
+    "zh-CN": "这台 iPad",
+    "en": "this iPad",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_is_not_a_remote_agent_pairing_qr_code",
+    "zh-CN": "这不是 remote-agent 的配对二维码",
+    "en": "This is not a remote-agent pairing QR code",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_phone",
+    "zh-CN": "这台手机",
+    "en": "this phone",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_this_phone_s_account_keys_and_cache_will_be",
+    "zh-CN": "会先删除这台手机上的账户密钥和缓存，再用配对码加入。",
+    "en": "This phone’s account keys and cache will be deleted before joining with a pairing code.",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_too_many_attempts_wait_a_minute_and_retry",
+    "zh-CN": "试得太频繁了，稍等一分钟再试",
+    "en": "Too many attempts. Wait a minute and retry.",
+    "notes": "iOS PairFlow.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_transfer_management",
+    "zh-CN": "交接管理权？",
+    "en": "Transfer management?",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_transfer_result_unverified_continue_the_original_operation",
+    "zh-CN": "交接结果尚未核实，请继续原操作。",
+    "en": "Transfer result unverified. Continue the original operation.",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_transfer_to",
+    "zh-CN": "交接给 {value}",
+    "en": "Transfer to {value}",
+    "notes": "iOS HandoffScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 clientName(device, id: device.id, among: app.state.devices)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_unknown_error",
+    "zh-CN": "未知错误",
+    "en": "Unknown error",
+    "notes": "iOS Vault.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_unsure_whether_joined_check_the_client_list_in_the",
+    "zh-CN": "不确定{value}有没有加入：{detail}。可以在管理端的设置里看看客户端列表",
+    "en": "Unsure whether {value} joined: {detail}. Check the client list in the managing client’s settings.",
+    "notes": "iOS JoinModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；detail = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_verify_and_abandon",
+    "zh-CN": "核实并放弃",
+    "en": "Verify and abandon",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_verify_original_security_operation",
+    "zh-CN": "核实原安全操作",
+    "en": "Verify original security operation",
+    "notes": "iOS RemovedScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_verify_veto_and_abandon_original_request",
+    "zh-CN": "核实否决并放弃原申请",
+    "en": "Verify veto and abandon original request",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_waiting_for_managing_client_approval_and_binding",
+    "zh-CN": "等待管理端批准并完成绑定…",
+    "en": "Waiting for managing client approval and binding…",
+    "notes": "iOS JoinScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.ios_waiting_for_the_48_hour_recovery_window_the_current",
+    "zh-CN": "正在等待 48 小时恢复窗口，当前管理端仍可否决。",
+    "en": "Waiting for the 48-hour recovery window. The current managing client can still veto.",
+    "notes": "iOS AuthoritySetupScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

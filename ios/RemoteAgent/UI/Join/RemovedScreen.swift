@@ -15,19 +15,19 @@ struct RemovedScreen: View {
             ScrollView {
                 VStack(spacing: 16) {
                     EmptyState(
-                        model.authorityHandoffComplete ? "已交接管理权" : "服务器拒绝了这台设备的登录",
-                        text: model.authorityHandoffComplete ? "本机已移除，接任设备成为唯一管理端。要再次加入，请重新配对。" : "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。",
-                        action: "重新加入账户", onAction: {
+                        model.authorityHandoffComplete ? L10n.securityIosManagementTransferred() : L10n.securityIosTheServerRejectedThisDeviceSLogin(),
+                        text: model.authorityHandoffComplete ? L10n.securityIosThisDeviceWasRemovedTheSuccessorIsNowThe() : L10n.settingsTheDeviceMayHaveBeenRemovedTheServiceReset(),
+                        action: L10n.settingsRejoinAccount(), onAction: {
                             do {
                                 if let warning = try model.rejoinAdvice() { advice = warning; leaving = true }
                                 else { action.run { await model.logout(pairing: true) } }
                             } catch { action.run { throw error } }
                         },
-                        note: "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
-                        link: "再试一次", onLink: { model.retryLogin() })
+                        note: L10n.securityIosThisDeviceSAccountKeysAndCacheWillBe(),
+                        link: L10n.sessionTryAgain(), onLink: { model.retryLogin() })
                     if pending {
-                        Banner("还有未完成的安全操作。请先重试或在管理端核实结果；退出后，这台手机将无法继续原操作。", tone: .warn)
-                        Btn("核实原安全操作", kind: .primary, enabled: !action.running) {
+                        Banner(L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts(), tone: .warn)
+                        Btn(L10n.securityIosVerifyOriginalSecurityOperation(), kind: .primary, enabled: !action.running) {
                             action.run {
                                 guard let remote = model.remote else { return }
                                 let c = try await remote.authorityCoordinator()
@@ -37,7 +37,7 @@ struct RemovedScreen: View {
                             }
                         }
                     }
-                    if verified { Banner("原安全操作已核实。本机已不再拥有管理权。") }
+                    if verified { Banner(L10n.securityIosOriginalSecurityOperationVerifiedThisDeviceNoLongerHas()) }
                     if !action.error.isEmpty { Banner(action.error, tone: .error) }
                 }.padding(16)
             }
@@ -49,11 +49,11 @@ struct RemovedScreen: View {
                 pending = try await c.pendingOperation() != nil
             } catch { pending = true }
         }
-        .confirm(isPresented: $leaving, title: "退出并删除本机密钥？",
+        .confirm(isPresented: $leaving, title: L10n.securityExitAndDeleteLocalKeys(),
             text: advice?.text ?? "",
-            confirm: "退出", danger: true) {
+            confirm: L10n.securityExit(), danger: true) {
                 action.run {
-                    guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择加入方式。") }
+                    guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
                     await model.logout(pairing: true)
                 }
             }
@@ -78,18 +78,18 @@ struct RetainedIdentityDeniedScreen: View {
         Page {
             VStack(spacing: 16) {
                 Spacer()
-                EmptyState("服务器不认识这台设备",
-                    text: "可能已被移除，或服务已重建。电脑上的会话不受影响。",
-                    action: "用配对码重新加入", onAction: rejoin,
-                    note: "会先删除这台手机上的账户密钥和缓存，再用配对码加入。")
+                EmptyState(L10n.securityTheServerDoesNotRecognizeThisDevice(),
+                    text: L10n.securityItMayHaveBeenRemovedOrTheServiceMay(),
+                    action: L10n.securityRejoinWithAPairingCode(), onAction: rejoin,
+                    note: L10n.securityIosThisPhoneSAccountKeysAndCacheWillBe())
                 if !action.error.isEmpty { Banner(action.error, tone: .error) }
                 Spacer()
             }.padding(16)
         }
-        .confirm(isPresented: $asking, title: "删除本机密钥并重新加入？",
-            text: advice?.text ?? "", confirm: "重新加入", danger: true) {
+        .confirm(isPresented: $asking, title: L10n.securityDeleteLocalKeysAndRejoin(),
+            text: advice?.text ?? "", confirm: L10n.securityRejoin(), danger: true) {
                 action.run {
-                    guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择加入方式。") }
+                    guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToJoinAgain()) }
                     await model.logout(pairing: true)
                 }
             }

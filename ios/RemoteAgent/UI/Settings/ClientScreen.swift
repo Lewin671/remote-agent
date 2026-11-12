@@ -28,15 +28,15 @@ struct ClientScreen: View {
         SettingsPage(refresh: refresh(online)) {
             if d == nil && state.conn == .online && !state.devices.isEmpty {
                 // The list is read and it is not in it.
-                PageNote("这个客户端不在当前可信目录中，撤销状态以回执为准")
+                PageNote(L10n.settingsIosThisClientIsNotInTheCurrentTrustedDirectory())
             } else {
                 Ticking { now in details(d, state: state, me: me, online: online, now: now) }
             }
         }
-        .navBar(clientName(d, id: id, among: state.devices), subtitle: id == me ? "当前客户端" : "已配对的客户端")
+        .navBar(clientName(d, id: id, among: state.devices), subtitle: id == me ? L10n.settingsIosCurrentClient() : L10n.settingsPairedClient())
         .inputAlert(
-            isPresented: $editing, title: "客户端名称", initial: d?.meta?.name ?? "",
-            placeholder: defaultClientName(d, id: id, among: state.devices), text: "留空就用默认名称"
+            isPresented: $editing, title: L10n.settingsClientName(), initial: d?.meta?.name ?? "",
+            placeholder: defaultClientName(d, id: id, among: state.devices), text: L10n.settingsIosLeaveBlankForTheDefaultName()
         ) { name in
             // The dialog stays until the name is stored, and says so when it is not.
             try await remote.renameDevice(id, name: name.jvmTrim())
@@ -44,7 +44,7 @@ struct ClientScreen: View {
 
         // What 保存 in the name dialog, 恢复默认名称 and 移除 in the confirmation do (debug builds).
         .debugSignal("client.rename") {
-            save.run { try await remote.renameDevice(id, name: "设置页改的名字") }
+            save.run { try await remote.renameDevice(id, name: L10n.settingsIosNameSetInSettings()) }
         }
         .debugSignal("client.reset") { save.run { try await remote.renameDevice(id, name: "") } }
         .onAppear {
@@ -60,33 +60,33 @@ struct ClientScreen: View {
     ) -> some View {
         let named = !(d?.meta?.name ?? "").isEmpty
         let remote = context.remote
-        GroupLabel("客户端")
+        GroupLabel(L10n.securityClient())
         GroupCard {
             GRow(
-                "名称", value: save.running ? "保存中…" : (d?.meta?.name ?? "").or("未命名"),
+                L10n.settingsName(), value: save.running ? L10n.commonIosSaving() : (d?.meta?.name ?? "").or(L10n.settingsUnnamed()),
                 chevron: id == me, enabled: online && id == me && d != nil && !save.running
             ) { if id == me { editing = true } }
             if named && id == me {
                 GRow(
-                    "恢复默认名称", value: defaultClientName(d, id: id, among: state.devices), action: true,
+                    L10n.settingsRestoreDefaultName(), value: defaultClientName(d, id: id, among: state.devices), action: true,
                     enabled: online && !save.running
                 ) {
                     save.run { try await remote.renameDevice(id, name: "") }
                 }
             }
-            GRow("种类", value: clientDetail(d))
-            GRow("上次使用", value: id == me ? "现在" : lastUsed(d, now: now).or("没有记录"))
+            GRow(L10n.settingsIosType(), value: clientDetail(d))
+            GRow(L10n.settingsLastUsed(), value: id == me ? L10n.settingsNow() : lastUsed(d, now: now).or(L10n.settingsNoRecord()))
             if let created = d?.createdMs, created > 0 {
-                GRow("添加于", value: dayText(created, now: now))
+                GRow(L10n.settingsAdded(), value: dayText(created, now: now))
             }
-            GRow("设备 ID", value: "…" + shortId(id))
+            GRow(L10n.settingsDeviceId(), value: "…" + shortId(id))
         }
-        if !save.error.isEmpty { GroupBanner("没能保存名称：\(save.error)", tone: .error) }
-        GroupNote("名称加密后同步到其他客户端，服务器看不到。")
+        if !save.error.isEmpty { GroupBanner(L10n.settingsNameSaveError(reason: String(describing: save.error)), tone: .error) }
+        GroupNote(L10n.settingsIosNamesSyncEncryptedToOtherClientsTheServerCannot())
 
         if id == me {
             GroupCard {
-                GRow("退出并删除本机密钥在设置页", chevron: true) { nav.open(.settings) }
+                GRow(L10n.settingsIosExitAndDeleteLocalKeysFromSettings(), chevron: true) { nav.open(.settings) }
             }
         } else {
             DeviceManagementActions(id: id, machine: false)

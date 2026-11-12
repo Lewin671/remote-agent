@@ -330,7 +330,7 @@ private let modelWordBreak = Rx("[-_.\(Jre.s)]")
 /// A chosen model as a row's value says it: 「默认」 when none is, its name
 /// once the computer's list has it, its ID until then.
 public func modelValue(_ id: String, models: PBListModelsResponse?) -> String {
-    if id.isEmpty { return "默认" }
+    if id.isEmpty { return L10n.modelsDefault() }
     return models.flatMap { findModel($0.models, id: id) { $0.slug } }.map { $0.displayName.ifEmpty(id) } ?? id
 }
 
@@ -411,9 +411,9 @@ public func plainClientName(_ meta: PBDeviceMeta?) -> String {
     case "web":
         let words = description.components(separatedBy: " on ").map { $0.jvmTrim() }
         let browser = words[0]
-        return browser.isEmpty ? "浏览器" : ([browser] + words.dropFirst().prefix(1).filter { !$0.isEmpty }).joined(separator: " · ")
+        return browser.isEmpty ? L10n.securityBrowser() : ([browser] + words.dropFirst().prefix(1).filter { !$0.isEmpty }).joined(separator: " · ")
     default:
-        return "客户端"
+        return L10n.securityClient()
     }
 }
 
@@ -422,17 +422,16 @@ public func clientDetail(_ d: DeviceView?) -> String {
     let kind: String
     switch d?.meta?.platform {
     case "android", "ios": kind = "App"
-    case "web": kind = "浏览器"
+    case "web": kind = L10n.securityBrowser()
     default: kind = ""
     }
-    return [kind, (d?.meta?.description_p ?? "").jvmTrim()].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty("种类未知")
+    return [kind, (d?.meta?.description_p ?? "").jvmTrim()].filter { !$0.isEmpty }.joined(separator: " · ").ifEmpty(L10n.securityUnknownType())
 }
 
 /// A day as lists write it: 9月27日, with the year when it is not this one.
 public func dayText(_ ms: Int64, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
     let day = LocalDay(ms: ms, zone: zone)
-    let year = day.year == LocalDay(ms: now, zone: zone).year ? "" : "\(day.year)年"
-    return "\(year)\(day.month)月\(day.day)日"
+    return day.year == LocalDay(ms: now, zone: zone).year ? L10n.timeMonthDay(day: Int(day.day), month: Int(day.month)) : L10n.timeCalendarDateYear(day: Int(day.day), month: Int(day.month), year: Int(day.year))
 }
 
 /// When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日; "" when the server has no record of it.
@@ -440,21 +439,21 @@ public func lastUsed(_ d: DeviceView?, now: Int64 = nowMs(), zone: TimeZone = .c
     let t = d?.lastSeenMs ?? 0
     if t <= 0 { return "" }
     let ago = now - t
-    if ago < 60_000 { return "刚刚" }
-    if ago < 3_600_000 { return "\(ago / 60_000) 分钟前" }
+    if ago < 60_000 { return L10n.timeJustNow() }
+    if ago < 3_600_000 { return L10n.timeMinutesAgo(count: Int(ago / 60_000)) }
     let then = LocalDay(ms: t, zone: zone)
     let today = LocalDay(ms: now, zone: zone)
-    if then.sameDay(today) { return "今天 \(then.hhmm)" }
-    if then.epochDay == today.epochDay - 1 { return "昨天" }
+    if then.sameDay(today) { return L10n.errorsIosToday(value: String(describing: then.hhmm)) }
+    if then.epochDay == today.epochDay - 1 { return L10n.timeYesterday() }
     return dayText(t, now: now, zone: zone)
 }
 
 /// What the list says beside a client: when it was last used, else the day it was added.
 public func clientUsed(_ d: DeviceView?, now: Int64 = nowMs(), zone: TimeZone = .current) -> String {
     let used = lastUsed(d, now: now, zone: zone)
-    if !used.isEmpty { return used + (used.utf16.last.map(isJvmDigit) == true ? " " : "") + "使用" }
-    if let d, d.createdMs > 0 { return "\(dayText(d.createdMs, now: now, zone: zone))添加" }
-    return "已配对"
+    if !used.isEmpty { return L10n.securityUsed(detail: String(describing: used.utf16.last.map(isJvmDigit) == true ? " " : ""), value: String(describing: used)) }
+    if let d, d.createdMs > 0 { return L10n.securityAdded(value: String(describing: dayText(d.createdMs, now: now, zone: zone))) }
+    return L10n.securityPaired()
 }
 
 /// Clients as the list orders them: this one, then the most recently used
@@ -514,8 +513,8 @@ public func capabilities(_ m: MachineView?) -> PBMachineCapabilities? {
 /// match or the machine's metadata is not read yet.
 public func protocolMismatch(_ m: MachineView?) -> String? {
     guard let theirs = m?.meta?.protocolVersion else { return nil }
-    if theirs < protocolVersion { return "\(machineName(m)) 上的 remote-agent 版本较旧，请在电脑上更新后再试" }
-    if theirs > protocolVersion { return "这个 App 版本较旧，请更新后再试" }
+    if theirs < protocolVersion { return L10n.errorsRemoteAgentOnIsOutOfDateUpdateIt(value: String(describing: machineName(m))) }
+    if theirs > protocolVersion { return L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd() }
     return nil
 }
 
@@ -523,9 +522,9 @@ public func protocolMismatch(_ m: MachineView?) -> String? {
 public func contextText(tokens: Int64) -> String? {
     if tokens <= 0 { return nil }
     if tokens >= 1_000_000 {
-        return "\("\(Double(tokens / 100_000) / 10.0)".removingSuffix(".0"))M 上下文"
+        return L10n.errorsIosMContext(value: String(describing: "\(Double(tokens / 100_000) / 10.0)".removingSuffix(".0")))
     }
-    return "\((tokens + 500) / 1000)k 上下文"
+    return L10n.errorsIosKContext(value: String(describing: (tokens + 500) / 1000))
 }
 
 /// The standard context window, which a Claude Code session can be held to.

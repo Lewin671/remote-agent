@@ -76,7 +76,7 @@ public actor AuthorityCoordinator {
         guard var op = try storage.readOperation() else { return }
         try gate.check(t)
         guard op.kind == .state || op.kind == .lease || op.kind == .deleteRecords else {
-            throw CommandError("pending", "请继续账户创建、恢复或接任草稿")
+            throw CommandError("pending", L10nMessage.securityIosContinueTheAccountCreationRecoveryOrSuccessorDraft())
         }
         if op.phase == .delivered {
             if op.kind == .state {
@@ -180,7 +180,7 @@ public actor AuthorityCoordinator {
             let ask = get
             let status = try await rpc(t) { [api] in try await api.pairing.getPairing(request: ask, headers: headers).value() }
             guard status.state == .delivered else {
-                if status.state == .canceled { throw PairError("配对已取消；请明确移除已批准候选后重新开始") }
+                if status.state == .canceled { throw PairError(L10nMessage.securityIosPairingCanceledExplicitlyRemoveTheApprovedCandidateBeforeStarting()) }
                 return
             }
         }

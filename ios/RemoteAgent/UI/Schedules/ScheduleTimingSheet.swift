@@ -21,60 +21,60 @@ struct ScheduleTimingSheet: View {
     }
     var body: some View {
         if zones {
-            SheetHead("时区", onBack: { zones = false })
-            InputField("时区", text: $search, placeholder: "搜索 IANA 时区")
+            SheetHead(L10n.scheduleTimeZone(), onBack: { zones = false })
+            InputField(L10n.scheduleTimeZone(), text: $search, placeholder: L10n.scheduleIosSearchIanaTimeZones())
             ForEach(TimeZone.knownTimeZoneIdentifiers.filter { search.isEmpty || $0.localizedCaseInsensitiveContains(search) }, id: \.self) { zone in
                 ListItem(zone, checked: canonicalScheduleZone(zone) == canonicalScheduleZone(draft.timezone)) { draft.timezone = zone; zones = false }
             }
         } else {
             HStack {
-                Text("什么时候").font(.headline).ink(DS.ink); Spacer()
+                Text(L10n.scheduleWhen()).font(.headline).ink(DS.ink); Spacer()
                 TextAction(L10n.commonDone(), enabled: draft.kind != .weekly || !draft.weekdays.isEmpty, action: save)
             }.padding(.bottom, 10)
-            SegPick(draft.kind == .afterTurn ? ["一次", "每天", "每周", "每隔", "轮结束后"] : ["一次", "每天", "每周", "每隔"], selected: Binding(get: { draft.kind.rawValue }, set: { draft.kind = ScheduleTiming.Kind(rawValue: $0) ?? .daily }))
+            SegPick(draft.kind == .afterTurn ? [L10n.scheduleOnceSchedules(), L10n.scheduleDaily(), L10n.scheduleWeeklyOn(), L10n.scheduleEvery(), L10n.scheduleAfterTurnEnds()] : [L10n.scheduleOnceSchedules(), L10n.scheduleDaily(), L10n.scheduleWeeklyOn(), L10n.scheduleEvery()], selected: Binding(get: { draft.kind.rawValue }, set: { draft.kind = ScheduleTiming.Kind(rawValue: $0) ?? .daily }))
                 .padding(.bottom, 12)
             if draft.kind == .once {
                 // Validate on completion; a range would silently replace a retained past clock selection.
-                DatePicker("日期和时间", selection: $draft.date, displayedComponents: [.date, .hourAndMinute])
+                DatePicker(L10n.scheduleDateAndTime(), selection: $draft.date, displayedComponents: [.date, .hourAndMinute])
                     .environment(\.timeZone, TimeZone(identifier: draft.timezone) ?? .current)
-                    .environment(\.locale, Locale(identifier: "zh_CN"))
+                    .environment(\.locale, Locale(identifier: MessageLocale.appleTags[MessageLocale.current]!))
             } else if draft.kind == .daily || draft.kind == .weekly {
-                DatePicker("时间", selection: $draft.date, displayedComponents: [.hourAndMinute])
+                DatePicker(L10n.scheduleTime(), selection: $draft.date, displayedComponents: [.hourAndMinute])
                     .environment(\.timeZone, TimeZone(identifier: draft.timezone) ?? .current)
-                    .environment(\.locale, Locale(identifier: "zh_CN"))
-                if draft.kind == .daily { Toggle("只在工作日", isOn: $draft.workdays).padding(.vertical, 8) }
+                    .environment(\.locale, Locale(identifier: MessageLocale.appleTags[MessageLocale.current]!))
+                if draft.kind == .daily { Toggle(L10n.scheduleWeekdaysOnly(), isOn: $draft.workdays).padding(.vertical, 8) }
                 else {
                     HStack(spacing: 4) {
                         ForEach(1...7, id: \.self) { day in
                             Button {
                                 if draft.weekdays.contains(day) { draft.weekdays.remove(day) } else { draft.weekdays.insert(day) }
                             } label: {
-                                Text("周" + ["一", "二", "三", "四", "五", "六", "日"][day - 1]).font(.body).ink(draft.weekdays.contains(day) ? DS.ink : DS.ink2)
+                                Text([L10n.timeWeekday(day: "mon"), L10n.timeWeekday(day: "tue"), L10n.timeWeekday(day: "wed"), L10n.timeWeekday(day: "thu"), L10n.timeWeekday(day: "fri"), L10n.timeWeekday(day: "sat"), L10n.timeWeekday(day: "sun")][day - 1]).font(.body).ink(draft.weekdays.contains(day) ? DS.ink : DS.ink2)
                                     .frame(maxWidth: .infinity, minHeight: 44).background(draft.weekdays.contains(day) ? DS.gbg : DS.gbg, in: RoundedRectangle(cornerRadius: 10))
-                            }.buttonStyle(PressStyle()).accessibilityLabel("星期" + ["一", "二", "三", "四", "五", "六", "日"][day - 1]).accessibilityAddTraits(draft.weekdays.contains(day) ? .isSelected : [])
+                            }.buttonStyle(PressStyle()).accessibilityLabel([L10n.scheduleIosMonday(), L10n.scheduleIosTuesday(), L10n.scheduleIosWednesday(), L10n.scheduleIosThursday(), L10n.scheduleIosFriday(), L10n.scheduleIosSaturday(), L10n.scheduleIosSunday()][day - 1]).accessibilityAddTraits(draft.weekdays.contains(day) ? .isSelected : [])
                         }
                     }
                 }
             } else if draft.kind == .interval {
                 HStack {
-                    TextField("间隔", value: $draft.interval, format: .number).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
-                    Picker("单位", selection: $draft.unit) {
-                        Text("秒").tag(1); Text("分钟").tag(60); Text("小时").tag(3600); Text("天").tag(86400)
+                    TextField(L10n.scheduleIosInterval(), value: $draft.interval, format: .number).keyboardType(.numberPad).textFieldStyle(.roundedBorder)
+                    Picker(L10n.scheduleIosUnit(), selection: $draft.unit) {
+                        Text(L10n.scheduleIosSeconds()).tag(1); Text(L10n.scheduleIosMinutes()).tag(60); Text(L10n.scheduleIosHours()).tag(3600); Text(L10n.scheduleIosDays()).tag(86400)
                     }.labelsHidden()
                 }
                 if draft.kind == .interval { Hint(scheduleIntervalHint) }
             } else {
-                Text(scheduleFrequency(original) + "。选择上方其他频率可替换。").font(.subheadline).ink(DS.ink)
+                Text(L10n.scheduleAfterTurnReplace(frequency: String(describing: scheduleFrequency(original)))).font(.subheadline).ink(DS.ink)
             }
             if draft.kind != .once {
-                FieldLabel("结束")
-                SegPick(["不结束", "运行指定次数", "截止日期"], selected: Binding(get: { draft.end.rawValue }, set: { draft.end = ScheduleTiming.End(rawValue: $0) ?? .never }))
-                if draft.end == .count { TextField("次数", value: $draft.count, format: .number).keyboardType(.numberPad).textFieldStyle(.roundedBorder).padding(.vertical, 12).accessibilityLabel("次数") }
-                if draft.end == .date { DatePicker("截止时间", selection: $draft.until, displayedComponents: [.date, .hourAndMinute]).environment(\.timeZone, TimeZone(identifier: draft.timezone) ?? .current).environment(\.locale, Locale(identifier: "zh_CN")).padding(.vertical, 12) }
+                FieldLabel(L10n.sessionEnd())
+                SegPick([L10n.scheduleNever(), L10n.scheduleAfterARunCount(), L10n.scheduleEndDate()], selected: Binding(get: { draft.end.rawValue }, set: { draft.end = ScheduleTiming.End(rawValue: $0) ?? .never }))
+                if draft.end == .count { TextField(L10n.scheduleCount(), value: $draft.count, format: .number).keyboardType(.numberPad).textFieldStyle(.roundedBorder).padding(.vertical, 12).accessibilityLabel(L10n.scheduleCount()) }
+                if draft.end == .date { DatePicker(L10n.scheduleEndTime(), selection: $draft.until, displayedComponents: [.date, .hourAndMinute]).environment(\.timeZone, TimeZone(identifier: draft.timezone) ?? .current).environment(\.locale, Locale(identifier: MessageLocale.appleTags[MessageLocale.current]!)).padding(.vertical, 12) }
             }
-            if draft.kind != .interval { GRow("时区", value: draft.timezone, chevron: true) { zones = true } }
+            if draft.kind != .interval { GRow(L10n.scheduleTimeZone(), value: draft.timezone, chevron: true) { zones = true } }
             if !error.isEmpty { Hint(error, color: DS.red) }
-            Hint("立即运行一次不占自动次数及日历当天名额。")
+            Hint(L10n.scheduleIosRunOnceNowDoesNotCountTowardAutomaticRuns())
             TextAction(L10n.commonCancel(), alignment: .center, action: onClose)
         }
     }

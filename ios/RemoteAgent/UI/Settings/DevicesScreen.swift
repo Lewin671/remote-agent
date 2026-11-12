@@ -26,13 +26,13 @@ struct DevicesScreen: View {
         SettingsPage(refresh: refresh(online)) {
             Ticking { now in list(state, online: online, now: now) }
         }
-        .navBar("设备")
+        .navBar(L10n.settingsDevices())
         // The times on this page are as of opening it.
         .task(id: online) { if online && !model.isDemo { await remote.refreshDevices() } }
         .inputAlert(
             isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
-            title: "客户端名称", initial: renaming?.meta?.name ?? "",
-            placeholder: renaming.map { defaultClientName($0, id: $0.id, among: state.devices) } ?? "", text: "留空就用默认名称"
+            title: L10n.settingsClientName(), initial: renaming?.meta?.name ?? "",
+            placeholder: renaming.map { defaultClientName($0, id: $0.id, among: state.devices) } ?? "", text: L10n.settingsIosLeaveBlankForTheDefaultName()
         ) { [renaming] name in
             // The dialog stays until the name is stored, and says so when it is not.
             guard let id = renaming?.id else { return }
@@ -53,15 +53,15 @@ struct DevicesScreen: View {
         let machines = sortedMachines(state)
         let clients = sortClients(state.devices.values.filter { $0.kind == .client }, me: me)
 
-        GroupLabel("电脑 · 运行 CLI")
+        GroupLabel(L10n.settingsComputersRunClis())
         if machines.isEmpty {
-            GroupNote(state.loaded ? "还没有电脑" : "读取中…")
+            GroupNote(state.loaded ? L10n.settingsIosNoComputersYet() : L10n.projectsReadingDirectory())
         } else {
             GroupCard {
                 for m in machines { MachineRow(machine: m, state: state, now: now) }
             }
         }
-        GroupLabel("客户端 · 操作会话")
+        GroupLabel(L10n.settingsClientsControlSessions())
         GroupCard {
             // Before the list is read this client is still here.
             if clients.isEmpty {
@@ -76,7 +76,7 @@ struct DevicesScreen: View {
                     onRename: online && c.id == me ? { renaming = c } : nil)
             }
         }
-        GroupNote("右边是上次使用的时间。")
+        GroupNote(L10n.settingsIosTheTimeOnTheRightIsTheLastUse())
         AddDeviceEntry()
     }
 }

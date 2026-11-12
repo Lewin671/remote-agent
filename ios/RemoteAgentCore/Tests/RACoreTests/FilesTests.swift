@@ -70,7 +70,7 @@ private actor FileReceiver: UploadChannel {
     @Test func supportIsExplicitAndLimitsUseTheMachinesAdvertisement() throws {
         #expect(!fileSupported(nil))
         #expect(!fileSupported(machine(supported: false)))
-        #expect(fileUploadBlocked(machine(supported: false), online: true) == "这台电脑不支持发送文件")
+        #expect(fileUploadBlocked(machine(supported: false), online: true) == L10n.imageIosThisComputerDoesNotSupportFileUploads())
         #expect(fileLimit(for: machine()) == 2)
         #expect(fileByteLimit(for: machine()) == 10)
         let (folder, file) = try source(11)
@@ -185,7 +185,7 @@ private actor FileReceiver: UploadChannel {
         #expect(try await uploadFile(receiver, transferId: "empty", source: source).imageId == "file-1")
         try FileManager.default.removeItem(at: folder.appendingPathComponent(source.name))
         do { _ = try source.digest(); Issue.record("Deleted source was readable") }
-        catch { #expect(errorText(error) == "读不到源文件，请移除后重新选择") }
+        catch { #expect(errorText(error) == L10n.attachmentIosCannotReadTheSourceFileRemoveItAndSelect()) }
     }
 
     @Test func queueProjectionKeepsFileMetadata() {

@@ -100,7 +100,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         await store.send(computer, sid: "s", text: "一").value
         await store.send(computer, sid: "s", text: "二").value
         let list = store.outgoing("s")
-        #expect(list[0].state == .failed && list[0].error == "电脑不在线，指令没有发出")
+        #expect(list[0].state == .failed && list[0].error == L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
         #expect(list[1].state == .unknown)
     }
 
@@ -409,7 +409,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
 
     @Test func anAnswerThatNamesNoSessionIsAFailure() async {
         #expect(await store.forkSession(computer, machineId: "m", sid: "s").value == nil)
-        #expect(store.fork("s").error == "意外的回复" && !store.fork("s").frozen)
+        #expect(store.fork("s").error == L10n.newSessionUnexpectedReply() && !store.fork("s").frozen)
     }
 
     // MARK: Answers

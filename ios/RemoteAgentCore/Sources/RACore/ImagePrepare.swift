@@ -23,12 +23,12 @@ import UniformTypeIdentifiers
 
 /// A picked image that is too large to read or to send.
 public struct ImageTooLarge: Error, LocalizedError, Equatable {
-    public let message: String
+    private let localized: LocalizedMessage
+    public var message: String { localized.resolve() }
+    public init(_ message: String) { localized = LocalizedMessage(raw: message) }
+    public init(_ message: LocalizedMessage) { localized = message }
 
-    public init(_ message: String) {
-        self.message = message
-    }
-
+    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.message == rhs.message }
     public var errorDescription: String? { message }
 }
 
@@ -42,7 +42,7 @@ public func pickedReadLimit(original: Bool) -> Int64 { original ? maxOriginalByt
 /// Refuses a picked file larger than what is read of one.
 public func checkPicked(bytes: Int64, original: Bool) throws {
     let limit = pickedReadLimit(original: original)
-    if bytes > limit { throw ImageTooLarge("图片超过 \(limit / 1024 / 1024) MB") }
+    if bytes > limit { throw ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: Int(limit / 1024 / 1024))) }
 }
 
 /// Reads a picked file, unless it is larger than the most that is ever read
@@ -76,8 +76,8 @@ public func shrunkSide(_ n: Int) -> Int { max(1, Int(Double(n) * 0.8)) }
 
 /// What 原图 says under the strip when the file could not go as it was.
 public func originalNote(turned: Bool, png: Bool, sample: Int) -> String {
-    let shrunk = sample > 1 ? "；像素超过手机能处理的上限，缩小到 1/\(sample)" : ""
-    return (turned ? "按拍摄方向转正后以最高画质重新编码" : "转成了 \(png ? "PNG" : "JPEG")，保留原始尺寸") + shrunk
+    let shrunk = sample > 1 ? L10n.imageIosPixelsExceedThisPhoneSLimitReducedTo1(value: String(describing: sample)) : ""
+    return (turned ? L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation() : L10n.imageIosConvertedToKeepingOriginalDimensions(value: String(describing: png ? "PNG" : "JPEG"))) + shrunk
 }
 
 /// Pixels this process may decode at once: the fixed cap, and a share of
@@ -86,7 +86,7 @@ func pixelBudget(physicalMemory: UInt64 = ProcessInfo.processInfo.physicalMemory
     min(maxDecodePixels, Int64(clamping: physicalMemory / 64))
 }
 
-private let undecodable = UserError("解不出这张图片")
+private let undecodable = UserError(L10nMessage.imageIosCannotDecodeThisImage())
 
 private func hasAlpha(_ image: CGImage) -> Bool {
     switch image.alphaInfo {
@@ -198,7 +198,7 @@ func decodeUpright(_ data: Data, maxLong: Int, budget: Int64? = nil) throws -> D
 
 /// Encodes as PNG or as JPEG at `quality` (1 to 100), with nothing but the pixels and their color profile.
 func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
-    let failed = UserError("没能编码这张图片")
+    let failed = UserError(L10nMessage.imageIosCouldNotEncodeThisImage())
     let out = NSMutableData()
     let type = (png ? UTType.png : UTType.jpeg).identifier as CFString
     guard let dest = CGImageDestinationCreateWithData(out, type, 1, nil) else { throw failed }
@@ -218,7 +218,7 @@ func encodeImage(_ image: CGImage, png: Bool, quality: Int) throws -> Data {
 /// phone's own when nil.
 public func prepareImageNow(_ data: Data, original: Bool, budget: Int64? = nil) throws -> Processed {
     try checkPicked(bytes: Int64(data.count), original: original)
-    let tooLarge = ImageTooLarge("原图超过 \(maxOriginalBytes / 1024 / 1024) MB")
+    let tooLarge = ImageTooLarge(L10nMessage.imageIosOriginalExceedsMb(count: Int(maxOriginalBytes / 1024 / 1024)))
     if original {
         if let clean = try stripOriginal(data), let format = detectFormat(clean) {
             if Int64(clean.count) > maxOriginalBytes { throw tooLarge }

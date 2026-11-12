@@ -207,7 +207,7 @@ import Testing
         let locked = VaultError(operation: .read, status: errSecInteractionNotAllowed)
         #expect(locked.isLocked)
         #expect(locked.localizedDescription.contains("解锁"))
-        #expect(VaultError.unreadable.localizedDescription.contains("重新加入"))
-        #expect(VaultError(operation: .save, status: errSecParam).localizedDescription.contains("保存"))
+        #expect(VaultError.unreadable.localizedDescription.contains(L10n.securityRejoin()))
+        #expect(VaultError(operation: .save, status: errSecParam).localizedDescription.contains(L10n.commonSave()))
     }
 }

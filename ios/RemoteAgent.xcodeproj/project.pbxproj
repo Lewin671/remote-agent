@@ -187,6 +187,7 @@
 			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				en,
 				"zh-Hans",
 				Base,
 			);
@@ -325,8 +326,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "RemoteAgent/Info-Debug.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "RA dev";
-				INFOPLIST_KEY_NSCameraUsageDescription = "扫描配对二维码，把这台设备加入账户";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "把会话里的图片保存到相册";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -349,8 +348,6 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = RemoteAgent/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "remote-agent";
-				INFOPLIST_KEY_NSCameraUsageDescription = "扫描配对二维码，把这台设备加入账户";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "把会话里的图片保存到相册";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";

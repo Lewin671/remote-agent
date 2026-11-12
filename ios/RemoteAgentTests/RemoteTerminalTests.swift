@@ -248,7 +248,7 @@ import Testing
         #expect(t.host.screenText == "one\ntwo")
         streams.listener(0).onClose("终端连接断开")
         await eventually { t.state != .live }
-        #expect(t.state == .closed("终端连接断开"))
+        #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))
         // The last picture stays under the notice.
         #expect(t.host.screenText == "one\ntwo")
         t.close()
@@ -309,7 +309,7 @@ import Testing
         let t = terminal(streams, fail: "连不上终端")
         t.connect()
         await eventually { t.state != .connecting }
-        #expect(t.state == .closed("连不上终端"))
+        #expect(t.state == .closed(L10n.errorsCannotConnectToTerminal()))
     }
 
     /// A picture can come before the opening command answers: it is shown, but the terminal is not live, so
@@ -370,6 +370,6 @@ import Testing
         await eventually { streams.count == 2 }
         streams.listener(1).onClose("终端连接断开")
         await eventually { t.state != .connecting }
-        #expect(t.state == .closed("终端连接断开"))
+        #expect(t.state == .closed(L10n.errorsTerminalConnectionDropped()))
     }
 }

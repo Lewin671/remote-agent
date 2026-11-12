@@ -68,7 +68,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         reads.thenFail(CommandError(CommandError.unavailable, "电脑不在线，指令没有发出"))
         await m.read()
         #expect(m.settings == nil)
-        #expect(m.readError == "电脑不在线，指令没有发出")
+        #expect(m.readError == L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
         reads.then(reply(settings()))
         await m.read()
         #expect(m.settings != nil && m.readError.isEmpty)
@@ -81,7 +81,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         reads.thenFail(UserError("没有回应"))
         await m.read()
         #expect(m.settings?.approvalTimeoutSeconds == 120)
-        #expect(m.readError == "没有回应")
+        #expect(m.readError == L10n.connectionNoResponse())
     }
 
     /// A model whose update waits until the test lets it go, then answers with `outcome`, or what it was sent.
@@ -128,7 +128,7 @@ private func reply(_ s: PBDaemonSettings, upload: Int64? = nil) -> PBGetSettings
         await saving.value
         #expect(!m.saving)
         #expect(m.settings?.approvalTimeoutSeconds == 600)
-        #expect(m.readError == "没有回应" && m.saveError.isEmpty)
+        #expect(m.readError == L10n.connectionNoResponse() && m.saveError.isEmpty)
     }
 
     @Test func aSaveThatFailsIsSaidWhateverWasAskedForMeanwhile() async {
@@ -310,14 +310,14 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
     @Test func wordsForSizesAndTimes() {
         #expect(timeoutText(seconds: 600) == "10 分钟")
         #expect(timeoutText(seconds: 45) == "45 秒")
-        #expect(idleCloseText(minutes: -1) == "关闭")
-        #expect(idleCloseText(minutes: -5) == "关闭")
+        #expect(idleCloseText(minutes: -1) == L10n.commonClose())
+        #expect(idleCloseText(minutes: -5) == L10n.commonClose())
         #expect(idleCloseText(minutes: 0) == "6 小时")
         #expect(idleCloseText(minutes: 180) == "3 小时")
         #expect(idleCloseText(minutes: 90) == "90 分钟")
         #expect(imageBytes(0) == "0.0 MiB")
-        #expect(imageBytes(1) == "不到 0.1 MiB")
-        #expect(imageBytes(104_857) == "不到 0.1 MiB")
+        #expect(imageBytes(1) == L10n.settingsLessThan01Mib())
+        #expect(imageBytes(104_857) == L10n.settingsLessThan01Mib())
         #expect(imageBytes(104_858) == "0.1 MiB")
         #expect(imageBytes(24 << 20) == "24.0 MiB")
         #expect(imageBytes(3 << 29) == "1.5 GiB")
@@ -330,7 +330,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         }
         #expect(uploadsText(usage) == "10.0 MiB · 可清理 2.0 MiB")
         #expect(uploadsText(.with { $0.uploadBytes = 1 << 20; $0.reservedBytes = 1 << 20 }) == "1.0 MiB · 正在上传 1.0 MiB")
-        #expect(osName("darwin") == "macOS" && osName("linux") == "Linux" && osName("") == "未知" && osName("freebsd") == "freebsd")
+        #expect(osName("darwin") == "macOS" && osName("linux") == "Linux" && osName("") == L10n.settingsIosUnknown() && osName("freebsd") == "freebsd")
     }
 
     @Test func aComputersStateIsOnlySaidWhileConnected() {
@@ -341,10 +341,10 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         let on = MachineView(id: "a", online: true, lastSeenMs: now)
         let off = MachineView(id: "b", online: false, lastSeenMs: now - 5 * 60_000)
         let never = MachineView(id: "c", online: false, lastSeenMs: 0)
-        #expect(machineStatus(on, state: state, now: now)?.text == "在线")
+        #expect(machineStatus(on, state: state, now: now)?.text == L10n.commonIosOnline())
         #expect(machineStatus(off, state: state, now: now)?.text == "5 分钟前")
         #expect(machineStatus(off, state: state, now: now)?.online == false)
-        #expect(machineStatus(never, state: state, now: now)?.text == "离线")
+        #expect(machineStatus(never, state: state, now: now)?.text == L10n.settingsOffline())
         // Not connected: the cache's word on a computer is not repeated (architecture §9).
         state.link = .noServer
         state.conn = .offline
@@ -414,7 +414,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
                 return 1
             }))
         await check.measure(online: ["mac", "vps"])
-        #expect(check.server == .fail(error: "没有回应"))
+        #expect(check.server == .fail(error: L10n.connectionNoResponse()))
         #expect(check.machines == ["mac": .skip, "vps": .skip])
         #expect(asked.all.isEmpty)
         #expect(!check.busy)
@@ -430,7 +430,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         await check.measure(online: ["mac", "vps"])
         #expect(check.server == .ok(ms: 50))
         #expect(check.machines["mac"] == .ok(ms: 200))
-        #expect(check.machines["vps"] == .fail(error: "电脑不在线，指令没有发出"))
+        #expect(check.machines["vps"] == .fail(error: L10n.errorsTheComputerIsOfflineTheCommandWasNotSent()))
     }
 
     @Test func measuringAgainStartsOver() async {

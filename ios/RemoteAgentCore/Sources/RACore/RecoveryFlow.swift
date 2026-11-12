@@ -44,7 +44,7 @@ extension AuthorityBootstrap {
     /// This path queries only challenge/context. It does not submit recovery or persist the seed.
     public func completeAccountPublicProfile(server: String, code: String) async throws {
         let t = try begin(); defer { busy = false }
-        guard let decoded = RecoveryCode.decode(code) else { throw PairError("恢复码无效") }
+        guard let decoded = RecoveryCode.decode(code) else { throw PairError(L10nMessage.securityInvalidRecoveryCode()) }
         let api = try Api(server: server, http: http)
         let chain = try await context(api: api, recoveryEd: SigningKey(seed: decoded.seed).publicKey,
             signerSeed: decoded.seed, genesisPrefix: decoded.genesis, ticket: t)
@@ -58,7 +58,7 @@ extension AuthorityBootstrap {
     public func prepareEmergencyRecovery(server: String, code: String) async throws -> String {
         let t = try begin(); defer { busy = false }
         try DeviceSecurity.check(storage.readOperation() == nil, .conflict)
-        guard let decoded = RecoveryCode.decode(code) else { throw PairError("恢复码无效") }
+        guard let decoded = RecoveryCode.decode(code) else { throw PairError(L10nMessage.securityInvalidRecoveryCode()) }
         let api = try Api(server: server, http: http)
         let chain = try await context(api: api, recoveryEd: SigningKey(seed: decoded.seed).publicKey,
             signerSeed: decoded.seed, genesisPrefix: decoded.genesis, ticket: t)

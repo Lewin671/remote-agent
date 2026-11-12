@@ -449,6 +449,20 @@
     }
   },
   {
+    "key": "attachment.ios_cannot_read_the_source_file_remove_it_and_select",
+    "zh-CN": "读不到源文件，请移除后重新选择",
+    "en": "Cannot read the source file. Remove it and select it again.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.ios_choose_machine",
     "zh-CN": "先选一台电脑",
     "en": "Choose a computer first",
@@ -481,6 +495,81 @@
     "zh-CN": "剪贴板里没有图片",
     "en": "No images in clipboard",
     "notes": "iOS 会话附件提示或图片占位符。保持原中文，正文允许多行；index 来自 CLI 图片编号原串，保留前导零。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_computer_offline_connect_to_add_files",
+    "zh-CN": "电脑离线，连上后才能添加文件",
+    "en": "Computer offline. Connect to add files.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_could_not_connect_to_the_computer_retry_the_upload",
+    "zh-CN": "没能连上电脑，请重试上传",
+    "en": "Could not connect to the computer. Retry the upload.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_could_not_create_the_local_cache_directory",
+    "zh-CN": "没能建立本机缓存目录：{value}",
+    "en": "Could not create the local cache directory: {value}",
+    "notes": "iOS CipherStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_could_not_restore_pending_attachments_retry",
+    "zh-CN": "待发附件没能恢复，请重试",
+    "en": "Could not restore pending attachments. Retry.",
+    "notes": "iOS Attachments.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_could_not_save_pending_images",
+    "zh-CN": "没能保存待发图片",
+    "en": "Could not save pending images",
+    "notes": "iOS PendingStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -539,6 +628,86 @@
     }
   },
   {
+    "key": "attachment.ios_file_too_large_each_file_may_be_at_most",
+    "zh-CN": "文件太大，单个文件最多 {value}",
+    "en": "File too large. Each file may be at most {value}.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 fileSize(maxBytes)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_upload_failed_retry_or_select_the_file_again",
+    "zh-CN": "文件上传失败，请重试或重新选择",
+    "en": "File upload failed. Retry or select the file again.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_upload_is_not_authorized_check_device_authorization",
+    "zh-CN": "没有上传文件的权限，请检查设备授权",
+    "en": "File upload is not authorized. Check device authorization.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_upload_state_was_not_saved",
+    "zh-CN": "文件上传状态未保存：{value}",
+    "en": "File upload state was not saved: {value}",
+    "notes": "iOS Attachments.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 failure；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_file_verification_failed_the_file_may_have_changed_select",
+    "zh-CN": "文件校验失败，文件可能已被修改，请重新选择",
+    "en": "File verification failed. The file may have changed. Select it again.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.ios_files_limit_notice",
     "zh-CN": {
       "plural": "limit",
@@ -560,6 +729,20 @@
         "example": 2
       }
     },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_folders_cannot_be_sent_directly_compress_the_folder_and",
+    "zh-CN": "文件夹不能直接发送，请压缩后选择",
+    "en": "Folders cannot be sent directly. Compress the folder and select it.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
     "platforms": [
       "ios"
     ],
@@ -631,6 +814,34 @@
     "zh-CN": "粘贴图片",
     "en": "Paste image",
     "notes": "SessionComposer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_pending_attachment_keys_are_unavailable_retry_shortly",
+    "zh-CN": "待发附件密钥不可用，请稍后重试",
+    "en": "Pending attachment keys are unavailable. Retry shortly.",
+    "notes": "iOS PendingStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_pending_attachments_have_not_been_restored_retry",
+    "zh-CN": "待发附件尚未恢复，请重试",
+    "en": "Pending attachments have not been restored. Retry.",
+    "notes": "iOS Attachments.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -751,10 +962,150 @@
     }
   },
   {
+    "key": "attachment.ios_signed_out_of_the_account",
+    "zh-CN": "已退出账户",
+    "en": "Signed out of the account",
+    "notes": "iOS PendingStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "attachment.ios_source_unreadable",
     "zh-CN": "读不到源文件，请重新选择",
     "en": "Cannot read the source file. Choose it again.",
     "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_app_restarted_delivery_of_this_message_is_unconfirmed",
+    "zh-CN": "App 重启过，不确定这条有没有送到",
+    "en": "The app restarted. Delivery of this message is unconfirmed.",
+    "notes": "iOS Attachments.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_computer_did_not_confirm_upload_completion_retry",
+    "zh-CN": "电脑没有确认文件上传完成，请重试",
+    "en": "The computer did not confirm upload completion. Retry.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_computer_did_not_provide_a_file_id",
+    "zh-CN": "电脑没有给出文件 ID",
+    "en": "The computer did not provide a file ID",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_computer_reported_invalid_upload_progress",
+    "zh-CN": "电脑报告的上传进度不对",
+    "en": "The computer reported invalid upload progress",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_computer_s_attachment_storage_is_full_clear_space",
+    "zh-CN": "电脑的附件存储空间不足，请清理后重试",
+    "en": "The computer’s attachment storage is full. Clear space and retry.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_file_changed_after_selection_select_it_again",
+    "zh-CN": "文件在选择后被修改，请重新选择",
+    "en": "The file changed after selection. Select it again.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_the_file_on_the_computer_expired_retry_the_upload",
+    "zh-CN": "电脑上的文件已过期，请重试上传",
+    "en": "The file on the computer expired. Retry the upload.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_this_computer_has_not_declared_file_upload_support_update",
+    "zh-CN": "这台电脑尚未声明文件发送能力，请更新电脑上的 remote-agent 后再试",
+    "en": "This computer has not declared file upload support. Update remote-agent on the computer and retry.",
+    "notes": "iOS Files.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_this_phone_s_pending_image_storage_is_full_send",
+    "zh-CN": "手机待发图片空间不足，请发送或移除旧草稿",
+    "en": "This phone’s pending image storage is full. Send or remove older drafts.",
+    "notes": "iOS PendingStore.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -789,6 +1140,20 @@
         "example": 2
       }
     },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.ios_verify_the_file_on_the_computer",
+    "zh-CN": "需要核对电脑上的文件",
+    "en": "Verify the file on the computer",
+    "notes": "iOS Attachments.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
     "platforms": [
       "ios"
     ],

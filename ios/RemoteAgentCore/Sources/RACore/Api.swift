@@ -269,7 +269,8 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public let code: String
     /// Raw local cause for outbox captions, without the unknown-outcome heading.
     public let outcomeDetail: String?
-    public let message: String
+    private let localized: LocalizedMessage
+    public var message: String { localized.resolve() }
     /// The daemon's own answer for this request, the final word on it
     /// (except that it expired before reaching the daemon).
     public let fromDaemon: Bool
@@ -277,8 +278,15 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public init(_ code: String, _ message: String, fromDaemon: Bool = false, outcomeDetail: String? = nil) {
         self.code = code
         self.outcomeDetail = outcomeDetail
-        self.message = message
+        self.localized = LocalizedMessage(raw: message)
         self.fromDaemon = fromDaemon
+    }
+
+    public init(_ code: String, _ message: LocalizedMessage, fromDaemon: Bool = false, outcomeDetail: String? = nil) {
+        self.code = code
+        self.localized = message
+        self.fromDaemon = fromDaemon
+        self.outcomeDetail = outcomeDetail
     }
 
     /// The command may or may not have run; retrying with the same request ID is safe.
@@ -286,6 +294,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public var unknown: Bool {
         code == CommandError.unknownOutcome || (fromDaemon && code == "aborted")
     }
+    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.message == rhs.message && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon }
     public var errorDescription: String? { message }
     public var description: String { message }
 
@@ -340,10 +349,10 @@ func networkFailure(_ e: Error?) -> NetworkFailure? {
 
 private func networkText(_ e: Error?) -> String? {
     switch networkFailure(e) {
-    case .unresolved?: return "找不到服务器，检查一下网络"
-    case .refused?: return "连不上服务器"
-    case .timedOut?: return "连接超时"
-    case .insecure(let why)?: return "安全连接失败：" + why
+    case .unresolved?: return L10n.errorsIosCannotFindTheServerCheckYourNetwork()
+    case .refused?: return L10n.connectionNoServer()
+    case .timedOut?: return L10n.errorsConnectionTimedOut()
+    case .insecure(let why)?: return L10n.errorsIosSecureConnectionFailed(value: String(describing: why))
     case nil: return nil
     }
 }
@@ -365,13 +374,13 @@ private func ownText(_ e: Error) -> String {
 
 /// Short text for an error, without content.
 public func errorText(_ e: Error) -> String {
-    if e is RecoveryHistoryUnavailable {return "历史密钥不可用：恢复前的记录无法解密"}
+    if e is RecoveryHistoryUnavailable {return L10n.errorsHistoryKeysUnavailableRecordsFromBeforeRecoveryCannotBe()}
     if let f=e as? DeviceSecurity.Failure {
         switch f {
-        case .lease:return "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看"
-        case .unavailable:return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
-        case .invalid,.untrusted:return "密文无效：签名、密钥或内容校验失败"
-        case .conflict:return "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
+        case .lease:return L10n.errorsIosRemoteControlExpiredSavingChangesSessionControlAndNew()
+        case .unavailable:return L10n.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote()
+        case .invalid,.untrusted:return L10n.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed()
+        case .conflict:return L10n.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd()
         default:break
         }
     }
@@ -381,10 +390,10 @@ public func errorText(_ e: Error) -> String {
         // as its cause, and that failure's own message as its text.
         if let t = networkText(ce.exception) { return t }
         switch ce.code {
-        case .unavailable: return "连不上服务器" + (ce.message.map { "：\($0)" } ?? "")
+        case .unavailable: return ce.message.map { L10n.connectionIosServerError(reason: String(describing: $0)) } ?? L10n.connectionNoServer()
         case .permissionDenied where ce.message == "login failed":
-            return "服务器不认识这台设备（可能已被移除，或服务已重建）"
-        case .unauthenticated: return "登录失效：" + (ce.message ?? "")
+            return L10n.errorsTheServerDoesNotRecognizeThisDeviceItMay()
+        case .unauthenticated: return L10n.errorsIosLoginExpired(value: String(describing: ce.message ?? ""))
         default: return ce.message ?? ce.code.name
         }
     }

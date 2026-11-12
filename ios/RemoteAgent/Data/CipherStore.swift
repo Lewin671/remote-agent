@@ -328,7 +328,7 @@ func protectedDirectory(_ url: URL) throws {
         var u = url
         try u.setResourceValues(values)
     } catch {
-        throw CacheError(description: "没能建立本机缓存目录：\(error.localizedDescription)")
+        throw CacheError(description: L10n.attachmentIosCouldNotCreateTheLocalCacheDirectory(value: String(describing: error.localizedDescription)))
     }
 }
 

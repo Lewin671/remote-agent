@@ -17,7 +17,7 @@ struct ScheduledChatRow: View {
                             Text(note.text).font(.footnote).ink(DS.ink2).multilineTextAlignment(.leading)
                             Arrow(DS.ink2, direction: expanded ? .up : .down)
                         }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.horizontal, 16)
-                    }.buttonStyle(PressStyle()).accessibilityValue(expanded ? "已展开" : "已折叠")
+                    }.buttonStyle(PressStyle()).accessibilityValue(expanded ? L10n.projectsIosExpanded() : L10n.sessionIosCollapsed())
                 }
                 if expanded { ForEach(row.folded) { child in ChatRowView(row: child, env: env).equatable().id(child.id) } }
             }
@@ -33,11 +33,11 @@ struct SessionScheduleBar: View {
         let tasks = sessionSchedules(context.schedules.tasks, session: session)
         if !tasks.isEmpty {
             // A strip of glass under the session's title (design-system §6 「提示条」).
-            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(session.machineId)), symbol: "clock", action: "管理") {
+            GlassStrip(text: scheduleBarText(tasks, online: context.schedules.online(session.machineId)), symbol: "clock", action: L10n.scheduleManage()) {
                 if let task = tasks.first, tasks.count == 1 { open(task) } else { picking = true }
             }
                 .kitSheet(isPresented: $picking) {
-                    SheetHead("管理定时任务")
+                    SheetHead(L10n.scheduleIosManageScheduledTask())
                     ForEach(tasks) { entry in ListItem(entry.task.spec.title, desc: entry.task.stateText(online: context.schedules.online(entry.machineID))) { picking = false; open(entry) } }
                 }
         }
@@ -67,10 +67,10 @@ struct ScheduleResultCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 6) {
-                if unread { Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel("进入时未读") }
+                if unread { Circle().fill(DS.blue).frame(width: 8, height: 8).accessibilityLabel(L10n.scheduleUnreadOnEntry()) }
                 Text(scheduleMoment(run.notificationTime)).font(.footnote).ink(DS.ink2)
                 Spacer(minLength: 0)
-                if showConversation, !(run.sessionID ?? "").isEmpty { TextAction("对话", arrow: true, action: open) }
+                if showConversation, !(run.sessionID ?? "").isEmpty { TextAction(L10n.scheduleConversation(), arrow: true, action: open) }
             }
             if let title = run.resultTitle {
                 Text(title).font(.body.weight(.semibold)).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading)
@@ -107,7 +107,7 @@ struct ScheduleResultBody: View {
             if folds && (count < blocks.count || clippedFirst) {
                 Button { expanded = true } label: {
                     HStack(spacing: 4) {
-                        Text("展开全文").font(.subheadline).ink(DS.blue)
+                        Text(L10n.markdownExpand()).font(.subheadline).ink(DS.blue)
                         Arrow(DS.blue, direction: .down)
                     }.frame(minHeight: 44)
                 }.buttonStyle(PressStyle())

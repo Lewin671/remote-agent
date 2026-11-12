@@ -76,7 +76,7 @@ enum HomeLaunch {
                 s.machines["mac"] = machine(online: true)
             case "listFailed":
                 s.sessionsListed = false
-                s.sessionsError = "连接超时"
+                s.sessionsError = L10n.errorsConnectionTimedOut()
             default:
                 break
             }
@@ -84,7 +84,7 @@ enum HomeLaunch {
         await remote.showForTest(state: s, modelLists: Demo.models)
         if let scope = value("-homeScope") { context.homeScopes.show(scope == "all" ? .all : .of(key: scope)) }
         if let path = value("-prefsSaving") { context.prefsChanges.show(.saving(.pin(path: path)), for: path) }
-        if let path = value("-prefsFailed") { context.prefsChanges.show(.failed(.pin(path: path), "连接超时"), for: path) }
+        if let path = value("-prefsFailed") { context.prefsChanges.show(.failed(.pin(path: path), L10n.errorsConnectionTimedOut()), for: path) }
         done = true
     }
 

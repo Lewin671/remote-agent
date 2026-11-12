@@ -201,7 +201,7 @@ def build(root):
     put('web/src/i18n/generated.ts', ts)
     put('web/src/i18n/locale-vectors.json', dump(read(root / 'i18n/locale-vectors.json')))
     # The launch path must remain readable when the main app cannot download.
-    startup_keys = [k for k in messages if k.startswith('startup.') or k == 'common.reload']
+    startup_keys = [k for k, row in messages.items() if 'web' in row['platforms'] and (k.startswith('startup.') or k == 'common.reload')]
     startup = {lang: {k: messages[k][lang] for k in startup_keys} for lang in metadata}
     put('web/src/i18n/startup.generated.ts', f'// {HEADER}\nexport const startupMessages = '+dump(startup).strip()+' as const;\n')
     # Templates are inputs in full checkouts; compiler fixtures can omit surfaces.
@@ -224,6 +224,7 @@ def build(root):
     cases = []
     swift = f'// {HEADER}\nimport Foundation\n\npublic enum L10n {{\n'
     swift += template('swift-runtime.txt')
+    deferred = 'public enum L10nMessage {\n'
     go = '// '+HEADER+'\npackage i18n\n\nimport (\n\t"embed"\n\t"encoding/json"\n\t"fmt"\n\t"regexp"\n\t"strconv"\n\t"strings"\n)\n\n'
     go += template('go-runtime.txt')
     catalog = {'sourceLanguage': locales['source'], 'version':'1.0', 'strings':{}}
@@ -253,12 +254,22 @@ def build(root):
         if 'ios' in row['platforms']:
             args = ', '.join([f'{n}: {TYPES[row["params"][n]["type"]][2]}' for n in params]+['locale: String = MessageLocale.current'])
             swift += f'    public static func {fn}({args}) -> String {{\n'
+            deferred_args = ', '.join(f'{n}: {TYPES[row["params"][n]["type"]][2]}' for n in params)
+            deferred += f'    public static func {fn}({deferred_args}) -> LocalizedMessage {{\n'
             if kind == 'select':
+                deferred += f'        let key: String\n        switch {value["select"]} {{\n'
+                for form in sorted(value['forms']):
+                    if form != 'other': deferred += f'        case "{form}": key = "{symbol(key)}_{form}"\n'
+                deferred += f'        default: key = "{symbol(key)}_other"\n        }}\n'
                 swift += f'        let key: String\n        switch {value["select"]} {{\n'
                 for form in sorted(value['forms']):
                     if form != 'other': swift += f'        case "{form}": key = "{symbol(key)}_{form}"\n'
                 swift += f'        default: key = "{symbol(key)}_other"\n        }}\n'
-            else: swift += f'        let key = "{symbol(key)}"\n'
+            else:
+                swift += f'        let key = "{symbol(key)}"\n'
+                deferred += f'        let key = "{symbol(key)}"\n'
+            deferred_values = ', '.join(f'.integer(Int64({n}))' if row['params'][n]['type']=='integer' else f'.number({n})' if row['params'][n]['type']=='number' else f'.string({n})' for n in params)
+            deferred += f'        return LocalizedMessage(key: key, arguments: [{deferred_values}])\n    }}\n'
             swiftargs = ', '.join(f'Int64({n})' if row['params'][n]['type']=='integer' else n for n in params)
             swift += f'        return format(key, locale: locale, args: [{swiftargs}])\n    }}\n'
         if 'go' in row['platforms']:
@@ -288,7 +299,7 @@ def build(root):
     app += '    return ' + ' ?: '.join(f'resolveUiMessage{n}(resources, message)' for n in range(len(chunks))) + ' ?: error("Unknown UI message key")\n}\n'
     for n, chunk in enumerate(chunks):
         app += f'\nprivate fun resolveUiMessage{n}(resources: android.content.res.Resources, message: UiMessage): String? {{\n    return when (message.key) {{\n' + ''.join(chunk) + '        else -> null\n    }\n}\n'
-    swift += '}\n'
+    swift += '}\n' + deferred + '}\n' + template('swift-message.txt')
     swift += template('swift-locale.txt').replace('APPLE_TAGS', ', '.join(f'"{l}": "{m["apple"]}"' for l,m in metadata.items())).replace('LANGUAGE_MAP', ', '.join(f'"{a}": "{l}"' for l,m in metadata.items() for a in m['languages']))
     put('android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/UiMessages.generated.kt', core)
     put('android/app/src/main/java/io/github/lewin671/remoteagent/ui/UiMessages.generated.kt', app)
@@ -296,6 +307,11 @@ def build(root):
     put('ios/RemoteAgentCore/Localization/Localizable.xcstrings', dump(catalog))
     import plistlib
     for lang, loc in metadata.items():
+        info = {'NSCameraUsageDescription': 'startup.ios_camera_usage', 'NSPhotoLibraryAddUsageDescription': 'startup.ios_photo_library_add_usage'}
+        # Test fixtures without app metadata need no InfoPlist artifact.
+        if all(key in messages for key in info.values()):
+            lines = [f'{json.dumps(name)} = {json.dumps(messages[key][lang], ensure_ascii=False)};' for name, key in info.items()]
+            put(f'ios/RemoteAgent/{loc["apple"]}.lproj/InfoPlist.strings', '// '+HEADER+'\n'+'\n'.join(lines)+'\n')
         folder=f'ios/RemoteAgentCore/Sources/RACore/Resources/{loc["apple"]}.lproj'
         put(folder+'/Localizable.strings', '// '+HEADER+'\n'+'\n'.join(strings[lang])+'\n')
         put(folder+'/Localizable.stringsdict', plistlib.dumps(dicts[lang],sort_keys=True).decode())

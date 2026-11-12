@@ -29,7 +29,7 @@ struct MachineCard: View {
                     if let status {
                         HStack(spacing: 6) {
                             StatusMark(online ? .online : .off)
-                            Text(online ? status.text : status.hasLastSeen ? "\(status.text)在线" : "离线")
+                            Text(online ? status.text : status.hasLastSeen ? L10n.settingsOnline(value: String(describing: status.text)) : L10n.settingsOffline())
                                 .font(.subheadline).foregroundStyle(DS.ink2)
                         }
                     }
@@ -52,8 +52,8 @@ struct MachineCard: View {
         .overlay { if !online { shape.strokeBorder(DS.sep, lineWidth: 1) } }
         .padding(.horizontal, DS.Space.l).padding(.bottom, 12)
         .contextMenu {
-            Button("账户额度") { nav.open(.quota(machine: id)) }
-            Button("连接检测") { nav.open(.connectionCheck) }
+            Button(L10n.settingsAccountQuota()) { nav.open(.quota(machine: id)) }
+            Button(L10n.homeConnectionCheck()) { nav.open(.connectionCheck) }
         }
     }
 

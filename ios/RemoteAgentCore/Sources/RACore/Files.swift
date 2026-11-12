@@ -7,7 +7,7 @@ public let maxFiles = 6
 public let maxFileBytes: Int64 = 100 * 1024 * 1024
 
 public func fileSupported(_ machine: MachineView?) -> Bool { capabilities(machine)?.fileUpload == true }
-public let fileCapabilityUpdate = "这台电脑尚未声明文件发送能力，请更新电脑上的 remote-agent 后再试"
+public var fileCapabilityUpdate: String { L10n.attachmentIosThisComputerHasNotDeclaredFileUploadSupportUpdate() }
 
 /// Inspect the immutable command, including already prepared retries.
 func requiresFileCapability(_ command: PBCommand) -> Bool {
@@ -37,9 +37,9 @@ public func fileByteLimit(for machine: MachineView?) -> Int64 {
     return n > 0 ? min(n, maxFileBytes) : maxFileBytes
 }
 public func fileUploadBlocked(_ machine: MachineView?, online: Bool) -> String? {
-    guard let machine else { return "先选一台电脑" }
-    guard fileSupported(machine) else { return "这台电脑不支持发送文件" }
-    return machine.online && online ? nil : "电脑离线，连上后才能添加文件"
+    guard let machine else { return L10n.attachmentIosChooseMachine() }
+    guard fileSupported(machine) else { return L10n.imageIosThisComputerDoesNotSupportFileUploads() }
+    return machine.online && online ? nil : L10n.attachmentIosComputerOfflineConnectToAddFiles()
 }
 public func fileSize(_ bytes: Int64) -> String {
     if bytes < 1024 { return "\(bytes) B" }
@@ -131,15 +131,15 @@ public struct PickedFile: Codable, Equatable, Sendable {
         self = try Self.coordinated(url) { readable in
             let values = try readable.resourceValues(forKeys: [.isRegularFileKey, .isDirectoryKey, .isPackageKey])
             if values.isDirectory == true || values.isPackage == true {
-                throw UserError("文件夹不能直接发送，请压缩后选择")
+                throw UserError(L10nMessage.attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd())
             }
             guard values.isRegularFile == true else { throw Self.unreadable }
             let handle = try FileHandle(forReadingFrom: readable)
             defer { try? handle.close() }
             let size = try handle.seekToEnd()
-            guard maxBytes >= 0, size <= UInt64(maxBytes) else { throw UserError("文件太大，单个文件最多 \(fileSize(maxBytes))") }
+            guard maxBytes >= 0, size <= UInt64(maxBytes) else { throw UserError(L10nMessage.attachmentIosFileTooLargeEachFileMayBeAtMost(value: String(describing: fileSize(maxBytes)))) }
             guard !url.lastPathComponent.isEmpty, url.lastPathComponent.utf8.count <= 255 else {
-                throw UserError("文件名不能超过 255 字节，请重命名后选择")
+                throw UserError(L10nMessage.attachmentFilenameLimit())
             }
             return PickedFile(bookmark: try Self.bookmark(for: url), name: url.lastPathComponent, size: Int64(size))
         }
@@ -150,8 +150,8 @@ public struct PickedFile: Codable, Equatable, Sendable {
     public init(remote file: PBSentFile) {
         bookmark = Data(); name = file.name; size = file.sizeBytes
     }
-    public static var unreadable: UserError { UserError("读不到源文件，请移除后重新选择") }
-    public static var modified: UserError { UserError("文件在选择后被修改，请重新选择") }
+    public static var unreadable: UserError { UserError(L10nMessage.attachmentIosCannotReadTheSourceFileRemoveItAndSelect()) }
+    public static var modified: UserError { UserError(L10nMessage.attachmentIosTheFileChangedAfterSelectionSelectItAgain()) }
 
     /// The refreshed grant is returned to the draft and persisted before starting network work.
     func refreshed(resolve: (Data) throws -> (url: URL, stale: Bool) = Self.resolve) throws -> PickedFile {
@@ -250,13 +250,13 @@ public func fileUploadError(_ error: Error) -> String {
         return error is UserError ? errorText(error) : errorText(PickedFile.unreadable)
     }
     switch failure.code {
-    case "already_exists": return "文件在选择后被修改，请重新选择"
-    case "not_found": return "电脑上的文件已过期，请重试上传"
-    case "resource_exhausted": return "电脑的附件存储空间不足，请清理后重试"
-    case "unavailable", "network", CommandError.unknownOutcome: return "没能连上电脑，请重试上传"
-    case "invalid_argument", "data_loss": return "文件校验失败，文件可能已被修改，请重新选择"
-    case "permission_denied", "unauthenticated": return "没有上传文件的权限，请检查设备授权"
-    default: return "文件上传失败，请重试或重新选择"
+    case "already_exists": return L10n.attachmentIosTheFileChangedAfterSelectionSelectItAgain()
+    case "not_found": return L10n.attachmentIosTheFileOnTheComputerExpiredRetryTheUpload()
+    case "resource_exhausted": return L10n.attachmentIosTheComputerSAttachmentStorageIsFullClearSpace()
+    case "unavailable", "network", CommandError.unknownOutcome: return L10n.attachmentIosCouldNotConnectToTheComputerRetryTheUpload()
+    case "invalid_argument", "data_loss": return L10n.attachmentIosFileVerificationFailedTheFileMayHaveChangedSelect()
+    case "permission_denied", "unauthenticated": return L10n.attachmentIosFileUploadIsNotAuthorizedCheckDeviceAuthorization()
+    default: return L10n.attachmentIosFileUploadFailedRetryOrSelectTheFileAgain()
     }
 }
 
@@ -292,17 +292,17 @@ public func uploadFile(
         while status.state == .receiving && status.persistedBytes < refreshed.size {
             try Task.checkCancellation()
             let offset = status.persistedBytes
-            guard offset >= 0 else { throw UserError("电脑报告的上传进度不对") }
+            guard offset >= 0 else { throw UserError(L10nMessage.attachmentIosTheComputerReportedInvalidUploadProgress()) }
             let count = Int(min(Int64(chunkSize), refreshed.size - offset))
             let data = try await fileWork { try refreshed.chunk(offset: offset, count: count) }
             try Task.checkCancellation()
             do {
                 status = try await channel.put(transferId: transferId, offset: offset, data: data)
-                guard status.persistedBytes > offset else { throw UserError("电脑报告的上传进度不对") }
+                guard status.persistedBytes > offset else { throw UserError(L10nMessage.attachmentIosTheComputerReportedInvalidUploadProgress()) }
             } catch where again(error) { status = try await channel.status(transferId: transferId) }
             onProgress(status.persistedBytes, refreshed.size)
         }
-        guard status.persistedBytes >= 0, status.persistedBytes <= refreshed.size else { throw UserError("电脑报告的上传进度不对") }
+        guard status.persistedBytes >= 0, status.persistedBytes <= refreshed.size else { throw UserError(L10nMessage.attachmentIosTheComputerReportedInvalidUploadProgress()) }
         // Hashing may still be in flight, even when Complete itself returns RECEIVING.
         var checking = 0
         while status.state == .receiving {
@@ -311,14 +311,14 @@ public func uploadFile(
                 status = try await channel.complete(transferId: transferId)
                 if status.state == .receiving && status.persistedBytes == refreshed.size {
                     checking += 1
-                    guard checking < 3 else { throw UserError("电脑仍在校验附件，请稍后重试") }
+                    guard checking < 3 else { throw UserError(L10nMessage.errorsTheComputerIsStillVerifyingAttachmentsRetryShortly()) }
                     continue
                 }
-                guard status.state == .complete else { throw UserError("电脑没有确认文件上传完成，请重试") }
+                guard status.state == .complete else { throw UserError(L10nMessage.attachmentIosTheComputerDidNotConfirmUploadCompletionRetry()) }
             } catch where again(error) { status = try await channel.status(transferId: transferId) }
         }
         try Task.checkCancellation()
-        guard status.state == .complete, !status.fileID.isEmpty else { throw UserError("电脑没有给出文件 ID") }
+        guard status.state == .complete, !status.fileID.isEmpty else { throw UserError(L10nMessage.attachmentIosTheComputerDidNotProvideAFileId()) }
         onProgress(refreshed.size, refreshed.size)
         await FileUploadGate.shared.release()
         return UploadedImage(imageId: status.fileID, expiresMs: status.expiresMs)

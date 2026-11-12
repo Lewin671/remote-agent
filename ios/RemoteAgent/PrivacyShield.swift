@@ -1,3 +1,4 @@
+import RACore
 // Covers the app's windows whenever a scene is not the one in use: in the
 // app switcher, under Control Centre, and for the snapshot the system takes
 // when the app goes to the background. Decrypted content is then never in
@@ -76,6 +77,6 @@ struct PrivacyCover: View {
     }
 }
 
-#Preview("隐私遮罩") {
+#Preview(L10n.securityIosPrivacyShield()) {
     PrivacyCover()
 }

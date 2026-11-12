@@ -19,22 +19,22 @@ struct QuotaScreen: View {
             if let m {
                 Ticking { now in groups(m, state: state, now: now) }
             } else {
-                PageNote("这台电脑已经移除了")
+                PageNote(L10n.quotaIosThisComputerWasRemoved())
             }
         }
         .navBar(
-            "账户额度",
-            subtitle: m.map { _ in machineLabel(state, id: machine) + (status.map { " · " + ($0.online ? "在线" : "不在线") } ?? "") })
+            L10n.settingsAccountQuota(),
+            subtitle: m.map { _ in machineLabel(state, id: machine) + (status.map { " · " + ($0.online ? L10n.commonIosOnline() : L10n.commonIosOffline()) } ?? "") })
     }
 
     @ViewBuilder private func groups(_ m: MachineView, state: RemoteState, now: Int64) -> some View {
         let groups = quotaGroups(asKnown(m, state: state), now: now)
         // Not connected, the connection bar says so and the numbers are what was last heard.
-        if !state.unlinked && !m.online { GroupNote("电脑不在线，显示上次记录", color: DS.orangeInk) }
+        if !state.unlinked && !m.online { GroupNote(L10n.quotaIosComputerOfflineShowingTheLastReading(), color: DS.orangeInk) }
         ForEach(Array(groups.enumerated()), id: \.offset) { _, g in
             if !g.subgroups.isEmpty {
                 ForEach(Array(g.subgroups.enumerated()), id: \.offset) { index, sub in
-                    GroupLabel(sub.title + (g.lastRecord && index == 0 ? " · 上次记录" : ""))
+                    GroupLabel(sub.title + (g.lastRecord && index == 0 ? L10n.quotaLastReading() : ""))
                     if index == 0 && g.status == .failed {
                         GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
                     }
@@ -43,7 +43,7 @@ struct QuotaScreen: View {
                     }
                 }
             } else {
-                GroupLabel(g.title + (g.lastRecord ? " · 上次记录" : ""))
+                GroupLabel(g.title + (g.lastRecord ? L10n.quotaLastReading() : ""))
                 // Under the label it belongs to: with no last record there is no card, and the failure stands in its place.
                 if g.status == .failed {
                     GroupNote(g.detail.isEmpty ? L10n.quotaFailureNoReason(name: agentName(g.agent)) : L10n.quotaFailure(detail: g.detail, name: agentName(g.agent)), color: DS.red)
@@ -52,11 +52,11 @@ struct QuotaScreen: View {
                     GroupCard {
                         if g.status == .unsupported {
                             QuotaState(
-                                "暂不支持读取额度",
-                                g.detail.or("这台电脑上的 remote-agent 读不到 \(agentName(g.agent)) 的额度。")
+                                L10n.quotaQuotaLookupIsNotSupportedYet(),
+                                g.detail.or(L10n.quotaIosRemoteAgentOnThisComputerCannotReadSQuota(value: String(describing: agentName(g.agent))))
                                     + (agentInfo(g.agent).usageHint ?? ""))
                         } else if g.status == .waiting {
-                            QuotaState("暂未获取额度", g.detail.isEmpty ? L10n.quotaWaiting(name: agentName(g.agent)) : g.detail)
+                            QuotaState(L10n.quotaQuotaNotAvailableYet(), g.detail.isEmpty ? L10n.quotaWaiting(name: agentName(g.agent)) : g.detail)
                         }
                         for row in g.rows { QuotaWindow(row: row) }
                     }
@@ -71,8 +71,8 @@ struct QuotaScreen: View {
             }
 
         }
-        if groups.isEmpty { GroupNote("这台电脑还没有报告它装了哪些 CLI") }
-        GroupNote("时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。")
+        if groups.isEmpty { GroupNote(L10n.quotaIosThisComputerHasNotReportedWhichClisAreInstalled()) }
+        GroupNote(L10n.settingsTimesAreShownInBeijingTimeQuotasBelongTo())
     }
 }
 

@@ -411,6 +411,20 @@
     }
   },
   {
+    "key": "common.ios_list_separator",
+    "zh-CN": "、",
+    "en": ", ",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。界面中的名称/选项/星期列表分隔符；不用于识别协议或处理用户内容。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "common.ios_loading",
     "zh-CN": "读取中",
     "en": "Loading",
@@ -433,6 +447,20 @@
     "platforms": [
       "ios",
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.ios_note_separator",
+    "zh-CN": "；",
+    "en": "; ",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。多条图片处理说明之间的分隔符；保留中文无空格，英文含空格。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

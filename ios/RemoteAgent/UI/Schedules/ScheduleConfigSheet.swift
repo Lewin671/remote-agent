@@ -21,7 +21,7 @@ struct ScheduleConfigSheet: View {
     var body: some View {
         let state = selectionState
         let c = config
-        SheetHead([ScheduleConfigPage.project: "项目", .mode: "权限", .model: "模型", .machine: "机器和模型"][page] ?? "设置", action: L10n.commonDone(), onAction: onClose)
+        SheetHead([ScheduleConfigPage.project: L10n.scheduleProject(), .mode: L10n.newSessionPermissions(), .model: L10n.modelsTitle(), .machine: L10n.scheduleComputerAndModel()][page] ?? L10n.commonSettings(), action: L10n.commonDone(), onAction: onClose)
         switch page {
         case .project:
             if browsing {
@@ -37,11 +37,11 @@ struct ScheduleConfigSheet: View {
             if let c {
                 ForEach(machineRows(state, cwd: c.cwd, agent: c.agent)) { row in
                     let supported = state.machines[row.id]?.meta?.capabilities.scheduledTasks == true
-                    ListItem(row.name, desc: supported ? row.note : "需要更新 remote-agent 才能使用定时任务", checked: row.id == c.machineId, enabled: row.online && supported) {
+                    ListItem(row.name, desc: supported ? row.note : L10n.scheduleIosUpdateRemoteAgentToUseScheduledTasks(), checked: row.id == c.machineId, enabled: row.online && supported) {
                         selectMachine(row.id, state: state)
                     }
                 }
-                FieldLabel("模型")
+                FieldLabel(L10n.modelsTitle())
                 modelChoices(c)
             }
         case .mode:
@@ -56,7 +56,7 @@ struct ScheduleConfigSheet: View {
             modelChoices(c)
         }
         if !error.isEmpty { Hint(error, color: DS.red) }
-        if c == nil && page != .project { Hint("请先选择项目。") }
+        if c == nil && page != .project { Hint(L10n.scheduleIosChooseAProjectFirst()) }
         Group { EmptyView() }.task(id: (c?.machineId ?? "") + "/" + String(c?.agent.rawValue ?? 0)) {
             guard let c, page == .model || page == .mode || page == .machine else { return }
             models = nil; settings = nil; error = ""
@@ -73,15 +73,15 @@ struct ScheduleConfigSheet: View {
 
     @ViewBuilder private func modelChoices(_ c: NewConfig?) -> some View {
         if let c, let models {
-            ListItem("默认", checked: c.model.isEmpty) { config?.model = ""; config?.effort = "" }
+            ListItem(L10n.modelsDefault(), checked: c.model.isEmpty) { config?.model = ""; config?.effort = "" }
             ForEach(models.models, id: \.slug) { m in
                 ListItem(m.displayName.isEmpty ? m.slug : m.displayName, checked: c.model == m.slug) { config = pickModel(c, m) }
             }
             if let efforts = effortChoices(c, models: models, settings: settings) {
-                FieldLabel("推理强度")
+                FieldLabel(L10n.modelsEffort())
                 ChoiceGrid(efforts.efforts, selected: efforts.selected) { config?.effort = $0 }
             }
-        } else if error.isEmpty { LoadingRow("读取模型…") }
+        } else if error.isEmpty { LoadingRow(L10n.scheduleIosLoadingModels()) }
     }
 
 }

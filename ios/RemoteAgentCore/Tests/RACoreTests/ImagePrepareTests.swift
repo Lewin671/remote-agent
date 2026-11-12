@@ -138,7 +138,7 @@ enum TestPictures {
     }
 
     @Test func whatAnOriginalThatCouldNotGoAsItWasSays() {
-        #expect(originalNote(turned: true, png: false, sample: 1) == "按拍摄方向转正后以最高画质重新编码")
+        #expect(originalNote(turned: true, png: false, sample: 1) == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
         #expect(originalNote(turned: false, png: false, sample: 1) == "转成了 JPEG，保留原始尺寸")
         #expect(originalNote(turned: false, png: true, sample: 2) == "转成了 PNG，保留原始尺寸；像素超过手机能处理的上限，缩小到 1/2")
     }
@@ -237,7 +237,7 @@ enum TestPictures {
         let photo = P.encode(P.quarters(w: 400, h: 300), .jpeg, orientation: 8, gps: true)
         let p = try prepareImageNow(photo, original: true)
         #expect((p.width, p.height) == (300, 400))
-        #expect(p.note == "按拍摄方向转正后以最高画质重新编码")
+        #expect(p.note == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
         #expect(P.corners(P.decoded(p.bytes)) == Self.upright[8])
         #expect(jpegOrientation(p.bytes) == 1)
         #expect(P.properties(p.bytes)[kCGImagePropertyGPSDictionary] == nil)
@@ -274,8 +274,8 @@ enum TestPictures {
     }
 
     @Test func whatIsNotAnImageIsRefused() {
-        #expect(throws: UserError("解不出这张图片")) { try prepareImageNow(Data("hello, not a picture".utf8), original: false) }
-        #expect(throws: UserError("解不出这张图片")) { try prepareImageNow(Data(), original: true) }
+        #expect(throws: UserError(L10n.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data("hello, not a picture".utf8), original: false) }
+        #expect(throws: UserError(L10n.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data(), original: true) }
         // A JPEG cut short is a JPEG that cannot be read.
         let cut = P.encode(P.quarters(w: 40, h: 30), .jpeg).prefix(40)
         #expect(throws: (any Error).self) { try prepareImageNow(Data(cut), original: true) }
@@ -287,7 +287,7 @@ enum TestPictures {
         async let b = prepareImage(photo, original: true)
         let (compressed, original) = try await (a, b)
         #expect((compressed.width, compressed.height) == (800, 600))
-        #expect(original.note == "按拍摄方向转正后以最高画质重新编码")
+        #expect(original.note == L10n.imageIosReEncodedAtHighestQualityAfterCorrectingOrientation())
     }
 
     @Test func aThumbnailIsSmallAndUpright() throws {

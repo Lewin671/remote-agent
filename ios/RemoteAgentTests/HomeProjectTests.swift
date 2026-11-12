@@ -66,7 +66,7 @@ import Testing
         changes.run(remote, .hide(path: Demo.foo))
         #expect(changes.states[JvmKey(Demo.foo)] == .saving(.pin(path: Demo.foo)))
         await eventually { changes.states[JvmKey(Demo.foo)]?.saving == false }
-        #expect(changes.states[JvmKey(Demo.foo)] == .failed(.pin(path: Demo.foo), "没有连上服务器，连上后才能修改"))
+        #expect(changes.states[JvmKey(Demo.foo)] == .failed(.pin(path: Demo.foo), L10n.errorsIosNotConnectedToTheServerConnectToMakeChanges()))
         #expect(!done)
         #expect(changes.states[JvmKey(Demo.foo)]?.ofSettings == false)
         #expect(PrefsChanges.State.saving(.setSettings(.init(path: "/p", machineId: "m"))).ofSettings)

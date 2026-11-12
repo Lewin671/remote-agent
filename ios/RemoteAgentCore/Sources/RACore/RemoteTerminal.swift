@@ -63,7 +63,7 @@ public final class TermConn: Sendable {
             guard !o.stopped else { return nil }
             guard bytes <= sendBudget - o.queued else {
                 o.stopped = true
-                return "终端输入等待发送，已停止"
+                return L10n.errorsIosTerminalInputWaitingToSendStopped()
             }
             o.seq += 1
             o.queued += bytes
@@ -97,7 +97,7 @@ public final class TermConn: Sendable {
                         defer { o.stopped = true }
                         return !o.stopped
                     }
-                    if first { finish("终端输入发送失败，已停止"); socket.cancel() }
+                    if first { finish(L10n.errorsIosTerminalInputFailedToSendStopped()); socket.cancel() }
                 }
             }
             return nil
@@ -120,7 +120,7 @@ extension Remote {
     /// and numbered; each side refuses frames out of order.
     public func openTerminal(_ sid: String, listener: any TermListener) async throws -> TermConn {
         guard let s = sessions[sid], let key = sessionKeys[sid] else {
-            throw CommandError("not_found", "未知会话")
+            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let tok = try await currentToken()
         let streamId = newRequestId()
@@ -150,7 +150,7 @@ extension Remote {
         if !open {
             closed.withLock { $0 = true }
             socket.cancel()
-            throw UserError("连不上终端")
+            throw UserError(L10nMessage.errorsCannotConnectToTerminal())
         }
         let security = try securitySession()
         Task.detached {
@@ -165,7 +165,7 @@ extension Remote {
                     guard h.purpose == .terminalOutput, h.machine == machineId, h.session == sid,
                         h.request == streamId
                     else { throw DeviceSecurity.Failure.untrusted }
-                    if h.seq <= last { throw OpenError("终端帧顺序不对") }
+                    if h.seq <= last { throw OpenError(L10n.errorsTerminalFramesAreOutOfOrder()) }
                     last = h.seq
                     listener.onFrame(frame)
                 } catch {
@@ -174,7 +174,7 @@ extension Remote {
                 }
             }
             let end = await socket.ended()
-            finish(end.error.map { "终端连接断开：" + errorText($0) } ?? "终端连接断开")
+            finish(end.error.map { L10n.errorsIosTerminalConnectionDropped(value: String(describing: errorText($0))) } ?? L10n.errorsTerminalConnectionDropped())
         }
         do {
             var cmd = PBCommand()

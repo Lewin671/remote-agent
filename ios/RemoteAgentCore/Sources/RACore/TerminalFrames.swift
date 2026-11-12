@@ -115,7 +115,7 @@ public func terminalSteps(_ batch: [PBTerminalFrame]) -> [TerminalStep] {
             steps.append(.history(p))
         case .closed(let reason)?:
             flush()
-            steps.append(.closed(reason.isEmpty ? "终端已关闭" : reason))
+            steps.append(.closed(reason.isEmpty ? L10n.errorsIosTerminalClosed() : reason))
         default: flush()
         }
     }

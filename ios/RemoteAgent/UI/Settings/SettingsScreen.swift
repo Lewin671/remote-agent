@@ -24,40 +24,40 @@ struct SettingsScreen: View {
         Page(gray: true) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    LargeTitle("设置")
+                    LargeTitle(L10n.commonSettings())
                     ConnectionBar()
                     Ticking { now in
                         computers(state, now: now)
                         clients(state, now: now)
                     }
                     AccountSecurityGroup()
-                    GroupLabel("通知")
+                    GroupLabel(L10n.settingsIosNotifications())
                     NotificationsNote()
-                    GroupLabel("本机存储")
+                    GroupLabel(L10n.settingsIosLocalStorage())
                     GroupCard {
-                        GRow("附件存储", value: imagesUsed, chevron: true) { nav.open(.imageStorage) }
+                        GRow(L10n.settingsAttachmentStorage(), value: imagesUsed, chevron: true) { nav.open(.imageStorage) }
                     }
-                    GroupLabel("外观")
+                    GroupLabel(L10n.settingsAppearance())
                     GroupCard { themeRow }
-                    GroupLabel("连接")
+                    GroupLabel(L10n.connectionConnectingConnCheckLabel())
                     GroupCard {
-                        GRow("服务器", value: hostOf(context.account.server))
-                        GRow("连接检测", value: connWord(state), chevron: true) {
+                        GRow(L10n.securityServer(), value: hostOf(context.account.server))
+                        GRow(L10n.homeConnectionCheck(), value: connWord(state), chevron: true) {
                             nav.open(.connectionCheck)
                         }
                         .valueLead { StatusMark(state.conn == .online ? .online : .off) }
                     }
-                    GroupLabel("关于")
+                    GroupLabel(L10n.settingsAbout())
                     GroupCard {
-                        GRow("版本", value: AppInfo.versionLine)
-                        GRow("开源许可", chevron: true) { nav.open(.licenses) }
-                        GRow("隐私政策", chevron: true) { openURL(PublicInformation.privacy) }
-                        GRow("支持与反馈", chevron: true) { openURL(PublicInformation.support) }
+                        GRow(L10n.settingsIosVersion(), value: AppInfo.versionLine)
+                        GRow(L10n.settingsIosOpenSourceLicenses(), chevron: true) { nav.open(.licenses) }
+                        GRow(L10n.settingsIosPrivacyPolicy(), chevron: true) { openURL(PublicInformation.privacy) }
+                        GRow(L10n.settingsIosSupportAndFeedback(), chevron: true) { openURL(PublicInformation.support) }
                     }
                     GroupCard {
-                        GRow("删除整个账户…", danger: true) { deletingAccount = true }
+                        GRow(L10n.settingsIosDeleteEntireAccount(), danger: true) { deletingAccount = true }
                         // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                        GRow("退出并删除本机密钥…", danger: true) {
+                        GRow(L10n.settingsExitAndDeleteLocalKeys(), danger: true) {
                             Task {
                                 do {
                                     let c = try await context.remote.authorityCoordinator()
@@ -77,8 +77,8 @@ struct SettingsScreen: View {
         }
         .sheet(isPresented: $deletingAccount) { AccountDeletionScreen() }
         .confirm(
-            isPresented: $leaving, title: "退出并删除本机密钥？",
-            text: exitText, confirm: "退出", danger: true
+            isPresented: $leaving, title: L10n.securityExitAndDeleteLocalKeys(),
+            text: exitText, confirm: L10n.securityExit(), danger: true
         ) {
             Task { await model.logout() }
         }
@@ -99,7 +99,7 @@ struct SettingsScreen: View {
 
     @ViewBuilder private func computers(_ state: RemoteState, now: Int64) -> some View {
         let machines = sortedMachines(state)
-        GroupLabel("电脑", action: "全部设备") { nav.open(.devices) }
+        GroupLabel(L10n.settingsComputer(), action: L10n.settingsAllDevices()) { nav.open(.devices) }
         ForEach(machines, id: \.id) { MachineCard(machine: $0, state: state, now: now) }
         // A blue line after the cards, or where it is to be done when this client cannot.
         AddDeviceEntry(grouped: false)
@@ -110,7 +110,7 @@ struct SettingsScreen: View {
         let me = context.me
         let others = sortClients(state.devices.values.filter { $0.kind == .client }, me: me).filter
         { $0.id != me }.prefix(3)
-        GroupLabel("客户端")
+        GroupLabel(L10n.securityClient())
         GroupCard {
             ClientRow(
                 client: state.devices[me], id: me, devices: state.devices, me: me, now: now,
@@ -120,24 +120,24 @@ struct SettingsScreen: View {
                     client: c, id: c.id, devices: state.devices, me: me, now: now,
                     authority: state.authorityDeviceId)
             }
-            GRow("全部客户端", chevron: true, action: true) { nav.open(.devices) }
+            GRow(L10n.settingsAllClients(), chevron: true, action: true) { nav.open(.devices) }
         }
     }
 
     @ViewBuilder private var themeRow: some View {
-        let modes: [(ThemeMode, String)] = [(.system, "自动"), (.light, "亮色"), (.dark, "暗色")]
+        let modes: [(ThemeMode, String)] = [(.system, L10n.modesAuto()), (.light, L10n.settingsLight()), (.dark, L10n.settingsDark())]
         let selected = Binding<Int>(
             get: { modes.firstIndex { $0.0 == model.settings.settings.theme } ?? 0 },
             set: { i in model.settings.update { $0.theme = modes[i].0 } })
-        let pick = SegPick(modes.map(\.1), selected: selected).accessibilityLabel("主题")
+        let pick = SegPick(modes.map(\.1), selected: selected).accessibilityLabel(L10n.settingsTheme())
         ViewThatFits(in: .horizontal) {
             HStack(spacing: 10) {
-                Text("主题").font(.body).ink(DS.ink).lineLimit(1).fixedSize()
+                Text(L10n.settingsTheme()).font(.body).ink(DS.ink).lineLimit(1).fixedSize()
                 Spacer(minLength: 10)
                 pick
             }
             VStack(alignment: .leading, spacing: 0) {
-                Text("主题").font(.body).ink(DS.ink).padding(.top, 8)
+                Text(L10n.settingsTheme()).font(.body).ink(DS.ink).padding(.top, 8)
                 ScrollView(.horizontal, showsIndicators: false) { pick }
             }
         }

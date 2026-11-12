@@ -738,7 +738,7 @@ public actor Remote {
                 me.ws = nil
                 me.generation += 1
                 socket.cancel()
-                me.fail(UserError("连接超时，正在重连"))
+                me.fail(UserError(L10nMessage.errorsConnectionTimedOutReconnecting()))
             }
         }
         Task { await self.follow(socket, frames, gen, budget) }
@@ -771,7 +771,7 @@ public actor Remote {
         opening = nil
         // Only an explicit refusal invalidates the token.
         if end.closeCode == policyViolation { dropToken() }
-        fail(end.error ?? UserError("与 server 的连接断开"))
+        fail(end.error ?? UserError(L10nMessage.errorsDisconnectedFromServer()))
     }
 
     func fail(_ e: Error) {
@@ -902,7 +902,7 @@ public actor Remote {
     func report(_ e: Error) {
         // Only the error text: never content or keys.
         if let failure = e as? DeviceSecurity.Failure, failure == .clock {
-            clockWarning = "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试"
+            clockWarning = L10n.errorsIosThisDeviceIsOver5MinutesBehindTheSecurity()
         }
         log("remote-agent: " + errorText(e))
         error = errorText(e)

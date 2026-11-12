@@ -402,7 +402,7 @@ import Testing
         await eventually { server.open == 1 }
         server.answer(Down())
         await eventually { changes.states[JvmKey(path)]?.saving == false }
-        #expect(changes.states[JvmKey(path)] == .failed(.pin(path: path), "连接超时"))
+        #expect(changes.states[JvmKey(path)] == .failed(.pin(path: path), L10n.errorsConnectionTimedOut()))
         // The project's page says so too: its settings are not saved while they wait behind the pin.
         #expect(changes.settingsWaiting(path) && !changes.settingsWaiting("/work/other"))
         try? await Task.sleep(for: .milliseconds(30))

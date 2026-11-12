@@ -366,7 +366,7 @@ import Testing
     @Test func summaryUsesTheMachineModelDisplayName() {
         let models = PBListModelsResponse.with { $0.models = [.with { $0.slug = "gpt-6-astra"; $0.displayName = "GPT-6-Astra"; $0.defaultEffort = "medium" }] }
         #expect(projectSummary(RemoteState(), NewConfig(machineId: "mac", cwd: "/work/app", model: "gpt-6-astra"), models: models) == "Codex · GPT-6-Astra")
-        #expect(summaryModel(NewConfig(machineId: "mac", cwd: "/work/app"), models: nil) == "默认模型")
+        #expect(summaryModel(NewConfig(machineId: "mac", cwd: "/work/app"), models: nil) == L10n.newSessionDefaultModel())
     }
 
     // 新任务: the computer in the title only among several, the CLI in the box only where the computer has several.
@@ -407,7 +407,7 @@ import Testing
         #expect(launchMode(chosen: nil, default: defaultModeOf(m, agent: .codex)) == .send(.unspecified))
         #expect(modeLabel(chosen: nil, default: defaultModeOf(m, agent: .claude), agent: .claude) == "默认：完全放行（项目设置可能不同）")
         #expect(modeLabel(chosen: nil, default: defaultModeOf(m, agent: .codex), agent: .codex) == "默认：自动")
-        #expect(effectiveModeText(chosen: nil, default: defaultModeOf(m, agent: .codex)) == "自动")
+        #expect(effectiveModeText(chosen: nil, default: defaultModeOf(m, agent: .codex)) == L10n.modesAuto())
         // A chosen mode needs no default.
         #expect(launchMode(chosen: .ask, default: defaultModeOf(m, agent: .claude)) == .send(.ask))
     }
@@ -417,8 +417,8 @@ import Testing
         let old = machine(.with { $0.agent = .codex })
         #expect(launchMode(chosen: nil, default: defaultModeOf(old, agent: .codex)) == .send(.unspecified))
         // Said as what the start does, never as something that failed to be read.
-        #expect(modeLabel(chosen: nil, default: defaultModeOf(old, agent: .codex), agent: .codex) == "跟随 CLI 设置")
-        #expect(effectiveModeText(chosen: nil, default: defaultModeOf(old, agent: .codex)) == "跟随 CLI 设置")
+        #expect(modeLabel(chosen: nil, default: defaultModeOf(old, agent: .codex), agent: .codex) == L10n.newSessionFollowCli())
+        #expect(effectiveModeText(chosen: nil, default: defaultModeOf(old, agent: .codex)) == L10n.newSessionFollowCli())
         // A mode outside the four (accept edits) is known and not full access.
         let edits = machine(info(.claude, .unspecified, .cliConfig))
         #expect(launchMode(chosen: nil, default: defaultModeOf(edits, agent: .claude)) == .send(.unspecified))
@@ -487,7 +487,7 @@ import Testing
         #expect(modelValue("claude-haiku-5-5", models: models) == "Haiku 5.5")
         #expect(modelValue("claude-haiku-5-5", models: nil) == "claude-haiku-5-5")
         #expect(modelValue("other-model", models: models) == "other-model")
-        #expect(modelValue("", models: models) == "默认")
+        #expect(modelValue("", models: models) == L10n.modelsDefault())
     }
 }
 
@@ -531,7 +531,7 @@ import Testing
 
     @Test func theConfigurationIsTwoLines() {
         let (a, b) = configLines(RemoteState(), c, default: DefaultMode(mode: nil, known: false, varies: false))
-        #expect(a.hasSuffix("自动"))
+        #expect(a.hasSuffix(L10n.modesAuto()))
         #expect(b == "gpt-6-astra · medium")
     }
 }

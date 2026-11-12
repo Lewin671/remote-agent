@@ -996,5 +996,80 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "quota.ios_computer_offline_showing_the_last_reading",
+    "zh-CN": "电脑不在线，显示上次记录",
+    "en": "Computer offline. Showing the last reading.",
+    "notes": "iOS QuotaScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.ios_remote_agent_on_this_computer_cannot_read_s_quota",
+    "zh-CN": "这台电脑上的 remote-agent 读不到 {value} 的额度。",
+    "en": "remote-agent on this computer cannot read {value}’s quota.",
+    "notes": "iOS QuotaScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 agentName(g.agent)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.ios_this_computer_has_not_reported_which_clis_are_installed",
+    "zh-CN": "这台电脑还没有报告它装了哪些 CLI",
+    "en": "This computer has not reported which CLIs are installed",
+    "notes": "iOS QuotaScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.ios_this_computer_was_removed",
+    "zh-CN": "这台电脑已经移除了",
+    "en": "This computer was removed",
+    "notes": "iOS QuotaScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.ios_view_usage_in_local_claude_code",
+    "zh-CN": " 可在本机 Claude Code 中查看 /usage。",
+    "en": " View /usage in local Claude Code.",
+    "notes": "iOS Agents.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

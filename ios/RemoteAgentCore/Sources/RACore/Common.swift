@@ -7,10 +7,10 @@ public func machineLabel(_ state: RemoteState, id: String) -> String { machineNa
 
 /// The link to the server in a word: what 设置 says before anything is measured.
 public func connWord(_ state: RemoteState) -> String {
-    if state.conn == .online { return "已连接" }
-    if state.synced { return "重连中" }
-    if state.link == .noServer { return "连不上" }
-    return "连接中"
+    if state.conn == .online { return L10n.connectionConnected() }
+    if state.synced { return L10n.connectionReconnectingConnCheck() }
+    if state.link == .noServer { return L10n.connectionUnreachable() }
+    return L10n.connectionConnectingConnCheck()
 }
 
 /// Why the preferences cannot be changed now, or nil when they can.

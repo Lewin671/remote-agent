@@ -22,7 +22,7 @@ struct MachineSettingsCalls: Sendable {
                 var cmd = PBCommand()
                 cmd.getSettings = PBGetSettingsRequest()
                 let result = try await remote.machineCommand(machine, cmd)
-                guard case .getSettings(let reply)? = result.kind else { throw CommandError("internal", "意外的回复") }
+                guard case .getSettings(let reply)? = result.kind else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
                 return reply
             },
             update: { settings, clean in
@@ -32,7 +32,7 @@ struct MachineSettingsCalls: Sendable {
                     $0.cleanImages = clean
                 }
                 let result = try await remote.machineCommand(machine, cmd)
-                guard case .updateSettings(let reply)? = result.kind else { throw CommandError("internal", "意外的回复") }
+                guard case .updateSettings(let reply)? = result.kind else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
                 return reply
             })
     }
@@ -134,10 +134,10 @@ final class MachineSettingsModel {
                 let reply = try await calls.read()
                 take(reply.settings, reply.hasImageStorage ? reply.imageStorage : nil)
                 // A cleaning leaves no trace in the settings: only the sizes say, and they are shown.
-                if reply.settings != next { saveError = "这次修改没有保存上，电脑上还是原来的设置" }
+                if reply.settings != next { saveError = L10n.settingsIosThisChangeWasNotSavedTheComputerStillHas() }
             } catch {
                 saveUnknown = true
-                saveError = "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准"
+                saveError = L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo()
             }
         }
     }
@@ -212,20 +212,20 @@ extension PBDaemonSettings {
 
 /// The approval timeout as its row writes it: whole minutes, or seconds when it is not a round number of them.
 func timeoutText(seconds: Int32) -> String {
-    seconds % 60 == 0 ? "\(seconds / 60) 分钟" : "\(seconds) 秒"
+    seconds % 60 == 0 ? L10n.quotaMin(count: Int(seconds / 60)) : L10n.timeDurationSeconds(count: Int(seconds))
 }
 
 /// The idle close as its row writes it: 关闭, whole hours, or minutes when it is not a round number of them.
 func idleCloseText(minutes: Int32) -> String {
     let m = minutes == 0 ? Int32(idleCloseDefaultMinutes) : minutes
-    if m < 0 { return "关闭" }
-    return m % 60 == 0 ? "\(m / 60) 小时" : "\(m) 分钟"
+    if m < 0 { return L10n.commonClose() }
+    return m % 60 == 0 ? L10n.quotaHr(count: Int(m / 60)) : L10n.quotaMin(count: Int(m))
 }
 
 /// What a computer's uploaded images take, with what is worth saying of it: sizes that are not zero.
 func uploadsText(_ usage: PBImageStorageUsage) -> String {
     var parts = [imageBytes(usage.uploadBytes)]
-    if usage.reclaimableBytes > 0 { parts.append("可清理 \(imageBytes(usage.reclaimableBytes))") }
-    if usage.reservedBytes > 0 { parts.append("正在上传 \(imageBytes(usage.reservedBytes))") }
+    if usage.reclaimableBytes > 0 { parts.append(L10n.settingsCanClear(value: String(describing: imageBytes(usage.reclaimableBytes)))) }
+    if usage.reservedBytes > 0 { parts.append(L10n.settingsUploading(value: String(describing: imageBytes(usage.reservedBytes)))) }
     return parts.joined(separator: " · ")
 }

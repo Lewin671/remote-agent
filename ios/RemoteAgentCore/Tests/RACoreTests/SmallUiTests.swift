@@ -19,7 +19,7 @@ import Testing
         let a = PBApprovalRequested.with { $0.approvalID = "approval"; $0.command = raw }
         let before = try a.serializedData()
         let shown = approvalDisplay(raw)
-        #expect(dockSummary(.approval(a), agent: "Codex") == ("请求执行", shown))
+        #expect(dockSummary(.approval(a), agent: "Codex") == (L10n.listStateIosRequestCommand(), shown))
         #expect(a.command == raw)
         #expect(try a.serializedData() == before)
     }
@@ -40,12 +40,12 @@ import Testing
     // --- not in Android's tests ---
 
     @Test func theDockSaysOneLineOfWhateverWaits() {
-        #expect(dockSummary(.approval(.with { $0.toolName = "Write" }), agent: "Codex") == ("请求权限", "Write"))
-        #expect(dockSummary(.approval(.with { $0.command = "a\r\nb" }), agent: "Codex") == ("请求执行", "a\\u000d"))
+        #expect(dockSummary(.approval(.with { $0.toolName = "Write" }), agent: "Codex") == (L10n.listStateIosRequestPermission(), "Write"))
+        #expect(dockSummary(.approval(.with { $0.command = "a\r\nb" }), agent: "Codex") == (L10n.listStateIosRequestCommand(), "a\\u000d"))
         let q = PBQuestionAsked.with { $0.questionID = "q1"; $0.questions = [.with { $0.text = "用哪个数据库？\n第二行" }] }
         #expect(dockSummary(.question(q), agent: "Claude Code") == ("Claude Code 在问你", "用哪个数据库？"))
-        #expect(dockSummary(.plan(text: "x"), agent: "Codex") == ("计划待批准", ""))
-        #expect(dockSummary(.popup(title: "trust folder"), agent: "Codex") == ("终端里有弹窗", "trust folder"))
+        #expect(dockSummary(.plan(text: "x"), agent: "Codex") == (L10n.listStatePlan(), ""))
+        #expect(dockSummary(.popup(title: "trust folder"), agent: "Codex") == (L10n.listStatePopup(), "trust folder"))
         #expect(DockItem.question(q).id == "q:q1")
         #expect(!longQuestion(.with { $0.text = String(repeating: "字", count: 120) }))
         #expect(longQuestion(.with { $0.text = String(repeating: "字", count: 121) }))
@@ -122,14 +122,14 @@ import Testing
 @Suite struct CommonTests {
     @Test func theLinkAndThePreferencesAreSaidInAWord() {
         var st = RemoteState()
-        #expect(connWord(st) == "连接中")
+        #expect(connWord(st) == L10n.connectionConnectingConnCheck())
         #expect(prefsBlocked(st) == L10n.projectsConnectToEdit())
         st.link = .noServer
-        #expect(connWord(st) == "连不上")
+        #expect(connWord(st) == L10n.connectionUnreachable())
         st.synced = true
-        #expect(connWord(st) == "重连中")
+        #expect(connWord(st) == L10n.connectionReconnectingConnCheck())
         st.conn = .online
-        #expect(connWord(st) == "已连接")
+        #expect(connWord(st) == L10n.connectionConnected())
         #expect(prefsBlocked(st) == L10n.projectsLoading())
         st.prefs = .empty
         #expect(prefsBlocked(st) == nil)

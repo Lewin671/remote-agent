@@ -18,7 +18,7 @@ import Testing
     }
 
     @Test func theFirstRowHasEscArrowsAndEnter() {
-        #expect(terminalKeyRows[0].map(\.label) == ["Esc", "左", "上", "下", "右", "回车"])
+        #expect(terminalKeyRows[0].map(\.label) == ["Esc", L10n.terminalLeft(), L10n.terminalUp(), L10n.terminalDown(), L10n.terminalRight(), L10n.terminalEnter()])
         #expect(terminalKeyRows[1].map(\.label) == ["Tab", "Ctrl+C"])
     }
 

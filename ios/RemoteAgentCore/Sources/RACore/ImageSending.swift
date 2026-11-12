@@ -41,7 +41,7 @@ public final class ImageUploads {
         draft.invalidate(img)
         let token = img.generation
         let cleanup = abort(img.takeRetired())
-        guard let uri = img.uri else { img.state = .failed(error: "读不到这张图片"); return }
+        guard let uri = img.uri else { img.state = .failed(error: L10n.imageIosCannotReadThisImage()); return }
         let original = draft.original, prepare = self.prepare
         img.job = Task { [weak self] in
             guard let self else { return }
@@ -55,7 +55,7 @@ public final class ImageUploads {
                 draft.prepared(img)
                 img.job = nil
                 if let m = machine() { upload(img, machineId: m) }
-                else { img.state = .failed(error: "先选一台电脑") }
+                else { img.state = .failed(error: L10n.attachmentIosChooseMachine()) }
             } catch {
                 if Task.isCancelled || !img.isCurrent(token) || error is CancellationError { return }
                 img.state = .failed(error: errorText(error))
@@ -72,7 +72,7 @@ public final class ImageUploads {
     public func upload(_ img: PendingImage, machineId: String) {
         guard img.hasSource else {
             img.invalidate()
-            img.state = .failed(error: img.isFile ? "这个文件没有本机副本，请移除后重新选择" : "读不到这张图片")
+            img.state = .failed(error: img.isFile ? L10n.attachmentFileMissing() : L10n.imageIosCannotReadThisImage())
             return
         }
         guard img.startUpload(to: machineId, now: clock()) else { return }
@@ -102,7 +102,7 @@ public final class ImageUploads {
                             try await keep()
                         }, onProgress: progress)
                     }
-                    guard let p = img.processed else { throw UserError("读不到这张图片") }
+                    guard let p = img.processed else { throw UserError(L10nMessage.imageIosCannotReadThisImage()) }
                     return try await uploadImage(ch, transferId: transfer, data: p.bytes, onProgress: progress)
                 }
                 let uploaded: UploadedImage
@@ -187,13 +187,13 @@ public final class ImageUploads {
         img.invalidate(retiring: true)
         if img.isFile && !img.hasSource {
             _ = abort(img.takeRetired())
-            img.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+            img.state = .failed(error: L10n.attachmentFileMissing())
         } else if !img.isFile && (img.needsProcessing || img.processed == nil) {
             process(draft, img, machine: machine)
         } else if let m = machine() { upload(img, machineId: m) }
         else {
             _ = abort(img.takeRetired())
-            img.state = .failed(error: "先选一台电脑")
+            img.state = .failed(error: L10n.attachmentIosChooseMachine())
         }
     }
 

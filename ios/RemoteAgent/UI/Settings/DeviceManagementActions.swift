@@ -19,29 +19,29 @@ struct DeviceManagementActions: View {
         if access.isAuthority && id != context.me {
             GroupCard {
                 if present {
-                    GRow("移除设备…", danger: true, enabled: !action.running) { removing = true }
+                    GRow(L10n.securityRemoveDevice(), danger: true, enabled: !action.running) { removing = true }
                 } else if machine {
-                    GRow("从原档案重新加入", chevron: true, enabled: !action.running) {
+                    GRow(L10n.securityIosRejoinFromOriginalRecords(), chevron: true, enabled: !action.running) {
                         nav.open(.addDevice(replacing: id))
                     }
-                    GRow("删除这台电脑的记录…", danger: true, enabled: !action.running) { deleting = true }
+                    GRow(L10n.securityDeleteThisComputerSRecords(), danger: true, enabled: !action.running) { deleting = true }
                 }
             }
             if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
             if !done.isEmpty { GroupBanner(done) }
         } else if !access.isAuthority { GroupNote(access.addHint) }
         Color.clear.frame(height: 0)
-            .confirm(isPresented: $removing, title: "移除设备？",
-                text: "移除后，这台设备不能再操作账户。电脑本地文件保留，中继上的档案可另行删除。",
+            .confirm(isPresented: $removing, title: L10n.securityRemoveDeviceDeviceManagement(),
+                text: L10n.securityIosAfterRemovalThisDeviceCanNoLongerOperateThe(),
                 confirm: L10n.commonRemove(), danger: true) {
                     done = ""
-                    action.run { try await context.remote.removeDevice(id) } onDone: { done = "设备已移除。" }
+                    action.run { try await context.remote.removeDevice(id) } onDone: { done = L10n.securityIosDeviceRemoved() }
                 }
-            .confirm(isPresented: $deleting, title: "删除这台电脑的记录？",
-                text: "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。",
-                confirm: "删除记录", danger: true) {
+            .confirm(isPresented: $deleting, title: L10n.securityIosDeleteThisComputerSRecords(),
+                text: L10n.securityThisPermanentlyDeletesSessionsEventsAndImagesOnThe(),
+                confirm: L10n.securityDeleteRecords(), danger: true) {
                     done = ""
-                    action.run { try await context.remote.deleteMachineRecords(id) } onDone: { done = "电脑记录已删除。" }
+                    action.run { try await context.remote.deleteMachineRecords(id) } onDone: { done = L10n.securityIosComputerRecordsDeleted() }
                 }
     }
 }

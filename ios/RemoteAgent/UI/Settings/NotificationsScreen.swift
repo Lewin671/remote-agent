@@ -1,3 +1,4 @@
+import RACore
 import SwiftUI
 
 /// 本客户端的通知. This version of the iOS app cannot send any: a push to
@@ -10,24 +11,24 @@ import SwiftUI
 struct NotificationsScreen: View {
     var body: some View {
         SettingsPage {
-            GroupLabel("本客户端的通知")
+            GroupLabel(L10n.settingsNotificationsOnThisClient())
             NotificationsNote()
-            GroupLabel("现在怎么知道有事要处理")
+            GroupLabel(L10n.settingsIosHowToKnowSomethingNeedsAttentionNow())
             GroupCard {
-                Fact("打开 App 时", "等你处理的审批、提问和计划排在「会话」页最上面")
-                Fact("「会话」标签上的数字", "有几个会话在等你")
-                Fact("其他客户端", "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒")
+                Fact(L10n.settingsIosWhileTheAppIsOpen(), L10n.settingsIosApprovalsQuestionsAndPlansWaitingForYouAppearAt())
+                Fact(L10n.settingsIosTheNumberOnTheSessionsTab(), L10n.settingsIosHowManySessionsAreWaitingForYou())
+                Fact(L10n.settingsIosOtherClients(), L10n.settingsIosTheAndroidAppAndHomeScreenWebAppCan())
             }
-            GroupNote("电脑上的会话不依赖提醒：没人处理的审批到时间按拒绝算，之后仍可以在会话里继续。")
+            GroupNote(L10n.settingsIosComputerSessionsDoNotDependOnAlertsUnansweredApprovals())
         }
-        .navBar("通知")
+        .navBar(L10n.settingsIosNotifications())
     }
 }
 
 /// The explanation as 设置 shows it under the group's label, in the grey of anything that is only said.
 struct NotificationsNote: View {
     var body: some View {
-        GroupNote("这个 iOS 版本还不能发提醒。有会话等你处理时不会收到系统通知，打开 App 后会显示在「会话」页最上面。")
+        GroupNote(L10n.settingsIosThisIosVersionCannotSendAlertsYetYouWill())
     }
 }
 

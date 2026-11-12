@@ -159,7 +159,7 @@ public struct PrefsObject: Equatable, Sendable {
 
 public struct PrefsConflictError: Error, LocalizedError, Equatable {
     public init() {}
-    public var errorDescription: String? { "项目偏好一直在被其他客户端修改，没能保存" }
+    public var errorDescription: String? { L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot() }
 }
 
 public func newerPrefs(have: PrefsObject?, got: PrefsObject) -> PrefsObject {

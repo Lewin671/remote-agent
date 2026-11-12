@@ -1,3 +1,4 @@
+import RACore
 // Scans one QR code with the camera (Android's ui/Scan.kt), decoding on the
 // device with AVFoundation; nothing of the picture leaves it or is kept.
 //
@@ -35,20 +36,20 @@ struct QRScanner: View {
             case .granted:
                 CameraPreview(onResult: onResult) { access = .missing }
                     .ignoresSafeArea()
-                    .accessibilityLabel("相机画面，正在找配对二维码")
+                    .accessibilityLabel(L10n.securityIosCameraPreviewLookingForAPairingQrCode())
                 Finder()
             case .denied:
-                ScannerNote(text: "需要相机权限才能扫码；也可以返回手动输入配对码。", action: "允许使用相机") {
+                ScannerNote(text: L10n.securityIosCameraAccessIsRequiredToScanYouCanAlso(), action: L10n.securityIosAllowCameraAccess()) {
                     // iOS asks once; after that the switch is in the system's settings.
                     if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
                 }
             case .missing:
-                ScannerNote(text: "这台设备没有可用的相机；可以返回手动输入配对码。", action: nil) {}
+                ScannerNote(text: L10n.securityIosThisDeviceHasNoAvailableCameraGoBackTo(), action: nil) {}
             }
         }
         .overlay(alignment: .topLeading) {
             Button(action: onCancel) {
-                Text("取消").font(.body).ink(.white).padding(.horizontal, 16).hitTarget()
+                Text(L10n.commonCancel()).font(.body).ink(.white).padding(.horizontal, 16).hitTarget()
             }
             .buttonStyle(PressStyle())
         }
@@ -102,7 +103,7 @@ private struct Finder: View {
             RoundedRectangle(cornerRadius: DS.Radius.darkCard, style: .continuous)
                 .strokeBorder(.white.opacity(0.9), lineWidth: 3)
                 .frame(width: 240, height: 240)
-            Text("把管理端的配对二维码放进框里")
+            Text(L10n.securityIosPlaceTheManagingClientSPairingQrCodeIn())
                 .font(.subheadline).ink(.white).multilineTextAlignment(.center)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(.black.opacity(0.45), in: Capsule())

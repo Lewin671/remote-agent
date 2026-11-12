@@ -64,7 +64,7 @@ final class AuthorityPairingSessions {
     func discard(pairingID: String) {
         for flow in flows.values where flow.initiation?.pairingID == pairingID {
             flow.initiation = nil; flow.candidate = nil; flow.approved = false; flow.delivered = false
-            flow.error = "配对已放弃，可以重新生成配对码。"
+            flow.error = L10n.securityIosPairingAbandonedYouCanGenerateANewPairingCode()
         }
     }
     func flow(replacing: String) -> AuthorityPairingModel {
@@ -86,46 +86,46 @@ struct AddDeviceScreen: View {
         SettingsPage {
             if !access.isAuthority { GroupNote(access.addHint) }
             else {
-                GroupNote("电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。")
+                GroupNote(L10n.securityComputerRunRemoteAgentAccountJoinAndEnterThe())
                 #if DEBUG
                 if app.isDemo { AuthorityDemoPairCode(server: "https://relay.example.com") }
                 #endif
                 if flow.delivered {
-                    GroupBanner("设备已加入。", tone: .plain)
-                    Btn("添加另一台设备", kind: .primary, enabled: !flow.busy) {
+                    GroupBanner(L10n.securityIosDeviceJoined(), tone: .plain)
+                    Btn(L10n.securityIosAddAnotherDevice(), kind: .primary, enabled: !flow.busy) {
                         if replacing.isEmpty { perform { await flow.start($0, replacing: "") } }
                         else { nav.open(.addDevice()) }
                     }.padding(16)
                 }
                 else if let candidate = flow.candidate {
-                    GroupLabel("核对图案")
+                    GroupLabel(L10n.securityComparePatterns())
                     Text(candidate.emoji.joined(separator: " "))
                         .font(.system(size: 36)).minimumScaleFactor(0.5).lineLimit(1)
                         .frame(maxWidth: .infinity).padding(16)
-                    GroupNote("核对新设备上的 4 个图案。先在新设备确认，再在这里允许。")
+                    GroupNote(L10n.securityCompareThe4PatternsOnTheNewDeviceConfirm())
                     if !flow.approved {
-                        Btn("允许加入", kind: .primary, enabled: !flow.busy) {
+                        Btn(L10n.securityAllowToJoin(), kind: .primary, enabled: !flow.busy) {
                             perform { await flow.approve($0) }
                         }.padding(.horizontal, 16)
-                        Btn("不允许", kind: .negative, enabled: !flow.busy) { cancel() }
+                        Btn(L10n.approvalDeny(), kind: .negative, enabled: !flow.busy) { cancel() }
                             .padding(16)
-                    } else { GroupNote("已批准，正在核实设备是否收到。请继续原操作。") }
+                    } else { GroupNote(L10n.securityIosApprovedVerifyingDeliveryToTheDeviceContinueTheOriginal()) }
                 } else if let initiation = flow.initiation {
                     VStack(spacing: 12) {
-                        QRCodeView(text: initiation.link.url(web: webOrigin(server: context.account.server, preferred: "")), label: "添加设备的配对二维码")
+                        QRCodeView(text: initiation.link.url(web: webOrigin(server: context.account.server, preferred: "")), label: L10n.securityQrCodeForAddingADevice())
                         Text(String(initiation.link.code.prefix(4)) + " " + String(initiation.link.code.suffix(4))).font(.title2.monospaced().weight(.semibold)).ink(DS.ink).textSelection(.enabled)
-                        Text("有效期至 " + securityTime(UInt64(max(initiation.expiresMs, 0)), timeOnly: true))
+                        Text(L10n.securityPairValidUntil(time: String(describing: securityTime(UInt64(max(initiation.expiresMs, 0)), timeOnly: true))))
                             .font(.footnote).ink(DS.ink2)
-                        Btn("复制配对码") { UIPasteboard.general.string = initiation.link.code }
-                        Btn("取消配对", enabled: !flow.busy) { cancel() }
+                        Btn(L10n.securityIosCopyPairingCode()) { UIPasteboard.general.string = initiation.link.code }
+                        Btn(L10n.securityCancelPairing(), enabled: !flow.busy) { cancel() }
                     }.padding(16)
                 } else if !app.isDemo {
-                    Btn("生成配对码", kind: .primary, enabled: !flow.busy) {
+                    Btn(L10n.securityGeneratePairingCode(), kind: .primary, enabled: !flow.busy) {
                         perform { await flow.start($0, replacing: replacing) }
                     }.padding(16)
                 }
                 if !flow.error.isEmpty {
-                    GroupBanner(flow.error, tone: .error, action: "重试") {
+                    GroupBanner(flow.error, tone: .error, action: L10n.commonRetry()) {
                         perform { c in
                             if flow.initiation == nil { await flow.start(c, replacing: replacing) }
                             else { await flow.poll(c) }
@@ -133,14 +133,14 @@ struct AddDeviceScreen: View {
                     }
                 }
                 if !flow.approved && !flow.error.isEmpty && flow.initiation != nil {
-                    TextAction("重新生成配对码", enabled: !flow.busy) {
+                    TextAction(L10n.securityIosGenerateAnotherPairingCode(), enabled: !flow.busy) {
                         perform { await flow.start($0, replacing: replacing) }
                     }.padding(.horizontal, 16)
                 }
                 if !action.error.isEmpty { GroupBanner(action.error, tone: .error) }
             }
         }
-        .navBar("添加设备")
+        .navBar(L10n.homeAddDevice())
         .debugSignal("schedule.pair.start") {
             #if DEBUG
             guard URL(string: context.account.server)?.host == "127.0.0.1" else { return }

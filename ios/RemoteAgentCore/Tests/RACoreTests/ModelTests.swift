@@ -61,15 +61,15 @@ import Testing
     @Test func forkNeedsAnIdleOrEndedSessionWithAMessage() {
         #expect(forkBlocked(status: .idle, running: false, sent: true) == nil)
         #expect(forkBlocked(status: .exited, running: false, sent: true) == nil)
-        for st in [Status.running, .approval, .question] { #expect(forkBlocked(status: st, running: false, sent: true) == "这一轮结束后可用") }
+        for st in [Status.running, .approval, .question] { #expect(forkBlocked(status: st, running: false, sent: true) == L10n.sessionForkAfterTurn()) }
         // The events show a turn before the session's status does.
-        #expect(forkBlocked(status: .idle, running: true, sent: true) == "这一轮结束后可用")
-        for st in [Status.plan, .popup] { #expect(forkBlocked(status: st, running: false, sent: true) == "处理完等待事项后可用") }
-        #expect(forkBlocked(status: .starting, running: false, sent: false) == "启动完成后可用")
-        #expect(forkBlocked(status: .idle, running: false, sent: false) == "发过消息后可用")
-        #expect(forkBlocked(status: .exited, running: false, sent: false) == "发过消息后可用")
+        #expect(forkBlocked(status: .idle, running: true, sent: true) == L10n.sessionForkAfterTurn())
+        for st in [Status.plan, .popup] { #expect(forkBlocked(status: st, running: false, sent: true) == L10n.sessionForkAfterPending()) }
+        #expect(forkBlocked(status: .starting, running: false, sent: false) == L10n.sessionForkAfterStart())
+        #expect(forkBlocked(status: .idle, running: false, sent: false) == L10n.sessionForkAfterMessage())
+        #expect(forkBlocked(status: .exited, running: false, sent: false) == L10n.sessionForkAfterMessage())
         // What it waits for comes before the missing message.
-        #expect(forkBlocked(status: .running, running: true, sent: false) == "这一轮结束后可用")
+        #expect(forkBlocked(status: .running, running: true, sent: false) == L10n.sessionForkAfterTurn())
 
         let message = [Mk.ev(1, Mk.user("hi"))]
         #expect(sentMessage(s { $0.title = "登录接口偶尔超时" }, events: []))
@@ -212,7 +212,7 @@ import Testing
         }
         #expect(protocolMismatch(m(protocolVersion)) == nil)
         #expect(protocolMismatch(m(protocolVersion - 1)) == "mac 上的 remote-agent 版本较旧，请在电脑上更新后再试")
-        #expect(protocolMismatch(m(protocolVersion + 1)) == "这个 App 版本较旧，请更新后再试")
+        #expect(protocolMismatch(m(protocolVersion + 1)) == L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd())
         // Not read yet: the daemon answers for itself.
         #expect(protocolMismatch(MachineView(id: "m", online: true, lastSeenMs: 0)) == nil)
         #expect(protocolMismatch(nil) == nil)
@@ -303,7 +303,7 @@ import Testing
     }
 
     @Test func warnsAboutClaudeCodesTrustDialogOnly() {
-        #expect(popupHint(agent: .claude, detail: "trust folder") == "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎")
+        #expect(popupHint(agent: .claude, detail: "trust folder") == L10n.dockTrustFolder())
         #expect(popupHint(agent: .codex, detail: "trust folder") == "")
         #expect(popupHint(agent: .unspecified, detail: "trust folder") == "")
         #expect(popupHint(agent: .claude, detail: "hooks review") == "")
@@ -388,12 +388,12 @@ import Testing
         for entry in AGENTS {
             let locked = s { $0.agent = entry.agent; $0.mode = .fullAccess; $0.modeLocked = true }
             for mode in Mode.allCases {
-                #expect(sessionModeUnavailableReason(mode, session: locked, models: [unavailable]) == "本会话以完全放行启动，不能切换审批模式")
+                #expect(sessionModeUnavailableReason(mode, session: locked, models: [unavailable]) == L10n.modesLocked())
             }
             let regular = s { $0.agent = entry.agent; $0.model = "model"; $0.fullAccessUnavailable = true }
-            #expect(sessionModeUnavailableReason(.full, session: regular, models: nil) == "本会话启动时未启用；需要时新建会话选择")
-            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable]) == "当前账户不支持自动模式")
-            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable, available]) == "当前模型不支持")
+            #expect(sessionModeUnavailableReason(.full, session: regular, models: nil) == L10n.modesFullUnavailable())
+            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable]) == L10n.modesAccountUnsupported())
+            #expect(sessionModeUnavailableReason(.auto, session: regular, models: [unavailable, available]) == L10n.modesModelUnsupported())
             #expect(sessionModeUnavailableReason(.auto, session: regular, models: nil) == nil)
             #expect(sessionModeUnavailableReason(.ask, session: regular, models: [unavailable]) == nil)
             #expect(sessionModeUnavailableReason(.plan, session: regular, models: [unavailable]) == nil)

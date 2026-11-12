@@ -19,7 +19,7 @@ import Testing
         #expect(codex.toolLabelFromItemType == false)
         #expect(codex.planClearContext == true)
         #expect(codex.planNote == nil)
-        #expect(codex.planKeepLabel == "继续规划…" && codex.planApproveLabel == "批准执行")
+        #expect(codex.planKeepLabel == L10n.dockIosKeepPlanning() && codex.planApproveLabel == L10n.approvalApproveExecute())
         #expect(codex.standardContextOption == false)
         #expect(codex.autoMayBeUnavailable == false)
         #expect(codex.reconcilesUnclaimedInput == false)
@@ -32,8 +32,8 @@ import Testing
         #expect(claude.quotaWindow("seven_day") == QuotaWindowDescriptor(label: "7 天", group: nil))
         #expect(claude.toolLabelFromItemType == true)
         #expect(claude.planClearContext == false)
-        #expect(claude.planNote == "批准后使用询问模式")
-        #expect(claude.planKeepLabel == "修改计划…" && claude.planApproveLabel == "批准")
+        #expect(claude.planNote == L10n.dockClaudePlanNote())
+        #expect(claude.planKeepLabel == L10n.modesPlanEdit() && claude.planApproveLabel == L10n.approvalApprove())
         #expect(claude.standardContextOption == true)
         #expect(claude.autoMayBeUnavailable == true)
         #expect(claude.reconcilesUnclaimedInput == true)
@@ -45,13 +45,13 @@ import Testing
         #expect(agy.quotaWindow("gemini-5h") == QuotaWindowDescriptor(label: "Gemini · 5 小时", group: "Gemini"))
         #expect(agy.quotaWindow("gemini-weekly") == QuotaWindowDescriptor(label: "Gemini · 7 天", group: "Gemini"))
         #expect(agy.quotaWindow("gemini-argon-wtu-weekly") == QuotaWindowDescriptor(label: "Gemini 4 Argon · 7 天", group: "Gemini"))
-        #expect(agy.quotaWindow("3p-5h") == QuotaWindowDescriptor(label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）"))
-        #expect(agy.quotaWindow("3p-weekly") == QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）"))
+        #expect(agy.quotaWindow("3p-5h") == QuotaWindowDescriptor(label: "第三方模型 · 5 小时", group: L10n.quotaThirdPartyModelsClaudeGptOss()))
+        #expect(agy.quotaWindow("3p-weekly") == QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: L10n.quotaThirdPartyModelsClaudeGptOss()))
         #expect(agy.quotaWindow("custom") == QuotaWindowDescriptor(label: "custom", group: "custom"))
         #expect(agy.toolLabelFromItemType == false)
         #expect(agy.planClearContext == false)
-        #expect(agy.planNote == "批准后回到默认模式（询问）")
-        #expect(agy.planKeepLabel == "修改计划…" && agy.planApproveLabel == "批准")
+        #expect(agy.planNote == L10n.dockAgyPlanNote())
+        #expect(agy.planKeepLabel == L10n.modesPlanEdit() && agy.planApproveLabel == L10n.approvalApprove())
         #expect(agy.standardContextOption == false)
         #expect(agy.autoMayBeUnavailable == true)
         #expect(agy.reconcilesUnclaimedInput == false)
@@ -71,7 +71,7 @@ import Testing
     @Test func mapsUnrecognizedAgentValuesToUnknownEntryAndNeverCodex() {
         let unknown = agentInfo(.UNRECOGNIZED(99))
         #expect(unknown.id == "")
-        #expect(unknown.name == "未知 CLI")
+        #expect(unknown.name == L10n.modelsUnknownCli())
         #expect(unknown.expectedQuotaWindows == nil)
         #expect(unknown.quotaWindow("primary") == QuotaWindowDescriptor(label: "primary", group: nil))
         #expect(unknown.toolLabelFromItemType == false)
@@ -87,23 +87,23 @@ import Testing
         #expect(unknown.forks == false)
         #expect(unknown.modelLabel("any-slug") == "any-slug")
         #expect(unknown.planName("any-plan") == "any-plan")
-        #expect(agentName(.UNRECOGNIZED(99)) == "未知 CLI")
+        #expect(agentName(.UNRECOGNIZED(99)) == L10n.modelsUnknownCli())
     }
 
     @Test func unknownEntryRoundTripPreservesUnknownEntryAndNeverCodex() {
         let unrecognised = PBAgent.UNRECOGNIZED(99)
         let unknown = agentInfo(unrecognised)
-        #expect(unknown.name == "未知 CLI")
+        #expect(unknown.name == L10n.modelsUnknownCli())
         #expect(unknown.agent == unrecognised)
 
         let roundTrip = agentInfo(unknown.agent)
-        #expect(roundTrip.name == "未知 CLI")
+        #expect(roundTrip.name == L10n.modelsUnknownCli())
         #expect(roundTrip.agent == unrecognised)
         #expect(roundTrip.id == "")
 
         // Also test effectiveAgent preserves unrecognized
         #expect(effectiveAgent(unrecognised) == unrecognised)
-        #expect(agentInfo(effectiveAgent(unrecognised)).name == "未知 CLI")
+        #expect(agentInfo(effectiveAgent(unrecognised)).name == L10n.modelsUnknownCli())
     }
 
     @Test func looksUpAgentsByTargetId() {
@@ -113,7 +113,7 @@ import Testing
         #expect(agentById("").id == "")
         #expect(agentById("unknown").id == "")
         #expect(agentById(nil).id == "")
-        #expect(agentInfo(agentById("unknown").agent).name == "未知 CLI")
+        #expect(agentInfo(agentById("unknown").agent).name == L10n.modelsUnknownCli())
     }
 
     @Test func checksWhetherAnAgentEnumIsRecognized() {

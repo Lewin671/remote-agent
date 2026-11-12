@@ -275,7 +275,7 @@ private func reviveStored(_ stored: [StoredImage]) -> [PendingImage] {
         img.processed = s.processed
         img.needsProcessing = s.needsProcessing
         // Uploads are the daemon's for a while only: send them again.
-        img.state = .failed(error: img.isFile ? "需要核对电脑上的文件" : "需要重新传到电脑")
+        img.state = .failed(error: img.isFile ? L10n.attachmentIosVerifyTheFileOnTheComputer() : L10n.imageIosNeedsUploadingToTheComputerAgain())
         return img
     }
 }
@@ -384,7 +384,7 @@ public final class ImageDraft {
     /// A transfer ID must reach disk before Begin can reserve quota on the machine.
     public func persistFile(_ img: PendingImage) async throws {
         try Task.checkCancellation()
-        guard !restoring, restoreError == nil else { throw UserError("待发附件尚未恢复，请重试") }
+        guard !restoring, restoreError == nil else { throw UserError(L10nMessage.attachmentIosPendingAttachmentsHaveNotBeenRestoredRetry()) }
         guard images.contains(where: { $0 === img }), let file = img.file, file.hasSource else { throw CancellationError() }
         let data = try JSONEncoder().encode(file)
         let (files, key, id) = (files, key, img.id)
@@ -395,7 +395,7 @@ public final class ImageDraft {
                 try files.put(folder: key, name: id + ".file", data: data)
                 try saveOrder(files, folder: key, ids: ids, original: original)
             } then: { failure in
-                if let failure { done.resume(throwing: UserError("文件上传状态未保存：\(failure)")) }
+                if let failure { done.resume(throwing: UserError(L10nMessage.attachmentIosFileUploadStateWasNotSaved(value: String(describing: failure)))) }
                 else { done.resume() }
             }
         }
@@ -561,7 +561,7 @@ public final class ImageDraft {
         for img in back {
             if !img.isFile, let wereOriginal, wereOriginal != original { img.needsProcessing = true }
             img.invalidate(retiring: !img.isFile)
-            img.state = .failed(error: img.isFile && !img.hasSource ? "这个文件没有本机副本，请移除后重新选择" : "需要重新传到电脑")
+            img.state = .failed(error: img.isFile && !img.hasSource ? L10n.attachmentFileMissing() : L10n.imageIosNeedsUploadingToTheComputerAgain())
             images.append(img)
         }
         persist()
@@ -584,7 +584,7 @@ public final class ImageDraft {
         restoring = true
         defer { restoring = false }
         do { finishRestore(try loadStored(files, folder: key)) }
-        catch { restoreError = "待发附件没能恢复，请重试"; throw error }
+        catch { restoreError = L10n.attachmentIosCouldNotRestorePendingAttachmentsRetry(); throw error }
     }
 
     /// Reads and decrypts off the main actor, preserving edits made while loading.
@@ -597,7 +597,7 @@ public final class ImageDraft {
             try Task.checkCancellation()
             finishRestore(stored)
         } catch {
-            restoreError = "待发附件没能恢复，请重试"
+            restoreError = L10n.attachmentIosCouldNotRestorePendingAttachmentsRetry()
             throw error
         }
     }
@@ -774,7 +774,7 @@ public struct OutgoingRecords: Sendable {
         let o = Outgoing(requestId: r.requestId, text: r.text, imageIds: r.imageIds, fileIds: r.fileIds, images: reviveStored(r.images), original: r.original, mode: r.mode)
         for img in o.images { img.protectFiles(r.fileIds, requestId: r.requestId) }
         o.state = .unknown
-        o.error = "App 重启过，不确定这条有没有送到"
+        o.error = L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed()
         return o
     }
 

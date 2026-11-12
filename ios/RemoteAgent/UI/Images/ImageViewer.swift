@@ -66,7 +66,7 @@ struct ViewerLoader {
             return ViewedImage(
                 image: image.preparingForDisplay() ?? image, bytes: data, format: format)
         }.value
-        guard let decoded else { return (.corrupt(why: "解不出图片"), nil) }
+        guard let decoded else { return (.corrupt(why: L10n.imageIosCannotDecodeImage()), nil) }
         keep(ref, decoded)
         return (state, decoded)
     }

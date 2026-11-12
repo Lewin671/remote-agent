@@ -27,7 +27,7 @@ import Testing
         #expect(viewerNote(.expired, sync: .synced) == L10n.imageOriginalExpired())
         #expect(viewerNote(.offline, sync: .synced) == L10n.imageLoadConnected())
         #expect(viewerNote(.failed(why: "超时"), sync: .synced) == "没能下载：超时 · 点按重试")
-        #expect(viewerNote(.corrupt(why: "图片内容和格式对不上"), sync: .synced) == "图片校验失败：图片内容和格式对不上")
+        #expect(viewerNote(.corrupt(why: L10n.errorsIosImageContentDoesNotMatchItsFormat()), sync: .synced) == "图片校验失败：图片内容和格式对不上")
     }
 
     @Test func onlyAFetchThatMayWorkNextTimeIsRetried() {

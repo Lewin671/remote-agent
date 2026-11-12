@@ -31,6 +31,21 @@ class CompilerTest(unittest.TestCase):
         self.mutate(change)
         with self.assertRaisesRegex(ValueError, pattern): i18n.build(self.root)
 
+    def test_ios_permissions_and_deferred_messages_stay_on_their_platform(self):
+        output = i18n.build(self.root)
+        for tag, language in [('en', 'en'), ('zh-Hans', 'zh-CN')]:
+            metadata = output[f'ios/RemoteAgent/{tag}.lproj/InfoPlist.strings']
+            self.assertIn('NSCameraUsageDescription', metadata)
+            self.assertIn('NSPhotoLibraryAddUsageDescription', metadata)
+            for row in i18n.read(self.root / 'i18n/messages/startup.json'):
+                if row['key'].startswith('startup.ios_'):
+                    self.assertIn(json.dumps(row[language], ensure_ascii=False), metadata)
+                    self.assertNotIn(row['key'], output['web/src/i18n/startup.generated.ts'])
+        swift = output['ios/RemoteAgentCore/Sources/RACore/L10n.generated.swift']
+        self.assertIn('public enum L10nMessage', swift)
+        self.assertIn('arguments: [.string(reason)]', swift)
+        self.assertIn('public struct LocalizedMessage: Equatable, Sendable', swift)
+
     def test_missing_empty_duplicate_undefined_parameters(self):
         for change, pattern in [
             (lambda r: r[0].pop('en'), 'fields/translations'),

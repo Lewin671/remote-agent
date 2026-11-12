@@ -276,10 +276,10 @@ private struct HomeNotices: View {
             }
             if authority && state.recoveryPending {
                 Notice(
-                    "有人正在用恢复码申请接管管理权，" + securityTime(state.recoveryReadyMs) + " 后生效。不是你本人就现在否决。",
-                    tone: .attention, action: "处理") { nav.open(.accountSecurity) }
+                    L10n.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode(value: String(describing: securityTime(state.recoveryReadyMs))),
+                    tone: .attention, action: L10n.dockHandle()) { nav.open(.accountSecurity) }
             } else if authority && state.recoveryStatusStale {
-                Notice("恢复申请状态可能过期，请连接服务器后重新核实。", tone: .attention)
+                Notice(L10n.errorsIosRecoveryRequestStateMayBeOutOfDateConnect(), tone: .attention)
             }
         }
     }

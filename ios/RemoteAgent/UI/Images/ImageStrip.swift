@@ -58,7 +58,7 @@ struct ImageStrip: View {
                     line(text, DS.orangeInk)
                 }
                 let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
-                if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: "；"), DS.ink2) }
+                if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: L10n.commonIosNoteSeparator()), DS.ink2) }
                 if draft.original { line(originalImageHint, DS.ink2) }
             }
             if !draft.documents.isEmpty {

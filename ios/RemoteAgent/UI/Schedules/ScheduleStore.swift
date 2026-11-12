@@ -268,7 +268,7 @@ final class ScheduleMutation {
     }
     @discardableResult
     func execute(remote: Remote, machine: String, command: () throws -> PBCommand, refresh: () async -> Void) async throws -> PBCommandResult {
-        guard !running, !expired else { throw UserError("请先确认上一条修改的结果") }
+        guard !running, !expired else { throw UserError(L10nMessage.scheduleIosConfirmThePreviousChangeSResultFirst()) }
         running = true; error = ""
         defer { running = false }
         do {
@@ -291,7 +291,7 @@ final class ScheduleMutation {
         guard let command = error as? CommandError, command.fromDaemon, command.code == "aborted" else { return nil }
         attempt.abandon(); frozen = false; expired = false
         conflicts += 1
-        return UserError("任务刚被修改，已更新为最新内容")
+        return UserError(L10nMessage.errorsTheTaskWasJustChangedUpdatedToTheLatest())
     }
     func run(remote: Remote, machine: String, command: @escaping () throws -> PBCommand, refresh: @escaping () async -> Void, done: @escaping (PBCommandResult) -> Void = { _ in }) {
         guard !running, !expired else { return }

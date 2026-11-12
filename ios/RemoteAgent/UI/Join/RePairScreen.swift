@@ -1,3 +1,4 @@
+import RACore
 import SwiftUI
 
 /// Current protocol members can supplement their account profile by pairing again,
@@ -11,7 +12,7 @@ struct RePairScreen: View {
             if let flow { JoinFlow(model: flow) }
             else { Page { Color.clear } }
         }
-        .navBar("重新配对并保留身份")
+        .navBar(L10n.securityIosPairAgainAndPreserveIdentity())
         .task {
             guard flow == nil, !app.isDemo else { return }
             flow = JoinModel(lastServer: context.account.server,

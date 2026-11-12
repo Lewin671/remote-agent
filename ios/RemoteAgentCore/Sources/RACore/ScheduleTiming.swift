@@ -68,52 +68,52 @@ public struct ScheduleTiming: Equatable, Sendable {
     }
     private func absolute(_ parts: DateComponents) throws -> Date {
         guard let d = calendar.date(from: parts), Self.parts(d, zone: calendar.timeZone) == parts else {
-            throw UserError("这个时区在该时刻发生夏令时跳转，请换一个时间")
+            throw UserError(L10nMessage.scheduleDaylightSavingTimeSkipsThisTimeInTheSelected())
         }
         return d
     }
     public func trigger(now: Date = Date()) throws -> ScheduleTrigger {
-        guard TimeZone(identifier: timezone) != nil else { throw UserError("请选择有效的 IANA 时区") }
+        guard TimeZone(identifier: timezone) != nil else { throw UserError(L10nMessage.scheduleIosChooseAValidIanaTimeZone()) }
         var t = ScheduleTrigger(type: "calendar")
         switch kind {
         case .once:
             let at = try absolute(dateParts)
-            guard at > now else { throw UserError("请选择未来的时间") }
+            guard at > now else { throw UserError(L10nMessage.scheduleSelectAFutureTime()) }
             t.type = "at"; t.at = scheduleISO(at)
         case .daily, .weekly:
             t.timezone = timezone
             t.time = String(format: "%02d:%02d", dateParts.hour ?? 8, dateParts.minute ?? 0)
             if kind == .weekly {
-                guard !weekdays.isEmpty else { throw UserError("请至少选择一天") }
+                guard !weekdays.isEmpty else { throw UserError(L10nMessage.scheduleSelectAtLeastOneDay()) }
                 t.weekdays = weekdays.sorted()
             } else if workdays { t.weekdays = Array(1...5) }
         case .interval:
-            guard interval > 0, interval <= 315_360_000, unit > 0 else { throw UserError("请输入有效的间隔") }
+            guard interval > 0, interval <= 315_360_000, unit > 0 else { throw UserError(L10nMessage.scheduleIosEnterAValidInterval()) }
             let seconds = Int64(interval) * Int64(unit)
             if let original, original.type == "interval", original.intervalSeconds == seconds { t = original }
             else { t.type = "interval"; t.intervalSeconds = seconds; t.delaySeconds = seconds }
         case .afterTurn:
-            guard let original, original.type == "after_turn" else { throw UserError("请选择一次、每天、每周或每隔") }
+            guard let original, original.type == "after_turn" else { throw UserError(L10nMessage.scheduleIosChooseOnceDailyWeeklyOrEvery()) }
             t = original
         }
         if kind != .once {
             if let original, end == initialEnd {
                 t.maxRuns = original.maxRuns; t.until = original.until
                 if end == .count, count != initialCount {
-                    guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)
+                    guard count > 0 else { throw UserError(L10nMessage.scheduleIosRunCountMustBeGreaterThan0()) }; t.maxRuns = Int64(count)
                 }
                 if original.until != nil && untilEdited {
                     let u = until
-                    guard u > now else { throw UserError("结束时间必须在未来") }; t.until = scheduleISO(u)
+                    guard u > now else { throw UserError(L10nMessage.scheduleIosEndTimeMustBeInTheFuture()) }; t.until = scheduleISO(u)
                 }
             } else {
                 t.maxRuns = nil; t.until = nil
                 if end == .count {
-                    guard count > 0 else { throw UserError("运行次数必须大于 0") }; t.maxRuns = Int64(count)
+                    guard count > 0 else { throw UserError(L10nMessage.scheduleIosRunCountMustBeGreaterThan0()) }; t.maxRuns = Int64(count)
                 }
                 if end == .date {
                     let u = until
-                    guard u > now else { throw UserError("结束时间必须在未来") }; t.until = scheduleISO(u)
+                    guard u > now else { throw UserError(L10nMessage.scheduleIosEndTimeMustBeInTheFuture()) }; t.until = scheduleISO(u)
                 }
             }
         }

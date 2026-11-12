@@ -72,7 +72,7 @@ import Testing
         defer { try? fm.removeItem(at: dir) }
         let old = dir.appendingPathComponent("old")
         try Data(count: 8).write(to: old)
-        #expect(throws: UserError("手机待发图片空间不足，请发送或移除旧草稿")) {
+        #expect(throws: UserError(L10n.attachmentIosThisPhoneSPendingImageStorageIsFullSend())) {
             try ImageDiskPolicy.requireRoom(dir, replacing: dir.appendingPathComponent("new"), incoming: 4, limit: 10)
         }
         #expect(exists(old))

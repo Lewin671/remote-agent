@@ -25,10 +25,10 @@ struct JoinScreen: View {
                 Page {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            LargeTitle("加入账户")
-                            Btn("新建账户", kind: .primary) { begin(.create) }
-                            Btn("加入已有账户") { selection = "join" }
-                            Btn("用恢复码找回管理权") { begin(.recover) }
+                            LargeTitle(L10n.securityJoinAccount())
+                            Btn(L10n.securityCreateAccount(), kind: .primary) { begin(.create) }
+                            Btn(L10n.securityJoinAnExistingAccount()) { selection = "join" }
+                            Btn(L10n.securityRecoverManagementWithARecoveryCode()) { begin(.recover) }
                             PrivacyPolicyLink().frame(maxWidth: .infinity)
                         }.padding(16).frame(maxWidth: 480).frame(maxWidth: .infinity)
                     }
@@ -37,7 +37,7 @@ struct JoinScreen: View {
                 JoinFlow(model: model, discard: { await app.logout() })
                     .safeAreaInset(edge: .bottom) {
                         if model.step == .form && !model.retainedIdentity {
-                            TextAction("返回", alignment: .center) { selection = nil }
+                            TextAction(L10n.commonBack(), alignment: .center) { selection = nil }
                         }
                     }
             } else {
@@ -82,7 +82,7 @@ struct JoinFlow: View {
                         if model.retainedIdentity {
                             JoinText(
                                 text:
-                                    "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，扫码或填配对码后核对四个图案完成绑定。日常使用不需要重复设置。"
+                                    L10n.securityIosTheOriginalDeviceIdentityKeysAndHistoryArePreserved()
                             )
                         }
                         if model.noticeIsError, let discard { SetupDiscardButton(discard: discard) }
@@ -154,11 +154,11 @@ private struct JoinForm: View {
     @State private var typed = ""
 
     var body: some View {
-        JoinTitle(text: model.retainedIdentity ? "一次性安全设置" : "加入账户")
-        JoinText(text: "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。")
+        JoinTitle(text: model.retainedIdentity ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
+        JoinText(text: L10n.securityIosOnTheManagingClientOpenSettingsAddDeviceScan())
         JoinNotice(model: model)
         InputField(
-            text: $typed, placeholder: "输入 8 位配对码", look: .code, keyboard: .numberPad,
+            text: $typed, placeholder: L10n.securityIosEnter8DigitPairingCode(), look: .code, keyboard: .numberPad,
             submitLabel: .next
         )
         .padding(.horizontal, 16).padding(.bottom, 10)
@@ -172,7 +172,7 @@ private struct JoinForm: View {
         }
         .accessibilityValue(model.code.map(String.init).joined(separator: " "))
         InputField(
-            "服务器", text: $model.server, placeholder: "https://", keyboard: .URL, contentType: .URL,
+            L10n.securityServer(), text: $model.server, placeholder: "https://", keyboard: .URL, contentType: .URL,
             submitLabel: .join
         ) {
             if model.canJoin { model.joinWithCode() }
@@ -182,9 +182,9 @@ private struct JoinForm: View {
             let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             if trimmed != text { model.server = trimmed }
         }
-        Btn("加入", kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
+        Btn(L10n.securityJoin(), kind: .primary, enabled: model.canJoin, action: model.joinWithCode)
             .padding(.horizontal, 16).padding(.top, 6)
-        JoinLink(text: "扫描二维码", action: model.showScanner).padding(.top, 8)
+        JoinLink(text: L10n.securityIosScanQrCode(), action: model.showScanner).padding(.top, 8)
     }
 }
 
@@ -192,12 +192,12 @@ private struct Working: View {
     let model: JoinModel
 
     var body: some View {
-        JoinTitle(text: model.retainedIdentity ? "一次性安全设置" : "加入账户")
-        IconText(Mark.progress, "正在连接…")
+        JoinTitle(text: model.retainedIdentity ? L10n.securityOneTimeSecuritySetup() : L10n.securityJoinAccount())
+        IconText(Mark.progress, L10n.securityIosConnecting())
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16).padding(.top, 4)
         if model.canCancel {
-            Btn("取消", action: model.cancel).padding(.horizontal, 16).padding(.top, 24)
+            Btn(L10n.commonCancel(), action: model.cancel).padding(.horizontal, 16).padding(.top, 24)
         }
     }
 }
@@ -210,10 +210,10 @@ private struct Compare: View {
 
     var body: some View {
         ZStack {
-            Text("核对图案").font(.body.weight(.semibold)).ink(DS.ink).accessibilityAddTraits(.isHeader)
+            Text(L10n.securityComparePatterns()).font(.body.weight(.semibold)).ink(DS.ink).accessibilityAddTraits(.isHeader)
             HStack {
                 Spacer()
-                TextAction("取消", style: .body, alignment: .center, action: model.cancel).padding(
+                TextAction(L10n.commonCancel(), style: .body, alignment: .center, action: model.cancel).padding(
                     .trailing, 8)
             }
         }
@@ -227,31 +227,31 @@ private struct Compare: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 40).padding(.bottom, 12)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("4 个图案：" + emoji.joined(separator: "，"))
-        Text("核对管理端的 4 个图案；一致后先在这里确认，再在管理端上允许。")
+        .accessibilityLabel(L10n.securityIosPairPatterns(patterns: emoji.joined(separator: L10n.commonIosSpokenSeparator())))
+        Text(L10n.securityIosCompareTheManagingClientS4PatternsIfThey())
             .font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center)
             .frame(maxWidth: .infinity).padding(.horizontal, 24)
         if model.comparisonPending {
-            Btn("图案一致，信任并继续", kind: .primary, action: model.confirmPictures).padding(
+            Btn(L10n.securityPatternsMatchTrustAndContinue(), kind: .primary, action: model.confirmPictures).padding(
                 .horizontal, 16
             ).padding(.top, 16)
         }
-        IconText(Mark.progress, model.comparisonPending ? "请先在本机确认图案" : "等待管理端批准并完成绑定…")
+        IconText(Mark.progress, model.comparisonPending ? L10n.securityConfirmThePatternsOnThisDeviceFirst() : L10n.securityIosWaitingForManagingClientApprovalAndBinding())
             .frame(maxWidth: .infinity).padding(.top, 24)
         if !model.notice.isEmpty {
             // Registering has begun: the join can no longer be left.
             Banner(model.notice).padding(.horizontal, 16).padding(.top, 16)
         }
         VStack(spacing: 0) {
-            Btn("图案不一致，返回填码", action: model.cancel).disabled(!model.canCancel)
-            Hint("返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。")
+            Btn(L10n.securityPatternsDifferReturnToCodeEntry(), action: model.cancel).disabled(!model.canCancel)
+            Hint(L10n.securityReturningStopsThisWaitRejectTheOldRequestOn())
         }
         .padding(.init(top: 24, leading: 16, bottom: 16, trailing: 16))
     }
 }
 
 #if DEBUG
-    #Preview("加入账户") {
+    #Preview(L10n.securityJoinAccount()) {
         JoinFlow(
             model: JoinModel(lastServer: "https://ra.example.com", calls: .live(http: HTTP())) {
                 _ in

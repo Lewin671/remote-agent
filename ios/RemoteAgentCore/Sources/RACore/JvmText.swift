@@ -389,7 +389,7 @@ struct LocalDay: Equatable {
     var hhmm: String { "\(hour):\(pad2(minute))" }
 }
 
-let weekdayNames = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+var weekdayNames: [String] { [L10n.timeWeekday(day: "mon"), L10n.timeWeekday(day: "tue"), L10n.timeWeekday(day: "wed"), L10n.timeWeekday(day: "thu"), L10n.timeWeekday(day: "fri"), L10n.timeWeekday(day: "sat"), L10n.timeWeekday(day: "sun")] }
 
 /// Kotlin's Double.toInt(): toward zero, the ends of Int32 for what lies past them, 0 for NaN. Swift's Int(_:) traps on those.
 func jvmInt(_ d: Double) -> Int {

@@ -13,7 +13,7 @@ extension AuthorityCoordinator {
         let ticket = try begin()
         defer { busy = false }
         guard try storage.readOperation() == nil else {
-            throw CommandError("pending", "请先完成或放弃未完成的账户安全操作，再删除账户。")
+            throw CommandError("pending", L10nMessage.securityIosFinishOrAbandonUnfinishedAccountSecurityOperationsBeforeDeleting())
         }
         _ = try await rpc(ticket) { [security] in try await security.sync() }
         let record = try authority(ticket)

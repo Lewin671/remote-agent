@@ -1,4 +1,4 @@
-    private static func format(_ key: String, locale: String, args: [CVarArg]) -> String {
+    fileprivate static func format(_ key: String, locale: String, args: [CVarArg]) -> String {
         let language = MessageLocale.resolve(locale, system: [])
         let tag = MessageLocale.appleTags[language]!
         guard let path = Bundle.module.path(forResource: tag, ofType: "lproj"),

@@ -20,7 +20,7 @@ public struct SigningKey: Sendable {
     public let publicKey: Data
 
     public init(seed: Data) throws {
-        guard seed.count == keySize else { throw CryptoError("signing seed must be \(keySize) bytes") }
+        guard seed.count == keySize else { throw CryptoError(L10nMessage.errorsIosCryptoSigningSeedBytes(count: keySize)) }
         priv = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
         publicKey = priv.publicKey.rawRepresentation
     }
@@ -38,15 +38,18 @@ public func verifyEd25519(publicKey: Data, message: Data, signature: Data) -> Bo
 }
 
 public struct CryptoError: Error, CustomStringConvertible, Equatable {
-    public let description: String
-    public init(_ description: String) { self.description = description }
+    private let localized: LocalizedMessage
+    public var description: String { localized.resolve() }
+    public init(_ description: String) { localized = LocalizedMessage(raw: description) }
+    public init(_ description: LocalizedMessage) { localized = description }
+    public static func == (lhs: CryptoError, rhs: CryptoError) -> Bool { lhs.description == rhs.description }
 }
 
 /// The account signing key derived from its root key.
 public struct Keys: Sendable {
     public let account: SigningKey
     public static func derive(root: Data) throws -> Keys {
-        guard root.count == keySize else { throw CryptoError("root key must be \(keySize) bytes") }
+        guard root.count == keySize else { throw CryptoError(L10nMessage.errorsIosCryptoRootKeyBytes(count: keySize)) }
         return Keys(
             account: try SigningKey(seed: deriveKey(root: root, purpose: "account-sign")))
     }
@@ -65,8 +68,11 @@ public func loginMessage(_ challenge: Data) -> Data { Data(loginContext.utf8) + 
 
 /// A message for the person using the app, in their language.
 public struct UserError: Error, LocalizedError, Equatable, CustomStringConvertible {
-    public let message: String
-    public init(_ message: String) { self.message = message }
+    private let localized: LocalizedMessage
+    public var message: String { localized.resolve() }
+    public init(_ message: String) { localized = LocalizedMessage(raw: message) }
+    public init(_ message: LocalizedMessage) { localized = message }
+    public static func == (lhs: UserError, rhs: UserError) -> Bool { lhs.message == rhs.message }
     public var errorDescription: String? { message }
     public var description: String { message }
 }
@@ -85,7 +91,7 @@ public struct Secret: Equatable, Sendable, CustomStringConvertible {
     public var description: String { "Secret(server=\(server))" }
 
     public static func parse(_ text: String) throws -> Secret {
-        let bad = UserError("这不是 remote-agent 的账户密钥")
+        let bad = UserError(L10nMessage.errorsThisIsNotARemoteAgentAccountKey())
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard t.hasPrefix("ra1.") else { throw bad }
         let parts = t.dropFirst(4).split(separator: ".", omittingEmptySubsequences: false)
@@ -99,17 +105,17 @@ public struct Secret: Equatable, Sendable, CustomStringConvertible {
 
     /// The server's origin; plain http only for local addresses.
     public static func checkServer(_ url: String) throws -> String {
-        let invalid = UserError("server 地址无效")
+        let invalid = UserError(L10nMessage.errorsIosInvalidServerAddress())
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let u = URLComponents(string: trimmed), let scheme = u.scheme?.lowercased(),
               var host = u.host?.lowercased(), !host.isEmpty else { throw invalid }
-        if u.user != nil || u.password != nil { throw UserError("server 地址不能包含用户名或密码") }
+        if u.user != nil || u.password != nil { throw UserError(L10nMessage.errorsTheServerAddressCannotIncludeAUsernameOrPassword()) }
         // URLComponents gives an IPv6 literal without its brackets.
         if host.hasPrefix("[") && host.hasSuffix("]") { host = String(host.dropFirst().dropLast()) }
         let local = ["localhost", "127.0.0.1", "::1"].contains(host)
         switch scheme {
         case "https": break
-        case "http": if !local { throw UserError("server 必须使用 https") }
+        case "http": if !local { throw UserError(L10nMessage.errorsTheServerMustUseHttps()) }
         default: throw invalid
         }
         if let port = u.port, !(1...65535).contains(port) { throw invalid }
@@ -136,8 +142,11 @@ extension Data {
 }
 
 public struct OpenError: Error, Equatable, CustomStringConvertible {
-    public let description: String
-    public init(_ description: String) { self.description = description }
+    private let localized: LocalizedMessage
+    public var description: String { localized.resolve() }
+    public init(_ description: String) { localized = LocalizedMessage(raw: description) }
+    public init(_ description: LocalizedMessage) { localized = description }
+    public static func == (lhs: OpenError, rhs: OpenError) -> Bool { lhs.description == rhs.description }
 }
 
 /// Where an envelope must have been found; unset fields are not checked, except kind.
@@ -164,7 +173,7 @@ public enum Envelopes {
     /// Seals plaintext; the header is serialized once and authenticated as
     /// sent. Pairing payloads are sent without compression.
     public static func seal(key: Data, header: PBHeader, plaintext: Data, nonce: Data = randomBytes(12)) throws -> PBEnvelope {
-        guard key.count == keySize, nonce.count == 12 else { throw CryptoError("bad key or nonce size") }
+        guard key.count == keySize, nonce.count == 12 else { throw CryptoError(L10nMessage.errorsIosCryptoBadKeyNonceSize()) }
         guard header.kind == .pairing else { throw UnsupportedHistoryError() }
         var h = header
         if h.version == 0 { h.version = version }
@@ -187,7 +196,7 @@ public enum Envelopes {
 
     /// Opens an envelope, unpacks a packed payload, and returns the header exactly as sealed.
     public static func open(key: Data, envelope env: PBEnvelope?) throws -> (PBHeader, Data) {
-        let bad = OpenError("envelope does not open")
+        let bad = OpenError(L10nMessage.errorsIosCryptoEnvelopeDoesNotOpen())
         guard let env, env.nonce.count == 12, env.ciphertext.count >= tagSize, key.count == keySize else { throw bad }
         let split = env.ciphertext.count - tagSize
         let pt: Data
@@ -200,8 +209,8 @@ public enum Envelopes {
         } catch {
             throw bad
         }
-        guard let h = try? PBHeader(serializedBytes: env.header) else { throw OpenError("malformed header") }
-        guard h.version == version else { throw OpenError("unsupported envelope version") }
+        guard let h = try? PBHeader(serializedBytes: env.header) else { throw OpenError(L10nMessage.errorsIosCryptoMalformedHeader()) }
+        guard h.version == version else { throw OpenError(L10nMessage.errorsIosCryptoUnsupportedEnvelopeVersion()) }
         guard h.kind == .pairing else { throw UnsupportedHistoryError() }
         switch h.compression {
         case .none: return (h, pt)
@@ -217,7 +226,7 @@ public enum Envelopes {
             || (!want.sessionId.isEmpty && h.sessionID != want.sessionId)
             || (want.seq != 0 && h.seq != want.seq)
             || (!want.requestId.isEmpty && h.requestID != want.requestId) {
-            throw OpenError("envelope is not where it belongs")
+            throw OpenError(L10nMessage.errorsIosCryptoEnvelopeLocation())
         }
     }
 
@@ -227,14 +236,14 @@ public enum Envelopes {
     ) throws -> (PBHeader, T) {
         let (h, pt) = try open(key: key, envelope: envelope)
         try expect(h, want)
-        guard let msg = try? T(serializedBytes: pt) else { throw OpenError("malformed content") }
+        guard let msg = try? T(serializedBytes: pt) else { throw OpenError(L10nMessage.errorsIosCryptoMalformedContent()) }
         return (h, msg)
     }
 }
 
 public func newRequestId() -> String { randomBytes(16).hex }
 
-public let retiredHistoryError = "这条历史是旧版加密格式，已不再支持查看"
+public var retiredHistoryError: String { L10n.errorsThisHistoryUsesAnOldEncryptionFormatAndCan() }
 public struct UnsupportedHistoryError: Error, LocalizedError, Sendable {
     public init() {}
     public var errorDescription: String? { retiredHistoryError }

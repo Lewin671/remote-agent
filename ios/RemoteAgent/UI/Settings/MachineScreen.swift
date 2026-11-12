@@ -54,13 +54,13 @@ struct MachineScreen: View {
             if let m {
                 Ticking { now in details(m, state: state, now: now) }
             } else {
-                PageNote("这台电脑不在当前可信目录中，撤销状态以回执为准")
+                PageNote(L10n.settingsIosThisComputerIsNotInTheCurrentTrustedDirectory())
             }
         }
         .navBar(
-            m == nil ? "电脑" : machineLabel(state, id: id),
+            m == nil ? L10n.settingsComputer() : machineLabel(state, id: id),
             subtitle: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
-                $0.online ? "在线" : "不在线"
+                $0.online ? L10n.commonIosOnline() : L10n.commonIosOffline()
             },
             dot: m.flatMap { machineStatus($0, state: state, now: nowMs()) }.map {
                 $0.online ? DS.green : DS.ink3
@@ -90,8 +90,8 @@ struct MachineScreen: View {
         }
 
         .confirm(
-            isPresented: $cleaning, title: "清理可回收图片？",
-            text: "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。", confirm: "清理"
+            isPresented: $cleaning, title: L10n.settingsIosClearReclaimableImages(),
+            text: L10n.settingsIosClearsReclaimableOriginalsAndCacheUnsyncedFullSizeImages(), confirm: L10n.settingsClearSettings()
         ) {
             guard let settings, let current = settings.settings else { return }
             Task { await settings.save(current, clean: true) }
@@ -108,18 +108,18 @@ struct MachineScreen: View {
         if let mismatch { GroupBanner(mismatch, tone: .warn) }
         if let status, !status.online { GroupBanner(offlineText(m, now: now)) }
 
-        GroupLabel("电脑")
+        GroupLabel(L10n.settingsComputer())
         GroupCard {
-            GRow("名称", value: name)
-            GRow("系统", value: osName(m.meta?.os ?? ""))
-            GRow("设备 ID", value: "…" + shortId(id))
+            GRow(L10n.settingsName(), value: name)
+            GRow(L10n.settingsIosSystem(), value: osName(m.meta?.os ?? ""))
+            GRow(L10n.settingsDeviceId(), value: "…" + shortId(id))
         }
 
         let groups = quotaGroups(asKnown(m, state: state), now: now)
         // A computer that has not said what it runs has no CLI to list a quota for.
         if !groups.isEmpty, m.meta != nil {
             // A line for each CLI's quota, leading to all of it.
-            GroupLabel("账户额度")
+            GroupLabel(L10n.settingsAccountQuota())
             GroupCard {
                 for (i, g) in groups.enumerated() {
                     let title = quotaRowTitle(g, among: groups, at: i)
@@ -145,17 +145,17 @@ struct MachineScreen: View {
 
         if let meta = m.meta {
             let agents = shownAgents(meta)
-            GroupLabel("CLI 版本")
+            GroupLabel(L10n.settingsIosCliVersions())
             GroupCard {
                 for a in agents {
-                    GRow(agentName(a.agent), value: a.version.or("未知"))
+                    GRow(agentName(a.agent), value: a.version.or(L10n.settingsIosUnknown()))
                         .valueLead {
-                            Text(a.verified ? "已验证 ·" : "未验证 ·").font(.subheadline).ink(a.verified ? DS.ink2 : DS.orangeInk)
+                            Text(a.verified ? L10n.settingsIosVerified() : L10n.settingsIosUnverified()).font(.subheadline).ink(a.verified ? DS.ink2 : DS.orangeInk)
                         }
                 }
             }
             if agents.contains(where: { !$0.verified }) {
-                GroupNote("未验证的版本请在电脑上运行 remote-agent doctor")
+                GroupNote(L10n.settingsIosForUnverifiedVersionsRunRemoteAgentDoctorOnThe())
             }
         }
 
@@ -163,7 +163,7 @@ struct MachineScreen: View {
 
         let projects = machineProjects(state, machineId: id)
         if !projects.isEmpty {
-            GroupLabel("项目")
+            GroupLabel(L10n.scheduleProject())
             GroupCard {
                 for cwd in projects {
                     GRow(projectName(cwd), value: shortPath(cwd), chevron: true) {
@@ -181,8 +181,8 @@ struct MachineScreen: View {
     /// §9 「电脑为什么不在线」), in the words of the session's offline card.
     private func offlineText(_ m: MachineView, now: Int64) -> String {
         let since = whenText(m.lastSeenMs, now: now)
-        return (since.isEmpty ? "" : "\(since)断开，")
-            + "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新。"
+        return (since.isEmpty ? "" : L10n.sessionDisconnectedAgo(time: String(describing: since)))
+            + L10n.settingsIosTheComputerMayBeAsleepOfflineOrNotRunning()
     }
 
     /// The CLIs the computer reports; one that reports none is an older Codex-only daemon's.
@@ -207,9 +207,9 @@ struct MachineScreen: View {
         let s = settings?.settings
         let shown = reachable(state)
         if state.unlinked {
-            GroupNote("连上服务器后才能读取和修改新会话默认设置")
+            GroupNote(L10n.settingsIosConnectToTheServerToReadAndEditNew())
         } else if !m.online {
-            GroupNote("\(name) 不在线，连上后才能读取和修改新会话默认设置")
+            GroupNote(L10n.settingsIosIsOfflineConnectToReadAndEditNewSession(value: String(describing: name)))
         } else if mismatch {
             // The notice at the top says which side to update; nothing is sent meanwhile.
             EmptyView()
@@ -219,7 +219,7 @@ struct MachineScreen: View {
             if !agents.isEmpty {
                 let activeAgent = (selectedAgent != nil && agents.contains(selectedAgent!)) ? selectedAgent! : agents[0]
                 if agents.count > 1 {
-                    GroupLabel("新项目默认设置")
+                    GroupLabel(L10n.settingsNewProjectDefaults())
                     SegPick(
                         agents.map(agentName),
                         selected: Binding(
@@ -229,22 +229,22 @@ struct MachineScreen: View {
                     )
                     .padding(.horizontal, DS.Space.l)
                 } else {
-                    GroupLabel("新项目默认设置 · \(agentName(activeAgent))")
+                    GroupLabel(L10n.settingsNewProjectDefaultsSettings(value: String(describing: agentName(activeAgent))))
                 }
 
                 let d = s.defaults(for: activeAgent)
                 let effective = defaultModeOf(m, agent: activeAgent)
                 let chosen = modeOf(d.mode)
                 GroupCard {
-                    GRow("模型", value: d.model.or("默认"), chevron: true, enabled: !busy) {
+                    GRow(L10n.modelsTitle(), value: d.model.or(L10n.modelsDefault()), chevron: true, enabled: !busy) {
                         picking = .model(activeAgent)
                     }
-                    GRow("推理强度", value: d.effort.or("默认"), chevron: true, enabled: !busy) {
+                    GRow(L10n.modelsEffort(), value: d.effort.or(L10n.modelsDefault()), chevron: true, enabled: !busy) {
                         picking = .model(activeAgent)
                     }
                     // One line: that project settings may differ is said in the picker.
                     GRow(
-                        "审批模式",
+                        L10n.modesTitle(),
                         value: chosen?.text
                             ?? modeLabel(
                                 chosen: nil,
@@ -259,38 +259,38 @@ struct MachineScreen: View {
 
                 GroupCard {
                     GRow(
-                        "审批超时", value: timeoutText(seconds: s.approvalTimeoutSeconds),
+                        L10n.settingsApprovalTimeout(), value: timeoutText(seconds: s.approvalTimeoutSeconds),
                         chevron: true, enabled: !busy
                     ) { picking = .timeout }
                     GRow(
-                        "空闲自动结束会话", value: idleCloseText(minutes: s.idleCloseMinutes),
+                        L10n.settingsAutomaticallyEndIdleSessions(), value: idleCloseText(minutes: s.idleCloseMinutes),
                         chevron: true, enabled: !busy
                     ) { picking = .idleClose }
                 }
             }
-            if settings.saving { LoadingRow("正在保存…", inset: 30).padding(.bottom, 4) }
+            if settings.saving { LoadingRow(L10n.settingsIosSaving(), inset: 30).padding(.bottom, 4) }
             if !settings.saveError.isEmpty {
                 if settings.saveUnknown {
-                    GroupBanner(settings.saveError, tone: .warn, action: "重新读取") {
+                    GroupBanner(settings.saveError, tone: .warn, action: L10n.settingsIosReload()) {
                         Task { await settings.read() }
                     }
                 } else {
-                    GroupBanner("没能保存：\(settings.saveError)", tone: .error)
+                    GroupBanner(L10n.settingsSaveError(reason: String(describing: settings.saveError)), tone: .error)
                 }
             }
             if !settings.readError.isEmpty {
-                GroupBanner("没能读取设置：\(settings.readError)", tone: .error, action: "重试") {
+                GroupBanner(L10n.settingsReadError(reason: String(describing: settings.readError)), tone: .error, action: L10n.commonRetry()) {
                     Task { await settings.read() }
                 }
             }
             imageStorage(s, usage: settings.imageStorage, enabled: !busy)
         } else if let settings, !settings.readError.isEmpty {
-            GroupLabel("新项目默认设置")
-            GroupBanner("没能读取设置：\(settings.readError)", tone: .error, action: "重试") {
+            GroupLabel(L10n.settingsNewProjectDefaults())
+            GroupBanner(L10n.settingsReadError(reason: String(describing: settings.readError)), tone: .error, action: L10n.commonRetry()) {
                 Task { await settings.read() }
             }
         } else {
-            GroupLabel("新项目默认设置")
+            GroupLabel(L10n.settingsNewProjectDefaults())
             LoadingRow(inset: 30).padding(.bottom, 4)
         }
     }
@@ -300,20 +300,20 @@ struct MachineScreen: View {
         _ s: PBDaemonSettings, usage: PBImageStorageUsage?, enabled: Bool
     ) -> some View {
         let free = usage.map { $0.reclaimableBytes + $0.cacheBytes } ?? 0
-        GroupLabel("附件存储")
+        GroupLabel(L10n.settingsAttachmentStorage())
         GroupCard {
-            GRow("上传的图片和文件", value: usage.map(uploadsText) ?? "读取中…")
+            GRow(L10n.settingsUploadedImagesAndFiles(), value: usage.map(uploadsText) ?? L10n.projectsReadingDirectory())
             GRow(
-                "空间上限", value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
+                L10n.settingsStorageLimit(), value: wholeBytes(s.imageUploadQuotaBytes), chevron: true, enabled: enabled
             ) { picking = .imageQuota }
-            GRow("预览缓存", value: usage.map { imageBytes($0.cacheBytes) } ?? "—")
+            GRow(L10n.settingsPreviewCache(), value: usage.map { imageBytes($0.cacheBytes) } ?? "—")
             GRow(
-                "清理…", value: usage.map { _ in free > 0 ? "可释放 \(imageBytes(free))" : "没有可清理的" },
+                L10n.settingsClear(), value: usage.map { _ in free > 0 ? L10n.settingsCanFree(value: String(describing: imageBytes(free))) : L10n.settingsNothingToClear() },
                 action: true,
                 enabled: enabled && free > 0
             ) { cleaning = true }
         }
-        GroupNote("图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。")
+        GroupNote(L10n.settingsIosImagesAreStoredOnThisComputerImagesBeingSent())
     }
 
     // MARK: Sheets
@@ -335,27 +335,27 @@ struct MachineScreen: View {
                     save(s.with(mode: $0, for: agent))
                 }
             case .timeout:
-                SheetHead("审批超时")
+                SheetHead(L10n.settingsApprovalTimeout())
                 ForEach(approvalTimeoutMinutes, id: \.self) { minutes in
                     ListItem(
-                        "\(minutes) 分钟", checked: Int(s.approvalTimeoutSeconds) == minutes * 60,
+                        L10n.quotaMin(count: Int(minutes)), checked: Int(s.approvalTimeoutSeconds) == minutes * 60,
                         last: minutes == approvalTimeoutMinutes.last
                     ) { save(s.with(timeoutMinutes: minutes)) }
                 }
-                Hint("没人处理的审批过了这么久就按拒绝算。")
+                Hint(L10n.settingsIosUnansweredApprovalsAreDeniedAfterThisTime())
             case .idleClose:
-                SheetHead("空闲自动结束会话")
+                SheetHead(L10n.settingsAutomaticallyEndIdleSessions())
                 let choices = idleCloseChoices(current: s.idleCloseMinutes)
                 ForEach(choices, id: \.self) { minutes in
                     ListItem(
                         idleCloseText(minutes: Int32(minutes)), checked: idleCloseIs(minutes, s.idleCloseMinutes),
-                        small: minutes == idleCloseDefaultMinutes ? "默认" : nil,
+                        small: minutes == idleCloseDefaultMinutes ? L10n.modelsDefault() : nil,
                         last: minutes == choices.last
                     ) { save(s.with(idleCloseMinutes: minutes)) }
                 }
-                Hint("会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。")
+                Hint(L10n.settingsIosSessionsEndAutomaticallyAfterThisMuchInactivityNotRunning())
             case .imageQuota:
-                SheetHead("空间上限")
+                SheetHead(L10n.settingsStorageLimit())
                 ForEach(imageQuotaChoices, id: \.self) { bytes in
                     ListItem(
                         wholeBytes(bytes), checked: s.imageUploadQuotaBytes == bytes,
@@ -372,15 +372,15 @@ struct MachineScreen: View {
         private func showDemo(_ s: MachineSettingsModel) {
             switch SettingsDemo.state {
             case "loading": s.show(settings: nil, reading: true)
-            case "failed": s.show(settings: nil, readError: "电脑不在线，指令没有发出")
+            case "failed": s.show(settings: nil, readError: L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
             case "saveFailed":
                 s.show(
                     settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage,
-                    saveError: "电脑不在线，指令没有发出")
+                    saveError: L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
             case "saveUnknown":
                 s.show(
                     settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage,
-                    saveError: "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准", saveUnknown: true)
+                    saveError: L10n.settingsIosUnsureWhetherTheComputerSavedThisChangeReloadTo(), saveUnknown: true)
             default:
                 s.show(settings: SettingsDemo.daemonSettings, storage: SettingsDemo.imageStorage)
             }
@@ -404,22 +404,22 @@ private struct DefaultModelSheet: View {
 
     var body: some View {
         let chosen = model ?? current.model
-        SheetHead("\(agentName(agent)) · 新会话默认模型")
+        SheetHead(L10n.settingsIosDefaultModelForNewSessions(value: String(describing: agentName(agent))))
         Group {
             if !error.isEmpty {
-                Banner("没能读取模型列表：\(error)", tone: .error, action: "重试") {
+                Banner(L10n.sessionIosModelsFailed(reason: String(describing: error)), tone: .error, action: L10n.commonRetry()) {
                     error = ""
                     attempt += 1
                 }
             } else if let models {
-                ListItem("默认（\(agentName(agent)) 自己的配置）", checked: chosen.isEmpty) {
+                ListItem(L10n.settingsIosDefaultSOwnConfiguration(value: String(describing: agentName(agent))), checked: chosen.isEmpty) {
                     onPick("", "")
                 }
                 let shown = shownModels(models.models, picked: models.models.first { $0.slug == chosen }, all: all)
                 let few = shown.count == models.models.count
                 ForEach(Array(shown.enumerated()), id: \.offset) { i, m in
                     let note = [
-                        contextText(tokens: m.contextWindow), m.efforts.isEmpty ? "无推理强度" : nil,
+                        contextText(tokens: m.contextWindow), m.efforts.isEmpty ? L10n.sessionNoEffort() : nil,
                     ].compactMap { $0 }.joined(separator: " · ")
                     ListItem(
                         m.displayName.or(m.slug), checked: m.slug == chosen,
@@ -430,9 +430,9 @@ private struct DefaultModelSheet: View {
                         if m.efforts.isEmpty { onPick(m.slug, "") } else { model = m.slug }
                     }
                 }
-                if !few { TextAction("全部模型", style: .body, arrow: true) { all = true } }
+                if !few { TextAction(L10n.modelsAll(), style: .body, arrow: true) { all = true } }
                 if let m = models.models.first(where: { $0.slug == chosen }), !m.efforts.isEmpty {
-                    FieldLabel("推理强度")
+                    FieldLabel(L10n.modelsEffort())
                     ChoiceGrid(m.efforts, selected: current.model == m.slug ? current.effort : nil)
                     { onPick(m.slug, $0) }
                 }

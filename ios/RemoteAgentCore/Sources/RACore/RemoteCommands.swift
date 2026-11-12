@@ -8,7 +8,7 @@ import RAProto
 
 extension CommandError {
     static func unknownBecause(_ reason: String) -> CommandError {
-        CommandError(unknownOutcome, "不确定电脑有没有执行：" + reason, outcomeDetail: reason)
+        CommandError(unknownOutcome, L10nMessage.errorsIosUnsureWhetherTheComputerExecutedThis(value: String(describing: reason)), outcomeDetail: reason)
     }
 }
 
@@ -52,7 +52,7 @@ extension Remote {
     @discardableResult
     public func command(_ sid: String, _ cmd: PBCommand) async throws -> PBCommandResult {
         try requireFileCapability(machineId: state.value.sessions[sid]?.machineId ?? "", hasFiles: requiresFileCapability(cmd))
-        guard let s = sessions[sid] else { throw CommandError("not_found", "未知会话") }
+        guard let s = sessions[sid] else { throw CommandError("not_found", L10nMessage.errorsIosUnknownSession()) }
         return try await forward(try prepare(machineId: s.machineId, sessionId: sid, cmd))
     }
 
@@ -75,11 +75,11 @@ extension Remote {
             let status = try await withTimeout(timeoutMs, sleep: sleep) { [request] in
                 try await http.data(for: request).1.statusCode
             }
-            if !(200..<300).contains(status) { throw UserError("服务器返回 \(status)") }
+            if !(200..<300).contains(status) { throw UserError(L10nMessage.errorsServerReturned(value: String(describing: status))) }
         } catch is TimedOut {
-            throw UserError("没有回应")
+            throw UserError(L10nMessage.connectionNoResponse())
         } catch let e as URLError where e.code == .timedOut {
-            throw UserError("没有回应")
+            throw UserError(L10nMessage.connectionNoResponse())
         }
         return (ContinuousClock.now - started).milliseconds
     }
@@ -96,7 +96,7 @@ extension Remote {
                 try await self.machineCommand(machineId, cmd)
             }
         } catch is TimedOut {
-            throw UserError("没有回应")
+            throw UserError(L10nMessage.connectionNoResponse())
         }
         return (ContinuousClock.now - started).milliseconds
     }
@@ -116,7 +116,7 @@ extension Remote {
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
         if !retryOfUnknown && clock() >= p.deadlineMs {
-            throw CommandError(CommandError.expired, "这条指令已过期，没有发出")
+            throw CommandError(CommandError.expired, L10nMessage.errorsIosThisCommandExpiredAndWasNotSent())
         }
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
@@ -125,7 +125,7 @@ extension Remote {
         var mayHaveRun = retryOfUnknown
         func notSent(_ code: String, _ text: String) -> CommandError {
             mayHaveRun
-                ? CommandError.unknownBecause("连接中途断了")
+                ? CommandError.unknownBecause(L10n.errorsConnectionDroppedMidway())
                 : CommandError(code, text)
         }
         var req = PBForwardRequest()
@@ -161,7 +161,7 @@ extension Remote {
                 } catch {
                     // A result that does not open says nothing about whether
                     // the command ran; retrying the same request asks again.
-                    throw CommandError(CommandError.unknownOutcome, "电脑的回复打不开，不确定指令有没有执行")
+                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosCannotOpenTheComputerSReplyCommandExecutionIs())
                 }
                 if !msg.errorCode.isEmpty {
                     throw CommandError(
@@ -174,7 +174,7 @@ extension Remote {
                 }
                 return msg
             } catch let ce as ConnectError {
-                if neverSent(ce.exception) { throw notSent("network", "网络不通，指令没有发出") }
+                if neverSent(ce.exception) { throw notSent("network", L10n.errorsIosNetworkUnavailableTheCommandWasNotSent()) }
                 if ce.code == .unauthenticated && attempt < 3 {
                     attempt += 1
                     token = try await relogin(mayHaveRun)
@@ -191,20 +191,20 @@ extension Remote {
                     continue
                 }
                 if ce.code == .unavailable && ce.exception == nil {
-                    throw notSent(CommandError.unavailable, "电脑不在线，指令没有发出")
+                    throw notSent(CommandError.unavailable, L10n.errorsTheComputerIsOfflineTheCommandWasNotSent())
                 }
                 if unknown || ce.code == .unavailable {
                     throw CommandError.unknownBecause(errorText(ce))
                 }
-                throw CommandError(CommandError.unknownOutcome, "中继未提供可验证的执行结果，请重试同一请求")
+                throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsTheRelayDidNotProvideAVerifiableExecutionResult())
             } catch {
                 if let answer = error as? CommandError, answer.fromDaemon { throw answer }
                 if let refusal = error as? CommandError, refusal.code == "file_upload_unsupported" {
-                    if mayHaveRun { throw CommandError(CommandError.unknownOutcome, "上一次的结果仍不确定：" + refusal.message) }
+                    if mayHaveRun { throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertain(value: String(describing: refusal.message))) }
                     throw refusal
                 }
                 if mayHaveRun {
-                    throw CommandError(CommandError.unknownOutcome, "未收到可验证的执行结果，请重试同一请求")
+                    throw CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosNoVerifiableExecutionResultReceivedRetryTheSameRequest())
                 }
                 throw error
             }
@@ -218,7 +218,7 @@ extension Remote {
             return try await signIn()
         } catch {
             if !mayHaveRun { throw error }
-            throw CommandError.unknownBecause("请求可能已经送到，之后登录失败（\(errorText(error))）")
+            throw CommandError.unknownBecause(L10n.errorsIosTheRequestMayHaveArrivedButLoginThenFailed(value: String(describing: errorText(error))))
         }
     }
 
@@ -236,7 +236,7 @@ extension Remote {
                 cmd.listModels.agent = agent
                 let r = try await self.machineCommand(machineId, cmd)
                 guard case .listModels(let list)? = r.kind else {
-                    throw CommandError("internal", "意外的回复")
+                    throw CommandError("internal", L10nMessage.newSessionUnexpectedReply())
                 }
                 self.models[k]?.done = true
                 return list
@@ -264,7 +264,7 @@ extension Remote {
     /// with its format's signature.
     public func image(_ sid: String, imageId: String) async throws -> ImageResult {
         guard let s = sessions[sid], sessionKeys[sid] != nil else {
-            throw CommandError("not_found", "未知会话")
+            throw CommandError("not_found", L10nMessage.errorsIosUnknownSession())
         }
         let cacheKey = "\(sid)/\(imageId)"
         var env = await cache?.image(key: cacheKey).flatMap { try? PBEnvelope(serializedBytes: $0) }
@@ -292,9 +292,9 @@ extension Remote {
         } catch is UnsupportedHistoryError {
             return .corrupt(why: errorText(UnsupportedHistoryError()))
         } catch {
-            return .corrupt(why: "图片的内容或来源无法核实")
+            return .corrupt(why: L10n.errorsIosImageContentOrOriginCouldNotBeVerified())
         }
-        if detectFormat(payload.data) != payload.format { return .corrupt(why: "图片内容和格式对不上") }
+        if detectFormat(payload.data) != payload.format { return .corrupt(why: L10n.errorsIosImageContentDoesNotMatchItsFormat()) }
         if let env, let bytes: Data = try? env.serializedData() {
             await cache?.putImage(key: cacheKey, envelope: bytes)
         }

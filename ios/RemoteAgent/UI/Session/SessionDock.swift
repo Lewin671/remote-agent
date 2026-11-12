@@ -460,7 +460,7 @@ struct QuestionBody: View {
         }
         if !act.running && answer.attempt.frozen {
             let shown = answer.options.map { i in i < cur.options.count ? optionLabel(cur.options[i].label).label : "\(i + 1)" }
-                .joined(separator: "、")
+                .joined(separator: L10n.commonIosListSeparator())
             Banner(
                 answer.attempt.expired
                     ? L10n.dockIosQuestionExpired(answer: shown)

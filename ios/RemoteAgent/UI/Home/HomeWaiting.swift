@@ -140,7 +140,7 @@ private struct ApprovalCardBody: View {
         .buttonStyle(.plain)
         .padding(.top, 12)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel([t.title, t.place.replacingOccurrences(of: " · ", with: "，")].joined(separator: "，"))
+        .accessibilityLabel([t.title, t.place.replacingOccurrences(of: " · ", with: L10n.commonIosSpokenSeparator())].joined(separator: L10n.commonIosSpokenSeparator()))
         .accessibilityHint(L10n.homeIosOpenSession())
         .accessibilityAddTraits(.isButton)
     }

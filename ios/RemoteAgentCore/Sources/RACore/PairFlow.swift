@@ -9,8 +9,11 @@ import RAProto
 import os
 
 public struct PairError: Error, LocalizedError, Equatable, Sendable, CustomStringConvertible {
-    public let message: String
-    public init(_ message: String) { self.message = message }
+    private let localized: LocalizedMessage
+    public var message: String { localized.resolve() }
+    public init(_ message: String) { localized = LocalizedMessage(raw: message) }
+    public init(_ message: LocalizedMessage) { localized = message }
+    public static func == (lhs: PairError, rhs: PairError) -> Bool { lhs.message == rhs.message }
     public var errorDescription: String? { message }
     public var description: String { message }
 }
@@ -83,14 +86,14 @@ private func poll(
     get: () async throws -> PBGetPairingResponse
 ) async throws -> PBGetPairingResponse {
     while true {
-        if stopped() { throw PairError("已取消") }
+        if stopped() { throw PairError(L10nMessage.queueCanceled()) }
         let res: PBGetPairingResponse
         do {
             res = try await get()
         } catch let e as ConnectError where e.code == .notFound {
-            throw PairError("配对已过期或被取消")
+            throw PairError(L10nMessage.securityPairingExpiredOrWasCanceled())
         }
-        if res.state == .canceled { throw PairError("管理端取消了配对") }
+        if res.state == .canceled { throw PairError(L10nMessage.securityTheManagingClientCanceledPairing()) }
         if res.state.rawValue >= want.rawValue { return res }
         try await sleep(1000)
     }
@@ -101,7 +104,7 @@ private func poll(
 func joinerKind(_ st: PBGetPairingResponse) throws -> PBDeviceKind {
     switch st.joinerKind {
     case .machine, .client: return st.joinerKind
-    default: throw PairError("服务器返回了意外的设备类型，已停止配对")
+    default: throw PairError(L10nMessage.securityIosTheServerReturnedAnUnexpectedDeviceTypePairingStopped())
     }
 }
 
@@ -128,7 +131,7 @@ public func joinByPairing(
     existing: Account? = nil,
     confirm: @Sendable ([String]) async -> Bool = { _ in false }
 ) async throws -> Account {
-    if let existing, existing.server != link.server { throw PairError("安全设置必须使用原账户的服务器") }
+    if let existing, existing.server != link.server { throw PairError(L10nMessage.securitySecuritySetupMustUseTheOriginalAccountSServer()) }
     let api = try Api(server: link.server, http: http)
     if let existing { _ = try await login(api: api, account: existing) }
     let key = try PairKey()
@@ -138,7 +141,7 @@ public func joinByPairing(
     let peek = try await api.pairing.peekPairing(request: peekAsk).value()
     guard peek.commit.count == 32, !peek.pairingID.isEmpty,
         link.commit == nil || link.commit == peek.commit
-    else { throw PairError("配对承诺不匹配") }
+    else { throw PairError(L10nMessage.securityIosPairingCommitmentMismatch()) }
     let identity = try loadIdentity(link.server, peek.pairingID)
     let deviceSeed = identity?.seed ?? existing?.deviceSeed ?? randomBytes(32)
     if let identity {
@@ -160,18 +163,18 @@ public func joinByPairing(
         joined = try await api.pairing.joinPairing(request: join).value()
     } catch let e as ConnectError {
         switch e.code {
-        case .notFound, .invalidArgument, .failedPrecondition: throw PairError("配对码不对，或者已经用过了")
-        case .resourceExhausted: throw PairError("试得太频繁了，稍等一分钟再试")
+        case .notFound, .invalidArgument, .failedPrecondition: throw PairError(L10nMessage.securityThePairingCodeIsWrongOrHasAlreadyBeen())
+        case .resourceExhausted: throw PairError(L10nMessage.securityIosTooManyAttemptsWaitAMinuteAndRetry())
         default: throw e
         }
     }
     guard joined.pairingID == peek.pairingID, joined.commit == peek.commit else {
-        throw PairError("临时公钥公开后配对承诺发生变化")
+        throw PairError(L10nMessage.securityIosPairingCommitmentChangedAfterTheEphemeralPublicKeyWas())
     }
     let id = joined.pairingID
     let token = joined.candidateToken
     if let commit = link.commit, commit != joined.commit {
-        throw PairError("服务器返回的不是发起配对那台设备的信息，已停止配对")
+        throw PairError(L10nMessage.securityTheServerReturnedInformationForADifferentDeviceFrom())
     }
     var ask = PBGetPairingRequest()
     ask.pairingID = id
@@ -182,7 +185,7 @@ public func joinByPairing(
     guard
         try DeviceSecurity.pairDomainCommit(ephemeral: st.initiatorPublic, trust: st.trust)
             == peek.commit
-    else { throw PairError("管理端的信任信息与承诺不匹配") }
+    else { throw PairError(L10nMessage.securityIosTheManagingClientSTrustInformationDoesNotMatch()) }
     let tr = Pairing.domainTranscript(
         pairingId: id, initiatorPublic: st.initiatorPublic, joinerPublic: key.publicKey,
         devicePublic: devicePublic, hpkePublic: xPublic, joinerKind: PBDeviceKind.client.rawValue,
@@ -194,7 +197,7 @@ public func joinByPairing(
         cancel.pairingID = id
         cancel.candidateToken = token
         _ = await api.pairing.cancelPairing(request: cancel)
-        throw PairError("本机未确认图案，已停止安全绑定")
+        throw PairError(L10nMessage.securityIosPatternsAreNotConfirmedLocallySecureBindingStopped())
     }
     onRegistering()
     let done = try await poll(stopped: stopped, want: .approved, sleep: sleep, get: get)
@@ -202,12 +205,12 @@ public func joinByPairing(
         key: s.key, envelope: done.hasPayload ? done.payload : nil,
         want: Place(.pairing, requestId: id),
         as: PBPairingPayload.self)
-    if payload.server != link.server { throw PairError("账户属于另一个服务器") }
+    if payload.server != link.server { throw PairError(L10nMessage.securityTheAccountBelongsToAnotherServer()) }
     // Canceled while the other phone was allowing it: stop before registering.
-    if stopped() { throw PairError("已取消本次加入") }
+    if stopped() { throw PairError(L10nMessage.securityIosJoiningCanceled()) }
     guard payload.accountPublicKey.count == 32,
         deviceId(publicKey: payload.accountPublicKey) == pin.account
-    else { throw PairError("配对载荷的账户与本机核对的不一致") }
+    else { throw PairError(L10nMessage.securityIosThePairingPayloadSAccountDiffersFromTheOne()) }
     let enrollment = Enrollment(
         seed: deviceSeed, pairingId: id, approval: payload.approval,
         signature: payload.approvalSignature)
@@ -217,22 +220,22 @@ public func joinByPairing(
     let approval = try PBPairApproval(serializedBytes: payload.approval)
     guard approval.approverDeviceID == approver,
         approval.candidateDevicePublicKey == devicePublic
-    else { throw PairError("配对批准与这台设备不匹配") }
+    else { throw PairError(L10nMessage.securityIosPairingApprovalDoesNotMatchThisDevice()) }
     var chain: [DeviceSecurity.State] = []
     var proofs: [DeviceSecurity.RecoveryStatement?] = []
-    guard !payload.securityStates.isEmpty else { throw PairError("配对载荷的状态链不完整") }
+    guard !payload.securityStates.isEmpty else { throw PairError(L10nMessage.securityIosThePairingPayloadSStateChainIsIncomplete()) }
     guard payload.securityStates.count <= DeviceSecurity.maxPairStates else {
-        throw PairError("安全状态链太长，无法加入账户；请在管理端重建账户")
+        throw PairError(L10nMessage.securityIosTheSecurityStateChainIsTooLongToJoin())
     }
     var chainBytes = 0
     for value in payload.securityStates {
         chainBytes += value.state.count + value.recovery.count
         guard chainBytes <= DeviceSecurity.maxPairBytes else {
-            throw PairError("安全状态链太长，无法加入账户；请在管理端重建账户")
+            throw PairError(L10nMessage.securityIosTheSecurityStateChainIsTooLongToJoin())
         }
         guard value.state.count <= DeviceSecurity.maxState,
             value.recovery.count <= DeviceSecurity.maxState
-        else { throw PairError("配对载荷的状态链不完整") }
+        else { throw PairError(L10nMessage.securityIosThePairingPayloadSStateChainIsIncomplete()) }
     }
     for value in payload.securityStates {
         chain.append(try DeviceSecurity.parseState(value.state))
@@ -244,14 +247,14 @@ public func joinByPairing(
     let nowMs = UInt64(Date().timeIntervalSince1970 * 1000)
     for state in chain {
         guard state.core.issuedAt <= nowMs + DeviceSecurity.clockSkewLimit else {
-            throw PairError("手机的安全状态时间比本机快 5 分钟以上，请校准时间后重试")
+            throw PairError(L10nMessage.securityIosThePhoneSSecurityStateIsOver5Minutes())
         }
     }
     let head = chain[chain.count - 1]
     let candidate = try DeviceSecurity.member(ed: devicePublic, x: xPublic, kind: .client)
     guard head.core.authorityID == approver, head.core.member(candidate.id) != nil,
         chain.contains(where: { $0.core.member(candidate.id) != nil })
-    else { throw PairError("新状态没有把这台设备加进去") }
+    else { throw PairError(L10nMessage.securityIosTheNewStateDidNotAddThisDevice()) }
     let secret = try DeviceSecurity.openGrant(pin, head, recipient: candidate.id, x: x)
     let acct = Account(
         server: link.server, root: existing?.root ?? Data(), deviceSeed: deviceSeed,

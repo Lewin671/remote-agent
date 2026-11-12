@@ -85,7 +85,7 @@ def references(root):
         refs=[]
         if platform=='web':refs += re.findall(r'\bt\(\s*["\']([^"\']+)["\']',text)
         if platform in {'android','ios'}:
-            for fn in re.findall(r'\b(?:UiMessages|L10n)\.(\w+)\s*\(',text):
+            for fn in re.findall(r'\b(?:UiMessages|L10n|L10nMessage)\.(\w+)\s*\(',text):
                 if fn not in names: raise ValueError(f'{name}: undefined message function {fn}')
                 refs.append(names[fn])
         if platform=='go':
@@ -102,6 +102,8 @@ def references(root):
             if key not in messages: raise ValueError(f'{path.name}: undefined key {key}')
             if 'web' not in messages[key]['platforms']: raise ValueError(f'{path.name}: {key} not available on web')
             usage[key].add('web')
+    for key in ['startup.ios_camera_usage', 'startup.ios_photo_library_add_usage']:
+        if key in usage: usage[key].add('ios')
     orphan=[k for k,users in usage.items() if not users]
     if orphan:raise ValueError('orphan keys: '+', '.join(orphan))
 

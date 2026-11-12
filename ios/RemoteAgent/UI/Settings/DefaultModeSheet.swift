@@ -20,14 +20,14 @@ struct DefaultModeSheet: View {
         let current = modeOf(defaults.mode)
         let config = NewConfig(machineId: machine, cwd: "", agent: agent, model: defaults.model)
         let choices = modeChoices(config, models: models, settings: settings)
-        SheetHead("审批模式")
+        SheetHead(L10n.modesTitle())
         ForEach(Array(defaultModeChoices.enumerated()), id: \.offset) { index, mode in
             let choice = choices.first { $0.mode == mode }
             ListItem(
-                mode?.text ?? "默认",
+                mode?.text ?? L10n.modelsDefault(),
                 desc: mode == nil
                     ? (effective.known
-                        ? "不指定时实际用：" + modeLabel(chosen: nil, default: effective, agent: agent, includeDefault: false)
+                        ? L10n.settingsIosWhenUnspecifiedUses(value: String(describing: modeLabel(chosen: nil, default: effective, agent: agent, includeDefault: false)))
                         : unknownModeText)
                     : choice?.desc,
                 checked: mode == current || (mode == nil && !defaultModeChoices.contains(current)),
@@ -36,7 +36,7 @@ struct DefaultModeSheet: View {
             ) { onPick(mode) }
         }
         if !error.isEmpty {
-            Banner("没能读取模型列表：\(error)", tone: .error, action: "重试") { attempt += 1 }
+            Banner(L10n.sessionIosModelsFailed(reason: String(describing: error)), tone: .error, action: L10n.commonRetry()) { attempt += 1 }
         }
         Color.clear.frame(height: 0).task(id: attempt) {
             guard agentInfo(agent).autoMayBeUnavailable else { return }

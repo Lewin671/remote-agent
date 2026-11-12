@@ -540,7 +540,7 @@ extension SyncServerTests {
             try await world { w in
                 let e = try await refused(w, protocol: protocolVersion + 1)
                 #expect(e.code == "failed_precondition")
-                #expect(e.message == "这个 App 版本较旧，请更新后再试")
+                #expect(e.message == L10n.errorsIosThisAppVersionIsOutOfDateUpdateAnd())
             }
         }
 
@@ -590,7 +590,7 @@ extension SyncServerTests {
                 #expect(try #require(await heard.frames.poll(5_000)).snapshot.cols == 120)
                 #expect(try #require(await heard.frames.poll(5_000)).output == Data(" world".utf8))
                 // The same number again: refused, and the stream is over, said once.
-                #expect(await heard.closes.poll(5_000) == "终端帧顺序不对")
+                #expect(await heard.closes.poll(5_000) == L10n.errorsTerminalFramesAreOutOfOrder())
                 #expect(await heard.frames.poll(300) == nil)
                 #expect(await heard.closes.poll(300) == nil)
             }
@@ -613,7 +613,7 @@ extension SyncServerTests {
                     _ = try await r.openTerminal("s1", listener: heard)
                     Issue.record("expected the terminal not to open")
                 } catch {
-                    #expect(errorText(error) == "连不上终端")
+                    #expect(errorText(error) == L10n.errorsCannotConnectToTerminal())
                 }
                 #expect(await heard.closes.poll(300) == nil)
             }
@@ -859,7 +859,7 @@ extension SyncServerTests {
                     deviceId: acct.deviceId), http: routed)
             r.start()
             let lost = try await r.awaitState("the closed stream") { $0.conn == .offline }
-            #expect(lost.error == "与 server 的连接断开")
+            #expect(lost.error == L10n.errorsDisconnectedFromServer())
             r.reconnectNow()
             _ = try await r.awaitState("the next stream") { $0.conn == .online }
             #expect(hole.attempts.value == 2)
@@ -976,7 +976,7 @@ extension SyncServerTests {
                 let r = try w.remote(acct, http: slow, streamOpenMs: 300)
                 r.start()
                 let off = try await r.awaitState("login timeout") { $0.conn == .offline }
-                #expect(off.error == "连接超时")
+                #expect(off.error == L10n.errorsConnectionTimedOut())
                 #expect(!r.current.removed)
                 unblocked.set()
                 r.reconnectNow()

@@ -13,6 +13,6 @@ final class SecurityTimeTests: XCTestCase {
         XCTAssertEqual(securityTime(ms("2027-01-02T13:02:59Z"), now: now, timeZone: zone), "1月2日 05:02")
         XCTAssertEqual(securityTime(ms("2027-01-02T13:02:59Z"), now: now, timeOnly: true, timeZone: zone), "05:02")
         XCTAssertEqual(securityTime(ms("2026-03-08T10:02:00Z"), now: date("2026-03-07T20:00:00Z"), timeZone: zone), "明天 03:02")
-        XCTAssertEqual(securityTime(0, now: now, timeZone: zone), "尚未读取")
+        XCTAssertEqual(securityTime(0, now: now, timeZone: zone), L10n.securityIosNotReadYet())
     }
 }

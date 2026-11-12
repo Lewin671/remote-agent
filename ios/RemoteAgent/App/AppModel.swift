@@ -364,7 +364,7 @@ final class AppModel {
             } catch {
                 guard gen == generation else { return }
                 loading = false
-                stage = .failed(error.localizedDescription + "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。")
+                stage = .failed(L10n.errorsIosTheOriginalRequestAndKeysAreRetainedRetryIf(value: String(describing: error.localizedDescription)))
                 return
             }
             guard gen == generation, !erasing else { return }
@@ -566,8 +566,8 @@ final class AppModel {
         var text: String {
             switch self {
             case .sensitive(let authority, let unresolved):
-                AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"
-            case .unreadable: "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。"
+                AuthorityAccess.exitAdvice(authority: authority, unresolved: unresolved) + L10n.errorsIosThisDeletesTheAccountKeysAndCacheOnThis()
+            case .unreadable: L10n.errorsIosCouldNotReadThisPhoneSAccountStateManagement()
             }
         }
     }

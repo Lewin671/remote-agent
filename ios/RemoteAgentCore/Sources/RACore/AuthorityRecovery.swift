@@ -142,7 +142,7 @@ extension AuthorityCoordinator {
         if let op = try storage.readOperation() {
             try DeviceSecurity.check(op.kind == .handoffOffer, .untrusted)
             if !op.result.isEmpty && !acknowledgePublishedKey {
-                throw PairError("接任公钥可能已经发布；放弃只清除本机准备，不会撤回公钥。请保留恢复码并明确确认后再放弃。")
+                throw PairError(L10nMessage.securityIosTheSuccessorSPublicKeyMayAlreadyBePublished278())
             }
             try gate.check(t)
             try storage.replaceOperation(expected: op, next: nil)

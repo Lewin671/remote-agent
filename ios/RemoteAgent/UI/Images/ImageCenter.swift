@@ -166,7 +166,7 @@ final class ImageCenter {
         viewed.use(remote)
         uploads = ImageUploads(
             prepare: { [weak self] uri, original in
-                guard let data = try await self?.read(uri) else { throw UserError("读不到这张图片") }
+                guard let data = try await self?.read(uri) else { throw UserError(L10nMessage.imageIosCannotReadThisImage()) }
                 return try await prepareImage(data, original: original)
             },
             channel: { [remote] machine in
@@ -321,7 +321,7 @@ final class ImageCenter {
         if !allowed {
             for item in d.documents where item.hasSource {
                 item.invalidate()
-                item.state = .failed(error: fileSupported(machine) ? "附件超过这台电脑的文件数量或大小上限，请移除后重新选择" : "这台电脑不支持发送文件")
+                item.state = .failed(error: fileSupported(machine) ? L10n.imageIosAttachmentsExceedThisComputerSFileCountOrSize() : L10n.imageIosThisComputerDoesNotSupportFileUploads())
             }
         }
         if let machineId, !blocked {
@@ -416,7 +416,7 @@ final class ImageCenter {
                         left.removeFirst()
                         let item = PendingImage(id: newRequestId(), uri: nil)
                         item.file = file
-                        item.state = .failed(error: "需要重新传到电脑")
+                        item.state = .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain())
                         d.append([item])
                         if let target = self.machine(key)(), d.filesAllowed(for: fileMachines[key]) { uploads.upload(item, machineId: target) }
                     } catch {
@@ -444,7 +444,7 @@ final class ImageCenter {
                     guard let video = try await item.loadTransferable(type: LibraryVideo.self) else { throw PickedFile.unreadable }
                     urls.append(video.url)
                 } catch {
-                    say(key, "读不到这段视频，请重新选择")
+                    say(key, L10n.imageIosCannotReadThisVideoSelectItAgain())
                 }
             }
             guard !closed, !urls.isEmpty else { return urls.forEach { LibraryVideos.discard($0) } }
@@ -467,12 +467,12 @@ final class ImageCenter {
     func retry(_ key: String, _ img: PendingImage) {
         if img.isFile && !img.hasSource {
             img.invalidate()
-            img.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+            img.state = .failed(error: L10n.attachmentFileMissing())
             return
         }
         if img.isFile, !draft(key).filesAllowed(for: fileMachines[key]) {
             img.invalidate()
-            img.state = .failed(error: "这台电脑不支持这些文件，请检查文件数量和大小或换一台电脑")
+            img.state = .failed(error: L10n.imageIosThisComputerDoesNotSupportTheseFilesCheckTheir())
             return
         }
         uploads.retry(draft(key), img, machine: machine(key))
@@ -515,7 +515,7 @@ final class ImageCenter {
         defer {
             if readers.isEmpty { reading = false } else { readers.removeFirst().resume() }
         }
-        let unreadable = UserError("读不到这张图片")
+        let unreadable = UserError(L10nMessage.imageIosCannotReadThisImage())
         guard let source = sources[uri] else { throw unreadable }
         let data: Data
         switch source {
@@ -583,7 +583,7 @@ final class ImageCenter {
         }
         uploads.sendAll(draft, machineId: machineId)
         guard draft.ready(machineId: machineId) else {
-            Task { done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送"))) }
+            Task { done(.failure(UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending()))) }
             return true
         }
         let original = draft.original
@@ -608,7 +608,7 @@ final class ImageCenter {
             // send, and logging out has taken what was written.
             if closed || forgottenSessions.contains(sid) {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
-                done(.failure(UserError(closed ? "已退出账户" : "会话已移除")))
+                done(.failure(UserError(closed ? L10n.attachmentIosSignedOutOfTheAccount() : L10n.imageIosSessionRemoved())))
                 return
             }
             do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }
@@ -625,7 +625,7 @@ final class ImageCenter {
                 try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }
                     .value
                 uploads.sendAll(draft, machineId: machineId)
-                done(.failure(UserError("附件需要重新传到电脑，请上传完成后再发送")))
+                done(.failure(UserError(L10nMessage.imageIosAttachmentsNeedUploadingAgainCompleteTheUploadBeforeSending())))
                 return
             }
             // The immutable request owns these transports before the composer lets them go.
@@ -660,7 +660,7 @@ final class ImageCenter {
             } catch {
                 guard let self, !closed, !Task.isCancelled else { return }
                 restored.remove(sid)
-                outgoingRestoreErrors[sid] = "待发记录没能恢复，请重试"
+                outgoingRestoreErrors[sid] = L10n.imageIosCouldNotRestorePendingRecordsRetry()
             }
         }
     }
@@ -694,7 +694,7 @@ final class ImageCenter {
         let picked = files.map { file in
             let item = PendingImage(id: newRequestId(), uri: nil)
             item.file = PickedFile(remote: file)
-            item.state = .failed(error: "这个文件没有本机副本，请移除后重新选择")
+            item.state = .failed(error: L10n.attachmentFileMissing())
             return item
         }
         guard draft(Self.sessionKey(sid)).attach(picked, max: imageLimit(for: machine), maxFiles: fileLimit(for: machine)) else { return false }

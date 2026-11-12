@@ -201,7 +201,7 @@ struct NewTaskCli: View {
             }
             .newTaskAccessory()
         }
-        .accessibilityLabel("CLI：\(agentName(agent))")
+        .accessibilityLabel(L10n.newSessionIosCliNamed(name: agentName(agent)))
         .accessibilityIdentifier("new-task-cli")
     }
     private func cliLabel(named: Bool) -> some View {

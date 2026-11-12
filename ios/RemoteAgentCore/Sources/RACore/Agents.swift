@@ -147,18 +147,18 @@ public struct AgentEntry: Sendable, Equatable, Identifiable {
 }
 
 private func fixedWindowLabel(_ name: String) -> QuotaWindowDescriptor {
-    if name == "primary" || name == "five_hour" { return QuotaWindowDescriptor(label: "5 小时", group: nil) }
-    if name == "secondary" || name == "seven_day" { return QuotaWindowDescriptor(label: "7 天", group: nil) }
+    if name == "primary" || name == "five_hour" { return QuotaWindowDescriptor(label: L10n.quotaHr(count: 5), group: nil) }
+    if name == "secondary" || name == "seven_day" { return QuotaWindowDescriptor(label: L10n.quotaDays(count: 7), group: nil) }
     return QuotaWindowDescriptor(label: name, group: nil)
 }
 
-private let ANTIGRAVITY_QUOTA_WINDOWS: [String: QuotaWindowDescriptor] = [
-    "gemini-5h": QuotaWindowDescriptor(label: "Gemini · 5 小时", group: "Gemini"),
-    "gemini-weekly": QuotaWindowDescriptor(label: "Gemini · 7 天", group: "Gemini"),
-    "gemini-argon-wtu-weekly": QuotaWindowDescriptor(label: "Gemini 4 Argon · 7 天", group: "Gemini"),
-    "3p-5h": QuotaWindowDescriptor(label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）"),
-    "3p-weekly": QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）"),
-]
+private var ANTIGRAVITY_QUOTA_WINDOWS: [String: QuotaWindowDescriptor] { [
+    "gemini-5h": QuotaWindowDescriptor(label: L10n.quotaNamedHours(count: 5, name: "Gemini"), group: "Gemini"),
+    "gemini-weekly": QuotaWindowDescriptor(label: L10n.quotaNamedDays(count: 7, name: "Gemini"), group: "Gemini"),
+    "gemini-argon-wtu-weekly": QuotaWindowDescriptor(label: L10n.quotaNamedDays(count: 7, name: "Gemini 4 Argon"), group: "Gemini"),
+    "3p-5h": QuotaWindowDescriptor(label: L10n.quotaNamedHours(count: 5, name: L10n.quotaThirdPartyModels()), group: L10n.quotaThirdPartyModelsClaudeGptOss()),
+    "3p-weekly": QuotaWindowDescriptor(label: L10n.quotaNamedDays(count: 7, name: L10n.quotaThirdPartyModels()), group: L10n.quotaThirdPartyModelsClaudeGptOss()),
+] }
 
 private var CODEX_ENTRY: AgentEntry { AgentEntry(
     agent: .codex,
@@ -208,7 +208,7 @@ private var CLAUDE_ENTRY: AgentEntry { AgentEntry(
     standardContextOption: true,
     autoMayBeUnavailable: true,
     trustFolderHint: L10n.dockTrustFolder(),
-    usageHint: " 可在本机 Claude Code 中查看 /usage。",
+    usageHint: L10n.quotaIosViewUsageInLocalClaudeCode(),
     reconcilesUnclaimedInput: true,
     sessionNeedsModelList: true,
     switchesModelInSession: true,
@@ -272,7 +272,7 @@ private func unknownEntry(agent: PBAgent) -> AgentEntry {
     AgentEntry(
         agent: agent,
         id: "",
-        name: "未知 CLI",
+        name: L10n.modelsUnknownCli(),
         expectedQuotaWindows: nil,
         quotaWindow: { QuotaWindowDescriptor(label: $0, group: nil) },
         toolLabelFromItemType: false,

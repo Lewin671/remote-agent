@@ -22,12 +22,12 @@ struct ScheduleAgentRow: View {
                 // Beside its name where the row has room, under it where it does not.
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 10) {
-                        Text("CLI").font(.body).foregroundStyle(DS.ink).fixedSize()
+                        Text(L10n.newSessionCliPickerLabel()).font(.body).foregroundStyle(DS.ink).fixedSize()
                         Spacer(minLength: 10)
                         picker.fixedSize()
                     }
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("CLI").font(.body).foregroundStyle(DS.ink)
+                        Text(L10n.newSessionCliPickerLabel()).font(.body).foregroundStyle(DS.ink)
                         picker
                     }
                     .padding(.vertical, 8)

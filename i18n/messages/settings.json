@@ -1472,6 +1472,810 @@
     }
   },
   {
+    "key": "settings.ios_approvals_questions_and_plans_waiting_for_you_appear_at",
+    "zh-CN": "等你处理的审批、提问和计划排在「会话」页最上面",
+    "en": "Approvals, questions, and plans waiting for you appear at the top of Sessions",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_clear_reclaimable_images",
+    "zh-CN": "清理可回收图片？",
+    "en": "Clear reclaimable images?",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_clears_reclaimable_originals_and_cache_unsynced_full_size_images",
+    "zh-CN": "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。",
+    "en": "Clears reclaimable originals and cache. Unsynced full-size images will show only previews. Originals queued or used in the current run, and session history, are retained.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_cli_versions",
+    "zh-CN": "CLI 版本",
+    "en": "CLI versions",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_computer_sessions_do_not_depend_on_alerts_unanswered_approvals",
+    "zh-CN": "电脑上的会话不依赖提醒：没人处理的审批到时间按拒绝算，之后仍可以在会话里继续。",
+    "en": "Computer sessions do not depend on alerts. Unanswered approvals are denied when they expire; you can continue later in the session.",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_connect_to_the_server_to_read_and_edit_new",
+    "zh-CN": "连上服务器后才能读取和修改新会话默认设置",
+    "en": "Connect to the server to read and edit new-session defaults",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_copy_device_id",
+    "zh-CN": "复制设备 ID",
+    "en": "Copy device ID",
+    "notes": "iOS SettingsShared.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_current_client",
+    "zh-CN": "当前客户端",
+    "en": "Current client",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_default_model_for_new_sessions",
+    "zh-CN": "{value} · 新会话默认模型",
+    "en": "{value} · Default model for new sessions",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 agentName(agent)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_default_s_own_configuration",
+    "zh-CN": "默认（{value} 自己的配置）",
+    "en": "Default ({value}’s own configuration)",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 agentName(agent)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_delete_entire_account",
+    "zh-CN": "删除整个账户…",
+    "en": "Delete entire account…",
+    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_exit_and_delete_local_keys_from_settings",
+    "zh-CN": "退出并删除本机密钥在设置页",
+    "en": "Exit and delete local keys from settings",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_fonts_use_the_system_s_sf_pro_pingfang_and",
+    "zh-CN": "字体用的是系统自带的 SF Pro、苹方和 SF Mono，App 里没有打包字体。",
+    "en": "Fonts use the system’s SF Pro, PingFang, and SF Mono. No fonts are bundled in the app.",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_for_unverified_versions_run_remote_agent_doctor_on_the",
+    "zh-CN": "未验证的版本请在电脑上运行 remote-agent doctor",
+    "en": "For unverified versions, run remote-agent doctor on the computer",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_how_many_sessions_are_waiting_for_you",
+    "zh-CN": "有几个会话在等你",
+    "en": "How many sessions are waiting for you",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_how_to_know_something_needs_attention_now",
+    "zh-CN": "现在怎么知道有事要处理",
+    "en": "How to know something needs attention now",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_icons_and_libraries",
+    "zh-CN": "图标和库",
+    "en": "Icons and libraries",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_images_are_stored_on_this_computer_images_being_sent",
+    "zh-CN": "图片存在这台电脑上。正在发送和执行中用到的图片不会被清理；预览缓存最多 150 MiB，自动回收。",
+    "en": "Images are stored on this computer. Images being sent or used in execution are not cleared. The preview cache is limited to 150 MiB and reclaimed automatically.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_is_offline_connect_to_read_and_edit_new_session",
+    "zh-CN": "{value} 不在线，连上后才能读取和修改新会话默认设置",
+    "en": "{value} is offline. Connect to read and edit new-session defaults.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 name；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_leave_blank_for_the_default_name",
+    "zh-CN": "留空就用默认名称",
+    "en": "Leave blank for the default name",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_libraries_resolved_with_dependencies",
+    "zh-CN": "随依赖一起解析的库",
+    "en": "Libraries resolved with dependencies",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_license_text_is_not_bundled_with_the_app",
+    "zh-CN": "许可证文本没有随 App 打包",
+    "en": "License text is not bundled with the app",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_local_ciphertext_cache",
+    "zh-CN": "本机的密文缓存",
+    "en": "Local ciphertext cache",
+    "notes": "iOS Licenses.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_local_storage",
+    "zh-CN": "本机存储",
+    "en": "Local storage",
+    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_name_set_in_settings",
+    "zh-CN": "设置页改的名字",
+    "en": "Name set in settings",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_names_sync_encrypted_to_other_clients_the_server_cannot",
+    "zh-CN": "名称加密后同步到其他客户端，服务器看不到。",
+    "en": "Names sync encrypted to other clients. The server cannot read them.",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_no_computers_yet",
+    "zh-CN": "还没有电脑",
+    "en": "No computers yet",
+    "notes": "iOS DevicesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_notifications",
+    "zh-CN": "通知",
+    "en": "Notifications",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_open_source_licenses",
+    "zh-CN": "开源许可",
+    "en": "Open source licenses",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_other_clients",
+    "zh-CN": "其他客户端",
+    "en": "Other clients",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_privacy_policy",
+    "zh-CN": "隐私政策",
+    "en": "Privacy policy",
+    "notes": "iOS PrivacyPolicyLink.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_protocol_message_encoding",
+    "zh-CN": "协议报文的编码",
+    "en": "Protocol message encoding",
+    "notes": "iOS Licenses.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_reload",
+    "zh-CN": "重新读取",
+    "en": "Reload",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_saving",
+    "zh-CN": "正在保存…",
+    "en": "Saving…",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_server_communication",
+    "zh-CN": "和服务器通信",
+    "en": "Server communication",
+    "notes": "iOS Licenses.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_sessions_end_automatically_after_this_much_inactivity_not_running",
+    "zh-CN": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
+    "en": "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_support_and_feedback",
+    "zh-CN": "支持与反馈",
+    "en": "Support and feedback",
+    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_system",
+    "zh-CN": "系统",
+    "en": "System",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_the_android_app_and_home_screen_web_app_can",
+    "zh-CN": "Android App 和添加到主屏幕的网页可以在各自的设置里开启提醒",
+    "en": "The Android app and home screen web app can enable alerts in their own settings",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_the_computer_may_be_asleep_offline_or_not_running",
+    "zh-CN": "可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新。",
+    "en": "The computer may be asleep, offline, or not running remote-agent. Sessions may still be running. This page updates automatically after reconnecting.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_the_number_on_the_sessions_tab",
+    "zh-CN": "「会话」标签上的数字",
+    "en": "The number on the Sessions tab",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_the_time_on_the_right_is_the_last_use",
+    "zh-CN": "右边是上次使用的时间。",
+    "en": "The time on the right is the last use.",
+    "notes": "iOS DevicesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_these_libraries_are_used_by_optional_parts_of_connect",
+    "zh-CN": "这些是 connect-swift 和 SwiftTerm 的可选部分用到的库，没有编进这个 App；许可证一并附上。",
+    "en": "These libraries are used by optional parts of connect-swift and SwiftTerm and are not compiled into this app. Their licenses are included.",
+    "notes": "iOS LicensesScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_this_change_was_not_saved_the_computer_still_has",
+    "zh-CN": "这次修改没有保存上，电脑上还是原来的设置",
+    "en": "This change was not saved. The computer still has its previous settings.",
+    "notes": "iOS MachineSettingsModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_this_client_is_not_in_the_current_trusted_directory",
+    "zh-CN": "这个客户端不在当前可信目录中，撤销状态以回执为准",
+    "en": "This client is not in the current trusted directory. Revocation status is determined by the receipt.",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_this_computer_is_not_in_the_current_trusted_directory",
+    "zh-CN": "这台电脑不在当前可信目录中，撤销状态以回执为准",
+    "en": "This computer is not in the current trusted directory. Revocation status is determined by the receipt.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_this_ios_version_cannot_send_alerts_yet_you_will",
+    "zh-CN": "这个 iOS 版本还不能发提醒。有会话等你处理时不会收到系统通知，打开 App 后会显示在「会话」页最上面。",
+    "en": "This iOS version cannot send alerts yet. You will not receive system notifications when a session needs attention. Open the app to see it at the top of Sessions.",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_type",
+    "zh-CN": "种类",
+    "en": "Type",
+    "notes": "iOS ClientScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_unanswered_approvals_are_denied_after_this_time",
+    "zh-CN": "没人处理的审批过了这么久就按拒绝算。",
+    "en": "Unanswered approvals are denied after this time.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_unknown",
+    "zh-CN": "未知",
+    "en": "Unknown",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_unsure_whether_the_computer_saved_this_change_reload_to",
+    "zh-CN": "不确定电脑有没有保存这次修改，重新读取后以电脑上的为准",
+    "en": "Unsure whether the computer saved this change. Reload to use the computer’s settings.",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_unverified",
+    "zh-CN": "未验证 ·",
+    "en": "Unverified ·",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_verified",
+    "zh-CN": "已验证 ·",
+    "en": "Verified ·",
+    "notes": "iOS MachineScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_version",
+    "zh-CN": "版本",
+    "en": "Version",
+    "notes": "iOS SettingsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_when_unspecified_uses",
+    "zh-CN": "不指定时实际用：{value}",
+    "en": "When unspecified, uses: {value}",
+    "notes": "iOS DefaultModeSheet.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 modeLabel(chosen: nil, default: effective, agent: agent, includeDefault: false)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.ios_while_the_app_is_open",
+    "zh-CN": "打开 App 时",
+    "en": "While the app is open",
+    "notes": "iOS NotificationsScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "settings.no_computers_yet",
     "zh-CN": "还没有电脑。",
     "en": "No computers yet.",

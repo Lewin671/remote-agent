@@ -18,14 +18,14 @@ struct ScheduleTargetSheet: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            SheetHead("在哪运行", action: L10n.commonSave(), onAction: save)
+            SheetHead(L10n.scheduleRunIn(), action: L10n.commonSave(), onAction: save)
             if let c = config {
-                GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
+                GRow(L10n.scheduleProject(), value: projectName(c.cwd), chevron: true) { picker = .project }
                 ScheduleAgentRow(state: model.state, config: $config, fixedMachine: machine)
-                GRow("权限", value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? DS.red : nil) { picker = .mode }
-                GRow("模型", value: modelValue(c.model, models: models.list), chevron: true) { picker = .model }
+                GRow(L10n.newSessionPermissions(), value: effectiveModeText(chosen: c.mode, default: defaultModeOf(model.state.machines[machine], agent: c.agent)), chevron: true, valueColor: settingsModeRed(c, default: defaultModeOf(model.state.machines[machine], agent: c.agent)) ? DS.red : nil) { picker = .mode }
+                GRow(L10n.modelsTitle(), value: modelValue(c.model, models: models.list), chevron: true) { picker = .model }
             }
-            Hint("任务保存在这台电脑上；更改只影响之后的运行。")
+            Hint(L10n.scheduleIosTheTaskIsStoredOnThisComputerChangesOnly())
             TextAction(L10n.commonCancel(), alignment: .center, action: onClose)
         }.kitSheet(item: $picker, size: .large) { page in
             ScheduleConfigSheet(page: page, config: $config, fixedMachine: machine) { picker = nil }
@@ -74,6 +74,6 @@ func scheduleEditingState(_ state: RemoteState, machine: String) -> RemoteState 
     return scoped
 }
 func scheduleDestination(_ task: ScheduleTask, state: RemoteState) -> String {
-    guard let sid = task.spec.target.session, let session = state.sessions[sid], session.info != nil else { return "对话" }
+    guard let sid = task.spec.target.session, let session = state.sessions[sid], session.info != nil else { return L10n.scheduleConversation() }
     return titleOf(session)
 }

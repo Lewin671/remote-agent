@@ -36,7 +36,7 @@ struct ScheduleMessageText: View {
             if expanded || fullHeight > clippedHeight + 1 {
                 Button { expanded.toggle() } label: {
                     HStack(spacing: 4) {
-                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? "收起" : "展开全文")).font(.footnote).ink(DS.ink2)
+                        Text((caption.map { $0 + " · " } ?? "") + (expanded ? L10n.markdownCollapse() : L10n.markdownExpand())).font(.footnote).ink(DS.ink2)
                         Arrow(DS.ink2, direction: expanded ? .up : .down)
                     }.frame(minHeight: 44)
                 }.buttonStyle(PressStyle())
@@ -72,18 +72,18 @@ struct ScheduleMessageEditor: View {
                 TextEditor(text: $text).font(.body).ink(DS.ink)
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .scrollContentBackground(.hidden).padding(12).focused($focused).disabled(saving || !enabled)
-                    .accessibilityLabel("让 agent 做什么")
-                if text.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: DS.red).padding(.horizontal, 16) }
+                    .accessibilityLabel(L10n.scheduleWhatShouldTheAgentDo())
+                if text.utf8.count > scheduleMessageLimit { Hint(L10n.scheduleTooLongMaximum32Kb(), color: DS.red).padding(.horizontal, 16) }
                 if !error.isEmpty { Banner(error, tone: .error).padding(16) }
             }
             .background(DS.gbg)
-            .navigationTitle("让 agent 做什么").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(L10n.scheduleWhatShouldTheAgentDo()).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     TextAction(L10n.commonCancel(), enabled: !saving) { if text == initial { onClose() } else { discard = true } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    TextAction(saving ? "保存中…" : L10n.commonSave(), enabled: enabled && !saving && scheduleMessageValid(text)) {
+                    TextAction(saving ? L10n.commonIosSaving() : L10n.commonSave(), enabled: enabled && !saving && scheduleMessageValid(text)) {
                         save()
                     }
                 }
@@ -107,6 +107,6 @@ struct ScheduleMessageEditor: View {
             #endif
         }
         .interactiveDismissDisabled(text != initial || saving)
-        .confirm(isPresented: $discard, title: "放弃修改？", text: "未保存的修改会丢失。", confirm: "放弃修改", danger: true, onConfirm: onClose)
+        .confirm(isPresented: $discard, title: L10n.scheduleDiscardChanges(), text: L10n.scheduleIosUnsavedChangesWillBeLost(), confirm: L10n.scheduleDiscardChangesScheduleText(), danger: true, onConfirm: onClose)
     }
 }

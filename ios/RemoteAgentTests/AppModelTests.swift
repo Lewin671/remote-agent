@@ -533,7 +533,7 @@ final class Harness {
         _ = try await h.model.authorityBootstrap.prepareCreation(server: "https://relay.example.com")
         h.model.setForeground(true)
         await eventually("bootstrap") { h.model.authorityBootstrapPending != nil }
-        #expect(try h.model.rejoinAdvice()?.text.contains("未完成的安全操作") == true)
+        #expect(try h.model.rejoinAdvice()?.text.contains(L10n.securityUnfinishedSecurityOperation()) == true)
         await h.model.logout()
         #expect(h.model.authorityBootstrapPending == nil)
         #expect(h.model.securitySetup == nil)

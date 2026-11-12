@@ -50,7 +50,7 @@ public final class Attempt {
             // Once unknown, only the daemon's own answer settles it; any
             // other failure (a network error, a failed login) leaves it
             // unknown, to be retried under the same request ID.
-            return CommandError(CommandError.unknownOutcome, "上一次的结果仍不确定：\(errorText(error))。重试会发送同一个请求")
+            return CommandError(CommandError.unknownOutcome, L10nMessage.errorsIosThePreviousResultIsStillUncertainRetryingSendsThe(value: String(describing: errorText(error))))
         } else {
             abandon()
         }
@@ -64,7 +64,7 @@ public final class Attempt {
         expired = false
     }
 
-    public static let expiredUnknown = "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始"
+    public static let expiredUnknown = L10n.errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt()
 
     private static func expiry(_ e: CommandError) -> Bool {
         e.code == CommandError.expired || (e.fromDaemon && e.code == "deadline_exceeded")

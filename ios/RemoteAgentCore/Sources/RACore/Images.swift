@@ -140,7 +140,7 @@ private func keepJpegSegment(_ b: Bytes, marker: Int, start: Int, end: Int) -> B
 }
 
 private func stripJpeg(_ b: Bytes) throws -> Bytes {
-    let bad = UserError("不是能读的 JPEG")
+    let bad = UserError(L10nMessage.imageIosNotAReadableJpeg())
     if detect(b) != .jpeg { throw bad }
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -231,7 +231,7 @@ private func pngOrientation(_ b: Bytes) -> Int {
 public func pngOrientation(_ data: Data) -> Int { pngOrientation(Bytes(data)) }
 
 private func stripPng(_ b: Bytes) throws -> Bytes {
-    guard let chunks = pngChunks(b) else { throw UserError("不是能读的 PNG") }
+    guard let chunks = pngChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadablePng()) }
     let drop: Set<String> = ["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]
     var out = Bytes()
     out.reserveCapacity(b.count)
@@ -270,7 +270,7 @@ private func webpOrientation(_ b: Bytes) -> Int {
 public func webpOrientation(_ data: Data) -> Int { webpOrientation(Bytes(data)) }
 
 private func stripWebp(_ b: Bytes) throws -> Bytes {
-    guard let chunks = webpChunks(b) else { throw UserError("不是能读的 WebP") }
+    guard let chunks = webpChunks(b) else { throw UserError(L10nMessage.imageIosNotAReadableWebp()) }
     var out = Bytes()
     out.reserveCapacity(b.count)
     out.append(contentsOf: b[0..<12])
@@ -297,8 +297,8 @@ private func stripWebp(_ b: Bytes) throws -> Bytes {
 public func stripWebp(_ data: Data) throws -> Data { Data(try stripWebp(Bytes(data))) }
 
 private func stripGif(_ b: Bytes) throws -> Bytes {
-    if detect(b) != .gif || b.count < 13 { throw UserError("不是能读的 GIF") }
-    let cut = UserError("GIF 被截断")
+    if detect(b) != .gif || b.count < 13 { throw UserError(L10nMessage.imageIosNotAReadableGif()) }
+    let cut = UserError(L10nMessage.imageIosGifIsTruncated())
     var out = Bytes()
     out.reserveCapacity(b.count)
     var i = 13
@@ -342,7 +342,7 @@ private func stripGif(_ b: Bytes) throws -> Bytes {
             if keep { out.append(contentsOf: b[i..<j]) }
             i = j
         default:
-            throw UserError("GIF 里有认不出的块")
+            throw UserError(L10nMessage.imageIosGifContainsAnUnrecognizedBlock())
         }
     }
     throw cut
@@ -425,12 +425,11 @@ extension UploadFailure {
 /// An upload that ended without the daemon refusing it: its answer was not one to go on from.
 public struct UploadError: UploadFailure, LocalizedError, Equatable {
     public let code: String
-    public let message: String
-
-    public init(code: String, message: String) {
-        self.code = code
-        self.message = message
-    }
+    private let localized: LocalizedMessage
+    public var message: String { localized.resolve() }
+    public init(code: String, message: String) { self.code = code; localized = LocalizedMessage(raw: message) }
+    public init(code: String, message: LocalizedMessage) { self.code = code; localized = message }
+    public static func == (lhs: UploadError, rhs: UploadError) -> Bool { lhs.code == rhs.code && lhs.message == rhs.message }
 
     public var errorDescription: String? { message }
 }
@@ -456,7 +455,7 @@ public func uploadImage(
     retries: Int = 3,
     onProgress: (Int64, Int64) -> Void = { _, _ in }
 ) async throws -> UploadedImage {
-    guard let format = detectFormat(data) else { throw UserError("不支持的图片格式") }
+    guard let format = detectFormat(data) else { throw UserError(L10nMessage.imageIosUnsupportedImageFormat()) }
     let bytes = Data(data)
     let total = Int64(bytes.count)
     var tries = 0
@@ -477,7 +476,7 @@ public func uploadImage(
     while st.state == .receiving && st.persistedBytes < total {
         let off = st.persistedBytes
         // Kotlin's copy of the range fails here; a slice of a negative range would stop the app.
-        if off < 0 { throw UploadError(code: "internal", message: "电脑报告的上传进度不对") }
+        if off < 0 { throw UploadError(code: "internal", message: L10nMessage.attachmentIosTheComputerReportedInvalidUploadProgress()) }
         onProgress(off, total)
         let end = min(total, off + chunk)
         let part = bytes.subdata(in: Int(off)..<Int(max(off, end)))
@@ -501,7 +500,7 @@ public func uploadImage(
             }
         }
     }
-    if st.imageID.isEmpty { throw UploadError(code: "internal", message: "电脑没有给出图片 ID") }
+    if st.imageID.isEmpty { throw UploadError(code: "internal", message: L10nMessage.imageIosTheComputerDidNotProvideAnImageId()) }
     return UploadedImage(imageId: st.imageID, expiresMs: st.expiresMs)
 }
 
@@ -571,7 +570,7 @@ public let maxDecodePixels: Int64 = 40_000_000
 /// than needed for a long side of `minLong` (0: as large as the budget
 /// allows).
 public func decodeSample(w: Int, h: Int, minLong: Int, pixelBudget: Int64) throws -> Int {
-    guard w > 0 && h > 0 else { throw UserError("图片没有尺寸") }
+    guard w > 0 && h > 0 else { throw UserError(L10nMessage.imageIosImageHasNoDimensions()) }
     var s = 1
     if minLong > 0 { while max(w, h) / (s * 2) >= minLong { s *= 2 } }
     // A budget below one pixel can never be met; the smallest picture is what is left.

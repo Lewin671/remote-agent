@@ -213,12 +213,12 @@ extension Remote {
                 if !running || gen != generation || buffers[sid] !== b { return }
                 let missing = !b.pending.isEmpty || UInt64(b.events.count) < latest
                 b.loaded = !missing && b.error == nil
-                b.fetchError = missing && b.error == nil ? "历史记录不连续，请重试读取" : nil
+                b.fetchError = missing && b.error == nil ? L10n.errorsIosHistoryIsDiscontinuousRetryLoading() : nil
             } while b.refetch
         } catch {
             if !running || gen != generation || buffers[sid] !== b { return }
             report(error)
-            b.fetchError = "没能读取历史：" + errorText(error)
+            b.fetchError = L10n.errorsIosCouldNotLoadHistory(value: String(describing: errorText(error)))
         }
     }
 
@@ -298,9 +298,9 @@ extension Remote {
                 try Envelopes.expect(
                     h, try await historicalPlace(Place(.event, machineId: s.machineId, sessionId: sid, seq: se.seq),header:h,history:history))
                 guard let ev = try? PBEvent(serializedBytes: plain) else {
-                    throw OpenError("malformed content")
+                    throw OpenError(L10nMessage.errorsIosCryptoMalformedContent())
                 }
-                if ev.seq != se.seq || ev.sessionID != sid { throw OpenError("事件的位置被改动") }
+                if ev.seq != se.seq || ev.sessionID != sid { throw OpenError(L10n.errorsTheEventSPositionWasChanged()) }
                 if buffers[sid] !== b { return opens }
                 if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
                 b.verifiedSeqs.insert(se.seq)
@@ -324,13 +324,13 @@ extension Remote {
                     opened.append(se)
                 } catch {
                     report(error)
-                    b.error = error is UnsupportedHistoryError ? errorText(error) : "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                    b.error = error is UnsupportedHistoryError ? errorText(error) : L10n.sessionHistoryUnreadable()
                     opens = false
                     break
                 }
             } catch {
                 report(error)
-                b.error = error is UnsupportedHistoryError ? errorText(error) : "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                b.error = error is UnsupportedHistoryError ? errorText(error) : L10n.sessionHistoryUnreadable()
                 opens = false
                 break
             }
@@ -378,7 +378,7 @@ extension Remote {
         snapshot.historyPartial = !b.pending.isEmpty || UInt64(b.events.count) < (sessions[sid]?.lastSeq ?? 0)
         snapshot.loaded = b.loaded && !snapshot.historyPartial
         snapshot.live = liveSnapshots[sid]
-        snapshot.liveError = liveErrors[sid] ?? (sessions[sid]?.checkpointStatus == "waiting" ? "等待所属电脑更新当前状态" : nil)
+        snapshot.liveError = liveErrors[sid] ?? (sessions[sid]?.checkpointStatus == "waiting" ? L10n.errorsWaitingForTheOwningComputerToUpdateTheCurrent() : nil)
         snapshot.verifiedEvents = b.verifiedEvents
         snapshot.unavailableCount = b.unavailableSeqs.count
         eventFeed(sid).set(snapshot)

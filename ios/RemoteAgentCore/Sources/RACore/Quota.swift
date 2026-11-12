@@ -70,17 +70,17 @@ public struct QuotaGroup: Equatable, Sendable {
 }
 
 public func windowLabel(minutes: Int64) -> String {
-    if minutes >= 24 * 60 && minutes % (24 * 60) == 0 { return "\(minutes / (24 * 60)) 天" }
+    if minutes >= 24 * 60 && minutes % (24 * 60) == 0 { return L10n.quotaDays(count: Int(minutes / (24 * 60))) }
     // Math.round: halves go up.
-    if minutes >= 60 { return "\(jvmRound(Double(minutes) / 60.0)) 小时" }
-    return "\(minutes) 分钟"
+    if minutes >= 60 { return L10n.quotaHr(count: Int(jvmRound(Double(minutes) / 60.0))) }
+    return L10n.quotaMin(count: Int(minutes))
 }
 
 private func nameLabel(_ w: PBQuotaWindow) -> String {
     if w.windowMinutes > 0 { return windowLabel(minutes: w.windowMinutes) }
     switch w.name {
-    case "five_hour", "primary": return "5 小时"
-    case "seven_day", "secondary": return "7 天"
+    case "five_hour", "primary": return L10n.quotaHr(count: 5)
+    case "seven_day", "secondary": return L10n.quotaDays(count: 7)
     default: return w.name
     }
 }
@@ -112,22 +112,22 @@ public func resetText(resetMs: Int64, now: Int64) -> String {
     let minutes = (resetMs - now) / 60_000
     let left: String
     if minutes >= 24 * 60 {
-        left = "\(minutes / (24 * 60)) 天 \(minutes % (24 * 60) / 60) 小时后重置"
+        left = L10n.quotaResetsInDaysHr(count: Int(minutes / (24 * 60)), detail: Int(minutes % (24 * 60) / 60))
     } else if minutes >= 60 {
-        left = "\(minutes / 60) 小时 \(minutes % 60) 分后重置"
+        left = L10n.quotaResetsInHrMin(count: Int(minutes / 60), detail: String(describing: minutes % 60))
     } else if minutes >= 1 {
-        left = "\(minutes) 分钟后重置"
+        left = L10n.quotaResetsInMin(count: Int(minutes))
     } else {
-        left = "即将重置"
+        left = L10n.quotaResettingSoon()
     }
     let t = LocalDay(ms: resetMs, zone: beijing)
-    let day = t.sameDay(LocalDay(ms: now, zone: beijing)) ? "今天" : "\(t.month)月\(t.day)日 \(weekdayNames[t.weekdayIndex])"
+    let day = t.sameDay(LocalDay(ms: now, zone: beijing)) ? L10n.timeToday() : L10n.timeIosDateTime(day: Int(t.day), month: Int(t.month), time: String(describing: weekdayNames[t.weekdayIndex]))
     return "\(left) · \(day) \(t.hhmm)"
 }
 
 /// What is left of a window used `pct` percent: 剩 38%, or 已用尽.
 public func quotaLeft(_ pct: Double) -> String {
-    pct >= 100 ? "已用尽" : "剩 \(100 - jvmInt(pct.rounded(.down)))%"
+    pct >= 100 ? L10n.quotaExhaustedQuota() : L10n.quotaLeft(value: String(describing: 100 - jvmInt(pct.rounded(.down))))
 }
 
 /// A CLI's line on a computer's card in settings: its tightest window's
@@ -146,7 +146,7 @@ public struct QuotaCardLine: Equatable, Sendable {
 public func quotaCardLine(_ groups: [QuotaGroup]) -> QuotaCardLine {
     let rows = groups.compactMap(quotaSummaryRow)
     guard let r = rows.max(by: { ($0.percent ?? -1) < ($1.percent ?? -1) }), let pct = r.percent else {
-        let word = groups.first.map(quotaLine) ?? "暂未获取额度"
+        let word = groups.first.map(quotaLine) ?? L10n.quotaQuotaNotAvailableYet()
         return QuotaCardLine(text: word, reset: "", left: nil, low: false, stale: false)
     }
     let reset = r.reset.components(separatedBy: " · ").first ?? ""
@@ -166,16 +166,16 @@ public func quotaRow(_ w: PBQuotaWindow, agent: PBAgent, now: Int64, lastRecord:
     let label = (useMinutes && w.windowMinutes > 0) ? windowLabel(minutes: w.windowMinutes) : desc.label
     let windowName = w.windowMinutes > 0 ? windowLabel(minutes: w.windowMinutes) : label
     if !w.hasUsedPercent {
-        return QuotaRow(label: label, windowName: windowName, left: "未获取", percent: nil, reset: "", tone: .normal, note: "没有收到这项额度数据")
+        return QuotaRow(label: label, windowName: windowName, left: L10n.quotaUnavailable(), percent: nil, reset: "", tone: .normal, note: L10n.quotaNoDataReceivedForThisQuota())
     }
     let pct = w.usedPercent
     let left = quotaLeft(pct)
     let passed = w.resetsAtMs >= 1 && w.resetsAtMs <= now
     let reset = w.resetsAtMs > 0 && !passed ? resetText(resetMs: w.resetsAtMs, now: now) : ""
     if passed {
-        return QuotaRow(label: label, windowName: windowName, left: "等待更新", percent: pct, reset: "", tone: .stale, note: "上次\(left)；重置时间已过，不能据此确认额度已经恢复")
+        return QuotaRow(label: label, windowName: windowName, left: L10n.quotaAwaitingUpdate(), percent: pct, reset: "", tone: .stale, note: L10n.quotaPreviouslyResetTimePassedButQuotaRecoveryIsUnconfirmed(value: String(describing: left)))
     }
-    if lastRecord { return QuotaRow(label: label, windowName: windowName, left: "上次" + left, percent: pct, reset: reset, tone: .stale, note: "") }
+    if lastRecord { return QuotaRow(label: label, windowName: windowName, left: L10n.quotaPreviously(value: String(describing: left)), percent: pct, reset: reset, tone: .stale, note: "") }
     return QuotaRow(label: label, windowName: windowName, left: left, percent: pct, reset: reset, tone: pct >= 100 ? .full : pct >= 80 ? .warn : .normal, note: "")
 }
 
@@ -223,9 +223,9 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
     if !several {
         which = ""
     } else if !q.account.isEmpty {
-        which = " · 账户 \(q.account)"
+        which = L10n.quotaAccount(value: String(describing: q.account))
     } else if !q.sourceSessionID.isEmpty {
-        which = " · 会话 \(q.sourceSessionID.jvmTakeLast(4))"
+        which = L10n.quotaSession(value: String(describing: q.sourceSessionID.jvmTakeLast(4)))
     } else {
         which = ""
     }
@@ -278,11 +278,11 @@ public func quotaBanner(_ g: QuotaGroup) -> String {
 /// The device page's line for a CLI: its most-used window, or its state.
 public func quotaLine(_ g: QuotaGroup) -> String {
     switch g.status {
-    case .unsupported: return "暂不支持读取额度"
-    case .waiting: return "暂未获取额度"
+    case .unsupported: return L10n.quotaQuotaLookupIsNotSupportedYet()
+    case .waiting: return L10n.quotaQuotaNotAvailableYet()
     default:
         guard let tightest = quotaSummaryRow(g) else {
-            return "暂未获取额度" + (g.lastRecord ? "（上次记录）" : "")
+            return g.lastRecord ? L10n.quotaUnavailablePrevious() : L10n.quotaQuotaNotAvailableYet()
         }
         let win = tightest.windowName.ifEmpty(tightest.label)
         return "\(tightest.left) · \(win)"

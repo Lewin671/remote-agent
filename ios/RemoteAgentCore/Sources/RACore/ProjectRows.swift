@@ -460,8 +460,8 @@ public func modeChoices(_ c: NewConfig, models: PBListModelsResponse?, settings:
     let name = agentName(c.agent)
     let allOff = allAutoUnavailable(models?.models)
     let off = allOff || (models.map { projectModel(c, models: $0, settings: settings)?.autoUnavailable == true } ?? false)
-    let autoHelp = allOff ? "当前账户不支持自动模式" : "当前模型不支持"
-    return [ApprovalModeChoice(mode: nil, title: "默认", desc: "跟随 \(name) 自己的配置", enabled: true, checked: c.mode == nil)]
+    let autoHelp = allOff ? L10n.modesAccountUnsupported() : L10n.modesModelUnsupported()
+    return [ApprovalModeChoice(mode: nil, title: L10n.modelsDefault(), desc: L10n.newSessionFollowSConfiguration(value: String(describing: name)), enabled: true, checked: c.mode == nil)]
         + newSessionModes.map { m in
             let disabled = m == .auto && off
             return ApprovalModeChoice(

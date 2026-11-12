@@ -694,6 +694,25 @@
     }
   },
   {
+    "key": "new_session.ios_cli_named",
+    "zh-CN": "CLI：{name}",
+    "en": "CLI: {name}",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。新任务 CLI 选择器读屏标签；name 为 CLI 品牌原名，不翻译。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "new_session.ios_computer_label",
     "zh-CN": "电脑：{name}",
     "en": "Computer: {name}",

@@ -300,8 +300,8 @@ private let exifHeader = Data("Exif\0\0".utf8)
             #expect(throws: UserError.self) { try stripGif(Data(gif.prefix(n))) }
         }
         // A GIF whose header promises a palette it does not have.
-        #expect(throws: UserError("GIF 被截断")) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0x87, 0, 0])) }
-        #expect(throws: UserError("GIF 里有认不出的块")) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0, 0, 0, 0x99])) }
+        #expect(throws: UserError(L10n.imageIosGifIsTruncated())) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0x87, 0, 0])) }
+        #expect(throws: UserError(L10n.imageIosGifContainsAnUnrecognizedBlock())) { try stripGif(Data("GIF89a".utf8) + Data([1, 0, 1, 0, 0, 0, 0, 0x99])) }
         let webpFile = webp(riffChunk("EXIF", exifHeader + tiff(8)))
         #expect(webpOrientation(webpFile) == 8)
         for n in 0..<webpFile.count {
@@ -472,7 +472,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
         }
         await #expect(throws: Refused.self) { try await uploadImage(AlwaysLost(), transferId: "t", data: png, retries: 2) }
         // Not an image the CLIs read: nothing is sent.
-        await #expect(throws: UserError("不支持的图片格式")) { try await uploadImage(d, transferId: "t", data: Data("hello".utf8)) }
+        await #expect(throws: UserError(L10n.imageIosUnsupportedImageFormat())) { try await uploadImage(d, transferId: "t", data: Data("hello".utf8)) }
         // A daemon that completes without naming the image.
         struct NoId: ImageTestChannel {
             func begin(transferId: String, format: PBImageFormat, total: Int64, sha256: Data) async throws -> PBImageUploadStatus {
@@ -483,7 +483,7 @@ private let exifHeader = Data("Exif\0\0".utf8)
             func status(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
             func complete(transferId: String) async throws -> PBImageUploadStatus { PBImageUploadStatus() }
         }
-        await #expect(throws: UploadError(code: "internal", message: "电脑没有给出图片 ID")) { try await uploadImage(NoId(), transferId: "t", data: png) }
+        await #expect(throws: UploadError(code: "internal", message: L10n.imageIosTheComputerDidNotProvideAnImageId())) { try await uploadImage(NoId(), transferId: "t", data: png) }
     }
 }
 
@@ -575,6 +575,6 @@ private let exifHeader = Data("Exif\0\0".utf8)
         #expect(try decodeSample(w: 4032, h: 3024, minLong: 2048, pixelBudget: maxDecodePixels) == 1)
         #expect(try decodeSample(w: 8064, h: 6048, minLong: 2048, pixelBudget: maxDecodePixels) == 2)
         #expect(try decodeSample(w: 4032, h: 3024, minLong: 0, pixelBudget: 300_000) == 8)
-        #expect(throws: UserError("图片没有尺寸")) { try decodeSample(w: 0, h: 10, minLong: 0, pixelBudget: 1) }
+        #expect(throws: UserError(L10n.imageIosImageHasNoDimensions())) { try decodeSample(w: 0, h: 10, minLong: 0, pixelBudget: 1) }
     }
 }

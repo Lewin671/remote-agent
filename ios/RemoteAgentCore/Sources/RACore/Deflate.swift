@@ -7,7 +7,7 @@ public let maxUnpacked = 64 << 20
 /// Inflates raw DEFLATE. It stops at `max` bytes: a payload that
 /// would unpack to more is refused before the rest of it is produced.
 func unpack(_ packed: Data, max: Int = maxUnpacked) throws -> Data {
-    let bad = OpenError("envelope does not open")
+    let bad = OpenError(L10nMessage.errorsIosCryptoEnvelopeDoesNotOpen())
     var z = z_stream()
     guard inflateInit2_(&z, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size)) == Z_OK else { throw bad }
     defer { inflateEnd(&z) }

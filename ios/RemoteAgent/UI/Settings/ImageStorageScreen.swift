@@ -13,19 +13,19 @@ struct ImageStorageScreen: View {
     var body: some View {
         let s = storage
         SettingsPage {
-            GroupLabel("附件存储 · \(thisDeviceWord)")
+            GroupLabel(L10n.imageIosAttachmentStorage(value: String(describing: thisDeviceWord)))
             GroupCard {
-                GRow("待发和待确认附件", value: s?.pending.map { "\(imageBytes($0)) / \(wholeBytes(PendingPolicy.draftLimit))" } ?? "读取中…")
-                GRow("查看缓存", value: s?.cache.map { "\(imageBytes($0)) / \(wholeBytes(CipherStore.defaultImageLimit))" } ?? "读取中…")
+                GRow(L10n.imageIosPendingAndUnconfirmedAttachments(), value: s?.pending.map { "\(imageBytes($0)) / \(wholeBytes(PendingPolicy.draftLimit))" } ?? L10n.projectsReadingDirectory())
+                GRow(L10n.imageIosViewingCache(), value: s?.cache.map { "\(imageBytes($0)) / \(wholeBytes(CipherStore.defaultImageLimit))" } ?? L10n.projectsReadingDirectory())
                 GRow(
-                    s?.clearing == true ? "正在清理…" : "清理查看缓存", action: true,
+                    s?.clearing == true ? L10n.imageIosClearing() : L10n.imageIosClearViewingCache(), action: true,
                     enabled: s?.clearing == false && (s?.cache ?? 0) > 0
                 ) { confirming = true }
             }
-            GroupNote("草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。查看缓存超过上限时先清最久没看的。")
+            GroupNote(L10n.imageIosDraftsAreClearedAfter7IdleDaysUnconfirmedMessages())
             if let error = s?.error, !error.isEmpty { GroupBanner(error, tone: .error) }
         }
-        .navBar("附件存储")
+        .navBar(L10n.settingsAttachmentStorage())
         // What 清理 in the confirmation does (debug builds).
         .debugSignal("images.clear") {
             guard let storage else { return }
@@ -40,8 +40,8 @@ struct ImageStorageScreen: View {
             #endif
         }
         .confirm(
-            isPresented: $confirming, title: "清理查看缓存？",
-            text: "看过的大图会从\(thisDeviceWord)上清掉，再看时重新下载。待发的图片、草稿和会话历史不受影响。", confirm: "清理"
+            isPresented: $confirming, title: L10n.imageIosClearViewingCache200(),
+            text: L10n.imageIosFullSizeImagesViewedOnWillBeClearedAnd(value: String(describing: thisDeviceWord)), confirm: L10n.settingsClearSettings()
         ) {
             guard let storage else { return }
             Task { await storage.clear() }
@@ -122,7 +122,7 @@ final class ImageStorageModel {
         error = ""
         let files = files
         let result = await Task.detached { Result { try files.clearCache() } }.value
-        if case .failure(let failure) = result { error = "没能清理完：\(failure.localizedDescription)" }
+        if case .failure(let failure) = result { error = L10n.imageIosCouldNotFinishClearing(value: String(describing: failure.localizedDescription)) }
         await load()
         clearing = false
     }

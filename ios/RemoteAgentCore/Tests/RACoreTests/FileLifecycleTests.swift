@@ -346,10 +346,10 @@ private struct FileMachineChannel: UploadChannel {
     @Test func foldersAndChangedLengthsHaveSpecificMessagesAndChatHidesOnlyCurrentForms() throws {
         let (url, img) = try picked(); defer { try? FileManager.default.removeItem(at: url) }
         do { _ = try PickedFile(url: url.deletingLastPathComponent()); Issue.record("folder accepted") }
-        catch { #expect(errorText(error) == "文件夹不能直接发送，请压缩后选择") }
+        catch { #expect(errorText(error) == L10n.attachmentIosFoldersCannotBeSentDirectlyCompressTheFolderAnd()) }
         try Data([1]).write(to: url)
         do { _ = try img.file?.digest(); Issue.record("changed length accepted") }
-        catch { #expect(errorText(error) == "文件在选择后被修改，请重新选择") }
+        catch { #expect(errorText(error) == L10n.attachmentIosTheFileChangedAfterSelectionSelectItAgain()) }
         let file = PBSentFile.with { $0.name = "report.txt"; $0.path = "/uploads/session/files/id/report.txt" }
         let ordinary = "正文里提到 \(file.path)"
         let legacy = "File: @\(file.path) (file)"

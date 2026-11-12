@@ -1,3 +1,4 @@
+import RACore
 import SwiftUI
 
 enum PublicInformation {
@@ -7,7 +8,7 @@ enum PublicInformation {
 
 struct PrivacyPolicyLink: View {
     var body: some View {
-        Link("隐私政策", destination: PublicInformation.privacy)
+        Link(L10n.settingsIosPrivacyPolicy(), destination: PublicInformation.privacy)
             .font(.footnote).frame(minHeight: 44)
     }
 }

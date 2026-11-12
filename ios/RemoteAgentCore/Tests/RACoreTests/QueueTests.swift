@@ -27,10 +27,10 @@ import Testing
 
     @Test func theDaemonsReasonComesFirst() {
         let s = Mk.session { $0.inputWait = "draft"; $0.agent = .codex }
-        #expect(queueWhy(s, status: .running).short == "终端里有草稿")
+        #expect(queueWhy(s, status: .running).short == L10n.queueIosTerminalDraftShort())
         let r = Mk.session()
-        #expect(queueWhy(r, status: .running).short == "本轮结束后发送")
-        #expect(queueWhy(r, status: .running).long == "等待本轮结束")
+        #expect(queueWhy(r, status: .running).short == L10n.queueAfterCurrentTurn())
+        #expect(queueWhy(r, status: .running).long == L10n.queueIosTurnWait())
     }
 
     @Test func aCancelOutcomeSaysWhoCanceled() {
@@ -58,10 +58,10 @@ import Testing
         #expect(originLabel(o(.client, "aaaab71c"), state: state, me: "me", machine: "MacBook") == "Android")
         #expect(originLabel(o(.client, "cccc92de"), state: state, me: "me", machine: "MacBook") == "我的手机")
         // Removed: no part of its ID is shown.
-        #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == "已移除的设备")
-        #expect(originLabel(o(.client, ""), state: state, me: "me", machine: "MacBook") == "另一客户端")
+        #expect(originLabel(o(.client, "gone9999"), state: state, me: "me", machine: "MacBook") == L10n.sessionOriginRemoved())
+        #expect(originLabel(o(.client, ""), state: state, me: "me", machine: "MacBook") == L10n.sessionOriginOther())
         // Before the device list is read nothing is known of who it was.
-        #expect(originLabel(o(.client, "gone9999"), state: RemoteState(), me: "me", machine: "MacBook") == "另一客户端")
+        #expect(originLabel(o(.client, "gone9999"), state: RemoteState(), me: "me", machine: "MacBook") == L10n.sessionOriginOther())
         let zone = Mk.utc
         func at(_ y: Int, _ m: Int, _ d: Int, _ h: Int, _ min: Int) -> Int64 { Mk.at(y, m, d, h, min, zone: zone) }
         let now = at(2026, 10, 3, 12, 0)
@@ -71,7 +71,7 @@ import Testing
         let chrome = meta("", "web", "Chrome on macOS")
         let browser = device(created: at(2026, 9, 27, 0, 0), chrome)
         #expect(clientName(browser, id: browser.id, among: [:]) == "Chrome · macOS")
-        #expect(clientName(device(created: browser.createdMs, meta("", "web", "")), id: browser.id, among: [:]) == "浏览器")
+        #expect(clientName(device(created: browser.createdMs, meta("", "web", "")), id: browser.id, among: [:]) == L10n.securityBrowser())
         #expect(clientDetail(browser) == "浏览器 · Chrome on macOS")
         let pixel = device(created: at(2025, 12, 1, 0, 0), meta("我的手机", "android", "Android 16 · Pixel 9"))
         #expect(clientName(pixel, id: pixel.id, among: [:]) == "我的手机")
@@ -81,7 +81,7 @@ import Testing
         #expect(defaultClientName(iphone, id: iphone.id, among: [:]) == "iPhone")
         #expect(clientDetail(iphone) == "App · iOS 27.0 · iPhone")
         #expect(clientName(device(created: pixel.createdMs, meta("", "ios", "")), id: iphone.id, among: [:]) == "iOS")
-        #expect(clientDetail(nil) == "种类未知")
+        #expect(clientDetail(nil) == L10n.securityUnknownType())
         func used(_ seen: Int64) -> String { clientUsed(device(created: browser.createdMs, seen: seen, chrome), now: now, zone: zone) }
         #expect(used(now - 30_000) == "刚刚使用")
         #expect(used(now - 5 * 60_000) == "5 分钟前使用")
@@ -89,11 +89,11 @@ import Testing
         #expect(used(at(2026, 10, 2, 23, 0)) == "昨天使用")
         #expect(used(at(2026, 8, 3, 0, 0)) == "8月3日使用")
         #expect(clientUsed(pixel, now: now, zone: zone) == "2025年12月1日添加")
-        #expect(clientUsed(nil, now: now, zone: zone) == "已配对")
+        #expect(clientUsed(nil, now: now, zone: zone) == L10n.securityPaired())
         func c(_ id: String, _ created: Int64, _ seen: Int64) -> DeviceView { device(id, created: created, seen: seen, chrome) }
         #expect(sortClients([c("old", 1, 0), c("me", 2, 5), c("new", 3, 0), c("recent", 1, 9), c("stale", 1, 4)], me: "me").map(\.id) == ["me", "recent", "stale", "new", "old"])
         #expect(originLabel(o(.local), state: state, me: "me", machine: "MacBook") == "MacBook 终端")
-        #expect(originLabel(o(.local), state: state, me: "me", machine: "") == "终端")
+        #expect(originLabel(o(.local), state: state, me: "me", machine: "") == L10n.sessionTerminal())
         #expect(originLabel(nil, state: state, me: "me", machine: "MacBook") == nil)
     }
 
@@ -128,9 +128,9 @@ import Testing
         // What the Android app writes: the system and the phone's name.
         #expect(plainClientName(meta("", "android", "Android 16 · 小米 14")) == "Android · 小米 14")
         #expect(plainClientName(meta("", "web", "Firefox")) == "Firefox")
-        #expect(plainClientName(meta("", "web", "")) == "浏览器")
+        #expect(plainClientName(meta("", "web", "")) == L10n.securityBrowser())
         #expect(plainClientName(meta("", "ios", "")) == "iOS")
-        #expect(plainClientName(nil) == "客户端")
+        #expect(plainClientName(nil) == L10n.securityClient())
     }
 
     @Test func clientsEqualInEverythingGoByIdWhateverOrderTheyComeIn() {

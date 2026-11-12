@@ -1,5 +1,33 @@
 [
   {
+    "key": "startup.ios_camera_usage",
+    "zh-CN": "扫描配对二维码，把这台设备加入账户",
+    "en": "Scan a pairing QR code to join the account on this device.",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。iOS 相机权限系统弹窗正文；可多行，无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.ios_photo_library_add_usage",
+    "zh-CN": "把会话里的图片保存到相册",
+    "en": "Save images from a session to your photo library.",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。iOS 保存图片权限系统弹窗正文；可多行，无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "startup.opening_remote_agent",
     "zh-CN": "正在打开 remote-agent",
     "en": "Opening remote-agent",

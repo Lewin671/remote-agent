@@ -2265,5 +2265,841 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "errors.ios_already_registering_wait_for_the_result",
+    "zh-CN": "已经在登记{value}，稍等结果",
+    "en": "Already registering {value}. Wait for the result.",
+    "notes": "iOS Launch.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_cannot_find_the_server_check_your_network",
+    "zh-CN": "找不到服务器，检查一下网络",
+    "en": "Cannot find the server. Check your network.",
+    "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_cannot_open_the_computer_s_reply_command_execution_is",
+    "zh-CN": "电脑的回复打不开，不确定指令有没有执行",
+    "en": "Cannot open the computer’s reply. Command execution is unconfirmed.",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_cli_s_own_mode",
+    "zh-CN": "CLI 自己的模式",
+    "en": "CLI’s own mode",
+    "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_could_not_load_history",
+    "zh-CN": "没能读取历史：{value}",
+    "en": "Could not load history: {value}",
+    "notes": "iOS RemoteEvents.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_could_not_load_the_session_list",
+    "zh-CN": "没能读取会话列表",
+    "en": "Could not load the session list",
+    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_could_not_read_this_phone_s_account_state_management",
+    "zh-CN": "没能读取这台手机的账户状态，可能还有管理密钥或未完成的安全操作。继续会删除本机账户密钥和缓存，无法继续原操作；电脑上的会话不受影响。",
+    "en": "Could not read this phone’s account state. Management keys or unfinished security operations may remain. Continuing deletes local account keys and cache, so the original operation cannot continue. Computer sessions are unaffected.",
+    "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_bad_key_nonce_size",
+    "zh-CN": "bad key or nonce size",
+    "en": "bad key or nonce size",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_bad_session_key",
+    "zh-CN": "bad session key",
+    "en": "bad session key",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_bad_session_seed",
+    "zh-CN": "bad session seed",
+    "en": "bad session seed",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_envelope_does_not_open",
+    "zh-CN": "envelope does not open",
+    "en": "envelope does not open",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_envelope_location",
+    "zh-CN": "envelope is not where it belongs",
+    "en": "envelope is not where it belongs",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_malformed_content",
+    "zh-CN": "malformed content",
+    "en": "malformed content",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_malformed_header",
+    "zh-CN": "malformed header",
+    "en": "malformed header",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_root_key_bytes",
+    "zh-CN": "root key must be {count} bytes",
+    "en": "root key must be {count} bytes",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_signing_seed_bytes",
+    "zh-CN": "signing seed must be {count} bytes",
+    "en": "signing seed must be {count} bytes",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。count 为固定密钥字节数。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_crypto_unsupported_envelope_version",
+    "zh-CN": "unsupported envelope version",
+    "en": "unsupported envelope version",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。本端加密/校验错误的原始技术详情，可经通用错误映射展示；原来简中界面也显示该英文，逐字保留，不翻译协议字段。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_expired_control_renewal",
+    "zh-CN": "远程控制有效期已过，控制和新内容上传已暂停；{renewal}",
+    "en": "Remote control expired. Control and new uploads are paused; {renewal}",
+    "notes": "iOS 原生界面。保留中文原句；短标签和按钮空间紧凑，正文可换行。renewal 为本端生成的续期指引（当前管理端名称可来自账户），安全提示正文。",
+    "params": {
+      "renewal": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_history_is_discontinuous_retry_loading",
+    "zh-CN": "历史记录不连续，请重试读取",
+    "en": "History is discontinuous. Retry loading.",
+    "notes": "iOS RemoteEvents.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_image_content_does_not_match_its_format",
+    "zh-CN": "图片内容和格式对不上",
+    "en": "Image content does not match its format",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_image_content_or_origin_could_not_be_verified",
+    "zh-CN": "图片的内容或来源无法核实",
+    "en": "Image content or origin could not be verified",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_invalid_server_address",
+    "zh-CN": "server 地址无效",
+    "en": "Invalid server address",
+    "notes": "iOS E2e.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_joining_canceled_the_old_request_may_still_occupy_the",
+    "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码",
+    "en": "Joining canceled. The old request may still occupy the code: reject it on the managing client, then generate a new pairing code.",
+    "notes": "iOS Launch.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_k_context",
+    "zh-CN": "{value}k 上下文",
+    "en": "{value}k context",
+    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 (tokens + 500) / 1000；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_login_expired",
+    "zh-CN": "登录失效：{value}",
+    "en": "Login expired: {value}",
+    "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 ce.message ?? \"\"；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_m_context",
+    "zh-CN": "{value}M 上下文",
+    "en": "{value}M context",
+    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 \"\\(Double(tokens / 100_000) / 10.0)\".removingSuffix(\".0\")；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_network_unavailable_the_command_was_not_sent",
+    "zh-CN": "网络不通，指令没有发出",
+    "en": "Network unavailable. The command was not sent.",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_no_verifiable_execution_result_received_retry_the_same_request",
+    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
+    "en": "No verifiable execution result received. Retry the same request.",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_not_connected_to_the_server",
+    "zh-CN": "没有连上服务器",
+    "en": "Not connected to the server",
+    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_not_connected_to_the_server_connect_to_make_changes",
+    "zh-CN": "没有连上服务器，连上后才能修改",
+    "en": "Not connected to the server. Connect to make changes.",
+    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_only_the_device_itself_can_change_its_name",
+    "zh-CN": "设备名称只能由该设备自己设置",
+    "en": "Only the device itself can change its name",
+    "notes": "iOS RemoteLists.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_other_clients_kept_changing_project_preferences_changes_could_not",
+    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存",
+    "en": "Other clients kept changing project preferences. Changes could not be saved.",
+    "notes": "iOS Prefs.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_project_settings_may_differ",
+    "zh-CN": "（项目设置可能不同）",
+    "en": " (project settings may differ)",
+    "notes": "iOS ProjectPage.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_recovery_request_state_may_be_out_of_date_connect",
+    "zh-CN": "恢复申请状态可能过期，请连接服务器后重新核实。",
+    "en": "Recovery request state may be out of date. Connect to the server and verify again.",
+    "notes": "iOS HomeScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_remote_control_expired_saving_changes_session_control_and_new",
+    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；在「设置 › 账户安全」查看管理端并续期后重试。历史仍可查看",
+    "en": "Remote control expired. Saving changes, session control, and new uploads are paused. Open Settings › Account security to find the managing client and renew, then retry. History remains available.",
+    "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_secure_connection_failed",
+    "zh-CN": "安全连接失败：{value}",
+    "en": "Secure connection failed: {value}",
+    "notes": "iOS Api.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 why；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_terminal_closed",
+    "zh-CN": "终端已关闭",
+    "en": "Terminal closed",
+    "notes": "iOS TerminalFrames.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_terminal_connection_dropped",
+    "zh-CN": "终端连接断开：{value}",
+    "en": "Terminal connection dropped: {value}",
+    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText($0)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_terminal_input_failed_to_send_stopped",
+    "zh-CN": "终端输入发送失败，已停止",
+    "en": "Terminal input failed to send. Stopped.",
+    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_terminal_input_waiting_to_send_stopped",
+    "zh-CN": "终端输入等待发送，已停止",
+    "en": "Terminal input waiting to send. Stopped.",
+    "notes": "iOS RemoteTerminal.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_current_request_has_not_been_verified_by_the",
+    "zh-CN": "当前请求尚未由电脑核实",
+    "en": "The current request has not been verified by the computer",
+    "notes": "iOS RemoteLive.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_original_request_and_keys_are_retained_retry_if",
+    "zh-CN": "{value}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对。",
+    "en": "{value}. The original request and keys are retained. Retry; if approval has expired or was denied, exit and pair again.",
+    "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 error.localizedDescription；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_previous_operation_is_unconfirmed_and_has_expired_it",
+    "zh-CN": "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始",
+    "en": "The previous operation is unconfirmed and has expired. It will not be resent. Check the list first, then abandon and start over if needed.",
+    "notes": "iOS Attempt.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_previous_result_is_still_uncertain",
+    "zh-CN": "上一次的结果仍不确定：{value}",
+    "en": "The previous result is still uncertain: {value}",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 refusal.message；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_previous_result_is_still_uncertain_retrying_sends_the",
+    "zh-CN": "上一次的结果仍不确定：{value}。重试会发送同一个请求",
+    "en": "The previous result is still uncertain: {value}. Retrying sends the same request.",
+    "notes": "iOS Attempt.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_the_request_may_have_arrived_but_login_then_failed",
+    "zh-CN": "请求可能已经送到，之后登录失败（{value}）",
+    "en": "The request may have arrived, but login then failed ({value})",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 errorText(error)；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_this_app_version_is_out_of_date_update_and",
+    "zh-CN": "这个 App 版本较旧，请更新后再试",
+    "en": "This app version is out of date. Update and retry.",
+    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_this_command_expired_and_was_not_sent",
+    "zh-CN": "这条指令已过期，没有发出",
+    "en": "This command expired and was not sent",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_this_deletes_the_account_keys_and_cache_on_this",
+    "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。",
+    "en": "This deletes the account keys and cache on this phone. Sessions on your computers are unaffected.",
+    "notes": "iOS AppModel.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_this_device_is_over_5_minutes_behind_the_security",
+    "zh-CN": "本机时间比安全状态慢 5 分钟以上，控制已暂停；校准系统时间后重试",
+    "en": "This device is over 5 minutes behind the security state. Control paused. Correct the system clock and retry.",
+    "notes": "iOS Remote.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_this_directory_does_not_exist",
+    "zh-CN": "这个目录不存在",
+    "en": "This directory does not exist",
+    "notes": "iOS NewSessionBox.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_today",
+    "zh-CN": "今天 {value}",
+    "en": "Today {value}",
+    "notes": "iOS Model.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 then.hhmm；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_unknown_session",
+    "zh-CN": "未知会话",
+    "en": "Unknown session",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.ios_unsure_whether_the_computer_executed_this",
+    "zh-CN": "不确定电脑有没有执行：{value}",
+    "en": "Unsure whether the computer executed this: {value}",
+    "notes": "iOS RemoteCommands.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 reason；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

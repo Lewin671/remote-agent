@@ -5,8 +5,8 @@ import RAProto
 
 @Suite struct SchedulesTests {
     @Test func compactReasonsUseCodesAndLeaveUnknownReasonsIntact() {
-        #expect(scheduleReason("execution_failed", short: true) == "运行失败")
-        #expect(scheduleReason("execution_failed") == "运行失败，任务已停下")
+        #expect(scheduleReason("execution_failed", short: true) == L10n.scheduleExecutionFailed())
+        #expect(scheduleReason("execution_failed") == L10n.scheduleExecutionFailedTheTaskStopped())
         #expect(scheduleReason("raw，任务已停下", short: true) == "电脑返回的原因：raw，任务已停下")
         let failure = CommandError.unknownBecause("raw reason")
         #expect(failure.unknown)
@@ -37,7 +37,7 @@ import RAProto
             #expect(edit.date == chosen && edit.count == 7 && edit.end == .count && edit.weekdays == [2, 4])
         }
         edit.weekdays = []
-        #expect(throws: UserError("请至少选择一天")) { try edit.trigger(now: now) }
+        #expect(throws: UserError(L10n.scheduleSelectAtLeastOneDay())) { try edit.trigger(now: now) }
         edit.weekdays = [2, 4]
         #expect(try edit.trigger(now: now).weekdays == [2, 4])
     }
@@ -120,13 +120,13 @@ import RAProto
             #expect(Set(f.tasks.filter { $0.visible && $0.group == group }.map(\.id)) == Set(f.groups[group.title] ?? []))
         }
         let attention = try #require(f.tasks.first { $0.id == "attention" })
-        #expect(attention.lastResult() == "创建任务时的权限已改变，任务已停下")
-        #expect(attention.history[0].result == "没有通知")
-        #expect(attention.history[0].foldedSummary == "没有通知")
-        var author = attention; #expect(author.creator == "你创建"); author.source = "agent"; #expect(author.creator == "Agent 在对话里创建")
+        #expect(attention.lastResult() == L10n.scheduleTaskCreationPermissionsChangedTheTaskStopped())
+        #expect(attention.history[0].result == L10n.scheduleNoNotification())
+        #expect(attention.history[0].foldedSummary == L10n.scheduleNoNotification())
+        var author = attention; #expect(author.creator == L10n.scheduleCreatedByYou()); author.source = "agent"; #expect(author.creator == L10n.scheduleCreatedByTheAgentInAConversation())
         var limits = attention.spec.trigger; limits.maxRuns = 5; limits.until = "2026-10-30T08:00:00Z"
         #expect(scheduleLimits(limits, now: scheduleDate(f.now)!, zone: TimeZone(identifier:f.timezone)!) == "共 5 次，或到 10月30日 01:00")
-        #expect(scheduleReason("completed_while_paused") == "已暂停：期间计划已到期")
+        #expect(scheduleReason("completed_while_paused") == L10n.schedulePausedTheScheduleExpiredInTheMeantime())
         var a=task("paused",reason:"user_paused"), b=a
         a.id="old";a.updatedAt="2026-10-24T10:00:00Z";a.nextRunAt="2026-10-24T20:00:00Z"
         b.id="new";b.updatedAt="2026-10-24T11:00:00Z";b.nextRunAt="2026-10-25T20:00:00Z"
@@ -151,7 +151,7 @@ import RAProto
         #expect(try editing.trigger(now:now).until=="2026-10-30T00:15:00Z")
         var gap = ScheduleTrigger(type:"at"); gap.at="2027-03-14T02:30:00Z"; gap.timezone="UTC"
         var missing = ScheduleTiming(trigger:gap,now:now,zone:zone); missing.timezone="America/Los_Angeles"
-        #expect(throws: UserError("这个时区在该时刻发生夏令时跳转，请换一个时间")) { try missing.trigger(now:now) }
+        #expect(throws: UserError(L10n.scheduleDaylightSavingTimeSkipsThisTimeInTheSelected())) { try missing.trigger(now:now) }
         var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
         #expect(try fresh.trigger(now:now).delaySeconds==900)
     }
@@ -251,31 +251,31 @@ import RAProto
     }
     @Test func notificationPreviewUsesNoticeThenFinalSummaryAndAttentionReason() {
         var t = task()
-        #expect(t.latestNotification == nil && t.notificationPreview() == "还没有运行")
+        #expect(t.latestNotification == nil && t.notificationPreview() == L10n.scheduleHasNotRunYet())
         var r = ScheduleRun(id: "notice", startedAt: "2026-10-24T08:00:00Z", status: "completed", notified: true)
         r.notificationText = "新回复"; r.finalSummary = "检查完了"
         t.runs = [r, ScheduleRun(id: "silent", startedAt: "2026-10-25T08:00:00Z", status: "completed")]
         #expect(t.latestNotification?.id == "notice" && t.notificationPreview() == "新回复")
         t.runs?[0].notificationText = "  "; #expect(t.notificationPreview() == "检查完了")
-        t.runs?[0].finalSummary = nil; #expect(t.notificationPreview() == "通知了你")
+        t.runs?[0].finalSummary = nil; #expect(t.notificationPreview() == L10n.scheduleNotifiedYou())
         t.active = ScheduleRun(id: "active-notice", startedAt: "2026-10-26T08:00:00Z", status: "running", notified: true)
         t.active?.notificationText = "运行中有变化"
         #expect(t.latestNotification?.id == "active-notice" && t.notificationPreview() == "运行中有变化")
         t.active?.status = "interrupted"; t.active?.reason = "execution_interrupted"
-        #expect(t.notificationPreview() == "运行被中断，任务已停下")
+        #expect(t.notificationPreview() == L10n.scheduleExecutionInterruptedTheTaskStopped())
         t.status = "failed"; t.reason = "relay_session_limit"
-        #expect(t.notificationPreview() == "中继上的会话数已满")
+        #expect(t.notificationPreview() == L10n.scheduleTheRelaySSessionLimitHasBeenReached())
     }
     @Test func firstRunningTaskHasNoResultPreviewAndLaterRunsKeepTheLastResult() {
         var t = task(); t.nextRunAt = "2026-10-24T18:05:00Z"
         #expect(t.listPreview(now: now, zone: zone) == "还没有运行 · 下次 今天 11:05")
         for status in ["dispatching", "queued", "running"] {
             t.active = ScheduleRun(id: "first", startedAt: "2026-10-24T17:00:00Z", status: status)
-            #expect(t.awaitingFirstResult && t.listPreview(now: now, zone: zone) == "还没有结果")
-            #expect(!t.listPreview(now: now, zone: zone).contains("正在运行") && t.latestNotification == nil)
+            #expect(t.awaitingFirstResult && t.listPreview(now: now, zone: zone) == L10n.scheduleNoResultsYet())
+            #expect(!t.listPreview(now: now, zone: zone).contains(L10n.scheduleRunning()) && t.latestNotification == nil)
         }
         t.runs = [ScheduleRun(id: "silent", startedAt: "2026-10-23T17:00:00Z", status: "completed")]
-        #expect(t.listPreview(now: now, zone: zone) == "还没有结果")
+        #expect(t.listPreview(now: now, zone: zone) == L10n.scheduleNoResultsYet())
         var result = ScheduleRun(id: "result", startedAt: "2026-10-23T17:00:00Z", status: "completed", notified: true)
         result.notificationText = "有新回复"; result.finalSummary = "回复全文的摘要"
         result.endedAt = "2026-10-23T17:03:00Z"; t.runs?.append(result)
@@ -322,7 +322,7 @@ import RAProto
         #expect(t.stateText(online: false, now: now, zone: zone) == scheduleOffline)
         t.active = ScheduleRun(id: "r", startedAt: "2026-10-24T17:00:00Z", status: "running")
         #expect(t.stateText(online: false) == scheduleOffline)
-        #expect(t.stateText(online: true) == "运行中")
+        #expect(t.stateText(online: true) == L10n.listStateRunning())
     }
     @Test func scheduleDatesUseSharedChineseLocalCalendarWording() {
         for (at, expected) in [
@@ -378,9 +378,9 @@ import RAProto
         bad.notificationText = "旧的通知"; bad.finalSummary = "误导的摘要"; bad.reason = "relay_session_limit"
         t.runs?.append(bad)
         var ongoing = bad; ongoing.status = "running"
-        #expect(ongoing.result == "通知了你")
-        #expect(bad.result == "失败")
-        #expect(bad.detail == "中继上的会话数已满")
+        #expect(ongoing.result == L10n.scheduleNotifiedYou())
+        #expect(bad.result == L10n.attachmentFailed())
+        #expect(bad.detail == L10n.scheduleTheRelaySSessionLimitHasBeenReached())
         #expect(t.lastResult(now: now, zone: zone).contains("失败：中继上的会话数已满"))
         #expect(scheduleHistoryGroups(t.history, zone: zone).count == 2)
     }
@@ -508,9 +508,9 @@ import RAProto
         #expect(decoded.notify == "agent_only" && !decoded.notifyOnFinish)
         var run = ScheduleRun(id: "r", startedAt: "", status: "completed", notified: true)
         run.notificationSource = "daemon"
-        #expect(run.notificationLabel == "完成后通知")
+        #expect(run.notificationLabel == L10n.scheduleNotifyOnCompletion())
         run.notificationSource = "undeliverable"; run.notified = false
-        #expect(run.notificationLabel == "无法请求通知" && run.result == "没有通知")
+        #expect(run.notificationLabel == L10n.scheduleIosCannotRequestNotification() && run.result == L10n.scheduleNoNotification())
     }
 }
 

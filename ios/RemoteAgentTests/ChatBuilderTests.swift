@@ -166,7 +166,7 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         let builder = ChatBuilder()
         let params = ChatParams(prompt: "建一个 Makefile")
         let none = await builder.build(PagedList<PBEvent>(), params)
-        #expect(none.startPrompt == StartPrompt(text: "建一个 Makefile", caption: "已送达电脑"))
+        #expect(none.startPrompt == StartPrompt(text: "建一个 Makefile", caption: L10n.sessionDelivered()))
         let recorded = await builder.build(PagedList(events([user("建一个 Makefile")])), params)
         #expect(recorded.startPrompt == nil)
     }

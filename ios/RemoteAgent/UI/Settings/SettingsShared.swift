@@ -91,7 +91,7 @@ extension String {
 /// one decimal, and anything under a tenth of a MiB said as such rather
 /// than as 0.0.
 func imageBytes(_ n: Int64) -> String {
-    if n >= 1 && n < 104_858 { return "不到 0.1 MiB" }
+    if n >= 1 && n < 104_858 { return L10n.settingsLessThan01Mib() }
     if n >= 1 << 30 { return String(format: "%.1f GiB", Double(n) / 1_073_741_824) }
     return String(format: "%.1f MiB", Double(n) / 1_048_576)
 }
@@ -109,9 +109,9 @@ func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
     text: String, online: Bool, hasLastSeen: Bool
 )? {
     if state.unlinked { return nil }
-    if m.online { return ("在线", true, false) }
+    if m.online { return (L10n.commonIosOnline(), true, false) }
     let lastSeen = ago(m.lastSeenMs, now: now)
-    return (lastSeen.or("离线"), false, !lastSeen.isEmpty)
+    return (lastSeen.or(L10n.settingsOffline()), false, !lastSeen.isEmpty)
 }
 
 /// The computer as far as it is known from here: while this client is not
@@ -139,7 +139,7 @@ func osName(_ os: String) -> String {
     case "darwin": "macOS"
     case "linux": "Linux"
     case "windows": "Windows"
-    case "": "未知"
+    case "": L10n.settingsIosUnknown()
     default: os
     }
 }
@@ -174,8 +174,8 @@ struct MachineRow: View {
         .lead { DeviceIcon("laptopcomputer") }
         .valueLead { if let status { Dot(status.online ? DS.green : DS.ink3) } }
         .contextMenu {
-            Button("账户额度") { nav.open(.quota(machine: id)) }
-            Button("连接检测") { nav.open(.connectionCheck) }
+            Button(L10n.settingsAccountQuota()) { nav.open(.quota(machine: id)) }
+            Button(L10n.homeConnectionCheck()) { nav.open(.connectionCheck) }
         }
     }
 }
@@ -203,7 +203,7 @@ struct ClientRow: View {
 
     var body: some View {
         let mine = id == me
-        let role = id == authority ? "管理端" : mine ? "当前客户端" : clientUsed(client, now: now)
+        let role = id == authority ? L10n.settingsManagingClient() : mine ? L10n.settingsIosCurrentClient() : clientUsed(client, now: now)
         GRow(
             clientName(client, id: id, among: devices), sub: client.map { clientDetail($0) },
             value: role,
@@ -211,8 +211,8 @@ struct ClientRow: View {
         ) { nav.open(.client(id: id)) }
         .lead { DeviceIcon(clientIcon(client)) }
         .contextMenu {
-            if let onRename { Button("重命名", action: onRename) }
-            Button("复制设备 ID") { UIPasteboard.general.string = id }
+            if let onRename { Button(L10n.sessionRename(), action: onRename) }
+            Button(L10n.settingsIosCopyDeviceId()) { UIPasteboard.general.string = id }
         }
     }
 }

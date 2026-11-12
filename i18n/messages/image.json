@@ -984,6 +984,217 @@
     }
   },
   {
+    "key": "image.ios_attachment_storage",
+    "zh-CN": "附件存储 · {value}",
+    "en": "Attachment storage · {value}",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_attachments_exceed_this_computer_s_file_count_or_size",
+    "zh-CN": "附件超过这台电脑的文件数量或大小上限，请移除后重新选择",
+    "en": "Attachments exceed this computer’s file count or size limit. Remove and select them again.",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_attachments_need_uploading_again_complete_the_upload_before_sending",
+    "zh-CN": "附件需要重新传到电脑，请上传完成后再发送",
+    "en": "Attachments need uploading again. Complete the upload before sending.",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_cannot_decode_image",
+    "zh-CN": "解不出图片",
+    "en": "Cannot decode image",
+    "notes": "iOS ImageViewer.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_cannot_decode_this_image",
+    "zh-CN": "解不出这张图片",
+    "en": "Cannot decode this image",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_cannot_read_this_image",
+    "zh-CN": "读不到这张图片",
+    "en": "Cannot read this image",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_cannot_read_this_video_select_it_again",
+    "zh-CN": "读不到这段视频，请重新选择",
+    "en": "Cannot read this video. Select it again.",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_clear_viewing_cache",
+    "zh-CN": "清理查看缓存",
+    "en": "Clear viewing cache",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_clear_viewing_cache_200",
+    "zh-CN": "清理查看缓存？",
+    "en": "Clear viewing cache?",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_clearing",
+    "zh-CN": "正在清理…",
+    "en": "Clearing…",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_converted_to_keeping_original_dimensions",
+    "zh-CN": "转成了 {value}，保留原始尺寸",
+    "en": "Converted to {value}, keeping original dimensions",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 png ? \"PNG\" : \"JPEG\"；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_could_not_encode_this_image",
+    "zh-CN": "没能编码这张图片",
+    "en": "Could not encode this image",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_could_not_finish_clearing",
+    "zh-CN": "没能清理完：{value}",
+    "en": "Could not finish clearing: {value}",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 failure.localizedDescription；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_could_not_restore_pending_records_retry",
+    "zh-CN": "待发记录没能恢复，请重试",
+    "en": "Could not restore pending records. Retry.",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.ios_download_failed",
     "zh-CN": "没能下载：{reason} · 点按重试",
     "en": "Could not download: {reason} · Tap to retry",
@@ -1017,11 +1228,44 @@
     }
   },
   {
+    "key": "image.ios_drafts_are_cleared_after_7_idle_days_unconfirmed_messages",
+    "zh-CN": "草稿闲置 7 天后清理；待确认消息保留到确认或移除。容量不足时提醒，保留已有内容。查看缓存超过上限时先清最久没看的。",
+    "en": "Drafts are cleared after 7 idle days. Unconfirmed messages remain until confirmed or removed. Storage warnings preserve existing content. When viewing cache exceeds its limit, the least recently viewed items are cleared first.",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.ios_empty",
     "zh-CN": "没有图片",
     "en": "No images",
     "notes": "DraftImageViewer.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_full_size_images_viewed_on_will_be_cleared_and",
+    "zh-CN": "看过的大图会从{value}上清掉，再看时重新下载。待发的图片、草稿和会话历史不受影响。",
+    "en": "Full-size images viewed on {value} will be cleared and downloaded again when needed. Pending images, drafts, and session history are unaffected.",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 thisDeviceWord；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
     "platforms": [
       "ios"
     ],
@@ -1060,6 +1304,67 @@
         "example": "Example"
       }
     },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_gif_contains_an_unrecognized_block",
+    "zh-CN": "GIF 里有认不出的块",
+    "en": "GIF contains an unrecognized block",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_gif_is_truncated",
+    "zh-CN": "GIF 被截断",
+    "en": "GIF is truncated",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_image_exceeds_mb",
+    "zh-CN": "图片超过 {count} MB",
+    "en": "Image exceeds {count} MB",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：count = Swift 插值 limit / 1024 / 1024；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_image_has_no_dimensions",
+    "zh-CN": "图片没有尺寸",
+    "en": "Image has no dimensions",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
     "platforms": [
       "ios"
     ],
@@ -1113,10 +1418,80 @@
     }
   },
   {
+    "key": "image.ios_needs_uploading_to_the_computer_again",
+    "zh-CN": "需要重新传到电脑",
+    "en": "Needs uploading to the computer again",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.ios_no_preview",
     "zh-CN": "没有预览",
     "en": "No preview",
     "notes": "ChatImages.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_not_a_readable_gif",
+    "zh-CN": "不是能读的 GIF",
+    "en": "Not a readable GIF",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_not_a_readable_jpeg",
+    "zh-CN": "不是能读的 JPEG",
+    "en": "Not a readable JPEG",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_not_a_readable_png",
+    "zh-CN": "不是能读的 PNG",
+    "en": "Not a readable PNG",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_not_a_readable_webp",
+    "zh-CN": "不是能读的 WebP",
+    "en": "Not a readable WebP",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -1146,6 +1521,25 @@
     "en": "Open image",
     "notes": "ChatImages.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_original_exceeds_mb",
+    "zh-CN": "原图超过 {count} MB",
+    "en": "Original exceeds {count} MB",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：count = Swift 插值 maxOriginalBytes / 1024 / 1024；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
     "platforms": [
       "ios"
     ],
@@ -1227,6 +1621,39 @@
     }
   },
   {
+    "key": "image.ios_pending_and_unconfirmed_attachments",
+    "zh-CN": "待发和待确认附件",
+    "en": "Pending and unconfirmed attachments",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_pixels_exceed_this_phone_s_limit_reduced_to_1",
+    "zh-CN": "；像素超过手机能处理的上限，缩小到 1/{value}",
+    "en": "; pixels exceed this phone’s limit, reduced to 1/{value}",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。变量来源：value = Swift 插值 sample；用户内容和系统/CLI 原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.ios_placeholder",
     "zh-CN": "（图片）",
     "en": "（Image）",
@@ -1251,6 +1678,20 @@
         "example": "01"
       }
     },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_re_encoded_at_highest_quality_after_correcting_orientation",
+    "zh-CN": "按拍摄方向转正后以最高画质重新编码",
+    "en": "Re-encoded at highest quality after correcting orientation",
+    "notes": "iOS ImagePrepare.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
     "platforms": [
       "ios"
     ],
@@ -1336,10 +1777,80 @@
     }
   },
   {
+    "key": "image.ios_session_removed",
+    "zh-CN": "会话已移除",
+    "en": "Session removed",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_the_computer_did_not_provide_an_image_id",
+    "zh-CN": "电脑没有给出图片 ID",
+    "en": "The computer did not provide an image ID",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_this_computer_does_not_support_file_uploads",
+    "zh-CN": "这台电脑不支持发送文件",
+    "en": "This computer does not support file uploads",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_this_computer_does_not_support_these_files_check_their",
+    "zh-CN": "这台电脑不支持这些文件，请检查文件数量和大小或换一台电脑",
+    "en": "This computer does not support these files. Check their count and size, or choose another computer.",
+    "notes": "iOS ImageCenter.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.ios_unselected",
     "zh-CN": "未选",
     "en": "Not selected",
     "notes": "ImageStrip.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
+    "params": {},
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_unsupported_image_format",
+    "zh-CN": "不支持的图片格式",
+    "en": "Unsupported image format",
+    "notes": "iOS Images.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
     "params": {},
     "platforms": [
       "ios"
@@ -1426,6 +1937,20 @@
         "example": "Example"
       }
     },
+    "platforms": [
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.ios_viewing_cache",
+    "zh-CN": "查看缓存",
+    "en": "Viewing cache",
+    "notes": "iOS ImageStorageScreen.swift 的原生界面/错误提示。保留现有中文；标签/按钮空间紧凑，说明正文可多行。无变量。",
+    "params": {},
     "platforms": [
       "ios"
     ],

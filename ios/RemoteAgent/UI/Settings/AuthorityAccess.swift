@@ -10,12 +10,12 @@ struct AuthorityAccess {
     var name: String {
         clientName(state.devices[state.authorityDeviceId], id: state.authorityDeviceId, among: state.devices)
     }
-    var addHint: String { "要添加电脑或客户端，在管理端（\(name)）上打开「设置 › 添加设备」。" }
+    var addHint: String { L10n.securityAddOnAuthority(name: String(describing: name)) }
     var emptyHint: String { L10n.homeAddViaManager(name: name) }
     static func exitAdvice(authority: Bool, unresolved: Bool) -> String {
-        if unresolved { return "还有未完成的安全操作。请先重试或在管理端核实结果；退出后，这台手机将无法继续原操作。" }
-        if authority { return "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。" }
-        return "退出会删除本机密钥，需要重新配对。"
+        if unresolved { return L10n.securityIosASecurityOperationIsUnfinishedRetryOrVerifyIts() }
+        if authority { return L10n.securityIosThisDeviceIsTheSoleManagingClientTransferManagement() }
+        return L10n.securityExitingDeletesLocalKeysYouWillNeedToPair()
     }
 }
 
@@ -31,7 +31,7 @@ struct AddDeviceEntry: View {
         } else { GroupNote(access.addHint) }
     }
     private var row: some View {
-        GRow("添加设备", action: true, icon: "plus") { nav.open(.addDevice()) }
+        GRow(L10n.homeAddDevice(), action: true, icon: "plus") { nav.open(.addDevice()) }
     }
 
 }

@@ -14,7 +14,7 @@ struct DirectorySource {
     static func remote(_ remote: Remote) -> DirectorySource {
         DirectorySource { machine, path in
             let r = try await remote.machineCommand(machine, listDirectoriesCommand(path: path))
-            guard case .listDirectories(let dirs)? = r.kind else { throw CommandError("internal", L10n.newSessionUnexpectedReply()) }
+            guard case .listDirectories(let dirs)? = r.kind else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
             return dirs
         }
     }

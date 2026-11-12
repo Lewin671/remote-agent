@@ -1,3 +1,4 @@
+import enum RACore.L10n
 import Foundation
 import SwiftUI
 import Testing
@@ -14,7 +15,7 @@ import UIKit
     @Test func aProjectIsNamedByItsLastFolder() {
         #expect(projectName("/Users/me/Code/foo") == "foo")
         #expect(projectName("/Users/me/Code/foo/") == "foo")
-        #expect(projectName("/") == "未知项目")
+        #expect(projectName("/") == L10n.projectsUnknown())
     }
 
     @Test func textToBeReadKeepsItsContrastInBothThemes() {

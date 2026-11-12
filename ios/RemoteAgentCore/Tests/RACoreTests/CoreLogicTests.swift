@@ -126,8 +126,8 @@ import Testing
     @Test func aRequestThatNeverLeftThePhoneNamesTheNetworkNotTheResolver() {
         let cause = URLError(.cannotFindHost)
         let e = ConnectError(code: .unknown, message: cause.localizedDescription, exception: cause)
-        #expect(errorText(e) == "找不到服务器，检查一下网络")
-        #expect(errorText(cause) == "找不到服务器，检查一下网络")
+        #expect(errorText(e) == L10n.errorsIosCannotFindTheServerCheckYourNetwork())
+        #expect(errorText(cause) == L10n.errorsIosCannotFindTheServerCheckYourNetwork())
         #expect(unresolvedHost(e))
         #expect(detailText(e).hasPrefix("NSURLErrorDomain -1003: "))
         #expect(!unresolvedHost(URLError(.timedOut)))
@@ -150,16 +150,16 @@ import Testing
             URLError.Code.cannotFindHost, .dnsLookupFailed, .notConnectedToInternet,
             .dataNotAllowed, .internationalRoamingOff,
         ] {
-            #expect(errorText(URLError(code)) == "找不到服务器，检查一下网络")
+            #expect(errorText(URLError(code)) == L10n.errorsIosCannotFindTheServerCheckYourNetwork())
             #expect(unresolvedHost(URLError(code)))
         }
-        #expect(errorText(URLError(.cannotConnectToHost)) == "连不上服务器")
-        #expect(errorText(URLError(.timedOut)) == "连接超时")
+        #expect(errorText(URLError(.cannotConnectToHost)) == L10n.connectionNoServer())
+        #expect(errorText(URLError(.timedOut)) == L10n.errorsConnectionTimedOut())
         #expect(errorText(URLError(.secureConnectionFailed)).hasPrefix("安全连接失败："))
         #expect(errorText(URLError(.serverCertificateUntrusted)).hasPrefix("安全连接失败："))
         // A WebSocket fails with the socket's own error.
-        #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ECONNREFUSED))) == "连不上服务器")
-        #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ETIMEDOUT))) == "连接超时")
+        #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ECONNREFUSED))) == L10n.connectionNoServer())
+        #expect(errorText(NSError(domain: NSPOSIXErrorDomain, code: Int(ETIMEDOUT))) == L10n.errorsConnectionTimedOut())
         // Only a request that did not leave the device is known not to have run.
         #expect(neverSent(URLError(.cannotFindHost)))
         #expect(neverSent(URLError(.cannotConnectToHost)))
@@ -170,13 +170,13 @@ import Testing
 
     @Test func anErrorOfTheAppsOwnIsSaidInItsOwnWords() {
         #expect(errorText(CommandError("unimplemented", "这台电脑不支持")) == "这台电脑不支持")
-        #expect(errorText(UserError("连接超时，正在重连")) == "连接超时，正在重连")
-        #expect(detailText(UserError("与 server 的连接断开")) == "与 server 的连接断开")
+        #expect(errorText(UserError(L10n.errorsConnectionTimedOutReconnecting())) == L10n.errorsConnectionTimedOutReconnecting())
+        #expect(detailText(UserError(L10n.errorsDisconnectedFromServer())) == L10n.errorsDisconnectedFromServer())
         #expect(errorText(OpenError("envelope does not open")) == "envelope does not open")
         #expect(
             detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
-        #expect(errorText(PairError("已取消")) == "已取消")
-        #expect(errorText(PrefsConflictError()) == "项目偏好一直在被其他客户端修改，没能保存")
+        #expect(errorText(PairError(L10n.queueCanceled())) == L10n.queueCanceled())
+        #expect(errorText(PrefsConflictError()) == L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
         // One without words is called by its type, never by NSError's sentence about it.
         struct Wordless: Error {}
         #expect(errorText(Wordless()) == "Wordless")
@@ -294,11 +294,11 @@ import Testing
         try await r.go()
         // Said why each time, never as missing; the waits double up to half a minute and start over after an answer.
         #expect(r.waits == [3_000, 6_000, 12_000, 24_000, 30_000, 30_000, 2_500, 3_000])
-        #expect(r.reports.first == .failed(reason: "连不上"))
+        #expect(r.reports.first == .failed(reason: L10n.connectionUnreachable()))
         #expect(!r.reports.contains(.missing))
         // What the pages say meanwhile.
-        #expect(lookupNote(.failed(reason: "连不上")) == "没能读取这个会话：连不上")
-        #expect(lookupNote(.missing) == "找不到这个会话")
+        #expect(lookupNote(.failed(reason: L10n.connectionUnreachable())) == "没能读取这个会话：连不上")
+        #expect(lookupNote(.missing) == L10n.sessionIosMissing())
         #expect(lookupNote(.reading) == nil)
         #expect(lookupNote(nil) == nil)
     }
@@ -374,7 +374,7 @@ import Testing
     @Test func translatesOnlyLoginDenialAndKeepsOfflineSeparate() {
         let denied = ConnectError(code: .permissionDenied, message: "login failed")
         #expect(loginDenied(denied))
-        #expect(errorText(denied) == "服务器不认识这台设备（可能已被移除，或服务已重建）")
+        #expect(errorText(denied) == L10n.errorsTheServerDoesNotRecognizeThisDeviceItMay())
         #expect(!loginDenied(URLError(.notConnectedToInternet)))
         #expect(!loginDenied(ConnectError(code: .unavailable, message: nil)))
         #expect(!loginDenied(ConnectError(code: .notFound, message: nil)))

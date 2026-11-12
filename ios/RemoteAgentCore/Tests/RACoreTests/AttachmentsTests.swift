@@ -251,7 +251,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let transfer = i.transferId
         d.attach([i], max: 6)
         // Put back: the daemon may have used the old upload up.
-        #expect(i.state == .failed(error: "需要重新传到电脑"))
+        #expect(i.state == .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain()))
         #expect(i.imageId == nil && i.machineId == nil)
         #expect(!d.ready(machineId: "mac"))
         #expect(d.toSend(machineId: "mac").map(\.id) == ["a"])
@@ -280,7 +280,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let d = draft("session:s", files)
         files.full = true
         d.attach([img("a")], max: 6)
-        #expect(d.notice == "这张图未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失")
+        #expect(d.notice == L10n.attachmentIosNotSaved())
         #expect(files.keys.isEmpty)
         // Room again: the next save writes the image it could not write before.
         files.full = false
@@ -315,7 +315,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
             MachineView(id: "m", online: online, lastSeenMs: 0, meta: .with { if let caps { $0.capabilities = caps } })
         }
         let ok = PBMachineCapabilities.with { $0.imageUpload = true; $0.maxImagesPerMessage = 4 }
-        #expect(uploadBlocked(nil, online: true, name: "mac") == "先选一台电脑")
+        #expect(uploadBlocked(nil, online: true, name: "mac") == L10n.attachmentIosChooseMachine())
         #expect(uploadBlocked(m(nil), online: true, name: "mac") == "还没读到 mac 的信息，稍后才能添加图片")
         #expect(uploadBlocked(m(PBMachineCapabilities()), online: true, name: "mac") == "mac 上 remote-agent 的目录路径带空格，不能发图片")
         #expect(uploadBlocked(m(online: false, ok), online: true, name: "mac") == "mac 离线，连上后才能添加图片")

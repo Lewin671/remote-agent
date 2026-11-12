@@ -181,7 +181,7 @@ enum LaunchDriver {
             case "waiting": (state.conn, state.link) = (.connecting, .waiting)
             case "noNetwork": (state.conn, state.link) = (.offline, .noNetwork)
             case "noServer":
-                (state.conn, state.link, state.error) = (.offline, .noServer, "连不上服务器")
+                (state.conn, state.link, state.error) = (.offline, .noServer, L10n.connectionNoServer())
                 state.errorDetail = "NSURLErrorDomain -1004: Could not connect to the server."
             default: break
             }
@@ -252,14 +252,14 @@ enum LaunchDriver {
         let emoji = ["🦊", "🌵", "🍉", "🌙"]
         switch step {
         case "filled": join.show(step: .form, code: "48291756")
-        case "error": join.show(step: .form, code: "48291756", notice: "配对码不对，或者已经用过了", error: true)
-        case "cancelled": join.show(step: .form, notice: "已取消本次加入。旧请求可能还占着配对码：请在管理端拒绝它，再生成新的配对码")
+        case "error": join.show(step: .form, code: "48291756", notice: L10n.securityThePairingCodeIsWrongOrHasAlreadyBeen(), error: true)
+        case "cancelled": join.show(step: .form, notice: L10n.errorsIosJoiningCanceledTheOldRequestMayStillOccupyThe())
         case "working": join.show(step: .working, code: "48291756")
         case "emoji": join.show(step: .emoji(emoji), code: "48291756")
-        case "registering": join.show(step: .emoji(emoji), code: "48291756", notice: "已经在登记\(thisDeviceWord)，稍等结果")
+        case "registering": join.show(step: .emoji(emoji), code: "48291756", notice: L10n.errorsIosAlreadyRegisteringWaitForTheResult(value: String(describing: thisDeviceWord)))
         case "secret": join.show(step: .secret)
         case "secretError":
-            join.show(step: .secret, secret: "ra1.not-a-secret", notice: "这不是 remote-agent 的账户密钥", error: true)
+            join.show(step: .secret, secret: "ra1.not-a-secret", notice: L10n.errorsThisIsNotARemoteAgentAccountKey(), error: true)
         case "scan", "scanDenied", "scanMissing": join.show(step: .scan)
         default: join.show(step: .form, server: "https://")
         }

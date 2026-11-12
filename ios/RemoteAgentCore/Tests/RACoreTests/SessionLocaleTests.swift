@@ -71,12 +71,12 @@ import Testing
         }
     }
 
-    @Test func attachmentNoticesRetainArgumentsAndImageErrorsRemainInBatchC() {
+    @Test func attachmentNoticesRetainArgumentsAndImageErrorsResolveInTheRequestedLanguage() {
         let notice = AttachmentNotice.restoreImages(have: 3, count: 4, limit: 6)
         #expect(MessageLocale.$overrideForTesting.withValue("zh-CN") { notice.text } == "输入框里已有 3 张图，放回这 4 张会超过 6 张。先移除一些再放回")
         #expect(MessageLocale.$overrideForTesting.withValue("en") { notice.text }.contains("4 images"))
         #expect(imageProblem("decode failed").kind == .unreadable)
-        #expect(imageFailureLine(["decode failed", "invalid png"], locale: "en") == "读不出这张图片，换成 JPEG 或 PNG 再试")
+        #expect(imageFailureLine(["decode failed", "invalid png"], locale: "en") == L10n.imageCannotReadThisImageTryJpegOrPngInstead(locale: "en"))
         #expect(imageFailureLine(["pixels", "decode failed"], locale: "en") == L10n.imageAttachFailed(count: 2, locale: "en"))
     }
     @Test func sessionLookupResolvesOnlyAtTheDisplayBoundary() {

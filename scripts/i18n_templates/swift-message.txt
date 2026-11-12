@@ -1,0 +1,20 @@
+
+/// Local product text keeps its resource key and captured arguments until display.
+/// Raw daemon, CLI, user and OS text remains byte-for-byte as received.
+public struct LocalizedMessage: Equatable, Sendable {
+    fileprivate enum Argument: Equatable, Sendable {
+        case string(String), integer(Int64), number(Double)
+        var value: CVarArg {
+            switch self { case .string(let v): v; case .integer(let v): v; case .number(let v): v }
+        }
+    }
+    fileprivate var key: String?
+    fileprivate var arguments: [Argument] = []
+    private var raw: String = ""
+    fileprivate init(key: String, arguments: [Argument]) { self.key = key; self.arguments = arguments }
+    public init(raw: String) { self.raw = raw }
+    public func resolve(locale: String = MessageLocale.current) -> String {
+        guard let key else { return raw }
+        return L10n.format(key, locale: locale, args: arguments.map(\.value))
+    }
+}

@@ -6,7 +6,7 @@ import Foundation
 
 private let pairTranscriptContext = "remote-agent/v1/pair\u{0}"
 
-private let badPairKey = UserError("配对密钥无效")
+private let badPairKey = UserError(L10nMessage.securityInvalidPairingKey())
 
 /// One side's ephemeral X25519 key pair.
 public struct PairKey: Sendable {

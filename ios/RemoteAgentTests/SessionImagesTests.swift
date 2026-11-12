@@ -180,7 +180,7 @@ import UIKit
             Issue.record("the message was taken as sent")
             return
         }
-        #expect(errorText(error) == "已退出账户")
+        #expect(errorText(error) == L10n.attachmentIosSignedOutOfTheAccount())
         try? await Task.sleep(nanoseconds: 50_000_000)
         #expect(computer.sent.isEmpty && store.outgoing(sid).isEmpty)
         #expect(remote.events(sid).followers == 0)
@@ -301,7 +301,7 @@ import UIKit
         #expect(store.draft(sid) == "已经在写的\n看图")
         // The images are in the box again and go to the computer again; nothing of them was dropped.
         #expect(draft.images.map(\.id) == ["a", "b"])
-        #expect(draft.images.allSatisfy { $0.state == .failed(error: "需要重新传到电脑") && $0.processed != nil })
+        #expect(draft.images.allSatisfy { $0.state == .failed(error: L10n.imageIosNeedsUploadingToTheComputerAgain()) && $0.processed != nil })
         await eventually("its record is gone") { (try? OutgoingRecords(files: files).load(sid: sid).isEmpty) == true }
     }
 
@@ -417,7 +417,7 @@ import UIKit
         await c.restoredOutgoing(sid)
         let o = try #require(later.outgoing(sid).first)
         #expect(o.requestId == sent.requestId && o.text == "看图" && o.imageIds == ["on-mac-a"])
-        #expect(o.state == .unknown && o.error == "App 重启过，不确定这条有没有送到")
+        #expect(o.state == .unknown && o.error == L10n.attachmentIosTheAppRestartedDeliveryOfThisMessageIsUnconfirmed())
         // Asked again, it is not doubled.
         c.restoreOutgoing(sid, store: later)
         await c.restoredOutgoing(sid)

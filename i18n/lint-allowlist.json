@@ -425,6 +425,61 @@
     "reason": "JSX 词法扫描把相邻 TypeScript useState 泛型之间的声明误认为显示文字；纯状态声明，不向用户显示。"
   },
   {
+    "path": "ios/RemoteAgent/UI/Schedules/ScheduleTimingSheet.swift",
+    "literal": "mon",
+    "reason": "语言无关的星期选择代码，交给生成的 weekday selector；不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Schedules/ScheduleTimingSheet.swift",
+    "literal": "tue",
+    "reason": "语言无关的星期选择代码，交给生成的 weekday selector；不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgent/UI/Schedules/ScheduleTimingSheet.swift",
+    "literal": "wed",
+    "reason": "语言无关的星期选择代码，交给生成的 weekday selector；不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "20\\\\s*(mb|mib)|原图超过",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "尺寸|像素|pixels|dimensions|canvas|too large|image exceeds|original exceeds|图片超过|图片太大",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "本机副本|重新选择|source.*missing|source.*read|local copy|select.*again",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "decode|解不出|读不出|读不到|格式|规范|png|jpeg|heic|webp|metadata|exif|corrupt|unsupported|cannot read|could not encode|not a readable|truncated|unrecognized block",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "quota|空间|配额|storage.*full|disk.*full",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/ImageProblem.swift",
+    "literal": "network|offline|unavailable|fetch|timeout|deadline|expired|网络|连接|离线|断线|超时|过期|重新传|needs? uploading|upload.*again|could not reach|connect.*computer",
+    "reason": "用于识别 CLI、系统及上传错误原文的正则；按语言无关 Kind 分类，不是显示文案。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Agents.swift",
+    "literal": "Gemini",
+    "reason": "外部 CLI 模型品牌名称，作为额度窗口名称参数按原名显示，不翻译。"
+  },
+  {
+    "path": "ios/RemoteAgentCore/Sources/RACore/Agents.swift",
+    "literal": "Gemini 4 Argon",
+    "reason": "外部 CLI 模型品牌名称，作为额度窗口名称参数按原名显示，不翻译。"
+  },
+  {
     "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",
     "literal": "CLI",
     "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."

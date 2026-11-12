@@ -263,7 +263,7 @@ public func defaultModeOf(_ m: MachineView?, agent: PBAgent) -> DefaultMode {
 }
 
 /// A mode the machine could not read: the start leaves it to the CLI's own settings.
-public let unknownModeText = "跟随 CLI 设置"
+public var unknownModeText: String { L10n.newSessionFollowCli() }
 
 /// The mode a start uses: chosen, or the CLI's effective default on that machine.
 public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent, includeDefault: Bool = true) -> String {
@@ -273,11 +273,11 @@ public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent, inc
     } else if !d.known {
         text = unknownModeText
     } else if let m = d.mode {
-        text = includeDefault ? "默认：\(m.text)" : m.text
+        text = includeDefault ? L10n.modesDefaultNamed(mode: String(describing: m.text)) : m.text
     } else {
-        text = includeDefault ? "默认：\(agentName(agent)) 自己的模式" : "\(agentName(agent)) 自己的模式"
+        text = includeDefault ? L10n.modesDefaultAgent(agent: String(describing: agentName(agent))) : L10n.modesAgentOwn(agent: String(describing: agentName(agent)))
     }
-    return text + (chosen == nil && d.varies ? "（项目设置可能不同）" : "")
+    return text + (chosen == nil && d.varies ? L10n.errorsIosProjectSettingsMayDiffer() : "")
 }
 
 /// A new session's configuration (architecture §8): it follows the project,
@@ -414,7 +414,7 @@ public func autoIssue(_ state: RemoteState, _ c: NewConfig, models: PBListModels
 public func effectiveModeText(chosen: Mode?, default d: DefaultMode) -> String {
     if let chosen { return chosen.text }
     if !d.known { return unknownModeText }
-    return d.mode?.text ?? "CLI 自己的模式"
+    return d.mode?.text ?? L10n.errorsIosCliSOwnMode()
 }
 
 /// Another CLI for a draft (client-v26): the text and images stay, and the

@@ -66,22 +66,22 @@ struct SetupDiscardButton: View {
     @State private var error = ""
     var body: some View {
         if !error.isEmpty { Banner(error, tone: .error) }
-        Button("退出并重新开始", role: .destructive) {
+        Button(L10n.securityExitAndStartOver(), role: .destructive) {
             do {
                 if let warning = try model.rejoinAdvice() { advice = warning; asking = true }
                 else { Task { await discard() } }
             } catch { self.error = errorText(error) }
         }
-            .confirmationDialog("退出并删除本机密钥？", isPresented: $asking, titleVisibility: .visible) {
-                Button("确认退出", role: .destructive) {
+            .confirmationDialog(L10n.securityExitAndDeleteLocalKeys(), isPresented: $asking, titleVisibility: .visible) {
+                Button(L10n.securityConfirmExit(), role: .destructive) {
                     Task {
                         do {
-                            guard try model.rejoinAdvice() == advice else { throw UserError("安全操作状态已变化，请重新选择退出。") }
+                            guard try model.rejoinAdvice() == advice else { throw UserError(L10nMessage.securityIosSecurityOperationStateChangedChooseHowToExitAgain()) }
                             await discard()
                         } catch { self.error = errorText(error) }
                     }
                 }
-                Button("取消", role: .cancel) {}
+                Button(L10n.commonCancel(), role: .cancel) {}
             } message: {
                 Text(advice?.text ?? "")
             }

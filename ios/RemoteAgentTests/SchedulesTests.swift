@@ -21,11 +21,11 @@ import UIKit
     }
     @Test func scheduledQueueCaptionDoesNotChangeOrdinaryPendingMessages() {
         var p = PendingInput(id: "q", text: "检查", mode: .queue, paused: false, held: false, origin: nil, time: 1800000000000)
-        #expect(scheduledPendingLabel(p, label: "这一轮结束后发") == nil)
+        #expect(scheduledPendingLabel(p, label: L10n.queueAfterTurn()) == nil)
         p.origin = .with { $0.scheduledRunID = "run" }
-        #expect(scheduledPendingLabel(p, label: "这一轮结束后发") == "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: 1800000000)) + " · 这一轮结束后发")
+        #expect(scheduledPendingLabel(p, label: L10n.queueAfterTurn()) == "定时任务 · " + scheduleTime(Date(timeIntervalSince1970: 1800000000)) + " · 这一轮结束后发")
         p.paused = true
-        #expect(scheduledPendingLabel(p, label: "已暂停")?.hasSuffix(" · 已暂停") == true)
+        #expect(scheduledPendingLabel(p, label: L10n.queuePaused())?.hasSuffix(" · 已暂停") == true)
     }
     @Test func attentionIsCountedAndOnlyTheViewedTaskOrSessionIsRead() async throws {
         let store = ScheduleStore()
@@ -347,15 +347,15 @@ import UIKit
     @Test func recoveryPlacementKeepsMissingTargetsInMenuAndOmitsDuplicateOneShotRecovery() {
         var once = task(); once.status = "failed"; once.spec.trigger.type = "at"
         func access(_ t: ScheduleTask) -> ScheduleEditAccess { ScheduleEditAccess(task: t, online: true, saving: false, unknown: false) }
-        #expect(access(once).primaryRecovery == "立即运行一次" && access(once).menuToggle == nil)
+        #expect(access(once).primaryRecovery == L10n.scheduleRunOnceNow() && access(once).menuToggle == nil)
         var recurring = once; recurring.spec.trigger.type = "interval"
-        #expect(access(recurring).primaryRecovery == "恢复" && access(recurring).menuToggle == nil)
+        #expect(access(recurring).primaryRecovery == L10n.scheduleResume() && access(recurring).menuToggle == nil)
         recurring.spec.target.type = "resume_session"; recurring.reason = "execution_session_missing"
-        #expect(access(recurring).primaryRecovery == nil && access(recurring).menuToggle == "恢复")
+        #expect(access(recurring).primaryRecovery == nil && access(recurring).menuToggle == L10n.scheduleResume())
         #expect(scheduleStopBanner(recurring).contains("恢复后还会失败"))
         var paused = task(); paused.status = "paused"; paused.reason = "user_paused"
-        #expect(access(paused).primaryRecovery == nil && access(paused).menuToggle == "恢复")
-        #expect(access(task()).menuToggle == "暂停")
+        #expect(access(paused).primaryRecovery == nil && access(paused).menuToggle == L10n.scheduleResume())
+        #expect(access(task()).menuToggle == L10n.schedulePause())
         var ended = task(); ended.status = "completed"; #expect(access(ended).menuToggle == nil)
     }
     @Test func markingUnreadReturnsToTheCallingPageAndPreservesItsStack() async {
@@ -459,7 +459,7 @@ import UIKit
         sheet.selectMachine("new",state:state)
         let selected=try #require(draft.config), agent:PBAgent=agents.contains(.claude) ? .claude:.codex
         #expect(selected == NewConfig(machineId:"new",cwd:path,agent:agent))
-        #expect(effectiveModeText(chosen:selected.mode,default:defaultModeOf(state.machines["new"],agent:agent)) == "询问")
+        #expect(effectiveModeText(chosen:selected.mode,default:defaultModeOf(state.machines["new"],agent:agent)) == L10n.modesAsk())
         let target=try #require(draft.spec(session:nil,state:state)).target
         #expect(target.agent == (agent == .claude ? "claude":"codex") && target.model == nil && target.effort == nil && target.mode == "ask")
     }
@@ -468,7 +468,7 @@ import UIKit
         var known=state();known.machines["m"]?.meta?.agents=[PBAgentInfo.with { $0.agent = .claude;$0.defaultMode = .auto;$0.defaultModeSource = .cliConfig }]
         #expect(draft.spec(session:nil,state:known)?.target.mode == "auto")
         #expect(draft.spec(session:nil,state:state()) == nil)
-        #expect(draft.creationIssue(session:nil,state:state()) == "请选择明确的权限，再创建定时任务。")
+        #expect(draft.creationIssue(session:nil,state:state()) == L10n.scheduleSelectExplicitPermissionsBeforeCreatingAScheduledTask())
     }
     @Test func targetResolutionDoesNotHoldTheListOrRefreshSlot() async {
         let store=ScheduleStore();var reads=0;var hold:CheckedContinuation<Void,Never>?;var finished=false
@@ -529,7 +529,7 @@ import UIKit
     @Test func planDefaultsRemainPlanAndCannotCreateAnExecutionTask() {
         let draft=ScheduleDraft();draft.message="检查";draft.config=NewConfig(machineId:"m",cwd:"/example",mode:.plan)
         #expect(draft.spec(session:nil,state:state())==nil)
-        #expect(draft.creationIssue(session:nil,state:state())=="计划模式不能创建执行任务，请先选择其他权限")
+        #expect(draft.creationIssue(session:nil,state:state())==L10n.schedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions())
         #expect(draft.spec(session:SessionView(id:"s",machineId:"m"),state:state())?.target.type=="resume_session")
     }
     @Test func anEditorKeepsItsOpeningRevisionAndCompleteSpecAcrossARefresh() throws {
@@ -605,8 +605,8 @@ import UIKit
         var current = task()
         current.active = ScheduleRun(id: "first", startedAt: "2026-10-31T08:00:00Z", status: "running")
         let entry = MachineSchedule(machineID: "m", task: current)
-        #expect(current.listPreview() == "还没有结果")
-        #expect(scheduleListMetadata(entry, entries: [entry], state: state(), online: true).hasPrefix("正在运行 · "))
+        #expect(current.listPreview() == L10n.scheduleNoResultsYet())
+        #expect(scheduleListMetadata(entry, entries: [entry], state: state(), online: true).hasPrefix(L10n.scheduleRunningSchedules()))
         #expect(current.latestNotification == nil)
     }
     @Test func recoveryNoticeFitsTheSameNarrowAndWideContentColumn() {
@@ -767,7 +767,7 @@ import UIKit
         #expect(mutation.recordConflict(CommandError("unavailable","offline")) == nil)
         #expect(mutation.recordConflict(CommandError("aborted","relay outcome unknown")) == nil)
         let error=try #require(mutation.recordConflict(CommandError("aborted","revision",fromDaemon:true)))
-        #expect(errorText(error)=="任务刚被修改，已更新为最新内容")
+        #expect(errorText(error)==L10n.errorsTheTaskWasJustChangedUpdatedToTheLatest())
         await eventually("conflict dismisses stale editor") { dismissed }
         #expect(dismissed && !mutation.frozen)
     }
@@ -775,7 +775,7 @@ import UIKit
         var state=ScheduleStoreTests().state()
         var task=ScheduleStoreTests().task();task.spec.target=ScheduleTarget(type:"resume_session");task.spec.target.session="s"
         state.sessions["s"]=SessionView(id:"s",machineId:"m")
-        #expect(scheduleDestination(task,state:state)=="对话")
+        #expect(scheduleDestination(task,state:state)==L10n.scheduleConversation())
         state.sessions["s"]?.info=PBSession.with { $0.title="修复登录超时" }
         #expect(scheduleDestination(task,state:state)=="修复登录超时")
     }
@@ -791,7 +791,7 @@ import UIKit
     @Test func unloadedConversationMetadataUsesTheSharedPlaceholder() {
         var task = ScheduleStoreTests().task(); task.spec.target = ScheduleTarget(type:"resume_session"); task.spec.target.session = "s"
         var state = ScheduleStoreTests().state(); state.sessions["s"] = SessionView(id:"s",machineId:"m")
-        #expect(scheduleLocation(task,state:state,machine:"m") == "在对话里")
+        #expect(scheduleLocation(task,state:state,machine:"m") == L10n.scheduleInConversation())
         state.sessions["s"]?.info = PBSession.with { $0.title = "修复登录超时" }
         #expect(scheduleLocation(task,state:state,machine:"m") == "在「修复登录超时」里")
         state.sessions["s"]?.info?.agent = .claude

@@ -22,7 +22,7 @@ func verifyPairApproval(_ enrollment: Enrollment, root: Data, kind: PBDeviceKind
 func verifyPairApproval(
     _ enrollment: Enrollment, accountId: String, deviceSeed: Data, kind: PBDeviceKind, now: Int64
 ) throws {
-    guard enrollment.approval.count <= 1024 else { throw PairError("配对批准无效") }
+    guard enrollment.approval.count <= 1024 else { throw PairError(L10nMessage.securityIosInvalidPairingApproval()) }
     let a = try PBPairApproval(serializedBytes: enrollment.approval)
     let pub = try SigningKey(seed: deviceSeed).publicKey
     guard a.accountID == accountId, a.pairingID == enrollment.pairingId,
@@ -30,7 +30,7 @@ func verifyPairApproval(
           a.approverPublicKey.count == 32, deviceId(publicKey: a.approverPublicKey) == a.approverDeviceID,
           a.approverDeviceID != deviceId(publicKey: pub),
           verifyEd25519(publicKey: a.approverPublicKey, message: approvalContext + enrollment.approval, signature: enrollment.signature)
-    else { throw PairError("配对批准与这台设备不匹配、已过期或签名无效") }
+    else { throw PairError(L10nMessage.securityIosPairingApprovalDoesNotMatchThisDeviceHasExpired()) }
 }
 
 /// The caller supplies the verified current authority after SAS confirmation.

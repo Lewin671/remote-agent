@@ -92,8 +92,8 @@ struct NewSessionBox: View {
             if let text = HomeLaunch.value("-projectDraft"), draft.text.isEmpty { draft.text = text }
             switch HomeLaunch.value("-projectStart") {
             case "running": draft.show(running: true)
-            case "failed": draft.show(error: "这个目录不存在")
-            case "unknown": draft.show(error: "结果未知", frozen: true)
+            case "failed": draft.show(error: L10n.errorsIosThisDirectoryDoesNotExist())
+            case "unknown": draft.show(error: L10n.approvalIosUnknownResult(), frozen: true)
             case "expired": draft.show(frozen: true, expired: true)
             default: break
             }

@@ -62,7 +62,7 @@ extension AuthorityCoordinator {
         var get = PBGetPairingRequest(); get.pairingID = initiation.pairingID
         let request = get
         let st = try await rpc(t) { [api] in try await api.pairing.getPairing(request: request, headers: headers).value() }
-        if st.state == .canceled { throw PairError("配对已取消") }
+        if st.state == .canceled { throw PairError(L10nMessage.securityPairingCanceled()) }
         guard st.state.rawValue >= PBPairingState.joined.rawValue else { return nil }
         let kind = try joinerKind(st)
         try DeviceSecurity.check(initiation.replacesDeviceID.isEmpty || kind == .machine, .untrusted)

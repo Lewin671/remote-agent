@@ -24,8 +24,8 @@ final class ScheduleDraft {
     func creationIssue(session: SessionView?, state: RemoteState) -> String? {
         guard session == nil, let c = config else { return nil }
         let mode = c.mode ?? defaultModeOf(state.machines[c.machineId], agent: c.agent).mode
-        if mode == nil { return "请选择明确的权限，再创建定时任务。" }
-        return mode == .plan ? "计划模式不能创建执行任务，请先选择其他权限" : nil
+        if mode == nil { return L10n.scheduleSelectExplicitPermissionsBeforeCreatingAScheduledTask() }
+        return mode == .plan ? L10n.schedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions() : nil
     }
     func spec(session: SessionView?, state: RemoteState) -> ScheduleSpec? {
         guard creationIssue(session: session, state: state) == nil else { return nil }
@@ -81,45 +81,45 @@ struct NewScheduleScreen: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         VStack(spacing: 12) {
-                            InputField("让 agent 做什么", text: Bindable(draft).message, placeholder: "检查什么，有结果时通知我…", lines: 1...(sessionID.isEmpty ? 8 : 4))
-                            if draft.message.utf8.count > scheduleMessageLimit { Hint("太长了，最多 32 KB", color: DS.red) }
-                            InputField("任务名", text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "留空就用消息的第一句" : "留空会用：" + scheduleTitle("", message: draft.message)).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
+                            InputField(L10n.scheduleWhatShouldTheAgentDo(), text: Bindable(draft).message, placeholder: L10n.scheduleIosWhatToCheckNotifyMeWhenThereAreResults(), lines: 1...(sessionID.isEmpty ? 8 : 4))
+                            if draft.message.utf8.count > scheduleMessageLimit { Hint(L10n.scheduleTooLongMaximum32Kb(), color: DS.red) }
+                            InputField(L10n.scheduleTaskName(), text: Bindable(draft).name, placeholder: draft.message.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? L10n.scheduleLeaveBlankToUseTheMessageSFirstSentence() : L10n.scheduleIfBlankUses(value: String(describing: scheduleTitle("", message: draft.message)))).onChange(of: draft.name) { _, value in draft.name = titleInput(value) }
                         }.padding(16).disabled(draft.mutation.frozen)
                         GroupCard {
-                            ToggleRow("完成后通知", isOn: Bindable(draft).notifyFinish)
-                            GRow("什么时候", value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
+                            ToggleRow(L10n.scheduleNotifyOnCompletion(), isOn: Bindable(draft).notifyFinish)
+                            GRow(L10n.scheduleWhen(), value: scheduleFrequency(draft.trigger, includeZone: true), chevron: true) { timing = true }
                             if sessionID.isEmpty {
-                                GRow("项目", value: draft.config.map { projectName($0.cwd) } ?? "选择项目", chevron: true) { picker = .project }
+                                GRow(L10n.scheduleProject(), value: draft.config.map { projectName($0.cwd) } ?? L10n.scheduleIosChooseAProject(), chevron: true) { picker = .project }
                                 ScheduleAgentRow(state: state, config: Bindable(draft).config)
-                                GRow("权限", value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? "跟随 CLI 设置", chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? DS.red : nil) { picker = .mode }
-                                GRow(state.machines.count > 1 ? "机器和模型" : "模型", value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", modelValue(draft.config?.model ?? "", models: models.list)].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
+                                GRow(L10n.newSessionPermissions(), value: draft.config.map { effectiveModeText(chosen: $0.mode, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } ?? L10n.newSessionFollowCli(), chevron: true, valueColor: draft.config.map { settingsModeRed($0, default: defaultModeOf(state.machines[$0.machineId], agent: $0.agent)) } == true ? DS.red : nil) { picker = .mode }
+                                GRow(state.machines.count > 1 ? L10n.scheduleComputerAndModel() : L10n.modelsTitle(), value: [state.machines.count > 1 ? machineLabel(state, id: machine) : "", modelValue(draft.config?.model ?? "", models: models.list)].filter { !$0.isEmpty }.joined(separator: " · "), chevron: true) { picker = state.machines.count > 1 ? .machine : .model }
                             }
                         }
                         .disabled(draft.mutation.frozen)
-                        if !machine.isEmpty && !supported { Hint("这台电脑需要更新 remote-agent 才能使用定时任务。", color: DS.orangeInk).padding(.horizontal, 16) }
-                        if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint("电脑不在线，连上后才能创建任务。").padding(.horizontal, 16) }
+                        if !machine.isEmpty && !supported { Hint(L10n.scheduleIosUpdateRemoteAgentOnThisComputerToUseScheduled(), color: DS.orangeInk).padding(.horizontal, 16) }
+                        if !machine.isEmpty && supported && !context.schedules.online(machine) { Hint(L10n.scheduleTheComputerIsOfflineConnectToCreateTasks()).padding(.horizontal, 16) }
                         if let issue = draft.creationIssue(session: session, state: state) { Hint(issue, color: DS.orangeInk).padding(.horizontal, 16) }
                         if !sessionID.isEmpty && draft.trigger.type == "interval" { Hint(scheduleIntervalHint).padding(.horizontal, 16) }
-                        if sessionID.isEmpty { Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。").padding(.horizontal, 16) }
+                        if sessionID.isEmpty { Hint(L10n.scheduleIosEachRunOpensANewConversationGroupedUnderThis()).padding(.horizontal, 16) }
                         if !draft.mutation.error.isEmpty { Banner(draft.mutation.error, tone: .error).padding(16) }
                         if draft.mutation.frozen {
-                            TextAction("放弃原请求", enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)
+                            TextAction(L10n.scheduleIosAbandonOriginalRequest(), enabled: !draft.mutation.running) { draft.mutation.abandon() }.padding(.horizontal, 16)
                         }
                     }.disabled(draft.mutation.running)
                 }.scrollDismissesKeyboard(.interactively)
             }
         }
-        .navBar(sessionID.isEmpty ? "新定时" : "定时发到这个对话")
+        .navBar(sessionID.isEmpty ? L10n.homeNewSchedule() : L10n.scheduleScheduleMessagesToThisConversation())
         .toolbar {
             if let onClose {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button(action: onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel("关闭")
+                    Button(action: onClose) { Image(systemName: "xmark") }.tint(DS.ink).accessibilityLabel(L10n.commonClose())
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 let enabled = ready && !draft.mutation.running && !draft.mutation.expired
                 Button { create(draft, machine: machine, spec: spec) } label: {
-                    Text(draft.mutation.running ? "正在创建…" : draft.mutation.frozen ? "重试" : "创建").font(.body.weight(.semibold))
+                    Text(draft.mutation.running ? L10n.scheduleCreating() : draft.mutation.frozen ? L10n.commonRetry() : L10n.scheduleCreate()).font(.body.weight(.semibold))
                 }
                 .buttonStyle(.borderedProminent).tint(DS.btn).foregroundStyle(DS.btnFg)
                 .disabled(!enabled)

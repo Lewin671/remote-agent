@@ -79,14 +79,14 @@ import Testing
         #expect(g.rows[0].left == "剩 8%")
         #expect(g.rows[0].tone == .warn)
         // A window without a number is unknown, never 0%.
-        #expect(g.rows[1].left == "未获取")
+        #expect(g.rows[1].left == L10n.quotaUnavailable())
         #expect(g.rows[1].percent == nil)
         // Codex has no entry: this daemon does not read it.
         #expect(quotaGroups(m, now: now).filter { $0.agent == .codex }.map(\.status) == [.unsupported])
     }
 
     @Test func waitingFailedAndOfflineAreSaidAsSuch() throws {
-        #expect(quotaLine(try claude(machine(true, quota(.claude, .waiting)))) == "暂未获取额度")
+        #expect(quotaLine(try claude(machine(true, quota(.claude, .waiting)))) == L10n.quotaQuotaNotAvailableYet())
         let failed = quota(.claude, .failed, [w("five_hour", 28.0)]) { $0.detail = "状态栏输入读不出来"; $0.observedMs = now - 3_600_000 }
         let g = try claude(machine(true, failed))
         #expect(g.lastRecord)
@@ -99,7 +99,7 @@ import Testing
 
     @Test func aPassedResetOnlyWaitsForAnUpdate() throws {
         let r = try claude(machine(true, quota(.claude, .ok, [w("five_hour", 100.0, resetIn: -60_000)]))).rows[0]
-        #expect(r.left == "等待更新")
+        #expect(r.left == L10n.quotaAwaitingUpdate())
         #expect(r.note.contains("不能据此确认额度已经恢复"))
     }
 
@@ -197,7 +197,7 @@ import Testing
             ["Gemini · 7 天", "剩 88%"],
             ["Gemini 4 Argon · 7 天", "剩 65%"],
         ])
-        #expect(v.subgroups[1].title == "第三方模型（Claude、GPT-OSS）")
+        #expect(v.subgroups[1].title == L10n.quotaThirdPartyModelsClaudeGptOss())
         #expect(v.subgroups[1].rows.map { [$0.label, $0.left] } == [
             ["第三方模型 · 5 小时", "剩 60%"],
             ["第三方模型 · 7 天", "剩 74%"],
@@ -222,7 +222,7 @@ import Testing
         q.observedMs = Int64(ISO8601DateFormatter().date(from: "2026-11-11T15:59:00Z")!.timeIntervalSince1970 * 1000)
         #expect(try claude(machine(true, q), at: now).received == "最近收到 11月11日 23:59")
         q.observedMs = 0
-        #expect(try claude(machine(true, q), at: now).freshness == "数据时间未知，显示上次记录")
+        #expect(try claude(machine(true, q), at: now).freshness == L10n.quotaUnknownTime())
     }
 
 }
@@ -240,7 +240,7 @@ import Testing
         #expect(line.text == "剩 38%" && line.reset == "4 小时 29 分后重置")
         #expect(line.left == 0.38 && !line.low)
         // Twenty percent left or less is worth a look.
-        #expect(quotaCardLine([group(80)]).low && quotaCardLine([group(100)]).text == "已用尽")
+        #expect(quotaCardLine([group(80)]).low && quotaCardLine([group(100)]).text == L10n.quotaExhaustedQuota())
         // An old record is not a warning, and no number is no bar.
         #expect(!quotaCardLine([group(95, stale: true)]).low && quotaCardLine([group(95, stale: true)]).stale)
         #expect(quotaCardLine([group(nil)]).left == nil)

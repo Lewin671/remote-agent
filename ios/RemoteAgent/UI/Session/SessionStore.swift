@@ -465,7 +465,7 @@ final class SessionStore {
                 }
                 let result = try await commands.forward(prepared, retryOfUnknown: retry)
                 f.attempt.settle()
-                guard let made = forkedSession(result) else { throw CommandError("internal", L10n.newSessionUnexpectedReply()) }
+                guard let made = forkedSession(result) else { throw CommandError("internal", L10nMessage.newSessionUnexpectedReply()) }
                 return made
             } catch {
                 f.error = errorText(f.attempt.settle(error) ?? error)

@@ -19,7 +19,7 @@ struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
     enum Operation: Sendable {
         case read, save, delete
         var text: String {
-            switch self { case .read: "读取"; case .save: "保存"; case .delete: "删除" }
+            switch self { case .read: L10n.securityIosRead(); case .save: L10n.commonSave(); case .delete: L10n.scheduleDelete() }
         }
     }
 
@@ -33,10 +33,10 @@ struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
     var isLocked: Bool { status == errSecInteractionNotAllowed }
 
     var errorDescription: String? {
-        if isLocked { return "设备锁定时不能\(operation.text)账户密钥，解锁后再试" }
-        if status == 0 { return "钥匙串里的账户密钥读不出来，需要重新加入账户" }
-        let detail = SecCopyErrorMessageString(status, nil).map { $0 as String } ?? "未知错误"
-        return "没能\(operation.text)钥匙串里的账户密钥：\(detail)（\(status)）"
+        if isLocked { return L10n.securityIosCannotAccountKeysWhileTheDeviceIsLockedUnlock(value: String(describing: operation.text)) }
+        if status == 0 { return L10n.securityIosCannotReadAccountKeysFromKeychainRejoinTheAccount() }
+        let detail = SecCopyErrorMessageString(status, nil).map { $0 as String } ?? L10n.securityIosUnknownError()
+        return L10n.securityIosCouldNotAccountKeysInKeychain(detail: String(describing: detail), extra: String(describing: status), value: String(describing: operation.text))
     }
 
     var description: String { "VaultError(\(operation), status=\(status))" }
