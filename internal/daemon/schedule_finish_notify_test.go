@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/schedule"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -238,6 +239,9 @@ func TestScheduledFinishUndeliverableStopsRetrying(t *testing.T) {
 			h.d.endScheduledRun(current, time.Now(), "failed", "could_not_start_session")
 			if source != "" {
 				delete(h.d.sessions, source)
+				if err := os.RemoveAll(h.d.sessionDir(source)); err != nil {
+					t.Fatal(err)
+				}
 			}
 			h.d.tickSchedules(time.Now())
 			got := readTask(t, h.d, task.ID)
@@ -380,6 +384,73 @@ func TestScheduledFinishRelayRefusalUsesOnlySource(t *testing.T) {
 				if count != 1 || readTask(t, h.d, task.ID).Runs[0].NotificationCount != 1 {
 					t.Fatal("source fallback duplicated on replay")
 				}
+			}
+		})
+	}
+}
+
+func TestScheduledFinishMissingExecutionFallsBack(t *testing.T) {
+	for _, state := range []string{"missing", "unreadable", "both-missing"} {
+		t.Run(state, func(t *testing.T) {
+			h := scheduleHarness(t)
+			now := time.Now()
+			run := schedule.Run{ID: "run", SessionID: "missing-execution", NotificationSessionID: h.s.meta.ID,
+				NotifyOnFinish: true, EndedAt: &now, Status: "completed", TargetType: "new_session", TaskTitle: "task", TurnID: "execution-turn", StartSeq: 100}
+			if state == "unreadable" {
+				// Files exist but restore could not read them. Absence from the map
+				// alone must not turn corruption or a temporary I/O error into deletion.
+				dir := h.d.sessionDir(run.SessionID)
+				if err := os.MkdirAll(dir, 0700); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, "session.json"), []byte("broken"), 0600); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(dir, "events.jsonl"), []byte("broken"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if state == "both-missing" {
+				run.NotificationSessionID = "missing-source"
+			}
+			saved := run
+			changed := h.d.finishScheduledNotification("task", &run)
+			if state == "unreadable" {
+				if changed || !pendingFinishNotification(&run) {
+					t.Fatalf("I/O failure stopped retries: %+v", run)
+				}
+				// Once the missing files are confirmed on a later attempt,
+				// the pending notification can use its original source.
+				if err := os.RemoveAll(h.d.sessionDir(run.SessionID)); err != nil {
+					t.Fatal(err)
+				}
+				changed = h.d.finishScheduledNotification("task", &run)
+			}
+			if state == "both-missing" {
+				if !changed || run.NotificationSource != "undeliverable" || run.Notified {
+					t.Fatalf("missing destinations: %+v", run)
+				}
+				return
+			}
+			if !changed || !run.Notified || run.NotificationCount != 1 {
+				t.Fatalf("no fallback: %+v", run)
+			}
+			// Simulate a crash after append but before schedules.json was saved.
+			run = saved
+			if !h.d.finishScheduledNotification("task", &run) || !run.Notified || run.NotificationCount != 1 {
+				t.Fatal("replay lost notice")
+			}
+			count := 0
+			for _, e := range h.events() {
+				if n := e.GetScheduledNotification(); n != nil {
+					count++
+					if n.TaskId != "task" || n.RunId != run.ID || e.TurnId != "" {
+						t.Fatalf("cross-session event: %v", e)
+					}
+				}
+			}
+			if count != 1 {
+				t.Fatalf("duplicate notices: %d", count)
 			}
 		})
 	}

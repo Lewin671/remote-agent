@@ -6,6 +6,8 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -335,6 +337,24 @@ func hasPendingFinishNotifications(t *schedule.Task) bool {
 	return false
 }
 
+// An unregistered session can have failed restoration due to I/O or corrupt
+// state. Only a confirmed absent meta/log authorizes fallback or a permanent
+// undeliverable outcome. All other failures retain the pending retry.
+func (d *Daemon) finishNotificationSession(id string) (*session, bool) {
+	if id == "" {
+		return nil, true
+	}
+	if s, err := d.exact(id); err == nil {
+		return s, false
+	}
+	for _, name := range []string{"session.json", "events.jsonl"} {
+		if _, err := os.Stat(filepath.Join(d.sessionDir(id), name)); err != nil {
+			return nil, os.IsNotExist(err)
+		}
+	}
+	return nil, false
+}
+
 // Caller holds scheduleMu. The session log is the durable notification authority:
 // scan it under mu before appending, covering races with notify_user, retries and
 // a crash between event append and schedules.json. Never mark an append failure
@@ -354,10 +374,15 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 		}
 		scanAfter = 0
 	}
-	s, err := d.exact(sid)
-	if err != nil {
-		// A missing destination cannot recover through an event-append retry.
-		// This is an outcome, never a claim that a notification was recorded.
+	s, missing := d.finishNotificationSession(sid)
+	if s == nil && missing && sid == run.SessionID && run.Reason != "relay_session_limit" {
+		sid, scanAfter = run.NotificationSessionID, 0
+		s, missing = d.finishNotificationSession(sid)
+	}
+	if s == nil {
+		if !missing {
+			return false
+		}
 		run.NotificationSource = "undeliverable"
 		return true
 	}
@@ -403,7 +428,11 @@ func (d *Daemon) finishScheduledNotification(taskID string, run *schedule.Run) b
 		return false
 	}
 	title := scheduledNotificationTitle(run)
-	e := &pb.Event{TurnId: run.TurnID, Origin: originSystem, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: taskID, RunId: run.ID, Title: title, Text: text}}}
+	turnID := run.TurnID
+	if sid != run.SessionID {
+		turnID = ""
+	}
+	e := &pb.Event{TurnId: turnID, Origin: originSystem, Kind: &pb.Event_ScheduledNotification{ScheduledNotification: &pb.ScheduledNotification{TaskId: taskID, RunId: run.ID, Title: title, Text: text}}}
 	if err := s.appendLocked([]*pb.Event{e}, "", 0); err != nil {
 		return false
 	}
