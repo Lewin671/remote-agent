@@ -85,9 +85,29 @@ import io.github.lewin671.remoteagent.proto.SendMode
 import io.github.lewin671.remoteagent.proto.StopSessionRequest
 import io.github.lewin671.remoteagent.term.TerminalPane
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.compose.ui.draw.clipToBounds
 
 internal fun sessionSubtitle(status: Status, mode: String?, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
     copy(io.github.lewin671.remoteagent.core.listStatus(status)) + if (status == Status.EXITED || mode == null) "" else " · $mode"
+
+/** Brief catch-up is routine when opening cached history; only a persistent gap needs a notice. */
+@Composable
+internal fun HistoryPartialNotice(
+    sid: String,
+    partial: Boolean,
+    modifier: Modifier = Modifier,
+    waitForNotice: suspend () -> Unit = { delay(1_000) },
+) {
+    var visible by remember(sid, partial) { mutableStateOf(false) }
+    LaunchedEffect(sid, partial) {
+        if (partial) {
+            waitForNotice()
+            visible = true
+        }
+    }
+    if (partial && visible) Hint(uiText(UiMessages.sessionAndroidHistoryPartial()), modifier, inset = 0.dp)
+}
 
 @Composable
 fun SessionScreen(sid: String) {
@@ -203,7 +223,7 @@ fun SessionScreen(sid: String) {
         } else Row(Modifier.weight(1f)) {
             Column(Modifier.weight(1f)) {
             val note = Modifier.padding(horizontal = 20.dp)
-            if (events.historyPartial) Hint(copy(UiMessages.sessionAndroidHistoryPartial()), note, inset = 0.dp)
+            HistoryPartialNotice(sid, events.historyPartial, note)
             if (events.unavailableCount > 0)
                 Hint(copy(UiMessages.sessionHistoryUnavailable(count = events.unavailableCount)), note, inset = 0.dp)
             events.liveError?.let { Hint(it, note, inset = 0.dp) }
@@ -667,7 +687,9 @@ internal fun ChatPane(
     // What waits under the chat: messages sent from here and messages queued behind the running turn.
     entrances.outgoing(sentHere.map { "out" + it.requestId } + visiblePending.map { "pending-${it.id}" })
 
-    Column(modifier.onSizeChanged { shownHeight = it.height }) {
+    // A bottom-following history can place rows above its viewport while pages join.
+    // Keep those rows inside the chat, below the history notices.
+    Column(modifier.clipToBounds().onSizeChanged { shownHeight = it.height }) {
         Box(Modifier.weight(1f)) {
             val chatCtx =
                 ChatContext(
