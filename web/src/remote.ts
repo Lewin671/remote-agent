@@ -848,11 +848,21 @@ export class Remote {
   trays = new Map<string, Tray>();
   private localDrafts?: ComposerDraftStore;
   private draftLoads = new Set<string>();
+  private draftRevisions = new Map<string, number>();
+  private outboxLoads = new Map<string, Promise<void>>();
+  private outboxSaves = new Map<string, Promise<void>>();
 
   persistDraft(key: string) {
     const tray = this.trays.get(key);
     if (this.closed || tray?.restoring || !this.localDrafts) return;
-    void this.localDrafts.save(key, this.drafts.get(key) ?? "", tray).catch(() => {
+    const text = this.drafts.get(key) ?? "";
+    const revision = (this.draftRevisions.get(key) ?? 0) + 1;
+    this.draftRevisions.set(key, revision);
+    const snapshot = tray && { items: [...tray.items], original: tray.original };
+    const save = !text && !tray?.items.length ? (this.outboxSaves.get(key) ?? Promise.resolve()).then(() => {
+      if (this.draftRevisions.get(key) === revision) return this.localDrafts!.save(key, text, snapshot);
+    }) : this.localDrafts.save(key, text, snapshot);
+    void save.catch(() => {
       if (!this.closed && tray) { tray.note = "草稿没能保存到本机，关闭页面前请保留原图和文字"; this.touch(); }
     });
   }
@@ -862,7 +872,7 @@ export class Remote {
     this.draftLoads.add(key);
     tray.restoring = true;
     const before = this.drafts.get(key);
-    void this.localDrafts.read(key).then(saved => {
+    void Promise.all([this.localDrafts.read(key), key.startsWith("new:") ? undefined : this.restoreOutbox(key)]).then(([saved]) => {
       if (this.closed) return;
       if (saved && this.drafts.get(key) === before) {
         this.drafts.restore(key, saved.text);
@@ -871,6 +881,29 @@ export class Remote {
     }).catch(() => {
       if (!this.closed) tray.note = "草稿没能恢复，请刷新后重试";
     }).finally(() => { tray.restoring = false; if (!this.closed) this.touch(); });
+  }
+
+  private restoreOutbox(sid: string): Promise<void> {
+    if (!this.localDrafts) return Promise.resolve();
+    const old = this.outboxLoads.get(sid);
+    if (old) return old;
+    const job = this.localDrafts.readOutbox(sid).then(saved => {
+      if (this.closed) return;
+      const current = this.outbox(sid), ids = new Set(current.map(o => o.sendId));
+      this.outboxes.set(sid, [...saved.filter(o => !ids.has(o.sendId)), ...current]);
+      const buffer = this.buffers.get(sid);
+      this.recorded(sid, recordedIds(buffer?.events.filter(e => buffer.verifiedSeqs?.has(e.seq)) ?? []));
+      this.touch();
+    });
+    this.outboxLoads.set(sid, job);
+    return job;
+  }
+
+  private keepOutbox(sid: string): Promise<void> {
+    if (!this.localDrafts || this.closed) return Promise.resolve();
+    const saved = this.restoreOutbox(sid).then(() => this.localDrafts!.saveOutbox(sid, this.outbox(sid)));
+    this.outboxSaves.set(sid, saved);
+    return saved;
   }
   // The image codecs are fetched when the first image is chosen.
   prepareImage: Prepare = async (file, original) =>
@@ -2712,6 +2745,7 @@ export class Remote {
             s.id,
             this.outbox(s.id).filter((o) => o.sendId !== requestId),
           );
+          if (this.outboxLoads.has(s.id)) void this.keepOutbox(s.id).catch(() => undefined);
         }
       }
       b.events.push(event);
@@ -3179,6 +3213,13 @@ export class Remote {
     return this.outboxes.get(sid) ?? [];
   }
 
+  canRestoreAttachments(sid: string, requestId: string): boolean {
+    const out = this.outbox(sid).find(o => o.sendId === requestId);
+    return !!out && !!(out.imageIds?.length || out.files?.length) &&
+      (!out.imageIds?.length || out.attachments?.files.length === out.imageIds.length && out.attachments.files.every(f => f.size > 0)) &&
+      (!out.files?.length || out.files.every(f => !!f.file));
+  }
+
   private patchOut(sid: string, sendId: string, patch: Partial<Outgoing>) {
     if (!this.outbox(sid).some((o) => o.sendId === sendId)) return;
     this.outboxes.set(
@@ -3188,6 +3229,7 @@ export class Remote {
       ),
     );
     this.changed();
+    void this.keepOutbox(sid).catch(() => undefined);
   }
 
   /** Sends text, and images uploaded to the machine, to a session; its
@@ -3200,6 +3242,7 @@ export class Remote {
     mode = SendMode.STEER,
     attachments?: Outgoing["attachments"],
     files?: Outgoing["files"],
+    imageSizes?: Outgoing["imageSizes"],
   ): string {
     const o: Outgoing = {
       sendId: newRequestID(),
@@ -3207,6 +3250,7 @@ export class Remote {
       text,
       imageIds,
       thumbs,
+      imageSizes,
       mode,
       attachments,
       files,
@@ -3214,7 +3258,11 @@ export class Remote {
     };
     this.outboxes.set(sid, [...this.outbox(sid), o]);
     this.changed();
-    void this.deliver(sid, o);
+    if (this.localDrafts) {
+      void this.keepOutbox(sid).then(() => { if (!this.closed) return this.deliver(sid, o); }).catch(() => {
+        o.status = "failed"; o.error = "这条消息没能保存到本机，请放回输入框后重试"; this.touch();
+      });
+    } else void this.deliver(sid, o);
     return o.sendId;
   }
 
@@ -3233,7 +3281,8 @@ export class Remote {
     files?: Outgoing["files"],
   ) {
     if (this.replaced.has(failedId)) return;
-    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs, SendMode.STEER, undefined, files));
+    const previous = this.outbox(sid).find(o => o.sendId === failedId);
+    this.replaced.set(failedId, this.send(sid, text, imageIds, thumbs.length ? thumbs : previous?.thumbs, SendMode.STEER, previous?.attachments, files, previous?.imageSizes));
   }
 
   /** The CLI recorded these messages: the history now holds them, so the
@@ -3247,21 +3296,29 @@ export class Remote {
     if (left.length) this.outboxes.set(sid, left);
     else this.outboxes.delete(sid);
     this.changed();
+    void this.keepOutbox(sid).catch(() => undefined);
   }
 
   /** Sends a message that could not be confirmed again, with the same
    * request ID and deadline. */
   retrySend(sid: string, sendId: string) {
     const o = this.outbox(sid).find((x) => x.sendId === sendId);
-    if (o && o.status === "failed") void this.deliver(sid, o);
+    if (o && o.status === "failed") void this.keepOutbox(sid).then(() => this.deliver(sid, o)).catch(() => {
+      o.error = "这条消息没能保存到本机，请放回输入框后重试"; this.touch();
+    });
   }
 
   /** Forgets a failed message. */
-  dismissSend(sid: string, sendId: string) {
+  dismissSend(sid: string, sendId: string, restored = false) {
     this.outboxes.set(
       sid,
       this.outbox(sid).filter((o) => o.sendId !== sendId),
     );
+    void Promise.resolve().then(() => restored ? this.localDrafts?.flushed(sid) : undefined)
+      .then(() => this.keepOutbox(sid)).catch(() => {
+        const tray = this.trays.get(sid);
+        if (tray) { tray.note = "草稿没能保存，原消息的本机副本仍保留"; this.touch(); }
+      });
     this.changed();
   }
 

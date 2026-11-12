@@ -69,7 +69,7 @@ class FileAttachmentsTest {
         assertEquals("content://documents/file", loaded.images.single().uri)
         val requests = mutableListOf<SendRequest>()
         loaded.deliver { requests += it; throw CommandException(CommandException.UNKNOWN, "reply lost") }
-        assertFalse(loaded.canPutBack)
+        assertTrue(loaded.canPutBack) // Restoring local sources is explicit; retry still reuses the frozen request below.
         loaded.images.single().fileId = "new-upload"
         loaded.deliver { requests += it }
         assertEquals(requests[0], requests[1])

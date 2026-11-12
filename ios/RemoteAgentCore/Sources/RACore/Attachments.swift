@@ -592,7 +592,8 @@ public final class Outgoing: Identifiable {
     public var state = State.sending
     public var error = ""
     public var missingImages = false
-    public var canPutBack: Bool { state == .failed && !images.isEmpty }
+    public var hasLocalAttachments: Bool { !images.isEmpty && images.allSatisfy(\.hasSource) }
+    public var canPutBack: Bool { (state == .failed || state == .unknown) && hasLocalAttachments }
 
     public nonisolated var id: String { requestId }
 

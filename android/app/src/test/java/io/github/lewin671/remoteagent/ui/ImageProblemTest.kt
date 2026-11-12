@@ -13,4 +13,14 @@ class ImageProblemTest {
         assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed")))
     }
 
+    @Test fun uncertainMessagesAreRecoverableOnlyWhileTheirLocalAttachmentSurvives() {
+        val image = PendingImage("image", null)
+        val outgoing = Outgoing("request", "text", imageIds = listOf("uploaded"), images = listOf(image))
+        outgoing.state = Outgoing.State.UNKNOWN
+        assertFalse(outgoing.canPutBack)
+        image.processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
+        assertTrue(outgoing.canPutBack)
+        image.processed = null
+        assertFalse(outgoing.canPutBack)
+    }
 }

@@ -1123,7 +1123,6 @@ h1, h2, h3 { font-weight: var(--w7); }
 .desk .ccol .ai .mdh.h3 { font-size: 15px; }
 .desk .ccol .ai .mdh.h4 { font-size: 13px; }
 .desk .ccol .ai .mdh code { font-size: 13px; }
-.desk .pic.local { width: 105px; height: 140px; }
 .desk .cbar { margin: 8px 24px 16px; border-radius: 14px; padding: 8px; gap: 8px; }
 .desk .cbar .cm-plus, .desk .cbar .snd { width: 32px; height: 32px; }
 .desk .cbar .cm-plus { font-size: 18px; }
@@ -1193,7 +1192,6 @@ input.field { margin: 0; }
 .gen-card .meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; color: var(--ink2); margin-top: 4px; }
 .gen-card .meta .link { font-size: 13px; min-height: 32px; display: inline-flex; align-items: center; gap: 2px; }
 .gen-prompt { font-size: 13px; color: var(--ink2); background: var(--gbg); border-radius: 14px; padding: 10px 14px; white-space: pre-wrap; }
-.pic.local { width: 72px; height: 96px; }
 @keyframes ringspin { to { transform: rotate(360deg); } }
 .ring.spin, .vimg .ring { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: none; border: 2.5px solid #fff; border-right-color: transparent; animation: ringspin 1s linear infinite; }
 .vimg .ring { width: 30px; height: 30px; margin: -15px 0 0 -15px; }

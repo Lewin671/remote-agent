@@ -664,7 +664,7 @@ export async function clearPairingIdentity(
  * The wrapping key is non-extractable, like the device private keys; only
  * ciphertext is stored for the bearer token. No service worker receives it. */
 export interface LoginToken { token: string; expiresMs: number }
-interface StoredLoginToken {
+interface SealedLocalValue {
   binding: string;
   key: CryptoKey;
   iv: B;
@@ -679,6 +679,22 @@ function tokenBinding(server: string, r: SecurityRecord): string {
 /** Private local content uses the login token's wrapping scheme and erasure
  * lifetime: a non-extractable AES key, random nonce and account-bound AAD.
  * A batch commits its manifest, new blobs and removals together. */
+async function sealLocalValue(binding: string, bytes: Uint8Array): Promise<SealedLocalValue> {
+  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(binding) }, key,
+    bytes as Uint8Array<ArrayBuffer>,
+  );
+  return { binding, key, iv, ciphertext };
+}
+async function openLocalValue(stored: SealedLocalValue): Promise<Uint8Array> {
+  if (!(stored.key instanceof CryptoKey) || stored.key.extractable) throw new SecurityError("storage");
+  return new Uint8Array(await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: stored.iv, additionalData: new TextEncoder().encode(stored.binding) }, stored.key, stored.ciphertext,
+  ));
+}
+
 export async function saveLocalData(server: string, memberID: string, values: Map<string, Uint8Array | undefined>): Promise<void> {
   const r = await loadSecurity();
   if (!r.member || r.memberID !== memberID) throw new SecurityError("untrusted");
@@ -686,13 +702,7 @@ export async function saveLocalData(server: string, memberID: string, values: Ma
   const sealed = await Promise.all([...values].map(async ([name, bytes]) => {
     if (bytes === undefined) return [name, undefined] as const;
     const binding = JSON.stringify([owner, name]);
-    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const ciphertext = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(binding) }, key,
-      bytes as Uint8Array<ArrayBuffer>,
-    );
-    return [name, { binding, key, iv, ciphertext } satisfies StoredLoginToken] as const;
+    return [name, await sealLocalValue(binding, bytes)] as const;
   }));
   const db = await database(false);
   await transaction<void>(db, "readwrite", (store, done, fail) => {
@@ -715,7 +725,7 @@ export async function loadLocalData(server: string, memberID: string, name: stri
   const r = await loadSecurity();
   if (!r.member || r.memberID !== memberID) return;
   const db = await database(false);
-  const stored = await transaction<StoredLoginToken | undefined>(db, "readonly", (store, done) => {
+  const stored = await transaction<SealedLocalValue | undefined>(db, "readonly", (store, done) => {
     const get = store.get("local-content:" + name);
     get.onsuccess = () => done(get.result);
   });
@@ -723,21 +733,14 @@ export async function loadLocalData(server: string, memberID: string, name: stri
   const binding = JSON.stringify([tokenBinding(server, r), name]);
   if (stored.binding !== binding || !(stored.key instanceof CryptoKey) || stored.key.extractable) throw new SecurityError("storage");
   try {
-    return new Uint8Array(await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: stored.iv, additionalData: new TextEncoder().encode(binding) }, stored.key, stored.ciphertext,
-    ));
+    return await openLocalValue(stored);
   } catch { throw new SecurityError("storage"); }
 }
 export async function saveLoginToken(server: string, memberID: string, token: LoginToken): Promise<void> {
   const r = await loadSecurity();
   if (!r.member || r.memberID !== memberID) throw new SecurityError("untrusted");
   const binding = tokenBinding(server, r);
-  const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv, additionalData: new TextEncoder().encode(binding) }, key,
-    new TextEncoder().encode(JSON.stringify(token)),
-  );
+  const sealed = await sealLocalValue(binding, new TextEncoder().encode(JSON.stringify(token)));
   const db = await database(false);
   await transaction<void>(db, "readwrite", (store, done, fail) => {
     const get = store.get(KEY);
@@ -746,7 +749,7 @@ export async function saveLoginToken(server: string, memberID: string, token: Lo
         validRecord(get.result);
         if (!get.result.member || tokenBinding(server, get.result) !== binding)
           throw new SecurityError("untrusted");
-        store.put({ binding, key, iv, ciphertext } satisfies StoredLoginToken, LOGIN_TOKEN);
+        store.put(sealed, LOGIN_TOKEN);
         done();
       } catch { fail(new SecurityError("storage")); }
     };
@@ -757,7 +760,7 @@ export async function clearLoginToken(server: string, memberID: string): Promise
   await transaction<void>(db, "readwrite", (store, done) => {
     const get = store.get(LOGIN_TOKEN);
     get.onsuccess = () => {
-      const stored = get.result as StoredLoginToken | undefined;
+      const stored = get.result as SealedLocalValue | undefined;
       if (stored) {
         try {
           const [origin, member] = JSON.parse(stored.binding);
@@ -776,17 +779,14 @@ export async function loadLoginToken(server: string, memberID: string, now = Dat
     return undefined;
   }
   const db = await database(false);
-  const stored = await transaction<StoredLoginToken | undefined>(db, "readonly", (store, done) => {
+  const stored = await transaction<SealedLocalValue | undefined>(db, "readonly", (store, done) => {
     const get = store.get(LOGIN_TOKEN);
     get.onsuccess = () => done(get.result);
   });
   if (!stored || stored.binding !== tokenBinding(server, r)) return undefined;
   try {
     if (!(stored.key instanceof CryptoKey) || stored.key.extractable) throw new SecurityError("storage");
-    const plain = await crypto.subtle.decrypt(
-      { name: "AES-GCM", iv: stored.iv, additionalData: new TextEncoder().encode(stored.binding) },
-      stored.key, stored.ciphertext,
-    );
+    const plain = await openLocalValue(stored);
     const token: LoginToken = JSON.parse(new TextDecoder().decode(plain));
     if (typeof token.token !== "string" || !token.token || !Number.isFinite(token.expiresMs) || token.expiresMs < Math.max(now, Number(r.floor)) + 86_400_000)
       throw new SecurityError("storage");

@@ -150,7 +150,7 @@ func outgoingNote(
         return OutgoingNote(
             caption: maybeNotSentText(
                 error.hasPrefix(unknownOutcomePrefix) ? String(error.dropFirst(unknownOutcomePrefix.count)) : error), tone: .warn, failed: failed,
-            actions: [.retry, .remove])
+            actions: (hasImages ? [.putBack] : []) + [.retry, .remove])
     case .failed: return OutgoingNote(caption: notSentText(error), tone: .error, failed: failed, actions: (hasImages ? [.putBack] : []) + (missingImages ? [] : [.retry]) + [.remove])
     }
 }

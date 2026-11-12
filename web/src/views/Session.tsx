@@ -305,7 +305,7 @@ export function SessionPage({
         `输入框里已有 ${tray.images().length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`,
       );
     tray.restoreFiles(files.map((f, i) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: o?.files?.[i]?.file })));
-    if (o) remote.dismissSend(sid, o.sendId);
+    if (o) remote.dismissSend(sid, o.sendId, true);
     const draft = remote.drafts.get(sid) ?? "";
     remote.drafts.set(
       sid,
@@ -597,6 +597,7 @@ export function SessionPage({
                   files: tray.images().map((i) => i.file),
                 },
                 tray.files().map((i) => ({ fileId: i.fileId!, name: i.name!, sizeBytes: BigInt(i.bytes ?? 0), path: "", file: i.file })),
+                tray.images().map(i => ({ width: i.prepared!.width, height: i.prepared!.height })),
               );
               tray.clear();
             }}
@@ -1333,7 +1334,7 @@ function Pending({
   const cls = failed ? (o.unknown ? " warn" : " fail") : asQueue ? " pending-bubble mo-queued" : phase === "sending" ? " pending" : "";
   return (
     <div ref={root} className={"me" + cls + (enter ? (waiting ? " mo-wait" : " mo-rise") : "")}>
-      <LocalThumbs blobs={o.thumbs} />
+      <LocalThumbs blobs={o.thumbs} sizes={o.imageSizes} />
       <FileChips files={o.files} />
       {o.text && <div className="mo-text">{o.text}</div>}
       <small ref={tail}>
@@ -1341,7 +1342,7 @@ function Pending({
           <>
             {o.unknown ? "可能没发出去：" : "没发出去："}
             {o.error}
-            {!o.unknown && (!!o.imageIds?.length || !!o.files?.length) && <button onClick={() => onRestore(o.text, o.sendId)}>放回输入框</button>}
+            {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>放回输入框</button>}
             {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>}
             <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
           </>
@@ -1650,11 +1651,13 @@ function Row({
         if (k.value.status === InputStatus.NEEDS_TERMINAL)
           return (
             <div className="me warn">
+              <LocalThumbs blobs={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.thumbs} sizes={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.imageSizes} />
               <FileChips files={files} />
               <div>{text || (files?.length ? "" : "一条消息")}</div>
               <small>
                 可能没发出去：{why}
                 {onTerminal && <button onClick={onTerminal}>去终端</button>}
+                {remote.canRestoreAttachments(sid, k.value.requestId) && <button onClick={() => onRestore(text, k.value.requestId)}>放回输入框</button>}
               </small>
             </div>
           );

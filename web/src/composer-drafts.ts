@@ -2,6 +2,7 @@ import { loadLocalData, saveLocalData } from "./device-security-store";
 import { newRequestID } from "./crypto";
 import type { StoredAccount } from "./storage";
 import type { Tray } from "./attach";
+import type { Outgoing } from "./model";
 
 interface Source { id: string; type: string; name?: string; kind?: "file" }
 interface Draft { text: string; original: boolean; sources: Source[] }
@@ -14,6 +15,7 @@ export class ComposerDraftStore {
   private kept = new Map<string, Set<string>>();
   private signatures = new Map<string, string>();
   private writes = new Map<string, Promise<void>>();
+  private tail: Promise<void> = Promise.resolve();
   constructor(private account: StoredAccount) {}
   private key(key: string) { return "composer/" + JSON.stringify(key); }
 
@@ -36,7 +38,7 @@ export class ComposerDraftStore {
     return { text: draft.text, original: draft.original, items };
   }
 
-  save(key: string, text: string, tray?: Tray): Promise<void> {
+  save(key: string, text: string, tray?: Pick<Tray, "items" | "original">): Promise<void> {
     const items = (tray?.items ?? []).filter(i => !i.remoteOnly);
     const sources = items.map(i => {
       let id = this.ids.get(i.file);
@@ -47,7 +49,7 @@ export class ComposerDraftStore {
     const signature = JSON.stringify(draft);
     if (this.signatures.get(key) === signature) return this.writes.get(key) ?? Promise.resolve();
     this.signatures.set(key, signature);
-    const work = (this.writes.get(key) ?? Promise.resolve()).catch(() => undefined).then(async () => {
+    const work = this.tail.catch(() => undefined).then(async () => {
       const name = this.key(key), old = this.kept.get(key) ?? new Set<string>();
       const values = new Map<string, Uint8Array | undefined>();
       for (let i = 0; i < sources.length; i++) {
@@ -60,8 +62,49 @@ export class ComposerDraftStore {
       this.kept.set(key, ids);
     });
     this.writes.set(key, work);
+    this.tail = work;
     void work.catch(() => { if (this.signatures.get(key) === signature) this.signatures.delete(key); });
     return work;
+  }
+
+  flushed(key: string): Promise<void> { return this.writes.get(key) ?? Promise.resolve(); }
+
+  /** Keep ownership while a send is pending or uncertain. Moving the visible
+   * draft into the outbox must not leave a restart with neither copy. */
+  saveOutbox(sid: string, outgoing: Outgoing[]): Promise<void> {
+    const blobs: Blob[] = [];
+    const source = (blob?: Blob) => { if (!blob) return undefined; blobs.push(blob); return blobs.length - 1; };
+    const records = outgoing.map(o => ({
+      sendId: o.sendId, requestId: o.requestId, deadline: o.deadline, text: o.text, mode: o.mode,
+      imageIds: o.imageIds, imageSizes: o.imageSizes, status: o.status, error: o.error, unknown: o.unknown,
+      thumbs: o.thumbs?.map(source),
+      attachments: o.attachments && { original: o.attachments.original, sources: o.attachments.files.map(source) },
+      files: o.files?.map(f => ({ ...f, sizeBytes: f.sizeBytes.toString(), file: source(f.file) })),
+    }));
+    return this.save("out:" + sid, outgoing.length ? JSON.stringify(records) : "", {
+      original: false,
+      items: blobs.map((file, i) => ({ key: String(i), file, state: "done", progress: 1 })),
+    });
+  }
+
+  async readOutbox(sid: string): Promise<Outgoing[]> {
+    const kept = await this.read("out:" + sid);
+    if (!kept?.text) return [];
+    const records = JSON.parse(kept.text);
+    if (!Array.isArray(records)) throw new Error("待发记录格式不正确");
+    const source = (i: number) => kept.items[i]?.file;
+    return records.map(o => {
+      if (typeof o.sendId !== "string" || typeof o.requestId !== "string" || typeof o.text !== "string" || !Number.isFinite(o.deadline)) throw new Error("待发记录格式不正确");
+      return {
+        ...o,
+        status: o.status === "sending" ? "failed" : o.status,
+        unknown: o.status === "sending" || o.unknown,
+        error: o.status === "sending" ? "连接中途断了" : o.error,
+        thumbs: o.thumbs?.map(source),
+        attachments: o.attachments && { original: o.attachments.original, files: o.attachments.sources.map(source) },
+        files: o.files?.map((f: { sizeBytes: string; file?: number }) => ({ ...f, sizeBytes: BigInt(f.sizeBytes), file: f.file === undefined ? undefined : source(f.file) })),
+      } as Outgoing;
+    });
   }
 }
 

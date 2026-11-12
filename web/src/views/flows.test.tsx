@@ -23,6 +23,8 @@ import { NewBox, NewFlow, NewProjectSheet, ProjectPicker, useNewSession } from "
 import { ProjectPage } from "./Project";
 import { addProject, ManagePage, sessionCounts } from "./Projects";
 import { SessionPage } from "./Session";
+import { ImageStrip, LocalThumbs } from "./Images";
+import { ImageFormat, ImageRefSchema, ImageSync } from "../gen/remoteagent/v1/event_pb";
 import { useRemote } from "../ui";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -2390,14 +2392,14 @@ describe("the first message of a session started here (review B5, B9)", () => {
 });
 
 describe("a failed message with images (review B6)", () => {
-  function setup(text: string) {
+  function setup(text: string, status = InputStatus.FAILED, sources = false) {
     const r = demo();
     const s = r.sessions.get("s-idle")!;
     const blob = new Blob([new Uint8Array(4)], { type: "image/png" });
-    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "f1", requestId: "x", deadline: 0, text, imageIds: ["i1", "i2"], thumbs: [blob, blob], status: "sent" }]);
+    (r as unknown as { outboxes: Map<string, unknown[]> }).outboxes.set("s-idle", [{ sendId: "f1", requestId: "x", deadline: 0, text, imageIds: ["i1", "i2"], thumbs: [blob, blob], attachments: sources ? { original: true, files: [blob, blob] } : undefined, status: "sent" }]);
     for (const kind of [
       { case: "inputState", value: { requestId: "f1", status: InputStatus.QUEUED, text, imageIds: ["i1", "i2"] } },
-      { case: "inputState", value: { requestId: "f1", status: InputStatus.FAILED, reason: "image_not_recognized" } },
+      { case: "inputState", value: { requestId: "f1", status, reason: "image_not_recognized" } },
     ])
       r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never }));
     const sent: { text?: string; imageIds?: string[] }[] = [];
@@ -2410,6 +2412,22 @@ describe("a failed message with images (review B6)", () => {
     return { r, sent };
   }
   const row = () => host.querySelector(".me.fail")!;
+
+  it("keeps uncertain thumbnails and restores source-backed pictures and text", async () => {
+    const t = setup("没认出这两张", InputStatus.NEEDS_TERMINAL, true);
+    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    t.r.uploadImage = async () => ({ imageId: "again", expiresMs: Number.MAX_SAFE_INTEGER });
+    const warning = host.querySelector<HTMLElement>(".me.warn")!;
+    expect(warning.querySelectorAll(".pic.local")).toHaveLength(2);
+    await click(button("放回输入框", warning));
+    expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("没认出这两张");
+    expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
+  });
+
+  it("does not offer uncertain attachment recovery without local sources", () => {
+    setup("other source", InputStatus.NEEDS_TERMINAL);
+    expect(button("放回输入框", host.querySelector<HTMLElement>(".me.warn")!)).toBeFalsy();
+  });
 
   it("puts text and images back into the input, to send them again", async () => {
     const t = setup("看这两张");
@@ -2432,6 +2450,19 @@ describe("a failed message with images (review B6)", () => {
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
   });
+});
+
+it("keeps the same proportions, height and four-picture fold before and after confirmation", async () => {
+  const blobs = Array.from({ length: 6 }, () => new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" }));
+  const sizes = blobs.map(() => ({ width: 900, height: 600 }));
+  mount(<LocalThumbs blobs={blobs} sizes={sizes} />);
+  const before = [...host.querySelectorAll<HTMLElement>(".pic")].map(p => [p.style.width, p.style.height]);
+  expect(before).toHaveLength(4);
+  expect(host.querySelector(".more")!.textContent).toBe("+2");
+  const refs = sizes.map(size => create(ImageRefSchema, { ...size, sync: ImageSync.SYNCED, previewFormat: ImageFormat.PNG, preview: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 13, 10, 26, 10]) }));
+  await act(async () => root!.render(<ImageStrip refs={refs} />));
+  expect([...host.querySelectorAll<HTMLElement>(".pic")].map(p => [p.style.width, p.style.height])).toEqual(before);
+  expect(host.querySelector(".more")!.textContent).toBe("+2");
 });
 
 describe("an image-only new-session draft (review B8)", () => {

@@ -454,6 +454,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         let store = SessionStore()
         let commands = FakeCommands()
         let image = PendingImage(id: "picked", uri: "source")
+        image.processed = Processed(bytes: Data([1]), format: .png, width: 1, height: 1)
         let o = Outgoing(requestId: "request", text: "看图", imageIds: ["old"], images: [image], original: true)
         commands.answer(CommandError("not_found", "image old is not on this machine; upload it again", fromDaemon: true))
         store.add("s", o)
@@ -479,7 +480,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(o.state == .unknown && !o.canPutBack && !o.missingImages)
         #expect(commands.sent.map(\.send.requestID) == ["request", "request"])
         #expect(commands.sent.map(\.send.imageIds) == [["old"], ["old"]])
-        let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: true)
+        let note = outgoingNote(state: o.state, error: o.error, input: nil, failure: nil, agent: .codex, hasImages: o.hasLocalAttachments)
         #expect(note.actions == [.retry, .remove])
     }
 

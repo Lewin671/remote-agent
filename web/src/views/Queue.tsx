@@ -105,7 +105,7 @@ export function PendingBubbles({ remote, session, d, sentHere, own }: { remote: 
       const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : "另一客户端的消息");
       const line = queueLine(remote, session, d, id, i + 1, ids.length);
       return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>
-        <LocalThumbs blobs={o?.thumbs} />
+        <LocalThumbs blobs={o?.thumbs} sizes={o?.imageSizes} />
         <FileChips files={a?.files ?? o?.files} />
         <button className={"pending-text" + (expanded.has(id) ? " expanded" : "")} onClick={() => setExpanded((old) => new Set(old.has(id) ? [...old].filter((x) => x !== id) : [...old, id]))}>{message}</button>
         <div className="pending-meta"><span>{line.text}</span>{line.buttons}</div>

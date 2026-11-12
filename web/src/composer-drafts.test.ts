@@ -4,6 +4,7 @@ import { Tray } from "./attach";
 import { loadLocalData, forgetSecurity } from "./device-security-store";
 import { rawSecurity, securityFixture, storedSecurity } from "./test/stored-security-fixture";
 import type { StoredAccount } from "./storage";
+import type { Outgoing } from "./model";
 
 beforeAll(securityFixture);
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -35,4 +36,24 @@ it("restores text, original source bytes, order and original mode from ciphertex
   await store.save("session", "erase on logout");
   await forgetSecurity();
   await expect(loadLocalData(account.server, account.deviceId, 'composer/"session"')).rejects.toThrow();
+});
+
+it("keeps an uncertain send's sources across a reload and transfers ownership before deleting the old record", async () => {
+  const f = await storedSecurity();
+  const account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
+  const store = new ComposerDraftStore(account);
+  const file = new File(["original source"], "photo.png", { type: "image/png" });
+  const out: Outgoing = { sendId: "send", requestId: "command", deadline: 12345, text: "unsent", imageIds: ["uploaded"], thumbs: [file], attachments: { original: true, files: [file] }, status: "sending" };
+  await store.saveOutbox("session", [out]);
+  const reloaded = new ComposerDraftStore(account);
+  const pending = (await reloaded.readOutbox("session"))[0];
+  expect([pending.status, pending.unknown, pending.sendId, pending.requestId]).toEqual(["failed", true, "send", "command"]);
+  expect(await pending.attachments!.files[0].text()).toBe("original source");
+  const source = pending.attachments!.files[0];
+  await reloaded.save("session", pending.text, { original: pending.attachments!.original, items: [{ key: "source", file: source, state: "preparing", progress: 0 }] });
+  await reloaded.saveOutbox("session", []);
+  expect(await reloaded.readOutbox("session")).toEqual([]);
+  const draft = await new ComposerDraftStore(account).read("session");
+  expect(draft?.text).toBe("unsent");
+  expect(await draft!.items[0].file.text()).toBe("original source");
 });

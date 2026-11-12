@@ -1407,6 +1407,7 @@ export interface Outgoing {
   imageIds?: string[];
   // This device's copies of them, shown until the CLI records the message.
   thumbs?: Blob[];
+  imageSizes?: { width: number; height: number }[];
   attachments?: { original: boolean; files: Blob[] };
   files?: { fileId: string; name: string; sizeBytes: bigint; path: string; file?: Blob }[];
   missingImages?: boolean;

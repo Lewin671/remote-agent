@@ -92,10 +92,9 @@ export function Pic({
   className?: string;
 }) {
   const url = usePreview(r);
-  const aspect = Math.min(3, Math.max(0.4, aspectOf(r)));
   // height 0: as wide as the chat, at the image's proportions.
   const style: CSSProperties = height
-    ? { height, width: Math.round(height * aspect) }
+    ? previewGeometry(aspectOf(r), height)
     : { aspectRatio: String(aspectOf(r)) };
   if (r.sync === ImageSync.NAME_ONLY || (!url && r.sync !== ImageSync.SYNCED))
     return (
@@ -581,7 +580,11 @@ async function toPng(blob: Blob): Promise<Blob> {
 
 /** This device's copies of images on their way: shown until the CLI
  * records the message with its own previews. */
-export function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
+export function previewGeometry(aspect: number, height = 96): { width: number; height: number } {
+  return { width: Math.round(height * Math.min(3, Math.max(0.4, aspect))), height };
+}
+
+export function LocalThumbs({ blobs, sizes }: { blobs?: Blob[]; sizes?: { width: number; height: number }[] }) {
   const [urls, setUrls] = useState<string[]>([]);
   useEffect(() => {
     const us = (blobs ?? []).map((b) => URL.createObjectURL(b));
@@ -591,9 +594,13 @@ export function LocalThumbs({ blobs }: { blobs?: Blob[] }) {
   if (!urls.length) return null;
   return (
     <span className="pics">
-      {urls.map((u) => (
-        <span key={u} className="pic local">
-          <img src={u} alt="" />
+      {urls.slice(0, 4).map((u, i) => (
+        <span key={u} className="picwrap">
+          <span className="pic local" style={previewGeometry(sizes?.[i]?.height ? sizes[i].width / sizes[i].height : 4 / 3)}>
+            <img src={u} alt={`图片 ${i + 1}`} />
+            <span className="n">{i + 1}</span>
+          </span>
+          {i === 3 && urls.length > 4 && <span className="more" aria-label={`还有 ${urls.length - 4} 张`}>+{urls.length - 4}</span>}
         </span>
       ))}
     </span>

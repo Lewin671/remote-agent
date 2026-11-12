@@ -55,9 +55,7 @@ it("keeps the tray's thumbnails square on a wide page", () => {
   document.body.innerHTML = `<div class="desk"><div class="cbar"><div class="att-tray"><span class="pic tthumb"></span></div></div><span class="pics"><span class="pic local"></span></span></div>`;
   const thumb = getComputedStyle(document.querySelector(".tthumb")!);
   expect([thumb.width, thumb.height]).toEqual(["56px", "56px"]);
-  // A sent message's previews keep 3:4 at the wide page's picture height.
-  const local = getComputedStyle(document.querySelector(".local")!);
-  expect([local.width, local.height]).toEqual(["105px", "140px"]);
+  // Message preview geometry is now supplied from each image, not fixed in CSS.
 });
 
 it("keeps an approval's or a plan's buttons to 480 on a wide window", () => {

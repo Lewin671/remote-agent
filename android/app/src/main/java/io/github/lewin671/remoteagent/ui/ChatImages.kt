@@ -30,6 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.constrainWidth
+import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.proto.ImageRef
@@ -55,6 +59,18 @@ fun aspect(ref: ImageRef): Float {
 
 fun fileName(path: String): String = path.substringAfterLast('/').ifEmpty { "图片" }
 
+internal data class ImageRowGeometry(val widths: List<Int>, val height: Int, val gap: Int)
+
+/** Match iOS ThumbStrip: shrink the whole row uniformly to its proposed width. */
+internal fun imageRowGeometry(aspects: List<Float>, available: Int, height: Int, maxWidth: Int, spacing: Int): ImageRowGeometry {
+    val gap = if (aspects.size > 1) minOf(spacing, available / (aspects.size - 1)) else 0
+    val ideal = aspects.map { minOf(maxWidth.toFloat(), height * it) }
+    val total = ideal.sum()
+    val room = (available - gap * (aspects.size - 1).coerceAtLeast(0)).coerceAtLeast(0)
+    val scale = if (total > 0) minOf(1f, room / total) else 1f
+    return ImageRowGeometry(ideal.map { (it * scale).toInt().coerceAtLeast(0) }, (height * scale).toInt().coerceAtLeast(0), gap)
+}
+
 /**
  * A message's or tool's images: previews at their own proportions, four to
  * a row at most, the rest folded into +N. The corner number is the CLI's
@@ -65,10 +81,17 @@ fun fileName(path: String): String = path.substringAfterLast('/').ifEmpty { "图
 fun ImageRow(refs: List<ImageRef>, onOpen: (Int) -> Unit, modifier: Modifier = Modifier, height: Int = 88) {
     if (refs.isEmpty()) return
     val shown = refs.take(4)
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Layout(modifier = modifier, content = {
         shown.forEachIndexed { i, ref ->
             val more = if (i == 3 && refs.size > 4) refs.size - 4 else 0
-            Thumb(ref, Modifier.height(height.dp).aspectRatio(aspect(ref), matchHeightConstraintsFirst = true).widthIn(max = 180.dp), more) { onOpen(i) }
+            Thumb(ref, Modifier, more) { onOpen(i) }
+        }
+    }) { children, constraints ->
+        val geometry = imageRowGeometry(shown.map(::aspect), constraints.maxWidth, height.dp.roundToPx(), 180.dp.roundToPx(), 6.dp.roundToPx())
+        val placed = children.mapIndexed { i, child -> child.measure(Constraints.fixed(geometry.widths[i], geometry.height)) }
+        layout(constraints.constrainWidth(geometry.widths.sum() + geometry.gap * (shown.size - 1)), constraints.constrainHeight(geometry.height)) {
+            var x = 0
+            for (child in placed) { child.placeRelative(x, 0); x += child.width + geometry.gap }
         }
     }
 }

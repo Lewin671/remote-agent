@@ -85,7 +85,8 @@ class Outgoing(
     var error by mutableStateOf("")
     var missingImages by mutableStateOf(false)
         private set
-    val canPutBack: Boolean get() = state == State.FAILED && images.isNotEmpty()
+    val hasLocalAttachments: Boolean get() = images.isNotEmpty() && images.all { it.hasSource() }
+    val canPutBack: Boolean get() = (state == State.FAILED || state == State.UNKNOWN) && hasLocalAttachments
 
     /** Retries preserve the message request and image IDs, even when an upload has since expired. */
     internal suspend fun deliver(send: suspend (SendRequest) -> Unit) {

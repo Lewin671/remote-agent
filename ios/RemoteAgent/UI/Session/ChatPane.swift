@@ -803,7 +803,7 @@ private struct OutgoingBubble: View {
     var body: some View {
         let note = outgoingNote(
             state: message.state, error: message.error, input: input, failure: failure,
-            agent: session.agent, hasImages: !message.images.isEmpty,
+            agent: session.agent, hasImages: message.hasLocalAttachments,
             missingImages: message.missingImages)
         let ink: Color =
             switch note.tone {
@@ -814,7 +814,8 @@ private struct OutgoingBubble: View {
         ChatBubble(
             message.text.isEmpty ? nil : message.text, caption: note.caption, captionColor: ink,
             captionIcon: note.sending ? Mark.progress : nil, failed: note.failed,
-            links: note.actions.map { action in ChatLink(action.label) { act(action) } }
+            links: note.actions.filter { $0 != .putBack || (message.imageIds.isEmpty && message.fileIds.isEmpty) || message.hasLocalAttachments }
+                .map { action in ChatLink(action.label) { act(action) } }
         ) {
             SessionImages.OutgoingThumbs(message: message)
         }
