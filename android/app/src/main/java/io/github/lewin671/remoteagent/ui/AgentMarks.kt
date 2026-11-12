@@ -60,8 +60,9 @@ object AgentMarks {
  */
 @Composable
 fun AgentMark(agent: Agent, style: TextStyle, tint: Color, named: Boolean = true, scale: Float = 1f, modifier: Modifier = Modifier) {
+    val copy = uiText()
     val v = AgentMarks.of(agent) ?: return
-    Icon(v, if (named) null else agentName(agent), modifier.size(iconSize(style) * scale), tint)
+    Icon(v, if (named) null else agentName(agent, copy = copy), modifier.size(iconSize(style) * scale), tint)
 }
 
 /** [AgentMark] and the gap before the words it leads (0.4em, as on the web), in one row cell. */

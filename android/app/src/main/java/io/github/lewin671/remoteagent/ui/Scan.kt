@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -44,6 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /** Scans one QR code with the camera, decoding on the device with ZXing. */
 @Composable
 fun QrScanner(onResult: (String) -> Unit, onCancel: () -> Unit) {
+    val copy = uiText()
     val ctx = LocalContext.current
     var granted by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(ctx, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED)
@@ -53,10 +56,10 @@ fun QrScanner(onResult: (String) -> Unit, onCancel: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         if (granted) CameraPreview(onResult)
         else Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("需要相机权限才能扫码；也可以返回手动输入配对码。", style = T.s17, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-            PillButton("允许使用相机", { ask.launch(Manifest.permission.CAMERA) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+            Text(copy(UiMessages.commonAndroidCameraAccessIsNeededToScanYouCanAlsoGo()), style = T.s17, color = Color.White, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            PillButton(copy(UiMessages.commonAndroidAllowCameraAccess()), { ask.launch(Manifest.permission.CAMERA) }, Modifier.padding(top = 16.dp), ButtonKind.INK)
         }
-        GlassButton(Lucide.X, "取消", onCancel, Modifier.align(Alignment.TopStart).padding(16.dp), dark = true)
+        GlassButton(Lucide.X, copy(UiMessages.commonCancel()), onCancel, Modifier.align(Alignment.TopStart).padding(16.dp), dark = true)
     }
 }
 

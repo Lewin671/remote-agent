@@ -17,7 +17,7 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.TermConn
 import io.github.lewin671.remoteagent.core.TermListener
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import io.github.lewin671.remoteagent.proto.TerminalResize
 import kotlinx.coroutines.CoroutineScope
@@ -126,13 +126,13 @@ class RemoteTerminal(private val remote: Remote, private val sessionId: String, 
                         enqueue(frame)
                     }
 
-                    override fun onClose(reason: String) {
-                        enqueue(TerminalFrame.newBuilder().setClosed(reason).build())
+                    override fun onClose(reason: io.github.lewin671.remoteagent.core.MessageText) {
+                        enqueue(TerminalFrame.newBuilder().setClosed(io.github.lewin671.remoteagent.ui.sessionText(reason)).build())
                     }
                 })
                 if (gen == generation) { conn = c; goLive() } else c.close()
             } catch (e: Exception) {
-                if (gen == generation) _state.value = State.Closed(errorText(e).messageText())
+                if (gen == generation) _state.value = State.Closed(displayError(e).messageText())
             }
         }
     }

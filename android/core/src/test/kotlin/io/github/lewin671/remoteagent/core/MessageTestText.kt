@@ -30,6 +30,8 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
     fun rendered(value: Any?): Any? = when (value) {
         is UiMessage -> messageTextForTest(value)
         is MessageText -> value.testText()
+        is SessionLookup.Failed -> listOf("failed", rendered(value.reason))
+        is QuotaWindowDescriptor -> listOf(rendered(value.label), rendered(value.group))
         is List<*> -> value.map { rendered(it) }
         is HomeItem.Tail -> rendered(value.tail)
         is HomeTail.Text -> listOf("text", rendered(value.text))
@@ -42,3 +44,12 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
     }
     org.junit.Assert.assertEquals(rendered(expected), rendered(actual))
 }
+
+fun MessageText.contains(value: String): Boolean = testText().contains(value)
+fun MessageText.startsWith(value: String): Boolean = testText().startsWith(value)
+fun MessageText.endsWith(value: String): Boolean = testText().endsWith(value)
+
+fun assertMessageEquals(message: String?, expected: Any?, actual: Any?) {
+    try { assertMessageEquals(expected, actual) } catch (e: AssertionError) { throw AssertionError(message, e) }
+}
+fun assertMessageEquals(expected: Double, actual: Double, delta: Double) = org.junit.Assert.assertEquals(expected, actual, delta)

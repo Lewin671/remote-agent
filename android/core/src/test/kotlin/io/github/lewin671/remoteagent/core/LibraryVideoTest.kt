@@ -1,6 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
-import org.junit.Assert.assertEquals
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -36,10 +38,10 @@ fun readUri(context: Context, uri: Uri, limit: Long): ByteArray {
             val n = input.read(buf)
             if (n < 0) break
             total += n
-            if (total > limit) throw ImageTooLarge("图片超过 ${limit / 1024 / 1024} MB")
+            if (total > limit) throw ImageTooLarge(sessionText(UiMessages.imageAndroidImageExceedsValue1Mb((limit / 1024 / 1024).toString())))
             out.write(buf, 0, n)
         }
-    } ?: throw IllegalStateException("读不到这张图片")
+    } ?: throw IllegalStateException(sessionText(UiMessages.imageAndroidCannotReadThisImage()))
     return out.toByteArray()
 }
 
@@ -77,7 +79,7 @@ private fun decodeUpright(data: ByteArray, maxLong: Int): Decoded {
     val budget = pixelBudget()
     val fmt = detectFormat(data)
     if (fmt == null) {
-        if (Build.VERSION.SDK_INT < 28) throw IllegalArgumentException("这台手机读不了这种图片格式")
+        if (Build.VERSION.SDK_INT < 28) throw IllegalArgumentException(sessionText(UiMessages.imageAndroidThisPhoneCannotReadThisImageFormat()))
         var sample = 1
         val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(java.nio.ByteBuffer.wrap(data))) { d, info, _ ->
             d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
@@ -91,10 +93,10 @@ private fun decodeUpright(data: ByteArray, maxLong: Int): Decoded {
     val o = orientationOf(data)
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
     BitmapFactory.decodeByteArray(data, 0, data.size, bounds)
-    if (bounds.outWidth <= 0) throw IllegalArgumentException("解不出这张图片")
+    if (bounds.outWidth <= 0) throw IllegalArgumentException(sessionText(UiMessages.imageAndroidCannotDecodeThisImage()))
     val sample = decodeSample(bounds.outWidth, bounds.outHeight, maxLong, budget)
     var bmp = BitmapFactory.decodeByteArray(data, 0, data.size, BitmapFactory.Options().apply { inSampleSize = sample })
-        ?: throw IllegalArgumentException("解不出这张图片")
+        ?: throw IllegalArgumentException(sessionText(UiMessages.imageAndroidCannotDecodeThisImage()))
     if (maxLong > 0) {
         val (w, h) = fitLongSide(bmp.width, bmp.height, maxLong)
         if (w != bmp.width) bmp = Bitmap.createScaledBitmap(bmp, w, h, true).also { if (it !== bmp) bmp.recycle() }
@@ -122,7 +124,7 @@ fun processImage(context: Context, uri: Uri, original: Boolean): Processed = syn
         prepare(context, uri, original)
     } catch (e: OutOfMemoryError) {
         // An error, not an exception: without this it would end the app.
-        throw ImageTooLarge("这张图太大，手机内存不够处理")
+        throw ImageTooLarge(sessionText(UiMessages.imageAndroidThisImageIsTooLargeForThePhoneSAvailable()))
     }
 }
 
@@ -130,7 +132,7 @@ private fun prepare(context: Context, uri: Uri, original: Boolean): Processed {
     val data = readUri(context, uri, if (original) MAX_ORIGINAL_BYTES * 3 else 80L * 1024 * 1024)
     if (original) {
         stripOriginal(data)?.let { clean ->
-            if (clean.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge("原图超过 20 MB")
+            if (clean.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge(sessionText(UiMessages.imageAndroidOriginalExceeds20Mb()))
             val b = BitmapFactory.Options().apply { inJustDecodeBounds = true }
             BitmapFactory.decodeByteArray(clean, 0, clean.size, b)
             return Processed(clean, detectFormat(clean)!!, b.outWidth, b.outHeight)
@@ -142,11 +144,11 @@ private fun prepare(context: Context, uri: Uri, original: Boolean): Processed {
         val out = encode(bmp, png, if (turned) 100 else 95)
         val (w, h) = bmp.width to bmp.height
         bmp.recycle()
-        if (out.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge("原图超过 20 MB")
-        val shrunk = if (d.sample > 1) "；像素超过手机能处理的上限，缩小到 1/${d.sample}" else ""
+        if (out.size > MAX_ORIGINAL_BYTES) throw ImageTooLarge(sessionText(UiMessages.imageAndroidOriginalExceeds20Mb()))
+        val shrunk = if (d.sample > 1) sessionText(UiMessages.imageAndroidPixelCountExceedsThisPhoneSLimitScaledDownTo((d.sample).toString())) else ""
         return Processed(
             out, if (png) ImageFormat.IMAGE_FORMAT_PNG else ImageFormat.IMAGE_FORMAT_JPEG, w, h,
-            (if (turned) "按拍摄方向转正后以最高画质重新编码" else "转成了 ${if (png) "PNG" else "JPEG"}，保留原始尺寸") + shrunk,
+            (if (turned) sessionText(UiMessages.imageAndroidRotateToTheCaptureOrientationAndReEncodeAtMaximum()) else sessionText(UiMessages.imageAndroidConvertedToValue1KeepingOriginalDimensions((if (png) "PNG" else "JPEG").toString()))) + shrunk,
         )
     }
     var bmp = decodeUpright(data, COMPRESSED_LONG_SIDE).bitmap

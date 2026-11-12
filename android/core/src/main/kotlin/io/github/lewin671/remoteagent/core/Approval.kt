@@ -61,6 +61,6 @@ fun verifyPairApproval(enrollment: Enrollment, root: ByteArray, kind: DeviceKind
                 enrollment.signature,
             ),
     ) {
-        "配对批准与这台设备不匹配、已过期或签名无效"
+        UiMessages.errorsAndroidPairingApprovalDoesNotMatchThisDeviceHasExpiredOr().messageText()
     }
 }

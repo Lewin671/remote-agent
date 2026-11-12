@@ -108,7 +108,7 @@ import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.defaultMode
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.sessionOrder
 import io.github.lewin671.remoteagent.core.exited
 import io.github.lewin671.remoteagent.core.machineAgents
@@ -167,7 +167,7 @@ private fun projectSessions(state: RemoteState, key: String) = state.sessions.va
  * machines' project summaries; every machine when nothing names it yet.
  */
 fun projectMachines(state: RemoteState, key: String): List<String> =
-    io.github.lewin671.remoteagent.core.project(state, key)?.machineIds.orEmpty().ifEmpty { state.machines.keys.toList() }
+    io.github.lewin671.remoteagent.core.project(state, key, copy = ::sessionText)?.machineIds.orEmpty().ifEmpty { state.machines.keys.toList() }
 
 /**
  * Where a project's new sessions inherit from (architecture §13 「初值」): the
@@ -182,7 +182,7 @@ fun projectMachines(state: RemoteState, key: String): List<String> =
 private class Inheritance(state: RemoteState, key: String) {
     private val all = projectSessions(state, key)
     private val sure = all.filter { !io.github.lewin671.remoteagent.core.pastFetched(state, it) }
-    private val unfetched = state.moreSessions && (io.github.lewin671.remoteagent.core.project(state, key)?.ended ?: 0) > all.count { exited(it) }
+    private val unfetched = state.moreSessions && (io.github.lewin671.remoteagent.core.project(state, key, copy = ::sessionText)?.ended ?: 0) > all.count { exited(it) }
 
     /** Set once a session was looked for whose place among those not fetched is not known. */
     var unsettled = false
@@ -252,7 +252,7 @@ data class ProjectStart(val config: NewConfig, val settled: Boolean)
 fun projectStart(state: RemoteState, key: String, pick: Agent? = null, machine: String? = null, saved: ProjectSettings? = savedSettings(state, key)): ProjectStart? {
     val from = Inheritance(state, key)
     val machineId = machine ?: saved?.machineId?.takeIf { it.isNotEmpty() } ?: from.first()?.machineId
-        ?: io.github.lewin671.remoteagent.core.project(state, key)?.machineIds?.firstOrNull() ?: return null
+        ?: io.github.lewin671.remoteagent.core.project(state, key, copy = ::sessionText)?.machineIds?.firstOrNull() ?: return null
     val agents = machineAgents(state.machines[machineId])
     val agent = wantedAgent(from, pick, saved)?.takeIf { it in agents } ?: agents.first()
     return ProjectStart(agentConfig(machineId, key, agentSet(from, agent, saved)), !from.unsettled)
@@ -311,12 +311,12 @@ fun defaultModeOf(m: MachineView?, agent: Agent): DefaultMode {
 }
 
 /** The mode a start uses: chosen, or the CLI's effective default on that machine. */
-fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent, includeDefault: Boolean = true): String = when {
-    chosen != null -> chosen.text
-    !d.known -> "跟随 CLI 设置"
-    d.mode != null -> if (includeDefault) "默认：${d.mode.text}" else d.mode.text
-    else -> if (includeDefault) "默认：${agentName(agent)} 自己的模式" else "${agentName(agent)} 自己的模式"
-} + if (chosen == null && d.varies) "（项目设置可能不同）" else ""
+fun modeLabel(chosen: Mode?, d: DefaultMode, agent: Agent, includeDefault: Boolean = true, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String = when {
+    chosen != null -> copy(chosen.text)
+    !d.known -> copy(UiMessages.newSessionFollowCli())
+    d.mode != null -> if (includeDefault) copy(UiMessages.modesDefaultNamed(copy(d.mode.text))) else copy(d.mode.text)
+    else -> if (includeDefault) copy(UiMessages.modesDefaultAgent((agentName(agent, copy = copy)).toString())) else copy(UiMessages.modesAgentOwn((agentName(agent, copy = copy)).toString()))
+} + if (chosen == null && d.varies) copy(UiMessages.commonAndroidProjectSettingsMayDiffer()) else ""
 
 /**
  * A new session's configuration (architecture §8): it follows the project,
@@ -460,8 +460,8 @@ fun modelLabel(c: NewConfig, models: ListModelsResponse? = null): MessageText {
     return (chosen?.displayName?.ifEmpty { modelId } ?: modelId).takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.newSessionDefaultModel().messageText()
 }
 
-fun effectiveModeText(chosen: Mode?, default: DefaultMode): String =
-    chosen?.text ?: if (!default.known) "跟随 CLI 设置" else default.mode?.text ?: "CLI 自己的模式"
+fun effectiveModeText(chosen: Mode?, default: DefaultMode, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String =
+    chosen?.text?.let(copy) ?: if (!default.known) copy(UiMessages.newSessionFollowCli()) else default.mode?.text?.let(copy) ?: copy(UiMessages.commonAndroidCliSOwnMode())
 
 /** 这个项目已从列表移除 · 重新添加: a notice, not a button in the way. */
 @Composable
@@ -524,6 +524,7 @@ fun NewSessionBox(
     onProject: (() -> Unit)? = null,
     banner: @Composable () -> Unit = {},
 ) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -589,7 +590,7 @@ fun NewSessionBox(
         picker.cancel()
         val cfg = config ?: return@LaunchedEffect
         runCatching { remote.listModels(cfg.machineId, cfg.agent) }
-            .onSuccess { models = it }.onFailure { modelsError = errorText(it) }
+            .onSuccess { models = it }.onFailure { modelsError = displayError(it) }
         modelsRead = true
     }
     // Keep the composer's snapshot visible while refreshing. Remote coalesces an in-flight cold
@@ -598,7 +599,7 @@ fun NewSessionBox(
         val cfg = config ?: return@LaunchedEffect
         if (picker.open == "model") {
             runCatching { remote.listModels(cfg.machineId, cfg.agent, fresh = true) }
-                .onSuccess { models = it; modelsError = "" }.onFailure { modelsError = errorText(it) }
+                .onSuccess { models = it; modelsError = "" }.onFailure { modelsError = displayError(it) }
         }
     }
     LaunchedEffect(machine, config?.agent, picker.open == "model") {
@@ -681,7 +682,7 @@ fun NewSessionBox(
             else if (!settled) Text(uiText(UiMessages.newSessionReadingPrevious()), style = T.s12, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp).testTag("settings-unread"))
             if (c != null && state.machines[c.machineId]?.online != true && drafting) OfflineChoice(state, c, name) { draft.choose(it) }
             else if (c != null && state.machines[c.machineId]?.online != true) Notice(uiText(UiMessages.newSessionAndroidMachineOffline(name = machineLabel(state, c.machineId))), tone = NoticeTone.WARN)
-            if (c != null && missing != null) Notice(uiText(UiMessages.newSessionCliFallback(agent = agentName(c.agent), missing = agentName(missing), name = machineLabel(state, c.machineId))), action = uiText(UiMessages.newSessionChangeMachine()), onAction = { afterKeyboard(onMachine) })
+            if (c != null && missing != null) Notice(uiText(UiMessages.newSessionCliFallback(agent = agentName(c.agent, copy = copy), missing = agentName(missing, copy = copy), name = machineLabel(state, c.machineId))), action = uiText(UiMessages.newSessionChangeMachine()), onAction = { afterKeyboard(onMachine) })
             if (c != null && issue == AutoIssue.MODEL) Notice(uiText(UiMessages.newSessionAndroidModelNoAuto(name = machineLabel(state, c.machineId))),
                 tone = NoticeTone.WARN, action = uiText(UiMessages.newSessionChangeModel()), onAction = { picker.toggle("model") })
             if (c != null && issue == AutoIssue.ACCOUNT) Notice(uiText(UiMessages.newSessionAndroidAccountNoAuto(name = machineLabel(state, c.machineId))),
@@ -772,7 +773,7 @@ fun NewSessionBox(
                 }).padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 AgentMark(a, T.s17, p.ink)
-                Text(agentName(a), style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
+                Text(agentName(a, copy = copy), style = T.s17, color = p.ink, modifier = Modifier.weight(1f))
                 if (a == c.agent) Ic(Lucide.Check, 18.dp, p.blue)
             }
         }
@@ -816,9 +817,9 @@ fun startable(text: String, images: List<PendingImage>, machineId: String): Bool
     (text.isNotBlank() || images.isNotEmpty()) && images.all { it.readyFor(machineId) }
 
 fun machineSubtitle(installed: List<Agent>, separator: String, missing: Agent? = null, fallback: Agent? = null): UiMessage {
-    val names = installed.joinToString(separator) { agentName(it) }
+    val names = installed.joinToString(separator) { agentName(it, copy = ::sessionText) }
     return if (missing != null && fallback != null) {
-        UiMessages.newSessionInstalledFallback(agent = agentName(fallback), agents = names, missing = agentName(missing))
+        UiMessages.newSessionInstalledFallback(agent = agentName(fallback, copy = ::sessionText), agents = names, missing = agentName(missing, copy = ::sessionText))
     } else {
         UiMessages.newSessionInstalled(agents = names)
     }
@@ -903,6 +904,7 @@ fun projectModel(c: NewConfig, models: ListModelsResponse, settings: DaemonSetti
  */
 @Composable
 fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: String, agent: Agent, open: String = "", onDone: (PrefsOp.SetSettings?) -> Unit, onClose: () -> Unit, initial: NewConfig? = null, scheduling: Boolean = false, lockMachine: Boolean = false, chooseAgent: Boolean = false) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -940,7 +942,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
         try {
             models = remote.listModels(c.machineId, c.agent, fresh = true)
         } catch (e: Exception) {
-            modelsError = errorText(e)
+            modelsError = displayError(e)
         }
     }
     var settings by remember { mutableStateOf<DaemonSettings?>(null) }
@@ -956,7 +958,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
     Sheet(onClose) {
         when (page) {
             "" -> {
-                SheetHead(if (lockMachine) "任务设置" else uiText(UiMessages.projectsAndroidSettings()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() })
+                SheetHead(if (lockMachine) copy(UiMessages.newSessionTaskSettings()) else uiText(UiMessages.projectsAndroidSettings()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() })
                 if (blockedPrefs != null) Notice(uiText(blockedPrefs))
                 if (scheduling) Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ProjectAvatar(cwd, 28)
@@ -976,7 +978,7 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                     },
                     // A scheduled task's approval mode; a new task has none.
                     *(if (scheduling) arrayOf<@Composable () -> Unit>({
-                        SetRow("权限", effectiveModeText(c.mode, defaults), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null)
+                        SetRow(copy(UiMessages.newSessionPermissions()), effectiveModeText(c.mode, defaults, copy = copy), { page = "mode" }, valueColor = if (c.mode == Mode.FULL || (c.mode == null && (defaults.mode == Mode.FULL || !defaults.known))) p.red else null)
                     }) else emptyArray()),
                 )
                 @Composable
@@ -988,31 +990,31 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                 }
                 val reading: @Composable () -> Unit = {
                     if (state.conn != ConnState.ONLINE || state.sessionsError.isNotEmpty()) EarlierTail(state, Modifier.fillMaxWidth().padding(14.dp))
-                    else Text(uiText(UiMessages.newSessionAndroidReadingCli(agent = agentName(cur))), style = T.s13, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(14.dp))
+                    else Text(uiText(UiMessages.newSessionAndroidReadingCli(agent = agentName(cur, copy = uiText()))), style = T.s13, color = p.ink2, modifier = Modifier.fillMaxWidth().padding(14.dp))
                 }
                 if (unread && agents.size > 1) {
                     if (machineRows.isNotEmpty()) card(machineRows)
-                    if (chooseAgent) Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur))
+                    if (chooseAgent) Segmented(agents.map { agentName(it, copy = uiText()) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur, copy = uiText()))
                     card(listOf(reading))
                 } else if (unread) {
                     card(machineRows + listOf(reading))
                 } else if (agents.size > 1) {
                     // The machine is shared; the set under it is the CLI's, whose name is its title.
                     if (machineRows.isNotEmpty()) card(machineRows)
-                    if (chooseAgent) Segmented(agents.map { agentName(it) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur))
+                    if (chooseAgent) Segmented(agents.map { agentName(it, copy = uiText()) }, agents.indexOf(cur), { tab = agents[it] }, Modifier.padding(top = 6.dp, bottom = 10.dp).fillMaxWidth()) else FieldLabel(agentName(cur, copy = uiText()))
                     card(rows)
-                    if (scheduling) Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "各 CLI 独立保存一套。只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                    if (scheduling) Hint(if (lockMachine) copy(UiMessages.newSessionOnlyChangesThisTaskExistingConversationsKeepTheirSettings()) else copy(UiMessages.commonAndroidEachCliSavesItsOwnSettingsOnlyFutureSessionsAre()))
                 } else {
                     card(machineRows + rows)
-                    if (scheduling) Hint(if (lockMachine) "只修改这个任务；已开出的对话保留原来的设置。" else "只影响之后新建的会话，进行中的不变；在你的设备之间同步。")
+                    if (scheduling) Hint(if (lockMachine) copy(UiMessages.newSessionOnlyChangesThisTaskExistingConversationsKeepTheirSettings()) else copy(UiMessages.newSessionOnlyAffectsFutureSessionsActiveSessionsStayUnchangedSynced()))
                 }
                 // The project's own actions are in 设置 › 项目管理; a scheduled task being created keeps them here.
                 if (scheduling && !lockMachine) {
                 // In line with the words of the cards above: the sheet's 16 plus the card rows' 12.
-                TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) "取消常用" else "设为常用", {
+                TextAction(if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) copy(UiMessages.projectsUnpin()) else copy(UiMessages.projectsPin()), {
                     PrefsChanges.run(remote, if (io.github.lewin671.remoteagent.core.isPinned(state, cwd)) PrefsOp.Unpin(cwd) else PrefsOp.Pin(cwd))
                 }, Modifier.padding(horizontal = 12.dp), enabled = blockedPrefs == null)
-                TextAction("移除项目…", { removing = true }, Modifier.padding(horizontal = 12.dp), enabled = blockedPrefs == null, color = p.red)
+                TextAction(copy(UiMessages.projectsRemoveAction()), { removing = true }, Modifier.padding(horizontal = 12.dp), enabled = blockedPrefs == null, color = p.red)
                 if (removing) RemoveProjectConfirm(cwd, onDismiss = { removing = false }) { onClose(); nav.home() }
                 }
             }
@@ -1047,25 +1049,25 @@ fun NewSettingsSheet(state: RemoteState, cwd: String, name: String, machineId: S
                         trailing = { StatusMark(if (online) MarkKind.ONLINE else MarkKind.OFF) },
                     )
                 } }
-                Hint(if (scheduling) "换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。" else uiText(UiMessages.newSessionAndroidChangeMachineHint()))
+                Hint(if (scheduling) copy(UiMessages.commonAndroidAfterSwitchingMachinesEachCliStartsWithThatMachineS()) else uiText(UiMessages.newSessionAndroidChangeMachineHint()))
             }
             "model" -> {
                 SheetHead(uiText(UiMessages.modelsTitle()), if (blockedPrefs == null) uiText(UiMessages.commonDone()) else null, { done() }, onBack = back)
                 ModelSettingsBody(c, models, modelsError, settings, machineLabel(state, c.machineId), scheduling) { edit(it) }
             }
             "mode" -> {
-                SheetHead("审批模式", if (blockedPrefs == null) "完成" else null, { done() }, onBack = { page = "" })
+                SheetHead(copy(UiMessages.modesTitle()), if (blockedPrefs == null) copy(UiMessages.commonDone()) else null, { done() }, onBack = { page = "" })
                 val chosen = models?.let { projectModel(c, it, settings) }
                 SheetList {
-                ListItem("默认", "跟随 ${agentName(c.agent)} 自己的配置", checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
+                ListItem(copy(UiMessages.modelsDefault()), copy(UiMessages.newSessionFollowSConfiguration((agentName(c.agent, copy = uiText())).toString())), checked = c.mode == null, onClick = { edit(c.copy(mode = null)); page = "" })
                 newSessionModes.forEachIndexed { i, m ->
                     // The list says which models come without the auto mode
                     // (Claude Code's Haiku 4.5); until it has come, none is.
                     val off = m == Mode.AUTO && chosen?.autoUnavailable == true
-                    ListItem(m.text, if (off) "当前模型不支持" else modeHelp.getValue(m).replace("CLI", agentName(c.agent)), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
+                    ListItem(copy(m.text), if (off) copy(UiMessages.modesModelUnsupported()) else modeHelp.getValue(m).replace("CLI", agentName(c.agent, copy = uiText())), checked = c.mode == m, enabled = !off, last = i == newSessionModes.size - 1, onClick = { edit(c.copy(mode = m)); page = "" })
                 }
                 }
-                Hint("完全放行的新会话直接按此设置启动。")
+                Hint(copy(UiMessages.commonAndroidNewFullAccessSessionsStartDirectlyWithTheseSettings()))
             }
         }
     }
@@ -1083,12 +1085,13 @@ internal fun ModelSettingsBody(
     enabled: Boolean = true,
     edit: (NewConfig) -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     var allModels by remember(c.machineId, c.agent) { mutableStateOf(false) }
     val shownModel = models?.let { projectModel(c, it, settings) }
     val ms = models
     when {
-        ms == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent), reason = modelsError)), tone = NoticeTone.WARN)
+        ms == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent, copy = copy), reason = modelsError)), tone = NoticeTone.WARN)
         ms == null -> Text(uiText(UiMessages.modelsAndroidReadingMachine(name = machineName)), style = T.s13, color = p.ink2, modifier = Modifier.padding(vertical = 12.dp))
         else -> {
             val defaultModel = defaultsFor(settings, c.agent).model.ifEmpty { ms.defaultModel }
@@ -1205,7 +1208,7 @@ fun DirPicker(state: RemoteState, modifier: Modifier = Modifier, onChosen: (mach
             val r = remote.machineCommand(machine, remote.cmd { listDirectories = ListDirectoriesRequest.newBuilder().setPath(path).build() })
             dirs = r.listDirectories
         } catch (e: Exception) {
-            error = errorText(e)
+            error = displayError(e)
         } finally {
             loading = false
         }

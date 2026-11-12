@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

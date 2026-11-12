@@ -27,10 +27,10 @@ const val ENDED_PAGE = 30
 const val FILTER_OVER = 8
 
 /** The projects on the lists: pinned in their order, then the others; removed ones are not among them. */
-fun listedProjects(state: RemoteState): List<Project> = projectGroups(state).let { it.pinned + it.others }
+fun listedProjects(state: RemoteState, copy: MessageResolver): List<Project> = projectGroups(state, copy = copy).let { it.pinned + it.others }
 
 /** The scope before the user chose one: the only listed project, else every project. */
-fun defaultScope(state: RemoteState): HomeScope = listedProjects(state).singleOrNull()?.let { HomeScope.Of(it.key) } ?: HomeScope.All
+fun defaultScope(state: RemoteState, copy: MessageResolver): HomeScope = listedProjects(state, copy = copy).singleOrNull()?.let { HomeScope.Of(it.key) } ?: HomeScope.All
 
 /**
  * The scope the home page uses: the one remembered on this device, or the
@@ -38,12 +38,12 @@ fun defaultScope(state: RemoteState): HomeScope = listedProjects(state).singleOr
  * is not there, and when 全部项目 was remembered but there is no more than
  * one project to tell apart (the menu does not offer it then).
  */
-fun resolveScope(remembered: HomeScope?, state: RemoteState): HomeScope {
-    val listed = listedProjects(state)
+fun resolveScope(remembered: HomeScope?, state: RemoteState, copy: MessageResolver): HomeScope {
+    val listed = listedProjects(state, copy = copy)
     return when (remembered) {
-        is HomeScope.Of -> if (listed.any { it.key == remembered.key }) remembered else defaultScope(state)
-        HomeScope.All -> if (listed.size > 1) remembered else defaultScope(state)
-        null -> defaultScope(state)
+        is HomeScope.Of -> if (listed.any { it.key == remembered.key }) remembered else defaultScope(state, copy = copy)
+        HomeScope.All -> if (listed.size > 1) remembered else defaultScope(state, copy = copy)
+        null -> defaultScope(state, copy = copy)
     }
 }
 
@@ -93,8 +93,8 @@ fun metaLine(state: RemoteState, s: SessionView, meta: RowMeta): MessageText = b
 }.joinMessages(" · ")
 
 /** Whether a title has [query] in it, ignoring case; a blank query matches everything. */
-fun titleMatches(s: SessionView, query: String, zone: ZoneId = ZoneId.systemDefault()): Boolean =
-    query.isBlank() || titleOf(s, zone).contains(query.trim(), ignoreCase = true)
+fun titleMatches(s: SessionView, query: String, zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): Boolean =
+    query.isBlank() || titleOf(s, zone, copy = copy).contains(query.trim(), ignoreCase = true)
 
 /**
  * The home page's lists for a scope.
@@ -123,7 +123,7 @@ class HomeTimeline(
 /** Whether a session belongs to another project than the one the scope names. */
 fun outsideScope(s: SessionView, scope: HomeScope): Boolean = scope is HomeScope.Of && projectKey(s) != scope.key
 
-fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault()): HomeTimeline {
+fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): HomeTimeline {
     val all = state.sessions.values
     val waiting = all.filter(::needsAttention).sortedWith(attentionOrder)
     val waitingIds = waiting.mapTo(HashSet()) { it.id }
@@ -134,9 +134,9 @@ fun homeTimeline(state: RemoteState, scope: HomeScope, query: String = "", zone:
     val inScope = live + ended
     // How many ended sessions the scope has is the summaries' to say: only
     // some of them are held here. Never fewer than are.
-    val summed = projects(state).filter { if (scope is HomeScope.Of) it.key == scope.key else it.key !in hidden }.sumOf { it.ended }
+    val summed = projects(state, copy = copy).filter { if (scope is HomeScope.Of) it.key == scope.key else it.key !in hidden }.sumOf { it.ended }
     val endedTotal = maxOf(summed, ended.size)
-    val match = { s: SessionView -> titleMatches(s, query, zone) }
+    val match = { s: SessionView -> titleMatches(s, query, zone, copy = copy) }
     return HomeTimeline(
         attention = waiting.filter(match),
         running = running.filter(match),
@@ -172,9 +172,9 @@ fun pastFetched(state: RemoteState, s: SessionView): Boolean =
     state.sessionsNext?.let { afterPlace(s.listedEndedMs, s.id, it) } == true
 
 /** The line under a card of 需要处理: the project where the list spans projects or the card is from outside the scope, and the machine when there are several. */
-fun cardMeta(state: RemoteState, s: SessionView, scope: HomeScope): List<String> = buildList {
-    if (scope == HomeScope.All || outsideScope(s, scope)) add(projectName(projectKey(s)))
-    if (state.machines.size > 1) add(machineName(state.machines[s.machineId], s.machineId))
+fun cardMeta(state: RemoteState, s: SessionView, scope: HomeScope, copy: MessageResolver): List<String> = buildList {
+    if (scope == HomeScope.All || outsideScope(s, scope)) add(projectName(projectKey(s), copy = copy))
+    if (state.machines.size > 1) add(machineName(state.machines[s.machineId], s.machineId, copy = copy))
 }
 
 // --- ended sessions by day ---
@@ -238,11 +238,11 @@ fun endedTail(total: Int, more: Boolean): UiMessage? = when {
 }
 
 /** The listing tail keeps its diagnostics raw, inside a complete translated sentence. */
-fun earlierTail(state: RemoteState): UiMessage = when {
-    state.conn != ConnState.ONLINE -> UiMessages.homeAndroidEarlierOffline()
-    state.sessionsError.isNotEmpty() && !state.sessionsListed -> UiMessages.homeAndroidListFailedRetry(state.sessionsError)
-    state.sessionsError.isNotEmpty() -> UiMessages.homeAndroidEarlierFailedRetry(state.sessionsError)
-    else -> UiMessages.homeLoadingEarlier()
+fun earlierTail(state: RemoteState): MessageText = when {
+    state.conn != ConnState.ONLINE -> UiMessages.homeAndroidEarlierOffline().messageText()
+    state.sessionsError.isNotEmpty() && !state.sessionsListed -> localized { copy -> copy(UiMessages.homeAndroidListFailedRetry(state.sessionsError.resolve(copy))) }
+    state.sessionsError.isNotEmpty() -> localized { copy -> copy(UiMessages.homeAndroidEarlierFailedRetry(state.sessionsError.resolve(copy))) }
+    else -> UiMessages.homeLoadingEarlier().messageText()
 }
 
 /** The line that ends a filtered list. */
@@ -275,8 +275,8 @@ fun projectDetail(pr: Project): MessageText =
  * between, then the pinned projects, then the others in the lists' order.
  * [search] keeps the projects whose name or path has it.
  */
-fun scopeRows(state: RemoteState, current: HomeScope, search: String = ""): List<ScopeRow> {
-    val listed = listedProjects(state)
+fun scopeRows(state: RemoteState, current: HomeScope, search: String = "", copy: MessageResolver): List<ScopeRow> {
+    val listed = listedProjects(state, copy = copy)
     val q = search.trim()
     return buildList {
         if (listed.size > 1 && q.isEmpty()) {

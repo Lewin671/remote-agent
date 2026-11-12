@@ -97,7 +97,22 @@
     <string name="attachment_uploading" formatted="false">"Uploading"</string>
     <string name="attachment_zip_folder" formatted="false">"Folders cannot be sent directly. Compress the folder as a ZIP, then select the file."</string>
     <string name="common_all_projects_avatar" formatted="false">"All"</string>
+    <string name="common_android_account_signed_out" formatted="false">"Account signed out"</string>
+    <string name="common_android_after_switching_machines_each_cli_starts_with_that_machine_s" formatted="false">"After switching machines, each CLI starts with that machine\'s default model and permissions."</string>
+    <string name="common_android_allow_camera_access" formatted="false">"Allow camera access"</string>
+    <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"Camera access is needed to scan. You can also go back and enter the pairing code."</string>
+    <string name="common_android_cannot_find_this_session" formatted="false">"Cannot find this session"</string>
+    <string name="common_android_cli_s_own_mode" formatted="false">"CLI\'s own mode"</string>
+    <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"Could not clear the account and cache on this phone. Retry"</string>
+    <string name="common_android_could_not_read_this_session_value1">"Could not read this session: %1$s"</string>
+    <string name="common_android_could_not_save_pending_images" formatted="false">"Could not save pending images"</string>
+    <string name="common_android_each_cli_saves_its_own_settings_only_future_sessions_are" formatted="false">"Each CLI saves its own settings. Only future sessions are affected; active sessions stay unchanged. Synced across your devices."</string>
     <string name="common_android_more" formatted="false">"More"</string>
+    <string name="common_android_new_full_access_sessions_start_directly_with_these_settings" formatted="false">"New full-access sessions start directly with these settings."</string>
+    <string name="common_android_offline" formatted="false">"Offline"</string>
+    <string name="common_android_project_settings_may_differ" formatted="false">"(Project settings may differ)"</string>
+    <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account."</string>
+    <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"This app version is old. Update and retry"</string>
     <string name="common_back" formatted="false">"Back"</string>
     <string name="common_cancel" formatted="false">"Cancel"</string>
     <string name="common_clear_search" formatted="false">"Clear search"</string>
@@ -118,9 +133,12 @@
     <string name="common_settings" formatted="false">"Settings"</string>
     <string name="common_unknown_computer" formatted="false">"Unknown computer"</string>
     <string name="composer_after_turn" formatted="false">"Send after this turn"</string>
+    <string name="composer_android_image_not_on_computer" formatted="false">"Image is not on the computer"</string>
     <string name="composer_android_not_sent">"This message was not sent: %1$s"</string>
     <string name="composer_android_outbox_format" formatted="false">"The pending record format has changed. Clear old records and select attachments again"</string>
+    <string name="composer_android_reply_unverified" formatted="false">"Reply verification failed"</string>
     <string name="composer_android_restart_unknown" formatted="false">"The app restarted; it is unclear whether this message arrived"</string>
+    <string name="composer_android_unknown_reason" formatted="false">"Unknown reason"</string>
     <string name="composer_await_record">"Written to terminal, waiting for %1$s to record it"</string>
     <string name="composer_computer_restarted" formatted="false">"remote-agent on the computer restarted while writing"</string>
     <string name="composer_images_unrecognized">"%1$s did not recognize the images"</string>
@@ -252,6 +270,59 @@
     <string name="dock_trust_folder" formatted="false">"No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"Waiting for confirmation"</string>
     <string name="errors_account_creation_draft_preserved_continue_the_original_creation_flow" formatted="false">"Account creation draft preserved. Continue the original creation flow and recovery code confirmation."</string>
+    <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"Attachment transfer content changed. Retry"</string>
+    <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"Attachment transfer stopped or changed. Retry"</string>
+    <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"Cannot find the server. Check your network"</string>
+    <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"Cannot open the computer\'s reply. Command outcome unknown"</string>
+    <string name="errors_android_cannot_read_file_size_select_the_file_again" formatted="false">"Cannot read file size. Select the file again"</string>
+    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"Cannot read the source file. Remove it and select the file again"</string>
+    <string name="errors_android_cannot_verify_the_current_request" formatted="false">"Cannot verify the current request"</string>
+    <string name="errors_android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends" formatted="false">"Computer outcome unknown: stopped waiting for a reply. Retrying sends the same request"</string>
+    <string name="errors_android_computer_outcome_unknown_the_connection_dropped" formatted="false">"Computer outcome unknown: the connection dropped"</string>
+    <string name="errors_android_computer_outcome_unknown_the_request_may_have_arrived_before_login">"Computer outcome unknown: the request may have arrived before login failed (%1$s)"</string>
+    <string name="errors_android_computer_outcome_unknown_value1">"Computer outcome unknown: %1$s"</string>
+    <string name="errors_android_could_not_connect_to_the_server" formatted="false">"Could not connect to the server"</string>
+    <string name="errors_android_could_not_read_the_session_list" formatted="false">"Could not read the session list"</string>
+    <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"File name is too long or empty. Rename the file and select it again"</string>
+    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"File too large. Maximum size per file: %1$s"</string>
+    <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"File verification failed. Retry or select the file again"</string>
+    <string name="errors_android_history_read_failed">"Could not read history: %1$s"</string>
+    <string name="errors_android_history_records_are_discontinuous_retry_reading" formatted="false">"History records are discontinuous. Retry reading"</string>
+    <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"Image content does not match its format"</string>
+    <string name="errors_android_invalid_server_address" formatted="false">"Invalid server address"</string>
+    <string name="errors_android_login_expired">"Login expired: %1$s"</string>
+    <string name="errors_android_network_unavailable_command_was_not_sent" formatted="false">"Network unavailable. Command was not sent"</string>
+    <string name="errors_android_no_verifiable_execution_result_received_retry_the_same_request" formatted="false">"No verifiable execution result received. Retry the same request"</string>
+    <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"Only the managing client can veto recovery"</string>
+    <string name="errors_android_open_value1_to_renew">"Open %1$s to renew"</string>
+    <string name="errors_android_other_clients_kept_changing_project_preferences_could_not_save" formatted="false">"Other clients kept changing project preferences. Could not save"</string>
+    <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"Pairing approval does not match this device, has expired, or has an invalid signature"</string>
+    <string name="errors_android_project_preferences_are_changing_retry" formatted="false">"Project preferences are changing. Retry"</string>
+    <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"Records from before recovery are unreadable"</string>
+    <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"Remote control authorization expired. Cannot save changes, control sessions, or upload new content. %1$s and retry. History remains viewable"</string>
+    <string name="errors_android_remote_control_paused_value1_and_retry">"Remote control paused: %1$s and retry"</string>
+    <string name="errors_android_remove_devices_on_the_managing_client" formatted="false">"Remove devices on the managing client"</string>
+    <string name="errors_android_secure_connection_failed">"Secure connection failed: %1$s"</string>
+    <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"Security authorization or the current request is unverified. Nothing was sent. Retry"</string>
+    <string name="errors_android_security_state_unavailable" formatted="false">"Security state unavailable"</string>
+    <string name="errors_android_server_unavailable_reason">"Cannot connect to the server: %1$s"</string>
+    <string name="errors_android_terminal_connection_dropped_reason">"Terminal connection dropped: %1$s"</string>
+    <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"Terminal input paused while waiting for authorization"</string>
+    <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"Terminal output backlog. Reception stopped"</string>
+    <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"The computer did not return a file ID"</string>
+    <string name="errors_android_the_computer_has_not_verified_the_current_request" formatted="false">"The computer has not verified the current request"</string>
+    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"The computer returned invalid file progress"</string>
+    <string name="errors_android_the_current_request_changed_review_it_again" formatted="false">"The current request changed. Review it again"</string>
+    <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"The file changed during upload. Retry or select the file again"</string>
+    <string name="errors_android_the_managing_client_cannot_be_removed_normally" formatted="false">"The managing client cannot be removed normally"</string>
+    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time"</string>
+    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"The phone clock is ahead of the server. Remote control is paused. Correct the system time"</string>
+    <string name="errors_android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the">"The previous outcome is still unknown: %1$s. Retrying sends the same request"</string>
+    <string name="errors_android_the_previous_outcome_is_unknown_the_request_expired_and_will" formatted="false">"The previous outcome is unknown. The request expired and will not be resent. Check the list first; abandon and start again if needed"</string>
+    <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"This command expired and was not sent"</string>
+    <string name="errors_android_this_request_can_no_longer_be_acted_on" formatted="false">"This request can no longer be acted on"</string>
+    <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"Upload connection interrupted. Retry"</string>
+    <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s; the previous outcome is still unknown. Retry the same request once support is restored"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"Cannot connect to terminal"</string>
     <string name="errors_cannot_sign_with_the_current_security_state_the_operation" formatted="false">"Cannot sign with the current security state. The operation has not been sent; retry."</string>
     <string name="errors_connection_dropped_midway" formatted="false">"Connection dropped midway"</string>
@@ -449,14 +520,30 @@
     </plurals>
     <string name="image_add" formatted="false">"Add image"</string>
     <string name="image_android_bubble" formatted="false">"(Image)"</string>
+    <string name="image_android_cannot_decode_image" formatted="false">"Cannot decode image"</string>
+    <string name="image_android_cannot_decode_this_image" formatted="false">"Cannot decode this image"</string>
+    <string name="image_android_cannot_read_this_image" formatted="false">"Cannot read this image"</string>
+    <string name="image_android_converted_to_value1_keeping_original_dimensions">"Converted to %1$s, keeping original dimensions"</string>
+    <string name="image_android_could_not_save_image_cache" formatted="false">"Could not save image cache"</string>
     <string name="image_android_download_retry">"Could not download: %1$s · Tap to retry"</string>
     <string name="image_android_empty" formatted="false">"No images"</string>
+    <string name="image_android_file_upload_unavailable" formatted="false">"File upload unavailable"</string>
     <string name="image_android_generated_by">"Image generated by %1$s"</string>
     <string name="image_android_generated_size">"Generated image%1$s"</string>
+    <string name="image_android_gif_contains_an_unrecognized_block" formatted="false">"GIF contains an unrecognized block"</string>
+    <string name="image_android_gif_is_truncated" formatted="false">"GIF is truncated"</string>
+    <string name="image_android_image_exceeds_value1_mb">"Image exceeds %1$s MB"</string>
+    <string name="image_android_image_has_no_dimensions" formatted="false">"Image has no dimensions"</string>
     <string name="image_android_missing_uploads" formatted="false">"Images are not on the computer. Returning to the composer uploads them again and keeps the text and images"</string>
     <string name="image_android_name_only" formatted="false">"Image not synced: filename only; the original is on the computer"</string>
     <string name="image_android_no_preview" formatted="false">"No preview"</string>
+    <string name="image_android_original_exceeds_20_mb" formatted="false">"Original exceeds 20 MB"</string>
     <string name="image_android_original_meta" formatted="false">" Original"</string>
+    <string name="image_android_phone_storage_for_pending_images_is_full_send_or_remove" formatted="false">"Phone storage for pending images is full. Send or remove old drafts"</string>
+    <string name="image_android_photo_library_is_not_writable" formatted="false">"Photo library is not writable"</string>
+    <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"; pixel count exceeds this phone\'s limit; scaled down to 1/%1$s"</string>
+    <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"Reprocess or select the image again"</string>
+    <string name="image_android_reprocess_using_the_current_mode" formatted="false">"Reprocess using the current mode"</string>
     <plurals name="image_android_restore_limit">
         <item quantity="one">"Images in composer: %2$d. Returning %1$d image would exceed the limit of %3$d. Remove some images first."</item>
         <item quantity="other">"Images in composer: %2$d. Returning %1$d images would exceed the limit of %3$d. Remove some images first."</item>
@@ -464,11 +551,25 @@
     <string name="image_android_restore_retry" formatted="false">"Pending images could not be restored. You can still type; retry on the next edit or return to the composer"</string>
     <string name="image_android_restore_wait" formatted="false">"Restoring pending images; wait before returning them to the composer"</string>
     <string name="image_android_restoring" formatted="false">"Restoring pending images…"</string>
+    <string name="image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" formatted="false">"Rotate to the capture orientation and re-encode at maximum quality"</string>
     <string name="image_android_save_permission" formatted="false">"Could not save without storage permission"</string>
     <string name="image_android_saved" formatted="false">"Saved to photos"</string>
     <string name="image_android_share_title" formatted="false">"Share image"</string>
+    <string name="image_android_the_computer_did_not_provide_an_image_id" formatted="false">"The computer did not provide an image ID"</string>
+    <string name="image_android_the_computer_has_not_confirmed_the_attachment_upload_retry" formatted="false">"The computer has not confirmed the attachment upload. Retry"</string>
+    <string name="image_android_this_image_has_no_local_copy_available_for_reprocessing_remove" formatted="false">"This image has no local copy available for reprocessing. Remove it and select it again"</string>
+    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"This image has no local copy. Remove it and select it again"</string>
+    <string name="image_android_this_image_is_too_large_for_the_phone_s_available" formatted="false">"This image is too large for the phone\'s available memory"</string>
+    <string name="image_android_this_phone_cannot_read_this_image_format" formatted="false">"This phone cannot read this image format"</string>
     <string name="image_android_total_size">" · %1$s MB total"</string>
+    <string name="image_android_unreadable_gif" formatted="false">"Unreadable GIF"</string>
+    <string name="image_android_unreadable_jpeg" formatted="false">"Unreadable JPEG"</string>
+    <string name="image_android_unreadable_png" formatted="false">"Unreadable PNG"</string>
+    <string name="image_android_unreadable_webp" formatted="false">"Unreadable WebP"</string>
+    <string name="image_android_unsupported_image_format" formatted="false">"Unsupported image format"</string>
     <string name="image_android_upload_progress">"Uploading to computer, %1$s%%"</string>
+    <string name="image_android_upload_to_the_computer_again" formatted="false">"Upload to the computer again"</string>
+    <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"Upload to the computer again. If the source cannot be read, select the file again"</string>
     <string name="image_android_user_pasted" formatted="false">"Pasted by user"</string>
     <string name="image_android_verify_failed">"Image verification failed: %1$s"</string>
     <string name="image_android_viewed_by">"Image viewed by %1$s"</string>
@@ -697,6 +798,40 @@
     <string name="new_session_unconfirmed_start" formatted="false">"The previous start is still unconfirmed"</string>
     <string name="new_session_unexpected_reply" formatted="false">"Unexpected response"</string>
     <string name="new_session_use_machine">"Use %1$s"</string>
+    <string name="notifications_android_a_conversation_turn_finished" formatted="false">"A conversation turn finished"</string>
+    <string name="notifications_android_a_session_needs_your_attention" formatted="false">"A session needs your attention"</string>
+    <string name="notifications_android_allowing" formatted="false">"Allowing…"</string>
+    <string name="notifications_android_approvals_questions_plans_and_terminal_prompts" formatted="false">"Approvals, questions, plans, and terminal prompts"</string>
+    <string name="notifications_android_background_push_is_disabled_in_this_build" formatted="false">"Background push is disabled in this build"</string>
+    <string name="notifications_android_cannot_reach_google_push_services_retrying_automatically_check_your_network" formatted="false">"Cannot reach Google push services. Retrying automatically. Check your network and Google Play services"</string>
+    <string name="notifications_android_could_not_read_the_account_open_the_app_to_continue" formatted="false">"Could not read the account. Open the app to continue"</string>
+    <string name="notifications_android_could_not_save_approval_submission_state_nothing_was_sent" formatted="false">"Could not save approval submission state. Nothing was sent"</string>
+    <string name="notifications_android_could_not_submit_phone_stayed_locked_until_approval_timed_out" formatted="false">"Could not submit: phone stayed locked until approval timed out"</string>
+    <string name="notifications_android_could_not_submit_this_phone_has_no_account" formatted="false">"Could not submit: this phone has no account"</string>
+    <string name="notifications_android_could_not_sync_the_notification_subscription_retry" formatted="false">"Could not sync the notification subscription. Retry"</string>
+    <string name="notifications_android_could_not_sync_the_notification_subscription_retrying_automatically" formatted="false">"Could not sync the notification subscription. Retrying automatically"</string>
+    <string name="notifications_android_current_authorization_could_not_be_verified_open_the_app_to" formatted="false">"Current authorization could not be verified. Open the app to continue"</string>
+    <string name="notifications_android_fix" formatted="false">"Fix"</string>
+    <string name="notifications_android_google_play_services_are_disabled_push_is_unavailable" formatted="false">"Google Play services are disabled. Push is unavailable"</string>
+    <string name="notifications_android_google_play_services_are_not_installed_push_is_unavailable" formatted="false">"Google Play services are not installed. Push is unavailable"</string>
+    <string name="notifications_android_google_play_services_are_unavailable_install_or_enable_them_then" formatted="false">"Google Play services are unavailable. Install or enable them, then retry"</string>
+    <string name="notifications_android_google_play_services_are_unavailable_push_is_unavailable" formatted="false">"Google Play services are unavailable. Push is unavailable"</string>
+    <string name="notifications_android_google_play_services_are_updating_background_alerts_are_temporarily_unavailable" formatted="false">"Google Play services are updating. Background alerts are temporarily unavailable"</string>
+    <string name="notifications_android_google_play_services_need_an_update_push_is_unavailable" formatted="false">"Google Play services need an update. Push is unavailable"</string>
+    <string name="notifications_android_google_push_registration_could_not_be_verified_check_google_play" formatted="false">"Google push registration could not be verified. Check Google Play services or the app\'s push configuration"</string>
+    <string name="notifications_android_install_update_or_enable_google_play_services_in_system_settings" formatted="false">"Install, update, or enable Google Play services in system settings, then retry"</string>
+    <string name="notifications_android_outcome_unknown_open_the_app_to_check" formatted="false">"Outcome unknown. Open the app to check"</string>
+    <string name="notifications_android_phone_locked_submission_continues_after_unlocking" formatted="false">"Phone locked. Submission continues after unlocking…"</string>
+    <string name="notifications_android_recovery_requested_open_devices_to_view_it" formatted="false">"Recovery requested. Open Devices to view it"</string>
+    <string name="notifications_android_rejecting" formatted="false">"Rejecting…"</string>
+    <string name="notifications_android_still_submitting_value1">"Still submitting… (%1$s)"</string>
+    <string name="notifications_android_submitting_approval" formatted="false">"Submitting approval…"</string>
+    <string name="notifications_android_system_notification_permission_is_disabled" formatted="false">"System notification permission is disabled"</string>
+    <string name="notifications_android_the_server_could_not_save_the_notification_subscription_retry" formatted="false">"The server could not save the notification subscription. Retry"</string>
+    <string name="notifications_android_the_server_has_not_configured_fcm_push_is_unavailable" formatted="false">"The server has not configured FCM. Push is unavailable"</string>
+    <string name="notifications_android_this_approval_timed_out_and_was_rejected_by_policy" formatted="false">"This approval timed out and was rejected by policy"</string>
+    <string name="notifications_android_unlock_the_phone_then_open_the_app_to_approve" formatted="false">"Unlock the phone, then open the app to approve"</string>
+    <string name="notifications_android_view_full_text" formatted="false">"View full text"</string>
     <string name="notifications_scheduled_tasks_have_new_results" formatted="false">"Scheduled tasks have new results"</string>
     <string name="notifications_the_browser_did_not_allow_notifications" formatted="false">"The browser did not allow notifications"</string>
     <string name="projects_add_again" formatted="false">"Add again"</string>
@@ -801,6 +936,10 @@
     <string name="queue_unrecognized" formatted="false">"Input field not recognized; paused"</string>
     <string name="queue_when_ready" formatted="false">"Send when ready"</string>
     <string name="quota_account">" · Account %1$s"</string>
+    <string name="quota_android_last_record" formatted="false">"(Last record)"</string>
+    <string name="quota_android_reset_at">"%3$s · %2$s %1$s"</string>
+    <string name="quota_android_value1_value2_value3">"%1$s/%2$s %3$s"</string>
+    <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" You can view /usage in Claude Code on this computer."</string>
     <string name="quota_awaiting_update" formatted="false">"Awaiting update"</string>
     <plurals name="quota_days">
         <item quantity="one">"%1$d day"</item>
@@ -879,6 +1018,98 @@
     </plurals>
     <string name="schedule_after_turn_ends" formatted="false">"After turn ends"</string>
     <string name="schedule_after_turn_replace">"%1$s. Choose another frequency above to replace it."</string>
+    <string name="schedule_android_agent_notification" formatted="false">"agent notification"</string>
+    <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent notification, completion notification"</string>
+    <string name="schedule_android_alternative_limit">"%1$s, or %2$s"</string>
+    <string name="schedule_android_attention_details">"%2$s. %1$s %3$s"</string>
+    <string name="schedule_android_automatic_run_count" formatted="false">"Automatic run count"</string>
+    <string name="schedule_android_beijing" formatted="false">"Beijing"</string>
+    <string name="schedule_android_cannot_read_the_previous_task_list_connect_to_read_it" formatted="false">"Cannot read the previous task list. Connect to read it again"</string>
+    <string name="schedule_android_cannot_request_notification" formatted="false">"Cannot request notification"</string>
+    <string name="schedule_android_changes_have_not_been_saved" formatted="false">"Changes have not been saved."</string>
+    <string name="schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes" formatted="false">"Check project updates and notify me of noteworthy changes."</string>
+    <string name="schedule_android_check_the_time" formatted="false">"Check the time"</string>
+    <string name="schedule_android_choose_a_project" formatted="false">"Choose a project"</string>
+    <string name="schedule_android_choose_a_time_type" formatted="false">"Choose a time type"</string>
+    <string name="schedule_android_choose_directory" formatted="false">"Choose directory"</string>
+    <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"Computer offline. Tasks cannot be edited"</string>
+    <string name="schedule_android_connect_value1_to_edit_run_or_delete">"Connect %1$s to edit, run, or delete."</string>
+    <string name="schedule_android_continuing_may_send_the_previous_message_again_open_the_run" formatted="false">"Continuing may send the previous message again. Open the run history to verify first."</string>
+    <string name="schedule_android_creating" formatted="false">"Creating…"</string>
+    <string name="schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" formatted="false">"Creation is unconfirmed. Retrying uses the same request. You can go back and check the task list first."</string>
+    <string name="schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a">"Currently “%1$s”. Finishing directly preserves the original rule; choose a time type above before changing it."</string>
+    <string name="schedule_android_date" formatted="false">"Date"</string>
+    <string name="schedule_android_days" formatted="false">"Days"</string>
+    <string name="schedule_android_delete_this_task" formatted="false">"Delete this task?"</string>
+    <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"Each run opens a new conversation under this task, outside the session list. Completion notifications are on by default. When disabled, only the agent can notify you."</string>
+    <string name="schedule_android_end_date" formatted="false">"End date"</string>
+    <string name="schedule_android_ended_value1">"Ended %1$s"</string>
+    <string name="schedule_android_follow_conversation" formatted="false">"Follow conversation"</string>
+    <string name="schedule_android_for_example_asia_shanghai" formatted="false">"For example, Asia/Shanghai"</string>
+    <string name="schedule_android_hours" formatted="false">"Hours"</string>
+    <string name="schedule_android_interval" formatted="false">"Interval"</string>
+    <string name="schedule_android_interval_must_be_greater_than_0" formatted="false">"Interval must be greater than 0"</string>
+    <plurals name="schedule_android_large_after_current_turn">
+        <item quantity="one">"%2$s sec after the current turn ends"</item>
+        <item quantity="other">"%2$s sec after the current turn ends"</item>
+    </plurals>
+    <plurals name="schedule_android_large_after_each_turn">
+        <item quantity="one">"%2$s sec after each turn ends"</item>
+        <item quantity="other">"%2$s sec after each turn ends"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_days">
+        <item quantity="one">"Every %2$s day"</item>
+        <item quantity="other">"Every %2$s days"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_hours">
+        <item quantity="one">"Every %2$s hour"</item>
+        <item quantity="other">"Every %2$s hours"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_minutes">
+        <item quantity="one">"Every %2$s minute"</item>
+        <item quantity="other">"Every %2$s minutes"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_seconds">
+        <item quantity="one">"Every %2$s second"</item>
+        <item quantity="other">"Every %2$s seconds"</item>
+    </plurals>
+    <plurals name="schedule_android_large_runs_total">
+        <item quantity="one">"%2$s run total"</item>
+        <item quantity="other">"%2$s runs total"</item>
+    </plurals>
+    <string name="schedule_android_minutes" formatted="false">"Minutes"</string>
+    <string name="schedule_android_missing_target" formatted="false">"The run failed and the task stopped: the destination conversation was not found. This task only sends to its original conversation; resuming will fail again."</string>
+    <string name="schedule_android_monday_to_friday" formatted="false">"Monday to Friday"</string>
+    <string name="schedule_android_needs_your_attention" formatted="false">"Needs your attention"</string>
+    <string name="schedule_android_new_result" formatted="false">"New result"</string>
+    <string name="schedule_android_new_result_0653c4" formatted="false">"New result"</string>
+    <string name="schedule_android_next_run">"Next %1$s"</string>
+    <string name="schedule_android_next_value1">" · Next %1$s"</string>
+    <string name="schedule_android_positive_integer" formatted="false">"Positive integer"</string>
+    <string name="schedule_android_read" formatted="false">"Read"</string>
+    <string name="schedule_android_read_again" formatted="false">"Read again"</string>
+    <string name="schedule_android_recent" formatted="false">"Recent"</string>
+    <string name="schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" formatted="false">"Resuming or rescheduling starts at the next automatic time and does not resend the previous message."</string>
+    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"Run count must be greater than 0"</string>
+    <string name="schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" formatted="false">"Run once now does not count toward automatic runs or the calendar day\'s limit. Deleting stops future scheduling; sent messages and opened conversations are kept."</string>
+    <string name="schedule_android_running_label" formatted="false">"Running ·"</string>
+    <string name="schedule_android_saving" formatted="false">"Saving…"</string>
+    <string name="schedule_android_saving_ff509c" formatted="false">"Saving…"</string>
+    <string name="schedule_android_seconds" formatted="false">"Seconds"</string>
+    <string name="schedule_android_select_at_least_one_day" formatted="false">"Select at least one day"</string>
+    <string name="schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" formatted="false">"Stop future scheduling. Sent messages and opened conversations are kept."</string>
+    <string name="schedule_android_task" formatted="false">"Task"</string>
+    <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"Task not found. It may have been deleted on another device"</string>
+    <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"The end date is in the past"</string>
+    <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"The message is sent after the current turn ends, without interrupting ongoing work."</string>
+    <string name="schedule_android_this_task_cannot_be_renamed_separately" formatted="false">"This task cannot be renamed separately"</string>
+    <string name="schedule_android_unit" formatted="false">"Unit"</string>
+    <string name="schedule_android_unknown_time" formatted="false">"Unknown time"</string>
+    <string name="schedule_android_unread" formatted="false">"Unread"</string>
+    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"Update remote-agent on the computer to create scheduled tasks."</string>
+    <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"Update remote-agent on this computer to manage scheduled tasks"</string>
+    <string name="schedule_android_value1_time">"(%1$s time)"</string>
+    <string name="schedule_android_you_can_run_an_extra_time_now_or_change_the" formatted="false">"You can run an extra time now, or change the schedule."</string>
     <string name="schedule_attention_once">"%1$s. Change the time to reschedule."</string>
     <string name="schedule_attention_resume">"%1$s. Resuming or rescheduling starts at the next automatic time and does not resend the last message."</string>
     <string name="schedule_attention_uncertain">"%1$s. Continuing may repeat the last message. Open the run records to verify first."</string>
@@ -1120,6 +1351,155 @@
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"After removing this unfinished pairing, generate a new code in Add device so the new device can join again."</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable."</string>
     <string name="security_allow_to_join" formatted="false">"Allow to join"</string>
+    <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"Abandon this recovery and enter a new code"</string>
+    <string name="security_android_after_completion_wait_for_retained_computers_to_come_online_and" formatted="false">"After completion, wait for retained computers to come online and publish current state"</string>
+    <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"Already registering this phone. Wait for the result"</string>
+    <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion"</string>
+    <string name="security_android_cannot_complete_yet_or_recovery_was_vetoed" formatted="false">"Cannot complete yet, or recovery was vetoed"</string>
+    <string name="security_android_cannot_confirm_whether_the_new_device_joined_check_your_network" formatted="false">"Cannot confirm whether the new device joined. Check your network and retry the same approval, or check the new device"</string>
+    <string name="security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client">"Cannot confirm whether this phone joined: %1$s. Check the client list in Settings on the managing client"</string>
+    <string name="security_android_clearing" formatted="false">"Clearing…"</string>
+    <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"Compare the 4 patterns on the managing client. If they match, confirm here first, then allow on the managing client."</string>
+    <string name="security_android_completing" formatted="false">"Completing…"</string>
+    <string name="security_android_completion_requires_48_hours" formatted="false">"Completion requires 48 hours."</string>
+    <string name="security_android_connecting" formatted="false">"Connecting…"</string>
+    <string name="security_android_continue_original_operation" formatted="false">"Continue original operation"</string>
+    <string name="security_android_control_validity_advice">"Valid until %1$s. Open this client daily; it renews automatically when eligible. After expiry, remote control pauses, while chat and history remain viewable."</string>
+    <string name="security_android_could_not_read_security_operation_state_before_exiting_value1">"Could not read security operation state before exiting: %1$s"</string>
+    <string name="security_android_create_account" formatted="false">"Create account"</string>
+    <string name="security_android_current_client" formatted="false">"Current client"</string>
+    <string name="security_android_current_content_key_missing" formatted="false">"Current content key missing"</string>
+    <string name="security_android_do_not_publish_yet" formatted="false">"Do not publish yet"</string>
+    <string name="security_android_enter_the_8_digit_pairing_code" formatted="false">"Enter the 8-digit pairing code"</string>
+    <string name="security_android_enter_the_recovery_code_saved_during_setup_after_submitting_wait" formatted="false">"Enter the recovery code saved during setup. After submitting, wait 48 hours. The original managing client can see the request when opened (push may not arrive) and explicitly veto it during this period. Ordinary renewal does not invalidate recovery."</string>
+    <string name="security_android_exit_and_delete_local_keys_in_settings" formatted="false">"Exit and delete local keys in Settings"</string>
+    <string name="security_android_exit_incomplete_value1">"Exit incomplete: %1$s"</string>
+    <string name="security_android_export_genesis_state" formatted="false">"Export genesis state"</string>
+    <string name="security_android_export_genesis_state_for_offline_relay_pinning" formatted="false">"Export genesis state (for offline relay pinning)"</string>
+    <string name="security_android_first_delete_the_account_keys_and_cache_on_this_device" formatted="false">"First delete the account keys and cache on this device, then join with a pairing code."</string>
+    <string name="security_android_first_delete_the_account_keys_and_cache_on_this_phone" formatted="false">"First delete the account keys and cache on this phone, then join with a pairing code."</string>
+    <string name="security_android_generating" formatted="false">"Generating…"</string>
+    <string name="security_android_going_back_stops_this_wait_reject_the_old_request_on" formatted="false">"Going back stops this wait. Reject the old request on the managing client, then generate a new pairing code."</string>
+    <string name="security_android_i_saved_it_start_using_the_app" formatted="false">"I saved it. Start using the app"</string>
+    <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"I saved the new recovery code offline"</string>
+    <string name="security_android_if_48_hours_have_not_passed_or_the_original_managing" formatted="false">"If 48 hours have not passed or the original managing client vetoed the request, completion fails with a reason."</string>
+    <string name="security_android_incorrect_recovery_code" formatted="false">"Incorrect recovery code"</string>
+    <string name="security_android_incorrect_recovery_code_or_no_pending_recovery" formatted="false">"Incorrect recovery code, or no pending recovery"</string>
+    <string name="security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" formatted="false">"Incorrect recovery code, or the recovery statement was rejected"</string>
+    <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"Join receipt device public key mismatch"</string>
+    <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"Join receipt does not contain this device\'s identity"</string>
+    <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"Keep this phone\'s account root key and device identity, discard protocol 9 security state, create protocol 10 genesis state, and make this phone the managing client. Use an old version to read protocol 9 history."</string>
+    <string name="security_android_last_used_times_are_on_the_right_each_device_changes" formatted="false">"Last used times are on the right. Each device changes its own name. The managing client can remove other devices."</string>
+    <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"Membership sync failed. There may be an invalid pairing. Check the device list and remove incomplete devices, then start again."</string>
+    <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"Name changes sync to other clients. Set notifications on this phone; they cannot be changed remotely here."</string>
+    <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"New recovery code confirmed saved offline"</string>
+    <string name="security_android_no_account_available_to_upgrade" formatted="false">"No account available to upgrade"</string>
+    <string name="security_android_no_candidate_device" formatted="false">"No candidate device"</string>
+    <string name="security_android_no_computers_yet" formatted="false">"No computers yet"</string>
+    <string name="security_android_no_device_has_joined_yet" formatted="false">"No device has joined yet"</string>
+    <string name="security_android_not_read_yet" formatted="false">"Not read yet"</string>
+    <string name="security_android_offline" formatted="false">"Offline"</string>
+    <string name="security_android_online" formatted="false">"Online"</string>
+    <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"Only a removed computer\'s archive from the same account can be resumed"</string>
+    <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"Only the managing client can add devices"</string>
+    <string name="security_android_only_the_managing_client_can_approve" formatted="false">"Only the managing client can approve"</string>
+    <string name="security_android_only_this_client_can_change_its_name_notification_settings_must" formatted="false">"Only this client can change its name. Notification settings must also be changed on that device."</string>
+    <string name="security_android_open_settings_add_device_on_the_managing_client_scan_its" formatted="false">"Open Settings › Add device on the managing client. Scan its QR code or enter the 8-digit pairing code here."</string>
+    <string name="security_android_optional" formatted="false">"Optional"</string>
+    <string name="security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" formatted="false">"Outcome unconfirmed. Retry the same approval after returning to the foreground"</string>
+    <string name="security_android_pairing_approval_does_not_match_this_device_or_its_signature" formatted="false">"Pairing approval does not match this device or its signature is invalid"</string>
+    <string name="security_android_pairing_cannot_finish_right_now_check_your_network_then_start" formatted="false">"Pairing cannot finish right now. Check your network, then start again"</string>
+    <string name="security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" formatted="false">"Pairing commitment changed after the ephemeral public key was revealed"</string>
+    <string name="security_android_pairing_commitment_mismatch" formatted="false">"Pairing commitment mismatch"</string>
+    <string name="security_android_pairing_payload_belongs_to_another_security_domain" formatted="false">"Pairing payload belongs to another security domain"</string>
+    <string name="security_android_pairing_payload_is_missing_the_account_public_key" formatted="false">"Pairing payload is missing the account public key"</string>
+    <string name="security_android_pairing_payload_managing_client_mismatch" formatted="false">"Pairing payload managing client mismatch"</string>
+    <string name="security_android_pairing_payload_state_chain_is_incomplete" formatted="false">"Pairing payload state chain is incomplete"</string>
+    <string name="security_android_pairing_trust_information_is_too_large" formatted="false">"Pairing trust information is too large"</string>
+    <string name="security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" formatted="false">"Patterns were not confirmed on this device. Secure binding stopped"</string>
+    <string name="security_android_paused_retry_after_returning_to_the_foreground" formatted="false">"Paused. Retry after returning to the foreground"</string>
+    <string name="security_android_publishing" formatted="false">"Publishing…"</string>
+    <string name="security_android_reading_membership_state" formatted="false">"Reading membership state…"</string>
+    <string name="security_android_rebuild_security_domain" formatted="false">"Rebuild security domain"</string>
+    <string name="security_android_rebuild_security_domain_and_become_managing_client" formatted="false">"Rebuild security domain and become managing client"</string>
+    <string name="security_android_rebuilding" formatted="false">"Rebuilding…"</string>
+    <string name="security_android_recovery_can_now_be_completed" formatted="false">"Recovery can now be completed."</string>
+    <string name="security_android_recovery_code_backup_status" formatted="false">"Recovery code backup status"</string>
+    <string name="security_android_recovery_code_shown_only_once" formatted="false">"Recovery code · Shown only once"</string>
+    <string name="security_android_recovery_eligible_at">"Eligible at: %1$s"</string>
+    <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"Recovery not found. It may be complete or vetoed"</string>
+    <string name="security_android_registration_challenge_expired_retry" formatted="false">"Registration challenge expired. Retry"</string>
+    <string name="security_android_remote_control" formatted="false">"Remote control"</string>
+    <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"Removal disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires approval on the managing client."</string>
+    <string name="security_android_remove_this_client" formatted="false">"Remove this client"</string>
+    <string name="security_android_removed" formatted="false">"Removed"</string>
+    <string name="security_android_renew_on_authority" formatted="false">"Renew on the current managing client"</string>
+    <string name="security_android_renews_automatically_when_you_return_to_the_managing_client_after" formatted="false">"Renews automatically when you return to the managing client. After expiry, remote control pauses, while chat and history remain viewable."</string>
+    <string name="security_android_saving" formatted="false">"Saving…"</string>
+    <string name="security_android_scan_qr_code" formatted="false">"Scan QR code"</string>
+    <string name="security_android_security_domain_pinning_failed" formatted="false">"Security domain pinning failed"</string>
+    <string name="security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum">"Server registration computation requirement is too high (%1$s bits; maximum 28)"</string>
+    <string name="security_android_setup_token_if_required_by_the_server" formatted="false">"Setup token (if required by the server)"</string>
+    <string name="security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" formatted="false">"Someone is requesting management takeover with a recovery code. Veto it if this is not you."</string>
+    <string name="security_android_state_chain_is_too_large_to_pair_recreate_the_account" formatted="false">"State chain is too large to pair. Recreate the account"</string>
+    <string name="security_android_still_within_the_48_hour_waiting_period" formatted="false">"Still within the 48-hour waiting period."</string>
+    <string name="security_android_submit_recovery" formatted="false">"Submit recovery"</string>
+    <string name="security_android_submitting" formatted="false">"Submitting…"</string>
+    <string name="security_android_takes_effect_after_48_hours_a_veto_from_the_original" formatted="false">"Takes effect after 48 hours. A veto from the original managing client invalidates it. Write it down or photograph it now."</string>
+    <string name="security_android_the_account_saved_on_this_phone_does_not_match_its" formatted="false">"The account saved on this phone does not match its root key"</string>
+    <string name="security_android_the_candidate_device_cannot_use_the_managing_client_s_identity" formatted="false">"The candidate device cannot use the managing client\'s identity"</string>
+    <string name="security_android_the_candidate_device_needs_an_update" formatted="false">"The candidate device needs an update"</string>
+    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"The managing client\'s trust information does not match its commitment"</string>
+    <string name="security_android_the_new_code_is_still_on_this_page_save_it" formatted="false">"The new code is still on this page. Save it offline"</string>
+    <string name="security_android_the_new_recovery_code_generated_for_this_request_is_invalid" formatted="false">"The new recovery code generated for this request is invalid. Reapply using the replacement code from the original managing client."</string>
+    <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"The original device identity, keys, and history are kept. Open Settings › Add device on the managing client, scan or enter the pairing code, then compare 4 patterns on both devices to join."</string>
+    <string name="security_android_the_original_managing_client_vetoed_this_recovery" formatted="false">"The original managing client vetoed this recovery."</string>
+    <string name="security_android_the_original_security_operation_is_verified_complete" formatted="false">"The original security operation is verified complete."</string>
+    <string name="security_android_the_recovery_chain_published_by_the_server_differs_from_the" formatted="false">"The recovery chain published by the server differs from the submitted chain"</string>
+    <string name="security_android_the_recovery_state_published_by_the_server_differs_from_the" formatted="false">"The recovery state published by the server differs from the submitted state"</string>
+    <string name="security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade" formatted="false">"The relay has not pinned this security domain (an upgrade from an old version, or the relay is stopped). Export the public genesis state, pin it while the relay is stopped (self-hosting guide steps 4–5), then start the relay."</string>
+    <string name="security_android_the_server_did_not_accept_this_approval_check_whether_the" formatted="false">"The server did not accept this approval. Check whether the new device joined, then start again"</string>
+    <string name="security_android_the_server_rejected_this_device_s_login" formatted="false">"The server rejected this device\'s login"</string>
+    <string name="security_android_the_server_returned_an_invalid_registration_challenge" formatted="false">"The server returned an invalid registration challenge"</string>
+    <string name="security_android_the_server_returned_an_unexpected_device_id" formatted="false">"The server returned an unexpected device ID"</string>
+    <string name="security_android_these_computers_must_republish_checkpoints_after_recovery" formatted="false">"; these computers must republish checkpoints after recovery"</string>
+    <string name="security_android_this_client_is_no_longer_in_the_current_member_list" formatted="false">"This client is no longer in the current member list"</string>
+    <string name="security_android_this_deletes_the_account_keys_and_cache_on_this_phone" formatted="false">"This deletes the account keys and cache on this phone. Computer sessions are unaffected."</string>
+    <string name="security_android_this_device_is_not_the_managing_client_in_the_recovery" formatted="false">"This device is not the managing client in the recovery chain"</string>
+    <string name="security_android_this_device_s_identity_differs_from_its_member_record_cannot" formatted="false">"This device\'s identity differs from its member record. Cannot rejoin"</string>
+    <string name="security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" formatted="false">"This device was removed. Its old identity cannot rejoin. Rejoin on that device to generate a new identity"</string>
+    <string name="security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"This disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires fresh approval on the managing client."</string>
+    <string name="security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" formatted="false">"This immediately disconnects it and revokes access, keeping sessions and images on the relay. It must rejoin the account to connect again."</string>
+    <string name="security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will" formatted="false">"This is a saved rebuild draft. The recovery code will not appear again. Confirm you have an offline backup. If not, replace the code immediately after entering."</string>
+    <string name="security_android_this_is_not_a_remote_agent_pairing_qr_code" formatted="false">"This is not a remote-agent pairing QR code"</string>
+    <string name="security_android_this_is_the_only_managing_client_transfer_management_first_exiting" formatted="false">"This is the only managing client. Transfer management first. Exiting deletes the management key; without a recovery code backup, management access will be lost."</string>
+    <string name="security_android_this_join_attempt_was_cancelled" formatted="false">"This join attempt was cancelled"</string>
+    <string name="security_android_this_join_attempt_was_cancelled_the_old_request_may_still" formatted="false">"This join attempt was cancelled. The old request may still occupy the pairing code. Reject it on the managing client, then generate a new code"</string>
+    <string name="security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" formatted="false">"This pairing is no longer valid. Cannot verify whether the new device joined. Check the new device or device list before starting again."</string>
+    <string name="security_android_this_pairing_is_no_longer_valid_the_new_device_did" formatted="false">"This pairing is no longer valid. The new device did not join. Remove the incomplete device from the device list, then start again."</string>
+    <string name="security_android_this_pairing_only_allows_the_original_computer_to_rejoin" formatted="false">"This pairing only allows the original computer to rejoin"</string>
+    <string name="security_android_this_phone_has_no_account_public_key_and_cannot_register" formatted="false">"This phone has no account public key and cannot register a new device. First rejoin using a device with the account root key"</string>
+    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_become" formatted="false">"This phone has no account root key and cannot become the managing client. Use a device retaining the root key, or recover on the successor device with the recovery code."</string>
+    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_rebuild" formatted="false">"This phone has no account root key and cannot rebuild the security domain. Pair again using the managing client"</string>
+    <string name="security_android_this_phone_will_become_the_managing_client_the_account_root" formatted="false">"This phone will become the managing client. The account root key and device identity are stored only on the phone. The recovery code appears once; prepare paper or a camera."</string>
+    <string name="security_android_this_public_genesis_state_contains_no_keys_use_it_only" formatted="false">"This public genesis state contains no keys. Use it only when the upgrade guide requires offline relay pinning."</string>
+    <string name="security_android_this_recovery_is_complete" formatted="false">"This recovery is complete."</string>
+    <string name="security_android_this_recovery_was_submitted_complete_it_on_the_phone_that" formatted="false">"This recovery was submitted. Complete it on the phone that saved the recovery identity"</string>
+    <string name="security_android_this_recovery_was_submitted_if_you_have_not_saved_the" formatted="false">"This recovery was submitted. If you have not saved the new recovery code, replace it in Settings immediately after completion."</string>
+    <string name="security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" formatted="false">"This recovery was vetoed. The new recovery code generated for it is also invalid."</string>
+    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"Too many attempts. Wait a minute and retry"</string>
+    <string name="security_android_transfer_to">"Transfer to %1$s"</string>
+    <string name="security_android_unrecognized_recovery_status" formatted="false">"Unrecognized recovery status"</string>
+    <string name="security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" formatted="false">"Upgrading an existing account? Rebuild the security domain and become managing client"</string>
+    <string name="security_android_use_this_to_recover_management_if_the_managing_client_is" formatted="false">"Use this to recover management if the managing client is lost. It only signs recovery statements and cannot decrypt content. If both the management key and recovery code are lost, the account must be recreated."</string>
+    <string name="security_android_verify_original_security_operation" formatted="false">"Verify original security operation"</string>
+    <string name="security_android_view" formatted="false">"View"</string>
+    <string name="security_android_view_status" formatted="false">"View status"</string>
+    <string name="security_android_wait" formatted="false">"Wait"</string>
+    <string name="security_android_waiting_for_computers_to_restore_current_sessions" formatted="false">"Waiting for computers to restore current sessions"</string>
+    <string name="security_android_waiting_for_managing_client_approval_and_completing_join" formatted="false">"Waiting for managing client approval and completing join…"</string>
+    <string name="security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" formatted="false">"Write it down or photograph it before publishing. Publishing immediately invalidates the old code."</string>
+    <string name="security_android_write_it_down_or_photograph_it_it_only_signs_recovery" formatted="false">"Write it down or photograph it. It only signs recovery statements and cannot decrypt content."</string>
     <string name="security_another_pairing_draft_is_unfinished" formatted="false">"Another pairing draft is unfinished"</string>
     <string name="security_another_pairing_draft_is_unfinished_complete_this_pairing_or" formatted="false">"Another pairing draft is unfinished. Complete this pairing or explicitly exit before retrying."</string>
     <string name="security_another_security_operation_is_unfinished" formatted="false">"Another security operation is unfinished"</string>
@@ -1462,6 +1842,100 @@
     <string name="settings_added" formatted="false">"Added"</string>
     <string name="settings_all_clients" formatted="false">"All clients"</string>
     <string name="settings_all_devices" formatted="false">"All devices"</string>
+    <string name="settings_android_allow_in_settings" formatted="false">"Allow in settings"</string>
+    <string name="settings_android_allow_remote_agent_to_install_apps_in_system_settings_then" formatted="false">"Allow remote-agent to install apps in system settings, then return to continue."</string>
+    <string name="settings_android_allow_the_original_computer_to_resume_value1_s_retained_sessions">"Allow the original computer to resume %1$s\'s retained sessions and images. The old identity remains revoked. Enter the pairing code on the original computer."</string>
+    <string name="settings_android_already_on_the_latest_published_version" formatted="false">"Already on the latest published version"</string>
+    <string name="settings_android_approval_commands_will_appear_in_system_notifications_and_may_remain" formatted="false">"Approval commands will appear in system notifications and may remain in notification history. The lock screen still shows generic text"</string>
+    <string name="settings_android_attachment_storage_this_phone" formatted="false">"Attachment storage · This phone"</string>
+    <string name="settings_android_cannot_connect_to_the_release_address" formatted="false">"Cannot connect to the release address"</string>
+    <string name="settings_android_cannot_open_the_system_installer" formatted="false">"Cannot open the system installer."</string>
+    <string name="settings_android_checking_for_updates" formatted="false">"Checking for updates…"</string>
+    <string name="settings_android_clean_up_reclaimable_images" formatted="false">"Clean up reclaimable images?"</string>
+    <string name="settings_android_cleaning" formatted="false">"Cleaning…"</string>
+    <string name="settings_android_clear_viewing_cache" formatted="false">"Clear viewing cache"</string>
+    <string name="settings_android_code_paths_commands_and_terminal" formatted="false">"Code, paths, commands, and terminal"</string>
+    <string name="settings_android_compare_these_4_patterns_on_the_new_device_and_confirm" formatted="false">"Compare these 4 patterns on the new device and confirm there. It can join after confirmation. You can leave this page while waiting."</string>
+    <string name="settings_android_could_not_check_for_updates_value1">"Could not check for updates: %1$s"</string>
+    <string name="settings_android_could_not_download_value1">"Could not download: %1$s"</string>
+    <string name="settings_android_could_not_read_release_information_value1">"Could not read release information (%1$s)"</string>
+    <string name="settings_android_could_not_save_installation_package" formatted="false">"Could not save installation package"</string>
+    <string name="settings_android_current_version_value1">"Current version %1$s"</string>
+    <string name="settings_android_default_value1_s_own_configuration">"Default (%1$s\'s own configuration)"</string>
+    <string name="settings_android_download_again" formatted="false">"Download again"</string>
+    <string name="settings_android_download_and_install_value1">"Download and install (%1$s)"</string>
+    <string name="settings_android_download_failed" formatted="false">"Download failed"</string>
+    <string name="settings_android_download_failed_value1">"Download failed (%1$s)"</string>
+    <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"Downloaded file does not match release information"</string>
+    <string name="settings_android_downloading_value1">"Downloading %1$s"</string>
+    <string name="settings_android_downloading_value1_value2">"Downloading %1$s / %2$s"</string>
+    <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"Fonts · SIL Open Font License 1.1"</string>
+    <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"For an unverified version, run remote-agent doctor on the computer"</string>
+    <string name="settings_android_icons_isc_license" formatted="false">"Icons · ISC License"</string>
+    <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"Image drafts and file source information are cleared after 7 idle days. Unconfirmed messages stay until confirmed or removed. File contents are not copied to the phone. Existing content is kept when storage is full."</string>
+    <string name="settings_android_install" formatted="false">"Install"</string>
+    <string name="settings_android_installation_did_not_finish_you_can_install_again" formatted="false">"Installation did not finish. You can install again."</string>
+    <string name="settings_android_interface_icons" formatted="false">"Interface icons"</string>
+    <string name="settings_android_invalid_release_information_format" formatted="false">"Invalid release information format"</string>
+    <string name="settings_android_later" formatted="false">"Later"</string>
+    <string name="settings_android_latin_text_and_numbers_in_the_interface" formatted="false">"Latin text and numbers in the interface"</string>
+    <string name="settings_android_local_storage" formatted="false">"Local storage"</string>
+    <string name="settings_android_new_computer" formatted="false">"New computer"</string>
+    <string name="settings_android_new_device" formatted="false">"New device"</string>
+    <string name="settings_android_new_device_joined" formatted="false">"New device joined"</string>
+    <string name="settings_android_new_version_value1">"New version %1$s"</string>
+    <string name="settings_android_new_version_value1_available">"New version %1$s available"</string>
+    <string name="settings_android_offline_last_online_value1">"Offline · Last online %1$s"</string>
+    <string name="settings_android_online" formatted="false">"Online"</string>
+    <string name="settings_android_online_b90866" formatted="false">"Online"</string>
+    <string name="settings_android_only_affects_system_notifications_while_the_app_is_in_the" formatted="false">"\nOnly affects system notifications while the app is in the background; chat and approvals are unaffected"</string>
+    <string name="settings_android_open_source_licenses" formatted="false">"Open source licenses"</string>
+    <string name="settings_android_pairing_qr_code" formatted="false">"Pairing QR code"</string>
+    <string name="settings_android_pending_and_unconfirmed_attachments" formatted="false">"Pending and unconfirmed attachments"</string>
+    <string name="settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1">"Reconnect archives or delete records on the managing client (%1$s)."</string>
+    <string name="settings_android_recovery_code_qr_code" formatted="false">"Recovery code QR code"</string>
+    <string name="settings_android_recovery_pending_eligible_at_value1">"Recovery pending · Eligible at: %1$s"</string>
+    <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"Rejoin this computer and resume sessions"</string>
+    <string name="settings_android_release_information_is_missing_value1">"Release information is missing %1$s"</string>
+    <string name="settings_android_release_protocol_is_not_a_number" formatted="false">"Release protocol is not a number"</string>
+    <string name="settings_android_release_size_is_not_a_number" formatted="false">"Release size is not a number"</string>
+    <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"Release versionCode is not a number"</string>
+    <string name="settings_android_remote_agent_on_this_computer_cannot_read_value1_quotas">"remote-agent on this computer cannot read %1$s quotas."</string>
+    <string name="settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" formatted="false">"Removal immediately disconnects it and keeps sessions and images on the relay. It must rejoin the account to connect again."</string>
+    <string name="settings_android_remove_devices_on_the_managing_client_value1">"Remove devices on the managing client (%1$s)."</string>
+    <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"Remove reclaimable originals and cache. Large images not yet synced will show previews only. Originals queued or in use, and session history, are kept."</string>
+    <string name="settings_android_remove_this_machine" formatted="false">"Remove this machine…"</string>
+    <string name="settings_android_removed_retained_session_archive" formatted="false">"Removed · Retained session archive"</string>
+    <string name="settings_android_requests_to_join" formatted="false">" requests to join"</string>
+    <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC (symbol subset)"</string>
+    <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept."</string>
+    <string name="settings_android_show_content_and_approve_in_notifications" formatted="false">"Show content and approve in notifications"</string>
+    <string name="settings_android_terminal_symbols" formatted="false">"Terminal symbols"</string>
+    <string name="settings_android_the_downloaded_file_is_not_an_installation_package" formatted="false">"The downloaded file is not an installation package"</string>
+    <string name="settings_android_the_downloaded_package_does_not_match_the_release_information" formatted="false">"The downloaded package does not match the release information"</string>
+    <string name="settings_android_the_downloaded_package_is_not_remote_agent" formatted="false">"The downloaded package is not remote-agent"</string>
+    <string name="settings_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"The phone clock is ahead of the server. Remote control is paused. Correct the time in system settings."</string>
+    <string name="settings_android_the_system_could_not_install_this_package" formatted="false">"The system could not install this package."</string>
+    <string name="settings_android_the_system_will_confirm_installation_after_downloading_the_first_time" formatted="false">"The system will confirm installation after downloading. The first time, you will be asked to allow remote-agent to install apps."</string>
+    <string name="settings_android_this_computer_is_outside_the_current_trusted_directory_check_the" formatted="false">"This computer is outside the current trusted directory. Check the receipt for its revocation status"</string>
+    <string name="settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable" formatted="false">"This is the managing device. Ordinary removal is unavailable"</string>
+    <string name="settings_android_this_machine_has_been_removed" formatted="false">"This machine has been removed"</string>
+    <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"This release changes the protocol. After installing, also update remote-agent on the computer to continue."</string>
+    <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"To resume a removed computer\'s sessions, open its retained archive and choose “Rejoin and resume sessions”."</string>
+    <string name="settings_android_unknown" formatted="false">"Unknown"</string>
+    <string name="settings_android_unverified" formatted="false">"Unverified"</string>
+    <string name="settings_android_up_to_date" formatted="false">"Up to date"</string>
+    <string name="settings_android_update" formatted="false">"Update"</string>
+    <string name="settings_android_update_available_value1">"Update available: %1$s"</string>
+    <string name="settings_android_value1_approval_mode">"%1$s · Approval mode"</string>
+    <string name="settings_android_value1_default">"%1$s (default)"</string>
+    <string name="settings_android_value1_default_model_for_new_sessions">"%1$s · Default model for new sessions"</string>
+    <string name="settings_android_value1_downloaded">"%1$s downloaded"</string>
+    <string name="settings_android_value1_is_offline_connect_to_read_and_edit_new_session">"%1$s is offline. Connect to read and edit new-session defaults"</string>
+    <string name="settings_android_version" formatted="false">"Version"</string>
+    <string name="settings_android_viewing_cache" formatted="false">"Viewing cache"</string>
+    <string name="settings_android_waiting_for_a_new_device" formatted="false">"Waiting for a new device…"</string>
+    <string name="settings_android_waiting_for_the_new_device_to_confirm" formatted="false">"Waiting for the new device to confirm…"</string>
     <string name="settings_appearance" formatted="false">"Appearance"</string>
     <string name="settings_approval_timeout" formatted="false">"Approval timeout"</string>
     <string name="settings_attachment_storage" formatted="false">"Attachment storage"</string>
@@ -1618,6 +2092,9 @@
     <string name="terminal_size_note" formatted="false">"The window size changed, possibly from the computer or another client. The latest size is shown here; opening the keyboard does not resize the remote terminal."</string>
     <string name="terminal_up" formatted="false">"Up"</string>
     <string name="terminal_view_details" formatted="false">"View details"</string>
+    <string name="time_android_day_clock">"%2$s %1$s"</string>
+    <string name="time_android_used_clock">"Used %1$s"</string>
+    <string name="time_android_used_relative">"Used %1$s"</string>
     <string name="time_calendar_date_year">"%3$d/%2$d/%1$d"</string>
     <string name="time_duration_hours_minutes">"%1$d hr %2$d min"</string>
     <string name="time_duration_minutes_seconds">"%1$d min %2$d sec"</string>

@@ -46,3 +46,9 @@ internal var sessionMessageContextForTesting: android.content.Context? = null
 /** Background UI feedback uses the installed app's current language (stage 0: Chinese). */
 internal fun sessionText(message: UiMessage): String =
     resolveUiMessage(sessionMessageContextForTesting ?: io.github.lewin671.remoteagent.RaApp.instance, message)
+
+internal fun sessionText(message: io.github.lewin671.remoteagent.core.MessageText): String = message.resolve(::sessionText)
+
+fun displayError(error: Throwable, state: io.github.lewin671.remoteagent.core.RemoteState? = null,
+    copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String =
+    io.github.lewin671.remoteagent.core.errorText(error, state).resolve(copy)

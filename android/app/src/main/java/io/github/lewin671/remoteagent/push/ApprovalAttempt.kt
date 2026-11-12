@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.Attempt
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.PreparedCommand
@@ -44,8 +48,8 @@ suspend fun sendApproval(
     val wasUnknown = before == ApprovalRecord.SENT
     val attempt = Attempt()
     attempt.next { command }
-    if (wasUnknown) attempt.settle(CommandException(CommandException.UNKNOWN, "结果未知"))
-    check(record(ApprovalRecord.SENT)) { "没能保存审批提交状态，没有发出" }
+    if (wasUnknown) attempt.settle(CommandException(CommandException.UNKNOWN, sessionText(UiMessages.approvalAndroidUnknownResult())))
+    check(record(ApprovalRecord.SENT)) { sessionText(UiMessages.notificationsAndroidCouldNotSaveApprovalSubmissionStateNothingWasSent()) }
     try {
         forward(command, wasUnknown)
         record(ApprovalRecord.DONE)

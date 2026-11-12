@@ -186,7 +186,7 @@ class Codex2SignupTest {
                 assertNotNull(failure)
                 assertTrue(
                     "difficulty bound was not enforced: $failure",
-                    failure!!.message.orEmpty().contains("28"),
+                    errorText(failure!!).testText().orEmpty().contains("28"),
                 )
             } finally {
                 server.close()

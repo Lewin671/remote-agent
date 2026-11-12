@@ -423,5 +423,270 @@
     "path": "web/src/views/Security.tsx",
     "literal": "(); const [pending, setPending] = useState",
     "reason": "JSX 词法扫描把相邻 TypeScript useState 泛型之间的声明误认为显示文字；纯状态声明，不向用户显示。"
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/Schedules.kt",
+    "literal": "CLI",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ImageProcess.kt",
+    "literal": "PNG",
+    "reason": "CLI/model or image-format identifier. A technical product/format name, not translatable prose."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/ImageProcess.kt",
+    "literal": "JPEG",
+    "reason": "CLI/model or image-format identifier. A technical product/format name, not translatable prose."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "eXIf",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "tEXt",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "zTXt",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "iTXt",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Images.kt",
+    "literal": "tIME",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": "ra1.",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": "localhost",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": ":${u.port}",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": "${u.scheme}://$host$port",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": "invalid_envelope",
+    "reason": "Internal Throwable diagnostic identity; the product error is carried separately as MessageText and resolved at display."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/E2e.kt",
+    "literal": "retired_history",
+    "reason": "Internal Throwable diagnostic identity; the product error is carried separately as MessageText and resolved at display."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Pair.kt",
+    "literal": "remote-agent/v1/pair-sas",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "reason",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "daemon",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "agent_and_daemon",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "undeliverable",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "notified",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "notification_text",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "completed",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "list",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Schedules.kt",
+    "literal": "update",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",
+    "literal": "type",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",
+    "literal": "at",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",
+    "literal": "weekdays",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",
+    "literal": "interval",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/ScheduleTime.kt",
+    "literal": "interval_seconds",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "version",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "versionCode",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "protocol",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "apk",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "sha256",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "size",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Update.kt",
+    "literal": "notes",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Files.kt",
+    "literal": "invalid_argument",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Files.kt",
+    "literal": "already_exists",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Files.kt",
+    "literal": "aborted",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "secondary",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "seven_day",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "gemini-5h",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "Gemini",
+    "reason": "CLI/model or image-format identifier. A technical product/format name, not translatable prose."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "gemini-weekly",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "gemini-argon-wtu-weekly",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "3p-weekly",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "^http",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "ws",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "/v1/stream",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "failed_precondition",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "not_found",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Remote.kt",
+    "literal": "$sid/$imageId",
+    "reason": "Protocol/JSON field, status code, cryptographic context, URL, or binary-format marker. Never used as translated prose; the lexical sink scanner now sees it beside deferred error factories."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "Gemini 4 Argon",
+    "reason": "CLI model family identifier passed unchanged into a shared quota-window label; this proper name is not translated."
   }
 ]

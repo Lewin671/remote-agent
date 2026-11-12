@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -9,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.clientName
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.DeviceKind
 import kotlinx.coroutines.launch
 
@@ -29,14 +31,15 @@ internal fun HandoffPreparationContent(
     onBack: (() -> Unit)? = null,
     publishOffer: suspend (ByteArray) -> Unit,
 ) {
+    val copy = uiText()
     val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<Pair<String, ByteArray>?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("接管管理权", onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityTakeOverManagement()), onBack = onBack) {
         FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
             Text(
-                "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
+                copy(UiMessages.securitySaveTheNewRecoveryCodeFirstThenAskThe()),
                 style = T.s13,
                 color = pal.ink2,
             )
@@ -44,7 +47,7 @@ internal fun HandoffPreparationContent(
             if (value != null) {
                 RecoveryCodeFigure(value.first)
                 PillButton(
-                    "我已保存，通知管理端",
+                    copy(UiMessages.securitySavedNotifyManagingClient()),
                     {
                         busy = true
                         error = ""
@@ -53,7 +56,7 @@ internal fun HandoffPreparationContent(
                                 publishOffer(value.second)
                                 prepared = null
                             } catch (e: Exception) {
-                                error = errorText(e, state)
+                                error = displayError(e, state)
                             } finally {
                                 busy = false
                             }
@@ -67,15 +70,15 @@ internal fun HandoffPreparationContent(
                 val offered =
                     state.devices[self]?.meta?.handoffRecoveryEd?.size() == 32
                 if (offered)
-                    Hint("恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。", Modifier.padding(vertical = 12.dp))
+                    Hint(copy(UiMessages.securityRecoveryCodeSavedAndConfirmedWaitingForTheCurrent()), Modifier.padding(vertical = 12.dp))
                 PillButton(
-                    if (offered) "重新生成恢复码" else "生成新的恢复码",
+                    if (offered) copy(UiMessages.securityRegenerateRecoveryCode()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
                     {
                         error = ""
                         try {
                             prepared = prepareCode()
                         } catch (e: Exception) {
-                            error = errorText(e, state)
+                            error = displayError(e, state)
                         }
                     },
                     Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -91,6 +94,7 @@ internal fun HandoffPreparationContent(
 /** The current authority authenticates the successor client through ordinary pairing first. */
 @Composable
 fun HandoffControls() {
+    val copy = uiText()
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val scope = rememberAuthorityScope()
@@ -103,22 +107,22 @@ fun HandoffControls() {
                 it.kind == DeviceKind.DEVICE_KIND_CLIENT &&
                 it.meta?.handoffRecoveryEd?.size() == 32
         }
-    GLabel("交接管理权")
-    Hint("在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。", Modifier)
+    GLabel(copy(UiMessages.securityTransferManagement()))
+    Hint(copy(UiMessages.securityOnceTheSuccessorDeviceJoinsAndConfirmsSavingIts()), Modifier)
     for (d in candidates) PillButton(
-        "交接给 " + clientName(d, d.id, state.devices.values),
+        copy(UiMessages.securityAndroidTransferTo(clientName(d, d.id, state.devices.values, copy = copy))),
         { target = d.id },
         Modifier.fillMaxWidth().padding(top = 8.dp),
         ButtonKind.SECONDARY,
         enabled = !busy,
     )
-    if (candidates.isEmpty()) Hint("等待接任设备生成并保存恢复码", Modifier.padding(vertical = 8.dp))
+    if (candidates.isEmpty()) Hint(copy(UiMessages.securityWaitingForTheSuccessorDeviceToGenerateAndSave()), Modifier.padding(vertical = 8.dp))
     if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
     target?.let { id ->
         Alert(
-            "交接管理权",
-            "确认接任设备（${clientName(state.devices[id], id, state.devices.values)}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
-            "确认交接",
+            copy(UiMessages.securityTransferManagement()),
+            copy(UiMessages.securityConfirmThatTheSuccessorDeviceSavedTheNewRecovery((clientName(state.devices[id], id, state.devices.values, copy = copy)).toString())),
+            copy(UiMessages.securityConfirmTransfer()),
             danger = true,
             onDismiss = { target = null },
         ) {
@@ -128,7 +132,7 @@ fun HandoffControls() {
                 try {
                     remote.handoffAuthority(id)
                 } catch (e: Exception) {
-                    error = errorText(e, remote.state.value)
+                    error = displayError(e, remote.state.value)
                 } finally {
                     busy = false
                 }
@@ -139,6 +143,7 @@ fun HandoffControls() {
 
 @Composable
 fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
+    val copy = uiText()
     if (!authority) return
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
@@ -152,16 +157,16 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
             listOf(
                 {
                     // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                    GRow("删除这台电脑的记录…", onClick = { confirm = true }, danger = true, enabled = !busy)
+                    GRow(copy(UiMessages.securityDeleteThisComputerSRecords()), onClick = { confirm = true }, danger = true, enabled = !busy)
                 },
             ),
     )
     if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
     if (confirm)
         Alert(
-            "删除这台电脑的记录",
-            "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。",
-            "删除记录",
+            copy(UiMessages.securityDeleteThisComputerSRecordsDeviceManagement()),
+            copy(UiMessages.securityThisPermanentlyDeletesSessionsEventsAndImagesOnThe()),
+            copy(UiMessages.securityDeleteRecords()),
             danger = true,
             onDismiss = { confirm = false },
         ) {
@@ -171,7 +176,7 @@ fun DeleteMachineRecordsAction(id: String, authority: Boolean) {
                 try {
                     remote.deleteMachineRecords(id)
                 } catch (e: Exception) {
-                    error = errorText(e, remote.state.value)
+                    error = displayError(e, remote.state.value)
                 } finally {
                     busy = false
                 }

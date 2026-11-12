@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.*
 import java.time.*
 import kotlinx.coroutines.*
@@ -18,10 +20,10 @@ class SchedulesTest {
         assertFalse(off.notifyOnFinish)
         assertEquals("agent_only", renamedScheduleSpec(off, "Renamed")!!.text("notify"))
         val run = ScheduledRun(buildJsonObject { put("notification_source", "daemon"); put("notified", true) })
-        assertEquals("完成后通知", run.notificationSource)
+        assertEquals(messageTextForTest(UiMessages.scheduleNotifyOnCompletion()), run.notificationSource)
         val unavailable = ScheduledRun(buildJsonObject { put("status", "completed"); put("notification_source", "undeliverable"); put("notified", false) })
-        assertEquals("无法请求通知", unavailable.notificationSource)
-        assertEquals("没有通知", runResult(unavailable))
+        assertEquals(messageTextForTest(UiMessages.scheduleAndroidCannotRequestNotification()), unavailable.notificationSource)
+        assertEquals(messageTextForTest(UiMessages.scheduleNoNotification()), runResult(unavailable, copy = ::messageTextForTest))
     }
     private val now = Instant.parse("2026-10-24T14:00:00Z")
     private val utc = ZoneId.of("UTC")
@@ -30,10 +32,10 @@ class SchedulesTest {
     @Test fun nonexistentWallTimesAreRejectedForOnceAndCutoffDates() {
         val message = "这个时区在该时刻发生夏令时跳转，请换一个时间"
         val missing = ScheduleTime(kind = 0, date = "2027-03-14", time = "02:30", zone = "America/Los_Angeles")
-        assertEquals(message, runCatching { missing.trigger(now) }.exceptionOrNull()?.message)
+        assertEquals(message, runCatching { missing.trigger(now) }.exceptionOrNull()?.let { errorText(it).testText() })
         // Date-only cutoffs must reject an entirely skipped local date too.
         val skipped = ScheduleTime(end = 2, until = "2011-12-30", zone = "Pacific/Apia")
-        assertEquals(message, runCatching { skipped.trigger(Instant.parse("2010-01-01T00:00:00Z")) }.exceptionOrNull()?.message)
+        assertEquals(message, runCatching { skipped.trigger(Instant.parse("2010-01-01T00:00:00Z")) }.exceptionOrNull()?.let { errorText(it).testText() })
         assertEquals("calendar", missing.copy(kind = 1).trigger(now).text("type"))
     }
     @Test fun repeatedWallTimesChooseTheEarlierOccurrenceAndCutoffsKeepTheirInstant() {
@@ -105,21 +107,21 @@ class SchedulesTest {
         assertEquals(TaskGroup.ACTIVE, taskGroup(task()))
         assertEquals(TaskGroup.ENDED, taskGroup(task("completed")))
         assertEquals(TaskGroup.ENDED, taskGroup(task("cancelled")))
-        assertEquals("中继上的会话数已满", scheduleReason("relay_session_limit"))
+        assertEquals(messageTextForTest(UiMessages.scheduleTheRelaySSessionLimitHasBeenReached()), scheduleReason("relay_session_limit", copy = ::messageTextForTest))
     }
     @Test fun nextTimeUsesLocalDateAndTaskState() {
-        assertEquals("下次 明天 08:00", scheduleNext(task(), now, utc))
-        assertEquals("已暂停", scheduleNext(task("paused", "user_paused"), now, utc))
-        assertEquals("已停下", scheduleNext(task("failed"), now, utc))
-        assertEquals("已结束", scheduleNext(task("completed"), now, utc))
-        assertEquals("今天 01:00", scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"), Instant.parse("2026-10-25T07:00:00Z"), ZoneId.of("America/Los_Angeles")))
+        assertEquals("下次 明天 08:00", scheduleNext(task(), now, utc, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.queuePaused()), scheduleNext(task("paused", "user_paused"), now, utc, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleStopped()), scheduleNext(task("failed"), now, utc, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.listStateEnded()), scheduleNext(task("completed"), now, utc, copy = ::messageTextForTest))
+        assertEquals("今天 01:00", scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"), Instant.parse("2026-10-25T07:00:00Z"), ZoneId.of("America/Los_Angeles"), copy = ::messageTextForTest))
     }
     @Test fun lastResultCountsOnlyQuietCompletedRunsToday() {
         val quiet = "[${run("a", 12)},${run("b", 13)}]"
-        assertEquals("今天 2 次，都没有通知", scheduleLastResult(task(runs = quiet), now, utc))
+        assertEquals("今天 2 次，都没有通知", scheduleLastResult(task(runs = quiet), now, utc, copy = ::messageTextForTest))
         val notified = "[${run("a", 12)},${run("b", 13, true)}]"
-        assertEquals("今天 13:00 通知了你：Important", scheduleLastResult(task(runs = notified), now, utc))
-        assertEquals("今天 13:00 失败：运行结果无法确认", scheduleLastResult(task(runs = "[${run("b", 13, status = "failed")}]"), now, utc))
+        assertEquals("今天 13:00 通知了你：Important", scheduleLastResult(task(runs = notified), now, utc, copy = ::messageTextForTest))
+        assertEquals("今天 13:00 失败：运行结果无法确认", scheduleLastResult(task(runs = "[${run("b", 13, status = "failed")}]"), now, utc, copy = ::messageTextForTest))
     }
     @Test fun historyGroupsQuietRunsByDayWithoutHidingResults() {
         val t = task(runs = "[${run("a", 12)},${run("b", 13, true)},${run("c", 14)}]")
@@ -136,11 +138,11 @@ class SchedulesTest {
         assertEquals(listOf(1,2,3,4,5), daily["weekdays"]!!.jsonArray.map { it.jsonPrimitive.int })
         assertEquals(4L, daily.long("max_runs"))
         val weekly = ScheduleTime(2, zone = "UTC", weekdays = setOf(7,1)).trigger(now)
-        assertEquals("每周一、日 08:00", scheduleFrequency(weekly))
+        assertEquals("每周一、日 08:00", scheduleFrequency(weekly, copy = ::messageTextForTest))
         val interval = ScheduleTime(3, zone = "UTC", interval = "15", unit = 0, end = 2, until = "2026-10-25").trigger(now)
         assertEquals(900L, interval.long("interval_seconds")); assertEquals("2026-10-25T23:59:59Z", interval.text("until"))
-        assertEquals("每 15 分钟", scheduleFrequency(interval))
-        assertEquals("每小时", scheduleFrequency(task().trigger))
+        assertEquals("每 15 分钟", scheduleFrequency(interval, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleHourly()), scheduleFrequency(task().trigger, copy = ::messageTextForTest))
         assertEquals(interval, ScheduleTime.from(interval).trigger(now))
     }
     @Test fun editingPreservesAnExactDeadlineAndSubMinuteIntervals() {
@@ -148,7 +150,7 @@ class SchedulesTest {
         assertEquals(90L, ScheduleTime.from(trigger).trigger(now).long("interval_seconds"))
         assertEquals("2026-10-25T18:00:00Z", ScheduleTime.from(trigger).trigger(now).text("until"))
         val limited = ScheduledTask("computer", JsonObject(task().json + ("spec" to JsonObject(task().spec + ("trigger" to JsonObject(task().trigger + ("max_runs" to JsonPrimitive(4)))))) + ("dispatches" to JsonPrimitive(1))))
-        assertEquals("共 4 次", scheduleLimits(limited, now))
+        assertEquals("共 4 次", scheduleLimits(limited, now, copy = ::messageTextForTest))
     }
     @Test fun invalidTimesAndEndingsAreRejected() {
         listOf(ScheduleTime(0, date = "2020-01-01"), ScheduleTime(zone = "invalid"), ScheduleTime(3, interval = "0"), ScheduleTime(2, weekdays = emptySet()), ScheduleTime(end = 1, count = "0"), ScheduleTime(end = 2, until = "2020-01-01")).forEach {
@@ -231,7 +233,7 @@ class SchedulesTest {
         repo.operate("computer", "create", spec = task().spec, requestId = "stable")
         assertEquals(listOf("stable", "stable"), requests.filter { it.operation == "create" }.map { it.requestId })
         val e = runCatching { repo.operate("computer", "update", task(), task().spec) }.exceptionOrNull()
-        assertEquals("任务刚被修改，已更新为最新内容",e!!.message)
+        assertEquals(messageTextForTest(UiMessages.errorsTheTaskWasJustChangedUpdatedToTheLatest()),errorText(e!!).testText())
         assertEquals(3L, requests.first { it.operation == "update" }.expectedRevision)
         assertEquals("list", requests.last().operation)
     }
@@ -273,15 +275,15 @@ class SchedulesTest {
     }
     @Test fun abnormalResultsAndReasonsWinOverEarlierNotificationOrSummary() {
         val failed = ScheduledRun(Json.parseToJsonElement("""{"status":"failed","notified":true,"notification_text":"Old notice","final_summary":"Old final","reason":"relay_session_limit"}""").jsonObject)
-        assertEquals("失败", runResult(failed)); assertEquals("中继上的会话数已满", failed.summary)
-        assertEquals("无法确认", runResult(ScheduledRun(buildJsonObject { put("status", "uncertain"); put("notified", true) })))
-        assertEquals("电脑返回的原因：new_reason", scheduleReason("new_reason"))
-        assertEquals("运行结果无法确认", scheduleReason(""))
-        assertEquals("消息没能加入待发队列", scheduleReason("could_not_queue_message"))
-        assertEquals("电脑重启前的发送结果无法确认", scheduleReason("restart_dispatching"))
-        assertEquals("还没有运行", scheduleLastResult(task(), now, utc))
+        assertEquals(messageTextForTest(UiMessages.attachmentFailed()), runResult(failed, copy = ::messageTextForTest)); assertEquals(messageTextForTest(UiMessages.scheduleTheRelaySSessionLimitHasBeenReached()), failed.summary)
+        assertEquals(messageTextForTest(UiMessages.scheduleUnconfirmed()), runResult(ScheduledRun(buildJsonObject { put("status", "uncertain"); put("notified", true) }), copy = ::messageTextForTest))
+        assertEquals("电脑返回的原因：new_reason", scheduleReason("new_reason", copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleExecutionOutcomeIsUnconfirmed()), scheduleReason("", copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleTheMessageCouldNotBeQueued()), scheduleReason("could_not_queue_message", copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleDeliveryBeforeTheComputerRestartedCouldNotBeConfirmed()), scheduleReason("restart_dispatching", copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleHasNotRunYet()), scheduleLastResult(task(), now, utc, copy = ::messageTextForTest))
         val active = ScheduledTask("computer", JsonObject(task().json + ("active_run" to Json.parseToJsonElement(run("live", 14, status="running")))))
-        assertFalse(scheduleLastResult(active, now, utc).contains("次都没有通知"))
+        assertFalse(scheduleLastResult(active, now, utc, copy = ::messageTextForTest).contains("次都没有通知"))
     }
 
     @Test fun finalClientContractUsesActualGroupingSortingAndReasons() {
@@ -293,12 +295,12 @@ class SchedulesTest {
         assertEquals(listOf("attention"), scheduleSorted(tasks, ScheduleInboxGroup.ATTENTION).map { it.id })
         assertEquals(setOf("conversation", "quiet", "paused"), scheduleSorted(tasks, ScheduleInboxGroup.RECENT).map { it.id }.toSet())
         val stopped=tasks.first { it.id=="attention" }
-        assertEquals("创建任务时的权限已改变，任务已停下",scheduleLastResult(stopped))
-        assertEquals("没有通知",runResult(stopped.runs.single()))
-        assertEquals("没有通知",stopped.runs.single().foldedSummary)
+        assertEquals(messageTextForTest(UiMessages.scheduleTaskCreationPermissionsChangedTheTaskStopped()),scheduleLastResult(stopped, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleNoNotification()),runResult(stopped.runs.single(), copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.scheduleNoNotification()),stopped.runs.single().foldedSummary)
         val limited=ScheduledTask(stopped.machine,JsonObject(stopped.json+("spec" to JsonObject(stopped.spec+("trigger" to JsonObject(stopped.trigger+mapOf("max_runs" to JsonPrimitive(5),"until" to JsonPrimitive("2026-10-30T08:00:00Z"))))))))
-        assertEquals("共 5 次，或到 10月30日 08:00",scheduleLimits(limited,now,utc))
-        assertEquals("已暂停：期间计划已到期",scheduleReason("completed_while_paused"))
+        assertEquals("共 5 次，或到 10月30日 08:00",scheduleLimits(limited,now,utc, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.schedulePausedTheScheduleExpiredInTheMeantime()),scheduleReason("completed_while_paused", copy = ::messageTextForTest))
         val old=ScheduledTask("computer",JsonObject(task("paused","user_paused").json + mapOf("id" to JsonPrimitive("old"),"updated_at" to JsonPrimitive("2026-10-24T10:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T13:00:00Z"))))
         val newer=ScheduledTask("computer",JsonObject(old.json + mapOf("id" to JsonPrimitive("new"),"updated_at" to JsonPrimitive("2026-10-24T11:00:00Z"),"next_run_at" to JsonPrimitive("2026-10-24T14:00:00Z"))))
         assertEquals(listOf("old","new"),scheduleSorted(listOf(old,newer),ScheduleInboxGroup.RECENT).map { it.id })
@@ -328,8 +330,8 @@ class SchedulesTest {
         val manual=ScheduledTask(t.machine,JsonObject(t.json + ("manual_request" to buildJsonObject { put("request_id","q") })))
         assertFalse(scheduleRunAllowed(active));assertFalse(scheduleDefinitionAllowed(active));assertFalse(scheduleRunAllowed(manual))
         assertTrue(scheduleDefinitionAllowed(manual));assertTrue(scheduleRunAllowed(t))
-        assertEquals("运行中",scheduleNext(active,now,utc))
-        assertEquals("明天 08:00",scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"),now,utc))
+        assertEquals(messageTextForTest(UiMessages.listStateRunning()),scheduleNext(active,now,utc, copy = ::messageTextForTest))
+        assertEquals("明天 08:00",scheduleWhen(Instant.parse("2026-10-25T08:00:00Z"),now,utc, copy = ::messageTextForTest))
     }
 
     @Test fun repositoryCacheRestoreNeverDiscardsReadIdsMissingFromThatCache() = runTest {

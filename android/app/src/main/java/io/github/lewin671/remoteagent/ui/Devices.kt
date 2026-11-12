@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +52,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun DevicesScreen() {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -62,26 +65,26 @@ fun DevicesScreen() {
     LaunchedEffect(Unit) {
         if (remote.state.value.conn == ConnState.ONLINE) remote.refreshDevices()
     }
-    PageScaffold("设备") {
+    PageScaffold(copy(UiMessages.settingsDevices())) {
         Column(Modifier.weight(1f).verticalScrollFaded()) {
             if (state.clockWarning)
                 Notice(
-                    "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
+                    copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.WARN,
                 )
             if (state.isAuthority && state.recoveryPending)
                 Notice(
-                    "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",
+                    copy(UiMessages.securityAndroidSomeoneIsRequestingManagementTakeoverWithARecoveryCodeVeto()),
                     Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                     NoticeTone.ERROR,
-                    action = "查看",
+                    action = copy(UiMessages.securityAndroidView()),
                     onAction = { nav.recovery() },
                 )
-            GLabel("电脑 · 运行 CLI")
+            GLabel(copy(UiMessages.settingsComputersRunClis()))
             val ms = state.machines.values.sortedBy { machineLabel(state, it.id) }
             if (ms.isEmpty())
-                Hint("还没有电脑", Modifier.padding(bottom = 12.dp))
+                Hint(copy(UiMessages.securityAndroidNoComputersYet()), Modifier.padding(bottom = 12.dp))
             else
                 Group(
                     rows =
@@ -97,10 +100,10 @@ fun DevicesScreen() {
                                         ) {
                                             if (m.online) StatusMark(MarkKind.ONLINE)
                                             ArrowText(
-                                                (if (m.online) "在线"
+                                                (if (m.online) copy(UiMessages.securityAndroidOnline())
                                                 else
-                                                    whenText(m.lastSeenMs, t).ifEmpty {
-                                                        "不在线"
+                                                    whenText(m.lastSeenMs, t, copy = copy).ifEmpty {
+                                                        copy(UiMessages.securityAndroidOffline())
                                                     }),
                                                 p.ink2,
                                                 T.s13,
@@ -111,7 +114,7 @@ fun DevicesScreen() {
                             }
                         },
                 )
-            GLabel("客户端 · 操作会话")
+            GLabel(copy(UiMessages.settingsClientsControlSessions()))
             val clients =
                 sortClients(
                     state.devices.values.filter { it.kind == DeviceKind.DEVICE_KIND_CLIENT },
@@ -130,34 +133,32 @@ fun DevicesScreen() {
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(clientName(c, c.id, state.devices.values), style = T.s15, color = p.ink)
+                                    Text(clientName(c, c.id, state.devices.values, copy = copy), style = T.s15, color = p.ink)
                                     Text(
-                                        clientDetail(c),
+                                        clientDetail(c, copy = copy),
                                         style = T.s13,
                                         color = p.ink2,
                                         modifier = Modifier.padding(top = 2.dp),
                                     )
                                 }
                                 if (c.id == state.authorityDeviceId)
-                                    Text("管理端", style = T.s13, color = p.ink2)
-                                else if (c.id == me) Text("本机", style = T.s13, color = p.ink2)
-                                else ArrowText(clientUsed(c, t), p.ink2, T.s13)
+                                    Text(copy(UiMessages.settingsManagingClient()), style = T.s13, color = p.ink2)
+                                else if (c.id == me) Text(copy(UiMessages.securityThisDevice()), style = T.s13, color = p.ink2)
+                                else ArrowText(clientUsed(c, t, copy = copy), p.ink2, T.s13)
                             }
                         }
                     },
             )
             if (state.isAuthority) {
-                GLabel("远程控制")
+                GLabel(copy(UiMessages.securityAndroidRemoteControl()))
                 Hint(
                     if (state.leaseEndMs > 0)
-                        "有效期至 " +
-                            io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t) +
-                            "。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"
-                    else "正在读取成员状态…",
+                        copy(UiMessages.securityAndroidControlValidityAdvice(io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t, copy = copy)))
+                    else copy(UiMessages.securityAndroidReadingMembershipState()),
                 )
             }
             Text(
-                "右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。",
+                copy(UiMessages.securityAndroidLastUsedTimesAreOnTheRightEachDeviceChanges()),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -169,17 +170,17 @@ fun DevicesScreen() {
                         .clickable { nav.pair() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    IconText(Lucide.Plus, "添加设备", p.blue, T.s15)
+                    IconText(Lucide.Plus, copy(UiMessages.homeAddDevice()), p.blue, T.s15)
                 }
             else
                 Hint(
-                    addDeviceHint(state),
+                    addDeviceHint(state, copy = copy),
                     Modifier.padding(bottom = 8.dp),
                 )
             if (state.isAuthority) {
                 Box(Modifier.padding(horizontal = 16.dp)) {
                     TextAction(
-                        "导出创世状态（中继离线固定用）",
+                        copy(UiMessages.securityAndroidExportGenesisStateForOfflineRelayPinning()),
                         {
                             scope.launch {
                                 val genesis =
@@ -187,7 +188,7 @@ fun DevicesScreen() {
                                         DeviceSecurity.stateBytes(remote.chain().first())
                                     }
                                 withContext(Dispatchers.Main) {
-                                    shareGenesis(context, genesis)
+                                    shareGenesis(context, genesis, copy = copy)
                                 }
                             }
                         },
@@ -195,7 +196,7 @@ fun DevicesScreen() {
                     )
                 }
                 Hint(
-                    "这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。",
+                    copy(UiMessages.securityAndroidThisPublicGenesisStateContainsNoKeysUseItOnly()),
                     Modifier.padding(bottom = 4.dp),
                 )
             }
@@ -207,6 +208,7 @@ fun DevicesScreen() {
 /** A client's details: its name for the whole account, its ID to compare, and removing it. */
 @Composable
 fun ClientScreen(id: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -220,22 +222,22 @@ fun ClientScreen(id: String) {
     val save = rememberAction()
     val remove = rememberAction(authority = true)
     PageScaffold(
-        clientName(d, id, state.devices.values),
-        subtitle = if (d == null) "已移除" else if (id == me) "当前客户端" else "已配对的客户端",
+        clientName(d, id, state.devices.values, copy = copy),
+        subtitle = if (d == null) copy(UiMessages.securityAndroidRemoved()) else if (id == me) copy(UiMessages.securityAndroidCurrentClient()) else copy(UiMessages.settingsPairedClient()),
     ) {
         if (d == null) {
-            PageNote("这个客户端已不在当前成员列表中")
+            PageNote(copy(UiMessages.securityAndroidThisClientIsNoLongerInTheCurrentMemberList()))
             return@PageScaffold
         }
         Column(Modifier.weight(1f).verticalScrollFaded()) {
-            GLabel(if (id == state.authorityDeviceId) "管理端" else "客户端")
+            GLabel(if (id == state.authorityDeviceId) copy(UiMessages.settingsManagingClient()) else copy(UiMessages.securityClient()))
             Group(
                 rows =
                     listOfNotNull<@Composable () -> Unit>(
                         {
                             GRow(
-                                "名称",
-                                (d?.meta?.name?.ifEmpty { null } ?: "未命名"),
+                                copy(UiMessages.settingsName()),
+                                (d?.meta?.name?.ifEmpty { null } ?: copy(UiMessages.settingsUnnamed())),
                                 onClick = if (canRename) ({ editing = true }) else null,
                                 chevron = canRename,
                             )
@@ -246,8 +248,8 @@ fun ClientScreen(id: String) {
                             ?.let {
                                 {
                                     GRow(
-                                        "恢复默认名称",
-                                        defaultClientName(d, id, state.devices.values),
+                                        copy(UiMessages.settingsRestoreDefaultName()),
+                                        defaultClientName(d, id, state.devices.values, copy = copy),
                                         onClick = {
                                             save.run(
                                                 {
@@ -264,14 +266,14 @@ fun ClientScreen(id: String) {
                         d?.meta
                             ?.description
                             ?.takeIf { it.isNotEmpty() }
-                            ?.let { desc -> { GRow("运行在", desc) } },
-                        { GRow("上次使用", if (id == me) "现在" else lastUsed(d, t).ifEmpty { "没有记录" }) },
+                            ?.let { desc -> { GRow(copy(UiMessages.settingsRunsOn()), desc) } },
+                        { GRow(copy(UiMessages.settingsLastUsed()), if (id == me) copy(UiMessages.settingsNow()) else lastUsed(d, t, copy = copy).ifEmpty { copy(UiMessages.settingsNoRecord()) }) },
                         d?.createdMs
                             ?.takeIf { it > 0 }
-                            ?.let { created -> { GRow("添加于", dayText(created, t)) } },
+                            ?.let { created -> { GRow(copy(UiMessages.settingsAdded()), dayText(created, t, copy = copy)) } },
                         {
                             GRow(
-                                "设备 ID",
+                                copy(UiMessages.settingsDeviceId()),
                                 trailing = {
                                     Text("…" + shortId(id), style = T.mono13, color = p.ink2)
                                 },
@@ -281,13 +283,13 @@ fun ClientScreen(id: String) {
             )
             if (save.error.isNotEmpty())
                 Notice(
-                    "没能保存名称：${save.error}",
+                    copy(UiMessages.settingsNameSaveError((save.error).toString())),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
                     NoticeTone.ERROR,
                 )
             Text(
-                if (id == me) "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"
-                else "名称只能由该客户端自己修改。通知开关也要在该设备上设置。",
+                if (id == me) copy(UiMessages.securityAndroidNameChangesSyncToOtherClientsSetNotificationsOnThis())
+                else copy(UiMessages.securityAndroidOnlyThisClientCanChangeItsNameNotificationSettingsMust()),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp),
@@ -299,12 +301,12 @@ fun ClientScreen(id: String) {
                         .clickable { nav.settings() },
                     contentAlignment = Alignment.CenterStart,
                 ) {
-                    ArrowText("退出并删除本机密钥在设置页", p.ink2, T.s15)
+                    ArrowText(copy(UiMessages.securityAndroidExitAndDeleteLocalKeysInSettings()), p.ink2, T.s15)
                 }
             } else if (state.isAuthority) {
                 if (id == state.authorityDeviceId) {
                     Text(
-                        "管理端不能直接移除，请先交接管理权。",
+                        copy(UiMessages.securityTheManagingClientCannotBeRemovedDirectlyTransferManagementDeviceManagement()),
                         style = T.s13,
                         color = p.ink2,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -320,10 +322,10 @@ fun ClientScreen(id: String) {
                             },
                         contentAlignment = Alignment.CenterStart,
                     ) {
-                        Text("移除这个客户端", style = T.s15, color = p.red)
+                        Text(copy(UiMessages.securityAndroidRemoveThisClient()), style = T.s15, color = p.red)
                     }
                     Text(
-                        "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。",
+                        copy(UiMessages.securityAndroidRemovalDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions()),
                         style = T.s13,
                         color = p.ink2,
                         modifier = Modifier.padding(horizontal = 16.dp),
@@ -333,18 +335,18 @@ fun ClientScreen(id: String) {
                     Notice(remove.error, Modifier.padding(16.dp), NoticeTone.ERROR)
             } else {
                 Hint(
-                    "请在管理端（${state.authorityName}）上移除设备。",
+                    copy(UiMessages.settingsAndroidRemoveDevicesOnTheManagingClientValue1(state.authorityName.resolve(copy))),
                     Modifier.padding(bottom = 8.dp),
                 )
             }
         }
     }
     if (confirmRemove && d != null) {
-        val (title, text) = removalDialog(clientName(d, id, state.devices.values), machine = false)
+        val (title, text) = removalDialog(clientName(d, id, state.devices.values, copy = copy), machine = false, copy = copy)
         Alert(
             title,
             text,
-            "移除",
+            copy(UiMessages.commonRemove()),
             danger = true,
             onDismiss = { confirmRemove = false },
         ) {
@@ -358,10 +360,10 @@ fun ClientScreen(id: String) {
     }
     if (editing && canRename)
         InputAlert(
-            "客户端名称",
+            copy(UiMessages.settingsClientName()),
             d?.meta?.name.orEmpty(),
-            defaultClientName(d, id, state.devices.values),
-            "保存",
+            defaultClientName(d, id, state.devices.values, copy = copy),
+            copy(UiMessages.commonSave()),
             onDismiss = { editing = false },
         ) { name ->
             save.run(
@@ -374,13 +376,13 @@ fun ClientScreen(id: String) {
 }
 
 /** The one confirmation before removal: names the device and says what happens to it. */
-internal fun removalDialog(name: String, machine: Boolean): Pair<String, String> =
-    "移除 $name？" to
-        if (machine) "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-        else "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端上重新批准。"
+internal fun removalDialog(name: String, machine: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): Pair<String, String> =
+    copy(UiMessages.projectsRemoveTitle((name).toString())) to
+        if (machine) copy(UiMessages.securityAndroidThisImmediatelyDisconnectsItAndRevokesAccessKeepingSessionsAnd())
+        else copy(UiMessages.securityAndroidThisDisconnectsItsLoginAndClearsPushSubscriptionsComputerSessions())
 
 /** Shares the public genesis state for the relay's offline pin step. */
-internal fun shareGenesis(context: android.content.Context, state: ByteArray) {
+internal fun shareGenesis(context: android.content.Context, state: ByteArray, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) {
     val dir = File(context.cacheDir, SHARED_DIR).apply { mkdirs() }
     val file = File(dir, "public-genesis.bin")
     file.writeBytes(state)
@@ -391,7 +393,7 @@ internal fun shareGenesis(context: android.content.Context, state: ByteArray) {
                 .setType("application/octet-stream")
                 .putExtra(Intent.EXTRA_STREAM, uri)
                 .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION),
-            "导出创世状态",
+            copy(UiMessages.securityAndroidExportGenesisState()),
         ),
     )
 }

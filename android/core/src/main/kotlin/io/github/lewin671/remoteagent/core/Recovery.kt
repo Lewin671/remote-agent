@@ -209,7 +209,7 @@ object Recovery {
                     )
                     .value()
             } catch (e: com.connectrpc.ConnectException) {
-                if (e.code == com.connectrpc.Code.NOT_FOUND) throw PairException("恢复码不对，或者没有待处理的恢复")
+                if (e.code == com.connectrpc.Code.NOT_FOUND) throw PairException(UiMessages.securityAndroidIncorrectRecoveryCodeOrNoPendingRecovery().messageText())
                 throw e
             }
         return RecoveryChain.parse(
@@ -257,7 +257,7 @@ object Recovery {
         persist: (RecoveryPublication) -> Unit = { throw DeviceSecurity.Failure("storage") },
     ): RecoverySubmission {
         if (oldRecoverySeed.size != 32 || deviceSeed.size != 32 || genesisPrefix.size != 10)
-            throw PairException("恢复码无效")
+            throw PairException(UiMessages.securityInvalidRecoveryCode().messageText())
         val prepared =
             draft
                 ?: run {
@@ -277,7 +277,7 @@ object Recovery {
                             chain.phase != GetRecoveryContextResponse.Phase.PHASE_PENDING &&
                             chain.phase != GetRecoveryContextResponse.Phase.PHASE_READY
                     )
-                        throw PairException("恢复状态无法识别")
+                        throw PairException(UiMessages.securityAndroidUnrecognizedRecoveryStatus().messageText())
 
                     val signer = SigningKey(deviceSeed)
                     val (newRecoverySeed, newRecoveryEd) = Authority.newRecovery()
@@ -371,7 +371,7 @@ object Recovery {
             } catch (e: com.connectrpc.ConnectException) {
                 throw PairException(recoveryWords(e))
             }
-        if (res.deviceId != deviceId(signer.publicKey)) throw PairException("服务器返回了意外的设备 ID")
+        if (res.deviceId != deviceId(signer.publicKey)) throw PairException(UiMessages.securityAndroidTheServerReturnedAnUnexpectedDeviceId().messageText())
         // The published chain is available by recovery ID, signed by the new
         // device key; the new phone opens its own grant.
         val chain = context(server, http, ByteArray(0), deviceSeed, recoveryId = recoveryId)
@@ -379,10 +379,10 @@ object Recovery {
             chain.accountId != accountId ||
                 chain.phase != GetRecoveryContextResponse.Phase.PHASE_PUBLISHED
         )
-            throw PairException("服务器发布的恢复链与提交的不一致")
-        if (chain.head.core.authorityID != res.deviceId) throw PairException("恢复链的管理端不是这台设备")
+            throw PairException(UiMessages.securityAndroidTheRecoveryChainPublishedByTheServerDiffersFromThe().messageText())
+        if (chain.head.core.authorityID != res.deviceId) throw PairException(UiMessages.securityAndroidThisDeviceIsNotTheManagingClientInTheRecovery().messageText())
         if (!DeviceSecurity.stateHash(chain.head).contentEquals(expectedState))
-            throw PairException("服务器发布的恢复状态与提交的不一致")
+            throw PairException(UiMessages.securityAndroidTheRecoveryStatePublishedByTheServerDiffersFromThe().messageText())
         val record =
             DeviceSecurity.Record(
                 chain.pin,
@@ -401,12 +401,12 @@ object Recovery {
         ) to record
     }
 
-    private fun recoveryWords(e: com.connectrpc.ConnectException): String =
+    private fun recoveryWords(e: com.connectrpc.ConnectException): MessageText =
         when (e.code) {
-            com.connectrpc.Code.FAILED_PRECONDITION -> "还不能完成，或者恢复已被否决"
-            com.connectrpc.Code.PERMISSION_DENIED -> "恢复码不对，或者恢复声明已被拒绝"
-            com.connectrpc.Code.RESOURCE_EXHAUSTED -> "试得太频繁了，稍等一分钟再试"
-            com.connectrpc.Code.NOT_FOUND -> "找不到这次恢复，它可能已经完成或被否决"
+            com.connectrpc.Code.FAILED_PRECONDITION -> UiMessages.securityAndroidCannotCompleteYetOrRecoveryWasVetoed().messageText()
+            com.connectrpc.Code.PERMISSION_DENIED -> UiMessages.securityAndroidIncorrectRecoveryCodeOrTheRecoveryStatementWasRejected().messageText()
+            com.connectrpc.Code.RESOURCE_EXHAUSTED -> UiMessages.securityAndroidTooManyAttemptsWaitAMinuteAndRetry().messageText()
+            com.connectrpc.Code.NOT_FOUND -> UiMessages.securityAndroidRecoveryNotFoundItMayBeCompleteOrVetoed().messageText()
             else -> errorText(e)
         }
 }

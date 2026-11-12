@@ -41,7 +41,7 @@ internal fun newTaskModelSummary(c: NewConfig, models: ListModelsResponse?, sett
         else (m?.displayName?.ifEmpty { m.slug } ?: id).takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.newSessionDefaultModel().messageText()
     val effort = if (models != null && m != null && m.effortsCount > 1)
         c.effort.takeIf { it.isNotEmpty() }?.messageText() ?: UiMessages.modelsDefault().messageText() else "".messageText()
-    return NewTaskModelSummary(name, effort, if (singleAgent) agentName(c.agent) + " · " else "")
+    return NewTaskModelSummary(name, effort, if (singleAgent) agentName(c.agent, copy = ::sessionText) + " · " else "")
 }
 
 /** Only the model shrinks: the CLI prefix and the effective effort remain readable. */
@@ -65,6 +65,7 @@ internal fun NewTaskTools(
     onAgent: () -> Unit, onModel: () -> Unit,
     modifier: Modifier = Modifier, agentModifier: Modifier = Modifier, modelModifier: Modifier = Modifier,
 ) {
+    val copy = uiText()
     SubcomposeLayout(modifier) { constraints ->
         val loose = constraints.copy(minWidth = 0, minHeight = 0)
         val gap = if (agent == null) 0 else 2.dp.roundToPx()
@@ -80,7 +81,7 @@ internal fun NewTaskTools(
         }.single().maxIntrinsicWidth(Constraints.Infinity)
         val compact = fullAgentWidth + gap + modelWidth > constraints.maxWidth
         val agentPlaceable = if (agent == null) null else subcompose("agent") {
-            BoxTool(onAgent, uiText(UiMessages.newSessionCliLabel(agentName(agent))), agentModifier.testTag("new-agent")) {
+            BoxTool(onAgent, uiText(UiMessages.newSessionCliLabel(agentName(agent, copy = copy))), agentModifier.testTag("new-agent")) {
                 AgentToolLabel(agent, compact)
             }
         }.single().measure(loose)
@@ -97,8 +98,9 @@ internal fun NewTaskTools(
 
 @Composable
 private fun RowScope.AgentToolLabel(agent: Agent, compact: Boolean) {
+    val copy = uiText()
     AgentMark(agent, T.s15, pal.ink2)
-    if (!compact) Text(agentName(agent), style = T.s15, color = pal.ink2, maxLines = 1)
+    if (!compact) Text(agentName(agent, copy = copy), style = T.s15, color = pal.ink2, maxLines = 1)
 }
 
 internal fun chooseNewTaskModel(c: NewConfig, slug: String, models: ListModelsResponse, settings: DaemonSettings?): NewConfig {
@@ -118,6 +120,7 @@ internal fun ColumnScope.NewTaskModelPanel(
     c: NewConfig, models: ListModelsResponse?, modelsError: String, settings: DaemonSettings?, machineName: String,
     enabled: Boolean, onClose: () -> Unit, notice: @Composable () -> Unit = {}, edit: (NewConfig) -> Unit,
 ) {
+    val copy = uiText()
     var all by remember(c.machineId, c.agent) { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
         if (all) Row(Modifier.weight(1f).heightIn(min = 44.dp).clickable(role = Role.Button) { all = false }
@@ -144,7 +147,7 @@ internal fun ColumnScope.NewTaskModelPanel(
             Column(Modifier.verticalScroll(scroll).testTag(if (all) "new-model-all" else "new-model-main")) {
                 Box(Modifier.onSizeChanged { noticeHeight = it.height }) { notice() }
                 when {
-                    models == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent), reason = modelsError)), tone = NoticeTone.WARN)
+                    models == null && modelsError.isNotEmpty() -> Notice(uiText(UiMessages.modelsAndroidLoadFailedDefault(agent = agentName(c.agent, copy = copy), reason = modelsError)), tone = NoticeTone.WARN)
                     models == null -> Box(Modifier.fillMaxWidth().height(120.dp)) {
                         Text(uiText(UiMessages.modelsAndroidReadingMachine(name = machineName)), style = T.s13, color = pal.ink2)
                     }

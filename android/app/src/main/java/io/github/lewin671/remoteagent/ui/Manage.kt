@@ -52,7 +52,7 @@ import io.github.lewin671.remoteagent.core.PrefsOp
 import io.github.lewin671.remoteagent.core.Project
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.projectGroups
 import io.github.lewin671.remoteagent.core.projectName
 import io.github.lewin671.remoteagent.core.isHidden
@@ -120,7 +120,7 @@ object PrefsChanges {
                 change.write(change.op)
             } catch (e: Exception) {
                 if (queues[path] !== queue) return@launch
-                states[path] = State.Failed(change.op, errorText(e))
+                states[path] = State.Failed(change.op, displayError(e))
                 return@launch
             }
             if (queues[path] !== queue) return@launch
@@ -202,8 +202,9 @@ fun ProjectList(
     foot: (@Composable () -> Unit)? = null,
     row: @Composable (Project) -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
-    val g = projectGroups(state)
+    val g = projectGroups(state, copy = copy)
     var search by remember { mutableStateOf("") }
     val q = search.trim()
     val match: (Project) -> Boolean = { q.isEmpty() || it.name.contains(q, true) || it.key.contains(q, true) }

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
@@ -49,10 +51,10 @@ class DirectoryRefreshTest {
             assertTrue(peer.calls.contains("ListRemoteSessions"))
             val state = remote.state.value
             assertTrue(state.sessions.getValue("empty").info!!.taskOwned)
-            assertEquals(listOf("empty"), homeTimeline(state, HomeScope.All).attention.map { it.id })
-            assertEquals(1, projects(state).size)
-            assertEquals(listOf("empty"), projects(state).single().sessions.map { it.id })
-            assertTrue(homeTimeline(state, HomeScope.All).running.isEmpty())
+            assertEquals(listOf("empty"), homeTimeline(state, HomeScope.All, copy = ::messageTextForTest).attention.map { it.id })
+            assertEquals(1, projects(state, copy = ::messageTextForTest).size)
+            assertEquals(listOf("empty"), projects(state, copy = ::messageTextForTest).single().sessions.map { it.id })
+            assertTrue(homeTimeline(state, HomeScope.All, copy = ::messageTextForTest).running.isEmpty())
         } finally { remote.close(); runCurrent() }
     }
 

@@ -1,12 +1,13 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentInfo
 import io.github.lewin671.remoteagent.proto.AgentQuota
 import io.github.lewin671.remoteagent.proto.MachineMeta
 import io.github.lewin671.remoteagent.proto.QuotaState
 import io.github.lewin671.remoteagent.proto.QuotaWindow
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -29,7 +30,7 @@ class QuotaTest {
             .setResetsAtMs(java.time.Instant.parse("2026-10-02T16:10:00Z").toEpochMilli()).build()
         val m = machine(true, AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE)
             .setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now - 60_000).addWindows(w).build())
-        val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_CLAUDE }
+        val g = quotaGroups(m, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }
         // Still Friday in Beijing, so the reset after midnight is not 今天.
         assertEquals("40 分钟后重置 · 10月3日 周六 0:10", g.rows.single().reset)
         assertEquals("23:29", g.received?.args?.get("time"))
@@ -39,7 +40,7 @@ class QuotaTest {
     fun resetSaysHowLongIsLeftThenTheMoment() {
         // 9:41 in Beijing on Friday 2 October 2026.
         val now = java.time.Instant.parse("2026-10-02T01:41:00Z").toEpochMilli()
-        fun at(utc: String) = resetText(java.time.Instant.parse(utc).toEpochMilli(), now)
+        fun at(utc: String) = resetText(java.time.Instant.parse(utc).toEpochMilli(), now, copy = ::messageTextForTest)
         assertEquals("3 小时 39 分后重置 · 今天 13:20", at("2026-10-02T05:20:00Z"))
         assertEquals("6 天 4 小时后重置 · 10月8日 周四 14:10", at("2026-10-08T06:10:00Z"))
         // Rounded down, and a zero part is still written.
@@ -62,40 +63,40 @@ class QuotaTest {
             AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setPlan("claude_max").setObservedMs(now - 60_000)
                 .addWindows(w("five_hour", 92.0)).addWindows(w("seven_day", null)).build(),
         )
-        val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_CLAUDE }
+        val g = quotaGroups(m, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }
         assertEquals("Claude Code · Max", g.title)
-        assertEquals(mapOf("name" to "Claude Code", "window" to "5 小时"), quotaBanner(g)?.args)
+        assertEquals(mapOf("name" to "Claude Code", "window" to "5 小时"), quotaBanner(g, copy = ::messageTextForTest)?.args)
         assertEquals(QuotaStatus.OK, g.status)
         assertEquals("剩 8%", g.rows[0].left)
         assertEquals(QuotaTone.WARN, g.rows[0].tone)
         // A window without a number is unknown, never 0%.
-        assertEquals("未获取", g.rows[1].left)
+        assertEquals(messageTextForTest(UiMessages.quotaUnavailable()), g.rows[1].left)
         assertEquals(null, g.rows[1].percent)
         // Codex has no entry: this daemon does not read it.
-        assertEquals(QuotaStatus.UNSUPPORTED, quotaGroups(m, now).single { it.agent == Agent.AGENT_CODEX }.status)
+        assertEquals(QuotaStatus.UNSUPPORTED, quotaGroups(m, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CODEX }.status)
     }
 
     @Test
     fun waitingFailedAndOfflineAreSaidAsSuch() {
         val waiting = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_WAITING).build()
-        assertEquals("暂未获取额度", quotaLine(quotaGroups(machine(true, waiting), now).single { it.agent == Agent.AGENT_CLAUDE }))
+        assertEquals(messageTextForTest(UiMessages.quotaQuotaNotAvailableYet()), quotaLine(quotaGroups(machine(true, waiting), now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }, copy = ::messageTextForTest))
         val failed = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_FAILED).setDetail("状态栏输入读不出来")
             .setObservedMs(now - 3_600_000).addWindows(w("five_hour", 28.0)).build()
-        val g = quotaGroups(machine(true, failed), now).single { it.agent == Agent.AGENT_CLAUDE }
+        val g = quotaGroups(machine(true, failed), now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }
         assertTrue(g.lastRecord)
         assertEquals("上次剩 72%", g.rows[0].left)
         assertEquals(QuotaTone.STALE, g.rows[0].tone)
-        assertEquals("上次剩 72% · 5 小时", quotaLine(g))
+        assertEquals("上次剩 72% · 5 小时", quotaLine(g, copy = ::messageTextForTest))
         assertEquals("quota.received_success", g.received?.key)
         val ok = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 28.0)).build()
-        assertEquals(QuotaTone.STALE, quotaGroups(machine(false, ok), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0].tone)
+        assertEquals(QuotaTone.STALE, quotaGroups(machine(false, ok), now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }.rows[0].tone)
     }
 
     @Test
     fun aPassedResetOnlyWaitsForAnUpdate() {
         val q = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).addWindows(w("five_hour", 100.0, resetIn = -60_000)).build()
-        val r = quotaGroups(machine(true, q), now).single { it.agent == Agent.AGENT_CLAUDE }.rows[0]
-        assertEquals("等待更新", r.left)
+        val r = quotaGroups(machine(true, q), now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }.rows[0]
+        assertEquals(messageTextForTest(UiMessages.quotaAwaitingUpdate()), r.left)
         assertTrue(r.note.contains("不能据此确认额度已经恢复"))
     }
 
@@ -103,7 +104,7 @@ class QuotaTest {
     fun accountsThatCannotBeToldApartStayApart() {
         val a = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).setSourceSessionId("aaaa1111bbbb").addWindows(w("five_hour", 10.0)).build()
         val b = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).setAccount("f00dbeef99").addWindows(w("five_hour", 50.0)).build()
-        val gs = quotaGroups(machine(true, a, b), now).filter { it.agent == Agent.AGENT_CLAUDE }
+        val gs = quotaGroups(machine(true, a, b), now, copy = ::messageTextForTest).filter { it.agent == Agent.AGENT_CLAUDE }
         assertEquals(listOf("Claude Code · 会话 bbbb", "Claude Code · 账户 f00dbeef99"), gs.map { it.title })
     }
 
@@ -112,11 +113,11 @@ class QuotaTest {
         for ((agent, name) in listOf(Agent.AGENT_CLAUDE to "five_hour", Agent.AGENT_CODEX to "primary")) {
             val window = w(name, 99.6).toBuilder().setWindowMinutes(120).build()
             val q = AgentQuota.newBuilder().setAgent(agent).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now).addWindows(window).build()
-            val g = quotaGroups(machine(true, q), now).single { it.agent == agent }
+            val g = quotaGroups(machine(true, q), now, copy = ::messageTextForTest).single { it.agent == agent }
             assertEquals("2 小时", g.rows[0].label)
             assertEquals("剩 1%", g.rows[0].left)
             assertEquals(QuotaTone.WARN, g.rows[0].tone)
-            assertEquals(mapOf("name" to agentName(agent), "window" to "2 小时"), quotaBanner(g)?.args)
+            assertEquals(mapOf("name" to agentName(agent, copy = ::messageTextForTest), "window" to "2 小时"), quotaBanner(g, copy = ::messageTextForTest)?.args)
             // A window the account does not have is not shown as missing.
             assertEquals(1, g.rows.size)
         }
@@ -150,24 +151,24 @@ class QuotaTest {
                 .addQuotas(q)
                 .build(),
         )
-        val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_ANTIGRAVITY }
+        val g = quotaGroups(m, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_ANTIGRAVITY }
         assertEquals("Antigravity · Google AI Pro", g.title)
         assertEquals("9:41", g.received?.args?.get("time"))
         assertEquals(3, g.sections.size)
         assertEquals("Antigravity · Google AI Pro · Gemini", g.sections[0].title)
         assertEquals(listOf("Gemini · 5 小时", "Gemini · 7 天", "Gemini 4 Argon · 7 天"), g.sections[0].rows.map { it.label })
-        assertEquals("第三方模型（Claude、GPT-OSS）", g.sections[1].title)
+        assertEquals(messageTextForTest(UiMessages.quotaThirdPartyModelsClaudeGptOss()), g.sections[1].title)
         assertEquals(listOf("第三方模型 · 5 小时", "第三方模型 · 7 天"), g.sections[1].rows.map { it.label })
         assertEquals("custom-bucket", g.sections[2].title)
         assertEquals(listOf("custom-bucket"), g.sections[2].rows.map { it.label })
-        assertEquals("剩 60% · 5 小时", quotaLine(g))
+        assertEquals("剩 60% · 5 小时", quotaLine(g, copy = ::messageTextForTest))
     }
     @Test
     fun onlineReadingsAgeAtThirtyMinutesAndEarlierObservationsIncludeDates() {
         val now = java.time.Instant.parse("2026-11-12T08:16:00Z").toEpochMilli()
         val q = AgentQuota.newBuilder().setAgent(Agent.AGENT_CLAUDE).setState(QuotaState.QUOTA_STATE_OK)
             .addWindows(w("seven_day", 97.0, resetIn = 86_400_000, baseNow = now))
-        fun group() = quotaGroups(machine(true, q.build()), now).single { it.agent == Agent.AGENT_CLAUDE }
+        fun group() = quotaGroups(machine(true, q.build()), now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CLAUDE }
         q.setObservedMs(now - 1_799_999)
         assertEquals(QuotaTone.WARN, group().rows[0].tone)
         q.setObservedMs(now - 1_800_000)
@@ -175,7 +176,7 @@ class QuotaTest {
         assertTrue(group().lastRecord)
         assertEquals("quota.old_minutes", group().freshness?.key)
         assertEquals(30, group().freshness?.args?.get("count"))
-        assertEquals(null, quotaBanner(group()))
+        assertEquals(null, quotaBanner(group(), copy = ::messageTextForTest))
         assertEquals(14, quotaFreshness(now - 14 * 3_600_000, now)?.args?.get("count"))
         q.setObservedMs(java.time.Instant.parse("2026-11-11T15:59:00Z").toEpochMilli())
         assertEquals("quota.received_date", group().received?.key)

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -34,7 +36,7 @@ import io.github.lewin671.remoteagent.core.SigningKey
 import io.github.lewin671.remoteagent.core.createAccount
 import io.github.lewin671.remoteagent.core.dayText
 import io.github.lewin671.remoteagent.core.deviceId
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.randomBytes
 import io.github.lewin671.remoteagent.core.rebuildSecurityDomain
 import io.github.lewin671.remoteagent.proto.GetRecoveryContextResponse
@@ -48,6 +50,7 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun RecoveryScreen(onBack: () -> Unit = {}) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val scope = rememberAuthorityScope()
@@ -57,19 +60,19 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
     var busy by remember { mutableStateOf(false) }
     suspend fun read() {
         try { pending = withContext(Dispatchers.IO) { RaApp.instance.vault.readSecurityOperation() }; error = "" }
-        catch (e: Exception) { error = errorText(e, state) }
+        catch (e: Exception) { error = displayError(e, state) }
     }
     LaunchedEffect(state.leaseEndMs, state.authorityDeviceId) { read() }
     if (page != "overview") androidx.activity.compose.BackHandler { page = "overview" }
     when (page) {
         "recovery" -> RotateRecoveryScreen { page = "overview" }
-        "handoff" -> if (!state.isAuthority) HandoffPreparation { page = "overview" } else PageScaffold("交接管理权", onBack = { page = "overview" }) {
+        "handoff" -> if (!state.isAuthority) HandoffPreparation { page = "overview" } else PageScaffold(copy(UiMessages.securityTransferManagement()), onBack = { page = "overview" }) {
             FormColumn(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) { HandoffControls() }
         }
-        "pending" -> PageScaffold("未完成的安全操作", onBack = { page = "overview" }) {
+        "pending" -> PageScaffold(copy(UiMessages.securityUnfinishedSecurityOperation()), onBack = { page = "overview" }) {
             FormColumn(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
-                Hint("安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。")
-                PillButton("继续原操作", {
+                Hint(copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe()))
+                PillButton(copy(UiMessages.securityAndroidContinueOriginalOperation()), {
                     busy = true
                     scope.launch {
                         try {
@@ -79,7 +82,7 @@ fun RecoveryScreen(onBack: () -> Unit = {}) {
                             }
                             read()
                             if (pending == null) page = "overview"
-                        } catch (e: Exception) { error = errorText(e, state) }
+                        } catch (e: Exception) { error = displayError(e, state) }
                         finally { busy = false }
                     }
                 }, enabled = !busy)
@@ -102,28 +105,29 @@ internal fun AccountSecurityContent(
     onRenew: () -> Unit = {},
     error: String = "",
 ) {
+    val copy = uiText()
     val t = now()
     val self = LocalRemote.current.account.deviceId
-    PageScaffold("账户安全", readable = true) {
+    PageScaffold(copy(UiMessages.securityAccountSecurity()), readable = true) {
         Column(Modifier.fillMaxWidth().verticalScrollFaded().padding(vertical = 16.dp)) {
             if (state.recoveryPending) Notice(
-                "有人正在用恢复码申请接管管理权，${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)} 后生效。不是你本人就现在否决。",
+                copy(UiMessages.securitySomeoneIsRequestingManagementTakeoverWithARecoveryCode((io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t, copy = copy)).toString())),
                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN,
-                action = if (state.isAuthority) "否决" else null, onAction = onRecovery,
+                action = if (state.isAuthority) copy(UiMessages.securityReject()) else null, onAction = onRecovery,
             )
             if (error.isNotEmpty()) Notice(error, Modifier.padding(16.dp), NoticeTone.ERROR)
-            if (pending) Group(rows = listOf({ GRow("未完成的安全操作", chevron = true, onClick = onPending) }))
+            if (pending) Group(rows = listOf({ GRow(copy(UiMessages.securityUnfinishedSecurityOperation()), chevron = true, onClick = onPending) }))
             Group(rows = listOf<@Composable () -> Unit>(
-                { GRow("当前管理端", if (state.isAuthority) "本机" else state.authorityName) },
-                { GRow("远程控制有效期", io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t)) },
-            ) + if (state.isAuthority) listOf<@Composable () -> Unit>({ GRow("现在续期", action = true, onClick = onRenew) }) else emptyList())
-            Hint("回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。", Modifier.padding(bottom = 8.dp))
-            if (!state.isAuthority) Hint("请打开${state.authorityName}续期。", Modifier.padding(bottom = 8.dp))
+                { GRow(copy(UiMessages.securityCurrentManagingClient()), if (state.isAuthority) copy(UiMessages.securityThisDevice()) else uiText(state.authorityName)) },
+                { GRow(copy(UiMessages.securityRemoteControlExpiry()), io.github.lewin671.remoteagent.core.securityTime(state.leaseEndMs, t, copy = copy)) },
+            ) + if (state.isAuthority) listOf<@Composable () -> Unit>({ GRow(copy(UiMessages.securityRenewNow()), action = true, onClick = onRenew) }) else emptyList())
+            Hint(copy(UiMessages.securityAndroidRenewsAutomaticallyWhenYouReturnToTheManagingClientAfter()), Modifier.padding(bottom = 8.dp))
+            if (!state.isAuthority) Hint(copy(UiMessages.securityOpenToRenew(state.authorityName.resolve(copy))), Modifier.padding(bottom = 8.dp))
             if (state.isAuthority) Group(rows = listOf(
-                { GRow("恢复码", chevron = true, onClick = onRecovery) },
-                { GRow("交接管理权", chevron = true, onClick = onHandoff) },
+                { GRow(copy(UiMessages.securityRecoveryCode()), chevron = true, onClick = onRecovery) },
+                { GRow(copy(UiMessages.securityTransferManagement()), chevron = true, onClick = onHandoff) },
             )) else if (state.devices.values.any { it.id == self && it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT })
-                Group(rows = listOf({ GRow("接管管理权", chevron = true, onClick = onHandoff) }))
+                Group(rows = listOf({ GRow(copy(UiMessages.securityTakeOverManagement()), chevron = true, onClick = onHandoff) }))
         }
     }
 }
@@ -131,6 +135,7 @@ internal fun AccountSecurityContent(
 /** 紧急恢复: the recovering client submits the old recovery code and shows the new one once. */
 @Composable
 fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
+    val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
     var deviceSeed by remember { mutableStateOf(randomBytes(32)) }
@@ -161,14 +166,14 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                         )
                     }
             } catch (e: Exception) {
-                error = errorText(e)
+                error = displayError(e)
             } finally {
                 busy = false
             }
         }
     }
 
-    PageScaffold("用恢复码找回管理权", onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()
@@ -178,16 +183,16 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
             val s = submission
             if (s == null) {
                 Text(
-                    "输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
+                    copy(UiMessages.securityAndroidEnterTheRecoveryCodeSavedDuringSetupAfterSubmittingWait()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
-                RecoveryField("恢复码", code, { code = it }, "XXXX-XXXX-…", lines = 3)
-                RecoveryField("服务器", server, { server = it.trim() }, "https://")
+                RecoveryField(copy(UiMessages.securityRecoveryCode()), code, { code = it }, "XXXX-XXXX-…", lines = 3)
+                RecoveryField(copy(UiMessages.securityServer()), server, { server = it.trim() }, "https://")
                 PillButton(
-                    if (busy) "正在提交…" else "提交恢复",
+                    if (busy) copy(UiMessages.securityAndroidSubmitting()) else copy(UiMessages.securityAndroidSubmitRecovery()),
                     {
                         busy = true
                         error = ""
@@ -195,7 +200,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                             try {
                                 val decoded =
                                     RecoveryCode.decode(code)
-                                        ?: throw IllegalArgumentException("恢复码不对")
+                                        ?: throw IllegalArgumentException(copy(UiMessages.securityAndroidIncorrectRecoveryCode()))
                                 val seed = decoded.seed
                                 val url = checkedServer(server)
                                 app.lastServer = url
@@ -245,7 +250,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                                         )
                                                 }
                                         if (saved == null)
-                                            throw IllegalStateException("这次恢复已提交；请在保存了恢复身份的那台手机上完成")
+                                            throw IllegalStateException(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedCompleteItOnThePhoneThat()))
                                         RecoverySubmission(
                                             existing.recoveryId,
                                             existing.readyMs,
@@ -304,7 +309,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                 }
                                 app.lastServer = url
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -315,7 +320,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                     enabled = !busy && code.isNotBlank() && server.length > 8,
                 )
                 TextAction(
-                    "取消",
+                    copy(UiMessages.commonCancel()),
                     {
                         app.lastServer = server
                         onBack()
@@ -325,47 +330,47 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
             } else {
                 val rejected = recoveryNextAction(chain?.phase) == RecoveryNextAction.RESTART
                 if (rejected) {
-                    Hint("这次恢复已被否决，申请中生成的新恢复码也已作废。", Modifier)
+                    Hint(copy(UiMessages.securityAndroidThisRecoveryWasVetoedTheNewRecoveryCodeGeneratedFor()), Modifier)
                 } else if (s.newCode.isNotEmpty()) {
-                    GLabel("新的恢复码 · 只显示这一次")
+                    GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
                     RecoveryCodeFigure(s.newCode)
-                    Hint("48 小时后生效；如果原管理端否决了这次恢复，它会作废。请现在抄下来或拍照保存。", Modifier)
+                    Hint(copy(UiMessages.securityAndroidTakesEffectAfter48HoursAVetoFromTheOriginal()), Modifier)
                 } else {
-                    Hint("这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。", Modifier)
+                    Hint(copy(UiMessages.securityAndroidThisRecoveryWasSubmittedIfYouHaveNotSavedThe()), Modifier)
                 }
                 val computers = chain?.head?.core?.members?.filter { it.kind == 1u }.orEmpty()
                 if (!rejected && s.newCode.isNotEmpty() && !codeSaved)
                     PillButton(
-                        "我已离线保存新恢复码",
+                        copy(UiMessages.securityAndroidISavedTheNewRecoveryCodeOffline()),
                         {
                             try {
                                 app.vault.confirmRecoveryCodeSaved()
                                 codeSaved = true
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             }
                         },
                         Modifier.fillMaxWidth().padding(top = 8.dp),
                         ButtonKind.SECONDARY,
                     )
-                GLabel("恢复码保存状态")
+                GLabel(copy(UiMessages.securityAndroidRecoveryCodeBackupStatus()))
                 Hint(
-                    if (codeSaved) "已确认离线保存新恢复码"
-                    else if (s.newCode.isNotEmpty()) "新码仍显示在本页，请离线保存"
-                    else "尚未确认保存；本机没有恢复码私钥，完成后立即换码",
+                    if (codeSaved) copy(UiMessages.securityAndroidNewRecoveryCodeConfirmedSavedOffline())
+                    else if (s.newCode.isNotEmpty()) copy(UiMessages.securityAndroidTheNewCodeIsStillOnThisPageSaveIt())
+                    else copy(UiMessages.securityAndroidBackupNotConfirmedThisPhoneHasNoRecoveryPrivateKey()),
                     Modifier,
                 )
-                GLabel("等待电脑恢复当前会话")
+                GLabel(copy(UiMessages.securityAndroidWaitingForComputersToRestoreCurrentSessions()))
                 Hint(
-                    if (computers.isEmpty()) "完成后等待保留电脑上线并发布当前状态"
+                    if (computers.isEmpty()) copy(UiMessages.securityAndroidAfterCompletionWaitForRetainedComputersToComeOnlineAnd())
                     else
                         computers.joinToString("、") { it.id.take(8) } +
-                            "；完成恢复后需这些电脑重新发布 checkpoint",
+                            copy(UiMessages.securityAndroidTheseComputersMustRepublishCheckpointsAfterRecovery()),
                     Modifier,
                 )
-                GLabel("等待")
+                GLabel(copy(UiMessages.securityAndroidWait()))
                 Hint(
-                    if (s.readyMs > 0) "可以生效的时间：" + io.github.lewin671.remoteagent.core.securityTime(s.readyMs, t) else "48 小时后才能完成。",
+                    if (s.readyMs > 0) copy(UiMessages.securityAndroidRecoveryEligibleAt(io.github.lewin671.remoteagent.core.securityTime(s.readyMs, t, copy = copy))) else copy(UiMessages.securityAndroidCompletionRequires48Hours()),
                     Modifier,
                 )
                 RecoveryStatus(
@@ -389,7 +394,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                         )
                                     }
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -419,7 +424,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                     adopt = app::recovered,
                                 )
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -447,7 +452,7 @@ fun RecoverScreen(app: RaApp, onBack: () -> Unit = {}) {
                                     },
                                 )
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -469,28 +474,29 @@ internal fun RecoveryStatus(
     onComplete: () -> Unit,
     onRestart: () -> Unit,
 ) {
-    TextAction("查看状态", onRefresh, enabled = !busy, alignment = Alignment.CenterStart)
+    val copy = uiText()
+    TextAction(copy(UiMessages.securityAndroidViewStatus()), onRefresh, enabled = !busy, alignment = Alignment.CenterStart)
     when (phase) {
-        GetRecoveryContextResponse.Phase.PHASE_READY -> Hint("已经可以完成恢复。", Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_PENDING -> Hint("还在 48 小时等待期内。", Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint("这次恢复被原管理端否决了。", Modifier)
-        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint("这次恢复已经完成。", Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_READY -> Hint(copy(UiMessages.securityAndroidRecoveryCanNowBeCompleted()), Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_PENDING -> Hint(copy(UiMessages.securityAndroidStillWithinThe48HourWaitingPeriod()), Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_REJECTED -> Hint(copy(UiMessages.securityAndroidTheOriginalManagingClientVetoedThisRecovery()), Modifier)
+        GetRecoveryContextResponse.Phase.PHASE_PUBLISHED -> Hint(copy(UiMessages.securityAndroidThisRecoveryIsComplete()), Modifier)
         else -> {}
     }
     if (error.isNotEmpty()) Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
     if (recoveryNextAction(phase) == RecoveryNextAction.COMPLETE) {
         PillButton(
-            if (busy) "正在完成…" else "完成恢复",
+            if (busy) copy(UiMessages.securityAndroidCompleting()) else copy(UiMessages.securityCompleteRecovery()),
             onComplete,
             Modifier.fillMaxWidth().padding(top = 10.dp),
             ButtonKind.INK,
             enabled = !busy,
         )
-        Hint("如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。", Modifier.padding(top = 8.dp))
+        Hint(copy(UiMessages.securityAndroidIf48HoursHaveNotPassedOrTheOriginalManaging()), Modifier.padding(top = 8.dp))
     } else {
-        Hint("这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。", Modifier)
+        Hint(copy(UiMessages.securityAndroidTheNewRecoveryCodeGeneratedForThisRequestIsInvalid()), Modifier)
         PillButton(
-            if (busy) "正在清除…" else "放弃这次恢复，输入新恢复码",
+            if (busy) copy(UiMessages.securityAndroidClearing()) else copy(UiMessages.securityAndroidAbandonThisRecoveryAndEnterANewCode()),
             onRestart,
             Modifier.fillMaxWidth().padding(top = 10.dp),
             ButtonKind.SECONDARY,
@@ -502,6 +508,7 @@ internal fun RecoveryStatus(
 /** 新账户: create the root key, device identity and recovery code on this phone. */
 @Composable
 fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
+    val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
     var server by remember { mutableStateOf(app.lastServer.ifEmpty { "https://" }) }
@@ -512,7 +519,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
 
     fun checkedServer(s: String) = Secret.checkServer(s, allowPlainHttp = app.debuggable)
 
-    PageScaffold("新建账户", onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityCreateAccount()), onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()
@@ -522,16 +529,16 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
             val c = created
             if (c == null) {
                 Text(
-                    "这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。",
+                    copy(UiMessages.securityAndroidThisPhoneWillBecomeTheManagingClientTheAccountRoot()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (error.isNotEmpty()) Notice(error, Modifier.padding(bottom = 10.dp), NoticeTone.ERROR)
-                RecoveryField("服务器", server, { server = it.trim() }, "https://")
-                RecoveryField("Setup token（服务器要求时）", setupToken, { setupToken = it }, "可留空")
+                RecoveryField(copy(UiMessages.securityServer()), server, { server = it.trim() }, "https://")
+                RecoveryField(copy(UiMessages.securityAndroidSetupTokenIfRequiredByTheServer()), setupToken, { setupToken = it }, copy(UiMessages.securityAndroidOptional()))
                 PillButton(
-                    if (busy) "正在创建…" else "创建账户",
+                    if (busy) copy(UiMessages.scheduleCreating()) else copy(UiMessages.securityAndroidCreateAccount()),
                     {
                         busy = true
                         error = ""
@@ -552,7 +559,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                                     }
                                 app.lastServer = url
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -563,13 +570,13 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                     enabled = !busy && server.length > 8,
                 )
             } else {
-                GLabel("恢复码 · 只显示这一次")
+                GLabel(copy(UiMessages.securityAndroidRecoveryCodeShownOnlyOnce()))
                 RecoveryCodeFigure(c.recoveryCode)
-                Hint("管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。", Modifier)
+                Hint(copy(UiMessages.securityAndroidUseThisToRecoverManagementIfTheManagingClientIs()), Modifier)
                 if (error.isNotEmpty())
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    "我已保存，开始使用",
+                    copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
                     {
                         busy = true
                         error = ""
@@ -577,7 +584,7 @@ fun CreateAccountScreen(app: RaApp, onBack: () -> Unit = {}) {
                             try {
                                 app.created(c.account, c.record)
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                                 busy = false
                             }
                         }
@@ -635,6 +642,7 @@ private fun RecoveryField(
  */
 @Composable
 fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {}) {
+    val copy = uiText()
     val p = pal
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = rememberAuthorityScope()
@@ -651,7 +659,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
         )
             created = saved.copy(needsOfflinePin = true)
     }
-    PageScaffold("重建安全域", onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityAndroidRebuildSecurityDomain()), onBack = onBack) {
         if (error.isNotEmpty() && !busy) DiscardSetup(app, onBack)
         FormColumn(
             Modifier.fillMaxWidth()
@@ -661,20 +669,20 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
             val c = created
             if (c == null) {
                 Text(
-                    "保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。",
+                    copy(UiMessages.securityAndroidKeepThisPhoneSAccountRootKeyAndDeviceIdentity()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
                 )
                 if (existing == null || !existing.hasRoot)
-                    Hint("这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。", Modifier)
+                    Hint(copy(UiMessages.securityAndroidThisPhoneHasNoAccountRootKeyAndCannotBecome()), Modifier)
                 if (error.isNotEmpty())
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) "正在重建…" else "重建安全域并成为管理端",
+                    if (busy) copy(UiMessages.securityAndroidRebuilding()) else copy(UiMessages.securityAndroidRebuildSecurityDomainAndBecomeManagingClient()),
                     {
                         if (existing == null) {
-                            error = "没有可升级的账户"
+                            error = copy(UiMessages.securityAndroidNoAccountAvailableToUpgrade())
                             return@PillButton
                         }
                         busy = true
@@ -693,7 +701,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                                         )
                                     }
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -704,25 +712,25 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                     enabled = !busy && existing != null && existing.hasRoot,
                 )
             } else {
-                GLabel("新的恢复码 · 只显示这一次")
+                GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
                 if (c.recoveryCode.isNotEmpty()) RecoveryCodeFigure(c.recoveryCode)
-                else Hint("这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。", Modifier)
-                Hint("请抄下来或拍照保存。它只签恢复声明，不能解密内容。", Modifier)
+                else Hint(copy(UiMessages.securityAndroidThisIsASavedRebuildDraftTheRecoveryCodeWill()), Modifier)
+                Hint(copy(UiMessages.securityAndroidWriteItDownOrPhotographItItOnlySignsRecovery()), Modifier)
                 if (c.needsOfflinePin)
                     Notice(
-                        "中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。",
+                        copy(UiMessages.securityAndroidTheRelayHasNotPinnedThisSecurityDomainAnUpgrade()),
                         Modifier.padding(top = 10.dp),
                         NoticeTone.WARN,
                     )
                 if (c.needsOfflinePin)
                     TextAction(
-                        "导出创世状态（中继离线固定用）",
-                        { shareGenesis(ctx, DeviceSecurity.stateBytes(c.record.chain.first())) },
+                        copy(UiMessages.securityAndroidExportGenesisStateForOfflineRelayPinning()),
+                        { shareGenesis(ctx, DeviceSecurity.stateBytes(c.record.chain.first()), copy = copy) },
                         alignment = Alignment.CenterStart,
                     )
                 if (error.isNotEmpty()) Notice(error, Modifier.padding(top = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) "正在保存…" else "我已保存，开始使用",
+                    if (busy) copy(UiMessages.securityAndroidSaving()) else copy(UiMessages.securityAndroidISavedItStartUsingTheApp()),
                     {
                         busy = true
                         error = ""
@@ -730,7 +738,7 @@ fun RebuildSecurityScreen(app: RaApp, existing: Account?, onBack: () -> Unit = {
                             try {
                                 app.created(c.account, c.record)
                             } catch (e: Exception) {
-                                error = errorText(e)
+                                error = displayError(e)
                             } finally {
                                 busy = false
                             }
@@ -760,12 +768,13 @@ internal fun RotateRecoveryContent(
     publishCode: suspend (PreparedRecovery) -> Unit,
     onBack: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val scope = rememberAuthorityScope()
     var prepared by remember { mutableStateOf<PreparedRecovery?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
-    PageScaffold("恢复码", onBack = onBack) {
+    PageScaffold(copy(UiMessages.securityRecoveryCode()), onBack = onBack) {
         FormColumn(
             Modifier.fillMaxWidth()
             .verticalScrollFaded()
@@ -774,7 +783,7 @@ internal fun RotateRecoveryContent(
             val pv = prepared
             if (pv == null) {
                 Text(
-                    "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
+                    copy(UiMessages.securityReplacingTheRecoveryCodeImmediatelyInvalidatesTheOldCode()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 10.dp),
@@ -782,7 +791,7 @@ internal fun RotateRecoveryContent(
                 if (error.isNotEmpty())
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) "正在生成…" else "生成新的恢复码",
+                    if (busy) copy(UiMessages.securityAndroidGenerating()) else copy(UiMessages.securityGenerateNewRecoveryCode()),
                     {
                         busy = true
                         error = ""
@@ -790,7 +799,7 @@ internal fun RotateRecoveryContent(
                             try {
                                 prepared = prepareCode()
                             } catch (e: Exception) {
-                                error = errorText(e, state)
+                                error = displayError(e, state)
                             } finally {
                                 busy = false
                             }
@@ -801,13 +810,13 @@ internal fun RotateRecoveryContent(
                     enabled = !busy,
                 )
             } else {
-                GLabel("新的恢复码 · 只显示这一次")
+                GLabel(copy(UiMessages.securityNewRecoveryCodeShownOnlyOnce()))
                 RecoveryCodeFigure(pv.code)
-                Hint("先抄下来或拍照保存，再发布。发布成功后旧码立即作废。", Modifier)
+                Hint(copy(UiMessages.securityAndroidWriteItDownOrPhotographItBeforePublishingPublishingImmediately()), Modifier)
                 if (error.isNotEmpty())
                     Notice(error, Modifier.padding(vertical = 8.dp), NoticeTone.ERROR)
                 PillButton(
-                    if (busy) "正在发布…" else "我已保存，发布换码",
+                    if (busy) copy(UiMessages.securityAndroidPublishing()) else copy(UiMessages.securitySavedPublishReplacement()),
                     {
                         busy = true
                         error = ""
@@ -816,7 +825,7 @@ internal fun RotateRecoveryContent(
                                 publishCode(pv)
                                 onBack()
                             } catch (e: Exception) {
-                                error = errorText(e, state)
+                                error = displayError(e, state)
                             } finally {
                                 busy = false
                             }
@@ -827,7 +836,7 @@ internal fun RotateRecoveryContent(
                     enabled = !busy,
                 )
                 PillButton(
-                    "先不发布",
+                    copy(UiMessages.securityAndroidDoNotPublishYet()),
                     { prepared = null },
                     Modifier.fillMaxWidth().padding(top = 6.dp),
                     ButtonKind.SECONDARY,

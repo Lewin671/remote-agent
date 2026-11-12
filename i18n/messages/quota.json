@@ -1,5 +1,87 @@
 [
   {
+    "key": "quota.android_last_record",
+    "zh-CN": "（上次记录）",
+    "en": "(Last record)",
+    "notes": "Android Quota 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.android_reset_at",
+    "zh-CN": "{left} · {day} {clock}",
+    "en": "{left} · {day} {clock}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "left": {
+        "type": "string",
+        "example": "Example"
+      },
+      "day": {
+        "type": "string",
+        "example": "Example"
+      },
+      "clock": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.android_value1_value2_value3",
+    "zh-CN": "{value1}月{value2}日 {value3}",
+    "en": "{value1}/{value2} {value3}",
+    "notes": "Android Quota 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：日历日期组成部分，源语言顺序必须保留，英文可按整句调整；value2：日历日期组成部分，源语言顺序必须保留，英文可按整句调整；value3：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      },
+      "value2": {
+        "type": "string",
+        "example": "Example"
+      },
+      "value3": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.android_you_can_view_usage_in_claude_code_on_this_computer",
+    "zh-CN": " 可在本机 Claude Code 中查看 /usage。",
+    "en": " You can view /usage in Claude Code on this computer.",
+    "notes": "Android Agents 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "quota.old_minutes",
     "zh-CN": {
       "plural": "count",

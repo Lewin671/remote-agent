@@ -1,9 +1,10 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.proto.Session
 import io.github.lewin671.remoteagent.proto.SessionStatus
-import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class OrderTest {
@@ -34,17 +35,17 @@ class OrderTest {
     @Test fun projectPositionsIgnoreOutputExitAndReloadButFollowNewSessions() {
         val a = s("a", 1000, 99999) { cwd = "/a" }
         val b = s("b", 2000, 1) { cwd = "/b" }
-        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id })).map { it.key }
+        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id }), copy = ::messageTextForTest).map { it.key }
         assertEquals(listOf("/b", "/a"), keys(a, b))
         val changed = a.copy(updatedMs = 999999, info = a.info!!.toBuilder().setEndedAt(at(5000)).setPendingApprovals(1).build())
         assertEquals(listOf("/b", "/a"), keys(b, changed))
-        assertEquals(999999L, projects(RemoteState(sessions = mapOf("a" to changed))).single().updatedMs)
+        assertEquals(999999L, projects(RemoteState(sessions = mapOf("a" to changed)), copy = ::messageTextForTest).single().updatedMs)
         assertEquals(listOf("/a", "/b"), keys(b, changed, s("new", 3000, 0) { cwd = "/a" }))
     }
     @Test fun projectTiesAndLegacyMetadataUsePathsInsteadOfUploadTimes() {
         val a = s("z", 1000, 99999) { cwd = "/a" }
         val b = s("a", 1000, 1) { cwd = "/b" }
-        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id })).map { it.key }
+        fun keys(vararg list: SessionView) = projects(RemoteState(sessions = list.associateBy { it.id }), copy = ::messageTextForTest).map { it.key }
         assertEquals(listOf("/a", "/b"), keys(b, a))
         assertEquals(listOf("/a", "/b"), keys(b.copy(info = b.info!!.toBuilder().clearCreatedAt().build()), a.copy(info = a.info!!.toBuilder().clearCreatedAt().build())))
     }
@@ -54,7 +55,7 @@ class OrderTest {
         var a = s("a", 1000, 0) { cwd = "/a"; status = SessionStatus.SESSION_STATUS_RUNNING }
         var older = s("older", 500, 0) { cwd = "/a"; status = SessionStatus.SESSION_STATUS_IDLE }
         var b = s("b", 2000, 0) { cwd = "/b"; status = SessionStatus.SESSION_STATUS_IDLE }
-        fun keys() = projects(RemoteState(sessions = listOf(ended, a, older, b).associateBy { it.id })).map { it.key }
+        fun keys() = projects(RemoteState(sessions = listOf(ended, a, older, b).associateBy { it.id }), copy = ::messageTextForTest).map { it.key }
         assertEquals(listOf("/b", "/a", "/ended"), keys())
         for (status in listOf(SessionStatus.SESSION_STATUS_STARTING, SessionStatus.SESSION_STATUS_IDLE, SessionStatus.SESSION_STATUS_BLOCKED)) {
             b = b.copy(info = b.info!!.toBuilder().setStatus(status).setPendingApprovals(1).build())

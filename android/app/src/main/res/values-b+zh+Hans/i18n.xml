@@ -89,7 +89,22 @@
     <string name="attachment_uploading" formatted="false">"上传中"</string>
     <string name="attachment_zip_folder" formatted="false">"不能直接发送文件夹，请先压缩成 ZIP 再选择文件"</string>
     <string name="common_all_projects_avatar" formatted="false">"全"</string>
+    <string name="common_android_account_signed_out" formatted="false">"账户已退出"</string>
+    <string name="common_android_after_switching_machines_each_cli_starts_with_that_machine_s" formatted="false">"换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。"</string>
+    <string name="common_android_allow_camera_access" formatted="false">"允许使用相机"</string>
+    <string name="common_android_camera_access_is_needed_to_scan_you_can_also_go" formatted="false">"需要相机权限才能扫码；也可以返回手动输入配对码。"</string>
+    <string name="common_android_cannot_find_this_session" formatted="false">"找不到这个会话"</string>
+    <string name="common_android_cli_s_own_mode" formatted="false">"CLI 自己的模式"</string>
+    <string name="common_android_could_not_clear_the_account_and_cache_on_this_phone" formatted="false">"没能清除这台手机上的账户和缓存，请重试"</string>
+    <string name="common_android_could_not_read_this_session_value1">"没能读取这个会话：%1$s"</string>
+    <string name="common_android_could_not_save_pending_images" formatted="false">"没能保存待发图片"</string>
+    <string name="common_android_each_cli_saves_its_own_settings_only_future_sessions_are" formatted="false">"各 CLI 独立保存一套。只影响之后新建的会话，进行中的不变；在你的设备之间同步。"</string>
     <string name="common_android_more" formatted="false">"更多"</string>
+    <string name="common_android_new_full_access_sessions_start_directly_with_these_settings" formatted="false">"完全放行的新会话直接按此设置启动。"</string>
+    <string name="common_android_offline" formatted="false">"不在线"</string>
+    <string name="common_android_project_settings_may_differ" formatted="false">"（项目设置可能不同）"</string>
+    <string name="common_android_the_original_request_and_keys_are_saved_for_retry_if" formatted="false">"。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"</string>
+    <string name="common_android_this_app_version_is_old_update_and_retry" formatted="false">"这个 App 版本较旧，请更新后再试"</string>
     <string name="common_back" formatted="false">"返回"</string>
     <string name="common_cancel" formatted="false">"取消"</string>
     <string name="common_clear_search" formatted="false">"清空搜索"</string>
@@ -110,9 +125,12 @@
     <string name="common_settings" formatted="false">"设置"</string>
     <string name="common_unknown_computer" formatted="false">"未知电脑"</string>
     <string name="composer_after_turn" formatted="false">"这一轮结束后再发"</string>
+    <string name="composer_android_image_not_on_computer" formatted="false">"图片不在电脑上"</string>
     <string name="composer_android_not_sent">"这条没有发出：%1$s"</string>
     <string name="composer_android_outbox_format" formatted="false">"待确认记录格式已变更，请清理旧记录并重新选择附件"</string>
+    <string name="composer_android_reply_unverified" formatted="false">"回复验证失败"</string>
     <string name="composer_android_restart_unknown" formatted="false">"App 重启过，不确定这条有没有送到"</string>
+    <string name="composer_android_unknown_reason" formatted="false">"原因未知"</string>
     <string name="composer_await_record">"已送入终端，等 %1$s 记录"</string>
     <string name="composer_computer_restarted" formatted="false">"电脑上的 remote-agent 写入时重启了"</string>
     <string name="composer_images_unrecognized">"%1$s 没认出图片"</string>
@@ -237,6 +255,59 @@
     <string name="dock_trust_folder" formatted="false">"默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"</string>
     <string name="dock_waiting_confirmation" formatted="false">"等待确认"</string>
     <string name="errors_account_creation_draft_preserved_continue_the_original_creation_flow" formatted="false">"账户创建草稿已保留，请继续原创建流程和恢复码确认"</string>
+    <string name="errors_android_attachment_transfer_content_changed_retry" formatted="false">"附件传输内容已改变，请重试"</string>
+    <string name="errors_android_attachment_transfer_stopped_or_changed_retry" formatted="false">"附件传输已中止或发生变化，请重试"</string>
+    <string name="errors_android_cannot_find_the_server_check_your_network" formatted="false">"找不到服务器，检查一下网络"</string>
+    <string name="errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown" formatted="false">"电脑的回复打不开，不确定指令有没有执行"</string>
+    <string name="errors_android_cannot_read_file_size_select_the_file_again" formatted="false">"无法读取文件大小，请重新选择文件"</string>
+    <string name="errors_android_cannot_read_the_source_file_remove_it_and_select_the" formatted="false">"无法读取源文件，请移除后重新选择文件"</string>
+    <string name="errors_android_cannot_verify_the_current_request" formatted="false">"无法核实当前请求"</string>
+    <string name="errors_android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends" formatted="false">"不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求"</string>
+    <string name="errors_android_computer_outcome_unknown_the_connection_dropped" formatted="false">"不确定电脑有没有执行：连接中途断了"</string>
+    <string name="errors_android_computer_outcome_unknown_the_request_may_have_arrived_before_login">"不确定电脑有没有执行：请求可能已经送到，之后登录失败（%1$s）"</string>
+    <string name="errors_android_computer_outcome_unknown_value1">"不确定电脑有没有执行：%1$s"</string>
+    <string name="errors_android_could_not_connect_to_the_server" formatted="false">"没有连上服务器"</string>
+    <string name="errors_android_could_not_read_the_session_list" formatted="false">"没能读取会话列表"</string>
+    <string name="errors_android_file_name_is_too_long_or_empty_rename_the_file" formatted="false">"文件名过长或为空，请重命名后重新选择"</string>
+    <string name="errors_android_file_too_large_maximum_size_per_file_value1">"文件过大，单个文件最多 %1$s"</string>
+    <string name="errors_android_file_verification_failed_retry_or_select_the_file_again" formatted="false">"文件校验失败，请重试或重新选择文件"</string>
+    <string name="errors_android_history_read_failed">"没能读取历史：%1$s"</string>
+    <string name="errors_android_history_records_are_discontinuous_retry_reading" formatted="false">"历史记录不连续，请重试读取"</string>
+    <string name="errors_android_image_content_does_not_match_its_format" formatted="false">"图片内容和格式对不上"</string>
+    <string name="errors_android_invalid_server_address" formatted="false">"server 地址无效"</string>
+    <string name="errors_android_login_expired">"登录失效：%1$s"</string>
+    <string name="errors_android_network_unavailable_command_was_not_sent" formatted="false">"网络不通，指令没有发出"</string>
+    <string name="errors_android_no_verifiable_execution_result_received_retry_the_same_request" formatted="false">"未收到可验证的执行结果，请重试同一请求"</string>
+    <string name="errors_android_only_the_managing_client_can_veto_recovery" formatted="false">"只有管理端能否决恢复"</string>
+    <string name="errors_android_open_value1_to_renew">"请打开%1$s续期"</string>
+    <string name="errors_android_other_clients_kept_changing_project_preferences_could_not_save" formatted="false">"项目偏好一直在被其他客户端修改，没能保存"</string>
+    <string name="errors_android_pairing_approval_does_not_match_this_device_has_expired_or" formatted="false">"配对批准与这台设备不匹配、已过期或签名无效"</string>
+    <string name="errors_android_project_preferences_are_changing_retry" formatted="false">"项目偏好正在变化，请重试"</string>
+    <string name="errors_android_records_from_before_recovery_are_unreadable" formatted="false">"恢复前的记录不可读"</string>
+    <string name="errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or">"远程控制有效期已过，无法保存更改、控制会话或上传新内容；%1$s后重试。历史仍可查看"</string>
+    <string name="errors_android_remote_control_paused_value1_and_retry">"远程控制已暂停：%1$s后再试"</string>
+    <string name="errors_android_remove_devices_on_the_managing_client" formatted="false">"请在管理端上删除设备"</string>
+    <string name="errors_android_secure_connection_failed">"安全连接失败：%1$s"</string>
+    <string name="errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was" formatted="false">"安全授权或当前请求尚未核实，操作没有发出；请重试"</string>
+    <string name="errors_android_security_state_unavailable" formatted="false">"安全状态不可用"</string>
+    <string name="errors_android_server_unavailable_reason">"连不上服务器：%1$s"</string>
+    <string name="errors_android_terminal_connection_dropped_reason">"终端连接断开：%1$s"</string>
+    <string name="errors_android_terminal_input_paused_while_waiting_for_authorization" formatted="false">"终端输入等待授权，已暂停"</string>
+    <string name="errors_android_terminal_output_backlog_reception_stopped" formatted="false">"终端输出积压，已停止接收"</string>
+    <string name="errors_android_the_computer_did_not_return_a_file_id" formatted="false">"电脑没有返回文件 ID"</string>
+    <string name="errors_android_the_computer_has_not_verified_the_current_request" formatted="false">"当前请求尚未由电脑核实"</string>
+    <string name="errors_android_the_computer_returned_invalid_file_progress" formatted="false">"电脑返回的文件进度无效"</string>
+    <string name="errors_android_the_current_request_changed_review_it_again" formatted="false">"当前请求已变化，请重新核对"</string>
+    <string name="errors_android_the_file_changed_during_upload_retry_or_select_the_file" formatted="false">"文件在上传时发生变化，请重试或重新选择文件"</string>
+    <string name="errors_android_the_managing_client_cannot_be_removed_normally" formatted="false">"管理端不能被普通删除"</string>
+    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_membership_state" formatted="false">"手机时钟比服务器快，成员状态暂不可用；请校准系统时间"</string>
+    <string name="errors_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"手机时钟比服务器快，远程控制暂停；请校准系统时间"</string>
+    <string name="errors_android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the">"上一次的结果仍不确定：%1$s。重试会发送同一个请求"</string>
+    <string name="errors_android_the_previous_outcome_is_unknown_the_request_expired_and_will" formatted="false">"不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始"</string>
+    <string name="errors_android_this_command_expired_and_was_not_sent" formatted="false">"这条指令已过期，没有发出"</string>
+    <string name="errors_android_this_request_can_no_longer_be_acted_on" formatted="false">"请求已不可操作"</string>
+    <string name="errors_android_upload_connection_interrupted_retry" formatted="false">"上传连接中断，请重试"</string>
+    <string name="errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same">"%1$s；上一次的结果仍不确定，能力恢复后可重试同一请求"</string>
     <string name="errors_cannot_connect_to_terminal" formatted="false">"连不上终端"</string>
     <string name="errors_cannot_sign_with_the_current_security_state_the_operation" formatted="false">"无法用当前安全状态签名，操作尚未发出；请重试"</string>
     <string name="errors_connection_dropped_midway" formatted="false">"连接中途断了"</string>
@@ -418,25 +489,55 @@
     </plurals>
     <string name="image_add" formatted="false">"添加图片"</string>
     <string name="image_android_bubble" formatted="false">"（图片）"</string>
+    <string name="image_android_cannot_decode_image" formatted="false">"解不出图片"</string>
+    <string name="image_android_cannot_decode_this_image" formatted="false">"解不出这张图片"</string>
+    <string name="image_android_cannot_read_this_image" formatted="false">"读不到这张图片"</string>
+    <string name="image_android_converted_to_value1_keeping_original_dimensions">"转成了 %1$s，保留原始尺寸"</string>
+    <string name="image_android_could_not_save_image_cache" formatted="false">"没能保存图片缓存"</string>
     <string name="image_android_download_retry">"没能下载：%1$s · 点按重试"</string>
     <string name="image_android_empty" formatted="false">"没有图片"</string>
+    <string name="image_android_file_upload_unavailable" formatted="false">"文件上传不可用"</string>
     <string name="image_android_generated_by">"%1$s 生成的图片"</string>
     <string name="image_android_generated_size">"生成的图片%1$s"</string>
+    <string name="image_android_gif_contains_an_unrecognized_block" formatted="false">"GIF 里有认不出的块"</string>
+    <string name="image_android_gif_is_truncated" formatted="false">"GIF 被截断"</string>
+    <string name="image_android_image_exceeds_value1_mb">"图片超过 %1$s MB"</string>
+    <string name="image_android_image_has_no_dimensions" formatted="false">"图片没有尺寸"</string>
     <string name="image_android_missing_uploads" formatted="false">"图片不在电脑上。放回输入框后会重新上传，文字和图片都会保留"</string>
     <string name="image_android_name_only" formatted="false">"图片没有同步：只有文件名，原图在电脑上"</string>
     <string name="image_android_no_preview" formatted="false">"没有预览"</string>
+    <string name="image_android_original_exceeds_20_mb" formatted="false">"原图超过 20 MB"</string>
     <string name="image_android_original_meta" formatted="false">" 原图"</string>
+    <string name="image_android_phone_storage_for_pending_images_is_full_send_or_remove" formatted="false">"手机待发图片空间不足，请发送或移除旧草稿"</string>
+    <string name="image_android_photo_library_is_not_writable" formatted="false">"相册不可写"</string>
+    <string name="image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to">"；像素超过手机能处理的上限，缩小到 1/%1$s"</string>
+    <string name="image_android_reprocess_or_select_the_image_again" formatted="false">"需要重新处理或重新选择图片"</string>
+    <string name="image_android_reprocess_using_the_current_mode" formatted="false">"需要按当前模式重新处理"</string>
     <plurals name="image_android_restore_limit">
         <item quantity="other">"输入框里已有 %2$d 张图，放回这 %1$d 张会超过 %3$d 张。先移除一些再放回"</item>
     </plurals>
     <string name="image_android_restore_retry" formatted="false">"待发图片没能恢复，仍可输入，下次编辑或放回时重试"</string>
     <string name="image_android_restore_wait" formatted="false">"正在恢复待发图片，请稍后再放回"</string>
     <string name="image_android_restoring" formatted="false">"正在恢复待发图片…"</string>
+    <string name="image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" formatted="false">"按拍摄方向转正后以最高画质重新编码"</string>
     <string name="image_android_save_permission" formatted="false">"没有存储权限，没能保存"</string>
     <string name="image_android_saved" formatted="false">"已保存到相册"</string>
     <string name="image_android_share_title" formatted="false">"分享图片"</string>
+    <string name="image_android_the_computer_did_not_provide_an_image_id" formatted="false">"电脑没有给出图片 ID"</string>
+    <string name="image_android_the_computer_has_not_confirmed_the_attachment_upload_retry" formatted="false">"电脑尚未确认附件上传完成，请重试"</string>
+    <string name="image_android_this_image_has_no_local_copy_available_for_reprocessing_remove" formatted="false">"这张图没有可重新处理的本机副本，请移除后重新选择"</string>
+    <string name="image_android_this_image_has_no_local_copy_remove_it_and_select" formatted="false">"这张图没有本机副本，请移除后重新选择"</string>
+    <string name="image_android_this_image_is_too_large_for_the_phone_s_available" formatted="false">"这张图太大，手机内存不够处理"</string>
+    <string name="image_android_this_phone_cannot_read_this_image_format" formatted="false">"这台手机读不了这种图片格式"</string>
     <string name="image_android_total_size">" · 共 %1$s MB"</string>
+    <string name="image_android_unreadable_gif" formatted="false">"不是能读的 GIF"</string>
+    <string name="image_android_unreadable_jpeg" formatted="false">"不是能读的 JPEG"</string>
+    <string name="image_android_unreadable_png" formatted="false">"不是能读的 PNG"</string>
+    <string name="image_android_unreadable_webp" formatted="false">"不是能读的 WebP"</string>
+    <string name="image_android_unsupported_image_format" formatted="false">"不支持的图片格式"</string>
     <string name="image_android_upload_progress">"正在传到电脑，%1$s%%"</string>
+    <string name="image_android_upload_to_the_computer_again" formatted="false">"需要重新传到电脑"</string>
+    <string name="image_android_upload_to_the_computer_again_if_the_source_cannot_be" formatted="false">"需要重新传到电脑；源文件无法读取时请重新选择文件"</string>
     <string name="image_android_user_pasted" formatted="false">"用户粘贴"</string>
     <string name="image_android_verify_failed">"图片校验失败：%1$s"</string>
     <string name="image_android_viewed_by">"%1$s 查看的图片"</string>
@@ -657,6 +758,40 @@
     <string name="new_session_unconfirmed_start" formatted="false">"上次的启动结果还没有确认"</string>
     <string name="new_session_unexpected_reply" formatted="false">"意外的回复"</string>
     <string name="new_session_use_machine">"改用 %1$s"</string>
+    <string name="notifications_android_a_conversation_turn_finished" formatted="false">"一轮对话结束了"</string>
+    <string name="notifications_android_a_session_needs_your_attention" formatted="false">"有会话在等你处理"</string>
+    <string name="notifications_android_allowing" formatted="false">"允许中…"</string>
+    <string name="notifications_android_approvals_questions_plans_and_terminal_prompts" formatted="false">"审批、提问、计划和终端弹窗"</string>
+    <string name="notifications_android_background_push_is_disabled_in_this_build" formatted="false">"本版本未启用后台推送"</string>
+    <string name="notifications_android_cannot_reach_google_push_services_retrying_automatically_check_your_network" formatted="false">"暂时连不上 Google 推送服务，正在自动重试。请检查网络和 Google Play 服务"</string>
+    <string name="notifications_android_could_not_read_the_account_open_the_app_to_continue" formatted="false">"没能读取账户，请打开 App 处理"</string>
+    <string name="notifications_android_could_not_save_approval_submission_state_nothing_was_sent" formatted="false">"没能保存审批提交状态，没有发出"</string>
+    <string name="notifications_android_could_not_submit_phone_stayed_locked_until_approval_timed_out" formatted="false">"没能提交：手机一直锁着，审批已超时"</string>
+    <string name="notifications_android_could_not_submit_this_phone_has_no_account" formatted="false">"没能提交：这台手机没有账户"</string>
+    <string name="notifications_android_could_not_sync_the_notification_subscription_retry" formatted="false">"通知订阅未能同步到服务器，请重试"</string>
+    <string name="notifications_android_could_not_sync_the_notification_subscription_retrying_automatically" formatted="false">"通知订阅未能同步到服务器，正在自动重试"</string>
+    <string name="notifications_android_current_authorization_could_not_be_verified_open_the_app_to" formatted="false">"无法核实当前授权，请打开 App 处理"</string>
+    <string name="notifications_android_fix" formatted="false">"修复"</string>
+    <string name="notifications_android_google_play_services_are_disabled_push_is_unavailable" formatted="false">"Google Play 服务已停用，收不到推送"</string>
+    <string name="notifications_android_google_play_services_are_not_installed_push_is_unavailable" formatted="false">"未安装 Google Play 服务，收不到推送"</string>
+    <string name="notifications_android_google_play_services_are_unavailable_install_or_enable_them_then" formatted="false">"Google Play 服务不可用，请安装或启用后重试"</string>
+    <string name="notifications_android_google_play_services_are_unavailable_push_is_unavailable" formatted="false">"Google Play 服务不可用，收不到推送"</string>
+    <string name="notifications_android_google_play_services_are_updating_background_alerts_are_temporarily_unavailable" formatted="false">"Google Play 服务正在更新，后台提醒暂不可用"</string>
+    <string name="notifications_android_google_play_services_need_an_update_push_is_unavailable" formatted="false">"Google Play 服务需要更新，收不到推送"</string>
+    <string name="notifications_android_google_push_registration_could_not_be_verified_check_google_play" formatted="false">"Google 推送注册未通过验证，请检查 Google Play 服务或应用的推送配置"</string>
+    <string name="notifications_android_install_update_or_enable_google_play_services_in_system_settings" formatted="false">"请在系统设置中安装、更新或启用 Google Play 服务，再重试"</string>
+    <string name="notifications_android_outcome_unknown_open_the_app_to_check" formatted="false">"不确定是否生效，请打开 App 看一眼"</string>
+    <string name="notifications_android_phone_locked_submission_continues_after_unlocking" formatted="false">"手机锁上了，解锁后继续提交…"</string>
+    <string name="notifications_android_recovery_requested_open_devices_to_view_it" formatted="false">"有恢复请求，打开设备页查看"</string>
+    <string name="notifications_android_rejecting" formatted="false">"拒绝中…"</string>
+    <string name="notifications_android_still_submitting_value1">"还在提交…（%1$s）"</string>
+    <string name="notifications_android_submitting_approval" formatted="false">"正在提交审批…"</string>
+    <string name="notifications_android_system_notification_permission_is_disabled" formatted="false">"系统通知权限未开启"</string>
+    <string name="notifications_android_the_server_could_not_save_the_notification_subscription_retry" formatted="false">"服务器未能保存通知订阅，请重试"</string>
+    <string name="notifications_android_the_server_has_not_configured_fcm_push_is_unavailable" formatted="false">"服务器没有配置 FCM，收不到推送"</string>
+    <string name="notifications_android_this_approval_timed_out_and_was_rejected_by_policy" formatted="false">"这条审批已超时，按规则拒绝了"</string>
+    <string name="notifications_android_unlock_the_phone_then_open_the_app_to_approve" formatted="false">"请先解锁手机，再打开 App 审批"</string>
+    <string name="notifications_android_view_full_text" formatted="false">"查看全文"</string>
     <string name="notifications_scheduled_tasks_have_new_results" formatted="false">"定时任务有新结果"</string>
     <string name="notifications_the_browser_did_not_allow_notifications" formatted="false">"浏览器没有允许通知"</string>
     <string name="projects_add_again" formatted="false">"重新添加"</string>
@@ -756,6 +891,10 @@
     <string name="queue_unrecognized" formatted="false">"认不出输入框，已暂停"</string>
     <string name="queue_when_ready" formatted="false">"就绪后发送"</string>
     <string name="quota_account">" · 账户 %1$s"</string>
+    <string name="quota_android_last_record" formatted="false">"（上次记录）"</string>
+    <string name="quota_android_reset_at">"%3$s · %2$s %1$s"</string>
+    <string name="quota_android_value1_value2_value3">"%1$s月%2$s日 %3$s"</string>
+    <string name="quota_android_you_can_view_usage_in_claude_code_on_this_computer" formatted="false">" 可在本机 Claude Code 中查看 /usage。"</string>
     <string name="quota_awaiting_update" formatted="false">"等待更新"</string>
     <plurals name="quota_days">
         <item quantity="other">"%1$d 天"</item>
@@ -822,6 +961,91 @@
     </plurals>
     <string name="schedule_after_turn_ends" formatted="false">"轮结束后"</string>
     <string name="schedule_after_turn_replace">"%1$s。选择上方其他频率可替换。"</string>
+    <string name="schedule_android_agent_notification" formatted="false">"agent 通知"</string>
+    <string name="schedule_android_agent_notification_completion_notification" formatted="false">"agent 通知、完成后通知"</string>
+    <string name="schedule_android_alternative_limit">"%1$s，或%2$s"</string>
+    <string name="schedule_android_attention_details">"%2$s。%1$s%3$s"</string>
+    <string name="schedule_android_automatic_run_count" formatted="false">"自动运行次数"</string>
+    <string name="schedule_android_beijing" formatted="false">"北京"</string>
+    <string name="schedule_android_cannot_read_the_previous_task_list_connect_to_read_it" formatted="false">"上次的任务列表无法读取，联网后重新读取"</string>
+    <string name="schedule_android_cannot_request_notification" formatted="false">"无法请求通知"</string>
+    <string name="schedule_android_changes_have_not_been_saved" formatted="false">"修改还没有保存。"</string>
+    <string name="schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes" formatted="false">"检查项目的更新，有值得注意的变化再通知我。"</string>
+    <string name="schedule_android_check_the_time" formatted="false">"请检查时间"</string>
+    <string name="schedule_android_choose_a_project" formatted="false">"选择项目"</string>
+    <string name="schedule_android_choose_a_time_type" formatted="false">"请选择时间类型"</string>
+    <string name="schedule_android_choose_directory" formatted="false">"选目录"</string>
+    <string name="schedule_android_computer_offline_tasks_cannot_be_edited" formatted="false">"电脑不在线，不能修改任务"</string>
+    <string name="schedule_android_connect_value1_to_edit_run_or_delete">"%1$s 连上后才能修改、运行或删除。"</string>
+    <string name="schedule_android_continuing_may_send_the_previous_message_again_open_the_run" formatted="false">"继续可能重复执行上次的消息，请先打开运行记录核实。"</string>
+    <string name="schedule_android_creating" formatted="false">"创建中…"</string>
+    <string name="schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" formatted="false">"创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。"</string>
+    <string name="schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a">"当前是「%1$s」。直接完成会保留原规则；选择上面的时间类型后再更改。"</string>
+    <string name="schedule_android_date" formatted="false">"日期"</string>
+    <string name="schedule_android_days" formatted="false">"天"</string>
+    <string name="schedule_android_delete_this_task" formatted="false">"删除这个任务？"</string>
+    <string name="schedule_android_each_run_opens_a_new_conversation_under_this_task_outside" formatted="false">"每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。"</string>
+    <string name="schedule_android_end_date" formatted="false">"结束日期"</string>
+    <string name="schedule_android_ended_value1">"已结束 %1$s"</string>
+    <string name="schedule_android_follow_conversation" formatted="false">"跟随对话"</string>
+    <string name="schedule_android_for_example_asia_shanghai" formatted="false">"例如 Asia/Shanghai"</string>
+    <string name="schedule_android_hours" formatted="false">"小时"</string>
+    <string name="schedule_android_interval" formatted="false">"间隔"</string>
+    <string name="schedule_android_interval_must_be_greater_than_0" formatted="false">"间隔要大于 0"</string>
+    <plurals name="schedule_android_large_after_current_turn">
+        <item quantity="other">"当前轮结束 %2$s 秒后"</item>
+    </plurals>
+    <plurals name="schedule_android_large_after_each_turn">
+        <item quantity="other">"每轮结束 %2$s 秒后"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_days">
+        <item quantity="other">"每 %2$s 天"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_hours">
+        <item quantity="other">"每 %2$s 小时"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_minutes">
+        <item quantity="other">"每 %2$s 分钟"</item>
+    </plurals>
+    <plurals name="schedule_android_large_every_seconds">
+        <item quantity="other">"每 %2$s 秒"</item>
+    </plurals>
+    <plurals name="schedule_android_large_runs_total">
+        <item quantity="other">"共 %2$s 次"</item>
+    </plurals>
+    <string name="schedule_android_minutes" formatted="false">"分钟"</string>
+    <string name="schedule_android_missing_target" formatted="false">"运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。"</string>
+    <string name="schedule_android_monday_to_friday" formatted="false">"周一到周五"</string>
+    <string name="schedule_android_needs_your_attention" formatted="false">"需要你看一下"</string>
+    <string name="schedule_android_new_result" formatted="false">"有新结果"</string>
+    <string name="schedule_android_new_result_0653c4" formatted="false">"有新结果"</string>
+    <string name="schedule_android_next_run">"下次 %1$s"</string>
+    <string name="schedule_android_next_value1">" · 下次 %1$s"</string>
+    <string name="schedule_android_positive_integer" formatted="false">"正整数"</string>
+    <string name="schedule_android_read" formatted="false">"已读"</string>
+    <string name="schedule_android_read_again" formatted="false">"重新读取"</string>
+    <string name="schedule_android_recent" formatted="false">"最近"</string>
+    <string name="schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" formatted="false">"恢复或重新安排后从下一次自动时间开始，不重发上次消息。"</string>
+    <string name="schedule_android_run_count_must_be_greater_than_0" formatted="false">"次数要大于 0"</string>
+    <string name="schedule_android_run_once_now_does_not_count_toward_automatic_runs_or" formatted="false">"立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。"</string>
+    <string name="schedule_android_running_label" formatted="false">"正在运行 ·"</string>
+    <string name="schedule_android_saving" formatted="false">"保存中…"</string>
+    <string name="schedule_android_saving_ff509c" formatted="false">"保存中…"</string>
+    <string name="schedule_android_seconds" formatted="false">"秒"</string>
+    <string name="schedule_android_select_at_least_one_day" formatted="false">"至少选一天"</string>
+    <string name="schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" formatted="false">"停止后续调度，已发出的消息和已开的对话保留。"</string>
+    <string name="schedule_android_task" formatted="false">"任务"</string>
+    <string name="schedule_android_task_not_found_it_may_have_been_deleted_on_another" formatted="false">"任务未找到，可能已在另一端删除"</string>
+    <string name="schedule_android_the_end_date_is_in_the_past" formatted="false">"结束日期已经过去"</string>
+    <string name="schedule_android_the_message_is_sent_after_the_current_turn_ends_without" formatted="false">"消息等当前这一轮结束后再发，不会打断正在做的事。"</string>
+    <string name="schedule_android_this_task_cannot_be_renamed_separately" formatted="false">"当前任务不能单独改名"</string>
+    <string name="schedule_android_unit" formatted="false">"单位"</string>
+    <string name="schedule_android_unknown_time" formatted="false">"时间未知"</string>
+    <string name="schedule_android_unread" formatted="false">"未读"</string>
+    <string name="schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" formatted="false">"电脑需要更新 remote-agent，才能创建定时任务。"</string>
+    <string name="schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" formatted="false">"这台电脑需要更新 remote-agent，才能管理定时任务"</string>
+    <string name="schedule_android_value1_time">"（%1$s时间）"</string>
+    <string name="schedule_android_you_can_run_an_extra_time_now_or_change_the" formatted="false">"可立即额外执行一次，或改时间重排。"</string>
     <string name="schedule_attention_once">"%1$s。可改时间重排。"</string>
     <string name="schedule_attention_resume">"%1$s。恢复或重新安排后从下一次自动时间开始，不重发上次消息。"</string>
     <string name="schedule_attention_uncertain">"%1$s。继续可能重复执行上次的消息，请先打开运行记录核实。"</string>
@@ -1049,6 +1273,155 @@
     <string name="security_after_removing_this_unfinished_pairing_generate_a_new_code" formatted="false">"移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。"</string>
     <string name="security_after_submission_wait_48_hours_the_current_managing_client" formatted="false">"提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。"</string>
     <string name="security_allow_to_join" formatted="false">"允许加入"</string>
+    <string name="security_android_abandon_this_recovery_and_enter_a_new_code" formatted="false">"放弃这次恢复，输入新恢复码"</string>
+    <string name="security_android_after_completion_wait_for_retained_computers_to_come_online_and" formatted="false">"完成后等待保留电脑上线并发布当前状态"</string>
+    <string name="security_android_already_registering_this_phone_wait_for_the_result" formatted="false">"已经在登记这台手机，稍等结果"</string>
+    <string name="security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key" formatted="false">"尚未确认保存；本机没有恢复码私钥，完成后立即换码"</string>
+    <string name="security_android_cannot_complete_yet_or_recovery_was_vetoed" formatted="false">"还不能完成，或者恢复已被否决"</string>
+    <string name="security_android_cannot_confirm_whether_the_new_device_joined_check_your_network" formatted="false">"暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"</string>
+    <string name="security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client">"不确定这台手机有没有加入：%1$s。可以在管理端的设置里看看客户端列表"</string>
+    <string name="security_android_clearing" formatted="false">"正在清除…"</string>
+    <string name="security_android_compare_the_4_patterns_on_the_managing_client_if_they" formatted="false">"核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。"</string>
+    <string name="security_android_completing" formatted="false">"正在完成…"</string>
+    <string name="security_android_completion_requires_48_hours" formatted="false">"48 小时后才能完成。"</string>
+    <string name="security_android_connecting" formatted="false">"正在连接…"</string>
+    <string name="security_android_continue_original_operation" formatted="false">"继续原操作"</string>
+    <string name="security_android_control_validity_advice">"有效期至 %1$s。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"</string>
+    <string name="security_android_could_not_read_security_operation_state_before_exiting_value1">"退出前没能读取安全操作状态：%1$s"</string>
+    <string name="security_android_create_account" formatted="false">"创建账户"</string>
+    <string name="security_android_current_client" formatted="false">"当前客户端"</string>
+    <string name="security_android_current_content_key_missing" formatted="false">"缺少当前内容密钥"</string>
+    <string name="security_android_do_not_publish_yet" formatted="false">"先不发布"</string>
+    <string name="security_android_enter_the_8_digit_pairing_code" formatted="false">"输入 8 位配对码"</string>
+    <string name="security_android_enter_the_recovery_code_saved_during_setup_after_submitting_wait" formatted="false">"输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。"</string>
+    <string name="security_android_exit_and_delete_local_keys_in_settings" formatted="false">"退出并删除本机密钥在设置页"</string>
+    <string name="security_android_exit_incomplete_value1">"退出未完成：%1$s"</string>
+    <string name="security_android_export_genesis_state" formatted="false">"导出创世状态"</string>
+    <string name="security_android_export_genesis_state_for_offline_relay_pinning" formatted="false">"导出创世状态（中继离线固定用）"</string>
+    <string name="security_android_first_delete_the_account_keys_and_cache_on_this_device" formatted="false">"会先删除这台设备上的账户密钥和缓存，再用配对码加入。"</string>
+    <string name="security_android_first_delete_the_account_keys_and_cache_on_this_phone" formatted="false">"会先删除这台手机上的账户密钥和缓存，再用配对码加入。"</string>
+    <string name="security_android_generating" formatted="false">"正在生成…"</string>
+    <string name="security_android_going_back_stops_this_wait_reject_the_old_request_on" formatted="false">"返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。"</string>
+    <string name="security_android_i_saved_it_start_using_the_app" formatted="false">"我已保存，开始使用"</string>
+    <string name="security_android_i_saved_the_new_recovery_code_offline" formatted="false">"我已离线保存新恢复码"</string>
+    <string name="security_android_if_48_hours_have_not_passed_or_the_original_managing" formatted="false">"如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。"</string>
+    <string name="security_android_incorrect_recovery_code" formatted="false">"恢复码不对"</string>
+    <string name="security_android_incorrect_recovery_code_or_no_pending_recovery" formatted="false">"恢复码不对，或者没有待处理的恢复"</string>
+    <string name="security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" formatted="false">"恢复码不对，或者恢复声明已被拒绝"</string>
+    <string name="security_android_join_receipt_device_public_key_mismatch" formatted="false">"加入回执的本机公钥不匹配"</string>
+    <string name="security_android_join_receipt_does_not_contain_this_device_s_identity" formatted="false">"加入回执没有本机身份"</string>
+    <string name="security_android_keep_this_phone_s_account_root_key_and_device_identity" formatted="false">"保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。"</string>
+    <string name="security_android_last_used_times_are_on_the_right_each_device_changes" formatted="false">"右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。"</string>
+    <string name="security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check" formatted="false">"同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。"</string>
+    <string name="security_android_name_changes_sync_to_other_clients_set_notifications_on_this" formatted="false">"修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。"</string>
+    <string name="security_android_new_recovery_code_confirmed_saved_offline" formatted="false">"已确认离线保存新恢复码"</string>
+    <string name="security_android_no_account_available_to_upgrade" formatted="false">"没有可升级的账户"</string>
+    <string name="security_android_no_candidate_device" formatted="false">"没有候选设备"</string>
+    <string name="security_android_no_computers_yet" formatted="false">"还没有电脑"</string>
+    <string name="security_android_no_device_has_joined_yet" formatted="false">"还没有设备加入"</string>
+    <string name="security_android_not_read_yet" formatted="false">"尚未读取"</string>
+    <string name="security_android_offline" formatted="false">"不在线"</string>
+    <string name="security_android_online" formatted="false">"在线"</string>
+    <string name="security_android_only_a_removed_computer_s_archive_from_the_same_account" formatted="false">"只能接续同一账户已移除电脑的档案"</string>
+    <string name="security_android_only_the_managing_client_can_add_devices" formatted="false">"只有管理端能添加设备"</string>
+    <string name="security_android_only_the_managing_client_can_approve" formatted="false">"只有管理端能批准"</string>
+    <string name="security_android_only_this_client_can_change_its_name_notification_settings_must" formatted="false">"名称只能由该客户端自己修改。通知开关也要在该设备上设置。"</string>
+    <string name="security_android_open_settings_add_device_on_the_managing_client_scan_its" formatted="false">"在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。"</string>
+    <string name="security_android_optional" formatted="false">"可留空"</string>
+    <string name="security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" formatted="false">"结果尚未确定，回到前台后重试同一次批准"</string>
+    <string name="security_android_pairing_approval_does_not_match_this_device_or_its_signature" formatted="false">"配对批准与这台设备不匹配或签名无效"</string>
+    <string name="security_android_pairing_cannot_finish_right_now_check_your_network_then_start" formatted="false">"配对暂时无法完成，请检查网络后重新开始"</string>
+    <string name="security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" formatted="false">"临时公钥公开后配对承诺发生变化"</string>
+    <string name="security_android_pairing_commitment_mismatch" formatted="false">"配对承诺不匹配"</string>
+    <string name="security_android_pairing_payload_belongs_to_another_security_domain" formatted="false">"配对载荷属于另一个安全域"</string>
+    <string name="security_android_pairing_payload_is_missing_the_account_public_key" formatted="false">"配对载荷缺少账户公钥"</string>
+    <string name="security_android_pairing_payload_managing_client_mismatch" formatted="false">"配对载荷的管理端不匹配"</string>
+    <string name="security_android_pairing_payload_state_chain_is_incomplete" formatted="false">"配对载荷的状态链不完整"</string>
+    <string name="security_android_pairing_trust_information_is_too_large" formatted="false">"配对信任信息过大"</string>
+    <string name="security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" formatted="false">"本机未确认图案，已停止安全绑定"</string>
+    <string name="security_android_paused_retry_after_returning_to_the_foreground" formatted="false">"已暂停，回到前台后可重试"</string>
+    <string name="security_android_publishing" formatted="false">"正在发布…"</string>
+    <string name="security_android_reading_membership_state" formatted="false">"正在读取成员状态…"</string>
+    <string name="security_android_rebuild_security_domain" formatted="false">"重建安全域"</string>
+    <string name="security_android_rebuild_security_domain_and_become_managing_client" formatted="false">"重建安全域并成为管理端"</string>
+    <string name="security_android_rebuilding" formatted="false">"正在重建…"</string>
+    <string name="security_android_recovery_can_now_be_completed" formatted="false">"已经可以完成恢复。"</string>
+    <string name="security_android_recovery_code_backup_status" formatted="false">"恢复码保存状态"</string>
+    <string name="security_android_recovery_code_shown_only_once" formatted="false">"恢复码 · 只显示这一次"</string>
+    <string name="security_android_recovery_eligible_at">"可以生效的时间：%1$s"</string>
+    <string name="security_android_recovery_not_found_it_may_be_complete_or_vetoed" formatted="false">"找不到这次恢复，它可能已经完成或被否决"</string>
+    <string name="security_android_registration_challenge_expired_retry" formatted="false">"注册挑战已过期，请重试"</string>
+    <string name="security_android_remote_control" formatted="false">"远程控制"</string>
+    <string name="security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。"</string>
+    <string name="security_android_remove_this_client" formatted="false">"移除这个客户端"</string>
+    <string name="security_android_removed" formatted="false">"已移除"</string>
+    <string name="security_android_renew_on_authority" formatted="false">"请在当前管理端续期"</string>
+    <string name="security_android_renews_automatically_when_you_return_to_the_managing_client_after" formatted="false">"回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。"</string>
+    <string name="security_android_saving" formatted="false">"正在保存…"</string>
+    <string name="security_android_scan_qr_code" formatted="false">"扫描二维码"</string>
+    <string name="security_android_security_domain_pinning_failed" formatted="false">"安全域固定失败"</string>
+    <string name="security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum">"服务器要求的注册计算量过高（%1$s 位，最多 28 位）"</string>
+    <string name="security_android_setup_token_if_required_by_the_server" formatted="false">"Setup token（服务器要求时）"</string>
+    <string name="security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" formatted="false">"有人正在用恢复码申请接管管理权。不是你本人就点了否决。"</string>
+    <string name="security_android_state_chain_is_too_large_to_pair_recreate_the_account" formatted="false">"状态链太大，无法配对；请重建账户"</string>
+    <string name="security_android_still_within_the_48_hour_waiting_period" formatted="false">"还在 48 小时等待期内。"</string>
+    <string name="security_android_submit_recovery" formatted="false">"提交恢复"</string>
+    <string name="security_android_submitting" formatted="false">"正在提交…"</string>
+    <string name="security_android_takes_effect_after_48_hours_a_veto_from_the_original" formatted="false">"48 小时后生效；如果原管理端否决了这次恢复，它会作废。请现在抄下来或拍照保存。"</string>
+    <string name="security_android_the_account_saved_on_this_phone_does_not_match_its" formatted="false">"这台手机保存的账户与根密钥不一致"</string>
+    <string name="security_android_the_candidate_device_cannot_use_the_managing_client_s_identity" formatted="false">"候选设备不能使用管理端身份"</string>
+    <string name="security_android_the_candidate_device_needs_an_update" formatted="false">"候选设备需要更新"</string>
+    <string name="security_android_the_managing_client_s_trust_information_does_not_match_its" formatted="false">"管理端信任信息与承诺不匹配"</string>
+    <string name="security_android_the_new_code_is_still_on_this_page_save_it" formatted="false">"新码仍显示在本页，请离线保存"</string>
+    <string name="security_android_the_new_recovery_code_generated_for_this_request_is_invalid" formatted="false">"这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。"</string>
+    <string name="security_android_the_original_device_identity_keys_and_history_are_kept_open" formatted="false">"原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"</string>
+    <string name="security_android_the_original_managing_client_vetoed_this_recovery" formatted="false">"这次恢复被原管理端否决了。"</string>
+    <string name="security_android_the_original_security_operation_is_verified_complete" formatted="false">"原安全操作已核实完成。"</string>
+    <string name="security_android_the_recovery_chain_published_by_the_server_differs_from_the" formatted="false">"服务器发布的恢复链与提交的不一致"</string>
+    <string name="security_android_the_recovery_state_published_by_the_server_differs_from_the" formatted="false">"服务器发布的恢复状态与提交的不一致"</string>
+    <string name="security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade" formatted="false">"中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。"</string>
+    <string name="security_android_the_server_did_not_accept_this_approval_check_whether_the" formatted="false">"服务器未接受这次批准，请在新设备核对是否已加入，再重新开始"</string>
+    <string name="security_android_the_server_rejected_this_device_s_login" formatted="false">"服务器拒绝了这台设备的登录"</string>
+    <string name="security_android_the_server_returned_an_invalid_registration_challenge" formatted="false">"服务器返回了无效的注册挑战"</string>
+    <string name="security_android_the_server_returned_an_unexpected_device_id" formatted="false">"服务器返回了意外的设备 ID"</string>
+    <string name="security_android_these_computers_must_republish_checkpoints_after_recovery" formatted="false">"；完成恢复后需这些电脑重新发布 checkpoint"</string>
+    <string name="security_android_this_client_is_no_longer_in_the_current_member_list" formatted="false">"这个客户端已不在当前成员列表中"</string>
+    <string name="security_android_this_deletes_the_account_keys_and_cache_on_this_phone" formatted="false">"这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。"</string>
+    <string name="security_android_this_device_is_not_the_managing_client_in_the_recovery" formatted="false">"恢复链的管理端不是这台设备"</string>
+    <string name="security_android_this_device_s_identity_differs_from_its_member_record_cannot" formatted="false">"这台设备的身份与成员记录不一致，不能重新加入"</string>
+    <string name="security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" formatted="false">"这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份"</string>
+    <string name="security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" formatted="false">"这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端上重新批准。"</string>
+    <string name="security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" formatted="false">"这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。"</string>
+    <string name="security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will" formatted="false">"这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。"</string>
+    <string name="security_android_this_is_not_a_remote_agent_pairing_qr_code" formatted="false">"这不是 remote-agent 的配对二维码"</string>
+    <string name="security_android_this_is_the_only_managing_client_transfer_management_first_exiting" formatted="false">"本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"</string>
+    <string name="security_android_this_join_attempt_was_cancelled" formatted="false">"已取消本次加入"</string>
+    <string name="security_android_this_join_attempt_was_cancelled_the_old_request_may_still" formatted="false">"已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码"</string>
+    <string name="security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" formatted="false">"这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。"</string>
+    <string name="security_android_this_pairing_is_no_longer_valid_the_new_device_did" formatted="false">"这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。"</string>
+    <string name="security_android_this_pairing_only_allows_the_original_computer_to_rejoin" formatted="false">"这份配对只允许原电脑重新加入"</string>
+    <string name="security_android_this_phone_has_no_account_public_key_and_cannot_register" formatted="false">"这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入"</string>
+    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_become" formatted="false">"这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。"</string>
+    <string name="security_android_this_phone_has_no_account_root_key_and_cannot_rebuild" formatted="false">"这台手机没有账户根密钥，不能重建安全域；请用管理端重新配对"</string>
+    <string name="security_android_this_phone_will_become_the_managing_client_the_account_root" formatted="false">"这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。"</string>
+    <string name="security_android_this_public_genesis_state_contains_no_keys_use_it_only" formatted="false">"这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。"</string>
+    <string name="security_android_this_recovery_is_complete" formatted="false">"这次恢复已经完成。"</string>
+    <string name="security_android_this_recovery_was_submitted_complete_it_on_the_phone_that" formatted="false">"这次恢复已提交；请在保存了恢复身份的那台手机上完成"</string>
+    <string name="security_android_this_recovery_was_submitted_if_you_have_not_saved_the" formatted="false">"这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。"</string>
+    <string name="security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" formatted="false">"这次恢复已被否决，申请中生成的新恢复码也已作废。"</string>
+    <string name="security_android_too_many_attempts_wait_a_minute_and_retry" formatted="false">"试得太频繁了，稍等一分钟再试"</string>
+    <string name="security_android_transfer_to">"交接给 %1$s"</string>
+    <string name="security_android_unrecognized_recovery_status" formatted="false">"恢复状态无法识别"</string>
+    <string name="security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" formatted="false">"已有账户升级？重建安全域并成为管理端"</string>
+    <string name="security_android_use_this_to_recover_management_if_the_managing_client_is" formatted="false">"管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。"</string>
+    <string name="security_android_verify_original_security_operation" formatted="false">"核实原安全操作"</string>
+    <string name="security_android_view" formatted="false">"查看"</string>
+    <string name="security_android_view_status" formatted="false">"查看状态"</string>
+    <string name="security_android_wait" formatted="false">"等待"</string>
+    <string name="security_android_waiting_for_computers_to_restore_current_sessions" formatted="false">"等待电脑恢复当前会话"</string>
+    <string name="security_android_waiting_for_managing_client_approval_and_completing_join" formatted="false">"等待管理端批准并完成加入…"</string>
+    <string name="security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" formatted="false">"先抄下来或拍照保存，再发布。发布成功后旧码立即作废。"</string>
+    <string name="security_android_write_it_down_or_photograph_it_it_only_signs_recovery" formatted="false">"请抄下来或拍照保存。它只签恢复声明，不能解密内容。"</string>
     <string name="security_another_pairing_draft_is_unfinished" formatted="false">"另一个配对草稿仍待完成"</string>
     <string name="security_another_pairing_draft_is_unfinished_complete_this_pairing_or" formatted="false">"另一个配对草稿未完成，请先完成本次配对或明确退出后重试"</string>
     <string name="security_another_security_operation_is_unfinished" formatted="false">"另一次安全操作尚未完成"</string>
@@ -1389,6 +1762,100 @@
     <string name="settings_added" formatted="false">"添加于"</string>
     <string name="settings_all_clients" formatted="false">"全部客户端"</string>
     <string name="settings_all_devices" formatted="false">"全部设备"</string>
+    <string name="settings_android_allow_in_settings" formatted="false">"去允许"</string>
+    <string name="settings_android_allow_remote_agent_to_install_apps_in_system_settings_then" formatted="false">"先在系统设置里允许 remote-agent 安装应用，回来后继续。"</string>
+    <string name="settings_android_allow_the_original_computer_to_resume_value1_s_retained_sessions">"允许原电脑接续 %1$s 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。"</string>
+    <string name="settings_android_already_on_the_latest_published_version" formatted="false">"已是最新发布版本"</string>
+    <string name="settings_android_approval_commands_will_appear_in_system_notifications_and_may_remain" formatted="false">"打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案"</string>
+    <string name="settings_android_attachment_storage_this_phone" formatted="false">"附件存储 · 这台手机"</string>
+    <string name="settings_android_cannot_connect_to_the_release_address" formatted="false">"连不上发布地址"</string>
+    <string name="settings_android_cannot_open_the_system_installer" formatted="false">"打不开系统的安装器。"</string>
+    <string name="settings_android_checking_for_updates" formatted="false">"正在检查更新…"</string>
+    <string name="settings_android_clean_up_reclaimable_images" formatted="false">"清理可回收图片？"</string>
+    <string name="settings_android_cleaning" formatted="false">"正在清理…"</string>
+    <string name="settings_android_clear_viewing_cache" formatted="false">"清理查看缓存"</string>
+    <string name="settings_android_code_paths_commands_and_terminal" formatted="false">"代码、路径、命令和终端"</string>
+    <string name="settings_android_compare_these_4_patterns_on_the_new_device_and_confirm" formatted="false">"请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"</string>
+    <string name="settings_android_could_not_check_for_updates_value1">"没能检查更新：%1$s"</string>
+    <string name="settings_android_could_not_download_value1">"没能下载：%1$s"</string>
+    <string name="settings_android_could_not_read_release_information_value1">"读取发布信息失败（%1$s）"</string>
+    <string name="settings_android_could_not_save_installation_package" formatted="false">"没能保存安装包"</string>
+    <string name="settings_android_current_version_value1">"当前版本 %1$s"</string>
+    <string name="settings_android_default_value1_s_own_configuration">"默认（%1$s 自己的配置）"</string>
+    <string name="settings_android_download_again" formatted="false">"重新下载"</string>
+    <string name="settings_android_download_and_install_value1">"下载并安装（%1$s）"</string>
+    <string name="settings_android_download_failed" formatted="false">"下载失败"</string>
+    <string name="settings_android_download_failed_value1">"下载失败（%1$s）"</string>
+    <string name="settings_android_downloaded_file_does_not_match_release_information" formatted="false">"下载的文件和发布信息不一致"</string>
+    <string name="settings_android_downloading_value1">"正在下载 %1$s"</string>
+    <string name="settings_android_downloading_value1_value2">"正在下载 %1$s / %2$s"</string>
+    <string name="settings_android_fonts_sil_open_font_license_1_1" formatted="false">"字体 · SIL Open Font License 1.1"</string>
+    <string name="settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the" formatted="false">"未验证的版本请在电脑上运行 remote-agent doctor"</string>
+    <string name="settings_android_icons_isc_license" formatted="false">"图标 · ISC License"</string>
+    <string name="settings_android_image_drafts_and_file_source_information_are_cleared_after_7" formatted="false">"图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。"</string>
+    <string name="settings_android_install" formatted="false">"安装"</string>
+    <string name="settings_android_installation_did_not_finish_you_can_install_again" formatted="false">"安装没有完成，可以再装一次。"</string>
+    <string name="settings_android_interface_icons" formatted="false">"界面中的图标"</string>
+    <string name="settings_android_invalid_release_information_format" formatted="false">"发布信息格式不对"</string>
+    <string name="settings_android_later" formatted="false">"以后再说"</string>
+    <string name="settings_android_latin_text_and_numbers_in_the_interface" formatted="false">"界面中的西文和数字"</string>
+    <string name="settings_android_local_storage" formatted="false">"本机存储"</string>
+    <string name="settings_android_new_computer" formatted="false">"新电脑"</string>
+    <string name="settings_android_new_device" formatted="false">"新设备"</string>
+    <string name="settings_android_new_device_joined" formatted="false">"新设备已加入"</string>
+    <string name="settings_android_new_version_value1">"新版本 %1$s"</string>
+    <string name="settings_android_new_version_value1_available">"有新版本 %1$s"</string>
+    <string name="settings_android_offline_last_online_value1">"不在线 · 最后在线 %1$s"</string>
+    <string name="settings_android_online" formatted="false">"在线"</string>
+    <string name="settings_android_online_b90866" formatted="false">"在线"</string>
+    <string name="settings_android_only_affects_system_notifications_while_the_app_is_in_the" formatted="false">"\n仅影响 App 在后台时的系统通知，不影响聊天和审批"</string>
+    <string name="settings_android_open_source_licenses" formatted="false">"开源许可"</string>
+    <string name="settings_android_pairing_qr_code" formatted="false">"配对二维码"</string>
+    <string name="settings_android_pending_and_unconfirmed_attachments" formatted="false">"待发和待确认附件"</string>
+    <string name="settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1">"档案重接和删除记录，请在管理端（%1$s）上操作。"</string>
+    <string name="settings_android_recovery_code_qr_code" formatted="false">"恢复码二维码"</string>
+    <string name="settings_android_recovery_pending_eligible_at_value1">"恢复申请待处理 · 可生效时间：%1$s"</string>
+    <string name="settings_android_rejoin_this_computer_and_resume_sessions" formatted="false">"让这台电脑重新加入并接续会话"</string>
+    <string name="settings_android_release_information_is_missing_value1">"发布信息缺少 %1$s"</string>
+    <string name="settings_android_release_protocol_is_not_a_number" formatted="false">"发布信息的 protocol 不是数字"</string>
+    <string name="settings_android_release_size_is_not_a_number" formatted="false">"发布信息的 size 不是数字"</string>
+    <string name="settings_android_release_versioncode_is_not_a_number" formatted="false">"发布信息的 versionCode 不是数字"</string>
+    <string name="settings_android_remote_agent_on_this_computer_cannot_read_value1_quotas">"这台电脑上的 remote-agent 读不到 %1$s 的额度。"</string>
+    <string name="settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" formatted="false">"移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"</string>
+    <string name="settings_android_remove_devices_on_the_managing_client_value1">"请在管理端（%1$s）上移除设备。"</string>
+    <string name="settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" formatted="false">"清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。"</string>
+    <string name="settings_android_remove_this_machine" formatted="false">"移除这台机器…"</string>
+    <string name="settings_android_removed_retained_session_archive" formatted="false">"已移除 · 保留的会话档案"</string>
+    <string name="settings_android_requests_to_join" formatted="false">" 请求加入"</string>
+    <string name="settings_android_sarasa_fixed_sc_symbol_subset" formatted="false">"Sarasa Fixed SC（符号子集）"</string>
+    <string name="settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" formatted="false">"会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。"</string>
+    <string name="settings_android_show_content_and_approve_in_notifications" formatted="false">"在通知里显示内容并直接审批"</string>
+    <string name="settings_android_terminal_symbols" formatted="false">"终端里的符号"</string>
+    <string name="settings_android_the_downloaded_file_is_not_an_installation_package" formatted="false">"下载的文件不是安装包"</string>
+    <string name="settings_android_the_downloaded_package_does_not_match_the_release_information" formatted="false">"下载的安装包和发布信息不一致"</string>
+    <string name="settings_android_the_downloaded_package_is_not_remote_agent" formatted="false">"下载的安装包不是 remote-agent"</string>
+    <string name="settings_android_the_phone_clock_is_ahead_of_the_server_remote_control" formatted="false">"手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。"</string>
+    <string name="settings_android_the_system_could_not_install_this_package" formatted="false">"系统没能安装这个包。"</string>
+    <string name="settings_android_the_system_will_confirm_installation_after_downloading_the_first_time" formatted="false">"下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。"</string>
+    <string name="settings_android_this_computer_is_outside_the_current_trusted_directory_check_the" formatted="false">"这台电脑不在当前可信目录中，撤销状态以回执为准"</string>
+    <string name="settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable" formatted="false">"这是管理端设备，普通移除不可用"</string>
+    <string name="settings_android_this_machine_has_been_removed" formatted="false">"这台机器已经移除了"</string>
+    <string name="settings_android_this_release_changes_the_protocol_after_installing_also_update_remote" formatted="false">"这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。"</string>
+    <string name="settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained" formatted="false">"已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。"</string>
+    <string name="settings_android_unknown" formatted="false">"未知"</string>
+    <string name="settings_android_unverified" formatted="false">"未验证"</string>
+    <string name="settings_android_up_to_date" formatted="false">"已是最新版本"</string>
+    <string name="settings_android_update" formatted="false">"更新"</string>
+    <string name="settings_android_update_available_value1">"可更新到 %1$s"</string>
+    <string name="settings_android_value1_approval_mode">"%1$s · 审批模式"</string>
+    <string name="settings_android_value1_default">"%1$s（默认）"</string>
+    <string name="settings_android_value1_default_model_for_new_sessions">"%1$s · 新会话默认模型"</string>
+    <string name="settings_android_value1_downloaded">"%1$s 已下载"</string>
+    <string name="settings_android_value1_is_offline_connect_to_read_and_edit_new_session">"%1$s 不在线，连上后才能读取和修改新会话默认设置"</string>
+    <string name="settings_android_version" formatted="false">"版本"</string>
+    <string name="settings_android_viewing_cache" formatted="false">"查看缓存"</string>
+    <string name="settings_android_waiting_for_a_new_device" formatted="false">"等待新设备…"</string>
+    <string name="settings_android_waiting_for_the_new_device_to_confirm" formatted="false">"等新设备确认图案…"</string>
     <string name="settings_appearance" formatted="false">"外观"</string>
     <string name="settings_approval_timeout" formatted="false">"审批超时"</string>
     <string name="settings_attachment_storage" formatted="false">"附件存储"</string>
@@ -1545,6 +2012,9 @@
     <string name="terminal_size_note" formatted="false">"窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。"</string>
     <string name="terminal_up" formatted="false">"上"</string>
     <string name="terminal_view_details" formatted="false">"查看详情"</string>
+    <string name="time_android_day_clock">"%2$s %1$s"</string>
+    <string name="time_android_used_clock">"%1$s 使用"</string>
+    <string name="time_android_used_relative">"%1$s使用"</string>
     <string name="time_calendar_date_year">"%3$d年%2$d月%1$d日"</string>
     <string name="time_duration_hours_minutes">"%1$d 小时 %2$d 分"</string>
     <string name="time_duration_minutes_seconds">"%1$d 分 %2$d 秒"</string>

@@ -3,7 +3,7 @@ package io.github.lewin671.remoteagent.ui
 import androidx.compose.runtime.mutableStateMapOf
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.proto.CancelInputRequest
 import kotlinx.coroutines.launch
 
@@ -30,7 +30,7 @@ object Cancels {
             } catch (e: Exception) {
                 // A failed_precondition can race with delivery; if the input
                 // remains pending, keep a retry affordance until its next event.
-                states[requestId] = State.Failed(errorText(e))
+                states[requestId] = State.Failed(displayError(e))
             }
         }
     }

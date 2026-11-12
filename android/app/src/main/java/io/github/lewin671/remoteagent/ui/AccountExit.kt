@@ -1,15 +1,17 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.runtime.*
 import io.github.lewin671.remoteagent.core.RemoteState
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import kotlinx.coroutines.launch
 
-internal fun authorityExitAdvice(authority: Boolean, unresolved: Boolean): String =
+internal fun authorityExitAdvice(authority: Boolean, unresolved: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String =
     when {
-        unresolved -> "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。"
-        authority -> "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"
-        else -> "退出会删除本机密钥，需要重新配对。"
+        unresolved -> copy(UiMessages.securityTheSecurityOperationSOutcomeIsUnverifiedContinueThe())
+        authority -> copy(UiMessages.securityAndroidThisIsTheOnlyManagingClientTransferManagementFirstExiting())
+        else -> copy(UiMessages.securityExitingDeletesLocalKeysYouWillNeedToPair())
     }
 
 /** A failed read must never turn an unresolved operation into an ordinary logout. */
@@ -19,21 +21,22 @@ internal fun AccountExitAction(
     readPending: suspend () -> Boolean,
     exit: suspend () -> Unit,
 ) {
+    val copy = uiText()
     val scope = rememberCoroutineScope()
     var advice by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     // It asks first, as every row that ends in an ellipsis does (design-system §8).
     GRow(
-        "退出并删除本机密钥…",
+        copy(UiMessages.settingsExitAndDeleteLocalKeys()),
         onClick = {
             busy = true
             error = ""
             scope.launch {
                 try {
-                    advice = authorityExitAdvice(state.isAuthority, readPending())
+                    advice = authorityExitAdvice(state.isAuthority, readPending(), copy = copy)
                 } catch (e: Exception) {
-                    error = "退出前没能读取安全操作状态：${errorText(e, state)}"
+                    error = copy(UiMessages.securityAndroidCouldNotReadSecurityOperationStateBeforeExitingValue1((displayError(e, state)).toString()))
                 } finally {
                     busy = false
                 }
@@ -45,9 +48,9 @@ internal fun AccountExitAction(
     if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
     advice?.let { message ->
         Confirm(
-            "退出并删除本机密钥？",
+            copy(UiMessages.securityExitAndDeleteLocalKeys()),
             message,
-            "退出",
+            copy(UiMessages.securityExit()),
             danger = true,
             onDismiss = { if (!busy) advice = null },
         ) {
@@ -56,7 +59,7 @@ internal fun AccountExitAction(
                 scope.launch {
                     try {
                         // A publication may have started while the confirmation was open.
-                        val current = authorityExitAdvice(state.isAuthority, readPending())
+                        val current = authorityExitAdvice(state.isAuthority, readPending(), copy = copy)
                         if (current != message) advice = current
                         else {
                             exit()
@@ -64,7 +67,7 @@ internal fun AccountExitAction(
                         }
                     } catch (e: Exception) {
                         advice = null
-                        error = "退出未完成：${errorText(e, state)}"
+                        error = copy(UiMessages.securityAndroidExitIncompleteValue1((displayError(e, state)).toString()))
                     } finally {
                         busy = false
                     }

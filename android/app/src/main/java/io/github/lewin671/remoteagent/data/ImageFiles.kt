@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.data
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.Context
 import io.github.lewin671.remoteagent.core.hex
 import io.github.lewin671.remoteagent.core.sha256
@@ -30,7 +34,7 @@ class ImageEnvelopes(context: Context) {
         val tmp = File(dir, f.name + ".tmp")
         try {
             tmp.writeBytes(envelope)
-            check(tmp.renameTo(f)) { "没能保存图片缓存" }
+            check(tmp.renameTo(f)) { sessionText(UiMessages.imageAndroidCouldNotSaveImageCache()) }
         } finally { tmp.delete() }
         trim()
     }

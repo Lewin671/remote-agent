@@ -119,7 +119,7 @@ data class SessionView(
      * from [info].
      */
     val listedEndedMs: Long = 0,
-    val historyError: String? = null,
+    val historyError: MessageText? = null,
 )
 
 /**
@@ -149,7 +149,7 @@ data class RemoteState(
     val machines: Map<String, MachineView> = emptyMap(),
     val sessions: Map<String, SessionView> = emptyMap(),
     val conn: ConnState = ConnState.CONNECTING,
-    val error: String = "",
+    val error: MessageText = "".messageText(),
     /** The lists have been fetched once since start, or read from the cache. */
     val loaded: Boolean = false,
     /**
@@ -175,7 +175,7 @@ data class RemoteState(
     /** A page of the listing is being fetched. */
     val loadingSessions: Boolean = false,
     /** Why the last page could not be fetched; empty once one was, or the first page came again. */
-    val sessionsError: String = "",
+    val sessionsError: MessageText = "".messageText(),
     /**
      * The listing's first page was fetched in this run. Before that the sessions held are what the
      * cache kept of an earlier run, and how many pages there are is not known.
@@ -200,17 +200,17 @@ data class RemoteState(
     /** The failure behind [error] in its own words, for the details. */
     val errorDetail: String = "",
     /** Current attempt, including the wait for Ready; empty outside an attempt. */
-    val connStep: String = "",
+    val connStep: MessageText = "".messageText(),
     val connStartedAtMs: Long? = null,
     /** Last connection failure, separate from errors reported by ordinary requests. */
-    val connError: String = "",
+    val connError: MessageText = "".messageText(),
 ) {
     /** Display metadata never determines authority; the ID comes from the verified head. */
-    val authorityName: String
-        get() = clientName(devices[authorityDeviceId], authorityDeviceId, devices.values)
+    val authorityName: MessageText
+        get() = localized { copy -> clientName(devices[authorityDeviceId], authorityDeviceId, devices.values, copy = copy) }
 
-    val renewalAdvice: String
-        get() = if (isAuthority) "现在续期" else "请打开${authorityName}续期"
+    val renewalAdvice: MessageText
+        get() = if (isAuthority) UiMessages.securityRenewNow().messageText() else localized { copy -> copy(UiMessages.errorsAndroidOpenValue1ToRenew(authorityName.resolve(copy))) }
 
     /**
      * Nothing here is known to still hold: the server is out of reach, or has not been reached yet.
@@ -241,11 +241,11 @@ data class SessionEvents(
     val events: List<Event> = emptyList(),
     val loaded: Boolean = false,
     /** Set when an event does not open: history stops before it. */
-    val error: String? = null,
+    val error: MessageText? = null,
     /** Set when the last fetch failed; the next connection fetches again. */
-    val fetchError: String? = null,
+    val fetchError: MessageText? = null,
     val live: io.github.lewin671.remoteagent.proto.LiveSnapshot? = null,
-    val liveError: String? = null,
+    val liveError: MessageText? = null,
     val verifiedEvents: List<Event> = events,
     val unavailableCount: Int = 0,
     /** Partial pages are readable but cannot establish action state across a missing event. */
@@ -334,7 +334,7 @@ interface TermListener {
     /** Called on the socket's reader thread, in order. */
     fun onFrame(frame: TerminalFrame)
 
-    fun onClose(reason: String)
+    fun onClose(reason: MessageText)
 }
 
 class TermConn
@@ -464,18 +464,18 @@ class Remote(
     private val sessionKeys = ConcurrentHashMap<String, ByteArray>()
     private val buffers = HashMap<String, Buffer>()
     private val eventFlows = ConcurrentHashMap<String, MutableStateFlow<SessionEvents>>()
-    private val liveErrors = ConcurrentHashMap<String, String>()
+    private val liveErrors = ConcurrentHashMap<String, MessageText>()
     private val liveSnapshots =
         ConcurrentHashMap<String, io.github.lewin671.remoteagent.proto.LiveSnapshot>()
     private val liveJobs = HashMap<String, Job>()
     private var conn = ConnState.CONNECTING
-    private var error = ""
-    private var connStep = ""
+    private var error = "".messageText()
+    private var connStep = "".messageText()
     private var connStartedAtMs: Long? = null
-    private var connError = ""
+    private var connError = "".messageText()
 
     private fun clearConnProgress() {
-        connStep = ""
+        connStep = "".messageText()
         connStartedAtMs = null
     }
     private var loaded = false
@@ -546,7 +546,7 @@ class Remote(
     private var pageJob: Deferred<Boolean>? = null
     private var allJob: Deferred<Unit>? = null
     private val byId = HashMap<String, Deferred<Boolean>>()
-    private var pageError = ""
+    private var pageError = "".messageText()
     private val listed = HashSet<String>()
     private val models = HashMap<String, Deferred<ListModelsResponse>>()
 
@@ -561,9 +561,9 @@ class Remote(
         var fetching = false
         var refetch = false
         var loaded = false
-        var error: String? = null
+        var error: MessageText? = null
         // The last fetch failed; cleared by the next one that works.
-        var fetchError: String? = null
+        var fetchError: MessageText? = null
         // Until the newest cached page is in, no history is fetched: the cache may already hold it.
         var awaitingCache = false
         // Older cached pages are still being put in place; only what is newer than everything
@@ -629,8 +629,8 @@ class Remote(
             ws = null
             conn = ConnState.OFFLINE
             clearConnProgress()
-            connError = ""
-            error = ""
+            connError = "".messageText()
+            error = "".messageText()
             errorDetail = ""
             unresolved = false
             publish()
@@ -752,7 +752,7 @@ class Remote(
                         ws = null
                         conn = ConnState.OFFLINE
                         clearConnProgress()
-                        connError = ""
+                        connError = "".messageText()
                         publish()
                     }
                 throw e
@@ -834,11 +834,11 @@ class Remote(
         val gen = generation
         conn = ConnState.CONNECTING
         connStartedAtMs = clock()
-        connStep = "读取本机状态"
+        connStep = UiMessages.errorsReadingLocalState().messageText()
         publish()
         restored()
         if (!running || gen != generation) return
-        connStep = "登录"
+        connStep = UiMessages.errorsSigningIn().messageText()
         publish()
         val token = try {
             withTimeout(streamOpenMs) { currentToken() }
@@ -848,7 +848,7 @@ class Remote(
             return
         }
         if (!running || gen != generation) return
-        connStep = "建立推送连接"
+        connStep = UiMessages.errorsEstablishingPushConnection().messageText()
         publish()
         val url = account.server.replaceFirst(Regex("^http"), "ws") + "/v1/stream"
         // Bounded: a reader that falls behind drops the stream and catches up
@@ -922,7 +922,7 @@ class Remote(
                 generation++
                 socket.cancel()
                 frames.cancel()
-                fail(Exception("连接超时，正在重连"))
+                fail(MessageException(UiMessages.errorsConnectionTimedOutReconnecting().messageText()))
             }
         }
         scope.launch {
@@ -959,7 +959,7 @@ class Remote(
                     opening = null
                     // Only an explicit refusal invalidates the token.
                     if (refused.get()) loginTokens.discard(token)
-                    fail(broken.get() ?: Exception("与 server 的连接断开"))
+                    fail(broken.get() ?: MessageException(UiMessages.errorsDisconnectedFromServer().messageText()))
                 }
             }
         }
@@ -992,8 +992,8 @@ class Remote(
                 retry = 1000
                 conn = ConnState.ONLINE
                 clearConnProgress()
-                connError = ""
-                error = ""
+                connError = "".messageText()
+                error = "".messageText()
                 errorDetail = ""
                 unresolved = false
                 publish()
@@ -1186,7 +1186,7 @@ class Remote(
                     firstEnd = end
                     firstPage = true
                     synced = true
-                    pageError = ""
+                    pageError = "".messageText()
                     listBackoff = LIST_RETRY_MS
                     loaded = true
                     publish()
@@ -1286,7 +1286,7 @@ class Remote(
             if (!listedBefore && firstPage) return next != null
             if (conn != ConnState.ONLINE) {
                 // Nothing is asked for in the background, or over a connection that is gone.
-                pageError = "没有连上服务器"
+                pageError = UiMessages.errorsAndroidCouldNotConnectToTheServer().messageText()
                 throw CommandException(CommandException.UNAVAILABLE, pageError)
             }
             if (!firstPage) {
@@ -1296,7 +1296,7 @@ class Remote(
                 if (listsInFlight.value > 0 || firstPage) continue
                 throw CommandException(
                     CommandException.UNAVAILABLE,
-                    pageError.ifEmpty { "没能读取会话列表" },
+                    pageError.ifEmpty { UiMessages.errorsAndroidCouldNotReadTheSessionList().messageText() },
                 )
             }
             val after = next ?: return false
@@ -1323,7 +1323,7 @@ class Remote(
                     // The first page was fetched again meanwhile: what failed continued the listing
                     // before it.
                     if (epoch != listing) continue
-                    log("remote-agent: " + errorText(e, state.value))
+                    log("remote-agent: " + e.javaClass.simpleName)
                     pageError = errorText(e, state.value)
                     throw e
                 }
@@ -1335,7 +1335,7 @@ class Remote(
                 putSession(s, save = false, publish = false)
             if (epoch != listing) continue
             next = if (res.hasNext()) SessionPlace(res.next.endedMs, res.next.sessionId) else null
-            pageError = ""
+            pageError = "".messageText()
             return next != null
         }
     }
@@ -1495,7 +1495,7 @@ class Remote(
                             info.machineReplacementsList,
                         )
                 )
-                    throw OpenException("会话记录的机器被改动")
+                    throw OpenException(UiMessages.errorsTheSessionRecordSComputerWasChanged().messageText())
                 val (h, seed) = security.openHistory(rs.key)
                 Envelopes.expect(
                     projection(h),
@@ -1545,7 +1545,7 @@ class Remote(
                                     it.sessionId != rs.sessionId || ucmp(it.seq, info.lastSeq) > 0
                                 })
                     )
-                        throw OpenException("密文无效：当前状态 checkpoint 不匹配")
+                        throw OpenException(UiMessages.errorsInvalidCiphertextCurrentStateCheckpointMismatch().messageText())
                     view =
                         view.copy(
                             info = info,
@@ -1728,7 +1728,7 @@ class Remote(
                 if (e.code != "conflict") throw e
             }
         }
-        throw CommandException("aborted", "项目偏好正在变化，请重试")
+        throw CommandException("aborted", UiMessages.errorsAndroidProjectPreferencesAreChangingRetry().messageText())
     }
 
     /** Reads the device list again, for a page whose times are as of opening it. */
@@ -2268,7 +2268,7 @@ class Remote(
         val offer =
             devices[incoming]?.meta?.handoffRecoveryEd?.toByteArray()
                 ?: throw DeviceSecurity.Failure("pending")
-        if (offer.size != 32) throw CommandException("failed_precondition", "请先在接任设备生成并保存恢复码")
+        if (offer.size != 32) throw CommandException("failed_precondition", UiMessages.securityGenerateAndSaveARecoveryCodeOnTheSuccessor().messageText())
         val old =
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
@@ -2313,7 +2313,7 @@ class Remote(
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
-            throw CommandException("failed_precondition", "只有管理端能否决恢复")
+            throw CommandException("failed_precondition", UiMessages.errorsAndroidOnlyTheManagingClientCanVetoRecovery().messageText())
         val secret =
             security.contentKey(head.core.contentEpoch)
                 ?: throw DeviceSecurity.Failure("unavailable")
@@ -2527,7 +2527,7 @@ class Remote(
             withContext(dispatcher) { loadDevices() }
             val current =
                 withContext(dispatcher) { devices[id] }
-                    ?: throw CommandException("not_found", "没有这台设备")
+                    ?: throw CommandException("not_found", UiMessages.settingsDeviceNotFound().messageText())
             val next =
                 (current.meta?.toBuilder()
                         ?: io.github.lewin671.remoteagent.proto.DeviceMeta.newBuilder())
@@ -2560,7 +2560,7 @@ class Remote(
                 if (e.code != "conflict") throw e
             }
         }
-        throw CommandException("aborted", "设备信息正在变化，请重试")
+        throw CommandException("aborted", UiMessages.errorsDeviceInformationIsChangingRetry().messageText())
     }
 
     /**
@@ -2841,12 +2841,12 @@ class Remote(
                 val missing = b.pending.isNotEmpty() || b.events.size.toULong() < latest
                 b.loaded = !missing && b.error == null
                 b.fetchError = if (missing && b.error == null)
-                    "历史记录不连续，请重试读取" else null
+                    UiMessages.errorsAndroidHistoryRecordsAreDiscontinuousRetryReading().messageText() else null
             } while (b.refetch)
         } catch (e: Exception) {
             if (!active()) return
             report(e)
-            b.fetchError = "没能读取历史：" + errorText(e, state.value)
+            b.fetchError = localized { copy -> copy(UiMessages.errorsAndroidHistoryReadFailed(errorText(e, state.value).resolve(copy))) }
         } finally {
             b.fetching = false
             if (b.refetch && running && gen != generation) scope.launch { fetchEvents(sid) }
@@ -2882,7 +2882,7 @@ class Remote(
                         Event::parseFrom,
                         live,
                     )
-                if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException("事件的位置被改动")
+                if (ev.seq != se.seq || ev.sessionId != sid) throw OpenException(UiMessages.errorsTheEventSPositionWasChanged().messageText())
                 if (buffers[sid] !== b) return ok
                 // Opening may suspend while resolving a content key; another ingest can win.
                 if (ucmp(se.seq, b.events.size.toLong()) <= 0 || b.pending.containsKey(se.seq)) continue
@@ -2902,7 +2902,7 @@ class Remote(
                 b.bytes += 256L
             } catch (e: Exception) {
                 report(e)
-                b.error = if (e is UnsupportedHistoryException) e.message else "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"
+                b.error = if (e is UnsupportedHistoryException) e.display else UiMessages.sessionHistoryUnreadable().messageText()
                 ok = false
                 break
             }
@@ -2981,7 +2981,7 @@ class Remote(
                 b.fetchError,
                 liveSnapshots[sid],
                 liveErrors[sid]
-                    ?: if (sessions[sid]?.checkpointStatus == "waiting") "等待所属电脑更新当前状态" else null,
+                    ?: if (sessions[sid]?.checkpointStatus == "waiting") UiMessages.errorsWaitingForTheOwningComputerToUpdateTheCurrent().messageText() else null,
                 b.verifiedEvents,
                 b.unavailableSeqs.size,
                 stateEvents = b.events,
@@ -3027,7 +3027,7 @@ class Remote(
 
     private suspend fun commandOnWorker(sid: String, cmd: Command): CommandResult {
         val s =
-            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         var actual = cmd
         if (
             cmd.kindCase in
@@ -3038,7 +3038,7 @@ class Remote(
                 )
         ) {
             val shown =
-                liveSnapshots[sid] ?: throw CommandException("failed_precondition", "当前请求尚未由电脑核实")
+                liveSnapshots[sid] ?: throw CommandException("failed_precondition", UiMessages.errorsAndroidTheComputerHasNotVerifiedTheCurrentRequest().messageText())
             val approval = cmd.kindCase == Command.KindCase.RESOLVE_APPROVAL
             val plan = cmd.kindCase == Command.KindCase.ANSWER_PLAN
             val id =
@@ -3050,13 +3050,13 @@ class Remote(
                     else it.hasQuestionAsked() && it.questionAsked.questionId == id
                 }
             val seq = if (plan) shown.planEventSeq else displayed?.seq ?: 0L
-            if (seq == 0L) throw CommandException("failed_precondition", "请求已不可操作")
+            if (seq == 0L) throw CommandException("failed_precondition", UiMessages.errorsAndroidThisRequestCanNoLongerBeActedOn().messageText())
             refreshLiveSnapshot(sid)
             val fresh =
-                liveSnapshots[sid] ?: throw CommandException("failed_precondition", "无法核实当前请求")
+                liveSnapshots[sid] ?: throw CommandException("failed_precondition", UiMessages.errorsAndroidCannotVerifyTheCurrentRequest().messageText())
             if (plan) {
                 if (fresh.planEventSeq != seq || !fresh.planScreenHash.equals(shown.planScreenHash))
-                    throw CommandException("failed_precondition", "计划画面已变化，请重新核对")
+                    throw CommandException("failed_precondition", UiMessages.errorsThePlanDisplayChangedReviewItAgain().messageText())
                 actual =
                     cmd.toBuilder()
                         .setAnswerPlan(
@@ -3074,7 +3074,7 @@ class Remote(
                         else it.hasQuestionAsked() && it.questionAsked.questionId == id
                     }
                 if (current == null || current != displayed)
-                    throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
+                    throw CommandException("failed_precondition", UiMessages.errorsAndroidTheCurrentRequestChangedReviewItAgain().messageText())
                 actual =
                     if (approval)
                         cmd.toBuilder()
@@ -3114,7 +3114,7 @@ class Remote(
         snapshot: io.github.lewin671.remoteagent.proto.LiveSnapshot?,
     ): Command {
         if (!isObservedAction(cmd)) return cmd
-        val fresh = snapshot ?: throw CommandException("failed_precondition", "当前请求尚未由电脑核实")
+        val fresh = snapshot ?: throw CommandException("failed_precondition", UiMessages.errorsAndroidTheComputerHasNotVerifiedTheCurrentRequest().messageText())
         return when (cmd.kindCase) {
             Command.KindCase.RESOLVE_APPROVAL -> {
                 val event =
@@ -3160,7 +3160,7 @@ class Remote(
         sid: String,
     ): io.github.lewin671.remoteagent.proto.LiveSnapshot {
         val session =
-            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val result =
             forward(
                 prepare(
@@ -3191,7 +3191,7 @@ class Remote(
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             if (e is CancellationException) throw e
             liveSnapshots.remove(sid)
-            liveErrors[sid] = "无法核实电脑上的待处理请求，请重试或在电脑终端处理"
+            liveErrors[sid] = UiMessages.errorsPendingRequestsOnTheComputerCouldNotBeVerified().messageText()
             buffers[sid]?.let { publishEvents(sid, it) }
         }
     }
@@ -3221,10 +3221,10 @@ class Remote(
             try {
                 call.execute().use { res ->
                     res.body?.bytes()
-                    if (!res.isSuccessful) throw java.io.IOException("服务器返回 ${res.code}")
+                    if (!res.isSuccessful) throw MessageException(UiMessages.errorsServerReturned((res.code).toString()).messageText())
                 }
             } catch (e: java.io.InterruptedIOException) {
-                throw java.io.IOException("没有回应", e)
+                throw MessageException(UiMessages.connectionNoResponse().messageText(), e)
             }
             (System.nanoTime() - started) / 1_000_000
         }
@@ -3248,7 +3248,7 @@ class Remote(
                 )
             }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-            throw java.io.IOException("没有回应", e)
+            throw MessageException(UiMessages.connectionNoResponse().messageText(), e)
         }
         return (System.nanoTime() - started) / 1_000_000
     }
@@ -3266,7 +3266,7 @@ class Remote(
             return authorizeIntent(p)
         } catch (e: Exception) {
             if (e is CancellationException) throw e
-            throw CommandException("authorization_unavailable", "安全授权或当前请求尚未核实，操作没有发出；请重试")
+            throw CommandException("authorization_unavailable", UiMessages.errorsAndroidSecurityAuthorizationOrTheCurrentRequestIsUnverifiedNothingWas().messageText())
         }
     }
 
@@ -3287,12 +3287,12 @@ class Remote(
                     if (previous == null && isObservedAction(p.command)) {
                         val fresh = fetchLiveSnapshot(p.sessionId)
                         if (observeAction(p.command, fresh) != p.command)
-                            throw CommandException("failed_precondition", "当前请求已变化，请重新核对")
+                            throw CommandException("failed_precondition", UiMessages.errorsAndroidTheCurrentRequestChangedReviewItAgain().messageText())
                     }
                     if (serverAhead || security.clockSkew)
-                        throw CommandException("failed_precondition", "手机时钟比服务器快，远程控制暂停；请校准系统时间")
+                        throw CommandException("failed_precondition", UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerRemoteControl().messageText())
                     if (!Authority.leaseValid(security.record(), clock()))
-                        throw CommandException("failed_precondition", "远程控制已暂停：${state.value.renewalAdvice}后再试")
+                        throw CommandException("failed_precondition", localized { copy -> copy(UiMessages.errorsAndroidRemoteControlPausedValue1AndRetry(state.value.renewalAdvice.resolve(copy))) })
                     security.seal(
                         DeviceSecurity.Purpose.COMMAND,
                         p.machineId,
@@ -3314,7 +3314,7 @@ class Remote(
         if (hasFiles && !filesSupported(state.value.machines[machineId]))
             throw CommandException(
                 if (mayHaveRun) CommandException.UNKNOWN else "failed_precondition",
-                if (mayHaveRun) "$FILE_UPLOAD_UPDATE_REQUIRED；上一次的结果仍不确定，能力恢复后可重试同一请求" else FILE_UPLOAD_UPDATE_REQUIRED,
+                if (mayHaveRun) localized { copy -> copy(UiMessages.errorsAndroidValue1ThePreviousOutcomeIsStillUnknownRetryTheSame(FILE_UPLOAD_UPDATE_REQUIRED.resolve(copy))) } else FILE_UPLOAD_UPDATE_REQUIRED,
             )
     }
 
@@ -3338,19 +3338,19 @@ class Remote(
             throw CommandException("failed_precondition", it)
         }
         if (!retryOfUnknown && state.value.machines[p.machineId]?.online == false)
-            throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", failureKind = CommandFailureKind.COMPUTER_OFFLINE)
+            throw CommandException(CommandException.UNAVAILABLE, UiMessages.errorsTheComputerIsOfflineTheCommandWasNotSent().messageText(), failureKind = CommandFailureKind.COMPUTER_OFFLINE)
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
         if (!retryOfUnknown && clock() >= p.deadlineMs)
-            throw CommandException(CommandException.EXPIRED, "这条指令已过期，没有发出")
+            throw CommandException(CommandException.EXPIRED, UiMessages.errorsAndroidThisCommandExpiredAndWasNotSent().messageText())
         var attempt = 0
         // Once a try may have reached the daemon, a later try that surely did
         // not (machine gone, network down) says nothing about that one: the
         // outcome stays unknown.
         var mayHaveRun = retryOfUnknown
-        fun notSent(code: String, text: String) =
+        fun notSent(code: String, text: MessageText) =
             if (mayHaveRun)
-                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：连接中途断了", failureKind = CommandFailureKind.CONNECTION_DROPPED)
+                CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText(), failureKind = CommandFailureKind.CONNECTION_DROPPED)
             else CommandException(code, text)
         var waiting = false
         // A previous try may have got the command to the daemon: a later
@@ -3393,7 +3393,7 @@ class Remote(
                         } catch (e: Exception) {
                             // A result that does not open says nothing about whether
                             // the command ran; retrying the same request asks again.
-                            throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+                            throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidCannotOpenTheComputerSReplyCommandOutcomeUnknown().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
                         }
                     if (msg.errorCode.isNotEmpty())
                         throw CommandException(
@@ -3412,7 +3412,7 @@ class Remote(
                     if (
                         cause is java.net.UnknownHostException || cause is java.net.ConnectException
                     ) {
-                        throw notSent("network", "网络不通，指令没有发出")
+                        throw notSent("network", UiMessages.errorsAndroidNetworkUnavailableCommandWasNotSent().messageText())
                     }
                     if (ce.code == Code.UNAUTHENTICATED && attempt < 3) {
                         attempt++
@@ -3443,22 +3443,22 @@ class Remote(
                     if (unknown || ce.code == Code.UNAVAILABLE) {
                         throw CommandException(
                             CommandException.UNKNOWN,
-                            if (ce.code == Code.UNAVAILABLE) "不确定电脑有没有执行：连接中途断了"
-                            else "不确定电脑有没有执行：${errorText(ce, state.value)}",
+                            if (ce.code == Code.UNAVAILABLE) UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped().messageText()
+                            else localized { copy -> copy(UiMessages.errorsAndroidComputerOutcomeUnknownValue1(errorText(ce, state.value).resolve(copy))) },
                             failureKind = if (ce.code == Code.UNAVAILABLE) CommandFailureKind.CONNECTION_DROPPED else CommandFailureKind.UNKNOWN,
                         )
                     }
-                    throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+                    throw CommandException(CommandException.UNKNOWN, UiMessages.errorsTheRelayDidNotProvideAVerifiableExecutionResult().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
                 }
             }
         } catch (e: CancellationException) {
             if (waiting || mayHaveRun)
-                throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求", failureKind = CommandFailureKind.UNKNOWN)
+                throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidComputerOutcomeUnknownStoppedWaitingForAReplyRetryingSends().messageText(), failureKind = CommandFailureKind.UNKNOWN)
             throw e
         } catch (e: Exception) {
             // Only an authenticated daemon answer settles a dispatched request.
             if (e is CommandException && (e.fromDaemon || e.unknown)) throw e
-            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
+            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, UiMessages.errorsAndroidNoVerifiableExecutionResultReceivedRetryTheSameRequest().messageText(), failureKind = CommandFailureKind.REPLY_UNVERIFIED)
             throw e
         }
     }
@@ -3474,7 +3474,7 @@ class Remote(
             if (!mayHaveRun) throw e
             throw CommandException(
                 CommandException.UNKNOWN,
-                "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e, state.value)}）",
+                localized { copy -> copy(UiMessages.errorsAndroidComputerOutcomeUnknownTheRequestMayHaveArrivedBeforeLogin(errorText(e, state.value).resolve(copy))) },
                 failureKind = CommandFailureKind.UNKNOWN,
             )
         }
@@ -3502,7 +3502,7 @@ class Remote(
                                         )
                                         .build(),
                                 )
-                            if (!r.hasListModels()) throw CommandException("internal", "意外的回复")
+                            if (!r.hasListModels()) throw CommandException("internal", UiMessages.newSessionUnexpectedReply().messageText())
                             r.listModels
                         }
                         .also { models[k] = it }
@@ -3519,9 +3519,9 @@ class Remote(
         syncSecurity()
         val head = security.head()
         if (head.core.authorityID != account.deviceId)
-            throw CommandException("failed_precondition", "请在管理端上删除设备")
+            throw CommandException("failed_precondition", UiMessages.errorsAndroidRemoveDevicesOnTheManagingClient().messageText())
         if (deviceId == head.core.authorityID)
-            throw CommandException("failed_precondition", "管理端不能被普通删除")
+            throw CommandException("failed_precondition", UiMessages.errorsAndroidTheManagingClientCannotBeRemovedNormally().messageText())
         if (head.core.member(deviceId) == null) return
         val old =
             security.contentKey(head.core.contentEpoch)
@@ -3577,7 +3577,7 @@ class Remote(
         data object Missing : ImageResult
 
         /** The bytes are not the image they claim to be, or do not open. */
-        data class Corrupt(val why: String) : ImageResult
+        data class Corrupt(val why: MessageText) : ImageResult
     }
 
     /**
@@ -3590,8 +3590,8 @@ class Remote(
 
     private suspend fun imageOnWorker(sid: String, imageId: String): ImageResult {
         val s =
-            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
-        if (sessionKeys[sid] == null) throw CommandException("not_found", "未知会话")
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        if (sessionKeys[sid] == null) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val cacheKey = "$sid/$imageId"
         var env =
             try {
@@ -3636,10 +3636,10 @@ class Remote(
             } catch (e: UnsupportedHistoryException) {
                 return ImageResult.Corrupt(RETIRED_HISTORY_ERROR)
             } catch (e: OpenException) {
-                return ImageResult.Corrupt(e.message ?: "打不开")
+                return ImageResult.Corrupt(e.display)
             }
         if (detectFormat(payload.data.toByteArray()) != payload.format)
-            return ImageResult.Corrupt("图片内容和格式对不上")
+            return ImageResult.Corrupt(UiMessages.errorsAndroidImageContentDoesNotMatchItsFormat().messageText())
         try {
             cache?.putImage(cacheKey, env.toByteArray())
         } catch (e: Exception) {
@@ -3721,8 +3721,8 @@ class Remote(
      */
     suspend fun openTerminal(sid: String, listener: TermListener): TermConn {
         val s =
-            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", "未知会话")
-        if (sessionKeys[sid] == null) throw CommandException("not_found", "未知会话")
+            withContext(dispatcher) { sessions[sid] } ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
+        if (sessionKeys[sid] == null) throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         val tok = currentToken()
         val streamId = newRequestId()
         val opened = CompletableDeferred<Unit>()
@@ -3735,13 +3735,13 @@ class Remote(
         val terminalJob = SupervisorJob(scope.coroutineContext[Job])
         val terminalScope = CoroutineScope(scope.coroutineContext + terminalJob)
         val socket = java.util.concurrent.atomic.AtomicReference<WebSocket?>()
-        fun cleanup(reason: String? = null) {
+        fun cleanup(reason: MessageText? = null) {
             if (!closed.compareAndSet(false, true)) return
             incoming.cancel()
             outgoing.cancel()
             terminalJob.cancel()
             socket.get()?.cancel()
-            opened.completeExceptionally(java.io.IOException(reason ?: "终端已关闭"))
+            opened.completeExceptionally(MessageException(reason ?: UiMessages.terminalAndroidClosed().messageText()))
             if (reason != null) listener.onClose(reason)
         }
         terminalScope.launch {
@@ -3760,7 +3760,7 @@ class Remote(
                                 ),
                                 TerminalFrame::parseFrom,
                             )
-                        if (ucmp(h.seq, last) <= 0) throw OpenException("终端帧顺序不对")
+                        if (ucmp(h.seq, last) <= 0) throw OpenException(UiMessages.errorsTerminalFramesAreOutOfOrder().messageText())
                         last = h.seq
                         listener.onFrame(frame)
                     } finally {
@@ -3796,19 +3796,19 @@ class Remote(
                                     queuedBytes.addAndGet(raw.size.toLong()) > 2L * 1024 * 1024 ||
                                     incoming.trySend(raw).isFailure
                             ) {
-                                cleanup("终端输出积压，已停止接收")
+                                cleanup(UiMessages.errorsAndroidTerminalOutputBacklogReceptionStopped().messageText())
                             }
                         }
 
                         override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
                             webSocket.close(1000, null)
-                            cleanup("终端连接断开")
+                            cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
 
                         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                             if (code == POLICY_VIOLATION) rejectToken(tok)
-                            cleanup("终端连接断开")
+                            cleanup(UiMessages.errorsTerminalConnectionDropped().messageText())
                         }
 
                         override fun onFailure(
@@ -3816,8 +3816,8 @@ class Remote(
                             t: Throwable,
                             response: Response?,
                         ) {
-                            opened.completeExceptionally(Exception("连不上终端"))
-                            cleanup("终端连接断开：" + errorText(t, state.value))
+                            opened.completeExceptionally(MessageException(UiMessages.errorsCannotConnectToTerminal().messageText()))
+                            cleanup(localized { copy -> copy(UiMessages.errorsAndroidTerminalConnectionDroppedReason(errorText(t, state.value).resolve(copy))) })
                         }
                     },
                 )
@@ -3835,7 +3835,7 @@ class Remote(
                     .build(),
             )
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
-            if (closed.get()) throw java.io.IOException("终端已关闭")
+            if (closed.get()) throw MessageException(UiMessages.terminalAndroidClosed().messageText())
             var seq = 0L
             terminalScope.launch {
                 try {
@@ -3869,7 +3869,7 @@ class Remote(
                         frame.serializedSize > 64 * 1024 ||
                             outgoing.trySend(QueuedInput(frame, clock() + 60_000)).isFailure
                     ) {
-                        cleanup("终端输入等待授权，已暂停")
+                        cleanup(UiMessages.errorsAndroidTerminalInputPausedWhileWaitingForAuthorization().messageText())
                     }
                 },
                 closeLocal = {
@@ -3884,7 +3884,7 @@ class Remote(
 
     private fun report(e: Throwable) {
         // Only the error text: never content or keys.
-        log("remote-agent: " + errorText(e, state.value))
+        log("remote-agent: " + e.javaClass.simpleName)
         if (System.getenv("RA_DEBUG_STACK") != null) e.printStackTrace()
         error = errorText(e, state.value)
     }

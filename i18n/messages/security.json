@@ -1,5 +1,2126 @@
 [
   {
+    "key": "security.android_abandon_this_recovery_and_enter_a_new_code",
+    "zh-CN": "放弃这次恢复，输入新恢复码",
+    "en": "Abandon this recovery and enter a new code",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_after_completion_wait_for_retained_computers_to_come_online_and",
+    "zh-CN": "完成后等待保留电脑上线并发布当前状态",
+    "en": "After completion, wait for retained computers to come online and publish current state",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_already_registering_this_phone_wait_for_the_result",
+    "zh-CN": "已经在登记这台手机，稍等结果",
+    "en": "Already registering this phone. Wait for the result",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_backup_not_confirmed_this_phone_has_no_recovery_private_key",
+    "zh-CN": "尚未确认保存；本机没有恢复码私钥，完成后立即换码",
+    "en": "Backup not confirmed. This phone has no recovery private key; replace the code immediately after completion",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_cannot_complete_yet_or_recovery_was_vetoed",
+    "zh-CN": "还不能完成，或者恢复已被否决",
+    "en": "Cannot complete yet, or recovery was vetoed",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_cannot_confirm_whether_the_new_device_joined_check_your_network",
+    "zh-CN": "暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果",
+    "en": "Cannot confirm whether the new device joined. Check your network and retry the same approval, or check the new device",
+    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_cannot_confirm_whether_this_phone_joined_value1_check_the_client",
+    "zh-CN": "不确定这台手机有没有加入：{value1}。可以在管理端的设置里看看客户端列表",
+    "en": "Cannot confirm whether this phone joined: {value1}. Check the client list in Settings on the managing client",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_clearing",
+    "zh-CN": "正在清除…",
+    "en": "Clearing…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_compare_the_4_patterns_on_the_managing_client_if_they",
+    "zh-CN": "核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。",
+    "en": "Compare the 4 patterns on the managing client. If they match, confirm here first, then allow on the managing client.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_completing",
+    "zh-CN": "正在完成…",
+    "en": "Completing…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_completion_requires_48_hours",
+    "zh-CN": "48 小时后才能完成。",
+    "en": "Completion requires 48 hours.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_connecting",
+    "zh-CN": "正在连接…",
+    "en": "Connecting…",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_continue_original_operation",
+    "zh-CN": "继续原操作",
+    "en": "Continue original operation",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_control_validity_advice",
+    "zh-CN": "有效期至 {time}。建议每天打开本客户端；符合续期条件时自动续期；过期后远程控制暂停，聊天和历史仍可查看。",
+    "en": "Valid until {time}. Open this client daily; it renews automatically when eligible. After expiry, remote control pauses, while chat and history remain viewable.",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_could_not_read_security_operation_state_before_exiting_value1",
+    "zh-CN": "退出前没能读取安全操作状态：{value1}",
+    "en": "Could not read security operation state before exiting: {value1}",
+    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_create_account",
+    "zh-CN": "创建账户",
+    "en": "Create account",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_current_client",
+    "zh-CN": "当前客户端",
+    "en": "Current client",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_current_content_key_missing",
+    "zh-CN": "缺少当前内容密钥",
+    "en": "Current content key missing",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_do_not_publish_yet",
+    "zh-CN": "先不发布",
+    "en": "Do not publish yet",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_enter_the_8_digit_pairing_code",
+    "zh-CN": "输入 8 位配对码",
+    "en": "Enter the 8-digit pairing code",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_enter_the_recovery_code_saved_during_setup_after_submitting_wait",
+    "zh-CN": "输入初始化时保存的恢复码。提交后要等 48 小时，原管理端打开客户端可看到请求（推送可能不到达）；期间它可以显式否决；普通续期不会使恢复作废。",
+    "en": "Enter the recovery code saved during setup. After submitting, wait 48 hours. The original managing client can see the request when opened (push may not arrive) and explicitly veto it during this period. Ordinary renewal does not invalidate recovery.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_exit_and_delete_local_keys_in_settings",
+    "zh-CN": "退出并删除本机密钥在设置页",
+    "en": "Exit and delete local keys in Settings",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_exit_incomplete_value1",
+    "zh-CN": "退出未完成：{value1}",
+    "en": "Exit incomplete: {value1}",
+    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_export_genesis_state",
+    "zh-CN": "导出创世状态",
+    "en": "Export genesis state",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_export_genesis_state_for_offline_relay_pinning",
+    "zh-CN": "导出创世状态（中继离线固定用）",
+    "en": "Export genesis state (for offline relay pinning)",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_first_delete_the_account_keys_and_cache_on_this_device",
+    "zh-CN": "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
+    "en": "First delete the account keys and cache on this device, then join with a pairing code.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_first_delete_the_account_keys_and_cache_on_this_phone",
+    "zh-CN": "会先删除这台手机上的账户密钥和缓存，再用配对码加入。",
+    "en": "First delete the account keys and cache on this phone, then join with a pairing code.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_generating",
+    "zh-CN": "正在生成…",
+    "en": "Generating…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_going_back_stops_this_wait_reject_the_old_request_on",
+    "zh-CN": "返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。",
+    "en": "Going back stops this wait. Reject the old request on the managing client, then generate a new pairing code.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_i_saved_it_start_using_the_app",
+    "zh-CN": "我已保存，开始使用",
+    "en": "I saved it. Start using the app",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_i_saved_the_new_recovery_code_offline",
+    "zh-CN": "我已离线保存新恢复码",
+    "en": "I saved the new recovery code offline",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_if_48_hours_have_not_passed_or_the_original_managing",
+    "zh-CN": "如果还没到 48 小时，或者原管理端否决了，完成会失败并说明原因。",
+    "en": "If 48 hours have not passed or the original managing client vetoed the request, completion fails with a reason.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_incorrect_recovery_code",
+    "zh-CN": "恢复码不对",
+    "en": "Incorrect recovery code",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_incorrect_recovery_code_or_no_pending_recovery",
+    "zh-CN": "恢复码不对，或者没有待处理的恢复",
+    "en": "Incorrect recovery code, or no pending recovery",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_incorrect_recovery_code_or_the_recovery_statement_was_rejected",
+    "zh-CN": "恢复码不对，或者恢复声明已被拒绝",
+    "en": "Incorrect recovery code, or the recovery statement was rejected",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_join_receipt_device_public_key_mismatch",
+    "zh-CN": "加入回执的本机公钥不匹配",
+    "en": "Join receipt device public key mismatch",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_join_receipt_does_not_contain_this_device_s_identity",
+    "zh-CN": "加入回执没有本机身份",
+    "en": "Join receipt does not contain this device's identity",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_keep_this_phone_s_account_root_key_and_device_identity",
+    "zh-CN": "保留这台手机的账户根密钥和设备身份，丢弃协议 9 的安全状态，生成协议 10 的创世状态并让这台手机成为管理端。协议 9 的历史要用旧版本读。",
+    "en": "Keep this phone's account root key and device identity, discard protocol 9 security state, create protocol 10 genesis state, and make this phone the managing client. Use an old version to read protocol 9 history.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_last_used_times_are_on_the_right_each_device_changes",
+    "zh-CN": "右边是上次使用的时间。名称在每台设备上自己改，管理端可以移除其他设备。",
+    "en": "Last used times are on the right. Each device changes its own name. The managing client can remove other devices.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_membership_sync_failed_there_may_be_an_invalid_pairing_check",
+    "zh-CN": "同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。",
+    "en": "Membership sync failed. There may be an invalid pairing. Check the device list and remove incomplete devices, then start again.",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_name_changes_sync_to_other_clients_set_notifications_on_this",
+    "zh-CN": "修改名称同步到其他客户端。通知开关要在这台手机上设置，不在这里远程修改。",
+    "en": "Name changes sync to other clients. Set notifications on this phone; they cannot be changed remotely here.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_new_recovery_code_confirmed_saved_offline",
+    "zh-CN": "已确认离线保存新恢复码",
+    "en": "New recovery code confirmed saved offline",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_no_account_available_to_upgrade",
+    "zh-CN": "没有可升级的账户",
+    "en": "No account available to upgrade",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_no_candidate_device",
+    "zh-CN": "没有候选设备",
+    "en": "No candidate device",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_no_computers_yet",
+    "zh-CN": "还没有电脑",
+    "en": "No computers yet",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_no_device_has_joined_yet",
+    "zh-CN": "还没有设备加入",
+    "en": "No device has joined yet",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_not_read_yet",
+    "zh-CN": "尚未读取",
+    "en": "Not read yet",
+    "notes": "Android SecurityTime 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_offline",
+    "zh-CN": "不在线",
+    "en": "Offline",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_online",
+    "zh-CN": "在线",
+    "en": "Online",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_only_a_removed_computer_s_archive_from_the_same_account",
+    "zh-CN": "只能接续同一账户已移除电脑的档案",
+    "en": "Only a removed computer's archive from the same account can be resumed",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_only_the_managing_client_can_add_devices",
+    "zh-CN": "只有管理端能添加设备",
+    "en": "Only the managing client can add devices",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_only_the_managing_client_can_approve",
+    "zh-CN": "只有管理端能批准",
+    "en": "Only the managing client can approve",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_only_this_client_can_change_its_name_notification_settings_must",
+    "zh-CN": "名称只能由该客户端自己修改。通知开关也要在该设备上设置。",
+    "en": "Only this client can change its name. Notification settings must also be changed on that device.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_open_settings_add_device_on_the_managing_client_scan_its",
+    "zh-CN": "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
+    "en": "Open Settings › Add device on the managing client. Scan its QR code or enter the 8-digit pairing code here.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_optional",
+    "zh-CN": "可留空",
+    "en": "Optional",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the",
+    "zh-CN": "结果尚未确定，回到前台后重试同一次批准",
+    "en": "Outcome unconfirmed. Retry the same approval after returning to the foreground",
+    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_approval_does_not_match_this_device_or_its_signature",
+    "zh-CN": "配对批准与这台设备不匹配或签名无效",
+    "en": "Pairing approval does not match this device or its signature is invalid",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_cannot_finish_right_now_check_your_network_then_start",
+    "zh-CN": "配对暂时无法完成，请检查网络后重新开始",
+    "en": "Pairing cannot finish right now. Check your network, then start again",
+    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed",
+    "zh-CN": "临时公钥公开后配对承诺发生变化",
+    "en": "Pairing commitment changed after the ephemeral public key was revealed",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_commitment_mismatch",
+    "zh-CN": "配对承诺不匹配",
+    "en": "Pairing commitment mismatch",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_payload_belongs_to_another_security_domain",
+    "zh-CN": "配对载荷属于另一个安全域",
+    "en": "Pairing payload belongs to another security domain",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_payload_is_missing_the_account_public_key",
+    "zh-CN": "配对载荷缺少账户公钥",
+    "en": "Pairing payload is missing the account public key",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_payload_managing_client_mismatch",
+    "zh-CN": "配对载荷的管理端不匹配",
+    "en": "Pairing payload managing client mismatch",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_payload_state_chain_is_incomplete",
+    "zh-CN": "配对载荷的状态链不完整",
+    "en": "Pairing payload state chain is incomplete",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_pairing_trust_information_is_too_large",
+    "zh-CN": "配对信任信息过大",
+    "en": "Pairing trust information is too large",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped",
+    "zh-CN": "本机未确认图案，已停止安全绑定",
+    "en": "Patterns were not confirmed on this device. Secure binding stopped",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_paused_retry_after_returning_to_the_foreground",
+    "zh-CN": "已暂停，回到前台后可重试",
+    "en": "Paused. Retry after returning to the foreground",
+    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_publishing",
+    "zh-CN": "正在发布…",
+    "en": "Publishing…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_reading_membership_state",
+    "zh-CN": "正在读取成员状态…",
+    "en": "Reading membership state…",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_rebuild_security_domain",
+    "zh-CN": "重建安全域",
+    "en": "Rebuild security domain",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_rebuild_security_domain_and_become_managing_client",
+    "zh-CN": "重建安全域并成为管理端",
+    "en": "Rebuild security domain and become managing client",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_rebuilding",
+    "zh-CN": "正在重建…",
+    "en": "Rebuilding…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_recovery_can_now_be_completed",
+    "zh-CN": "已经可以完成恢复。",
+    "en": "Recovery can now be completed.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_recovery_code_backup_status",
+    "zh-CN": "恢复码保存状态",
+    "en": "Recovery code backup status",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_recovery_code_shown_only_once",
+    "zh-CN": "恢复码 · 只显示这一次",
+    "en": "Recovery code · Shown only once",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_recovery_eligible_at",
+    "zh-CN": "可以生效的时间：{time}",
+    "en": "Eligible at: {time}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_recovery_not_found_it_may_be_complete_or_vetoed",
+    "zh-CN": "找不到这次恢复，它可能已经完成或被否决",
+    "en": "Recovery not found. It may be complete or vetoed",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_registration_challenge_expired_retry",
+    "zh-CN": "注册挑战已过期，请重试",
+    "en": "Registration challenge expired. Retry",
+    "notes": "Android Signup 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_remote_control",
+    "zh-CN": "远程控制",
+    "en": "Remote control",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions",
+    "zh-CN": "移除会断开它的登录并清除推送订阅，不结束电脑上的会话，不删除会话历史。再次加入要在管理端上批准。",
+    "en": "Removal disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires approval on the managing client.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_remove_this_client",
+    "zh-CN": "移除这个客户端",
+    "en": "Remove this client",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_removed",
+    "zh-CN": "已移除",
+    "en": "Removed",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_renew_on_authority",
+    "zh-CN": "请在当前管理端续期",
+    "en": "Renew on the current managing client",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_renews_automatically_when_you_return_to_the_managing_client_after",
+    "zh-CN": "回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。",
+    "en": "Renews automatically when you return to the managing client. After expiry, remote control pauses, while chat and history remain viewable.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_saving",
+    "zh-CN": "正在保存…",
+    "en": "Saving…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_scan_qr_code",
+    "zh-CN": "扫描二维码",
+    "en": "Scan QR code",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_security_domain_pinning_failed",
+    "zh-CN": "安全域固定失败",
+    "en": "Security domain pinning failed",
+    "notes": "Android Authority 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_server_registration_computation_requirement_is_too_high_value1_bits_maximum",
+    "zh-CN": "服务器要求的注册计算量过高（{value1} 位，最多 28 位）",
+    "en": "Server registration computation requirement is too high ({value1} bits; maximum 28)",
+    "notes": "Android Signup 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_setup_token_if_required_by_the_server",
+    "zh-CN": "Setup token（服务器要求时）",
+    "en": "Setup token (if required by the server)",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_someone_is_requesting_management_takeover_with_a_recovery_code_veto",
+    "zh-CN": "有人正在用恢复码申请接管管理权。不是你本人就点了否决。",
+    "en": "Someone is requesting management takeover with a recovery code. Veto it if this is not you.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_state_chain_is_too_large_to_pair_recreate_the_account",
+    "zh-CN": "状态链太大，无法配对；请重建账户",
+    "en": "State chain is too large to pair. Recreate the account",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_still_within_the_48_hour_waiting_period",
+    "zh-CN": "还在 48 小时等待期内。",
+    "en": "Still within the 48-hour waiting period.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_submit_recovery",
+    "zh-CN": "提交恢复",
+    "en": "Submit recovery",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_submitting",
+    "zh-CN": "正在提交…",
+    "en": "Submitting…",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_takes_effect_after_48_hours_a_veto_from_the_original",
+    "zh-CN": "48 小时后生效；如果原管理端否决了这次恢复，它会作废。请现在抄下来或拍照保存。",
+    "en": "Takes effect after 48 hours. A veto from the original managing client invalidates it. Write it down or photograph it now.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_account_saved_on_this_phone_does_not_match_its",
+    "zh-CN": "这台手机保存的账户与根密钥不一致",
+    "en": "The account saved on this phone does not match its root key",
+    "notes": "Android Authority 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_candidate_device_cannot_use_the_managing_client_s_identity",
+    "zh-CN": "候选设备不能使用管理端身份",
+    "en": "The candidate device cannot use the managing client's identity",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_candidate_device_needs_an_update",
+    "zh-CN": "候选设备需要更新",
+    "en": "The candidate device needs an update",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_managing_client_s_trust_information_does_not_match_its",
+    "zh-CN": "管理端信任信息与承诺不匹配",
+    "en": "The managing client's trust information does not match its commitment",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_new_code_is_still_on_this_page_save_it",
+    "zh-CN": "新码仍显示在本页，请离线保存",
+    "en": "The new code is still on this page. Save it offline",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_new_recovery_code_generated_for_this_request_is_invalid",
+    "zh-CN": "这次申请生成的新恢复码已作废。请使用原管理端上的替换恢复码重新申请。",
+    "en": "The new recovery code generated for this request is invalid. Reapply using the replacement code from the original managing client.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_original_device_identity_keys_and_history_are_kept_open",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。",
+    "en": "The original device identity, keys, and history are kept. Open Settings › Add device on the managing client, scan or enter the pairing code, then compare 4 patterns on both devices to join.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_original_managing_client_vetoed_this_recovery",
+    "zh-CN": "这次恢复被原管理端否决了。",
+    "en": "The original managing client vetoed this recovery.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_original_security_operation_is_verified_complete",
+    "zh-CN": "原安全操作已核实完成。",
+    "en": "The original security operation is verified complete.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_recovery_chain_published_by_the_server_differs_from_the",
+    "zh-CN": "服务器发布的恢复链与提交的不一致",
+    "en": "The recovery chain published by the server differs from the submitted chain",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_recovery_state_published_by_the_server_differs_from_the",
+    "zh-CN": "服务器发布的恢复状态与提交的不一致",
+    "en": "The recovery state published by the server differs from the submitted state",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_relay_has_not_pinned_this_security_domain_an_upgrade",
+    "zh-CN": "中继还没有固定这个安全域（从旧版本升级，或中继正停着）。先导出公开的创世状态，在中继停服时固定（docs/self-hosting 第 4–5 步），再启动中继。",
+    "en": "The relay has not pinned this security domain (an upgrade from an old version, or the relay is stopped). Export the public genesis state, pin it while the relay is stopped (self-hosting guide steps 4–5), then start the relay.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_server_did_not_accept_this_approval_check_whether_the",
+    "zh-CN": "服务器未接受这次批准，请在新设备核对是否已加入，再重新开始",
+    "en": "The server did not accept this approval. Check whether the new device joined, then start again",
+    "notes": "Android PairingController 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_server_rejected_this_device_s_login",
+    "zh-CN": "服务器拒绝了这台设备的登录",
+    "en": "The server rejected this device's login",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_server_returned_an_invalid_registration_challenge",
+    "zh-CN": "服务器返回了无效的注册挑战",
+    "en": "The server returned an invalid registration challenge",
+    "notes": "Android Signup 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_the_server_returned_an_unexpected_device_id",
+    "zh-CN": "服务器返回了意外的设备 ID",
+    "en": "The server returned an unexpected device ID",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_these_computers_must_republish_checkpoints_after_recovery",
+    "zh-CN": "；完成恢复后需这些电脑重新发布 checkpoint",
+    "en": "; these computers must republish checkpoints after recovery",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_client_is_no_longer_in_the_current_member_list",
+    "zh-CN": "这个客户端已不在当前成员列表中",
+    "en": "This client is no longer in the current member list",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_deletes_the_account_keys_and_cache_on_this_phone",
+    "zh-CN": "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。",
+    "en": "This deletes the account keys and cache on this phone. Computer sessions are unaffected.",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_device_is_not_the_managing_client_in_the_recovery",
+    "zh-CN": "恢复链的管理端不是这台设备",
+    "en": "This device is not the managing client in the recovery chain",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_device_s_identity_differs_from_its_member_record_cannot",
+    "zh-CN": "这台设备的身份与成员记录不一致，不能重新加入",
+    "en": "This device's identity differs from its member record. Cannot rejoin",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin",
+    "zh-CN": "这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份",
+    "en": "This device was removed. Its old identity cannot rejoin. Rejoin on that device to generate a new identity",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions",
+    "zh-CN": "这会断开它的登录并清除推送订阅，不结束电脑上的会话，也不删除会话历史。再次加入要在管理端上重新批准。",
+    "en": "This disconnects its login and clears push subscriptions. Computer sessions and history are kept. Rejoining requires fresh approval on the managing client.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and",
+    "zh-CN": "这会立即断开连接并撤销权限，保留中继上的会话和图片；它需要重新加入账户才能连接。",
+    "en": "This immediately disconnects it and revokes access, keeping sessions and images on the relay. It must rejoin the account to connect again.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_is_a_saved_rebuild_draft_the_recovery_code_will",
+    "zh-CN": "这是已保存的重建草稿，恢复码不会再次显示。请确认已有离线备份；若未保存，进入后立即更换恢复码。",
+    "en": "This is a saved rebuild draft. The recovery code will not appear again. Confirm you have an offline backup. If not, replace the code immediately after entering.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_is_not_a_remote_agent_pairing_qr_code",
+    "zh-CN": "这不是 remote-agent 的配对二维码",
+    "en": "This is not a remote-agent pairing QR code",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_is_the_only_managing_client_transfer_management_first_exiting",
+    "zh-CN": "本机是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "en": "This is the only managing client. Transfer management first. Exiting deletes the management key; without a recovery code backup, management access will be lost.",
+    "notes": "Android AccountExit 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_join_attempt_was_cancelled",
+    "zh-CN": "已取消本次加入",
+    "en": "This join attempt was cancelled",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_join_attempt_was_cancelled_the_old_request_may_still",
+    "zh-CN": "已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码",
+    "en": "This join attempt was cancelled. The old request may still occupy the pairing code. Reject it on the managing client, then generate a new code",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_pairing_is_no_longer_valid_cannot_verify_whether_the",
+    "zh-CN": "这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。",
+    "en": "This pairing is no longer valid. Cannot verify whether the new device joined. Check the new device or device list before starting again.",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_pairing_is_no_longer_valid_the_new_device_did",
+    "zh-CN": "这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。",
+    "en": "This pairing is no longer valid. The new device did not join. Remove the incomplete device from the device list, then start again.",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_pairing_only_allows_the_original_computer_to_rejoin",
+    "zh-CN": "这份配对只允许原电脑重新加入",
+    "en": "This pairing only allows the original computer to rejoin",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_phone_has_no_account_public_key_and_cannot_register",
+    "zh-CN": "这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入",
+    "en": "This phone has no account public key and cannot register a new device. First rejoin using a device with the account root key",
+    "notes": "Android PairFlow 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_phone_has_no_account_root_key_and_cannot_become",
+    "zh-CN": "这台手机没有账户根密钥，不能成为管理端。请用保留账户根密钥的设备操作，或在接任设备上用恢复码找回。",
+    "en": "This phone has no account root key and cannot become the managing client. Use a device retaining the root key, or recover on the successor device with the recovery code.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_phone_has_no_account_root_key_and_cannot_rebuild",
+    "zh-CN": "这台手机没有账户根密钥，不能重建安全域；请用管理端重新配对",
+    "en": "This phone has no account root key and cannot rebuild the security domain. Pair again using the managing client",
+    "notes": "Android Authority 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_phone_will_become_the_managing_client_the_account_root",
+    "zh-CN": "这台手机会成为管理端。账户根密钥和设备身份只保存在手机上；恢复码只显示一次，请准备好纸笔或相机。",
+    "en": "This phone will become the managing client. The account root key and device identity are stored only on the phone. The recovery code appears once; prepare paper or a camera.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_public_genesis_state_contains_no_keys_use_it_only",
+    "zh-CN": "这是公开的创世状态，不含密钥；只在升级指南要求中继离线固定时使用。",
+    "en": "This public genesis state contains no keys. Use it only when the upgrade guide requires offline relay pinning.",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_recovery_is_complete",
+    "zh-CN": "这次恢复已经完成。",
+    "en": "This recovery is complete.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_recovery_was_submitted_complete_it_on_the_phone_that",
+    "zh-CN": "这次恢复已提交；请在保存了恢复身份的那台手机上完成",
+    "en": "This recovery was submitted. Complete it on the phone that saved the recovery identity",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_recovery_was_submitted_if_you_have_not_saved_the",
+    "zh-CN": "这次恢复已提交。若尚未保存新恢复码，完成后请立即在设置中更换恢复码。",
+    "en": "This recovery was submitted. If you have not saved the new recovery code, replace it in Settings immediately after completion.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_this_recovery_was_vetoed_the_new_recovery_code_generated_for",
+    "zh-CN": "这次恢复已被否决，申请中生成的新恢复码也已作废。",
+    "en": "This recovery was vetoed. The new recovery code generated for it is also invalid.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_too_many_attempts_wait_a_minute_and_retry",
+    "zh-CN": "试得太频繁了，稍等一分钟再试",
+    "en": "Too many attempts. Wait a minute and retry",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_transfer_to",
+    "zh-CN": "交接给 {name}",
+    "en": "Transfer to {name}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_unrecognized_recovery_status",
+    "zh-CN": "恢复状态无法识别",
+    "en": "Unrecognized recovery status",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_upgrading_an_existing_account_rebuild_the_security_domain_and_become",
+    "zh-CN": "已有账户升级？重建安全域并成为管理端",
+    "en": "Upgrading an existing account? Rebuild the security domain and become managing client",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_use_this_to_recover_management_if_the_managing_client_is",
+    "zh-CN": "管理端丢失时用它找回管理权；它只签恢复声明，不能解密内容。管理密钥和恢复码都丢失后只能重建账户。",
+    "en": "Use this to recover management if the managing client is lost. It only signs recovery statements and cannot decrypt content. If both the management key and recovery code are lost, the account must be recreated.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_verify_original_security_operation",
+    "zh-CN": "核实原安全操作",
+    "en": "Verify original security operation",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_view",
+    "zh-CN": "查看",
+    "en": "View",
+    "notes": "Android Devices 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_view_status",
+    "zh-CN": "查看状态",
+    "en": "View status",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_wait",
+    "zh-CN": "等待",
+    "en": "Wait",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_waiting_for_computers_to_restore_current_sessions",
+    "zh-CN": "等待电脑恢复当前会话",
+    "en": "Waiting for computers to restore current sessions",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_waiting_for_managing_client_approval_and_completing_join",
+    "zh-CN": "等待管理端批准并完成加入…",
+    "en": "Waiting for managing client approval and completing join…",
+    "notes": "Android Join 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_write_it_down_or_photograph_it_before_publishing_publishing_immediately",
+    "zh-CN": "先抄下来或拍照保存，再发布。发布成功后旧码立即作废。",
+    "en": "Write it down or photograph it before publishing. Publishing immediately invalidates the old code.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.android_write_it_down_or_photograph_it_it_only_signs_recovery",
+    "zh-CN": "请抄下来或拍照保存。它只签恢复声明，不能解密内容。",
+    "en": "Write it down or photograph it. It only signs recovery statements and cannot decrypt content.",
+    "notes": "Android Recovery 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "security.on_the_managing_client_open_settings_add_device_and",
     "zh-CN": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
     "en": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",

@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.approvalDisplay
 
 import android.app.KeyguardManager
@@ -33,7 +37,7 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.PreparedCommand
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.long
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.Envelope
@@ -109,7 +113,7 @@ object Notifier {
     const val EXTRA_SCHEDULED = "scheduled"
 
     /** A recovery request: generic text only, tapping opens the device page. */
-    fun showSecurity(context: Context) {
+    fun showSecurity(context: Context, copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) }) {
         val nm = context.getSystemService(NotificationManager::class.java)
         val i =
             Intent(context, MainActivity::class.java)
@@ -126,7 +130,7 @@ object Notifier {
             NotificationCompat.Builder(context, Push.CHANNEL_ATTENTION)
                 .setSmallIcon(R.drawable.ic_notify)
                 .setContentTitle("remote-agent")
-                .setContentText("有恢复请求，打开设备页查看")
+                .setContentText(copy(UiMessages.notificationsAndroidRecoveryRequestedOpenDevicesToViewIt()))
                 .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
                 .setAutoCancel(true)
                 .setContentIntent(pi)
@@ -180,13 +184,13 @@ object Notifier {
      * other tool 请求权限 · <tool> with its description or input. Daemons before
      * NotifyApproval.tool_input put a tool's JSON input in command.
      */
-    fun approvalText(a: io.github.lewin671.remoteagent.proto.NotifyApproval): Pair<String, String> {
+    fun approvalText(a: io.github.lewin671.remoteagent.proto.NotifyApproval, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): Pair<String, String> {
         val oldToolInput =
             a.toolInput.isEmpty() && a.command.trimStart().startsWith("{") && a.toolName != "Bash"
         val command = if (oldToolInput) "" else a.command
-        if (command.isNotEmpty()) return "请求执行" to approvalDisplay(command)
+        if (command.isNotEmpty()) return copy(UiMessages.listStateAndroidRequestCommand()) to approvalDisplay(command)
         val input = a.toolInput.ifEmpty { if (oldToolInput) a.command else "" }
-        return "请求权限" +
+        return copy(UiMessages.listStateAndroidRequestPermission()) +
             (if (a.toolName.isNotEmpty()) " · ${approvalDisplay(a.toolName)}" else "") to
             approvalDisplay(a.description.ifEmpty { input }.ifEmpty { a.toolName })
     }
@@ -237,13 +241,14 @@ object Notifier {
         c: NotifyContent?,
         showContent: Boolean,
         eventKey: String? = null,
+        copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
     ) {
         require(kind != NotifyKind.NOTIFY_KIND_SCHEDULED || !eventKey.isNullOrEmpty())
         val nm = context.getSystemService(NotificationManager::class.java)
         val generic = when (kind) {
-            NotifyKind.NOTIFY_KIND_SCHEDULED -> "定时任务有新结果"
-            NotifyKind.NOTIFY_KIND_TURN_ENDED -> "一轮对话结束了"
-            else -> "有会话在等你处理"
+            NotifyKind.NOTIFY_KIND_SCHEDULED -> copy(UiMessages.notificationsScheduledTasksHaveNewResults())
+            NotifyKind.NOTIFY_KIND_TURN_ENDED -> copy(UiMessages.notificationsAndroidAConversationTurnFinished())
+            else -> copy(UiMessages.notificationsAndroidASessionNeedsYourAttention())
         }
         val channel = when (kind) {
             NotifyKind.NOTIFY_KIND_SCHEDULED -> Push.CHANNEL_SCHEDULED
@@ -281,7 +286,7 @@ object Notifier {
         if (!how.detailed || c == null) {
             b.setContentTitle("remote-agent").setContentText(generic)
         } else if (approval != null) {
-            val (title, what) = approvalText(approval)
+            val (title, what) = approvalText(approval, copy = copy)
             b.setContentTitle(title)
                 .setContentText(what)
                 .setSubText(c.title.takeIf { it.isNotEmpty() })
@@ -303,17 +308,17 @@ object Notifier {
                     c.sourceEventSeq > 0 &&
                     (approval.deadlineMs == 0L || approval.deadlineMs > System.currentTimeMillis())
             ) {
-                b.addAction(action(context, c, false, nid))
+                b.addAction(action(context, c, false, nid, copy = copy))
                 // A command not shown in full is allowed from the full page.
                 b.addAction(
                     if (approval.truncated)
                         NotificationCompat.Action.Builder(
                                 0,
-                                "查看全文",
+                                copy(UiMessages.notificationsAndroidViewFullText()),
                                 openIntent(context, session, approval.approvalId, nid + 1),
                             )
                             .build()
-                    else action(context, c, true, nid),
+                    else action(context, c, true, nid, copy = copy),
                 )
             }
         } else {
@@ -333,6 +338,7 @@ object Notifier {
         c: NotifyContent,
         allow: Boolean,
         nid: Int,
+        copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) },
     ): NotificationCompat.Action {
         val i =
             Intent(context, ApprovalReceiver::class.java)
@@ -352,7 +358,7 @@ object Notifier {
                 i,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
-        val b = NotificationCompat.Action.Builder(0, if (allow) "允许" else "拒绝", pi)
+        val b = NotificationCompat.Action.Builder(0, if (allow) copy(UiMessages.approvalAllow()) else copy(UiMessages.approvalAndroidDenyDecision()), pi)
         if (Build.VERSION.SDK_INT >= 31) b.setAuthenticationRequired(true)
         return b.build()
     }
@@ -384,7 +390,7 @@ class ApprovalReceiver : BroadcastReceiver() {
             try {
                 kotlinx.coroutines.withTimeout(8000) { handleTap(context, intent) }
             } catch (_: Exception) {
-                Notifier.update(context, intent.getIntExtra("nid", 0), "无法核实当前授权，请打开 App 处理", true)
+                Notifier.update(context, intent.getIntExtra("nid", 0), sessionText(UiMessages.notificationsAndroidCurrentAuthorizationCouldNotBeVerifiedOpenTheAppTo()), true)
             } finally {
                 pending.finish()
             }
@@ -401,11 +407,11 @@ class ApprovalReceiver : BroadcastReceiver() {
         val nid = intent.getIntExtra("nid", 0)
         // The buttons require unlocking (API 31+); check anyway.
         if (context.getSystemService(KeyguardManager::class.java).isDeviceLocked) {
-            Notifier.update(context, nid, "请先解锁手机，再打开 App 审批", true)
+            Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidUnlockThePhoneThenOpenTheAppToApprove()), true)
             return
         }
         if (deadline in 1..System.currentTimeMillis()) {
-            Notifier.update(context, nid, "这条审批已超时，按规则拒绝了", true)
+            Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidThisApprovalTimedOutAndWasRejectedByPolicy()), true)
             return
         }
         val acct =
@@ -413,7 +419,7 @@ class ApprovalReceiver : BroadcastReceiver() {
                 RaApp.instance.vault.load()
             } catch (e: Exception) {
                 null
-            } ?: return Notifier.update(context, nid, "没能读取账户，请打开 App 处理", true)
+            } ?: return Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCouldNotReadTheAccountOpenTheAppToContinue()), true)
         val remote = Remote(acct, RaApp.instance.http, securityStorage = RaApp.instance.vault)
         val p =
             remote.prepare(
@@ -434,11 +440,11 @@ class ApprovalReceiver : BroadcastReceiver() {
                 remote.authorize(p)
             } catch (_: Exception) {
                 remote.close()
-                Notifier.update(context, nid, "无法核实当前授权，请打开 App 处理", true)
+                Notifier.update(context, nid, sessionText(UiMessages.notificationsAndroidCurrentAuthorizationCouldNotBeVerifiedOpenTheAppTo()), true)
                 return
             }
         remote.close()
-        Notifier.update(context, nid, if (allow) "允许中…" else "拒绝中…", false)
+        Notifier.update(context, nid, if (allow) sessionText(UiMessages.notificationsAndroidAllowing()) else sessionText(UiMessages.notificationsAndroidRejecting()), false)
         val data =
             Data.Builder()
                 .putString("machine", machine)
@@ -485,7 +491,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
         // An earlier attempt of this reply may have gone through.
         fun wasUnknown() = recorded() == ApprovalRecord.SENT
         fun done(): Result {
-            Notifier.update(applicationContext, nid, if (allow) "已允许" else "已拒绝", true)
+            Notifier.update(applicationContext, nid, if (allow) sessionText(UiMessages.approvalAllowed()) else sessionText(UiMessages.approvalDenied()), true)
             return Result.success()
         }
         fun finish(text: String): Result {
@@ -510,11 +516,11 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
             } catch (e: Exception) {
                 // The phone locked again before this ran: the account key needs it unlocked.
                 if (System.currentTimeMillis() + 5_000 < deadline) {
-                    Notifier.update(applicationContext, nid, "手机锁上了，解锁后继续提交…", false)
+                    Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidPhoneLockedSubmissionContinuesAfterUnlocking()), false)
                     return Result.retry()
                 }
-                return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：手机一直锁着，审批已超时")
-            } ?: return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：这台手机没有账户")
+                return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitPhoneStayedLockedUntilApprovalTimedOut()))
+            } ?: return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.notificationsAndroidCouldNotSubmitThisPhoneHasNoAccount()))
         val p =
             PreparedCommand(
                 d.getString("machine").orEmpty(),
@@ -548,15 +554,15 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
                     System.currentTimeMillis() + 5_000 < p.deadlineMs &&
                     runAttemptCount < 5
             ) {
-                Notifier.update(applicationContext, nid, "还在提交…（${errorText(e)}）", false)
+                Notifier.update(applicationContext, nid, sessionText(UiMessages.notificationsAndroidStillSubmittingValue1((displayError(e)).toString())), false)
                 return Result.retry()
             }
             // Expired after an unknown attempt: that attempt may have worked.
             return finish(
-                if (e.unknown || wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：${errorText(e)}",
+                if (e.unknown || wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed((displayError(e)).toString())),
             )
         } catch (e: Exception) {
-            return finish(if (wasUnknown()) "不确定是否生效，请打开 App 看一眼" else "没能提交：${errorText(e)}")
+            return finish(if (wasUnknown()) sessionText(UiMessages.notificationsAndroidOutcomeUnknownOpenTheAppToCheck()) else sessionText(UiMessages.dockSubmitFailed((displayError(e)).toString())))
         } finally {
             remote.close()
         }
@@ -567,7 +573,7 @@ class ApprovalWorker(context: Context, params: WorkerParameters) :
             NotificationCompat.Builder(applicationContext, Push.CHANNEL_ATTENTION)
                 .setSmallIcon(R.drawable.ic_notify)
                 .setContentTitle("remote-agent")
-                .setContentText("正在提交审批…")
+                .setContentText(sessionText(UiMessages.notificationsAndroidSubmittingApproval()))
                 .setSilent(true)
                 .build()
         return androidx.work.ForegroundInfo(inputData.getInt("nid", 0) + 7, n)

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,10 +29,10 @@ import kotlinx.coroutines.launch
 fun mibText(bytes: Long): String = "%.1f MiB".format(bytes / 1048576.0)
 
 /** What the 版本 row says after the installed version, when there is something to say. */
-fun updateWord(state: UpdateState): String? = when (state) {
-    is UpdateState.Available, is UpdateState.DownloadFailed -> "可更新到 ${state.release!!.version}"
-    is UpdateState.Downloading -> "正在下载 ${state.release.version}"
-    is UpdateState.Ready -> "${state.release.version} 已下载"
+fun updateWord(state: UpdateState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String? = when (state) {
+    is UpdateState.Available, is UpdateState.DownloadFailed -> copy(UiMessages.settingsAndroidUpdateAvailableValue1((state.release!!.version).toString()))
+    is UpdateState.Downloading -> copy(UiMessages.settingsAndroidDownloadingValue1((state.release.version).toString()))
+    is UpdateState.Ready -> copy(UiMessages.settingsAndroidValue1Downloaded((state.release.version).toString()))
     else -> null
 }
 
@@ -40,10 +42,10 @@ fun updateWord(state: UpdateState): String? = when (state) {
  */
 data class CheckLine(val text: String, val error: Boolean)
 
-fun checkLine(check: UpdateCheck, releaseOnScreen: Boolean): CheckLine? = when {
+fun checkLine(check: UpdateCheck, releaseOnScreen: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): CheckLine? = when {
     // The reason comes first: it is what the user needs next, and a failure confirms nothing.
-    check.error != null -> CheckLine("没能检查更新：${check.error}", error = true)
-    check.upToDate && releaseOnScreen -> CheckLine("已是最新发布版本", error = false)
+    check.error != null -> CheckLine(copy(UiMessages.settingsAndroidCouldNotCheckForUpdatesValue1((check.error).toString())), error = true)
+    check.upToDate && releaseOnScreen -> CheckLine(copy(UiMessages.settingsAndroidAlreadyOnTheLatestPublishedVersion()), error = false)
     else -> null
 }
 
@@ -54,11 +56,11 @@ internal fun readyForInstall(state: UpdateState, check: UpdateCheck, versionCode
 /** The download/install action for a release, by how far getting it is. */
 data class UpdateStep(val label: String, val enabled: Boolean, val error: String = "")
 
-fun updateStep(state: UpdateState): UpdateStep? = when (state) {
-    is UpdateState.Available -> UpdateStep("下载并安装（${mibText(state.release.size)}）", true)
-    is UpdateState.Downloading -> UpdateStep("正在下载 ${mibText(state.done)} / ${mibText(state.release.size)}", false)
-    is UpdateState.Ready -> UpdateStep("安装", true)
-    is UpdateState.DownloadFailed -> UpdateStep("重新下载", true, state.error)
+fun updateStep(state: UpdateState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): UpdateStep? = when (state) {
+    is UpdateState.Available -> UpdateStep(copy(UiMessages.settingsAndroidDownloadAndInstallValue1((mibText(state.release.size)).toString())), true)
+    is UpdateState.Downloading -> UpdateStep(copy(UiMessages.settingsAndroidDownloadingValue1Value2((mibText(state.done)).toString(), (mibText(state.release.size)).toString())), false)
+    is UpdateState.Ready -> UpdateStep(copy(UiMessages.settingsAndroidInstall()), true)
+    is UpdateState.DownloadFailed -> UpdateStep(copy(UiMessages.settingsAndroidDownloadAgain()), true, state.error)
     else -> null
 }
 
@@ -68,25 +70,27 @@ fun updateStep(state: UpdateState): UpdateStep? = when (state) {
  */
 @Composable
 fun UpdateNotice(modifier: Modifier = Modifier, onOpen: () -> Unit) {
+    val copy = uiText()
     val app = RaApp.instance
     val state by Updater.state.collectAsState()
     val settings by app.prefs.settings.collectAsState(Settings())
     val release = state.release ?: return
     if (release.versionCode <= settings.skippedUpdate) return
-    Notice("有新版本 ${release.version}", modifier, action = "更新", onAction = onOpen)
+    Notice(copy(UiMessages.settingsAndroidNewVersionValue1Available((release.version).toString())), modifier, action = copy(UiMessages.settingsAndroidUpdate()), onAction = onOpen)
 }
 
 /** How handing the download to the system went, when there is something to say about it. */
 enum class InstallNote(val text: String, val error: Boolean = false) {
-    PERMISSION("先在系统设置里允许 remote-agent 安装应用，回来后继续。"),
-    CANCELLED("安装没有完成，可以再装一次。"),
-    FAILED("系统没能安装这个包。", error = true),
-    NO_INSTALLER("打不开系统的安装器。", error = true),
+    PERMISSION(sessionText(UiMessages.settingsAndroidAllowRemoteAgentToInstallAppsInSystemSettingsThen())),
+    CANCELLED(sessionText(UiMessages.settingsAndroidInstallationDidNotFinishYouCanInstallAgain())),
+    FAILED(sessionText(UiMessages.settingsAndroidTheSystemCouldNotInstallThisPackage()), error = true),
+    NO_INSTALLER(sessionText(UiMessages.settingsAndroidCannotOpenTheSystemInstaller()), error = true),
 }
 
 /** 版本: the installed version, and the newer release when there is one, with what changed and the one step to take next. */
 @Composable
 fun UpdateSheet(onClose: () -> Unit) {
+    val copy = uiText()
     val app = RaApp.instance
     val context = androidx.compose.ui.platform.LocalContext.current
     val p = pal
@@ -153,35 +157,35 @@ fun UpdateSheet(onClose: () -> Unit) {
     }
     Sheet(onClose) {
         if (release == null) {
-            SheetHead("版本", "完成", onClose)
+            SheetHead(copy(UiMessages.settingsAndroidVersion()), copy(UiMessages.commonDone()), onClose)
             Text("remote-agent ${app.versionName}", style = T.s15, color = p.ink)
-            if (state is UpdateState.Latest) Text("已是最新版本", style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
-            checkLine(check, releaseOnScreen = false)?.let { Text(it.text, style = T.s13, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
-            PillButton(if (check.running) "正在检查更新…" else "检查更新", { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
+            if (state is UpdateState.Latest) Text(copy(UiMessages.settingsAndroidUpToDate()), style = T.s13, color = p.ink2, modifier = Modifier.padding(top = 6.dp))
+            checkLine(check, releaseOnScreen = false, copy = copy)?.let { Text(it.text, style = T.s13, color = p.red, modifier = Modifier.padding(top = 6.dp)) }
+            PillButton(if (check.running) copy(UiMessages.settingsAndroidCheckingForUpdates()) else copy(UiMessages.settingsCheckForUpdates()), { Updater.check(app, manual = true) }, Modifier.fillMaxWidth().padding(top = 14.dp), enabled = !check.running)
             return@Sheet
         }
-        SheetHead("新版本 ${release.version}", "以后再说", {
+        SheetHead(copy(UiMessages.settingsAndroidNewVersionValue1((release.version).toString())), copy(UiMessages.settingsAndroidLater()), {
             // Put off: the home page stops mentioning this release; 设置 still shows it. Saved in
             // the app's scope: this sheet's own ends with it, before the write may be through.
             app.scope.launch { app.prefs.update { it.copy(skippedUpdate = release.versionCode) } }
             onClose()
         })
         ReleaseNotes(release, app.versionName)
-        val step = updateStep(state) ?: return@Sheet
-        if (step.error.isNotEmpty()) Text("没能下载：${step.error}", style = T.s13, color = p.red, modifier = Modifier.padding(top = 10.dp))
+        val step = updateStep(state, copy = copy) ?: return@Sheet
+        if (step.error.isNotEmpty()) Text(copy(UiMessages.settingsAndroidCouldNotDownloadValue1((step.error).toString())), style = T.s13, color = p.red, modifier = Modifier.padding(top = 10.dp))
         shown?.let { Text(it.text, style = T.s13, color = if (it.error) p.red else p.orangeInk, modifier = Modifier.padding(top = 10.dp)) }
-        PillButton(if (shown == InstallNote.PERMISSION) "去允许" else step.label, {
+        PillButton(if (shown == InstallNote.PERMISSION) copy(UiMessages.settingsAndroidAllowInSettings()) else step.label, {
             if (Updater.checking.value.running) return@PillButton
             val s = Updater.state.value
             if (s is UpdateState.Ready) install(s.release.versionCode, s.file) else Updater.download(app)
         }, Modifier.fillMaxWidth().padding(top = 14.dp), ButtonKind.INK, enabled = step.enabled && !check.running)
-        Hint("下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。")
+        Hint(copy(UiMessages.settingsAndroidTheSystemWillConfirmInstallationAfterDownloadingTheFirstTime()))
         // How the look for a newer release went. Either way the release above stays, and stays actionable.
-        checkLine(check, releaseOnScreen = true)?.let {
+        checkLine(check, releaseOnScreen = true, copy = copy)?.let {
             Text(it.text, style = T.s13, color = if (it.error) p.red else p.ink2, modifier = Modifier.padding(top = 6.dp))
         }
         TextAction(
-            if (check.running) "正在检查更新…" else "检查更新",
+            if (check.running) copy(UiMessages.settingsAndroidCheckingForUpdates()) else copy(UiMessages.settingsCheckForUpdates()),
             { Updater.check(app, manual = true) },
             Modifier.fillMaxWidth().padding(top = 8.dp),
             style = T.s15b,
@@ -193,11 +197,12 @@ fun UpdateSheet(onClose: () -> Unit) {
 
 @Composable
 private fun ReleaseNotes(release: Release, installed: String) {
+    val copy = uiText()
     val p = pal
     Column {
-        Text("当前版本 $installed", style = T.s13, color = p.ink2)
+        Text(copy(UiMessages.settingsAndroidCurrentVersionValue1((installed).toString())), style = T.s13, color = p.ink2)
         if (release.notes.isNotEmpty()) Text(release.notes, style = T.s15, color = p.ink, modifier = Modifier.padding(top = 8.dp))
         // Another protocol version: the computers must be upgraded too, or nothing connects.
-        if (release.protocol != PROTOCOL_VERSION) Notice("这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。", Modifier.padding(top = 10.dp), tone = NoticeTone.WARN)
+        if (release.protocol != PROTOCOL_VERSION) Notice(copy(UiMessages.settingsAndroidThisReleaseChangesTheProtocolAfterInstallingAlsoUpdateRemote()), Modifier.padding(top = 10.dp), tone = NoticeTone.WARN)
     }
 }

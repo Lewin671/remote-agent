@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -24,12 +28,12 @@ class TerminalReadingTest {
         assertTrue(failed.fit)
         // Only with the reader up does the toolbar say so, and the fit button go away.
         val reader = toolbar(reading(entered = true, cursor = "capture:1"))
-        assertEquals("回看中 · 只读", reader.text)
+        assertEquals(messageTextForTest(UiMessages.terminalReadonly()), reader.text)
         assertFalse(reader.fit)
         // The size is what the live toolbar shows, whatever it shows.
         assertEquals("电脑上 80×24", toolbar(reading(pending = "r"), fitted = false).text)
         assertEquals("远端尺寸已变化 · 80×24", toolbar(reading(pending = "r"), resized = true).text)
-        assertEquals("终端", toolbar(reading(pending = "r"), state = RemoteTerminal.State.Connecting).text)
+        assertEquals(messageTextForTest(UiMessages.sessionTerminal()), toolbar(reading(pending = "r"), state = RemoteTerminal.State.Connecting).text)
     }
 
     @Test fun theItemsRunBottomUpSoTheCaptureReadsTopDown() {

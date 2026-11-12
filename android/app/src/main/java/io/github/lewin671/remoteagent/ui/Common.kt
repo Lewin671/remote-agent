@@ -204,7 +204,7 @@ fun Card(
 @Composable
 fun ConnBanner(state: RemoteState) {
     val p = pal
-    val line = connLine(state) ?: return
+    val line = connLine(state, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     val color = if (line.failed) p.red else p.ink2
     Row(
@@ -225,7 +225,7 @@ fun ConnBanner(state: RemoteState) {
 /** The same sentence in a session, as the glass strip under its segmented control (design-system §6 连接状态). */
 @Composable
 fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
-    val line = connLine(state) ?: return
+    val line = connLine(state, copy = uiText()) ?: return
     var details by remember { mutableStateOf(false) }
     Strip(
         line.icon, uiText(line.text), modifier,
@@ -241,7 +241,7 @@ fun ConnStrip(state: RemoteState, modifier: Modifier = Modifier) {
 class ConnLine(val icon: ImageVector, val text: io.github.lewin671.remoteagent.core.UiMessage, val failed: Boolean, val details: Boolean)
 
 /** Nothing when online; otherwise the nearest stretch that is down (client-v30 「断线」). */
-fun connLine(state: RemoteState): ConnLine? {
+fun connLine(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): ConnLine? {
     if (state.link == Link.ONLINE) return null
     // Nothing kept from before to show: the bar says what the connection is needed for.
     val failed = state.link == Link.NO_SERVER && !state.loaded && state.error.isNotEmpty()
@@ -254,7 +254,7 @@ fun connLine(state: RemoteState): ConnLine? {
     val text =
         when (state.link) {
             Link.NO_NETWORK -> if (state.loaded) UiMessages.connectionNoNetworkPrevious() else UiMessages.connectionNoNetworkEmpty()
-            Link.NO_SERVER -> if (failed) UiMessages.connectionAndroidServerFailed(reason = state.error) else UiMessages.connectionServerRetrying()
+            Link.NO_SERVER -> if (failed) UiMessages.connectionAndroidServerFailed(reason = state.error.resolve(copy)) else UiMessages.connectionServerRetrying()
             else -> if (state.synced) UiMessages.connectionReconnecting() else UiMessages.connectionConnecting()
         }
     return ConnLine(icon, text, failed, state.link == Link.NO_SERVER)
@@ -288,12 +288,12 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
             )
         if (state.error.isNotEmpty())
             Text(
-                uiText(UiMessages.connectionAndroidReason(reason = state.error)),
+                uiText(UiMessages.connectionAndroidReason(reason = uiText(state.error))),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
-        if (state.errorDetail.isNotEmpty() && state.errorDetail != state.error)
+        if (state.errorDetail.isNotEmpty() && state.errorDetail != uiText(state.error))
             Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
         PillButton(
             uiText(UiMessages.connectionAndroidRetryNow()),
@@ -320,7 +320,7 @@ fun machineOf(state: RemoteState, s: SessionView): MachineView? = state.machines
 
 fun statusIn(state: RemoteState, s: SessionView): Status = shownStatus(state, s)
 
-fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id)
+fun machineLabel(state: RemoteState, id: String): String = machineName(state.machines[id], id, copy = ::sessionText)
 
 /** Incremental event state, with an immutable result per history snapshot. */
 @Composable

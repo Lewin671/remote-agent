@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -35,7 +37,7 @@ import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.PairLink
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.Secret
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.joinByPairing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -56,21 +58,22 @@ private sealed interface JoinStep {
 /** The server turned this device away: nothing of the account is shown until it joins again. */
 @Composable
 fun RemovedScreen(app: RaApp, remote: Remote) {
+    val copy = uiText()
     val p = pal
     Column(
         Modifier.fillMaxSize().background(p.paper).padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("服务器拒绝了这台设备的登录", style = T.s17b, color = p.ink, textAlign = TextAlign.Center)
+        Text(copy(UiMessages.securityAndroidTheServerRejectedThisDeviceSLogin()), style = T.s17b, color = p.ink, textAlign = TextAlign.Center)
         Text(
-            "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。",
+            copy(UiMessages.settingsTheDeviceMayHaveBeenRemovedTheServiceReset()),
             style = T.s13,
             color = p.ink2,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 20.dp),
         )
-        RejoinButton(app, "重新加入账户")
+        RejoinButton(app, copy(UiMessages.settingsRejoinAccount()))
         androidx.compose.runtime.key(remote) {
             PendingSecurityOperation(
                 readPending = { app.vault.readSecurityOperation() != null },
@@ -78,14 +81,14 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
             )
         }
         Text(
-            "会先删除这台设备上的账户密钥和缓存，再用配对码加入。",
+            copy(UiMessages.securityAndroidFirstDeleteTheAccountKeysAndCacheOnThisDevice()),
             style = T.s13,
             color = p.ink2,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 10.dp, bottom = 4.dp),
         )
         TextAction(
-            "再试一次",
+            copy(UiMessages.sessionTryAgain()),
             { remote.retryLogin() },
             alignment = Alignment.Center,
         )
@@ -95,6 +98,7 @@ fun RemovedScreen(app: RaApp, remote: Remote) {
 /** No action until a background vault read confirms there is work to resume. */
 @Composable
 internal fun PendingSecurityOperation(readPending: () -> Boolean, resume: suspend () -> Unit) {
+    val copy = uiText()
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -102,10 +106,10 @@ internal fun PendingSecurityOperation(readPending: () -> Boolean, resume: suspen
     LaunchedEffect(Unit) {
         try { pending = withContext(Dispatchers.IO) { readPending() } }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
-        catch (e: Exception) { result = errorText(e) }
+        catch (e: Exception) { result = displayError(e) }
     }
     if (pending) {
-        TextAction("核实原安全操作", {
+        TextAction(copy(UiMessages.securityAndroidVerifyOriginalSecurityOperation()), {
             if (!busy) {
                 busy = true
                 scope.launch {
@@ -116,10 +120,10 @@ internal fun PendingSecurityOperation(readPending: () -> Boolean, resume: suspen
                         if (pending) {
                             resume()
                             pending = withContext(Dispatchers.IO) { readPending() }
-                            result = if (pending) "原操作尚未完成，请继续核实。" else "原安全操作已核实完成。"
+                            result = if (pending) copy(UiMessages.settingsTheOriginalOperationIsUnfinishedContinueVerifying()) else copy(UiMessages.securityAndroidTheOriginalSecurityOperationIsVerifiedComplete())
                         }
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (e: Exception) { result = errorText(e) }
+                    catch (e: Exception) { result = displayError(e) }
                     finally { busy = false }
                 }
             }
@@ -136,6 +140,7 @@ fun JoinScreen(app: RaApp) {
 
 @Composable
 private fun JoinContent(app: RaApp) {
+    val copy = uiText()
     val p = pal
     val scope = rememberCoroutineScope()
     val existing by app.securitySetup.collectAsState()
@@ -192,7 +197,7 @@ private fun JoinContent(app: RaApp) {
                         if (pending != null) {
                             if (pending.account.server != l.server)
                                 throw io.github.lewin671.remoteagent.core.PairException(
-                                    "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
+                                    copy(UiMessages.securityRegistrationOnAnotherServerIsUnfinishedRetryItOr()),
                                 )
                             registering = true
                             val resumed =
@@ -227,8 +232,8 @@ private fun JoinContent(app: RaApp) {
                     }
                 app.joined(acct)
             } catch (e: Exception) {
-                if (registering) error = "不确定这台手机有没有加入：${errorText(e)}。可以在管理端的设置里看看客户端列表"
-                else if (!stopped) error = errorText(e)
+                if (registering) error = copy(UiMessages.securityAndroidCannotConfirmWhetherThisPhoneJoinedValue1CheckTheClient((displayError(e)).toString()))
+                else if (!stopped) error = displayError(e)
                 registering = false
                 step = JoinStep.Form
             }
@@ -242,7 +247,7 @@ private fun JoinContent(app: RaApp) {
      */
     fun cancel() {
         if (registering) {
-            error = "已经在登记这台手机，稍等结果"
+            error = copy(UiMessages.securityAndroidAlreadyRegisteringThisPhoneWaitForTheResult())
             return
         }
         stopped = true
@@ -251,32 +256,32 @@ private fun JoinContent(app: RaApp) {
         job?.cancel()
         code = ""
         commit = null
-        error = "已取消本次加入。旧请求可能还占着配对码：请在管理端上拒绝它，再生成新的配对码"
+        error = copy(UiMessages.securityAndroidThisJoinAttemptWasCancelledTheOldRequestMayStill())
         step = JoinStep.Form
     }
 
     if (checkingIdentity) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("正在连接…", color = p.ink2) }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(copy(UiMessages.securityAndroidConnecting()), color = p.ink2) }
         return
     }
     if (existingRemoved) {
         Column(Modifier.fillMaxSize().background(p.paper).padding(24.dp),
             verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("服务器不认识这台设备", style = T.s17b, color = p.ink)
-            Hint("可能已被移除，或服务已重建。电脑上的会话不受影响。", inset = 0.dp)
-            RejoinButton(app, "用配对码重新加入")
-            Hint("会先删除这台手机上的账户密钥和缓存，再用配对码加入。", inset = 0.dp)
+            Text(copy(UiMessages.securityTheServerDoesNotRecognizeThisDevice()), style = T.s17b, color = p.ink)
+            Hint(copy(UiMessages.securityItMayHaveBeenRemovedOrTheServiceMay()), inset = 0.dp)
+            RejoinButton(app, copy(UiMessages.securityRejoinWithAPairingCode()))
+            Hint(copy(UiMessages.securityAndroidFirstDeleteTheAccountKeysAndCacheOnThisPhone()), inset = 0.dp)
         }
         return
     }
 
     if (mode == "entry") {
         Column(Modifier.fillMaxSize().background(p.gbg).verticalScrollFaded(p.gbg)) {
-            LargeTitle("加入账户")
+            LargeTitle(copy(UiMessages.securityJoinAccount()))
             Group(rows = listOf(
-                { GRow("新建账户", onClick = { mode = "create" }, chevron = true) },
-                { GRow("加入已有账户", onClick = { mode = "join" }, chevron = true) },
-                { GRow("用恢复码找回管理权", onClick = { mode = "recover" }, chevron = true) },
+                { GRow(copy(UiMessages.securityCreateAccount()), onClick = { mode = "create" }, chevron = true) },
+                { GRow(copy(UiMessages.securityJoinAnExistingAccount()), onClick = { mode = "join" }, chevron = true) },
+                { GRow(copy(UiMessages.securityRecoverManagementWithARecoveryCode()), onClick = { mode = "recover" }, chevron = true) },
             ))
         }
         return
@@ -307,7 +312,7 @@ private fun JoinContent(app: RaApp) {
                     if (step != JoinStep.Scan) return@QrScanner
                     val link = PairLink.parse(text)
                     if (link == null) {
-                        error = "这不是 remote-agent 的配对二维码"
+                        error = copy(UiMessages.securityAndroidThisIsNotARemoteAgentPairingQrCode())
                         step = JoinStep.Form
                     } else {
                         code = link.code
@@ -328,11 +333,11 @@ private fun JoinContent(app: RaApp) {
                 when (s) {
                     is JoinStep.Emoji -> {
                         PageBar(
-                            "核对图案",
+                            copy(UiMessages.securityComparePatterns()),
                             null,
                             right = {
                                 Text(
-                                    "取消",
+                                    copy(UiMessages.commonCancel()),
                                     style = T.s15,
                                     color = p.blue,
                                     modifier = Modifier.clickable { cancel() },
@@ -347,7 +352,7 @@ private fun JoinContent(app: RaApp) {
                             textAlign = TextAlign.Center,
                         )
                         Text(
-                            "核对管理端上的 4 个图案；一致后先在本机确认，再在管理端上允许。",
+                            copy(UiMessages.securityAndroidCompareThe4PatternsOnTheManagingClientIfThey()),
                             style = T.s13,
                             color = p.ink2,
                             textAlign = TextAlign.Center,
@@ -355,7 +360,7 @@ private fun JoinContent(app: RaApp) {
                         )
                         if (comparison != null)
                             PillButton(
-                                "图案一致，信任并继续",
+                                copy(UiMessages.securityPatternsMatchTrustAndContinue()),
                                 {
                                     registering = true
                                     comparison?.complete(true)
@@ -366,25 +371,25 @@ private fun JoinContent(app: RaApp) {
                             )
                         IconText(
                             Lucide.LoaderCircle,
-                            if (comparison != null) "请先在本机确认图案" else "等待管理端批准并完成加入…",
+                            if (comparison != null) copy(UiMessages.securityConfirmThePatternsOnThisDeviceFirst()) else copy(UiMessages.securityAndroidWaitingForManagingClientApprovalAndCompletingJoin()),
                             p.ink2,
                             T.s13,
                             Modifier.fillMaxWidth().padding(vertical = 20.dp).wrapContentWidth(),
                         )
                         PillButton(
-                            "图案不一致，返回填码",
+                            copy(UiMessages.securityPatternsDifferReturnToCodeEntry()),
                             { cancel() },
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                         )
                         Hint(
-                            "返回后停止这次等待；请在管理端上拒绝旧请求，再生成新的配对码。",
+                            copy(UiMessages.securityAndroidGoingBackStopsThisWaitRejectTheOldRequestOn()),
                         )
                     }
                     JoinStep.Working -> {
-                        JoinTitle(if (existing != null) "一次性安全设置" else "加入已有账户")
+                        JoinTitle(if (existing != null) copy(UiMessages.securityOneTimeSecuritySetup()) else copy(UiMessages.securityJoinAnExistingAccount()))
                         IconText(
                             Lucide.LoaderCircle,
-                            "正在连接…",
+                            copy(UiMessages.securityAndroidConnecting()),
                             p.ink2,
                             T.s13,
                             Modifier.padding(horizontal = 16.dp),
@@ -393,11 +398,11 @@ private fun JoinContent(app: RaApp) {
                     }
                     JoinStep.Form,
                     JoinStep.Scan -> {
-                        JoinTitle(if (existing != null) "一次性安全设置" else "加入已有账户")
+                        JoinTitle(if (existing != null) copy(UiMessages.securityOneTimeSecuritySetup()) else copy(UiMessages.securityJoinAnExistingAccount()))
                         Text(
                             if (existing != null)
-                                "原设备身份、密钥和历史保留。在管理端上打开「设置 › 添加设备」，扫码或填配对码后，两边核对 4 个图案完成加入。"
-                            else "在管理端打开「设置 › 添加设备」，扫它显示的二维码，或把 8 位配对码填在这里。",
+                                copy(UiMessages.securityAndroidTheOriginalDeviceIdentityKeysAndHistoryAreKeptOpen())
+                            else copy(UiMessages.securityAndroidOpenSettingsAddDeviceOnTheManagingClientScanIts()),
                             style = T.s13,
                             color = p.ink2,
                             modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 14.dp),
@@ -439,7 +444,7 @@ private fun JoinContent(app: RaApp) {
                                 FieldBox {
                                     if (code.isEmpty())
                                         Text(
-                                            "输入 8 位配对码",
+                                            copy(UiMessages.securityAndroidEnterThe8DigitPairingCode()),
                                             style = T.s15,
                                             color = p.ink2,
                                             textAlign = TextAlign.Center,
@@ -450,14 +455,14 @@ private fun JoinContent(app: RaApp) {
                             },
                         )
                         JoinField(
-                            "服务器",
+                            copy(UiMessages.securityServer()),
                             server,
                             { server = it.trim() },
                             "https://",
                             keyboard = KeyboardType.Uri,
                         )
                         PillButton(
-                            "加入",
+                            copy(UiMessages.securityJoin()),
                             {
                                 try {
                                     join(
@@ -468,21 +473,21 @@ private fun JoinContent(app: RaApp) {
                                         ),
                                     )
                                 } catch (e: Exception) {
-                                    error = errorText(e)
+                                    error = displayError(e)
                                 }
                             },
                             Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                             ButtonKind.INK,
                             enabled = code.count { it.isDigit() } == 8 && server.length > 8,
                         )
-                        JoinLink("扫描二维码") {
+                        JoinLink(copy(UiMessages.securityAndroidScanQrCode())) {
                             error = ""
                             step = JoinStep.Scan
                         }
                         if (existing != null && !existingRemoved)
-                            JoinLink("已有账户升级？重建安全域并成为管理端") { mode = "rebuild" }
-                        if (existing != null) JoinLink("用恢复码找回管理权") { mode = "recover" }
-                        else JoinLink("返回") { mode = "entry" }
+                            JoinLink(copy(UiMessages.securityAndroidUpgradingAnExistingAccountRebuildTheSecurityDomainAndBecome())) { mode = "rebuild" }
+                        if (existing != null) JoinLink(copy(UiMessages.securityRecoverManagementWithARecoveryCode())) { mode = "recover" }
+                        else JoinLink(copy(UiMessages.commonBack())) { mode = "entry" }
                     }
                 }
             }
@@ -552,6 +557,7 @@ private fun JoinField(
 /** Read again at confirmation, so newly pending work cannot be silently erased. */
 @Composable
 private fun RejoinButton(app: RaApp, title: String) {
+    val copy = uiText()
     val scope = rememberCoroutineScope()
     var advice by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf("") }
@@ -564,18 +570,18 @@ private fun RejoinButton(app: RaApp, title: String) {
                 val warning = withContext(Dispatchers.IO) {
                     val pending = app.vault.readSecurityOperation() != null || app.vault.loadRegistrationIntent() != null
                     val admin = if (app.vault.hasSecurityState()) app.vault.readSecurity().let { it.memberID == it.head.core.authorityID } else false
-                    if (pending || admin) authorityExitAdvice(admin, pending) + "这会删除这台手机上的账户密钥和缓存，电脑上的会话不受影响。" else null
+                    if (pending || admin) authorityExitAdvice(admin, pending, copy = copy) + copy(UiMessages.securityAndroidThisDeletesTheAccountKeysAndCacheOnThisPhone()) else null
                 }
                 if (warning != null && (!confirmed || warning != advice)) advice = warning
                 else app.logout(pairing = true)
-            } catch (e: Exception) { error = errorText(e) }
+            } catch (e: Exception) { error = displayError(e) }
             finally { busy = false }
         }
     }
     PillButton(title, { leave(false) }, Modifier.fillMaxWidth(), ButtonKind.INK, enabled = !busy)
     if (error.isNotEmpty()) Hint(error)
     advice?.let { message ->
-        Confirm("删除本机密钥并重新加入？", message, "重新加入", danger = true,
+        Confirm(copy(UiMessages.securityDeleteLocalKeysAndRejoin()), message, copy(UiMessages.securityRejoin()), danger = true,
             onDismiss = { advice = null }) { leave(true) }
     }
 }

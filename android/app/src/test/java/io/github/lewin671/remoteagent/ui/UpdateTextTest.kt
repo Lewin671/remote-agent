@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.Release
 import io.github.lewin671.remoteagent.update.UpdateCheck
 import io.github.lewin671.remoteagent.update.UpdateState
@@ -8,7 +10,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class UpdateTextTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private val release = Release("0.29.0", 82, 4, "remote-agent-v0.29.0.apk", "0".repeat(64), 5_976_883, "")
 
     @Test
@@ -25,9 +30,9 @@ class UpdateTextTest {
         val id = "io.github.lewin671.remoteagent"
         assertNull(io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 82, release))
         // Another app's package would be installed next to this one, unsigned by us.
-        assertEquals("下载的安装包不是 remote-agent", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, "$id.evil", 82, release))
-        assertEquals("下载的安装包不是 remote-agent", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, null, 82, release))
-        assertEquals("下载的安装包和发布信息不一致", io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 81, release))
+        assertEquals(messageTextForTest(UiMessages.settingsAndroidTheDownloadedPackageIsNotRemoteAgent()), io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, "$id.evil", 82, release))
+        assertEquals(messageTextForTest(UiMessages.settingsAndroidTheDownloadedPackageIsNotRemoteAgent()), io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, null, 82, release))
+        assertEquals(messageTextForTest(UiMessages.settingsAndroidTheDownloadedPackageDoesNotMatchTheReleaseInformation()), io.github.lewin671.remoteagent.update.Updater.packageMismatch(id, id, 81, release))
     }
 
     @Test

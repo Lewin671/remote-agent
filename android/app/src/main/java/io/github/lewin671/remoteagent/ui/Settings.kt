@@ -65,7 +65,7 @@ import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.defaultsFor
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.machineAgents
 import io.github.lewin671.remoteagent.core.machineVersions
 import io.github.lewin671.remoteagent.core.modeOf
@@ -142,6 +142,7 @@ internal fun clientIcon(meta: io.github.lewin671.remoteagent.proto.DeviceMeta?):
  */
 @Composable
 fun SettingsScreen() {
+    val copy = uiText()
     val app = RaApp.instance
     val remote = LocalRemote.current
     val nav = LocalNav.current
@@ -162,16 +163,16 @@ fun SettingsScreen() {
                 .readableColumn(),
         ) {
             BackRow(nav.back)
-            LargeTitle("设置")
+            LargeTitle(copy(UiMessages.commonSettings()))
             ConnBanner(state)
             if (state.clockWarning)
                 Notice(
-                    "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
+                    copy(UiMessages.settingsAndroidThePhoneClockIsAheadOfTheServerRemoteControl()),
                     Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                     NoticeTone.WARN,
                 )
             MachinesGroup(state, t)
-            GLabel("客户端")
+            GLabel(copy(UiMessages.securityClient()))
             val me = remote.account.deviceId
             val others =
                 state.devices.values
@@ -191,8 +192,8 @@ fun SettingsScreen() {
                                     state.devices[me],
                                     me,
                                     state.devices.values,
-                                ),
-                                "当前",
+                                 copy = copy),
+                                copy(UiMessages.settingsCurrent()),
                                 lead = { Ico(clientIcon(state.devices[me]?.meta)) },
                                 onClick = { nav.client(me) },
                             )
@@ -201,8 +202,8 @@ fun SettingsScreen() {
                         others.map { c ->
                             @Composable {
                                 GRow(
-                                    io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values),
-                                    "已配对",
+                                    io.github.lewin671.remoteagent.core.clientName(c, c.id, state.devices.values, copy = copy),
+                                    copy(UiMessages.securityPaired()),
                                     lead = { Ico(clientIcon(c.meta)) },
                                     onClick = { nav.client(c.id) },
                                     chevron = true,
@@ -212,7 +213,7 @@ fun SettingsScreen() {
                         listOf(
                             @Composable {
                                 GRow(
-                                    "全部客户端",
+                                    copy(UiMessages.settingsAllClients()),
                                     onClick = { nav.devices() },
                                     action = true,
                                     chevron = true,
@@ -220,16 +221,16 @@ fun SettingsScreen() {
                             },
                         ),
             )
-            GLabel("账户安全")
-            Group(rows = listOf({ GRow("账户安全", if (state.isAuthority) "本机是管理端" else state.authorityName, onClick = { nav.recovery() }, chevron = true) }))
+            GLabel(copy(UiMessages.securityAccountSecurity()))
+            Group(rows = listOf({ GRow(copy(UiMessages.securityAccountSecurity()), if (state.isAuthority) copy(UiMessages.securityThisDeviceManagesTheAccount()) else uiText(state.authorityName), onClick = { nav.recovery() }, chevron = true) }))
             if (state.isAuthority && state.recoveryPending)
-                Notice("恢复申请待处理 · 可生效时间：${io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t)}", Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN, action = "处理", onAction = { nav.recovery() })
-            GLabel("本客户端的通知")
+                Notice(copy(UiMessages.settingsAndroidRecoveryPendingEligibleAtValue1((io.github.lewin671.remoteagent.core.securityTime(state.recoveryReadyMs, t, copy = copy)).toString())), Modifier.padding(horizontal = 16.dp, vertical = 6.dp), NoticeTone.WARN, action = copy(UiMessages.dockHandle()), onAction = { nav.recovery() })
+            GLabel(copy(UiMessages.settingsNotificationsOnThisClient()))
             Group(
                 rows =
                     listOf(
                         {
-                            ToggleRow("等我处理时", "", settings.notifyAttention) { v ->
+                            ToggleRow(copy(UiMessages.settingsWhenINeedToAct()), "", settings.notifyAttention) { v ->
                                 scope.launch {
                                     app.prefs.update { it.copy(notifyAttention = v) }
                                     Push.register(app, remote)
@@ -237,7 +238,7 @@ fun SettingsScreen() {
                             }
                         },
                         {
-                            ToggleRow("一轮结束时", "", settings.notifyTurnEnded) { v ->
+                            ToggleRow(copy(UiMessages.settingsWhenATurnEnds()), "", settings.notifyTurnEnded) { v ->
                                 scope.launch {
                                     app.prefs.update { it.copy(notifyTurnEnded = v) }
                                     Push.register(app, remote)
@@ -245,7 +246,7 @@ fun SettingsScreen() {
                             }
                         },
                         {
-                            ToggleRow("定时任务结果", "", settings.notifyScheduled) { v ->
+                            ToggleRow(copy(UiMessages.settingsScheduledTaskResults()), "", settings.notifyScheduled) { v ->
                                 scope.launch {
                                     app.prefs.update { it.copy(notifyScheduled = v) }
                                     Push.register(app, remote)
@@ -254,8 +255,8 @@ fun SettingsScreen() {
                         },
                         {
                             ToggleRow(
-                                "在通知里显示内容并直接审批",
-                                "打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案",
+                                copy(UiMessages.settingsAndroidShowContentAndApproveInNotifications()),
+                                copy(UiMessages.settingsAndroidApprovalCommandsWillAppearInSystemNotificationsAndMayRemain()),
                                 settings.showContent,
                             ) { v ->
                                 scope.launch { app.prefs.update { it.copy(showContent = v) } }
@@ -264,17 +265,17 @@ fun SettingsScreen() {
                     ),
             )
             PushNotice(push) { Push.fix(app, remote) }
-            GLabel("本机存储")
-            Group(rows = listOf { GRow("附件存储", onClick = nav.phoneStorage, chevron = true) })
-            GLabel("外观")
+            GLabel(copy(UiMessages.settingsAndroidLocalStorage()))
+            Group(rows = listOf { GRow(copy(UiMessages.settingsAttachmentStorage()), onClick = nav.phoneStorage, chevron = true) })
+            GLabel(copy(UiMessages.settingsAppearance()))
             Group(
                 rows =
                     listOf {
                         val opts =
                             listOf(
-                                ThemeMode.SYSTEM to "自动",
-                                ThemeMode.LIGHT to "亮色",
-                                ThemeMode.DARK to "暗色",
+                                ThemeMode.SYSTEM to copy(UiMessages.modesAuto()),
+                                ThemeMode.LIGHT to copy(UiMessages.settingsLight()),
+                                ThemeMode.DARK to copy(UiMessages.settingsDark()),
                             )
                         Row(
                             Modifier.fillMaxWidth()
@@ -283,7 +284,7 @@ fun SettingsScreen() {
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Text(
-                                "主题",
+                                copy(UiMessages.settingsTheme()),
                                 style = T.s15,
                                 color = pal.ink,
                                 modifier = Modifier.weight(1f),
@@ -297,7 +298,7 @@ fun SettingsScreen() {
                         }
                     },
             )
-            GLabel("版本")
+            GLabel(copy(UiMessages.settingsAndroidVersion()))
             Group(
                 rows =
                     listOf(
@@ -313,24 +314,24 @@ fun SettingsScreen() {
                             else
                                 GRow(
                                     "remote-agent",
-                                    updateWord(update) ?: version,
+                                    updateWord(update, copy = copy) ?: version,
                                     onClick = { updating = true },
                                     chevron = true,
-                                    valueColor = if (updateWord(update) != null) p.blue else null,
+                                    valueColor = if (updateWord(update, copy = copy) != null) p.blue else null,
                                 )
                         },
-                        { GRow("开源许可", onClick = nav.licenses, chevron = true) },
+                        { GRow(copy(UiMessages.settingsAndroidOpenSourceLicenses()), onClick = nav.licenses, chevron = true) },
                     ),
             )
-            GLabel("账户")
+            GLabel(copy(UiMessages.settingsAccount()))
             Group(
                 rows =
                     listOf(
-                        { GRow("服务器", remote.account.server.removePrefix("https://")) },
+                        { GRow(copy(UiMessages.securityServer()), remote.account.server.removePrefix("https://")) },
                         {
                             GRow(
-                                "连接检测",
-                                connWord(state),
+                                copy(UiMessages.homeConnectionCheck()),
+                                connWord(state, copy = copy),
                                 onClick = { checking = true },
                                 chevron = true,
                             )
@@ -359,9 +360,10 @@ fun SettingsScreen() {
  */
 @Composable
 internal fun MachinesGroup(state: RemoteState, t: Long) {
+    val copy = uiText()
     val nav = LocalNav.current
     val p = pal
-    GLabel("电脑", "全部设备", onAction = { nav.devices() })
+    GLabel(copy(UiMessages.settingsComputer()), copy(UiMessages.settingsAllDevices()), onAction = { nav.devices() })
     val machines = state.machines.values.sortedBy { machineLabel(state, it.id) }
     for (m in machines) MachineCard(state, m, t) { nav.device(m.id) }
     if (state.isAuthority)
@@ -372,10 +374,10 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
         ) {
             Ic(Lucide.Plus, 20.dp, p.blue)
-            Text("添加设备", style = T.s17b, color = p.blue)
+            Text(copy(UiMessages.homeAddDevice()), style = T.s17b, color = p.blue)
         }
     else Hint(
-        if (machines.isEmpty()) noMachinesHint(state) else addDeviceHint(state),
+        if (machines.isEmpty()) noMachinesHint(state, copy = copy) else addDeviceHint(state, copy = copy),
     )
     Spacer(Modifier.height(12.dp))
 }
@@ -383,6 +385,7 @@ internal fun MachinesGroup(state: RemoteState, t: Long) {
 /** One computer's card: gbg, radius 28, outlined only when it is away. */
 @Composable
 private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.core.MachineView, t: Long, onClick: () -> Unit) {
+    val copy = uiText()
     val p = pal
     Column(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 10.dp).clip(Radii.R28)
@@ -396,11 +399,11 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
         Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             StatusMark(if (m.online) MarkKind.ONLINE else MarkKind.OFF, size = 8.dp)
             Text(
-                if (m.online) "在线" else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t).let { if (it.isEmpty()) "离线" else "${it}在线" },
+                if (m.online) copy(UiMessages.settingsAndroidOnline()) else io.github.lewin671.remoteagent.core.ago(m.lastSeenMs, t, copy = copy).let { if (it.isEmpty()) copy(UiMessages.settingsOffline()) else copy(UiMessages.settingsOnline((it).toString())) },
                 style = T.s13, color = p.ink2, maxLines = 1,
             )
         }
-        if (m.online) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t)) {
+        if (m.online) for (g in io.github.lewin671.remoteagent.core.quotaGroups(m, t, copy = copy)) {
             val row = g.rows.filter { it.percent != null }.maxByOrNull { it.percent!! } ?: continue
             val left = (100 - row.percent!!).coerceIn(0.0, 100.0)
             val low = left <= 20.0
@@ -408,9 +411,9 @@ private fun MachineCard(state: RemoteState, m: io.github.lewin671.remoteagent.co
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
                         AgentMarkLead(g.agent, T.s15b, p.ink)
-                        Text(agentName(g.agent), style = T.s15b, color = p.ink, maxLines = 1)
+                        Text(agentName(g.agent, copy = copy), style = T.s15b, color = p.ink, maxLines = 1)
                     }
-                    Text("剩 ${left.roundToInt()}%", style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
+                    Text(copy(UiMessages.quotaLeft((left.roundToInt()).toString())), style = if (low) T.s13b else T.s13, color = if (low) p.orangeInk else p.ink2)
                 }
                 Box(Modifier.padding(top = 6.dp).fillMaxWidth().height(5.dp).clip(Radii.Pill).background(p.fill2)) {
                     Box(Modifier.fillMaxWidth((left / 100).toFloat()).height(5.dp).clip(Radii.Pill).background(if (low) p.orange else p.ink))
@@ -431,9 +434,10 @@ internal fun PushNotice(
     push: io.github.lewin671.remoteagent.push.PushStatus,
     onAction: () -> Unit,
 ) {
+    val copy = uiText()
     if (push.problem.isEmpty()) return
     Notice(
-        push.problem + "\n仅影响 App 在后台时的系统通知，不影响聊天和审批",
+        push.problem + copy(UiMessages.settingsAndroidOnlyAffectsSystemNotificationsWhileTheAppIsInThe()),
         Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
         action = push.action.ifEmpty { null },
         onAction = onAction,
@@ -501,7 +505,13 @@ private fun ChoiceSheet(
  * remove.
  */
 @Composable
-fun DeviceScreen(id: String) {
+fun DeviceScreen(
+    id: String,
+    readSettings: suspend (io.github.lewin671.remoteagent.core.Remote, String) -> io.github.lewin671.remoteagent.proto.GetSettingsResponse = { remote, machine ->
+        remote.machineCommand(machine, remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() }).getSettings
+    },
+) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -518,18 +528,12 @@ fun DeviceScreen(id: String) {
     LaunchedEffect(id, member, m?.online, attempt) {
         if (!member || m?.online != true) return@LaunchedEffect
         try {
-            val reply =
-                remote
-                    .machineCommand(
-                        id,
-                        remote.cmd { getSettings = GetSettingsRequest.getDefaultInstance() },
-                    )
-                    .getSettings
+            val reply = readSettings(remote, id)
             settings = reply.settings
             if (reply.hasImageStorage()) imageStorage = reply.imageStorage
             loadError = ""
         } catch (e: Exception) {
-            loadError = errorText(e, remote.state.value)
+            loadError = displayError(e, remote.state.value)
         }
     }
     var pickModel by remember { mutableStateOf<Agent?>(null) }
@@ -559,30 +563,30 @@ fun DeviceScreen(id: String) {
         }
     PageScaffold(machineLabel(state, id), readable = true) {
         if (m == null) {
-            PageNote("这台电脑不在当前可信目录中，撤销状态以回执为准")
+            PageNote(copy(UiMessages.settingsAndroidThisComputerIsOutsideTheCurrentTrustedDirectoryCheckThe()))
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
             if (!member)
                 Notice(
-                    "已移除 · 保留的会话档案",
+                    copy(UiMessages.settingsAndroidRemovedRetainedSessionArchive()),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
             else if (!m.online)
                 Notice(
-                    "不在线 · 最后在线 ${whenText(m.lastSeenMs)}",
+                    copy(UiMessages.settingsAndroidOfflineLastOnlineValue1((whenText(m.lastSeenMs, copy = copy)).toString())),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                 )
             val meta = m.meta
             val groups =
-                io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis())
+                io.github.lewin671.remoteagent.core.quotaGroups(m, System.currentTimeMillis(), copy = copy)
             // A line for each CLI's quota, leading to all of it.
-            GLabel("账户额度")
+            GLabel(copy(UiMessages.settingsAccountQuota()))
             Group(
                 rows =
                     groups.map { g ->
                         @Composable {
-                            val qline = io.github.lewin671.remoteagent.core.quotaLine(g)
+                            val qline = io.github.lewin671.remoteagent.core.quotaLine(g, copy = copy)
                             val sepIdx = qline.indexOf(" · ")
                             if (sepIdx != -1) {
                                 GRow(
@@ -623,7 +627,7 @@ fun DeviceScreen(id: String) {
                         agents.map { a ->
                             @Composable {
                                 GRow(
-                                    "${agentName(a.agent)} 版本",
+                                    copy(UiMessages.settingsCliVersion((agentName(a.agent, copy = copy)).toString())),
                                     trailing = {
                                         Text(
                                             androidx.compose.ui.text.buildAnnotatedString {
@@ -633,11 +637,11 @@ fun DeviceScreen(id: String) {
                                                             color = p.orangeInk,
                                                         ),
                                                     )
-                                                    append("未验证")
+                                                    append(copy(UiMessages.settingsAndroidUnverified()))
                                                     pop()
                                                     append(" · ")
                                                 }
-                                                append(a.version.ifEmpty { "未知" })
+                                                append(a.version.ifEmpty { copy(UiMessages.settingsAndroidUnknown()) })
                                             },
                                             style = T.s13,
                                             color = p.ink2,
@@ -649,7 +653,7 @@ fun DeviceScreen(id: String) {
                 )
                 if (agents.any { !it.verified })
                     Hint(
-                        "未验证的版本请在电脑上运行 remote-agent doctor",
+                        copy(UiMessages.settingsAndroidForAnUnverifiedVersionRunRemoteAgentDoctorOnThe()),
                         Modifier.padding(bottom = 12.dp),
                     )
             }
@@ -657,29 +661,29 @@ fun DeviceScreen(id: String) {
             when {
                 !m.online ->
                     Hint(
-                        "${machineLabel(state, id)} 不在线，连上后才能读取和修改新会话默认设置",
+                        copy(UiMessages.settingsAndroidValue1IsOfflineConnectToReadAndEditNewSession((machineLabel(state, id)).toString())),
                         Modifier.padding(bottom = 12.dp),
                     )
                 loadError.isNotEmpty() ->
                     Notice(
-                        "没能读取设置：$loadError",
+                        copy(UiMessages.settingsReadError((loadError).toString())),
                         Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                         NoticeTone.ERROR,
                         action = uiText(UiMessages.commonRetry()),
                         onAction = { attempt++ },
                     )
                 s == null ->
-                    Hint("读取中…", Modifier.padding(bottom = 12.dp))
+                    Hint(copy(UiMessages.projectsReadingDirectory()), Modifier.padding(bottom = 12.dp))
                 else -> {
                     val mAgents = machineAgents(m)
                     val currentAgent = if (activeAgent in mAgents) activeAgent!! else mAgents.firstOrNull() ?: DEFAULT_AGENT
                     GLabel(
-                        if (mAgents.size > 1) "新项目默认设置"
-                        else "新项目默认设置 · ${agentName(currentAgent)}"
+                        if (mAgents.size > 1) copy(UiMessages.settingsNewProjectDefaults())
+                        else copy(UiMessages.settingsNewProjectDefaultsSettings((agentName(currentAgent, copy = copy)).toString()))
                     )
                     if (mAgents.size > 1) {
                         Segmented(
-                            mAgents.map { agentName(it) },
+                            mAgents.map { agentName(it, copy = copy) },
                             mAgents.indexOf(currentAgent),
                             { activeAgent = mAgents[it] },
                             Modifier.padding(start = 16.dp, end = 16.dp, bottom = 10.dp).fillMaxWidth(),
@@ -692,24 +696,24 @@ fun DeviceScreen(id: String) {
                         rows = listOf(
                             @Composable {
                                 GRow(
-                                    "模型",
-                                    d.model.ifEmpty { "默认" },
+                                    copy(UiMessages.modelsTitle()),
+                                    d.model.ifEmpty { copy(UiMessages.modelsDefault()) },
                                     onClick = if (save.running) null else ({ pickModel = currentAgent }),
                                     chevron = true,
                                 )
                             },
                             @Composable {
                                 GRow(
-                                    "推理强度",
-                                    d.effort.ifEmpty { "默认" },
+                                    copy(UiMessages.modelsEffort()),
+                                    d.effort.ifEmpty { copy(UiMessages.modelsDefault()) },
                                     onClick = if (save.running) null else ({ pickModel = currentAgent }),
                                     chevron = true,
                                 )
                             },
                             @Composable {
                                 GRow(
-                                    "审批模式",
-                                    cur?.text ?: modeLabel(null, eff.copy(varies = false), currentAgent),
+                                    copy(UiMessages.modesTitle()),
+                                    cur?.text?.let(copy) ?: modeLabel(null, eff.copy(varies = false), currentAgent, copy = copy),
                                     onClick = if (save.running) null else ({ pickMode = currentAgent }),
                                     valueColor = if (cur == null && (eff.mode == Mode.FULL || !eff.known)) p.red else null,
                                     chevron = true,
@@ -721,8 +725,8 @@ fun DeviceScreen(id: String) {
                         rows = listOf(
                             @Composable {
                                 GRow(
-                                    "审批超时",
-                                    "${s.approvalTimeoutSeconds / 60} 分钟",
+                                    copy(UiMessages.settingsApprovalTimeout()),
+                                    copy(UiMessages.quotaMin((s.approvalTimeoutSeconds / 60).toInt())),
                                     onClick = if (save.running) null else ({ pickTimeout = true }),
                                     chevron = true,
                                 )
@@ -733,8 +737,8 @@ fun DeviceScreen(id: String) {
                         rows = listOf(
                             @Composable {
                                 GRow(
-                                    "空闲自动结束会话",
-                                    idleCloseLabel(s.idleCloseMinutes),
+                                    copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
+                                    idleCloseLabel(s.idleCloseMinutes, copy = copy),
                                     onClick = if (save.running) null else ({ pickIdleClose = true }),
                                     chevron = true,
                                 )
@@ -742,7 +746,7 @@ fun DeviceScreen(id: String) {
                         ),
                     )
                     Text(
-                        "会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
+                        copy(UiMessages.settingsAndroidSessionsEndAutomaticallyAfterProlongedInactivityNotRunningNoPending()),
                         style = T.s13,
                         color = p.ink2,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
@@ -751,7 +755,7 @@ fun DeviceScreen(id: String) {
             }
             if (save.error.isNotEmpty())
                 Notice(
-                    "没能保存：${save.error}",
+                    copy(UiMessages.settingsSaveError((save.error).toString())),
                     Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                     NoticeTone.ERROR,
                 )
@@ -765,13 +769,13 @@ fun DeviceScreen(id: String) {
             }
             val projects = io.github.lewin671.remoteagent.core.machineProjects(state, id)
             if (projects.isNotEmpty()) {
-                GLabel("项目")
+                GLabel(copy(UiMessages.scheduleProject()))
                 Group(
                     rows =
                         projects.map { cwd ->
                             @Composable {
                                 GRow(
-                                    projectName(cwd),
+                                    projectName(cwd, copy = copy),
                                     shortPath(cwd),
                                     onClick = { nav.project(cwd) },
                                 )
@@ -784,7 +788,7 @@ fun DeviceScreen(id: String) {
                     rows =
                         listOf {
                             GRow(
-                                "让这台电脑重新加入并接续会话",
+                                copy(UiMessages.settingsAndroidRejoinThisComputerAndResumeSessions()),
                                 onClick = { nav.rejoin(id) },
                                 enabled =
                                     state.conn ==
@@ -795,16 +799,16 @@ fun DeviceScreen(id: String) {
             }
             DeleteMachineRecordsAction(id, state.isAuthority)
             if (!member && !state.isAuthority)
-                Hint("档案重接和删除记录，请在管理端（${state.authorityName}）上操作。")
+                Hint(copy(UiMessages.settingsAndroidReconnectArchivesOrDeleteRecordsOnTheManagingClientValue1(state.authorityName.resolve(copy))))
             if (member) {
-                if (id == state.authorityDeviceId) Hint("这是管理端设备，普通移除不可用")
+                if (id == state.authorityDeviceId) Hint(copy(UiMessages.settingsAndroidThisIsTheManagingDeviceOrdinaryRemovalIsUnavailable()))
                 else if (state.isAuthority)
                     Group(
                         rows =
                             listOf {
                                 GRow(
                                     // It asks first, as every row that ends in an ellipsis does (design-system §8).
-                                    "移除这台机器…",
+                                    copy(UiMessages.settingsAndroidRemoveThisMachine()),
                                     onClick = { confirm = true },
                                     danger = true,
                                     enabled =
@@ -817,8 +821,8 @@ fun DeviceScreen(id: String) {
                             },
                     )
                 Hint(
-                    if (state.isAuthority) "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。"
-                    else "请在管理端（${state.authorityName}）上移除设备。",
+                    if (state.isAuthority) copy(UiMessages.settingsAndroidRemovalImmediatelyDisconnectsItAndKeepsSessionsAndImagesOn())
+                    else copy(UiMessages.settingsAndroidRemoveDevicesOnTheManagingClientValue1(state.authorityName.resolve(copy))),
                     Modifier.padding(bottom = 8.dp),
                 )
             }
@@ -828,7 +832,7 @@ fun DeviceScreen(id: String) {
         }
     }
     if (confirm && member) {
-        val (title, text) = removalDialog(machineLabel(state, id), machine = true)
+        val (title, text) = removalDialog(machineLabel(state, id), machine = true, copy = copy)
         Alert(
             title,
             text,
@@ -874,14 +878,14 @@ fun DeviceScreen(id: String) {
             val noAuto = allNoAuto || (agentInfo(agent).autoMayBeUnavailable && io.github.lewin671.remoteagent.core.autoUnavailable(models?.modelsList, d.model))
             val opts = listOf(null, Mode.ASK, Mode.AUTO)
             ChoiceSheet(
-                "${agentName(agent)} · 审批模式",
+                copy(UiMessages.settingsAndroidValue1ApprovalMode((agentName(agent, copy = copy)).toString())),
                 opts.map { mode ->
                     val desc = when {
-                        mode == null -> "不指定时实际用：" + modeLabel(null, eff, agent, includeDefault = false)
-                        mode == Mode.AUTO && noAuto -> if (allNoAuto) "当前账户不支持自动模式" else "当前模型不支持"
-                        else -> modeHelp.getValue(mode).replace("CLI", agentName(agent))
+                        mode == null -> copy(UiMessages.settingsWhenUnspecifiedUses()) + modeLabel(null, eff, agent, includeDefault = false, copy = copy)
+                        mode == Mode.AUTO && noAuto -> if (allNoAuto) copy(UiMessages.modesAccountUnsupported()) else copy(UiMessages.modesModelUnsupported())
+                        else -> modeHelp.getValue(mode).replace("CLI", agentName(agent, copy = copy))
                     }
-                    (mode?.text ?: "默认") to desc
+                    (mode?.text?.let(copy) ?: copy(UiMessages.modelsDefault())) to desc
                 },
                 opts.indexOf(modeOf(d.mode)).coerceAtLeast(0),
                 enabled = { i -> !(opts[i] == Mode.AUTO && noAuto) },
@@ -896,8 +900,8 @@ fun DeviceScreen(id: String) {
     if (pickTimeout && cur != null) {
         val mins = listOf(2, 5, 10, 30)
         ChoiceSheet(
-            "审批超时",
-            mins.map { "$it 分钟" to null },
+            copy(UiMessages.settingsApprovalTimeout()),
+            mins.map { copy(UiMessages.quotaMin((it).toInt())) to null },
             mins.indexOf(cur.approvalTimeoutSeconds / 60),
             onPick = { i ->
                 pickTimeout = false
@@ -908,8 +912,8 @@ fun DeviceScreen(id: String) {
     }
     if (pickIdleClose && cur != null) {
         ChoiceSheet(
-            "空闲自动结束会话",
-            IDLE_CLOSE_CHOICES.map { (if (it == IDLE_CLOSE_DEFAULT) "${idleCloseLabel(it)}（默认）" else idleCloseLabel(it)) to null },
+            copy(UiMessages.settingsAutomaticallyEndIdleSessions()),
+            IDLE_CLOSE_CHOICES.map { (if (it == IDLE_CLOSE_DEFAULT) copy(UiMessages.settingsAndroidValue1Default((idleCloseLabel(it, copy = copy)).toString())) else idleCloseLabel(it, copy = copy)) to null },
             idleCloseChoice(cur.idleCloseMinutes),
             onPick = { i ->
                 pickIdleClose = false
@@ -927,12 +931,12 @@ internal const val IDLE_CLOSE_DEFAULT = 360
 internal val IDLE_CLOSE_CHOICES = listOf(-1, 60, 120, IDLE_CLOSE_DEFAULT, 720, 1440)
 
 /** An idle close setting in words: 关闭, whole hours, or minutes for anything else. */
-internal fun idleCloseLabel(minutes: Int): String {
+internal fun idleCloseLabel(minutes: Int, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String {
     val m = if (minutes == 0) IDLE_CLOSE_DEFAULT else minutes
     return when {
-        m < 0 -> "关闭"
-        m % 60 == 0 -> "${m / 60} 小时"
-        else -> "$m 分钟"
+        m < 0 -> copy(UiMessages.commonClose())
+        m % 60 == 0 -> copy(UiMessages.quotaHr((m / 60).toInt()))
+        else -> copy(UiMessages.quotaMin((m).toInt()))
     }
 }
 
@@ -1010,6 +1014,7 @@ private fun DefaultModelSheet(
     onPick: (String, String) -> Unit,
     onClose: () -> Unit,
 ) {
+    val copy = uiText()
     val p = pal
     val remote = LocalRemote.current
     var models by remember {
@@ -1020,20 +1025,20 @@ private fun DefaultModelSheet(
         try {
             models = remote.listModels(machineId, agent, fresh = true)
         } catch (e: Exception) {
-            error = errorText(e, remote.state.value)
+            error = displayError(e, remote.state.value)
         }
     }
     val d = defaultsFor(s, agent)
     var model by remember { mutableStateOf(d.model) }
     var all by remember { mutableStateOf(false) }
     Sheet(onClose) {
-        SheetHead("${agentName(agent)} · 新会话默认模型")
+        SheetHead(copy(UiMessages.settingsAndroidValue1DefaultModelForNewSessions((agentName(agent, copy = copy)).toString())))
         val ms = models
         when {
-            error.isNotEmpty() -> Notice("没能读取模型列表：$error", tone = NoticeTone.ERROR)
+            error.isNotEmpty() -> Notice(copy(UiMessages.sessionAndroidModelsFailed((error).toString())), tone = NoticeTone.ERROR)
             ms == null ->
                 Text(
-                    "读取中…",
+                    copy(UiMessages.projectsReadingDirectory()),
                     style = T.s13,
                     color = p.ink2,
                     modifier = Modifier.padding(vertical = 12.dp),
@@ -1048,7 +1053,7 @@ private fun DefaultModelSheet(
                 val few = shown.size == ms.modelsCount
                 SheetList {
                 ListItem(
-                    "默认（${agentName(agent)} 自己的配置）",
+                    copy(UiMessages.settingsAndroidDefaultValue1SOwnConfiguration((agentName(agent, copy = copy)).toString())),
                     checked = model.isEmpty(),
                     last = shown.isEmpty(),
                     onClick = { onPick("", "") },
@@ -1057,13 +1062,13 @@ private fun DefaultModelSheet(
                     ListItem(
                         m.displayName.ifEmpty { m.slug },
                         small =
-                            if (m.effortsList.size == 1) "推理强度固定为 ${m.effortsList[0]}"
+                            if (m.effortsList.size == 1) copy(UiMessages.modelsFixedEffort((m.effortsList[0]).toString()))
                             else
                                 listOfNotNull(
                                     io.github.lewin671.remoteagent.core.contextText(
                                         m.contextWindow,
-                                    ),
-                                    if (m.effortsList.isEmpty()) "无推理强度" else null,
+                                     copy = copy),
+                                    if (m.effortsList.isEmpty()) copy(UiMessages.sessionNoEffort()) else null,
                                 )
                                 .joinToString(" · ")
                                 .ifEmpty { null },
@@ -1080,7 +1085,7 @@ private fun DefaultModelSheet(
                     .firstOrNull { it.slug == model }
                     ?.takeIf { it.effortsList.isNotEmpty() }
                     ?.let { m ->
-                        FieldLabel("推理强度")
+                        FieldLabel(copy(UiMessages.modelsEffort()))
                         ChoiceGrid(m.effortsList, if (d.model == m.slug) d.effort else null, true) {
                             onPick(m.slug, it)
                         }
@@ -1097,26 +1102,27 @@ private fun DefaultModelSheet(
  */
 @Composable
 fun QuotaScreen(id: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
     val m = state.machines[id]
     val p = pal
     val t = now()
-    val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t) }.orEmpty()
+    val groups = m?.let { io.github.lewin671.remoteagent.core.quotaGroups(it, t, copy = copy) }.orEmpty()
     PageScaffold(
-        "账户额度",
-        subtitle = m?.let { machineLabel(state, id) + " · " + if (it.online) "在线" else "离线" },
+        copy(UiMessages.settingsAccountQuota()),
+        subtitle = m?.let { machineLabel(state, id) + " · " + if (it.online) copy(UiMessages.settingsAndroidOnlineB90866()) else copy(UiMessages.settingsOffline()) },
         readable = true,
     ) {
         if (m == null) {
-            PageNote("这台机器已经移除了")
+            PageNote(copy(UiMessages.settingsAndroidThisMachineHasBeenRemoved()))
             return@PageScaffold
         }
         Column(Modifier.verticalScrollFaded()) {
             if (!m.online)
                 Text(
-                    "机器离线，显示上次记录",
+                    copy(UiMessages.settingsComputerOfflineShowingTheLastReading()),
                     style = T.s13,
                     color = p.orangeInk,
                     modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
@@ -1124,7 +1130,7 @@ fun QuotaScreen(id: String) {
             for (g in groups) {
                 if (g.status == io.github.lewin671.remoteagent.core.QuotaStatus.FAILED)
                     Text(
-                        uiText(if (g.detail.isNotEmpty()) UiMessages.quotaFailure(g.detail, agentName(g.agent)) else UiMessages.quotaFailureNoReason(agentName(g.agent))),
+                        uiText(if (g.detail.isNotEmpty()) UiMessages.quotaFailure(g.detail, agentName(g.agent, copy = copy)) else UiMessages.quotaFailureNoReason(agentName(g.agent, copy = copy))),
                         style = T.s13,
                         color = p.red,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 6.dp),
@@ -1138,18 +1144,18 @@ fun QuotaScreen(id: String) {
                         Group(rows = srows)
                     }
                 } else {
-                    GLabel(g.title + if (g.lastRecord) " · 上次记录" else "")
+                    GLabel(g.title + if (g.lastRecord) copy(UiMessages.quotaLastReading()) else "")
                     val rows = mutableListOf<@Composable () -> Unit>()
                     when (g.status) {
                         io.github.lewin671.remoteagent.core.QuotaStatus.UNSUPPORTED ->
                             rows +=
                                 @Composable {
                                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text("暂不支持读取额度", style = T.s15b, color = p.ink)
+                                        Text(copy(UiMessages.quotaQuotaLookupIsNotSupportedYet()), style = T.s15b, color = p.ink)
                                         Text(
                                             g.detail.ifEmpty {
-                                                "这台电脑上的 remote-agent 读不到 ${agentName(g.agent)} 的额度。"
-                                            } + agentInfo(g.agent).usageHint.orEmpty(),
+                                                copy(UiMessages.settingsAndroidRemoteAgentOnThisComputerCannotReadValue1Quotas((agentName(g.agent, copy = copy)).toString()))
+                                            } + agentInfo(g.agent).usageHint?.resolve(copy).orEmpty(),
                                             style = T.s12,
                                             color = p.ink2,
                                         )
@@ -1159,9 +1165,9 @@ fun QuotaScreen(id: String) {
                             rows +=
                                 @Composable {
                                     Column(Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
-                                        Text("暂未获取额度", style = T.s15b, color = p.ink)
+                                        Text(copy(UiMessages.quotaQuotaNotAvailableYet()), style = T.s15b, color = p.ink)
                                         Text(
-                                            g.detail.ifEmpty { uiText(UiMessages.quotaWaiting(agentName(g.agent))) },
+                                            g.detail.ifEmpty { uiText(UiMessages.quotaWaiting(agentName(g.agent, copy = copy))) },
                                             style = T.s12,
                                             color = p.ink2,
                                         )
@@ -1173,7 +1179,7 @@ fun QuotaScreen(id: String) {
                     if (rows.isNotEmpty()) Group(rows = rows)
                 }
                 // The warning stays next to its card, before observation metadata.
-                io.github.lewin671.remoteagent.core.quotaBanner(g)?.let {
+                io.github.lewin671.remoteagent.core.quotaBanner(g, copy = copy)?.let {
                     Text(uiText(it), style = T.s13, color = p.orangeInk,
                         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 10.dp))
                 }
@@ -1189,7 +1195,7 @@ fun QuotaScreen(id: String) {
                 }
             }
             Text(
-                "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",
+                copy(UiMessages.settingsTimesAreShownInBeijingTimeQuotasBelongTo()),
                 style = T.s13,
                 color = p.ink2,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -1227,6 +1233,7 @@ fun qrBitmap(text: String, size: Int = 512): Bitmap {
 /** A recovery code as the text the user writes down and a QR to photograph. */
 @Composable
 fun RecoveryCodeFigure(code: String) {
+    val copy = uiText()
     val p = pal
     val bmp = remember(code) { qrBitmap(code) }
     Box(
@@ -1238,7 +1245,7 @@ fun RecoveryCodeFigure(code: String) {
     ) {
         Image(
             bmp.asImageBitmap(),
-            "恢复码二维码",
+            copy(UiMessages.settingsAndroidRecoveryCodeQrCode()),
             Modifier.fillMaxSize(),
             filterQuality = FilterQuality.None,
         )
@@ -1249,7 +1256,7 @@ fun RecoveryCodeFigure(code: String) {
         color = p.ink,
         modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
     )
-    Hint("请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。")
+    Hint(copy(UiMessages.securitySaveTheRecoveryCodeOfflineAnyoneWithItCan()))
 }
 
 /** The web client's address for the QR code: app.<domain> next to ra.<domain>. */
@@ -1263,6 +1270,7 @@ fun webOrigin(server: String, pref: String): String {
 /** 添加设备: show a code and QR, compare emoji, then hand over the root key. */
 @Composable
 fun PairScreen(replacesDeviceId: String = "") {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val settings by RaApp.instance.prefs.settings.collectAsState(Settings())
@@ -1271,20 +1279,20 @@ fun PairScreen(replacesDeviceId: String = "") {
     val state by model.state.collectAsState()
     AuthorityStartEffect(model) { model.enter() }
     DisposableEffect(model) { onDispose { model.leave() } }
-    PageScaffold("添加设备") {
+    PageScaffold(copy(UiMessages.homeAddDevice())) {
         FormColumn(
             Modifier.fillMaxWidth()
             .verticalScrollFaded(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Hint("电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。")
+            Hint(copy(UiMessages.securityComputerRunRemoteAgentAccountJoinAndEnterThe()))
             if (replacesDeviceId.isNotEmpty()) {
                 val current by remote.state.collectAsState()
                 Hint(
-                    "允许原电脑接续 ${machineLabel(current, replacesDeviceId)} 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。",
+                    copy(UiMessages.settingsAndroidAllowTheOriginalComputerToResumeValue1SRetainedSessions((machineLabel(current, replacesDeviceId)).toString())),
                 )
             } else {
-                Hint("已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。")
+                Hint(copy(UiMessages.settingsAndroidToResumeARemovedComputerSSessionsOpenItsRetained()))
             }
             when (val step = state) {
                 PairingUiState.Starting -> Skeleton()
@@ -1304,7 +1312,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                     ) {
                         Image(
                             bmp.asImageBitmap(),
-                            "配对二维码",
+                            copy(UiMessages.settingsAndroidPairingQrCode()),
                             Modifier.fillMaxSize(),
                             filterQuality = FilterQuality.None,
                         )
@@ -1322,7 +1330,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         color = p.ink,
                     )
                     Text(
-                        "有效期至 " + io.github.lewin671.remoteagent.core.securityTime(step.expiresMs, timeOnly = true),
+                        copy(UiMessages.securityPairValidUntil(io.github.lewin671.remoteagent.core.securityTime(step.expiresMs, timeOnly = true, copy = copy))),
                         style = T.s13,
                         color = p.ink2,
                         textAlign = TextAlign.Center,
@@ -1330,7 +1338,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                     )
                     IconText(
                         Lucide.LoaderCircle,
-                        "等待新设备…",
+                        copy(UiMessages.settingsAndroidWaitingForANewDevice()),
                         p.ink2,
                         T.s13,
                         Modifier.padding(top = 10.dp),
@@ -1361,11 +1369,11 @@ fun PairScreen(replacesDeviceId: String = "") {
                     ) {
                         Row(Modifier.fillMaxWidth()) {
                             Text(
-                                if (kind == DeviceKind.DEVICE_KIND_MACHINE) "新电脑" else "新设备",
+                                if (kind == DeviceKind.DEVICE_KIND_MACHINE) copy(UiMessages.settingsAndroidNewComputer()) else copy(UiMessages.settingsAndroidNewDevice()),
                                 style = T.s13b,
                                 color = p.ink,
                             )
-                            Text(" 请求加入", style = T.s13, color = p.ink2)
+                            Text(copy(UiMessages.settingsAndroidRequestsToJoin()), style = T.s13, color = p.ink2)
                         }
                         Text(
                             emoji.joinToString("  "),
@@ -1373,8 +1381,8 @@ fun PairScreen(replacesDeviceId: String = "") {
                             modifier = Modifier.padding(top = 10.dp, bottom = 12.dp),
                         )
                         Text(
-                            if (sending) "请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。"
-                            else "核对新设备上的 4 个图案。先在新设备确认，再在这里允许。",
+                            if (sending) copy(UiMessages.settingsAndroidCompareThese4PatternsOnTheNewDeviceAndConfirm())
+                            else copy(UiMessages.securityCompareThe4PatternsOnTheNewDeviceConfirm()),
                             style = T.s13,
                             color = p.ink2,
                             textAlign = TextAlign.Center,
@@ -1382,7 +1390,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         )
                         Btns {
                             PillButton(
-                                "拒绝",
+                                copy(UiMessages.approvalAndroidDenyDecision()),
                                 {
                                     model.leave()
                                     nav.back()
@@ -1392,7 +1400,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                                 enabled = !sending,
                             )
                             PillButton(
-                                if (sending) "等新设备确认图案…" else "允许加入",
+                                if (sending) copy(UiMessages.settingsAndroidWaitingForTheNewDeviceToConfirm()) else copy(UiMessages.securityAllowToJoin()),
                                 model::approve,
                                 Modifier.weight(1f),
                                 ButtonKind.INK,
@@ -1403,7 +1411,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                 }
                 PairingUiState.Done ->
                     Notice(
-                        "新设备已加入",
+                        copy(UiMessages.settingsAndroidNewDeviceJoined()),
                         Modifier.padding(top = 14.dp),
                         action = uiText(UiMessages.commonDone()),
                         onAction = nav.back,
@@ -1411,10 +1419,10 @@ fun PairScreen(replacesDeviceId: String = "") {
                     )
                 is PairingUiState.Failed ->
                     Notice(
-                        step.message,
+                        uiText(step.message),
                         Modifier.padding(top = 14.dp),
                         if (step.uncertain) NoticeTone.PLAIN else NoticeTone.ERROR,
-                        action = if (step.canRetry) uiText(UiMessages.commonRetry()) else "重新开始",
+                        action = if (step.canRetry) uiText(UiMessages.commonRetry()) else copy(UiMessages.securityStartOver()),
                         onAction = model::retry,
                     )
             }
@@ -1422,8 +1430,8 @@ fun PairScreen(replacesDeviceId: String = "") {
     }
 }
 
-private fun imageBytes(n: Long) =
-    if (n in 1 until 104858) "不到 0.1 MiB"
+private fun imageBytes(n: Long, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) =
+    if (n in 1 until 104858) copy(UiMessages.settingsLessThan01Mib())
     else if (n >= 1L shl 30) "%.1f GiB".format(n / 1073741824.0)
     else "%.1f MiB".format(n / 1048576.0)
 
@@ -1437,6 +1445,7 @@ private fun MachineImageStorage(
     enabled: Boolean,
     onChange: (DaemonSettings, Boolean) -> Unit,
 ) {
+    val copy = uiText()
     var clean by remember { mutableStateOf(false) }
     var limit by remember { mutableStateOf(false) }
     val free = usage?.let { it.reclaimableBytes + it.cacheBytes } ?: 0L
@@ -1445,39 +1454,39 @@ private fun MachineImageStorage(
         usage
             ?.let { u ->
                 listOfNotNull(
-                        if (u.reclaimableBytes > 0) "可清理 ${imageBytes(u.reclaimableBytes)}"
+                        if (u.reclaimableBytes > 0) copy(UiMessages.settingsCanClear((imageBytes(u.reclaimableBytes, copy = copy)).toString()))
                         else null,
-                        if (u.reservedBytes > 0) "正在上传 ${imageBytes(u.reservedBytes)}" else null,
+                        if (u.reservedBytes > 0) copy(UiMessages.settingsUploading((imageBytes(u.reservedBytes, copy = copy)).toString())) else null,
                     )
                     .joinToString(" · ")
             }
             .orEmpty()
-    GLabel("附件存储")
+    GLabel(copy(UiMessages.settingsAttachmentStorage()))
     Group(
         rows =
             listOf(
                 {
                     GRow(
-                        "上传的图片和文件",
+                        copy(UiMessages.settingsUploadedImagesAndFiles()),
                         usage?.let {
-                            imageBytes(it.uploadBytes) + if (parts.isNotEmpty()) " · $parts" else ""
-                        } ?: "读取中…",
+                            imageBytes(it.uploadBytes, copy = copy) + if (parts.isNotEmpty()) " · $parts" else ""
+                        } ?: copy(UiMessages.projectsReadingDirectory()),
                     )
                 },
                 {
                     GRow(
-                        "空间上限",
+                        copy(UiMessages.settingsStorageLimit()),
                         mib(settings.imageUploadQuotaBytes),
                         onClick = if (enabled) ({ limit = true }) else null,
                         chevron = true,
                     )
                 },
-                { GRow("预览缓存", usage?.let { imageBytes(it.cacheBytes) } ?: "—") },
+                { GRow(copy(UiMessages.settingsPreviewCache()), usage?.let { imageBytes(it.cacheBytes, copy = copy) } ?: "—") },
                 {
                     GRow(
-                        "清理…",
+                        copy(UiMessages.settingsClear()),
                         usage
-                            ?.let { if (free > 0) "可释放 ${imageBytes(free)}" else "没有可清理的" }
+                            ?.let { if (free > 0) copy(UiMessages.settingsCanFree((imageBytes(free, copy = copy)).toString())) else copy(UiMessages.settingsNothingToClear()) }
                             .orEmpty(),
                         onClick = if (enabled && free > 0) ({ clean = true }) else null,
                         action = true,
@@ -1487,7 +1496,7 @@ private fun MachineImageStorage(
             ),
     )
     Text(
-        "附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。",
+        copy(UiMessages.settingsAttachmentsAreStoredOnThisComputerSessionFilesRemain()),
         style = T.s13,
         color = pal.ink2,
         modifier = Modifier.padding(start = 30.dp, end = 30.dp, bottom = 12.dp),
@@ -1495,7 +1504,7 @@ private fun MachineImageStorage(
     if (limit) {
         val opts = listOf(256L shl 20, 1L shl 30, 5L shl 30)
         ChoiceSheet(
-            "空间上限",
+            copy(UiMessages.settingsStorageLimit()),
             opts.map { mib(it) to null },
             opts.indexOf(settings.imageUploadQuotaBytes),
             onPick = { i ->
@@ -1507,9 +1516,9 @@ private fun MachineImageStorage(
     }
     if (clean)
         Confirm(
-            "清理可回收图片？",
-            "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。",
-            "清理",
+            copy(UiMessages.settingsAndroidCleanUpReclaimableImages()),
+            copy(UiMessages.settingsAndroidRemoveReclaimableOriginalsAndCacheLargeImagesNotYetSynced()),
+            copy(UiMessages.settingsClearSettings()),
             onDismiss = { clean = false },
         ) {
             clean = false
@@ -1523,45 +1532,46 @@ private fun MachineImageStorage(
  */
 /** Fonts bundled in the app, each with its SIL OFL 1.1 text from res/raw. */
 /** Where devices are added; shared wording with web and iOS. */
-fun addDeviceHint(state: RemoteState) = "要添加电脑或客户端，在管理端（${state.authorityName}）上打开「设置 › 添加设备」。"
+fun addDeviceHint(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) = copy(UiMessages.securityAddOnAuthority(state.authorityName.resolve(copy)))
 
 /** An account with no computer, seen from a client that cannot add one. */
-fun noMachinesHint(state: RemoteState) = "还没有电脑。在管理端（${state.authorityName}）上打开「设置 › 添加设备」，把电脑加进来。"
+fun noMachinesHint(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) = copy(UiMessages.homeAddViaManager(state.authorityName.resolve(copy)))
 
-private val bundledFonts =
+private fun bundledFonts(copy: io.github.lewin671.remoteagent.core.MessageResolver) =
     listOf(
-        Triple("Inter", "界面中的西文和数字", io.github.lewin671.remoteagent.R.raw.ofl_inter),
+        Triple("Inter", copy(UiMessages.settingsAndroidLatinTextAndNumbersInTheInterface()), io.github.lewin671.remoteagent.R.raw.ofl_inter),
         Triple(
             "JetBrains Mono",
-            "代码、路径、命令和终端",
+            copy(UiMessages.settingsAndroidCodePathsCommandsAndTerminal()),
             io.github.lewin671.remoteagent.R.raw.ofl_jetbrains_mono,
         ),
         Triple(
-            "Sarasa Fixed SC（符号子集）",
-            "终端里的符号",
+            copy(UiMessages.settingsAndroidSarasaFixedScSymbolSubset()),
+            copy(UiMessages.settingsAndroidTerminalSymbols()),
             io.github.lewin671.remoteagent.R.raw.ofl_sarasa_gothic,
         ),
     )
 
 /** The icons, drawn from Lucide's paths, with its ISC text from res/raw. */
-private val bundledIcons =
+private fun bundledIcons(copy: io.github.lewin671.remoteagent.core.MessageResolver) =
     listOf(
-        Triple("Lucide", "界面中的图标", io.github.lewin671.remoteagent.R.raw.isc_lucide),
+        Triple("Lucide", copy(UiMessages.settingsAndroidInterfaceIcons()), io.github.lewin671.remoteagent.R.raw.isc_lucide),
     )
 
 @Composable
 fun LicensesPage(onBack: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val res = androidx.compose.ui.platform.LocalContext.current.resources
     var open by remember { mutableStateOf<Int?>(null) }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(Modifier.fillMaxSize().background(p.paper)) {
-            PageBar("开源许可", onBack)
+            PageBar(copy(UiMessages.settingsAndroidOpenSourceLicenses()), onBack)
             Column(Modifier.verticalScrollFaded()) {
                 for ((label, items) in
                     listOf(
-                        "字体 · SIL Open Font License 1.1" to bundledFonts,
-                        "图标 · ISC License" to bundledIcons,
+                        copy(UiMessages.settingsAndroidFontsSilOpenFontLicense11()) to bundledFonts(copy),
+                        copy(UiMessages.settingsAndroidIconsIscLicense()) to bundledIcons(copy),
                     )) {
                     GLabel(label)
                     Group(
@@ -1600,6 +1610,7 @@ fun LicensesPage(onBack: () -> Unit) {
 
 @Composable
 fun PhoneImageStoragePage(onBack: () -> Unit) {
+    val copy = uiText()
     val app = RaApp.instance
     val p = pal
     val action = rememberAction()
@@ -1615,24 +1626,24 @@ fun PhoneImageStoragePage(onBack: () -> Unit) {
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalOnSoft provides false) {
         Column(Modifier.fillMaxSize().background(p.paper)) {
-            PageBar("设置", onBack)
-            GLabel("附件存储 · 这台手机")
+            PageBar(copy(UiMessages.commonSettings()), onBack)
+            GLabel(copy(UiMessages.settingsAndroidAttachmentStorageThisPhone()))
             Group(
                 rows =
                     listOf(
-                        { GRow("待发和待确认附件", "${imageBytes(used)} / 256 MiB") },
+                        { GRow(copy(UiMessages.settingsAndroidPendingAndUnconfirmedAttachments()), "${imageBytes(used)} / 256 MiB") },
                         {
                             Text(
-                                "图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。",
+                                copy(UiMessages.settingsAndroidImageDraftsAndFileSourceInformationAreClearedAfter7()),
                                 style = T.s12,
                                 color = p.ink2,
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             )
                         },
-                        { GRow("查看缓存", "${imageBytes(cache)} / 150 MiB") },
+                        { GRow(copy(UiMessages.settingsAndroidViewingCache()), "${imageBytes(cache)} / 150 MiB") },
                         {
                             GRow(
-                                if (action.running) "正在清理…" else "清理查看缓存",
+                                if (action.running) copy(UiMessages.settingsAndroidCleaning()) else copy(UiMessages.settingsAndroidClearViewingCache()),
                                 onClick = {
                                     action.run(
                                         {

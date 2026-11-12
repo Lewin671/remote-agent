@@ -1,9 +1,14 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class IdleCloseSettingTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test
     fun theSettingReadsInWordsWhateverTheDaemonHolds() {
         assertEquals(listOf("关闭", "1 小时", "2 小时", "6 小时", "12 小时", "24 小时"), IDLE_CLOSE_CHOICES.map(::idleCloseLabel))
@@ -11,7 +16,7 @@ class IdleCloseSettingTest {
         assertEquals("3 小时", idleCloseLabel(180))
         assertEquals("90 分钟", idleCloseLabel(90))
         assertEquals("168 小时", idleCloseLabel(10080))
-        assertEquals("关闭", idleCloseLabel(-5))
+        assertEquals(messageTextForTest(UiMessages.commonClose()), idleCloseLabel(-5))
         // 0 is the daemon's default.
         assertEquals("6 小时", idleCloseLabel(0))
     }

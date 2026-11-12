@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.TerminalFrame
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
@@ -52,7 +54,7 @@ class TerminalOpenCleanupTest {
             val opening = async {
                 runCatching { remote.openTerminal("short", object : TermListener {
                     override fun onFrame(frame: TerminalFrame) { fail("unexpected frame") }
-                    override fun onClose(reason: String) { closes++ }
+                    override fun onClose(reason: MessageText) { closes++ }
                 }) }
             }
             runCurrent()

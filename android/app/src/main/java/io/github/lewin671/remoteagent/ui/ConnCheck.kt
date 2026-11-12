@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,7 +30,7 @@ import io.github.lewin671.remoteagent.core.Ping
 import io.github.lewin671.remoteagent.core.RemoteState
 import io.github.lewin671.remoteagent.core.SLOW_MACHINE_MS
 import io.github.lewin671.remoteagent.core.SLOW_SERVER_MS
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.median
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -36,11 +38,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 /** The link to the server in a word: what 设置 says before anything is measured. */
-fun connWord(state: RemoteState): String = when {
-    state.conn == ConnState.ONLINE -> "已连接"
-    state.synced -> "重连中"
-    state.link == Link.NO_SERVER -> "连不上"
-    else -> "连接中"
+fun connWord(state: RemoteState, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): String = when {
+    state.conn == ConnState.ONLINE -> copy(UiMessages.connectionConnected())
+    state.synced -> copy(UiMessages.connectionReconnectingConnCheck())
+    state.link == Link.NO_SERVER -> copy(UiMessages.connectionUnreachable())
+    else -> copy(UiMessages.connectionConnectingConnCheck())
 }
 
 /**
@@ -70,6 +72,7 @@ internal fun ConnCheckSheet(
     reconnectNow: () -> Unit,
     clock: () -> Long = System::currentTimeMillis,
 ) {
+    val copy = uiText()
     val p = pal
     var server by remember { mutableStateOf<Ping>(Ping.Wait) }
     val machines = remember { mutableStateMapOf<String, Ping>() }
@@ -98,13 +101,13 @@ internal fun ConnCheckSheet(
             server = Ping.Ok(median(List(3) { pingServer() }))
             coroutineScope {
                 online.map { id ->
-                    async { machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(errorText(it).ifEmpty { "没有回应" }) } }
+                    async { machines[id] = runCatching { Ping.Ok(pingMachine(id)) }.getOrElse { if (it is kotlinx.coroutines.CancellationException) throw it else Ping.Fail(displayError(it).ifEmpty { copy(UiMessages.connectionNoResponse()) }) } }
                 }.awaitAll()
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            server = Ping.Fail(errorText(e).ifEmpty { "没有回应" })
+            server = Ping.Fail(displayError(e).ifEmpty { copy(UiMessages.connectionNoResponse()) })
             online.forEach { machines[it] = Ping.Skip }
         }
         busy = false
@@ -127,43 +130,47 @@ internal fun ConnCheckSheet(
         }
     @Composable
     fun result(ping: Ping?, slow: Long) = when (ping) {
-        null, Ping.Wait -> IconText(Lucide.LoaderCircle, "检测中…", p.ink2, T.s13)
-        Ping.Skip -> Text("未检测", style = T.s13, color = p.ink2)
+        null, Ping.Wait -> IconText(Lucide.LoaderCircle, copy(UiMessages.connectionChecking()), p.ink2, T.s13)
+        Ping.Skip -> Text(copy(UiMessages.connectionNotChecked()), style = T.s13, color = p.ink2)
         is Ping.Fail -> Text(ping.error, style = T.s13, color = p.red, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 200.dp))
-        is Ping.Ok -> dotted(if (ping.ms >= slow) p.orange else p.green, "${ping.ms} ms" + if (ping.ms >= slow) " · 较慢" else "")
+        is Ping.Ok -> dotted(if (ping.ms >= slow) p.orange else p.green, "${ping.ms} ms" + if (ping.ms >= slow) copy(UiMessages.connectionSlow()) else "")
     }
     Sheet(onClose) {
-        SheetHead("连接检测", "完成", onClose)
+        SheetHead(copy(UiMessages.homeConnectionCheck()), copy(UiMessages.commonDone()), onClose)
         Column(Modifier.fillMaxWidth().clip(Radii.R14).background(if (LocalOnSoft.current) p.raised else p.gbg)) {
-            line("实时推送") {
-                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state))
+            line(copy(UiMessages.connectionLivePush())) {
+                dotted(if (state.conn == ConnState.ONLINE) p.green else if (state.synced) p.orange else p.faint, connWord(state, copy = uiText()))
             }
             HorizontalDivider(color = p.sep, thickness = 0.5.dp)
             val network = state.link != Link.NO_NETWORK
-            line("本机网络") { dotted(if (network) p.green else p.faint, if (network) "正常" else "不通") }
+            line(copy(UiMessages.connectionLocalNetwork())) { dotted(if (network) p.green else p.faint, if (network) copy(UiMessages.connectionWorking()) else copy(UiMessages.connectionUnavailable())) }
             HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-            line("服务器", serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
+            line(copy(UiMessages.securityServer()), serverAddress.substringAfter("://")) { result(server, SLOW_SERVER_MS) }
             for (m in list) {
                 HorizontalDivider(color = p.sep, thickness = 0.5.dp)
-                line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, "不在线", p.ink2) }
+                line(machineLabel(state, m.id)) { if (m.online) result(machines[m.id], SLOW_MACHINE_MS) else dotted(p.faint, copy(UiMessages.commonAndroidOffline()), p.ink2) }
             }
         }
         if (state.conn != ConnState.ONLINE) {
             Hint(when {
                 state.connStep.isNotEmpty() && startedAt != null -> {
                     val seconds = ((tick - startedAt) / 1000).coerceAtLeast(0)
-                    "正在${if (state.synced) "重连" else "连接"}：${state.connStep}，已 $seconds 秒。" +
-                        if (state.connError.isNotEmpty()) "上一次失败：${state.connError}" else ""
+                    copy(UiMessages.connectionSecElapsed(
+                        seconds.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                        state.connStep.resolve(copy),
+                        if (state.connError.isNotEmpty()) copy(UiMessages.connectionLastFailure(state.connError.resolve(copy))) else "",
+                        copy(if (state.synced) UiMessages.connectionReconnectingConnCheckLabel() else UiMessages.connectionConnectingConnCheckLabel()),
+                    ))
                 }
-                state.connError.isNotEmpty() -> "实时推送未连接，会话变化可能延迟。最近一次失败：${state.connError}"
-                state.link == Link.NO_NETWORK -> "本机网络不通，联网后会重新连接。"
-                else -> "实时推送未连接。"
+                state.connError.isNotEmpty() -> copy(UiMessages.connectionLivePushIsNotConnectedSessionChangesMayBe(state.connError.resolve(copy)))
+                state.link == Link.NO_NETWORK -> copy(UiMessages.connectionThisDeviceHasNoNetworkItWillReconnectWhen())
+                else -> copy(UiMessages.connectionLivePushIsNotConnected())
             })
         }
-        Hint("延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。")
+        Hint(copy(UiMessages.connectionLatencyIsOneRoundTripTheServerRowMeasures()))
         Btns(Modifier.padding(top = 12.dp)) {
-            if (state.conn != ConnState.ONLINE) PillButton("立即重连", reconnectNow, Modifier.weight(1f))
-            PillButton("再测一次", { run++ }, Modifier.weight(1f), enabled = !busy)
+            if (state.conn != ConnState.ONLINE) PillButton(copy(UiMessages.connectionReconnectNow()), reconnectNow, Modifier.weight(1f))
+            PillButton(copy(UiMessages.connectionTestAgain()), { run++ }, Modifier.weight(1f), enabled = !busy)
         }
     }
 }

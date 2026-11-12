@@ -31,28 +31,28 @@ data class ScheduleTime(
         val tz = ZoneId.of(zone)
         val clock = LocalTime.parse(time)
         // A one-shot trigger carries no limits, so hidden ending controls are not validated.
-        val max = if (kind != 0 && end == 1) count.toLong().also { require(it > 0) { "次数要大于 0" } } else 0
-        val deadline = if (kind != 0 && end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else cutoff(tz)).also { require(it > now) { "结束日期已经过去" } } else null
+        val max = if (kind != 0 && end == 1) count.toLong().also { requireMessage(it > 0) { UiMessages.scheduleAndroidRunCountMustBeGreaterThan0().messageText() } } else 0
+        val deadline = if (kind != 0 && end == 2) (if (deadline.isNotEmpty()) Instant.parse(deadline) else cutoff(tz)).also { requireMessage(it > now) { UiMessages.scheduleAndroidTheEndDateIsInThePast().messageText() } } else null
         return buildJsonObject {
             when (kind) {
                 0 -> {
                     val timestamp = absolute(LocalDate.parse(date).atTime(clock), tz)
-                    require(timestamp > now) { "请选择未来的时间" }; put("type", "at"); put("at", timestamp.toString())
+                    requireMessage(timestamp > now) { UiMessages.scheduleSelectAFutureTime().messageText() }; put("type", "at"); put("at", timestamp.toString())
                 }
                 1, 2 -> {
                     put("type", "calendar"); put("time", clock.toString()); put("timezone", tz.id)
-                    val days = if (kind == 1) { if (workdays) (1..5).toSet() else emptySet() } else weekdays.also { require(it.isNotEmpty()) { "至少选一天" } }
+                    val days = if (kind == 1) { if (workdays) (1..5).toSet() else emptySet() } else weekdays.also { requireMessage(it.isNotEmpty()) { UiMessages.scheduleAndroidSelectAtLeastOneDay().messageText() } }
                     if (days.isNotEmpty()) put("weekdays", JsonArray(days.sorted().map(::JsonPrimitive)))
                 }
                 3 -> {
                     val seconds = Math.multiplyExact(interval.toLong(), listOf(60L, 3600L, 86400L, 1L)[unit])
-                    require(seconds > 0) { "间隔要大于 0" }
+                    requireMessage(seconds > 0) { UiMessages.scheduleAndroidIntervalMustBeGreaterThan0().messageText() }
                     put("type", "interval"); put("interval_seconds", seconds)
                     if (original?.text("type") == "interval" && original.long("interval_seconds") == seconds) {
                         original["at"]?.let { put("at", it) }; original["delay_seconds"]?.let { put("delay_seconds", it) }
                     } else put("delay_seconds", seconds)
                 }
-                else -> error("请选择时间类型")
+                else -> messageError(UiMessages.scheduleAndroidChooseATimeType().messageText())
             }
             if (kind != 0) {
                 val before = original?.let { from(it) }
@@ -68,7 +68,7 @@ data class ScheduleTime(
 
     private fun absolute(local: LocalDateTime, tz: ZoneId): Instant {
         val offsets = tz.rules.getValidOffsets(local)
-        require(offsets.isNotEmpty()) { "这个时区在该时刻发生夏令时跳转，请换一个时间" }
+        requireMessage(offsets.isNotEmpty()) { UiMessages.scheduleDaylightSavingTimeSkipsThisTimeInTheSelected().messageText() }
         // ZoneRules lists the earlier occurrence first when the clock repeats.
         return local.toInstant(offsets.first())
     }

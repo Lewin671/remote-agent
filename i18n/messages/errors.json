@@ -1,5 +1,812 @@
 [
   {
+    "key": "errors.android_attachment_transfer_content_changed_retry",
+    "zh-CN": "附件传输内容已改变，请重试",
+    "en": "Attachment transfer content changed. Retry",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_attachment_transfer_stopped_or_changed_retry",
+    "zh-CN": "附件传输已中止或发生变化，请重试",
+    "en": "Attachment transfer stopped or changed. Retry",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_cannot_find_the_server_check_your_network",
+    "zh-CN": "找不到服务器，检查一下网络",
+    "en": "Cannot find the server. Check your network",
+    "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_cannot_open_the_computer_s_reply_command_outcome_unknown",
+    "zh-CN": "电脑的回复打不开，不确定指令有没有执行",
+    "en": "Cannot open the computer's reply. Command outcome unknown",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_cannot_read_file_size_select_the_file_again",
+    "zh-CN": "无法读取文件大小，请重新选择文件",
+    "en": "Cannot read file size. Select the file again",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_cannot_read_the_source_file_remove_it_and_select_the",
+    "zh-CN": "无法读取源文件，请移除后重新选择文件",
+    "en": "Cannot read the source file. Remove it and select the file again",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_cannot_verify_the_current_request",
+    "zh-CN": "无法核实当前请求",
+    "en": "Cannot verify the current request",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends",
+    "zh-CN": "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求",
+    "en": "Computer outcome unknown: stopped waiting for a reply. Retrying sends the same request",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_computer_outcome_unknown_the_connection_dropped",
+    "zh-CN": "不确定电脑有没有执行：连接中途断了",
+    "en": "Computer outcome unknown: the connection dropped",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_computer_outcome_unknown_the_request_may_have_arrived_before_login",
+    "zh-CN": "不确定电脑有没有执行：请求可能已经送到，之后登录失败（{value1}）",
+    "en": "Computer outcome unknown: the request may have arrived before login failed ({value1})",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_computer_outcome_unknown_value1",
+    "zh-CN": "不确定电脑有没有执行：{value1}",
+    "en": "Computer outcome unknown: {value1}",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_could_not_connect_to_the_server",
+    "zh-CN": "没有连上服务器",
+    "en": "Could not connect to the server",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_could_not_read_the_session_list",
+    "zh-CN": "没能读取会话列表",
+    "en": "Could not read the session list",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_file_name_is_too_long_or_empty_rename_the_file",
+    "zh-CN": "文件名过长或为空，请重命名后重新选择",
+    "en": "File name is too long or empty. Rename the file and select it again",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_file_too_large_maximum_size_per_file_value1",
+    "zh-CN": "文件过大，单个文件最多 {value1}",
+    "en": "File too large. Maximum size per file: {value1}",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_file_verification_failed_retry_or_select_the_file_again",
+    "zh-CN": "文件校验失败，请重试或重新选择文件",
+    "en": "File verification failed. Retry or select the file again",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_history_read_failed",
+    "zh-CN": "没能读取历史：{reason}",
+    "en": "Could not read history: {reason}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_history_records_are_discontinuous_retry_reading",
+    "zh-CN": "历史记录不连续，请重试读取",
+    "en": "History records are discontinuous. Retry reading",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_image_content_does_not_match_its_format",
+    "zh-CN": "图片内容和格式对不上",
+    "en": "Image content does not match its format",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_invalid_server_address",
+    "zh-CN": "server 地址无效",
+    "en": "Invalid server address",
+    "notes": "Android E2e 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_login_expired",
+    "zh-CN": "登录失效：{reason}",
+    "en": "Login expired: {reason}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_network_unavailable_command_was_not_sent",
+    "zh-CN": "网络不通，指令没有发出",
+    "en": "Network unavailable. Command was not sent",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_no_verifiable_execution_result_received_retry_the_same_request",
+    "zh-CN": "未收到可验证的执行结果，请重试同一请求",
+    "en": "No verifiable execution result received. Retry the same request",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_only_the_managing_client_can_veto_recovery",
+    "zh-CN": "只有管理端能否决恢复",
+    "en": "Only the managing client can veto recovery",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_open_value1_to_renew",
+    "zh-CN": "请打开{value1}续期",
+    "en": "Open {value1} to renew",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_other_clients_kept_changing_project_preferences_could_not_save",
+    "zh-CN": "项目偏好一直在被其他客户端修改，没能保存",
+    "en": "Other clients kept changing project preferences. Could not save",
+    "notes": "Android Prefs 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_pairing_approval_does_not_match_this_device_has_expired_or",
+    "zh-CN": "配对批准与这台设备不匹配、已过期或签名无效",
+    "en": "Pairing approval does not match this device, has expired, or has an invalid signature",
+    "notes": "Android Approval 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_project_preferences_are_changing_retry",
+    "zh-CN": "项目偏好正在变化，请重试",
+    "en": "Project preferences are changing. Retry",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_records_from_before_recovery_are_unreadable",
+    "zh-CN": "恢复前的记录不可读",
+    "en": "Records from before recovery are unreadable",
+    "notes": "Android DeviceSecurityClient 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or",
+    "zh-CN": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；{value1}后重试。历史仍可查看",
+    "en": "Remote control authorization expired. Cannot save changes, control sessions, or upload new content. {value1} and retry. History remains viewable",
+    "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_remote_control_paused_value1_and_retry",
+    "zh-CN": "远程控制已暂停：{value1}后再试",
+    "en": "Remote control paused: {value1} and retry",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_remove_devices_on_the_managing_client",
+    "zh-CN": "请在管理端上删除设备",
+    "en": "Remove devices on the managing client",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_secure_connection_failed",
+    "zh-CN": "安全连接失败：{reason}",
+    "en": "Secure connection failed: {reason}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_security_authorization_or_the_current_request_is_unverified_nothing_was",
+    "zh-CN": "安全授权或当前请求尚未核实，操作没有发出；请重试",
+    "en": "Security authorization or the current request is unverified. Nothing was sent. Retry",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_security_state_unavailable",
+    "zh-CN": "安全状态不可用",
+    "en": "Security state unavailable",
+    "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_server_unavailable_reason",
+    "zh-CN": "连不上服务器：{reason}",
+    "en": "Cannot connect to the server: {reason}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_terminal_connection_dropped_reason",
+    "zh-CN": "终端连接断开：{reason}",
+    "en": "Terminal connection dropped: {reason}",
+    "notes": "Android 终端断开提示；reason 是原始错误或已本地化的完整错误。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_terminal_input_paused_while_waiting_for_authorization",
+    "zh-CN": "终端输入等待授权，已暂停",
+    "en": "Terminal input paused while waiting for authorization",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_terminal_output_backlog_reception_stopped",
+    "zh-CN": "终端输出积压，已停止接收",
+    "en": "Terminal output backlog. Reception stopped",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_computer_did_not_return_a_file_id",
+    "zh-CN": "电脑没有返回文件 ID",
+    "en": "The computer did not return a file ID",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_computer_has_not_verified_the_current_request",
+    "zh-CN": "当前请求尚未由电脑核实",
+    "en": "The computer has not verified the current request",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_computer_returned_invalid_file_progress",
+    "zh-CN": "电脑返回的文件进度无效",
+    "en": "The computer returned invalid file progress",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_current_request_changed_review_it_again",
+    "zh-CN": "当前请求已变化，请重新核对",
+    "en": "The current request changed. Review it again",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_file_changed_during_upload_retry_or_select_the_file",
+    "zh-CN": "文件在上传时发生变化，请重试或重新选择文件",
+    "en": "The file changed during upload. Retry or select the file again",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_managing_client_cannot_be_removed_normally",
+    "zh-CN": "管理端不能被普通删除",
+    "en": "The managing client cannot be removed normally",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state",
+    "zh-CN": "手机时钟比服务器快，成员状态暂不可用；请校准系统时间",
+    "en": "The phone clock is ahead of the server. Membership state is temporarily unavailable. Correct the system time",
+    "notes": "Android Api 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_phone_clock_is_ahead_of_the_server_remote_control",
+    "zh-CN": "手机时钟比服务器快，远程控制暂停；请校准系统时间",
+    "en": "The phone clock is ahead of the server. Remote control is paused. Correct the system time",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the",
+    "zh-CN": "上一次的结果仍不确定：{value1}。重试会发送同一个请求",
+    "en": "The previous outcome is still unknown: {value1}. Retrying sends the same request",
+    "notes": "Android Attempt 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_the_previous_outcome_is_unknown_the_request_expired_and_will",
+    "zh-CN": "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始",
+    "en": "The previous outcome is unknown. The request expired and will not be resent. Check the list first; abandon and start again if needed",
+    "notes": "Android Attempt 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_this_command_expired_and_was_not_sent",
+    "zh-CN": "这条指令已过期，没有发出",
+    "en": "This command expired and was not sent",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_this_request_can_no_longer_be_acted_on",
+    "zh-CN": "请求已不可操作",
+    "en": "This request can no longer be acted on",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_upload_connection_interrupted_retry",
+    "zh-CN": "上传连接中断，请重试",
+    "en": "Upload connection interrupted. Retry",
+    "notes": "Android Files 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "errors.android_value1_the_previous_outcome_is_still_unknown_retry_the_same",
+    "zh-CN": "{value1}；上一次的结果仍不确定，能力恢复后可重试同一请求",
+    "en": "{value1}; the previous outcome is still unknown. Retry the same request once support is restored",
+    "notes": "Android Remote 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "errors.this_device_s_clock_is_behind_the_account_state",
     "zh-CN": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
     "en": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",

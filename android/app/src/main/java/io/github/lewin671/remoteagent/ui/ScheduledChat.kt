@@ -138,7 +138,7 @@ private fun foldSpans(items: List<ChatItem>, spans: List<QuietSpan>, revealSeq: 
 fun quietScheduledLabel(times: List<Long>, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String {
     val dates = times.map { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }.distinct()
     fun time(ms: Long) = if (dates.size == 1) Instant.ofEpochMilli(ms).atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
-        else io.github.lewin671.remoteagent.core.scheduleWhen(Instant.ofEpochMilli(ms), now, zone)
+        else io.github.lewin671.remoteagent.core.scheduleWhen(Instant.ofEpochMilli(ms), now, zone, copy = copy)
     val whenText = times.joinToString(copy(UiMessages.commonListSeparator()), transform = ::time)
     return copy(UiMessages.sessionQuietChecks(times = whenText))
 }

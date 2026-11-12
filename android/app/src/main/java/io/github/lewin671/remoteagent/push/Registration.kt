@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,8 +64,8 @@ internal fun tokenFailure(error: Throwable): PushAttempt {
     val permanent = codes.any { it in setOf("AUTHENTICATION_FAILED", "FIS_AUTH_ERROR", "INVALID_PARAMETERS") }
     val missing = "MISSING_INSTANCEID_SERVICE" in codes
     return when {
-        missing -> PushAttempt(PushStatus("Google Play 服务不可用，请安装或启用后重试", "重试"))
-        permanent -> PushAttempt(PushStatus("Google 推送注册未通过验证，请检查 Google Play 服务或应用的推送配置", "重试"))
-        else -> PushAttempt(PushStatus("暂时连不上 Google 推送服务，正在自动重试。请检查网络和 Google Play 服务", "重试"), retry = true)
+        missing -> PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUnavailableInstallOrEnableThemThen()), sessionText(UiMessages.commonRetry())))
+        permanent -> PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidGooglePushRegistrationCouldNotBeVerifiedCheckGooglePlay()), sessionText(UiMessages.commonRetry())))
+        else -> PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidCannotReachGooglePushServicesRetryingAutomaticallyCheckYourNetwork()), sessionText(UiMessages.commonRetry())), retry = true)
     }
 }

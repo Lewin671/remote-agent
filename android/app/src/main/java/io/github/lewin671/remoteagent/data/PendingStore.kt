@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.data
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
@@ -90,7 +94,7 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
         ImageDiskPolicy.requireRoom(dir, f, sealed.size.toLong(), limit)
         try {
             tmp.writeBytes(sealed)
-            check(tmp.renameTo(f)) { "没能保存待发图片" }
+            check(tmp.renameTo(f)) { sessionText(UiMessages.commonAndroidCouldNotSavePendingImages()) }
         } finally { tmp.delete() }
         f.parentFile?.setLastModified(System.currentTimeMillis())
         requestUriCleanup()

@@ -64,7 +64,7 @@ class PairingControllerTest {
             com.connectrpc.ConnectException(com.connectrpc.Code.NOT_FOUND, "no such pairing, or it expired"),
         ); runCurrent()
         val failure = model.state.value as PairingUiState.Failed
-        assertFalse(failure.message.contains("no such pairing"))
+        assertFalse(failure.message.testText().contains("no such pairing"))
         assertFalse(failure.canRetry)
     }
 

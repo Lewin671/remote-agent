@@ -69,7 +69,7 @@ import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.contextPercent
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.pendingInputs
 import io.github.lewin671.remoteagent.core.projectKey
 import io.github.lewin671.remoteagent.core.projectName
@@ -128,7 +128,7 @@ fun SessionScreen(sid: String) {
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val note =
-                io.github.lewin671.remoteagent.core.lookupNote(lookup).takeIf {
+                io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy).takeIf {
                     state.conn == ConnState.ONLINE ||
                         lookup == io.github.lewin671.remoteagent.core.SessionLookup.Missing
                 }
@@ -226,7 +226,7 @@ fun SessionScreen(sid: String) {
             HistoryPartialNotice(sid, events.historyPartial, note)
             if (events.unavailableCount > 0)
                 Hint(copy(UiMessages.sessionHistoryUnavailable(count = events.unavailableCount)), note, inset = 0.dp)
-            events.liveError?.let { Hint(it, note, inset = 0.dp) }
+            events.liveError?.let { Hint(uiText(it), note, inset = 0.dp) }
             ChatPane(
                 state,
                 s,
@@ -234,8 +234,8 @@ fun SessionScreen(sid: String) {
                 events.events,
                 d,
                 events.loaded,
-                events.error,
-                events.fetchError,
+                events.error?.let { uiText(it) },
+                events.fetchError?.let { uiText(it) },
                 Modifier.weight(1f),
                 onTerminal = { tab = 1 },
             )
@@ -332,7 +332,7 @@ private fun SessionTopBar(
     val pc = if (live) contextPercent(s) else null
     val high = (pc ?: 0) > 80
     val mode =
-        if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s)
+        if (status == Status.EXITED) null else io.github.lewin671.remoteagent.core.modeLabel(s, copy = copy)
     val subtitle = sessionSubtitle(status, mode?.let { it.mode?.let { m -> copy(io.github.lewin671.remoteagent.core.sessionMode(m)) } ?: it.text }, copy = copy)
     val rich =
         if (mode?.mode == Mode.FULL)
@@ -488,7 +488,7 @@ private fun SessionTopBar(
         2 -> ModelSheet(state, s, running, onClose = { sheet = 0 })
         3 -> projectConfig(state, projectKey(s))?.let { initial ->
             val key = projectKey(s)
-            NewSettingsSheet(state, key, projectName(key), initial.machineId, s.agent(), onDone = { op ->
+            NewSettingsSheet(state, key, projectName(key, copy = copy), initial.machineId, s.agent(), onDone = { op ->
                 if (op != null) PrefsChanges.run(remote, op)
                 sheet = 0
             }, onClose = { sheet = 0 })
@@ -499,7 +499,7 @@ private fun SessionTopBar(
     if (confirmStop)
         Confirm(
             copy(UiMessages.sessionEndTitle()),
-            copy(UiMessages.sessionEndNote(agent = (agentName(s.agent())).toString(), name = (machineLabel(state, s.machineId)).toString())),
+            copy(UiMessages.sessionEndNote(agent = (agentName(s.agent(), copy = copy)).toString(), name = (machineLabel(state, s.machineId)).toString())),
             copy(UiMessages.sessionEnd()),
             danger = true,
             onDismiss = { confirmStop = false },
@@ -722,7 +722,7 @@ internal fun ChatPane(
                     items(items, key = { it.key }) {
                         val kind = remember(it.key) { entrances.take(it.key) }
                         Box(Modifier.entrance(kind)) {
-                            ChatItemView(it, agentName(s.agent()), cwd, home, settling = kind == Entrance.SETTLE) { requestId, text ->
+                            ChatItemView(it, agentName(s.agent(), copy = copy), cwd, home, settling = kind == Entrance.SETTLE) { requestId, text ->
                                 // A message the session ended before writing: text and images back.
                                 val o = Outbox.find(s.id, requestId)
                                 if (o != null) putBack(remote, s.id, o)
@@ -759,7 +759,7 @@ internal fun ChatPane(
                                 pendingInputs.size,
                                 state,
                                 remote,
-                                if (status == Status.STARTING) agentName(s.agent()) else null,
+                                if (status == Status.STARTING) agentName(s.agent(), copy = copy) else null,
                             )
                         }
                     }
@@ -936,7 +936,7 @@ private fun OutgoingView(
             ?: DEFAULT_AGENT
     val feedback = when (input) {
         InputStatus.INPUT_STATUS_FAILED, InputStatus.INPUT_STATUS_NEEDS_TERMINAL, InputStatus.INPUT_STATUS_UNCONFIRMED -> inputFeedback(input, failure.orEmpty(), agent)
-        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN, kind = o.failureKind, copy = copy)
+        else -> deliveryFailure(o.failureDisplay?.resolve(copy) ?: o.error, o.state == Outgoing.State.UNKNOWN, kind = o.failureKind, copy = copy)
     }
     val failed = input == InputStatus.INPUT_STATUS_FAILED || (input == null && o.state == Outgoing.State.FAILED)
     val links = mutableListOf<Pair<String, () -> Unit>>()
@@ -1222,7 +1222,7 @@ internal fun Composer(
                     onSent()
                 }
                 .onFailure {
-                    images.notice = copy(UiMessages.composerAndroidNotSent(reason = (errorText(it)).toString()))
+                    images.notice = copy(UiMessages.composerAndroidNotSent(reason = (displayError(it)).toString()))
                     images.sendAllTo(remote, s.machineId)
                 }
         }
@@ -1442,12 +1442,10 @@ object Forks {
      */
     suspend fun send(
         f: Fork,
-        prepare: () -> io.github.lewin671.remoteagent.core.PreparedCommand,
-        forward:
+        prepare: () -> io.github.lewin671.remoteagent.core.PreparedCommand, forward:
             suspend (
                 io.github.lewin671.remoteagent.core.PreparedCommand, Boolean,
-            ) -> io.github.lewin671.remoteagent.proto.CommandResult?,
-    ): String? {
+            ) -> io.github.lewin671.remoteagent.proto.CommandResult?): String? {
         if (f.running) return null
         f.running = true
         f.error = ""
@@ -1461,7 +1459,7 @@ object Forks {
             // The page went away with the request on its way: whether the computer got it is not
             // known.
             f.error =
-                errorText(
+                displayError(
                     f.attempt.settle(
                         io.github.lewin671.remoteagent.core.CommandException(
                             io.github.lewin671.remoteagent.core.CommandException.UNKNOWN,
@@ -1471,7 +1469,7 @@ object Forks {
                 )
             throw e
         } catch (e: Exception) {
-            f.error = errorText(f.attempt.settle(e) ?: e)
+            f.error = displayError(f.attempt.settle(e) ?: e)
             return null
         } finally {
             f.frozen = f.attempt.frozen
@@ -1574,7 +1572,7 @@ internal fun putBack(
 /** Check before changing text, transfers or the failed record, including remote-only history. */
 private fun canRestoreFiles(remote: Remote, machine: String?, hasFiles: Boolean, draft: ImageDraft): Boolean =
     try { remote.requireFileSupport(machine, hasFiles); true }
-    catch (e: io.github.lewin671.remoteagent.core.CommandException) { draft.notice = e.message.orEmpty(); false }
+    catch (e: io.github.lewin671.remoteagent.core.CommandException) { draft.notice = displayError(e, remote.state.value); false }
 
 internal fun putBackReferences(
     remote: Remote, sid: String, text: String,
@@ -1592,4 +1590,4 @@ internal fun putBackReferences(
 
 /** What a session's ⋯ menu is about: the CLI, the project, and the machine only where the account has more than one (design-system §6). */
 internal fun sessionMenuTitle(state: RemoteState, s: SessionView, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): String =
-    listOfNotNull(agentName(s.agent()), projectName(projectKey(s)), machineLabel(state, s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · ")
+    listOfNotNull(agentName(s.agent(), copy = copy), projectName(projectKey(s), copy = copy), machineLabel(state, s.machineId).takeIf { state.machines.size > 1 }).joinToString(" · ")

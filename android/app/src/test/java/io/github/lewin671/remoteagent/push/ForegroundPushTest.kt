@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.app.Application
 import android.app.NotificationManager
 import androidx.lifecycle.Lifecycle
@@ -50,7 +54,7 @@ class ForegroundPushTest {
                         val notifications = shadowOf(manager).allNotifications
                         assertEquals("$kind foreground=$foreground visible=$visible", if (expected) 1 else 0, notifications.size)
                         if (expected && kind == NotifyKind.NOTIFY_KIND_SCHEDULED) {
-                            assertEquals("定时任务有新结果", notifications.single().extras.getCharSequence("android.text"))
+                            assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), notifications.single().extras.getCharSequence("android.text"))
                             assertEquals("target-session", shadowOf(notifications.single().contentIntent).savedIntent.getStringExtra(MainActivity.EXTRA_SESSION))
                         }
                     }

@@ -8,7 +8,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /** An authenticated event separated from its missing key by a verified recovery. */
-class RecoveryHistoryUnavailable(val header: DeviceSecurity.Header) : Exception("恢复前的记录不可读")
+class RecoveryHistoryUnavailable(val header: DeviceSecurity.Header) : MessageException(UiMessages.errorsAndroidRecordsFromBeforeRecoveryAreUnreadable().messageText())
 
 /**
  * Foreground member session. Locked notification code receives a Notify child key only, never this

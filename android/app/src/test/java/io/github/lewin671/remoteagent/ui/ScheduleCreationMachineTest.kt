@@ -18,6 +18,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk=[35],application=Application::class)
 class ScheduleCreationMachineTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule val ui=createComposeRule()
     private val remote=Remote(Account("http://127.0.0.1:1",ByteArray(32),ByteArray(32),"test-client"),Api.defaultHttp())
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)

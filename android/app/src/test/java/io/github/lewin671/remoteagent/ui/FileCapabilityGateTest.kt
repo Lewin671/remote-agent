@@ -72,7 +72,7 @@ class FileCapabilityGateTest {
                 store = { sid, o, orig -> records.save(sid, o, orig); show(r, false) }, discard = records::remove,
                 fileIds = listOf("original-file")) { done.complete(it) }
             val result = done.await()
-            assertTrue(result.isFailure); assertTrue(result.exceptionOrNull()!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+            assertTrue(result.isFailure); assertTrue(displayError(result.exceptionOrNull()!!).contains("更新电脑上的 remote-agent"))
             assertTrue(records.load("capability").isEmpty()); assertTrue(Outbox.of("capability").isEmpty())
             assertEquals("original-file", f.fileId); assertTrue(f.readyFor("computer"))
         } finally { r.close(); AccountMemory.clear() }
@@ -83,7 +83,7 @@ class FileCapabilityGateTest {
         try {
             Outbox.sendWithImages(this, r, "capability", "keep text", emptyList(), listOf(file()), false,
                 store = { _, _, _ -> error("must gate before saving") }, fileIds = listOf("original-file")) { done.complete(it) }
-            assertTrue(done.await().exceptionOrNull()!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+            assertTrue(displayError(done.await().exceptionOrNull()!!).contains("更新电脑上的 remote-agent"))
             assertFalse(Outbox.keeping("capability")); assertTrue(Outbox.of("capability").isEmpty())
         } finally { r.close(); AccountMemory.clear() }
     }

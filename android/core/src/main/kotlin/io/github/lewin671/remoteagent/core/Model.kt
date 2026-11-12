@@ -66,7 +66,7 @@ data class Project(
 fun projectKey(s: SessionView): String = s.info?.cwd.orEmpty()
 
 /** A project's name: the last folder of its path. */
-fun projectName(key: String): String = key.split("/").lastOrNull { it.isNotEmpty() } ?: "未知项目"
+fun projectName(key: String, copy: MessageResolver): String = key.split("/").lastOrNull { it.isNotEmpty() } ?: copy(UiMessages.projectsUnknown())
 
 /** What the machines say of a project (MachineMeta.projects), added up. */
 private class ProjectSums {
@@ -85,7 +85,7 @@ private class ProjectSums {
  * session: it is listed while the machine chosen for it is one of the account's, as created when it
  * was added.
  */
-fun projects(state: RemoteState): List<Project> {
+fun projects(state: RemoteState, copy: MessageResolver): List<Project> {
     val byKey = LinkedHashMap<String, MutableList<SessionView>>()
     for (s in state.sessions.values.filter { it.info?.taskOwned != true || needsAttention(it) }) byKey.getOrPut(projectKey(s)) { mutableListOf() } += s
     val sums = LinkedHashMap<String, ProjectSums>()
@@ -136,7 +136,7 @@ fun projects(state: RemoteState): List<Project> {
                     .distinct()
             Project(
                 key = key,
-                name = projectName(key),
+                name = projectName(key, copy = copy),
                 sessions = sorted,
                 updatedMs =
                     maxOf(
@@ -157,7 +157,7 @@ fun projects(state: RemoteState): List<Project> {
                         .mapNotNull { it.info?.cwd?.takeIf { c -> c.isNotEmpty() } }
                         .distinct()
                         .ifEmpty { listOf(key).filter { it.isNotEmpty() } },
-                machines = machineIds.map { machineName(state.machines[it], it) }.distinct(),
+                machines = machineIds.map { machineName(state.machines[it], it, copy = copy) }.distinct(),
                 machineIds = machineIds,
                 // Counted machine by machine: each machine's count, or what is held of its
                 // sessions where that is more (its metadata may not have arrived, or be behind).
@@ -180,8 +180,8 @@ fun projects(state: RemoteState): List<Project> {
 /**
  * One project of [projects], or null when no summary, session held here or stored settings name it.
  */
-fun project(state: RemoteState, key: String): Project? =
-    projects(state).firstOrNull { it.key == key }
+fun project(state: RemoteState, key: String, copy: MessageResolver): Project? =
+    projects(state, copy = copy).firstOrNull { it.key == key }
 
 /**
  * The projects a machine has sessions in: by its summary and by the sessions held here, in that
@@ -204,8 +204,8 @@ data class ProjectGroups(
     val hidden: List<Project>,
 )
 
-fun projectGroups(state: RemoteState): ProjectGroups {
-    val all = projects(state)
+fun projectGroups(state: RemoteState, copy: MessageResolver): ProjectGroups {
+    val all = projects(state, copy = copy)
     val prefs = state.prefs ?: PrefsObject.EMPTY
     val hidden = prefs.hidden
     val byKey = all.associateBy { it.key }
@@ -223,10 +223,10 @@ fun isHidden(state: RemoteState, key: String): Boolean = state.prefs?.hidden?.co
 fun isPinned(state: RemoteState, key: String): Boolean =
     state.prefs?.let { key in it.pinned && key !in it.hidden } == true
 
-fun machineName(m: MachineView?, id: String = ""): String =
+fun machineName(m: MachineView?, id: String = "", copy: MessageResolver): String =
     m?.meta?.hostname?.removeSuffix(".local")?.takeIf { it.isNotEmpty() }
         ?: m?.id?.take(8)
-        ?: id.take(8).ifEmpty { "未知电脑" }
+        ?: id.take(8).ifEmpty { copy(UiMessages.commonUnknownComputer()) }
 
 // A session that has not ended or is not waiting has no such timestamp and
 // falls back to creation time; incomplete metadata uses zero, never the
@@ -270,22 +270,22 @@ enum class Tone {
 }
 
 /** One state per session, the highest in the priority list of the design (client-v1, 状态优先级). */
-enum class Status(val text: String, val tone: Tone) {
-    LOADING("读取中", Tone.OFF),
-    EXITED("已结束", Tone.OFF),
-    OFFLINE("电脑离线", Tone.OFF),
+enum class Status(val text: UiMessage, val tone: Tone) {
+    LOADING(UiMessages.listStateAndroidLoading(), Tone.OFF),
+    EXITED(UiMessages.listStateEnded(), Tone.OFF),
+    OFFLINE(UiMessages.listStateOffline(), Tone.OFF),
     /**
      * Only shown ([shownStatus]): the server is out of reach, so what the session is doing is not
      * known.
      */
-    UNLINKED("未连接", Tone.OFF),
-    APPROVAL("等待审批", Tone.WAIT),
-    QUESTION("等你回答", Tone.WAIT),
-    PLAN("计划待批准", Tone.WAIT),
-    POPUP("终端里有弹窗", Tone.WAIT),
-    RUNNING("运行中", Tone.RUN),
-    STARTING("启动中", Tone.RUN),
-    IDLE("空闲", Tone.IDLE),
+    UNLINKED(UiMessages.listStateUnlinked(), Tone.OFF),
+    APPROVAL(UiMessages.listStateApproval(), Tone.WAIT),
+    QUESTION(UiMessages.listStateQuestion(), Tone.WAIT),
+    PLAN(UiMessages.listStatePlan(), Tone.WAIT),
+    POPUP(UiMessages.listStatePopup(), Tone.WAIT),
+    RUNNING(UiMessages.listStateRunning(), Tone.RUN),
+    STARTING(UiMessages.listStateStarting(), Tone.RUN),
+    IDLE(UiMessages.listStateIdle(), Tone.IDLE),
 }
 
 fun exited(s: SessionView): Boolean = s.info?.status == SessionStatus.SESSION_STATUS_EXITED
@@ -317,19 +317,19 @@ fun statusOf(s: SessionView, machine: MachineView?): Status {
  * A hint for a popup in the terminal. Claude Code's trust dialog has its cursor on "No, exit", so
  * Enter alone ends the session (claude-code-notes.md §1); Codex's needs none. Same text as the web.
  */
-fun popupHint(agent: Agent, detail: String): String =
-    if (detail == "trust folder") agentInfo(agent).trustFolderHint.orEmpty() else ""
+fun popupHint(agent: Agent, detail: String): MessageText =
+    if (detail == "trust folder") agentInfo(agent).trustFolderHint.orEmpty() else "".messageText()
 
 /** Pending work stays pending while its computer is out of reach. */
 fun needsAttention(s: SessionView): Boolean = statusOf(s, null).tone == Tone.WAIT
 
 /** The session's title; without one, "<folder> · <start time>". */
-fun titleOf(s: SessionView, zone: ZoneId = ZoneId.systemDefault()): String {
+fun titleOf(s: SessionView, zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
     val t = plain(s.info?.title.orEmpty()).trim()
     if (t.isNotEmpty()) return t
-    val i = s.info ?: return "新会话"
+    val i = s.info ?: return copy(UiMessages.newSessionAndroidNewSession())
     val created = if (i.hasCreatedAt()) i.createdAt.seconds * 1000 else 0
-    return if (created > 0) "${projectName(i.cwd)} · ${hhmm(created, zone)}" else projectName(i.cwd)
+    return if (created > 0) "${projectName(i.cwd, copy = copy)} · ${hhmm(created, zone)}" else projectName(i.cwd, copy = copy)
 }
 
 /** The most a session's title holds, counted in code points as the daemon counts them. */
@@ -403,7 +403,7 @@ sealed interface SessionLookup {
     data object Missing : SessionLookup
 
     /** The server could not be asked; it is asked again after a while. */
-    data class Failed(val reason: String) : SessionLookup
+    data class Failed(val reason: MessageText) : SessionLookup
 }
 
 /**
@@ -448,10 +448,10 @@ suspend fun lookUpSession(
  * What a page about a session says instead of its content while the session is not held; null while
  * it is only being read.
  */
-fun lookupNote(l: SessionLookup?): String? =
+fun lookupNote(l: SessionLookup?, copy: MessageResolver): String? =
     when (l) {
-        SessionLookup.Missing -> "找不到这个会话"
-        is SessionLookup.Failed -> "没能读取这个会话：${l.reason}"
+        SessionLookup.Missing -> copy(UiMessages.commonAndroidCannotFindThisSession())
+        is SessionLookup.Failed -> copy(UiMessages.commonAndroidCouldNotReadThisSessionValue1(l.reason.resolve(copy)))
         else -> null
     }
 
@@ -490,12 +490,12 @@ fun plain(text: String): String =
         .trim()
 
 /** The one-line preview for a list, following the session's status. */
-fun previewOf(s: SessionView, status: Status): String {
+fun previewOf(s: SessionView, status: Status, copy: MessageResolver): String {
     val i = s.info ?: return ""
     return when (status) {
-        Status.PLAN -> "计划待批准"
-        Status.POPUP -> i.statusDetail.ifEmpty { "终端里有弹窗" }
-        else -> plain(i.preview).ifEmpty { if (i.title.isEmpty()) "还没发消息" else "" }
+        Status.PLAN -> copy(UiMessages.listStatePlan())
+        Status.POPUP -> i.statusDetail.ifEmpty { copy(UiMessages.listStatePopup()) }
+        else -> plain(i.preview).ifEmpty { if (i.title.isEmpty()) copy(UiMessages.listStateNoMessage()) else "" }
     }
 }
 
@@ -504,25 +504,25 @@ fun whenText(
     ms: Long,
     now: Long = System.currentTimeMillis(),
     zone: ZoneId = ZoneId.systemDefault(),
-): String {
+    copy: MessageResolver): String {
     if (ms <= 0) return ""
     val d = now - ms
-    if (d < 60_000) return "刚刚"
-    if (d < 3_600_000) return "${d / 60_000} 分钟前"
+    if (d < 60_000) return copy(UiMessages.timeJustNow())
+    if (d < 3_600_000) return copy(UiMessages.timeMinutesAgo((d / 60_000).toInt()))
     val then = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
     val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
     if (then == today) return hhmm(ms, zone)
-    if (then == today.minusDays(1)) return "昨天"
-    return "${then.monthValue}月${then.dayOfMonth}日"
+    if (then == today.minusDays(1)) return copy(UiMessages.timeYesterday())
+    return copy(UiMessages.timeMonthDay((then.dayOfMonth).toInt(), (then.monthValue).toInt()))
 }
 
 /** Elapsed hours today, as a machine's last-seen time is shown on the web. */
-fun ago(ms: Long, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault()): String {
+fun ago(ms: Long, now: Long = System.currentTimeMillis(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
     val elapsed = now - ms
     if (ms > 0 && elapsed >= 3_600_000 && elapsed < 86_400_000 &&
         Instant.ofEpochMilli(ms).atZone(zone).toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate())
-        return "${elapsed / 3_600_000} 小时前"
-    return whenText(ms, now, zone)
+        return copy(UiMessages.timeHoursAgo((elapsed / 3_600_000).toInt()))
+    return whenText(ms, now, zone, copy = copy)
 }
 
 fun hhmm(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
@@ -530,20 +530,20 @@ fun hhmm(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
     return "${t.hour}:${"%02d".format(t.minute)}"
 }
 
-fun dateTime(ms: Long, zone: ZoneId = ZoneId.systemDefault()): String {
+fun dateTime(ms: Long, zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
     val t = ZonedDateTime.ofInstant(Instant.ofEpochMilli(ms), zone)
     val today = LocalDate.now(zone)
-    val day = if (t.toLocalDate() == today) "" else "${t.monthValue}月${t.dayOfMonth}日 "
-    return day + hhmm(ms, zone)
+    return if (t.toLocalDate() == today) hhmm(ms, zone)
+        else copy(UiMessages.timeAndroidDayClock(hhmm(ms, zone), copy(UiMessages.timeMonthDay(t.dayOfMonth, t.monthValue))))
 }
 
 // --- approval modes ---
 
-enum class Mode(val text: String, val proto: ApprovalMode) {
-    ASK("询问", ApprovalMode.APPROVAL_MODE_ASK),
-    AUTO("自动", ApprovalMode.APPROVAL_MODE_AUTO),
-    PLAN("计划", ApprovalMode.APPROVAL_MODE_PLAN),
-    FULL("完全放行", ApprovalMode.APPROVAL_MODE_FULL_ACCESS),
+enum class Mode(val text: UiMessage, val proto: ApprovalMode) {
+    ASK(UiMessages.modesAsk(), ApprovalMode.APPROVAL_MODE_ASK),
+    AUTO(UiMessages.modesAuto(), ApprovalMode.APPROVAL_MODE_AUTO),
+    PLAN(UiMessages.modesPlan(), ApprovalMode.APPROVAL_MODE_PLAN),
+    FULL(UiMessages.modesFullAccess(), ApprovalMode.APPROVAL_MODE_FULL_ACCESS),
 }
 
 fun modeOf(m: ApprovalMode): Mode? = Mode.entries.firstOrNull { it.proto == m }
@@ -562,8 +562,8 @@ fun permissionMode(pm: String): Mode? =
  * Claude Code's permission mode as the chat names it: one of the four, or its own name for a mode
  * outside them.
  */
-fun permissionModeName(pm: String): String =
-    permissionMode(pm)?.text ?: if (pm == "acceptEdits") "accept edits" else pm
+fun permissionModeName(pm: String, copy: MessageResolver): String =
+    permissionMode(pm)?.text?.let(copy) ?: if (pm == "acceptEdits") "accept edits" else pm
 
 /** A mode as shown: one of the four, or a CLI's own mode by its name. */
 data class ModeLabel(val text: String, val mode: Mode?)
@@ -587,24 +587,24 @@ fun contextMode(
     return Mode.ASK
 }
 
-fun modeOf(s: SessionView): Mode? = modeLabel(s)?.mode
+fun modeOf(s: SessionView): Mode? = modeOf(s.info?.mode ?: ApprovalMode.APPROVAL_MODE_UNSPECIFIED) ?: permissionMode(s.info?.permissionMode.orEmpty()) ?: s.info?.let { contextMode(it.approvalsReviewer, it.approvalPolicy, it.sandbox, it.collaborationMode) }
 
 /**
  * The session's mode. Session.mode is either CLI's mode as a client mode; UNSPECIFIED with a
  * permission mode is one of Claude Code's own, shown by its name. With neither (a Codex context
  * outside the four modes), it is named from the approval fields.
  */
-fun modeLabel(s: SessionView): ModeLabel? {
+fun modeLabel(s: SessionView, copy: MessageResolver): ModeLabel? {
     val i = s.info ?: return null
     modeOf(i.mode)?.let {
-        return ModeLabel(it.text, it)
+        return ModeLabel(copy(it.text), it)
     }
     if (i.permissionMode.isNotEmpty()) {
         val m = permissionMode(i.permissionMode)
-        return ModeLabel(m?.text ?: i.permissionMode, m)
+        return ModeLabel(m?.text?.let(copy) ?: i.permissionMode, m)
     }
     return contextMode(i.approvalsReviewer, i.approvalPolicy, i.sandbox, i.collaborationMode)?.let {
-        ModeLabel(it.text, it)
+        ModeLabel(copy(it.text), it)
     }
 }
 
@@ -1334,9 +1334,9 @@ fun minutesLeft(deadlineMs: Long, now: Long = System.currentTimeMillis()): Long 
 // --- the message queue ---
 
 /** Why a message was not submitted (InputState.reason), in words. */
-fun failureText(reason: String, agent: Agent): UiMessage =
+fun failureText(reason: String, agent: Agent, copy: MessageResolver): UiMessage =
     when (reason) {
-        "image_not_recognized" -> UiMessages.composerImagesUnrecognized(agentName(agent))
+        "image_not_recognized" -> UiMessages.composerImagesUnrecognized(agentName(agent, copy = copy))
         "input_changed" -> UiMessages.composerInputUnconfirmed()
         "timeout" -> UiMessages.composerReadyTimeout()
         "restarted" -> UiMessages.composerComputerRestarted()
@@ -1407,7 +1407,7 @@ fun approvalAlwaysText(message: String): MessageText {
  */
 data class QueueWhy(val short: UiMessage, val long: UiMessage)
 
-fun queueWhy(s: SessionView, status: Status): QueueWhy =
+fun queueWhy(s: SessionView, status: Status, copy: MessageResolver): QueueWhy =
     when (s.info?.inputWait) {
         "draft" -> QueueWhy(UiMessages.queueAndroidDraft(), UiMessages.queueTerminalDraft())
         "popup" -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidPopupNote())
@@ -1419,7 +1419,7 @@ fun queueWhy(s: SessionView, status: Status): QueueWhy =
                 Status.PLAN -> QueueWhy(UiMessages.queueAndroidAfterPlan(), UiMessages.queueAndroidPlanNote())
                 Status.POPUP -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidPopupNote())
                 Status.RUNNING -> QueueWhy(UiMessages.queueAfterCurrentTurn(), UiMessages.queueAndroidTurnNote())
-                Status.STARTING -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidAgentNote(agentName(s.agent())))
+                Status.STARTING -> QueueWhy(UiMessages.queueWhenReady(), UiMessages.queueAndroidAgentNote(agentName(s.agent(), copy = copy)))
                 else -> QueueWhy(UiMessages.queueAndroidSendingSoon(), UiMessages.queueAndroidInputNote())
             }
     }
@@ -1447,43 +1447,43 @@ fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome =
 // --- devices and where actions came from ---
 
 /** The account name, or a readable platform name disambiguated across all clients. */
-fun clientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList()): String =
-    d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id, clients) }
+fun clientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String =
+    d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id, clients, copy = copy) }
 
-internal fun clientBaseName(d: DeviceView?): String {
+internal fun clientBaseName(d: DeviceView?, copy: MessageResolver): String {
     val meta = d?.meta
     val description = meta?.description.orEmpty().trim()
     val model = description.substringAfter(" · ", "").trim()
     return when (meta?.platform) {
-        "web" -> description.replace(" on ", " · ").ifEmpty { "浏览器" }
+        "web" -> description.replace(" on ", " · ").ifEmpty { copy(UiMessages.securityBrowser()) }
         "android" -> "Android" + if (model.isNotEmpty()) " · $model" else ""
         "ios" -> model.ifEmpty { "iOS" }
-        else -> "客户端"
+        else -> copy(UiMessages.securityClient())
     }
 }
 
 /** Compare default names even for clients whose users have already supplied a name. */
-fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList()): String {
-    val base = clientBaseName(d)
-    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBaseName(it) == base }
+fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String {
+    val base = clientBaseName(d, copy = copy)
+    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBaseName(it, copy = copy) == base }
     return base + if (duplicate) " · ${shortId(id)}" else ""
 }
 
 /**
  * What a client is, under its name in the list: an app or a browser, and what it says it runs on.
  */
-fun clientDetail(d: DeviceView?): String {
+fun clientDetail(d: DeviceView?, copy: MessageResolver): String {
     val kind =
         when (d?.meta?.platform) {
             "android",
             "ios" -> "App"
-            "web" -> "浏览器"
+            "web" -> copy(UiMessages.securityBrowser())
             else -> ""
         }
     return listOf(kind, d?.meta?.description.orEmpty().trim())
         .filter { it.isNotEmpty() }
         .joinToString(" · ")
-        .ifEmpty { "种类未知" }
+        .ifEmpty { copy(UiMessages.securityUnknownType()) }
 }
 
 /** A day as lists write it: 9月27日, with the year when it is not this one. */
@@ -1491,10 +1491,10 @@ fun dayText(
     ms: Long,
     now: Long = System.currentTimeMillis(),
     zone: ZoneId = ZoneId.systemDefault(),
-): String {
+    copy: MessageResolver): String {
     val day = Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
-    val year = if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) "" else "${day.year}年"
-    return "$year${day.monthValue}月${day.dayOfMonth}日"
+    return if (day.year == Instant.ofEpochMilli(now).atZone(zone).year) copy(UiMessages.timeMonthDay(day.dayOfMonth, day.monthValue))
+        else copy(UiMessages.timeCalendarDateYear(day.dayOfMonth, day.monthValue, day.year))
 }
 
 /**
@@ -1505,17 +1505,20 @@ fun lastUsed(
     d: DeviceView?,
     now: Long = System.currentTimeMillis(),
     zone: ZoneId = ZoneId.systemDefault(),
-): String {
+    copy: MessageResolver): String {
     val t = d?.lastSeenMs ?: 0
     if (t <= 0) return ""
     val ago = now - t
-    if (ago < 60_000) return "刚刚"
-    if (ago < 3_600_000) return "${ago / 60_000} 分钟前"
+    if (ago < 60_000) return copy(UiMessages.timeJustNow())
+    if (ago < 3_600_000) return copy(UiMessages.timeMinutesAgo((ago / 60_000).toInt()))
     val then = Instant.ofEpochMilli(t).atZone(zone).toLocalDate()
     val today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
-    if (then == today) return "今天 ${hhmm(t, zone)}"
-    if (then == today.minusDays(1)) return "昨天"
-    return dayText(t, now, zone)
+    if (then == today) {
+        val clock = Instant.ofEpochMilli(t).atZone(zone)
+        return copy(UiMessages.timeTodayClock("%02d".format(clock.minute), clock.hour.toString()))
+    }
+    if (then == today.minusDays(1)) return copy(UiMessages.timeYesterday())
+    return dayText(t, now, zone, copy = copy)
 }
 
 /** What the list says beside a client: when it was last used, else the day it was added. */
@@ -1523,10 +1526,14 @@ fun clientUsed(
     d: DeviceView?,
     now: Long = System.currentTimeMillis(),
     zone: ZoneId = ZoneId.systemDefault(),
-): String {
-    val used = lastUsed(d, now, zone)
-    if (used.isNotEmpty()) return used + (if (used.last().isDigit()) " " else "") + "使用"
-    return if ((d?.createdMs ?: 0) > 0) "${dayText(d!!.createdMs, now, zone)}添加" else "已配对"
+    copy: MessageResolver): String {
+    val used = lastUsed(d, now, zone, copy = copy)
+    if (used.isNotEmpty()) {
+        val at = d!!.lastSeenMs
+        val clock = now - at >= 3_600_000 && Instant.ofEpochMilli(at).atZone(zone).toLocalDate() == Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        return copy(if (clock) UiMessages.timeAndroidUsedClock(used) else UiMessages.timeAndroidUsedRelative(used))
+    }
+    return if ((d?.createdMs ?: 0) > 0) copy(UiMessages.securityAdded((dayText(d!!.createdMs, now, zone, copy = copy)).toString())) else copy(UiMessages.securityPaired())
 }
 
 /**
@@ -1553,19 +1560,19 @@ fun originLabel(
     state: RemoteState,
     me: String,
     machine: String,
-): String? {
+    copy: MessageResolver): String? {
     if (o == null) return null
     return when (o.kind) {
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT ->
             when {
-                o.deviceId == me -> "本客户端"
+                o.deviceId == me -> copy(UiMessages.sessionOriginSelf())
                 // A loaded account directory includes this client.
-                o.deviceId.isEmpty() || state.devices.isEmpty() -> "另一客户端"
+                o.deviceId.isEmpty() || state.devices.isEmpty() -> copy(UiMessages.sessionOriginOther())
                 else ->
-                    state.devices[o.deviceId]?.let { clientName(it, o.deviceId, state.devices.values) }
-                        ?: "已移除的设备"
+                    state.devices[o.deviceId]?.let { clientName(it, o.deviceId, state.devices.values, copy = copy) }
+                        ?: copy(UiMessages.sessionOriginRemoved())
             }
-        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> "$machine 终端"
+        io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> copy(UiMessages.sessionOriginTerminal((machine).toString()))
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_SYSTEM -> null
         else -> null
     }
@@ -1582,21 +1589,21 @@ fun capabilities(m: MachineView?): io.github.lewin671.remoteagent.proto.MachineC
  * Why no command goes to [m]: it speaks another protocol version than this app (PROTOCOL_VERSION),
  * said by which side to update; null when they match or the machine's metadata is not read yet.
  */
-fun protocolMismatch(m: MachineView?): String? {
+fun protocolMismatch(m: MachineView?): MessageText? {
     val theirs = m?.meta?.protocolVersion ?: return null
     return when {
-        theirs < PROTOCOL_VERSION -> "${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试"
-        theirs > PROTOCOL_VERSION -> "这个 App 版本较旧，请更新后再试"
+        theirs < PROTOCOL_VERSION -> localized { copy -> copy(UiMessages.errorsRemoteAgentOnIsOutOfDateUpdateIt(listMachineName(m).resolve(copy))) }
+        theirs > PROTOCOL_VERSION -> UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry().messageText()
         else -> null
     }
 }
 
 /** A model's context window as the pickers write it: 1M 上下文, 200k 上下文; null when unknown. */
-fun contextText(tokens: Long): String? =
+fun contextText(tokens: Long, copy: MessageResolver): String? =
     when {
         tokens <= 0 -> null
-        tokens >= 1_000_000 -> "${(tokens / 100_000 / 10.0).toString().removeSuffix(".0")}M 上下文"
-        else -> "${(tokens + 500) / 1000}k 上下文"
+        tokens >= 1_000_000 -> copy(UiMessages.modelsContextSize("${(tokens / 100_000 / 10.0).toString().removeSuffix(".0")}M"))
+        else -> copy(UiMessages.modelsContextSize("${(tokens + 500) / 1000}k"))
     }
 
 /** The standard context window, which a Claude Code session can be held to. */

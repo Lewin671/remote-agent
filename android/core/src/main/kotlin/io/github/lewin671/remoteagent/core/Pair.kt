@@ -16,16 +16,16 @@ class PairKey(privateKey: ByteArray = randomBytes(32)) {
 
     /** The shared secrets with the other side; rejects keys that give an all-zero result. */
     fun derive(otherPublic: ByteArray, transcript: ByteArray): PairSecrets {
-        if (otherPublic.size != 32) throw IllegalArgumentException("配对密钥无效")
+        if (otherPublic.size != 32) throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())
         val shared = ByteArray(32)
         val a = X25519Agreement()
         a.init(priv)
         try {
             a.calculateAgreement(X25519PublicKeyParameters(otherPublic, 0), shared, 0)
         } catch (e: IllegalStateException) {
-            throw IllegalArgumentException("配对密钥无效")
+            throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())
         }
-        if (shared.all { it == 0.toByte() }) throw IllegalArgumentException("配对密钥无效")
+        if (shared.all { it == 0.toByte() }) throw MessageArgumentException(UiMessages.securityInvalidPairingKey().messageText())
         val sas = hkdf(shared, transcript, "remote-agent/v1/pair-sas".toByteArray(), 4)
         val key = hkdf(shared, transcript, "remote-agent/v1/pair-key".toByteArray(), KEY_SIZE)
         return PairSecrets(sas, key)

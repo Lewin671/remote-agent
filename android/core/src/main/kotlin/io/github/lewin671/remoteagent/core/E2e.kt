@@ -110,7 +110,7 @@ data class Secret(val root: ByteArray, val server: String) {
 
     companion object {
         fun parse(text: String): Secret {
-            val bad = IllegalArgumentException("这不是 remote-agent 的账户密钥")
+            val bad = MessageArgumentException(UiMessages.errorsThisIsNotARemoteAgentAccountKey().messageText())
             val t = text.trim()
             if (!t.startsWith("ra1.")) throw bad
             val parts = t.removePrefix("ra1.").split(".")
@@ -133,15 +133,15 @@ data class Secret(val root: ByteArray, val server: String) {
             val u = try {
                 java.net.URI(url.trim())
             } catch (e: java.net.URISyntaxException) {
-                throw IllegalArgumentException("server 地址无效")
+                throw MessageArgumentException(UiMessages.errorsAndroidInvalidServerAddress().messageText())
             }
-            val host = u.host ?: throw IllegalArgumentException("server 地址无效")
-            require(u.rawUserInfo == null) { "server 地址不能包含用户名或密码" }
+            val host = u.host ?: throw MessageArgumentException(UiMessages.errorsAndroidInvalidServerAddress().messageText())
+            requireMessage(u.rawUserInfo == null) { UiMessages.errorsTheServerAddressCannotIncludeAUsernameOrPassword().messageText() }
             val local = host in setOf("localhost", "127.0.0.1", "[::1]", "::1") || (allowPlainHttp && host == "10.0.2.2")
             when (u.scheme) {
                 "https" -> {}
-                "http" -> if (!local) throw IllegalArgumentException("server 必须使用 https")
-                else -> throw IllegalArgumentException("server 地址无效")
+                "http" -> if (!local) throw MessageArgumentException(UiMessages.errorsTheServerMustUseHttps().messageText())
+                else -> throw MessageArgumentException(UiMessages.errorsAndroidInvalidServerAddress().messageText())
             }
             val port = if (u.port == -1) "" else ":${u.port}"
             return "${u.scheme}://$host$port"
@@ -149,7 +149,11 @@ data class Secret(val root: ByteArray, val server: String) {
     }
 }
 
-class OpenException(message: String) : Exception(message)
+class OpenException(message: String) : Exception(message), MessageFailure {
+    override var display: MessageText = message.messageText()
+        private set
+    constructor(message: MessageText) : this("invalid_envelope") { display = message }
+}
 
 /** Where an envelope must have been found; unset fields are not checked, except kind. */
 data class Place(
@@ -268,8 +272,8 @@ object Envelopes {
 
 fun newRequestId(): String = randomBytes(16).hex()
 
-const val RETIRED_HISTORY_ERROR = "这条历史是旧版加密格式，已不再支持查看"
-class UnsupportedHistoryException : Exception(RETIRED_HISTORY_ERROR)
+val RETIRED_HISTORY_ERROR = UiMessages.errorsThisHistoryUsesAnOldEncryptionFormatAndCan().messageText()
+class UnsupportedHistoryException : Exception("retired_history"), MessageFailure { override val display = RETIRED_HISTORY_ERROR }
 internal fun rejectRetiredHistory(env: Envelope) {
     if (Header.parseFrom(env.header).version == 1) throw UnsupportedHistoryException()
 }

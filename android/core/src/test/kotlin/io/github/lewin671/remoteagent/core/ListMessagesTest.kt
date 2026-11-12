@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.ZoneId
@@ -11,7 +13,7 @@ class ListMessagesTest {
             for (date in listOf("2026-01-01T00:30:00", "2026-03-08T03:30:00", "2026-11-01T02:30:00")) {
                 val now = java.time.LocalDateTime.parse(date).atZone(zone).toInstant().toEpochMilli()
                 for (elapsed in listOf(0L, 59_999L, 60_000L, 3_599_999L, 3_600_000L, 86_400_000L, 7 * 86_400_000L, 365 * 86_400_000L)) {
-                    assertEquals(whenText(now - elapsed, now, zone), listWhen(now - elapsed, now, zone).testText())
+                    assertEquals(whenText(now - elapsed, now, zone, copy = ::messageTextForTest), listWhen(now - elapsed, now, zone).testText())
                 }
                 assertEquals("", listWhen(0, now, zone).testText())
             }

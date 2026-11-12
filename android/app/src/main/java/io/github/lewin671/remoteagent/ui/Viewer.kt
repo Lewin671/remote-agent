@@ -62,7 +62,7 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.SessionImage
 import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentName
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.sessionImages
 import io.github.lewin671.remoteagent.core.titleOf
 import io.github.lewin671.remoteagent.proto.ImageFormat
@@ -93,7 +93,7 @@ sealed interface Big {
 
     data class Failed(val why: String) : Big
 
-    data class Corrupt(val why: String) : Big
+    data class Corrupt(val why: io.github.lewin671.remoteagent.core.MessageText) : Big
 }
 
 /**
@@ -119,11 +119,11 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             n.coerceIn(0, (all.size - 1).coerceAtLeast(0))
         }
     BackHandler { nav.back() }
-    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
+    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy) ?: copy(UiMessages.projectsReadingDirectory()),
         picture = { page -> ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE) },
         info = { page ->
             val cur = all[page]
-            val agent = agentName(s?.agent() ?: DEFAULT_AGENT)
+            val agent = agentName(s?.agent() ?: DEFAULT_AGENT, copy = copy)
             val from = when (cur.ref.source) {
                 ImageSource.IMAGE_SOURCE_TOOL -> copy(UiMessages.imageAndroidViewedBy(agent = agent))
                 ImageSource.IMAGE_SOURCE_GENERATED -> copy(UiMessages.imageAndroidGeneratedBy(agent = agent))
@@ -132,7 +132,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
             val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
             val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
-            Text(listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it) }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
+            Text(listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it, copy = copy) }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
             ViewerActions(remote, sid, cur)
         })
 }
@@ -209,7 +209,7 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
                 Big.Expired -> copy(UiMessages.imageOriginalExpired())
                 Big.Offline -> copy(UiMessages.imageLoadConnected())
                 is Big.Failed -> copy(UiMessages.imageAndroidDownloadRetry(reason = b.why))
-                is Big.Corrupt -> if (b.why == RETIRED_HISTORY_ERROR) b.why else copy(UiMessages.imageAndroidVerifyFailed(reason = b.why))
+                is Big.Corrupt -> if (b.why === RETIRED_HISTORY_ERROR) uiText(b.why) else copy(UiMessages.imageAndroidVerifyFailed(reason = uiText(b.why)))
             }
         if (b == Big.Loading)
             Spinner(Color.White, Modifier.align(Alignment.Center), size = 32.dp, stroke = 3.dp)
@@ -240,7 +240,7 @@ internal fun ViewerBitmap(bitmap: ImageBitmap, label: String) {
     }, contentScale = ContentScale.Fit)
 }
 
-private suspend fun load(remote: Remote, sid: String, img: SessionImage, online: Boolean): Big {
+private suspend fun load(remote: Remote, sid: String, img: SessionImage, online: Boolean, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText): Big {
     val ref = img.ref
     if (ref.sync != ImageSync.IMAGE_SYNC_SYNCED || ref.imageId.isEmpty()) return Big.NotSynced
     ViewerImages.get(remote, "$sid/${ref.imageId}")?.let {
@@ -253,7 +253,7 @@ private suspend fun load(remote: Remote, sid: String, img: SessionImage, online:
                 val bmp =
                     withContext(Dispatchers.Default) {
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-                    } ?: return Big.Corrupt("解不出图片")
+                    } ?: return Big.Corrupt(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotDecodeImage()))
                 Big.Ready(bmp.asImageBitmap(), bytes, r.payload.format).also {
                     ViewerImages.put(remote, "$sid/${ref.imageId}", it)
                 }
@@ -265,7 +265,7 @@ private suspend fun load(remote: Remote, sid: String, img: SessionImage, online:
     } catch (e: kotlin.coroutines.cancellation.CancellationException) {
         throw e
     } catch (e: Exception) {
-        if (!online) Big.Offline else Big.Failed(errorText(e))
+        if (!online) Big.Offline else Big.Failed(displayError(e))
     }
 }
 
@@ -312,7 +312,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                     }
                     copy(UiMessages.imageAndroidSaved())
                 } catch (e: Exception) {
-                    copy(UiMessages.projectsAndroidSaveFailed(reason = (errorText(e)).toString()))
+                    copy(UiMessages.projectsAndroidSaveFailed(reason = (displayError(e)).toString()))
                 }
         }
     }
@@ -359,7 +359,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
                             ),
                         )
                     } catch (e: Exception) {
-                        msg = copy(UiMessages.imageShareFailed(reason = (errorText(e)).toString()))
+                        msg = copy(UiMessages.imageShareFailed(reason = (displayError(e)).toString()))
                     }
                 }
             },
@@ -371,7 +371,7 @@ private fun ViewerActions(remote: Remote, sid: String, img: SessionImage) {
     }
 }
 
-private fun save(context: Context, data: ByteArray, format: ImageFormat, name: String) {
+private fun save(context: Context, data: ByteArray, format: ImageFormat, name: String, copy: io.github.lewin671.remoteagent.core.MessageResolver = ::sessionText) {
     val base = name.substringBeforeLast('.').ifEmpty { "remote-agent" }
     val values =
         ContentValues().apply {
@@ -388,8 +388,8 @@ private fun save(context: Context, data: ByteArray, format: ImageFormat, name: S
     val resolver = context.contentResolver
     val uri =
         resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
-            ?: throw IllegalStateException("相册不可写")
-    resolver.openOutputStream(uri)?.use { it.write(data) } ?: throw IllegalStateException("相册不可写")
+            ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
+    resolver.openOutputStream(uri)?.use { it.write(data) } ?: throw IllegalStateException(copy(UiMessages.imageAndroidPhotoLibraryIsNotWritable()))
     if (Build.VERSION.SDK_INT >= 29) {
         values.clear()
         values.put(MediaStore.Images.Media.IS_PENDING, 0)

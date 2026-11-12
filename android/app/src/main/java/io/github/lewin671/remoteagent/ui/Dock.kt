@@ -314,7 +314,7 @@ fun ApprovalDock(s: SessionView, a: ApprovalRequested, more: Int) {
         else PendingDock(
             s.id,
             DockItem.Approval(a),
-            agentName(s.agent()),
+            agentName(s.agent(), copy = copy),
             more,
             left = if (a.hasDeadline()) copy(UiMessages.homeIosApprovalRemaining(count = (minutesLeft(a.deadline.seconds * 1000, t)).toInt())) else "",
             openLabel = uiText(approvalHead(a)),
@@ -365,8 +365,7 @@ suspend fun resolveApproval(
     a: ApprovalRequested,
     allow: Boolean,
     message: String,
-    always: Boolean = false,
-): Boolean {
+    always: Boolean = false): Boolean {
     require(!isSkeleton(a)) { sessionText(UiMessages.sessionSkeleton()) }
     val r = Resolves.of(a.approvalId)
     require(!approvalTruncated(a) || !(allow || (r.attempt.frozen && r.allow))) {
@@ -651,7 +650,7 @@ fun QuestionDock(s: SessionView, q: QuestionAsked, more: Int, onTerminal: () -> 
     PendingDock(
         s.id,
         DockItem.Question(q),
-        agentName(s.agent()),
+        agentName(s.agent(), copy = copy),
         more,
         meta = questionProgress(q, copy = copy),
         body = {
@@ -678,11 +677,11 @@ fun QuestionPage(sid: String, qid: String) {
             s?.agent() ?: DEFAULT_AGENT,
         )
     val q = d.questions[qid]
-    PageScaffold(copy(UiMessages.dockAnswerTitle()), subtitle = s?.let { titleOf(it) + " · " + agentName(it.agent()) }) {
+    PageScaffold(copy(UiMessages.dockAnswerTitle()), subtitle = s?.let { titleOf(it, copy = copy) + " · " + agentName(it.agent(), copy = copy) }) {
         if (s == null || q == null) {
             PageNote(
                 if (d.answered.containsKey(qid)) copy(UiMessages.dockAndroidQuestionAnswered())
-                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
+                else io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy) ?: copy(UiMessages.projectsReadingDirectory()),
             )
             return@PageScaffold
         }
@@ -692,7 +691,7 @@ fun QuestionPage(sid: String, qid: String) {
             nav.sessionTerminal(sid)
         }
         DarkCard(Modifier.weight(1f, fill = false).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
-            DarkCardHead(copy(UiMessages.listStateAgentAsking(agent = (agentName(s.agent())).toString())), questionProgress(q, copy = copy))
+            DarkCardHead(copy(UiMessages.listStateAgentAsking(agent = (agentName(s.agent(), copy = copy)).toString())), questionProgress(q, copy = copy))
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                 QuestionBody(s, q, toTerminal, full = true, onAnswered = { nav.back() }, part = 1, act = act)
             }
@@ -708,7 +707,7 @@ fun PlanDock(s: SessionView, text: String, more: Int, onFull: () -> Unit) {
     PendingDock(
         s.id,
         DockItem.Plan(text),
-        agentName(s.agent()),
+        agentName(s.agent(), copy = copy),
         more,
         // In the open line before 收起, as on the web (design-system §6).
         headExtra = { CardLink(copy(UiMessages.markdownExpand()), onFull) },
@@ -836,14 +835,14 @@ fun PopupDock(s: SessionView, title: String, more: Int, onTerminal: () -> Unit) 
     PendingDock(
         s.id,
         DockItem.Popup(title),
-        agentName(s.agent()),
+        agentName(s.agent(), copy = copy),
         more,
-        meta = copy(UiMessages.dockAgentWaiting(agent = (agentName(s.agent())).toString())),
+        meta = copy(UiMessages.dockAgentWaiting(agent = (agentName(s.agent(), copy = copy)).toString())),
         body = {
             if (title.isNotEmpty())
                 Text(title, style = T.mono13.copy(fontSize = 15.sp, lineHeight = 22.sp), color = CardColors.text, modifier = Modifier.padding(top = 12.dp))
             val hint = io.github.lewin671.remoteagent.core.popupHint(s.agent(), title)
-            if (hint.isNotEmpty()) Text(hint, style = T.s13, color = CardColors.orange, modifier = Modifier.padding(top = 8.dp))
+            if (hint.isNotEmpty()) Text(uiText(hint), style = T.s13, color = CardColors.orange, modifier = Modifier.padding(top = 8.dp))
         },
     ) {
         CardButton(copy(UiMessages.dockHandleTerminal()), onTerminal, Modifier.fillMaxWidth().padding(top = 16.dp), primary = true)

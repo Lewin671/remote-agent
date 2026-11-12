@@ -1,8 +1,9 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import com.connectrpc.Code
 import com.connectrpc.ConnectException
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,8 +13,8 @@ class ErrorTextTest {
     fun aRequestThatNeverLeftThePhoneNamesTheNetworkNotTheResolver() {
         val cause = java.net.UnknownHostException("Unable to resolve host \"example.test\": No address associated with hostname")
         val e = ConnectException(Code.UNKNOWN, cause.message, cause)
-        assertEquals("找不到服务器，检查一下网络", errorText(e))
-        assertEquals("找不到服务器，检查一下网络", errorText(cause))
+        assertEquals(messageTextForTest(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork()), errorText(e))
+        assertEquals(messageTextForTest(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork()), errorText(cause))
         assertTrue(unresolvedHost(e))
         assertTrue(detailText(e).startsWith("UnknownHostException: Unable to resolve host"))
         assertFalse(unresolvedHost(java.net.SocketTimeoutException("timeout")))
@@ -22,7 +23,7 @@ class ErrorTextTest {
     @Test
     fun loginDenialIsFriendlyAndOfflineDoesNotProveDenial() {
         val denied = ConnectException(Code.PERMISSION_DENIED, "login failed")
-        assertEquals("服务器不认识这台设备（可能已被移除，或服务已重建）", errorText(denied))
+        assertEquals(messageTextForTest(UiMessages.errorsTheServerDoesNotRecognizeThisDeviceItMay()), errorText(denied))
         assertTrue(loginDenied(denied))
         assertFalse(loginDenied(java.net.UnknownHostException()))
         assertFalse(loginDenied(ConnectException(Code.UNAVAILABLE, "offline")))

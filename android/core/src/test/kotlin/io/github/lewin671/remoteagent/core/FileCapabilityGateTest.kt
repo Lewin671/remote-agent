@@ -33,12 +33,12 @@ class FileCapabilityGateTest {
                 val e = runCatching { r.forward(p) }.exceptionOrNull()
                 assertTrue("must reject locally: $e", e is CommandException && !e.unknown && !e.fromDaemon)
                 assertNotNull("file-bearing operation must be blocked", e)
-                assertTrue(e!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+                assertTrue(errorText(e!!).testText().orEmpty().contains("更新电脑上的 remote-agent"))
             }
             r.showForTest(RemoteState())
             val e = runCatching { r.forward(r.prepare(daemon.id, "s", send)) }.exceptionOrNull()
             assertNotNull("file-bearing operation must be blocked", e)
-                assertTrue(e!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+                assertTrue(errorText(e!!).testText().orEmpty().contains("更新电脑上的 remote-agent"))
             assertTrue(daemon.commands.isEmpty())
             // Text and images remain valid on an older daemon.
             r.showForTest(state(daemon.id, null))
@@ -72,7 +72,7 @@ class FileCapabilityGateTest {
                 armed.set(true)
                 val e = runCatching { r.forward(p) }.exceptionOrNull()
                 assertNotNull("file-bearing operation must be blocked", e)
-                assertTrue(e!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+                assertTrue(errorText(e!!).testText().orEmpty().contains("更新电脑上的 remote-agent"))
                 assertFalse((e as CommandException).unknown)
             }
             assertTrue(daemon.commands.isEmpty())
@@ -99,7 +99,7 @@ class FileCapabilityGateTest {
                 assertTrue(a.frozen); assertSame(p, a.pending)
                 assertTrue(e is CommandException && e.unknown)
                 assertNotNull("file-bearing operation must be blocked", e)
-                assertTrue(e!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+                assertTrue(errorText(e!!).testText().orEmpty().contains("更新电脑上的 remote-agent"))
                 assertTrue(daemon.commands.isEmpty())
                 r.showForTest(state(daemon.id, true))
                 r.forward(a.next { error("must retain identity") }, retryOfUnknown = true)
@@ -131,7 +131,7 @@ class FileCapabilityGateTest {
                 assertEquals(1, calls.get())
                 assertTrue(e is CommandException && e.unknown)
                 assertNotNull("file-bearing operation must be blocked", e)
-                assertTrue(e!!.message.orEmpty().contains("更新电脑上的 remote-agent"))
+                assertTrue(errorText(e!!).testText().orEmpty().contains("更新电脑上的 remote-agent"))
             }
         } finally { r.close(); daemon.close(); server.close() }
     }

@@ -14,7 +14,7 @@ sealed interface PairingUiState {
     data class Compare(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data class Sending(val emoji: List<String>, val kind: DeviceKind) : PairingUiState
     data object Done : PairingUiState
-    data class Failed(val message: String, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
+    data class Failed(val message: MessageText, val uncertain: Boolean, val canRetry: Boolean) : PairingUiState
 }
 
 /** Retained by the account on its UI dispatcher. Once consent is given, page
@@ -50,7 +50,7 @@ class PairingController(
                 val (emoji, kind) = pairing.joined()
                 if (run == generation) mutable.value = PairingUiState.Compare(emoji, kind)
             } catch (e: CancellationException) {
-                if (run == generation) mutable.value = PairingUiState.Failed("已暂停，回到前台后可重试", false, false)
+                if (run == generation) mutable.value = PairingUiState.Failed(UiMessages.securityAndroidPausedRetryAfterReturningToTheForeground().messageText(), false, false)
                 throw e
             }
             catch (e: Exception) {
@@ -80,7 +80,7 @@ class PairingController(
                 pairing.approve()
                 if (run == generation) { current = null; consent = null; mutable.value = PairingUiState.Done }
             } catch (e: CancellationException) {
-                if (run == generation) mutable.value = PairingUiState.Failed("结果尚未确定，回到前台后重试同一次批准", true, true)
+                if (run == generation) mutable.value = PairingUiState.Failed(UiMessages.securityAndroidOutcomeUnconfirmedRetryTheSameApprovalAfterReturningToThe().messageText(), true, true)
                 throw e
             }
             catch (e: Exception) {
@@ -88,8 +88,8 @@ class PairingController(
                     val uncertain = e !is PairException || e.uncertain
                     val retryable = canRetryPairApproval(e)
                     val message = if (e is PairException) words(e)
-                        else if (retryable) "暂时无法确认新设备是否已加入，请检查网络后重试同一次批准，或在新设备上查看结果"
-                        else "服务器未接受这次批准，请在新设备核对是否已加入，再重新开始"
+                        else if (retryable) UiMessages.securityAndroidCannotConfirmWhetherTheNewDeviceJoinedCheckYourNetwork().messageText()
+                        else UiMessages.securityAndroidTheServerDidNotAcceptThisApprovalCheckWhetherThe().messageText()
                     mutable.value = PairingUiState.Failed(message, uncertain, retryable)
                 }
             }
@@ -109,5 +109,5 @@ class PairingController(
         return old?.let { operationScope.launch { it.cancelOnServer() } }
     }
 
-    private fun words(e: Exception) = if (e is PairException) e.message.orEmpty() else "配对暂时无法完成，请检查网络后重新开始"
+    private fun words(e: Exception) = if (e is PairException) e.display else UiMessages.securityAndroidPairingCannotFinishRightNowCheckYourNetworkThenStart().messageText()
 }

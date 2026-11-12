@@ -544,11 +544,11 @@ suspend fun rebuildSecurityDomain(
     draft: CreatedAccount? = null,
     persistDraft: (CreatedAccount) -> Unit = { throw DeviceSecurity.Failure("storage") },
 ): CreatedAccount {
-    if (!stored.hasRoot) throw PairException("这台手机没有账户根密钥，不能重建安全域；请用管理端重新配对")
+    if (!stored.hasRoot) throw PairException(UiMessages.securityAndroidThisPhoneHasNoAccountRootKeyAndCannotRebuild().messageText())
     val keys = Keys.derive(stored.root)
     val accountId = deviceId(keys.account.publicKey)
     if (stored.accountId.isNotEmpty() && stored.accountId != accountId)
-        throw PairException("这台手机保存的账户与根密钥不一致")
+        throw PairException(UiMessages.securityAndroidTheAccountSavedOnThisPhoneDoesNotMatchIts().messageText())
     val prepared =
         draft
             ?: run {
@@ -630,11 +630,11 @@ suspend fun rebuildSecurityDomain(
                 e.code == Code.FAILED_PRECONDITION && "offline" in e.message.orEmpty() ->
                     offline = true
                 unreachable(e) -> offline = true
-                else -> throw PairException(e.message ?: "安全域固定失败")
+                else -> throw PairException(e.message?.messageText() ?: UiMessages.securityAndroidSecurityDomainPinningFailed().messageText())
             }
         }
     } catch (e: ConnectException) {
-        if (unreachable(e)) offline = true else throw PairException(e.message ?: "连不上服务器")
+        if (unreachable(e)) offline = true else throw PairException(e.message?.messageText() ?: UiMessages.connectionNoServer().messageText())
     }
     return prepared.copy(needsOfflinePin = offline)
 }

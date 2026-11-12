@@ -10,7 +10,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import io.github.lewin671.remoteagent.core.CommandException
 import io.github.lewin671.remoteagent.core.Remote
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.proto.Command
 import io.github.lewin671.remoteagent.proto.CommandResult
@@ -36,7 +36,7 @@ class Action(private val scope: CoroutineScope) {
             try {
                 onDone(block())
             } catch (e: Exception) {
-                error = errorText(e)
+                error = displayError(e)
                 unknown = (e as? CommandException)?.unknown == true
             } finally {
                 running = false
@@ -86,13 +86,15 @@ class Outgoing(
     var error by mutableStateOf("")
     var failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
         internal set
+    var failureDisplay: io.github.lewin671.remoteagent.core.MessageText? = null
+        private set
     var missingImages by mutableStateOf(false)
         private set
     val hasLocalAttachments: Boolean get() = images.isNotEmpty() && images.all { it.hasSource() }
     val canPutBack: Boolean get() = (state == State.FAILED || state == State.UNKNOWN) && (hasLocalAttachments || (imageIds.isEmpty() && fileIds.isEmpty() && text.isNotEmpty()))
 
     /** Retries preserve the message request and image IDs, even when an upload has since expired. */
-    internal suspend fun deliver(send: suspend (SendRequest) -> Unit) {
+    internal suspend fun deliver( send: suspend (SendRequest) -> Unit) {
         if (state == State.SENDING && delivering) return
         val wasUnknown = state == State.UNKNOWN
         val wasFailed = state == State.FAILED
@@ -116,7 +118,8 @@ class Outgoing(
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
             failureKind = if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
-            error = if (missingImages) { if (fileIds.isNotEmpty()) sessionText(UiMessages.attachmentAndroidMissingFiles()) else sessionText(UiMessages.imageAndroidMissingUploads()) } else errorText(e)
+            failureDisplay = io.github.lewin671.remoteagent.core.errorText(e)
+            error = if (missingImages) { if (fileIds.isNotEmpty()) sessionText(UiMessages.attachmentAndroidMissingFiles()) else sessionText(UiMessages.imageAndroidMissingUploads()) } else displayError(e)
         } finally {
             delivering = false
         }
@@ -359,9 +362,7 @@ object Outbox {
         mode: io.github.lewin671.remoteagent.proto.SendMode = io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER,
         store: ((String, Outgoing, Boolean) -> Unit)? = null,
         discard: ((String, String) -> Unit)? = null,
-        fileIds: List<String> = emptyList(),
-        onKept: (Result<Unit>) -> Unit,
-    ) {
+        fileIds: List<String> = emptyList(), onKept: (Result<Unit>) -> Unit) {
         if (keeping(sid)) return
         val machine = images.firstOrNull()?.machineId
         try { remote.requireFileSupport(machine, fileIds.isNotEmpty()) }

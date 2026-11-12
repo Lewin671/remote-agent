@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.AccountPrefsObject
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.AgentSettings
@@ -8,7 +10,6 @@ import io.github.lewin671.remoteagent.proto.Envelope
 import io.github.lewin671.remoteagent.proto.ProjectPrefs
 import io.github.lewin671.remoteagent.proto.ProjectSettings
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -97,7 +98,7 @@ class ProjectGroupsTest {
                 .associateBy { it.id },
             prefs = PrefsObject(3, prefs),
         )
-        val g = projectGroups(state)
+        val g = projectGroups(state, copy = ::messageTextForTest)
         assertEquals(listOf("/c", "/a"), g.pinned.map { it.key })
         assertEquals(listOf("/e", "/b"), g.others.map { it.key })
         assertEquals(listOf("/d"), g.hidden.map { it.key })

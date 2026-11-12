@@ -41,7 +41,7 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
                     check(filesSupported(target)) { sessionText(UiMessages.attachmentUpdateRequired()) }
                     if (documents.size >= maxFiles(target)) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = (maxFiles(target)).toInt())); break }
                     val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
-                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = it; continue }
+                    if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = sessionText(it); continue }
                     if (AccountMemory.token !== accountToken) { PendingUris.release(entry); return@launch }
                     PendingUris.retain(entry)
                     val kept = runCatching { context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isSuccess
@@ -51,7 +51,7 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
                     machine?.let { upload(remote, entry, it) }
                 } catch (e: CancellationException) { throw e
                 } catch (e: Exception) {
-                    notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else errorText(e)
+                    notice = if (e is java.io.IOException || e is SecurityException) sessionText(UiMessages.attachmentAndroidSourceUnreadable()) else displayError(e)
                 }
             }
         } finally { readingFiles = false }
@@ -62,7 +62,7 @@ internal fun fileDraftBlocked(draft: ImageDraft, machine: MachineView?, copy: (i
     if (draft.documents.isEmpty()) return null
     if (!filesSupported(machine)) return copy(UiMessages.attachmentUpdateRequired())
     if (draft.documents.size > maxFiles(machine)) return copy(UiMessages.attachmentMaxFiles(count = (maxFiles(machine)).toInt()))
-    return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, maxFiles(machine), maxFileBytes(machine)) }
+    return draft.documents.filter { it.sizeVerified }.firstNotNullOfOrNull { fileLimitError(it.fileBytes, 0, maxFiles(machine), maxFileBytes(machine))?.resolve(copy) }
 }
 
 internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, target: String, forceFresh: Boolean = false) {
@@ -70,7 +70,7 @@ internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, targ
     val machine = remote.state.value.machines[target]
     if (!filesSupported(machine)) {
         val turn = entry.stopUpload()
-        if (entry.valid(turn)) entry.state = PendingImage.State.Failed("这台电脑不支持发送文件，请更新电脑上的 remote-agent")
+        if (entry.valid(turn)) entry.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentUpdateRequired()))
         return
     }
     startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), maxFileBytes(machine), forceFresh = forceFresh) {
@@ -81,14 +81,13 @@ internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, targ
 /** Injectable channel/source/scope exercise cancellation races without an Android runtime. */
 internal fun ImageDraft.startDocumentUpload(
     entry: PendingImage, target: String, owner: CoroutineScope, channel: UploadChannel, limit: Long,
-    io: CoroutineDispatcher = Dispatchers.IO, forceFresh: Boolean = false, open: () -> InputStream,
-) {
+    io: CoroutineDispatcher = Dispatchers.IO, forceFresh: Boolean = false, open: () -> InputStream) {
     if (!forceFresh && !needsUpload(entry, target)) return
     val changed = forceFresh || entry.state is PendingImage.State.Failed || entry.transportMachine() != target || entry.isProtected() || entry.fileId != null && entry.expiresMs <= System.currentTimeMillis()
     var turn = entry.stopUpload(abort = changed)
     if (!entry.activate(turn, target, fresh = changed)) return
     if (!entry.hasSource()) {
-        entry.change(turn, target) { entry.state = PendingImage.State.Failed("这个文件没有本机副本，请移除后重新选择") }
+        entry.change(turn, target) { entry.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentFileMissing())) }
         persistOrder()
         return
     }
@@ -141,7 +140,7 @@ internal fun ImageDraft.startDocumentUpload(
             }
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            entry.change(turn, target) { entry.state = PendingImage.State.Failed(uploadErrorText(e)) }
+            entry.change(turn, target) { entry.state = PendingImage.State.Failed(sessionText(uploadErrorText(e))) }
         }
     }
 }

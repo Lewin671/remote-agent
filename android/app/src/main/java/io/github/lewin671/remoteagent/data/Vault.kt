@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.data
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.app.KeyguardManager
 import android.content.Context
 import android.os.Build
@@ -434,7 +438,7 @@ class Vault internal constructor(
             val old = read(file, ACCOUNT_ALIAS)
             if (old != null && !old.contentEquals(identity.bytes()))
                 throw io.github.lewin671.remoteagent.core.PairException(
-                    "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
+                    sessionText(UiMessages.securityAnotherPairingDraftIsUnfinishedCompleteThisPairingOr()),
                 )
             write(file, ACCOUNT_ALIAS, identity.bytes(), unlockedOnly = true)
         }

@@ -12,7 +12,7 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
     val configuration = Configuration(context.resources.configuration)
     configuration.setLocale(java.util.Locale.forLanguageTag(MessageLocale.appleTags.getValue(language)))
     val resources = context.createConfigurationContext(configuration).resources
-    return resolveUiMessage0(resources, message) ?: resolveUiMessage1(resources, message) ?: resolveUiMessage2(resources, message) ?: resolveUiMessage3(resources, message) ?: resolveUiMessage4(resources, message) ?: resolveUiMessage5(resources, message) ?: resolveUiMessage6(resources, message) ?: resolveUiMessage7(resources, message) ?: resolveUiMessage8(resources, message) ?: resolveUiMessage9(resources, message) ?: error("Unknown UI message key")
+    return resolveUiMessage0(resources, message) ?: resolveUiMessage1(resources, message) ?: resolveUiMessage2(resources, message) ?: resolveUiMessage3(resources, message) ?: resolveUiMessage4(resources, message) ?: resolveUiMessage5(resources, message) ?: resolveUiMessage6(resources, message) ?: resolveUiMessage7(resources, message) ?: resolveUiMessage8(resources, message) ?: resolveUiMessage9(resources, message) ?: resolveUiMessage10(resources, message) ?: resolveUiMessage11(resources, message) ?: resolveUiMessage12(resources, message) ?: error("Unknown UI message key")
 }
 
 private fun resolveUiMessage0(resources: android.content.res.Resources, message: UiMessage): String? {
@@ -260,8 +260,54 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "common.all_projects_avatar" -> {
             resources.getString(R.string.common_all_projects_avatar)
         }
+        "common.android_account_signed_out" -> {
+            resources.getString(R.string.common_android_account_signed_out)
+        }
+        "common.android_after_switching_machines_each_cli_starts_with_that_machine_s" -> {
+            resources.getString(R.string.common_android_after_switching_machines_each_cli_starts_with_that_machine_s)
+        }
+        "common.android_allow_camera_access" -> {
+            resources.getString(R.string.common_android_allow_camera_access)
+        }
+        "common.android_camera_access_is_needed_to_scan_you_can_also_go" -> {
+            resources.getString(R.string.common_android_camera_access_is_needed_to_scan_you_can_also_go)
+        }
+        "common.android_cannot_find_this_session" -> {
+            resources.getString(R.string.common_android_cannot_find_this_session)
+        }
+        "common.android_cli_s_own_mode" -> {
+            resources.getString(R.string.common_android_cli_s_own_mode)
+        }
+        "common.android_could_not_clear_the_account_and_cache_on_this_phone" -> {
+            resources.getString(R.string.common_android_could_not_clear_the_account_and_cache_on_this_phone)
+        }
+        "common.android_could_not_read_this_session_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.common_android_could_not_read_this_session_value1, value1)
+        }
+        "common.android_could_not_save_pending_images" -> {
+            resources.getString(R.string.common_android_could_not_save_pending_images)
+        }
+        "common.android_each_cli_saves_its_own_settings_only_future_sessions_are" -> {
+            resources.getString(R.string.common_android_each_cli_saves_its_own_settings_only_future_sessions_are)
+        }
         "common.android_more" -> {
             resources.getString(R.string.common_android_more)
+        }
+        "common.android_new_full_access_sessions_start_directly_with_these_settings" -> {
+            resources.getString(R.string.common_android_new_full_access_sessions_start_directly_with_these_settings)
+        }
+        "common.android_offline" -> {
+            resources.getString(R.string.common_android_offline)
+        }
+        "common.android_project_settings_may_differ" -> {
+            resources.getString(R.string.common_android_project_settings_may_differ)
+        }
+        "common.android_the_original_request_and_keys_are_saved_for_retry_if" -> {
+            resources.getString(R.string.common_android_the_original_request_and_keys_are_saved_for_retry_if)
+        }
+        "common.android_this_app_version_is_old_update_and_retry" -> {
+            resources.getString(R.string.common_android_this_app_version_is_old_update_and_retry)
         }
         "common.back" -> {
             resources.getString(R.string.common_back)
@@ -323,6 +369,9 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "composer.after_turn" -> {
             resources.getString(R.string.composer_after_turn)
         }
+        "composer.android_image_not_on_computer" -> {
+            resources.getString(R.string.composer_android_image_not_on_computer)
+        }
         "composer.android_not_sent" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.composer_android_not_sent, reason)
@@ -330,8 +379,14 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "composer.android_outbox_format" -> {
             resources.getString(R.string.composer_android_outbox_format)
         }
+        "composer.android_reply_unverified" -> {
+            resources.getString(R.string.composer_android_reply_unverified)
+        }
         "composer.android_restart_unknown" -> {
             resources.getString(R.string.composer_android_restart_unknown)
+        }
+        "composer.android_unknown_reason" -> {
+            resources.getString(R.string.composer_android_unknown_reason)
         }
         "composer.await_record" -> {
             val agent = message.args.getValue("agent") as String
@@ -453,6 +508,12 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "connection.connected" -> {
             resources.getString(R.string.connection_connected)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage1(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "connection.connecting" -> {
             resources.getString(R.string.connection_connecting)
         }
@@ -509,12 +570,6 @@ private fun resolveUiMessage0(resources: android.content.res.Resources, message:
         "connection.reconnect_now" -> {
             resources.getString(R.string.connection_reconnect_now)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage1(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "connection.reconnecting" -> {
             resources.getString(R.string.connection_reconnecting)
         }
@@ -705,6 +760,178 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.account_creation_draft_preserved_continue_the_original_creation_flow" -> {
             resources.getString(R.string.errors_account_creation_draft_preserved_continue_the_original_creation_flow)
         }
+        "errors.android_attachment_transfer_content_changed_retry" -> {
+            resources.getString(R.string.errors_android_attachment_transfer_content_changed_retry)
+        }
+        "errors.android_attachment_transfer_stopped_or_changed_retry" -> {
+            resources.getString(R.string.errors_android_attachment_transfer_stopped_or_changed_retry)
+        }
+        "errors.android_cannot_find_the_server_check_your_network" -> {
+            resources.getString(R.string.errors_android_cannot_find_the_server_check_your_network)
+        }
+        "errors.android_cannot_open_the_computer_s_reply_command_outcome_unknown" -> {
+            resources.getString(R.string.errors_android_cannot_open_the_computer_s_reply_command_outcome_unknown)
+        }
+        "errors.android_cannot_read_file_size_select_the_file_again" -> {
+            resources.getString(R.string.errors_android_cannot_read_file_size_select_the_file_again)
+        }
+        "errors.android_cannot_read_the_source_file_remove_it_and_select_the" -> {
+            resources.getString(R.string.errors_android_cannot_read_the_source_file_remove_it_and_select_the)
+        }
+        "errors.android_cannot_verify_the_current_request" -> {
+            resources.getString(R.string.errors_android_cannot_verify_the_current_request)
+        }
+        "errors.android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends" -> {
+            resources.getString(R.string.errors_android_computer_outcome_unknown_stopped_waiting_for_a_reply_retrying_sends)
+        }
+        "errors.android_computer_outcome_unknown_the_connection_dropped" -> {
+            resources.getString(R.string.errors_android_computer_outcome_unknown_the_connection_dropped)
+        }
+        "errors.android_computer_outcome_unknown_the_request_may_have_arrived_before_login" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_computer_outcome_unknown_the_request_may_have_arrived_before_login, value1)
+        }
+        "errors.android_computer_outcome_unknown_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_computer_outcome_unknown_value1, value1)
+        }
+        "errors.android_could_not_connect_to_the_server" -> {
+            resources.getString(R.string.errors_android_could_not_connect_to_the_server)
+        }
+        "errors.android_could_not_read_the_session_list" -> {
+            resources.getString(R.string.errors_android_could_not_read_the_session_list)
+        }
+        "errors.android_file_name_is_too_long_or_empty_rename_the_file" -> {
+            resources.getString(R.string.errors_android_file_name_is_too_long_or_empty_rename_the_file)
+        }
+        "errors.android_file_too_large_maximum_size_per_file_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_file_too_large_maximum_size_per_file_value1, value1)
+        }
+        "errors.android_file_verification_failed_retry_or_select_the_file_again" -> {
+            resources.getString(R.string.errors_android_file_verification_failed_retry_or_select_the_file_again)
+        }
+        "errors.android_history_read_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_android_history_read_failed, reason)
+        }
+        "errors.android_history_records_are_discontinuous_retry_reading" -> {
+            resources.getString(R.string.errors_android_history_records_are_discontinuous_retry_reading)
+        }
+        "errors.android_image_content_does_not_match_its_format" -> {
+            resources.getString(R.string.errors_android_image_content_does_not_match_its_format)
+        }
+        "errors.android_invalid_server_address" -> {
+            resources.getString(R.string.errors_android_invalid_server_address)
+        }
+        "errors.android_login_expired" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_android_login_expired, reason)
+        }
+        "errors.android_network_unavailable_command_was_not_sent" -> {
+            resources.getString(R.string.errors_android_network_unavailable_command_was_not_sent)
+        }
+        "errors.android_no_verifiable_execution_result_received_retry_the_same_request" -> {
+            resources.getString(R.string.errors_android_no_verifiable_execution_result_received_retry_the_same_request)
+        }
+        "errors.android_only_the_managing_client_can_veto_recovery" -> {
+            resources.getString(R.string.errors_android_only_the_managing_client_can_veto_recovery)
+        }
+        "errors.android_open_value1_to_renew" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_open_value1_to_renew, value1)
+        }
+        "errors.android_other_clients_kept_changing_project_preferences_could_not_save" -> {
+            resources.getString(R.string.errors_android_other_clients_kept_changing_project_preferences_could_not_save)
+        }
+        "errors.android_pairing_approval_does_not_match_this_device_has_expired_or" -> {
+            resources.getString(R.string.errors_android_pairing_approval_does_not_match_this_device_has_expired_or)
+        }
+        "errors.android_project_preferences_are_changing_retry" -> {
+            resources.getString(R.string.errors_android_project_preferences_are_changing_retry)
+        }
+        "errors.android_records_from_before_recovery_are_unreadable" -> {
+            resources.getString(R.string.errors_android_records_from_before_recovery_are_unreadable)
+        }
+        "errors.android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_remote_control_authorization_expired_cannot_save_changes_control_sessions_or, value1)
+        }
+        "errors.android_remote_control_paused_value1_and_retry" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_remote_control_paused_value1_and_retry, value1)
+        }
+        "errors.android_remove_devices_on_the_managing_client" -> {
+            resources.getString(R.string.errors_android_remove_devices_on_the_managing_client)
+        }
+        "errors.android_secure_connection_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_android_secure_connection_failed, reason)
+        }
+        "errors.android_security_authorization_or_the_current_request_is_unverified_nothing_was" -> {
+            resources.getString(R.string.errors_android_security_authorization_or_the_current_request_is_unverified_nothing_was)
+        }
+        "errors.android_security_state_unavailable" -> {
+            resources.getString(R.string.errors_android_security_state_unavailable)
+        }
+        "errors.android_server_unavailable_reason" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_android_server_unavailable_reason, reason)
+        }
+        "errors.android_terminal_connection_dropped_reason" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_android_terminal_connection_dropped_reason, reason)
+        }
+        "errors.android_terminal_input_paused_while_waiting_for_authorization" -> {
+            resources.getString(R.string.errors_android_terminal_input_paused_while_waiting_for_authorization)
+        }
+        "errors.android_terminal_output_backlog_reception_stopped" -> {
+            resources.getString(R.string.errors_android_terminal_output_backlog_reception_stopped)
+        }
+        "errors.android_the_computer_did_not_return_a_file_id" -> {
+            resources.getString(R.string.errors_android_the_computer_did_not_return_a_file_id)
+        }
+        "errors.android_the_computer_has_not_verified_the_current_request" -> {
+            resources.getString(R.string.errors_android_the_computer_has_not_verified_the_current_request)
+        }
+        "errors.android_the_computer_returned_invalid_file_progress" -> {
+            resources.getString(R.string.errors_android_the_computer_returned_invalid_file_progress)
+        }
+        "errors.android_the_current_request_changed_review_it_again" -> {
+            resources.getString(R.string.errors_android_the_current_request_changed_review_it_again)
+        }
+        "errors.android_the_file_changed_during_upload_retry_or_select_the_file" -> {
+            resources.getString(R.string.errors_android_the_file_changed_during_upload_retry_or_select_the_file)
+        }
+        "errors.android_the_managing_client_cannot_be_removed_normally" -> {
+            resources.getString(R.string.errors_android_the_managing_client_cannot_be_removed_normally)
+        }
+        "errors.android_the_phone_clock_is_ahead_of_the_server_membership_state" -> {
+            resources.getString(R.string.errors_android_the_phone_clock_is_ahead_of_the_server_membership_state)
+        }
+        "errors.android_the_phone_clock_is_ahead_of_the_server_remote_control" -> {
+            resources.getString(R.string.errors_android_the_phone_clock_is_ahead_of_the_server_remote_control)
+        }
+        "errors.android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_the_previous_outcome_is_still_unknown_value1_retrying_sends_the, value1)
+        }
+        "errors.android_the_previous_outcome_is_unknown_the_request_expired_and_will" -> {
+            resources.getString(R.string.errors_android_the_previous_outcome_is_unknown_the_request_expired_and_will)
+        }
+        "errors.android_this_command_expired_and_was_not_sent" -> {
+            resources.getString(R.string.errors_android_this_command_expired_and_was_not_sent)
+        }
+        "errors.android_this_request_can_no_longer_be_acted_on" -> {
+            resources.getString(R.string.errors_android_this_request_can_no_longer_be_acted_on)
+        }
+        "errors.android_upload_connection_interrupted_retry" -> {
+            resources.getString(R.string.errors_android_upload_connection_interrupted_retry)
+        }
+        "errors.android_value1_the_previous_outcome_is_still_unknown_retry_the_same" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.errors_android_value1_the_previous_outcome_is_still_unknown_retry_the_same, value1)
+        }
         "errors.cannot_connect_to_terminal" -> {
             resources.getString(R.string.errors_cannot_connect_to_terminal)
         }
@@ -774,6 +1001,12 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "errors.it_may_have_been_deleted_or_belong_to_a" -> {
             resources.getString(R.string.errors_it_may_have_been_deleted_or_belong_to_a)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and" -> {
             resources.getString(R.string.errors_membership_chain_conflict_security_operations_stopped_verify_devices_and)
         }
@@ -992,12 +1225,6 @@ private fun resolveUiMessage1(resources: android.content.res.Resources, message:
         "home.android_current_scope" -> {
             resources.getString(R.string.home_android_current_scope)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage2(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "home.android_earlier_failed_retry" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.home_android_earlier_failed_retry, reason)
@@ -1192,12 +1419,31 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_bubble" -> {
             resources.getString(R.string.image_android_bubble)
         }
+        "image.android_cannot_decode_image" -> {
+            resources.getString(R.string.image_android_cannot_decode_image)
+        }
+        "image.android_cannot_decode_this_image" -> {
+            resources.getString(R.string.image_android_cannot_decode_this_image)
+        }
+        "image.android_cannot_read_this_image" -> {
+            resources.getString(R.string.image_android_cannot_read_this_image)
+        }
+        "image.android_converted_to_value1_keeping_original_dimensions" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.image_android_converted_to_value1_keeping_original_dimensions, value1)
+        }
+        "image.android_could_not_save_image_cache" -> {
+            resources.getString(R.string.image_android_could_not_save_image_cache)
+        }
         "image.android_download_retry" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.image_android_download_retry, reason)
         }
         "image.android_empty" -> {
             resources.getString(R.string.image_android_empty)
+        }
+        "image.android_file_upload_unavailable" -> {
+            resources.getString(R.string.image_android_file_upload_unavailable)
         }
         "image.android_generated_by" -> {
             val agent = message.args.getValue("agent") as String
@@ -1206,6 +1452,19 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_generated_size" -> {
             val size = message.args.getValue("size") as String
             resources.getString(R.string.image_android_generated_size, size)
+        }
+        "image.android_gif_contains_an_unrecognized_block" -> {
+            resources.getString(R.string.image_android_gif_contains_an_unrecognized_block)
+        }
+        "image.android_gif_is_truncated" -> {
+            resources.getString(R.string.image_android_gif_is_truncated)
+        }
+        "image.android_image_exceeds_value1_mb" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.image_android_image_exceeds_value1_mb, value1)
+        }
+        "image.android_image_has_no_dimensions" -> {
+            resources.getString(R.string.image_android_image_has_no_dimensions)
         }
         "image.android_missing_uploads" -> {
             resources.getString(R.string.image_android_missing_uploads)
@@ -1216,9 +1475,34 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_no_preview" -> {
             resources.getString(R.string.image_android_no_preview)
         }
+        "image.android_original_exceeds_20_mb" -> {
+            resources.getString(R.string.image_android_original_exceeds_20_mb)
+        }
         "image.android_original_meta" -> {
             resources.getString(R.string.image_android_original_meta)
         }
+        "image.android_phone_storage_for_pending_images_is_full_send_or_remove" -> {
+            resources.getString(R.string.image_android_phone_storage_for_pending_images_is_full_send_or_remove)
+        }
+        "image.android_photo_library_is_not_writable" -> {
+            resources.getString(R.string.image_android_photo_library_is_not_writable)
+        }
+        "image.android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.image_android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to, value1)
+        }
+        "image.android_reprocess_or_select_the_image_again" -> {
+            resources.getString(R.string.image_android_reprocess_or_select_the_image_again)
+        }
+        "image.android_reprocess_using_the_current_mode" -> {
+            resources.getString(R.string.image_android_reprocess_using_the_current_mode)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "image.android_restore_limit" -> {
             val added = message.args.getValue("added") as Int
             val current = message.args.getValue("current") as Int
@@ -1234,6 +1518,9 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_restoring" -> {
             resources.getString(R.string.image_android_restoring)
         }
+        "image.android_rotate_to_the_capture_orientation_and_re_encode_at_maximum" -> {
+            resources.getString(R.string.image_android_rotate_to_the_capture_orientation_and_re_encode_at_maximum)
+        }
         "image.android_save_permission" -> {
             resources.getString(R.string.image_android_save_permission)
         }
@@ -1243,13 +1530,52 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "image.android_share_title" -> {
             resources.getString(R.string.image_android_share_title)
         }
+        "image.android_the_computer_did_not_provide_an_image_id" -> {
+            resources.getString(R.string.image_android_the_computer_did_not_provide_an_image_id)
+        }
+        "image.android_the_computer_has_not_confirmed_the_attachment_upload_retry" -> {
+            resources.getString(R.string.image_android_the_computer_has_not_confirmed_the_attachment_upload_retry)
+        }
+        "image.android_this_image_has_no_local_copy_available_for_reprocessing_remove" -> {
+            resources.getString(R.string.image_android_this_image_has_no_local_copy_available_for_reprocessing_remove)
+        }
+        "image.android_this_image_has_no_local_copy_remove_it_and_select" -> {
+            resources.getString(R.string.image_android_this_image_has_no_local_copy_remove_it_and_select)
+        }
+        "image.android_this_image_is_too_large_for_the_phone_s_available" -> {
+            resources.getString(R.string.image_android_this_image_is_too_large_for_the_phone_s_available)
+        }
+        "image.android_this_phone_cannot_read_this_image_format" -> {
+            resources.getString(R.string.image_android_this_phone_cannot_read_this_image_format)
+        }
         "image.android_total_size" -> {
             val size = message.args.getValue("size") as String
             resources.getString(R.string.image_android_total_size, size)
         }
+        "image.android_unreadable_gif" -> {
+            resources.getString(R.string.image_android_unreadable_gif)
+        }
+        "image.android_unreadable_jpeg" -> {
+            resources.getString(R.string.image_android_unreadable_jpeg)
+        }
+        "image.android_unreadable_png" -> {
+            resources.getString(R.string.image_android_unreadable_png)
+        }
+        "image.android_unreadable_webp" -> {
+            resources.getString(R.string.image_android_unreadable_webp)
+        }
+        "image.android_unsupported_image_format" -> {
+            resources.getString(R.string.image_android_unsupported_image_format)
+        }
         "image.android_upload_progress" -> {
             val percent = message.args.getValue("percent") as String
             resources.getString(R.string.image_android_upload_progress, percent)
+        }
+        "image.android_upload_to_the_computer_again" -> {
+            resources.getString(R.string.image_android_upload_to_the_computer_again)
+        }
+        "image.android_upload_to_the_computer_again_if_the_source_cannot_be" -> {
+            resources.getString(R.string.image_android_upload_to_the_computer_again_if_the_source_cannot_be)
         }
         "image.android_user_pasted" -> {
             resources.getString(R.string.image_android_user_pasted)
@@ -1509,12 +1835,6 @@ private fun resolveUiMessage2(resources: android.content.res.Resources, message:
         "models.all" -> {
             resources.getString(R.string.models_all)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage3(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "models.android_load_failed_default" -> {
             val agent = message.args.getValue("agent") as String
             val reason = message.args.getValue("reason") as String
@@ -1679,6 +1999,12 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "modes.skip_all" -> {
             resources.getString(R.string.modes_skip_all)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "modes.switch" -> {
             resources.getString(R.string.modes_switch)
         }
@@ -1952,6 +2278,109 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_use_machine, name)
         }
+        "notifications.android_a_conversation_turn_finished" -> {
+            resources.getString(R.string.notifications_android_a_conversation_turn_finished)
+        }
+        "notifications.android_a_session_needs_your_attention" -> {
+            resources.getString(R.string.notifications_android_a_session_needs_your_attention)
+        }
+        "notifications.android_allowing" -> {
+            resources.getString(R.string.notifications_android_allowing)
+        }
+        "notifications.android_approvals_questions_plans_and_terminal_prompts" -> {
+            resources.getString(R.string.notifications_android_approvals_questions_plans_and_terminal_prompts)
+        }
+        "notifications.android_background_push_is_disabled_in_this_build" -> {
+            resources.getString(R.string.notifications_android_background_push_is_disabled_in_this_build)
+        }
+        "notifications.android_cannot_reach_google_push_services_retrying_automatically_check_your_network" -> {
+            resources.getString(R.string.notifications_android_cannot_reach_google_push_services_retrying_automatically_check_your_network)
+        }
+        "notifications.android_could_not_read_the_account_open_the_app_to_continue" -> {
+            resources.getString(R.string.notifications_android_could_not_read_the_account_open_the_app_to_continue)
+        }
+        "notifications.android_could_not_save_approval_submission_state_nothing_was_sent" -> {
+            resources.getString(R.string.notifications_android_could_not_save_approval_submission_state_nothing_was_sent)
+        }
+        "notifications.android_could_not_submit_phone_stayed_locked_until_approval_timed_out" -> {
+            resources.getString(R.string.notifications_android_could_not_submit_phone_stayed_locked_until_approval_timed_out)
+        }
+        "notifications.android_could_not_submit_this_phone_has_no_account" -> {
+            resources.getString(R.string.notifications_android_could_not_submit_this_phone_has_no_account)
+        }
+        "notifications.android_could_not_sync_the_notification_subscription_retry" -> {
+            resources.getString(R.string.notifications_android_could_not_sync_the_notification_subscription_retry)
+        }
+        "notifications.android_could_not_sync_the_notification_subscription_retrying_automatically" -> {
+            resources.getString(R.string.notifications_android_could_not_sync_the_notification_subscription_retrying_automatically)
+        }
+        "notifications.android_current_authorization_could_not_be_verified_open_the_app_to" -> {
+            resources.getString(R.string.notifications_android_current_authorization_could_not_be_verified_open_the_app_to)
+        }
+        "notifications.android_fix" -> {
+            resources.getString(R.string.notifications_android_fix)
+        }
+        "notifications.android_google_play_services_are_disabled_push_is_unavailable" -> {
+            resources.getString(R.string.notifications_android_google_play_services_are_disabled_push_is_unavailable)
+        }
+        "notifications.android_google_play_services_are_not_installed_push_is_unavailable" -> {
+            resources.getString(R.string.notifications_android_google_play_services_are_not_installed_push_is_unavailable)
+        }
+        "notifications.android_google_play_services_are_unavailable_install_or_enable_them_then" -> {
+            resources.getString(R.string.notifications_android_google_play_services_are_unavailable_install_or_enable_them_then)
+        }
+        "notifications.android_google_play_services_are_unavailable_push_is_unavailable" -> {
+            resources.getString(R.string.notifications_android_google_play_services_are_unavailable_push_is_unavailable)
+        }
+        "notifications.android_google_play_services_are_updating_background_alerts_are_temporarily_unavailable" -> {
+            resources.getString(R.string.notifications_android_google_play_services_are_updating_background_alerts_are_temporarily_unavailable)
+        }
+        "notifications.android_google_play_services_need_an_update_push_is_unavailable" -> {
+            resources.getString(R.string.notifications_android_google_play_services_need_an_update_push_is_unavailable)
+        }
+        "notifications.android_google_push_registration_could_not_be_verified_check_google_play" -> {
+            resources.getString(R.string.notifications_android_google_push_registration_could_not_be_verified_check_google_play)
+        }
+        "notifications.android_install_update_or_enable_google_play_services_in_system_settings" -> {
+            resources.getString(R.string.notifications_android_install_update_or_enable_google_play_services_in_system_settings)
+        }
+        "notifications.android_outcome_unknown_open_the_app_to_check" -> {
+            resources.getString(R.string.notifications_android_outcome_unknown_open_the_app_to_check)
+        }
+        "notifications.android_phone_locked_submission_continues_after_unlocking" -> {
+            resources.getString(R.string.notifications_android_phone_locked_submission_continues_after_unlocking)
+        }
+        "notifications.android_recovery_requested_open_devices_to_view_it" -> {
+            resources.getString(R.string.notifications_android_recovery_requested_open_devices_to_view_it)
+        }
+        "notifications.android_rejecting" -> {
+            resources.getString(R.string.notifications_android_rejecting)
+        }
+        "notifications.android_still_submitting_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.notifications_android_still_submitting_value1, value1)
+        }
+        "notifications.android_submitting_approval" -> {
+            resources.getString(R.string.notifications_android_submitting_approval)
+        }
+        "notifications.android_system_notification_permission_is_disabled" -> {
+            resources.getString(R.string.notifications_android_system_notification_permission_is_disabled)
+        }
+        "notifications.android_the_server_could_not_save_the_notification_subscription_retry" -> {
+            resources.getString(R.string.notifications_android_the_server_could_not_save_the_notification_subscription_retry)
+        }
+        "notifications.android_the_server_has_not_configured_fcm_push_is_unavailable" -> {
+            resources.getString(R.string.notifications_android_the_server_has_not_configured_fcm_push_is_unavailable)
+        }
+        "notifications.android_this_approval_timed_out_and_was_rejected_by_policy" -> {
+            resources.getString(R.string.notifications_android_this_approval_timed_out_and_was_rejected_by_policy)
+        }
+        "notifications.android_unlock_the_phone_then_open_the_app_to_approve" -> {
+            resources.getString(R.string.notifications_android_unlock_the_phone_then_open_the_app_to_approve)
+        }
+        "notifications.android_view_full_text" -> {
+            resources.getString(R.string.notifications_android_view_full_text)
+        }
         "notifications.scheduled_tasks_have_new_results" -> {
             resources.getString(R.string.notifications_scheduled_tasks_have_new_results)
         }
@@ -2029,12 +2458,6 @@ private fun resolveUiMessage3(resources: android.content.res.Resources, message:
         "projects.manage" -> {
             resources.getString(R.string.projects_manage)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage4(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "projects.manage_named" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.projects_manage_named, name)
@@ -2084,6 +2507,12 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "projects.remove_note" -> {
             resources.getString(R.string.projects_remove_note)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "projects.remove_title" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.projects_remove_title, name)
@@ -2244,6 +2673,24 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "quota.account" -> {
             val value = message.args.getValue("value") as String
             resources.getString(R.string.quota_account, value)
+        }
+        "quota.android_last_record" -> {
+            resources.getString(R.string.quota_android_last_record)
+        }
+        "quota.android_reset_at" -> {
+            val clock = message.args.getValue("clock") as String
+            val day = message.args.getValue("day") as String
+            val left = message.args.getValue("left") as String
+            resources.getString(R.string.quota_android_reset_at, clock, day, left)
+        }
+        "quota.android_value1_value2_value3" -> {
+            val value1 = message.args.getValue("value1") as String
+            val value2 = message.args.getValue("value2") as String
+            val value3 = message.args.getValue("value3") as String
+            resources.getString(R.string.quota_android_value1_value2_value3, value1, value2, value3)
+        }
+        "quota.android_you_can_view_usage_in_claude_code_on_this_computer" -> {
+            resources.getString(R.string.quota_android_you_can_view_usage_in_claude_code_on_this_computer)
         }
         "quota.awaiting_update" -> {
             resources.getString(R.string.quota_awaiting_update)
@@ -2409,6 +2856,250 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
             val frequency = message.args.getValue("frequency") as String
             resources.getString(R.string.schedule_after_turn_replace, frequency)
         }
+        "schedule.android_agent_notification" -> {
+            resources.getString(R.string.schedule_android_agent_notification)
+        }
+        "schedule.android_agent_notification_completion_notification" -> {
+            resources.getString(R.string.schedule_android_agent_notification_completion_notification)
+        }
+        "schedule.android_alternative_limit" -> {
+            val runs = message.args.getValue("runs") as String
+            val until = message.args.getValue("until") as String
+            resources.getString(R.string.schedule_android_alternative_limit, runs, until)
+        }
+        "schedule.android_attention_details" -> {
+            val next = message.args.getValue("next") as String
+            val reason = message.args.getValue("reason") as String
+            val takeover = message.args.getValue("takeover") as String
+            resources.getString(R.string.schedule_android_attention_details, next, reason, takeover)
+        }
+        "schedule.android_automatic_run_count" -> {
+            resources.getString(R.string.schedule_android_automatic_run_count)
+        }
+        "schedule.android_beijing" -> {
+            resources.getString(R.string.schedule_android_beijing)
+        }
+        "schedule.android_cannot_read_the_previous_task_list_connect_to_read_it" -> {
+            resources.getString(R.string.schedule_android_cannot_read_the_previous_task_list_connect_to_read_it)
+        }
+        "schedule.android_cannot_request_notification" -> {
+            resources.getString(R.string.schedule_android_cannot_request_notification)
+        }
+        "schedule.android_changes_have_not_been_saved" -> {
+            resources.getString(R.string.schedule_android_changes_have_not_been_saved)
+        }
+        "schedule.android_check_project_updates_and_notify_me_of_noteworthy_changes" -> {
+            resources.getString(R.string.schedule_android_check_project_updates_and_notify_me_of_noteworthy_changes)
+        }
+        "schedule.android_check_the_time" -> {
+            resources.getString(R.string.schedule_android_check_the_time)
+        }
+        "schedule.android_choose_a_project" -> {
+            resources.getString(R.string.schedule_android_choose_a_project)
+        }
+        "schedule.android_choose_a_time_type" -> {
+            resources.getString(R.string.schedule_android_choose_a_time_type)
+        }
+        "schedule.android_choose_directory" -> {
+            resources.getString(R.string.schedule_android_choose_directory)
+        }
+        "schedule.android_computer_offline_tasks_cannot_be_edited" -> {
+            resources.getString(R.string.schedule_android_computer_offline_tasks_cannot_be_edited)
+        }
+        "schedule.android_connect_value1_to_edit_run_or_delete" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.schedule_android_connect_value1_to_edit_run_or_delete, value1)
+        }
+        "schedule.android_continuing_may_send_the_previous_message_again_open_the_run" -> {
+            resources.getString(R.string.schedule_android_continuing_may_send_the_previous_message_again_open_the_run)
+        }
+        "schedule.android_creating" -> {
+            resources.getString(R.string.schedule_android_creating)
+        }
+        "schedule.android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can" -> {
+            resources.getString(R.string.schedule_android_creation_is_unconfirmed_retrying_uses_the_same_request_you_can)
+        }
+        "schedule.android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.schedule_android_currently_value1_finishing_directly_preserves_the_original_rule_choose_a, value1)
+        }
+        "schedule.android_date" -> {
+            resources.getString(R.string.schedule_android_date)
+        }
+        "schedule.android_days" -> {
+            resources.getString(R.string.schedule_android_days)
+        }
+        "schedule.android_delete_this_task" -> {
+            resources.getString(R.string.schedule_android_delete_this_task)
+        }
+        "schedule.android_each_run_opens_a_new_conversation_under_this_task_outside" -> {
+            resources.getString(R.string.schedule_android_each_run_opens_a_new_conversation_under_this_task_outside)
+        }
+        "schedule.android_end_date" -> {
+            resources.getString(R.string.schedule_android_end_date)
+        }
+        "schedule.android_ended_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.schedule_android_ended_value1, value1)
+        }
+        "schedule.android_follow_conversation" -> {
+            resources.getString(R.string.schedule_android_follow_conversation)
+        }
+        "schedule.android_for_example_asia_shanghai" -> {
+            resources.getString(R.string.schedule_android_for_example_asia_shanghai)
+        }
+        "schedule.android_hours" -> {
+            resources.getString(R.string.schedule_android_hours)
+        }
+        "schedule.android_interval" -> {
+            resources.getString(R.string.schedule_android_interval)
+        }
+        "schedule.android_interval_must_be_greater_than_0" -> {
+            resources.getString(R.string.schedule_android_interval_must_be_greater_than_0)
+        }
+        "schedule.android_large_after_current_turn" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_after_current_turn, count, count, total)
+        }
+        "schedule.android_large_after_each_turn" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_after_each_turn, count, count, total)
+        }
+        "schedule.android_large_every_days" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_every_days, count, count, total)
+        }
+        "schedule.android_large_every_hours" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_every_hours, count, count, total)
+        }
+        "schedule.android_large_every_minutes" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_every_minutes, count, count, total)
+        }
+        "schedule.android_large_every_seconds" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_every_seconds, count, count, total)
+        }
+        "schedule.android_large_runs_total" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_android_large_runs_total, count, count, total)
+        }
+        "schedule.android_minutes" -> {
+            resources.getString(R.string.schedule_android_minutes)
+        }
+        "schedule.android_missing_target" -> {
+            resources.getString(R.string.schedule_android_missing_target)
+        }
+        "schedule.android_monday_to_friday" -> {
+            resources.getString(R.string.schedule_android_monday_to_friday)
+        }
+        "schedule.android_needs_your_attention" -> {
+            resources.getString(R.string.schedule_android_needs_your_attention)
+        }
+        "schedule.android_new_result" -> {
+            resources.getString(R.string.schedule_android_new_result)
+        }
+        "schedule.android_new_result_0653c4" -> {
+            resources.getString(R.string.schedule_android_new_result_0653c4)
+        }
+        "schedule.android_next_run" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_android_next_run, time)
+        }
+        "schedule.android_next_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.schedule_android_next_value1, value1)
+        }
+        "schedule.android_positive_integer" -> {
+            resources.getString(R.string.schedule_android_positive_integer)
+        }
+        "schedule.android_read" -> {
+            resources.getString(R.string.schedule_android_read)
+        }
+        "schedule.android_read_again" -> {
+            resources.getString(R.string.schedule_android_read_again)
+        }
+        "schedule.android_recent" -> {
+            resources.getString(R.string.schedule_android_recent)
+        }
+        "schedule.android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and" -> {
+            resources.getString(R.string.schedule_android_resuming_or_rescheduling_starts_at_the_next_automatic_time_and)
+        }
+        "schedule.android_run_count_must_be_greater_than_0" -> {
+            resources.getString(R.string.schedule_android_run_count_must_be_greater_than_0)
+        }
+        "schedule.android_run_once_now_does_not_count_toward_automatic_runs_or" -> {
+            resources.getString(R.string.schedule_android_run_once_now_does_not_count_toward_automatic_runs_or)
+        }
+        "schedule.android_running_label" -> {
+            resources.getString(R.string.schedule_android_running_label)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
+        "schedule.android_saving" -> {
+            resources.getString(R.string.schedule_android_saving)
+        }
+        "schedule.android_saving_ff509c" -> {
+            resources.getString(R.string.schedule_android_saving_ff509c)
+        }
+        "schedule.android_seconds" -> {
+            resources.getString(R.string.schedule_android_seconds)
+        }
+        "schedule.android_select_at_least_one_day" -> {
+            resources.getString(R.string.schedule_android_select_at_least_one_day)
+        }
+        "schedule.android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept" -> {
+            resources.getString(R.string.schedule_android_stop_future_scheduling_sent_messages_and_opened_conversations_are_kept)
+        }
+        "schedule.android_task" -> {
+            resources.getString(R.string.schedule_android_task)
+        }
+        "schedule.android_task_not_found_it_may_have_been_deleted_on_another" -> {
+            resources.getString(R.string.schedule_android_task_not_found_it_may_have_been_deleted_on_another)
+        }
+        "schedule.android_the_end_date_is_in_the_past" -> {
+            resources.getString(R.string.schedule_android_the_end_date_is_in_the_past)
+        }
+        "schedule.android_the_message_is_sent_after_the_current_turn_ends_without" -> {
+            resources.getString(R.string.schedule_android_the_message_is_sent_after_the_current_turn_ends_without)
+        }
+        "schedule.android_this_task_cannot_be_renamed_separately" -> {
+            resources.getString(R.string.schedule_android_this_task_cannot_be_renamed_separately)
+        }
+        "schedule.android_unit" -> {
+            resources.getString(R.string.schedule_android_unit)
+        }
+        "schedule.android_unknown_time" -> {
+            resources.getString(R.string.schedule_android_unknown_time)
+        }
+        "schedule.android_unread" -> {
+            resources.getString(R.string.schedule_android_unread)
+        }
+        "schedule.android_update_remote_agent_on_the_computer_to_create_scheduled_tasks" -> {
+            resources.getString(R.string.schedule_android_update_remote_agent_on_the_computer_to_create_scheduled_tasks)
+        }
+        "schedule.android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks" -> {
+            resources.getString(R.string.schedule_android_update_remote_agent_on_this_computer_to_manage_scheduled_tasks)
+        }
+        "schedule.android_value1_time" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.schedule_android_value1_time, value1)
+        }
+        "schedule.android_you_can_run_an_extra_time_now_or_change_the" -> {
+            resources.getString(R.string.schedule_android_you_can_run_an_extra_time_now_or_change_the)
+        }
         "schedule.attention_once" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.schedule_attention_once, reason)
@@ -2546,12 +3237,6 @@ private fun resolveUiMessage4(resources: android.content.res.Resources, message:
         "schedule.execution_interrupted_the_task_stopped" -> {
             resources.getString(R.string.schedule_execution_interrupted_the_task_stopped)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage5(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "schedule.execution_outcome_is_unconfirmed" -> {
             resources.getString(R.string.schedule_execution_outcome_is_unconfirmed)
         }
@@ -2856,6 +3541,12 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
             val state = message.args.getValue("state") as String
             resources.getQuantityString(R.plurals.schedule_strip_count, count, count, state)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "schedule.strip_single" -> {
             val frequency = message.args.getValue("frequency") as String
             val state = message.args.getValue("state") as String
@@ -3043,12 +3734,6 @@ private fun resolveUiMessage5(resources: android.content.res.Resources, message:
         "security.account_public_key_restored" -> {
             resources.getString(R.string.security_account_public_key_restored)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage6(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.account_security" -> {
             resources.getString(R.string.security_account_security)
         }
@@ -3068,6 +3753,466 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         }
         "security.allow_to_join" -> {
             resources.getString(R.string.security_allow_to_join)
+        }
+        "security.android_abandon_this_recovery_and_enter_a_new_code" -> {
+            resources.getString(R.string.security_android_abandon_this_recovery_and_enter_a_new_code)
+        }
+        "security.android_after_completion_wait_for_retained_computers_to_come_online_and" -> {
+            resources.getString(R.string.security_android_after_completion_wait_for_retained_computers_to_come_online_and)
+        }
+        "security.android_already_registering_this_phone_wait_for_the_result" -> {
+            resources.getString(R.string.security_android_already_registering_this_phone_wait_for_the_result)
+        }
+        "security.android_backup_not_confirmed_this_phone_has_no_recovery_private_key" -> {
+            resources.getString(R.string.security_android_backup_not_confirmed_this_phone_has_no_recovery_private_key)
+        }
+        "security.android_cannot_complete_yet_or_recovery_was_vetoed" -> {
+            resources.getString(R.string.security_android_cannot_complete_yet_or_recovery_was_vetoed)
+        }
+        "security.android_cannot_confirm_whether_the_new_device_joined_check_your_network" -> {
+            resources.getString(R.string.security_android_cannot_confirm_whether_the_new_device_joined_check_your_network)
+        }
+        "security.android_cannot_confirm_whether_this_phone_joined_value1_check_the_client" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.security_android_cannot_confirm_whether_this_phone_joined_value1_check_the_client, value1)
+        }
+        "security.android_clearing" -> {
+            resources.getString(R.string.security_android_clearing)
+        }
+        "security.android_compare_the_4_patterns_on_the_managing_client_if_they" -> {
+            resources.getString(R.string.security_android_compare_the_4_patterns_on_the_managing_client_if_they)
+        }
+        "security.android_completing" -> {
+            resources.getString(R.string.security_android_completing)
+        }
+        "security.android_completion_requires_48_hours" -> {
+            resources.getString(R.string.security_android_completion_requires_48_hours)
+        }
+        "security.android_connecting" -> {
+            resources.getString(R.string.security_android_connecting)
+        }
+        "security.android_continue_original_operation" -> {
+            resources.getString(R.string.security_android_continue_original_operation)
+        }
+        "security.android_control_validity_advice" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.security_android_control_validity_advice, time)
+        }
+        "security.android_could_not_read_security_operation_state_before_exiting_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.security_android_could_not_read_security_operation_state_before_exiting_value1, value1)
+        }
+        "security.android_create_account" -> {
+            resources.getString(R.string.security_android_create_account)
+        }
+        "security.android_current_client" -> {
+            resources.getString(R.string.security_android_current_client)
+        }
+        "security.android_current_content_key_missing" -> {
+            resources.getString(R.string.security_android_current_content_key_missing)
+        }
+        "security.android_do_not_publish_yet" -> {
+            resources.getString(R.string.security_android_do_not_publish_yet)
+        }
+        "security.android_enter_the_8_digit_pairing_code" -> {
+            resources.getString(R.string.security_android_enter_the_8_digit_pairing_code)
+        }
+        "security.android_enter_the_recovery_code_saved_during_setup_after_submitting_wait" -> {
+            resources.getString(R.string.security_android_enter_the_recovery_code_saved_during_setup_after_submitting_wait)
+        }
+        "security.android_exit_and_delete_local_keys_in_settings" -> {
+            resources.getString(R.string.security_android_exit_and_delete_local_keys_in_settings)
+        }
+        "security.android_exit_incomplete_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.security_android_exit_incomplete_value1, value1)
+        }
+        "security.android_export_genesis_state" -> {
+            resources.getString(R.string.security_android_export_genesis_state)
+        }
+        "security.android_export_genesis_state_for_offline_relay_pinning" -> {
+            resources.getString(R.string.security_android_export_genesis_state_for_offline_relay_pinning)
+        }
+        "security.android_first_delete_the_account_keys_and_cache_on_this_device" -> {
+            resources.getString(R.string.security_android_first_delete_the_account_keys_and_cache_on_this_device)
+        }
+        "security.android_first_delete_the_account_keys_and_cache_on_this_phone" -> {
+            resources.getString(R.string.security_android_first_delete_the_account_keys_and_cache_on_this_phone)
+        }
+        "security.android_generating" -> {
+            resources.getString(R.string.security_android_generating)
+        }
+        "security.android_going_back_stops_this_wait_reject_the_old_request_on" -> {
+            resources.getString(R.string.security_android_going_back_stops_this_wait_reject_the_old_request_on)
+        }
+        "security.android_i_saved_it_start_using_the_app" -> {
+            resources.getString(R.string.security_android_i_saved_it_start_using_the_app)
+        }
+        "security.android_i_saved_the_new_recovery_code_offline" -> {
+            resources.getString(R.string.security_android_i_saved_the_new_recovery_code_offline)
+        }
+        "security.android_if_48_hours_have_not_passed_or_the_original_managing" -> {
+            resources.getString(R.string.security_android_if_48_hours_have_not_passed_or_the_original_managing)
+        }
+        "security.android_incorrect_recovery_code" -> {
+            resources.getString(R.string.security_android_incorrect_recovery_code)
+        }
+        "security.android_incorrect_recovery_code_or_no_pending_recovery" -> {
+            resources.getString(R.string.security_android_incorrect_recovery_code_or_no_pending_recovery)
+        }
+        "security.android_incorrect_recovery_code_or_the_recovery_statement_was_rejected" -> {
+            resources.getString(R.string.security_android_incorrect_recovery_code_or_the_recovery_statement_was_rejected)
+        }
+        "security.android_join_receipt_device_public_key_mismatch" -> {
+            resources.getString(R.string.security_android_join_receipt_device_public_key_mismatch)
+        }
+        "security.android_join_receipt_does_not_contain_this_device_s_identity" -> {
+            resources.getString(R.string.security_android_join_receipt_does_not_contain_this_device_s_identity)
+        }
+        "security.android_keep_this_phone_s_account_root_key_and_device_identity" -> {
+            resources.getString(R.string.security_android_keep_this_phone_s_account_root_key_and_device_identity)
+        }
+        "security.android_last_used_times_are_on_the_right_each_device_changes" -> {
+            resources.getString(R.string.security_android_last_used_times_are_on_the_right_each_device_changes)
+        }
+        "security.android_membership_sync_failed_there_may_be_an_invalid_pairing_check" -> {
+            resources.getString(R.string.security_android_membership_sync_failed_there_may_be_an_invalid_pairing_check)
+        }
+        "security.android_name_changes_sync_to_other_clients_set_notifications_on_this" -> {
+            resources.getString(R.string.security_android_name_changes_sync_to_other_clients_set_notifications_on_this)
+        }
+        "security.android_new_recovery_code_confirmed_saved_offline" -> {
+            resources.getString(R.string.security_android_new_recovery_code_confirmed_saved_offline)
+        }
+        "security.android_no_account_available_to_upgrade" -> {
+            resources.getString(R.string.security_android_no_account_available_to_upgrade)
+        }
+        "security.android_no_candidate_device" -> {
+            resources.getString(R.string.security_android_no_candidate_device)
+        }
+        "security.android_no_computers_yet" -> {
+            resources.getString(R.string.security_android_no_computers_yet)
+        }
+        "security.android_no_device_has_joined_yet" -> {
+            resources.getString(R.string.security_android_no_device_has_joined_yet)
+        }
+        "security.android_not_read_yet" -> {
+            resources.getString(R.string.security_android_not_read_yet)
+        }
+        "security.android_offline" -> {
+            resources.getString(R.string.security_android_offline)
+        }
+        "security.android_online" -> {
+            resources.getString(R.string.security_android_online)
+        }
+        "security.android_only_a_removed_computer_s_archive_from_the_same_account" -> {
+            resources.getString(R.string.security_android_only_a_removed_computer_s_archive_from_the_same_account)
+        }
+        "security.android_only_the_managing_client_can_add_devices" -> {
+            resources.getString(R.string.security_android_only_the_managing_client_can_add_devices)
+        }
+        "security.android_only_the_managing_client_can_approve" -> {
+            resources.getString(R.string.security_android_only_the_managing_client_can_approve)
+        }
+        "security.android_only_this_client_can_change_its_name_notification_settings_must" -> {
+            resources.getString(R.string.security_android_only_this_client_can_change_its_name_notification_settings_must)
+        }
+        "security.android_open_settings_add_device_on_the_managing_client_scan_its" -> {
+            resources.getString(R.string.security_android_open_settings_add_device_on_the_managing_client_scan_its)
+        }
+        "security.android_optional" -> {
+            resources.getString(R.string.security_android_optional)
+        }
+        "security.android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the" -> {
+            resources.getString(R.string.security_android_outcome_unconfirmed_retry_the_same_approval_after_returning_to_the)
+        }
+        "security.android_pairing_approval_does_not_match_this_device_or_its_signature" -> {
+            resources.getString(R.string.security_android_pairing_approval_does_not_match_this_device_or_its_signature)
+        }
+        "security.android_pairing_cannot_finish_right_now_check_your_network_then_start" -> {
+            resources.getString(R.string.security_android_pairing_cannot_finish_right_now_check_your_network_then_start)
+        }
+        "security.android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed" -> {
+            resources.getString(R.string.security_android_pairing_commitment_changed_after_the_ephemeral_public_key_was_revealed)
+        }
+        "security.android_pairing_commitment_mismatch" -> {
+            resources.getString(R.string.security_android_pairing_commitment_mismatch)
+        }
+        "security.android_pairing_payload_belongs_to_another_security_domain" -> {
+            resources.getString(R.string.security_android_pairing_payload_belongs_to_another_security_domain)
+        }
+        "security.android_pairing_payload_is_missing_the_account_public_key" -> {
+            resources.getString(R.string.security_android_pairing_payload_is_missing_the_account_public_key)
+        }
+        "security.android_pairing_payload_managing_client_mismatch" -> {
+            resources.getString(R.string.security_android_pairing_payload_managing_client_mismatch)
+        }
+        "security.android_pairing_payload_state_chain_is_incomplete" -> {
+            resources.getString(R.string.security_android_pairing_payload_state_chain_is_incomplete)
+        }
+        "security.android_pairing_trust_information_is_too_large" -> {
+            resources.getString(R.string.security_android_pairing_trust_information_is_too_large)
+        }
+        "security.android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped" -> {
+            resources.getString(R.string.security_android_patterns_were_not_confirmed_on_this_device_secure_binding_stopped)
+        }
+        "security.android_paused_retry_after_returning_to_the_foreground" -> {
+            resources.getString(R.string.security_android_paused_retry_after_returning_to_the_foreground)
+        }
+        "security.android_publishing" -> {
+            resources.getString(R.string.security_android_publishing)
+        }
+        "security.android_reading_membership_state" -> {
+            resources.getString(R.string.security_android_reading_membership_state)
+        }
+        "security.android_rebuild_security_domain" -> {
+            resources.getString(R.string.security_android_rebuild_security_domain)
+        }
+        "security.android_rebuild_security_domain_and_become_managing_client" -> {
+            resources.getString(R.string.security_android_rebuild_security_domain_and_become_managing_client)
+        }
+        "security.android_rebuilding" -> {
+            resources.getString(R.string.security_android_rebuilding)
+        }
+        "security.android_recovery_can_now_be_completed" -> {
+            resources.getString(R.string.security_android_recovery_can_now_be_completed)
+        }
+        "security.android_recovery_code_backup_status" -> {
+            resources.getString(R.string.security_android_recovery_code_backup_status)
+        }
+        "security.android_recovery_code_shown_only_once" -> {
+            resources.getString(R.string.security_android_recovery_code_shown_only_once)
+        }
+        "security.android_recovery_eligible_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.security_android_recovery_eligible_at, time)
+        }
+        "security.android_recovery_not_found_it_may_be_complete_or_vetoed" -> {
+            resources.getString(R.string.security_android_recovery_not_found_it_may_be_complete_or_vetoed)
+        }
+        "security.android_registration_challenge_expired_retry" -> {
+            resources.getString(R.string.security_android_registration_challenge_expired_retry)
+        }
+        "security.android_remote_control" -> {
+            resources.getString(R.string.security_android_remote_control)
+        }
+        "security.android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" -> {
+            resources.getString(R.string.security_android_removal_disconnects_its_login_and_clears_push_subscriptions_computer_sessions)
+        }
+        "security.android_remove_this_client" -> {
+            resources.getString(R.string.security_android_remove_this_client)
+        }
+        "security.android_removed" -> {
+            resources.getString(R.string.security_android_removed)
+        }
+        "security.android_renew_on_authority" -> {
+            resources.getString(R.string.security_android_renew_on_authority)
+        }
+        "security.android_renews_automatically_when_you_return_to_the_managing_client_after" -> {
+            resources.getString(R.string.security_android_renews_automatically_when_you_return_to_the_managing_client_after)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
+        "security.android_saving" -> {
+            resources.getString(R.string.security_android_saving)
+        }
+        "security.android_scan_qr_code" -> {
+            resources.getString(R.string.security_android_scan_qr_code)
+        }
+        "security.android_security_domain_pinning_failed" -> {
+            resources.getString(R.string.security_android_security_domain_pinning_failed)
+        }
+        "security.android_server_registration_computation_requirement_is_too_high_value1_bits_maximum" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.security_android_server_registration_computation_requirement_is_too_high_value1_bits_maximum, value1)
+        }
+        "security.android_setup_token_if_required_by_the_server" -> {
+            resources.getString(R.string.security_android_setup_token_if_required_by_the_server)
+        }
+        "security.android_someone_is_requesting_management_takeover_with_a_recovery_code_veto" -> {
+            resources.getString(R.string.security_android_someone_is_requesting_management_takeover_with_a_recovery_code_veto)
+        }
+        "security.android_state_chain_is_too_large_to_pair_recreate_the_account" -> {
+            resources.getString(R.string.security_android_state_chain_is_too_large_to_pair_recreate_the_account)
+        }
+        "security.android_still_within_the_48_hour_waiting_period" -> {
+            resources.getString(R.string.security_android_still_within_the_48_hour_waiting_period)
+        }
+        "security.android_submit_recovery" -> {
+            resources.getString(R.string.security_android_submit_recovery)
+        }
+        "security.android_submitting" -> {
+            resources.getString(R.string.security_android_submitting)
+        }
+        "security.android_takes_effect_after_48_hours_a_veto_from_the_original" -> {
+            resources.getString(R.string.security_android_takes_effect_after_48_hours_a_veto_from_the_original)
+        }
+        "security.android_the_account_saved_on_this_phone_does_not_match_its" -> {
+            resources.getString(R.string.security_android_the_account_saved_on_this_phone_does_not_match_its)
+        }
+        "security.android_the_candidate_device_cannot_use_the_managing_client_s_identity" -> {
+            resources.getString(R.string.security_android_the_candidate_device_cannot_use_the_managing_client_s_identity)
+        }
+        "security.android_the_candidate_device_needs_an_update" -> {
+            resources.getString(R.string.security_android_the_candidate_device_needs_an_update)
+        }
+        "security.android_the_managing_client_s_trust_information_does_not_match_its" -> {
+            resources.getString(R.string.security_android_the_managing_client_s_trust_information_does_not_match_its)
+        }
+        "security.android_the_new_code_is_still_on_this_page_save_it" -> {
+            resources.getString(R.string.security_android_the_new_code_is_still_on_this_page_save_it)
+        }
+        "security.android_the_new_recovery_code_generated_for_this_request_is_invalid" -> {
+            resources.getString(R.string.security_android_the_new_recovery_code_generated_for_this_request_is_invalid)
+        }
+        "security.android_the_original_device_identity_keys_and_history_are_kept_open" -> {
+            resources.getString(R.string.security_android_the_original_device_identity_keys_and_history_are_kept_open)
+        }
+        "security.android_the_original_managing_client_vetoed_this_recovery" -> {
+            resources.getString(R.string.security_android_the_original_managing_client_vetoed_this_recovery)
+        }
+        "security.android_the_original_security_operation_is_verified_complete" -> {
+            resources.getString(R.string.security_android_the_original_security_operation_is_verified_complete)
+        }
+        "security.android_the_recovery_chain_published_by_the_server_differs_from_the" -> {
+            resources.getString(R.string.security_android_the_recovery_chain_published_by_the_server_differs_from_the)
+        }
+        "security.android_the_recovery_state_published_by_the_server_differs_from_the" -> {
+            resources.getString(R.string.security_android_the_recovery_state_published_by_the_server_differs_from_the)
+        }
+        "security.android_the_relay_has_not_pinned_this_security_domain_an_upgrade" -> {
+            resources.getString(R.string.security_android_the_relay_has_not_pinned_this_security_domain_an_upgrade)
+        }
+        "security.android_the_server_did_not_accept_this_approval_check_whether_the" -> {
+            resources.getString(R.string.security_android_the_server_did_not_accept_this_approval_check_whether_the)
+        }
+        "security.android_the_server_rejected_this_device_s_login" -> {
+            resources.getString(R.string.security_android_the_server_rejected_this_device_s_login)
+        }
+        "security.android_the_server_returned_an_invalid_registration_challenge" -> {
+            resources.getString(R.string.security_android_the_server_returned_an_invalid_registration_challenge)
+        }
+        "security.android_the_server_returned_an_unexpected_device_id" -> {
+            resources.getString(R.string.security_android_the_server_returned_an_unexpected_device_id)
+        }
+        "security.android_these_computers_must_republish_checkpoints_after_recovery" -> {
+            resources.getString(R.string.security_android_these_computers_must_republish_checkpoints_after_recovery)
+        }
+        "security.android_this_client_is_no_longer_in_the_current_member_list" -> {
+            resources.getString(R.string.security_android_this_client_is_no_longer_in_the_current_member_list)
+        }
+        "security.android_this_deletes_the_account_keys_and_cache_on_this_phone" -> {
+            resources.getString(R.string.security_android_this_deletes_the_account_keys_and_cache_on_this_phone)
+        }
+        "security.android_this_device_is_not_the_managing_client_in_the_recovery" -> {
+            resources.getString(R.string.security_android_this_device_is_not_the_managing_client_in_the_recovery)
+        }
+        "security.android_this_device_s_identity_differs_from_its_member_record_cannot" -> {
+            resources.getString(R.string.security_android_this_device_s_identity_differs_from_its_member_record_cannot)
+        }
+        "security.android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin" -> {
+            resources.getString(R.string.security_android_this_device_was_removed_its_old_identity_cannot_rejoin_rejoin)
+        }
+        "security.android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions" -> {
+            resources.getString(R.string.security_android_this_disconnects_its_login_and_clears_push_subscriptions_computer_sessions)
+        }
+        "security.android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and" -> {
+            resources.getString(R.string.security_android_this_immediately_disconnects_it_and_revokes_access_keeping_sessions_and)
+        }
+        "security.android_this_is_a_saved_rebuild_draft_the_recovery_code_will" -> {
+            resources.getString(R.string.security_android_this_is_a_saved_rebuild_draft_the_recovery_code_will)
+        }
+        "security.android_this_is_not_a_remote_agent_pairing_qr_code" -> {
+            resources.getString(R.string.security_android_this_is_not_a_remote_agent_pairing_qr_code)
+        }
+        "security.android_this_is_the_only_managing_client_transfer_management_first_exiting" -> {
+            resources.getString(R.string.security_android_this_is_the_only_managing_client_transfer_management_first_exiting)
+        }
+        "security.android_this_join_attempt_was_cancelled" -> {
+            resources.getString(R.string.security_android_this_join_attempt_was_cancelled)
+        }
+        "security.android_this_join_attempt_was_cancelled_the_old_request_may_still" -> {
+            resources.getString(R.string.security_android_this_join_attempt_was_cancelled_the_old_request_may_still)
+        }
+        "security.android_this_pairing_is_no_longer_valid_cannot_verify_whether_the" -> {
+            resources.getString(R.string.security_android_this_pairing_is_no_longer_valid_cannot_verify_whether_the)
+        }
+        "security.android_this_pairing_is_no_longer_valid_the_new_device_did" -> {
+            resources.getString(R.string.security_android_this_pairing_is_no_longer_valid_the_new_device_did)
+        }
+        "security.android_this_pairing_only_allows_the_original_computer_to_rejoin" -> {
+            resources.getString(R.string.security_android_this_pairing_only_allows_the_original_computer_to_rejoin)
+        }
+        "security.android_this_phone_has_no_account_public_key_and_cannot_register" -> {
+            resources.getString(R.string.security_android_this_phone_has_no_account_public_key_and_cannot_register)
+        }
+        "security.android_this_phone_has_no_account_root_key_and_cannot_become" -> {
+            resources.getString(R.string.security_android_this_phone_has_no_account_root_key_and_cannot_become)
+        }
+        "security.android_this_phone_has_no_account_root_key_and_cannot_rebuild" -> {
+            resources.getString(R.string.security_android_this_phone_has_no_account_root_key_and_cannot_rebuild)
+        }
+        "security.android_this_phone_will_become_the_managing_client_the_account_root" -> {
+            resources.getString(R.string.security_android_this_phone_will_become_the_managing_client_the_account_root)
+        }
+        "security.android_this_public_genesis_state_contains_no_keys_use_it_only" -> {
+            resources.getString(R.string.security_android_this_public_genesis_state_contains_no_keys_use_it_only)
+        }
+        "security.android_this_recovery_is_complete" -> {
+            resources.getString(R.string.security_android_this_recovery_is_complete)
+        }
+        "security.android_this_recovery_was_submitted_complete_it_on_the_phone_that" -> {
+            resources.getString(R.string.security_android_this_recovery_was_submitted_complete_it_on_the_phone_that)
+        }
+        "security.android_this_recovery_was_submitted_if_you_have_not_saved_the" -> {
+            resources.getString(R.string.security_android_this_recovery_was_submitted_if_you_have_not_saved_the)
+        }
+        "security.android_this_recovery_was_vetoed_the_new_recovery_code_generated_for" -> {
+            resources.getString(R.string.security_android_this_recovery_was_vetoed_the_new_recovery_code_generated_for)
+        }
+        "security.android_too_many_attempts_wait_a_minute_and_retry" -> {
+            resources.getString(R.string.security_android_too_many_attempts_wait_a_minute_and_retry)
+        }
+        "security.android_transfer_to" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.security_android_transfer_to, name)
+        }
+        "security.android_unrecognized_recovery_status" -> {
+            resources.getString(R.string.security_android_unrecognized_recovery_status)
+        }
+        "security.android_upgrading_an_existing_account_rebuild_the_security_domain_and_become" -> {
+            resources.getString(R.string.security_android_upgrading_an_existing_account_rebuild_the_security_domain_and_become)
+        }
+        "security.android_use_this_to_recover_management_if_the_managing_client_is" -> {
+            resources.getString(R.string.security_android_use_this_to_recover_management_if_the_managing_client_is)
+        }
+        "security.android_verify_original_security_operation" -> {
+            resources.getString(R.string.security_android_verify_original_security_operation)
+        }
+        "security.android_view" -> {
+            resources.getString(R.string.security_android_view)
+        }
+        "security.android_view_status" -> {
+            resources.getString(R.string.security_android_view_status)
+        }
+        "security.android_wait" -> {
+            resources.getString(R.string.security_android_wait)
+        }
+        "security.android_waiting_for_computers_to_restore_current_sessions" -> {
+            resources.getString(R.string.security_android_waiting_for_computers_to_restore_current_sessions)
+        }
+        "security.android_waiting_for_managing_client_approval_and_completing_join" -> {
+            resources.getString(R.string.security_android_waiting_for_managing_client_approval_and_completing_join)
+        }
+        "security.android_write_it_down_or_photograph_it_before_publishing_publishing_immediately" -> {
+            resources.getString(R.string.security_android_write_it_down_or_photograph_it_before_publishing_publishing_immediately)
+        }
+        "security.android_write_it_down_or_photograph_it_it_only_signs_recovery" -> {
+            resources.getString(R.string.security_android_write_it_down_or_photograph_it_it_only_signs_recovery)
         }
         "security.another_pairing_draft_is_unfinished" -> {
             resources.getString(R.string.security_another_pairing_draft_is_unfinished)
@@ -3329,6 +4474,12 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before" -> {
             resources.getString(R.string.security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "security.pairing_expired" -> {
             resources.getString(R.string.security_pairing_expired)
         }
@@ -3508,12 +4659,6 @@ private fun resolveUiMessage6(resources: android.content.res.Resources, message:
         "security.take_over_management" -> {
             resources.getString(R.string.security_take_over_management)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage7(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "security.the_48_hour_wait_has_not_ended" -> {
             resources.getString(R.string.security_the_48_hour_wait_has_not_ended)
         }
@@ -3804,6 +4949,12 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "session.context" -> {
             resources.getString(R.string.session_context)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage10(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "session.context_tokens" -> {
             val total = message.args.getValue("total") as String
             val used = message.args.getValue("used") as String
@@ -4008,12 +5159,6 @@ private fun resolveUiMessage7(resources: android.content.res.Resources, message:
         "session.other_session" -> {
             resources.getString(R.string.session_other_session)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage8(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "session.quiet_checks" -> {
             val times = message.args.getValue("times") as String
             resources.getString(R.string.session_quiet_checks, times)
@@ -4154,6 +5299,319 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         }
         "settings.all_devices" -> {
             resources.getString(R.string.settings_all_devices)
+        }
+        "settings.android_allow_in_settings" -> {
+            resources.getString(R.string.settings_android_allow_in_settings)
+        }
+        "settings.android_allow_remote_agent_to_install_apps_in_system_settings_then" -> {
+            resources.getString(R.string.settings_android_allow_remote_agent_to_install_apps_in_system_settings_then)
+        }
+        "settings.android_allow_the_original_computer_to_resume_value1_s_retained_sessions" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_allow_the_original_computer_to_resume_value1_s_retained_sessions, value1)
+        }
+        "settings.android_already_on_the_latest_published_version" -> {
+            resources.getString(R.string.settings_android_already_on_the_latest_published_version)
+        }
+        "settings.android_approval_commands_will_appear_in_system_notifications_and_may_remain" -> {
+            resources.getString(R.string.settings_android_approval_commands_will_appear_in_system_notifications_and_may_remain)
+        }
+        "settings.android_attachment_storage_this_phone" -> {
+            resources.getString(R.string.settings_android_attachment_storage_this_phone)
+        }
+        "settings.android_cannot_connect_to_the_release_address" -> {
+            resources.getString(R.string.settings_android_cannot_connect_to_the_release_address)
+        }
+        "settings.android_cannot_open_the_system_installer" -> {
+            resources.getString(R.string.settings_android_cannot_open_the_system_installer)
+        }
+        "settings.android_checking_for_updates" -> {
+            resources.getString(R.string.settings_android_checking_for_updates)
+        }
+        "settings.android_clean_up_reclaimable_images" -> {
+            resources.getString(R.string.settings_android_clean_up_reclaimable_images)
+        }
+        "settings.android_cleaning" -> {
+            resources.getString(R.string.settings_android_cleaning)
+        }
+        "settings.android_clear_viewing_cache" -> {
+            resources.getString(R.string.settings_android_clear_viewing_cache)
+        }
+        "settings.android_code_paths_commands_and_terminal" -> {
+            resources.getString(R.string.settings_android_code_paths_commands_and_terminal)
+        }
+        "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm" -> {
+            resources.getString(R.string.settings_android_compare_these_4_patterns_on_the_new_device_and_confirm)
+        }
+        "settings.android_could_not_check_for_updates_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_could_not_check_for_updates_value1, value1)
+        }
+        "settings.android_could_not_download_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_could_not_download_value1, value1)
+        }
+        "settings.android_could_not_read_release_information_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_could_not_read_release_information_value1, value1)
+        }
+        "settings.android_could_not_save_installation_package" -> {
+            resources.getString(R.string.settings_android_could_not_save_installation_package)
+        }
+        "settings.android_current_version_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_current_version_value1, value1)
+        }
+        "settings.android_default_value1_s_own_configuration" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_default_value1_s_own_configuration, value1)
+        }
+        "settings.android_download_again" -> {
+            resources.getString(R.string.settings_android_download_again)
+        }
+        "settings.android_download_and_install_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_download_and_install_value1, value1)
+        }
+        "settings.android_download_failed" -> {
+            resources.getString(R.string.settings_android_download_failed)
+        }
+        "settings.android_download_failed_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_download_failed_value1, value1)
+        }
+        "settings.android_downloaded_file_does_not_match_release_information" -> {
+            resources.getString(R.string.settings_android_downloaded_file_does_not_match_release_information)
+        }
+        "settings.android_downloading_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_downloading_value1, value1)
+        }
+        "settings.android_downloading_value1_value2" -> {
+            val value1 = message.args.getValue("value1") as String
+            val value2 = message.args.getValue("value2") as String
+            resources.getString(R.string.settings_android_downloading_value1_value2, value1, value2)
+        }
+        "settings.android_fonts_sil_open_font_license_1_1" -> {
+            resources.getString(R.string.settings_android_fonts_sil_open_font_license_1_1)
+        }
+        "settings.android_for_an_unverified_version_run_remote_agent_doctor_on_the" -> {
+            resources.getString(R.string.settings_android_for_an_unverified_version_run_remote_agent_doctor_on_the)
+        }
+        "settings.android_icons_isc_license" -> {
+            resources.getString(R.string.settings_android_icons_isc_license)
+        }
+        "settings.android_image_drafts_and_file_source_information_are_cleared_after_7" -> {
+            resources.getString(R.string.settings_android_image_drafts_and_file_source_information_are_cleared_after_7)
+        }
+        "settings.android_install" -> {
+            resources.getString(R.string.settings_android_install)
+        }
+        "settings.android_installation_did_not_finish_you_can_install_again" -> {
+            resources.getString(R.string.settings_android_installation_did_not_finish_you_can_install_again)
+        }
+        "settings.android_interface_icons" -> {
+            resources.getString(R.string.settings_android_interface_icons)
+        }
+        "settings.android_invalid_release_information_format" -> {
+            resources.getString(R.string.settings_android_invalid_release_information_format)
+        }
+        "settings.android_later" -> {
+            resources.getString(R.string.settings_android_later)
+        }
+        "settings.android_latin_text_and_numbers_in_the_interface" -> {
+            resources.getString(R.string.settings_android_latin_text_and_numbers_in_the_interface)
+        }
+        "settings.android_local_storage" -> {
+            resources.getString(R.string.settings_android_local_storage)
+        }
+        "settings.android_new_computer" -> {
+            resources.getString(R.string.settings_android_new_computer)
+        }
+        "settings.android_new_device" -> {
+            resources.getString(R.string.settings_android_new_device)
+        }
+        "settings.android_new_device_joined" -> {
+            resources.getString(R.string.settings_android_new_device_joined)
+        }
+        "settings.android_new_version_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_new_version_value1, value1)
+        }
+        "settings.android_new_version_value1_available" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_new_version_value1_available, value1)
+        }
+        "settings.android_offline_last_online_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_offline_last_online_value1, value1)
+        }
+        "settings.android_online" -> {
+            resources.getString(R.string.settings_android_online)
+        }
+        "settings.android_online_b90866" -> {
+            resources.getString(R.string.settings_android_online_b90866)
+        }
+        "settings.android_only_affects_system_notifications_while_the_app_is_in_the" -> {
+            resources.getString(R.string.settings_android_only_affects_system_notifications_while_the_app_is_in_the)
+        }
+        "settings.android_open_source_licenses" -> {
+            resources.getString(R.string.settings_android_open_source_licenses)
+        }
+        "settings.android_pairing_qr_code" -> {
+            resources.getString(R.string.settings_android_pairing_qr_code)
+        }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage11(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
+        "settings.android_pending_and_unconfirmed_attachments" -> {
+            resources.getString(R.string.settings_android_pending_and_unconfirmed_attachments)
+        }
+        "settings.android_reconnect_archives_or_delete_records_on_the_managing_client_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_reconnect_archives_or_delete_records_on_the_managing_client_value1, value1)
+        }
+        "settings.android_recovery_code_qr_code" -> {
+            resources.getString(R.string.settings_android_recovery_code_qr_code)
+        }
+        "settings.android_recovery_pending_eligible_at_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_recovery_pending_eligible_at_value1, value1)
+        }
+        "settings.android_rejoin_this_computer_and_resume_sessions" -> {
+            resources.getString(R.string.settings_android_rejoin_this_computer_and_resume_sessions)
+        }
+        "settings.android_release_information_is_missing_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_release_information_is_missing_value1, value1)
+        }
+        "settings.android_release_protocol_is_not_a_number" -> {
+            resources.getString(R.string.settings_android_release_protocol_is_not_a_number)
+        }
+        "settings.android_release_size_is_not_a_number" -> {
+            resources.getString(R.string.settings_android_release_size_is_not_a_number)
+        }
+        "settings.android_release_versioncode_is_not_a_number" -> {
+            resources.getString(R.string.settings_android_release_versioncode_is_not_a_number)
+        }
+        "settings.android_remote_agent_on_this_computer_cannot_read_value1_quotas" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_remote_agent_on_this_computer_cannot_read_value1_quotas, value1)
+        }
+        "settings.android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on" -> {
+            resources.getString(R.string.settings_android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on)
+        }
+        "settings.android_remove_devices_on_the_managing_client_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_remove_devices_on_the_managing_client_value1, value1)
+        }
+        "settings.android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced" -> {
+            resources.getString(R.string.settings_android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced)
+        }
+        "settings.android_remove_this_machine" -> {
+            resources.getString(R.string.settings_android_remove_this_machine)
+        }
+        "settings.android_removed_retained_session_archive" -> {
+            resources.getString(R.string.settings_android_removed_retained_session_archive)
+        }
+        "settings.android_requests_to_join" -> {
+            resources.getString(R.string.settings_android_requests_to_join)
+        }
+        "settings.android_sarasa_fixed_sc_symbol_subset" -> {
+            resources.getString(R.string.settings_android_sarasa_fixed_sc_symbol_subset)
+        }
+        "settings.android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending" -> {
+            resources.getString(R.string.settings_android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending)
+        }
+        "settings.android_show_content_and_approve_in_notifications" -> {
+            resources.getString(R.string.settings_android_show_content_and_approve_in_notifications)
+        }
+        "settings.android_terminal_symbols" -> {
+            resources.getString(R.string.settings_android_terminal_symbols)
+        }
+        "settings.android_the_downloaded_file_is_not_an_installation_package" -> {
+            resources.getString(R.string.settings_android_the_downloaded_file_is_not_an_installation_package)
+        }
+        "settings.android_the_downloaded_package_does_not_match_the_release_information" -> {
+            resources.getString(R.string.settings_android_the_downloaded_package_does_not_match_the_release_information)
+        }
+        "settings.android_the_downloaded_package_is_not_remote_agent" -> {
+            resources.getString(R.string.settings_android_the_downloaded_package_is_not_remote_agent)
+        }
+        "settings.android_the_phone_clock_is_ahead_of_the_server_remote_control" -> {
+            resources.getString(R.string.settings_android_the_phone_clock_is_ahead_of_the_server_remote_control)
+        }
+        "settings.android_the_system_could_not_install_this_package" -> {
+            resources.getString(R.string.settings_android_the_system_could_not_install_this_package)
+        }
+        "settings.android_the_system_will_confirm_installation_after_downloading_the_first_time" -> {
+            resources.getString(R.string.settings_android_the_system_will_confirm_installation_after_downloading_the_first_time)
+        }
+        "settings.android_this_computer_is_outside_the_current_trusted_directory_check_the" -> {
+            resources.getString(R.string.settings_android_this_computer_is_outside_the_current_trusted_directory_check_the)
+        }
+        "settings.android_this_is_the_managing_device_ordinary_removal_is_unavailable" -> {
+            resources.getString(R.string.settings_android_this_is_the_managing_device_ordinary_removal_is_unavailable)
+        }
+        "settings.android_this_machine_has_been_removed" -> {
+            resources.getString(R.string.settings_android_this_machine_has_been_removed)
+        }
+        "settings.android_this_release_changes_the_protocol_after_installing_also_update_remote" -> {
+            resources.getString(R.string.settings_android_this_release_changes_the_protocol_after_installing_also_update_remote)
+        }
+        "settings.android_to_resume_a_removed_computer_s_sessions_open_its_retained" -> {
+            resources.getString(R.string.settings_android_to_resume_a_removed_computer_s_sessions_open_its_retained)
+        }
+        "settings.android_unknown" -> {
+            resources.getString(R.string.settings_android_unknown)
+        }
+        "settings.android_unverified" -> {
+            resources.getString(R.string.settings_android_unverified)
+        }
+        "settings.android_up_to_date" -> {
+            resources.getString(R.string.settings_android_up_to_date)
+        }
+        "settings.android_update" -> {
+            resources.getString(R.string.settings_android_update)
+        }
+        "settings.android_update_available_value1" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_update_available_value1, value1)
+        }
+        "settings.android_value1_approval_mode" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_value1_approval_mode, value1)
+        }
+        "settings.android_value1_default" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_value1_default, value1)
+        }
+        "settings.android_value1_default_model_for_new_sessions" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_value1_default_model_for_new_sessions, value1)
+        }
+        "settings.android_value1_downloaded" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_value1_downloaded, value1)
+        }
+        "settings.android_value1_is_offline_connect_to_read_and_edit_new_session" -> {
+            val value1 = message.args.getValue("value1") as String
+            resources.getString(R.string.settings_android_value1_is_offline_connect_to_read_and_edit_new_session, value1)
+        }
+        "settings.android_version" -> {
+            resources.getString(R.string.settings_android_version)
+        }
+        "settings.android_viewing_cache" -> {
+            resources.getString(R.string.settings_android_viewing_cache)
+        }
+        "settings.android_waiting_for_a_new_device" -> {
+            resources.getString(R.string.settings_android_waiting_for_a_new_device)
+        }
+        "settings.android_waiting_for_the_new_device_to_confirm" -> {
+            resources.getString(R.string.settings_android_waiting_for_the_new_device_to_confirm)
         }
         "settings.appearance" -> {
             resources.getString(R.string.settings_appearance)
@@ -4482,6 +5940,12 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "settings.when_unspecified_uses" -> {
             resources.getString(R.string.settings_when_unspecified_uses)
         }
+        else -> null
+    }
+}
+
+private fun resolveUiMessage12(resources: android.content.res.Resources, message: UiMessage): String? {
+    return when (message.key) {
         "startup.install_description" -> {
             resources.getString(R.string.startup_install_description)
         }
@@ -4491,12 +5955,6 @@ private fun resolveUiMessage8(resources: android.content.res.Resources, message:
         "startup.opening" -> {
             resources.getString(R.string.startup_opening)
         }
-        else -> null
-    }
-}
-
-private fun resolveUiMessage9(resources: android.content.res.Resources, message: UiMessage): String? {
-    return when (message.key) {
         "startup.opening_remote_agent" -> {
             resources.getString(R.string.startup_opening_remote_agent)
         }
@@ -4649,6 +6107,19 @@ private fun resolveUiMessage9(resources: android.content.res.Resources, message:
         }
         "terminal.view_details" -> {
             resources.getString(R.string.terminal_view_details)
+        }
+        "time.android_day_clock" -> {
+            val clock = message.args.getValue("clock") as String
+            val day = message.args.getValue("day") as String
+            resources.getString(R.string.time_android_day_clock, clock, day)
+        }
+        "time.android_used_clock" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.time_android_used_clock, time)
+        }
+        "time.android_used_relative" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.time_android_used_relative, time)
         }
         "time.calendar_date_year" -> {
             val day = message.args.getValue("day") as Int

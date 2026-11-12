@@ -44,20 +44,20 @@ private const val MAX_APK_BYTES = 200L * 1024 * 1024
  */
 fun parseRelease(text: String): Release {
     val p = Properties().apply { load(StringReader(text)) }
-    fun field(name: String) = p.getProperty(name)?.trim().takeUnless { it.isNullOrEmpty() } ?: throw IOException("发布信息缺少 $name")
+    fun field(name: String) = p.getProperty(name)?.trim().takeUnless { it.isNullOrEmpty() } ?: throw MessageIOException(UiMessages.settingsAndroidReleaseInformationIsMissingValue1((name).toString()).messageText())
     val release = Release(
         version = field("version"),
-        versionCode = field("versionCode").toLongOrNull() ?: throw IOException("发布信息的 versionCode 不是数字"),
-        protocol = field("protocol").toIntOrNull() ?: throw IOException("发布信息的 protocol 不是数字"),
+        versionCode = field("versionCode").toLongOrNull() ?: throw MessageIOException(UiMessages.settingsAndroidReleaseVersioncodeIsNotANumber().messageText()),
+        protocol = field("protocol").toIntOrNull() ?: throw MessageIOException(UiMessages.settingsAndroidReleaseProtocolIsNotANumber().messageText()),
         apk = field("apk"),
         sha256 = field("sha256").lowercase(),
-        size = field("size").toLongOrNull() ?: throw IOException("发布信息的 size 不是数字"),
+        size = field("size").toLongOrNull() ?: throw MessageIOException(UiMessages.settingsAndroidReleaseSizeIsNotANumber().messageText()),
         notes = p.getProperty("notes").orEmpty().trim(),
     )
     // The version and the file name become part of the address the APK is fetched from: one shape only.
     if (!VERSION.matches(release.version) || release.apk != "remote-agent-v${release.version}.apk" ||
         !SHA256.matches(release.sha256) || release.versionCode <= 0 || release.size !in 1..MAX_APK_BYTES
-    ) throw IOException("发布信息格式不对")
+    ) throw MessageIOException(UiMessages.settingsAndroidInvalidReleaseInformationFormat().messageText())
     return release
 }
 
@@ -72,7 +72,7 @@ class Updates(http: OkHttpClient, private val base: String = RELEASES_URL) {
     /** The latest published release. */
     suspend fun latest(): Release = withContext(Dispatchers.IO) {
         http.newCall(Request.Builder().url(base + "latest/download/" + RELEASE_MANIFEST).header("Cache-Control", "no-cache").build()).execute().use { res ->
-            if (!res.isSuccessful) throw IOException("读取发布信息失败（${res.code}）")
+            if (!res.isSuccessful) throw MessageIOException(UiMessages.settingsAndroidCouldNotReadReleaseInformationValue1((res.code).toString()).messageText())
             parseRelease(res.body?.string().orEmpty())
         }
     }
@@ -90,8 +90,8 @@ class Updates(http: OkHttpClient, private val base: String = RELEASES_URL) {
         try {
             // Under its own tag, not "latest": the file the manifest described stays there when a newer release comes.
             http.newCall(Request.Builder().url(base + "download/v${release.version}/" + release.apk).build()).execute().use { res ->
-                if (!res.isSuccessful) throw IOException("下载失败（${res.code}）")
-                val body = res.body ?: throw IOException("下载失败")
+                if (!res.isSuccessful) throw MessageIOException(UiMessages.settingsAndroidDownloadFailedValue1((res.code).toString()).messageText())
+                val body = res.body ?: throw MessageIOException(UiMessages.settingsAndroidDownloadFailed().messageText())
                 part.outputStream().use { out ->
                     val buf = ByteArray(64 * 1024)
                     var done = 0L
@@ -102,14 +102,14 @@ class Updates(http: OkHttpClient, private val base: String = RELEASES_URL) {
                         if (n < 0) break
                         done += n
                         // More than was promised is not this release's file: stop before filling the disk.
-                        if (done > release.size) throw IOException("下载的文件和发布信息不一致")
+                        if (done > release.size) throw MessageIOException(UiMessages.settingsAndroidDownloadedFileDoesNotMatchReleaseInformation().messageText())
                         out.write(buf, 0, n)
                         progress(done)
                     }
                 }
             }
-            if (part.length() != release.size || sha256(part) != release.sha256) throw IOException("下载的文件和发布信息不一致")
-            if (!part.renameTo(file)) throw IOException("没能保存安装包")
+            if (part.length() != release.size || sha256(part) != release.sha256) throw MessageIOException(UiMessages.settingsAndroidDownloadedFileDoesNotMatchReleaseInformation().messageText())
+            if (!part.renameTo(file)) throw MessageIOException(UiMessages.settingsAndroidCouldNotSaveInstallationPackage().messageText())
             file
         } finally {
             part.delete()

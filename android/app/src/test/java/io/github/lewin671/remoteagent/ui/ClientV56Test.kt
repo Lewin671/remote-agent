@@ -18,6 +18,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ClientV56Test {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule val ui = createComposeRule()
 
     private val now = System.currentTimeMillis()
@@ -130,8 +131,8 @@ class ClientV56Test {
             .addWindows(QuotaWindow.newBuilder().setName("secondary").setWindowMinutes(10080).setUsedPercent(34.0).setResetsAtMs(now + 3 * 86400_000))
             .build()
         val m = MachineView("m1", true, now, MachineMeta.newBuilder().addQuotas(qCodex).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX)).build())
-        val g = quotaGroups(m, now).single { it.agent == Agent.AGENT_CODEX }
-        assertEquals("剩 38% · 5 小时", quotaLine(g))
+        val g = quotaGroups(m, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_CODEX }
+        assertEquals("剩 38% · 5 小时", quotaLine(g, copy = ::messageTextForTest))
 
         val qAgy = AgentQuota.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY).setState(QuotaState.QUOTA_STATE_OK).setObservedMs(now)
             .addWindows(QuotaWindow.newBuilder().setName("gemini-5h").setWindowMinutes(300).setUsedPercent(24.0).setResetsAtMs(now + 4 * 3600_000))
@@ -139,7 +140,7 @@ class ClientV56Test {
             .addWindows(QuotaWindow.newBuilder().setName("3p-5h").setWindowMinutes(300).setUsedPercent(50.0).setResetsAtMs(now + 2 * 3600_000))
             .build()
         val mAgy = MachineView("m1", true, now, MachineMeta.newBuilder().addQuotas(qAgy).addAgents(AgentInfo.newBuilder().setAgent(Agent.AGENT_ANTIGRAVITY)).build())
-        val gAgy = quotaGroups(mAgy, now).single { it.agent == Agent.AGENT_ANTIGRAVITY }
-        assertEquals("剩 50% · 5 小时", quotaLine(gAgy))
+        val gAgy = quotaGroups(mAgy, now, copy = ::messageTextForTest).single { it.agent == Agent.AGENT_ANTIGRAVITY }
+        assertEquals("剩 50% · 5 小时", quotaLine(gAgy, copy = ::messageTextForTest))
     }
 }

@@ -17,8 +17,8 @@ internal suspend fun solveSignup(api: Api): SignupProof {
             .getSignupChallenge(GetSignupChallengeRequest.getDefaultInstance(), emptyMap())
             .value()
     val bits = challenge.difficultyBits
-    if (bits !in 0..28) throw PairException("服务器要求的注册计算量过高（$bits 位，最多 28 位）")
-    if (challenge.challenge.size() != 32) throw PairException("服务器返回了无效的注册挑战")
+    if (bits !in 0..28) throw PairException(UiMessages.securityAndroidServerRegistrationComputationRequirementIsTooHighValue1BitsMaximum((bits).toString()).messageText())
+    if (challenge.challenge.size() != 32) throw PairException(UiMessages.securityAndroidTheServerReturnedAnInvalidRegistrationChallenge().messageText())
     val nonce =
         withContext(Dispatchers.Default) {
             val input = challenge.challenge.toByteArray() + ByteArray(8)
@@ -28,7 +28,7 @@ internal suspend fun solveSignup(api: Api): SignupProof {
                 if (attempt and 0xffffL == 0L) {
                     currentCoroutineContext().ensureActive()
                     if (System.currentTimeMillis() >= challenge.expiresMs)
-                        throw PairException("注册挑战已过期，请重试")
+                        throw PairException(UiMessages.securityAndroidRegistrationChallengeExpiredRetry().messageText())
                 }
                 bytes.putLong(32, attempt)
                 val hash = sha256(input)

@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.app.Application
 import android.app.NotificationManager
 import android.net.ConnectivityManager
@@ -301,8 +305,8 @@ class RaApp : Application() {
                         vault.clearSecurityCache()
                         Log.w(TAG, "stored account does not open: ${e.javaClass.simpleName}")
                         _accountError.value =
-                            io.github.lewin671.remoteagent.core.errorText(e) +
-                                "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。"
+                            io.github.lewin671.remoteagent.ui.displayError(e) +
+                                sessionText(UiMessages.commonAndroidTheOriginalRequestAndKeysAreSavedForRetryIf())
                     }
             }
         }
@@ -473,7 +477,7 @@ class RaApp : Application() {
                     _loaded.value = true
                 } catch (e: Exception) {
                     Log.w(TAG, "account erase failed: ${e.javaClass.simpleName}")
-                    _accountError.value = "没能清除这台手机上的账户和缓存，请重试"
+                    _accountError.value = sessionText(UiMessages.commonAndroidCouldNotClearTheAccountAndCacheOnThisPhone())
                 }
             }
         } finally {

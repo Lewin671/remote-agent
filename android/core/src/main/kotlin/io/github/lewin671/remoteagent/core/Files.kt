@@ -9,14 +9,14 @@ import kotlin.coroutines.coroutineContext
 
 const val MAX_FILES = 6
 const val MAX_FILE_BYTES = 100L * 1024 * 1024
-const val FILE_UPLOAD_UPDATE_REQUIRED = "这台电脑不支持发送文件，请更新电脑上的 remote-agent"
+val FILE_UPLOAD_UPDATE_REQUIRED = UiMessages.attachmentUpdateRequired().messageText()
 fun filesSupported(m: MachineView?) = capabilities(m)?.fileUpload == true
 fun maxFiles(m: MachineView?) = capabilities(m)?.maxFilesPerMessage?.takeIf { it > 0 }?.coerceAtMost(MAX_FILES) ?: MAX_FILES
 fun maxFileBytes(m: MachineView?) = capabilities(m)?.maxFileUploadBytes?.takeIf { it > 0 }?.coerceAtMost(MAX_FILE_BYTES) ?: MAX_FILE_BYTES
-fun fileLimitError(size: Long, count: Int, max: Int, maxBytes: Long): String? = when {
-    count >= max -> "一条消息最多 $max 个文件"
-    size < 0 -> "无法读取文件大小，请重新选择文件"
-    size > maxBytes -> "文件过大，单个文件最多 ${fileSize(maxBytes)}"
+fun fileLimitError(size: Long, count: Int, max: Int, maxBytes: Long): MessageText? = when {
+    count >= max -> UiMessages.attachmentMaxFiles((max).toInt()).messageText()
+    size < 0 -> UiMessages.errorsAndroidCannotReadFileSizeSelectTheFileAgain().messageText()
+    size > maxBytes -> UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1((fileSize(maxBytes)).toString()).messageText()
     else -> null
 }
 /**
@@ -30,8 +30,8 @@ fun isVideo(mime: String?, name: String): Boolean =
 private val VIDEO_EXTENSIONS = setOf("mp4", "m4v", "mov", "3gp", "3g2", "webm", "mkv", "avi", "mpg", "mpeg", "ts", "wmv", "flv")
 
 /** Why a video picked from the library is turned away as it is picked: it is over the size limit. Null when it is taken. */
-fun pickedVideoError(name: String, size: Long, maxBytes: Long): String? =
-    if (size > maxBytes) "「$name」超过单个文件 ${maxBytes / 1024 / 1024} MB 的上限" else null
+fun pickedVideoError(name: String, size: Long, maxBytes: Long): MessageText? =
+    if (size > maxBytes) UiMessages.attachmentNamedSizeLimit((maxBytes / 1024 / 1024).toInt(), (name).toString()).messageText() else null
 
 /**
  * How many more items the library may give: images while they fit, and,
@@ -86,16 +86,16 @@ fun withoutFileLines(text: String, files: List<SentFile>): String {
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
 /** IO from the provider is distinguished from network IO by where it happened. */
-class FileSourceException(cause: Exception) : Exception("无法读取源文件，请移除后重新选择文件", cause)
-class FileContentChanged : Exception("文件在上传时发生变化，请重试或重新选择文件")
+class FileSourceException(cause: Exception) : MessageException(UiMessages.errorsAndroidCannotReadTheSourceFileRemoveItAndSelectThe().messageText(), cause)
+class FileContentChanged : MessageException(UiMessages.errorsAndroidTheFileChangedDuringUploadRetryOrSelectTheFile().messageText())
 fun isUploadHashMismatch(e: Throwable) = e is CommandException && e.code == "invalid_argument" && e.message.orEmpty().contains("hash", ignoreCase = true)
 fun restartUpload(e: Throwable) = e is CommandException && (e.code == "already_exists" || e.code == "not_found" || isUploadHashMismatch(e))
-fun uploadErrorText(e: Throwable): String = when {
-    e is FileSourceException || e is FileContentChanged -> e.message!!
-    isUploadHashMismatch(e) -> "文件校验失败，请重试或重新选择文件"
-    e is CommandException && e.code == "already_exists" -> "附件传输内容已改变，请重试"
-    e is CommandException && e.code == "aborted" -> "附件传输已中止或发生变化，请重试"
-    e is java.io.IOException -> "上传连接中断，请重试"
+fun uploadErrorText(e: Throwable): MessageText = when {
+    e is FileSourceException || e is FileContentChanged -> errorText(e)
+    isUploadHashMismatch(e) -> UiMessages.errorsAndroidFileVerificationFailedRetryOrSelectTheFileAgain().messageText()
+    e is CommandException && e.code == "already_exists" -> UiMessages.errorsAndroidAttachmentTransferContentChangedRetry().messageText()
+    e is CommandException && e.code == "aborted" -> UiMessages.errorsAndroidAttachmentTransferStoppedOrChangedRetry().messageText()
+    e is java.io.IOException -> UiMessages.errorsAndroidUploadConnectionInterruptedRetry().messageText()
     else -> errorText(e)
 }
 
@@ -116,7 +116,7 @@ suspend fun uploadFile(
     onPrepared: (Long) -> Unit = {},
     onProgress: (Long, Long) -> Unit = { _, _ -> },
 ): UploadedFile {
-    require(name.isNotBlank() && name.toByteArray().size <= 255) { "文件名过长或为空，请重命名后重新选择" }
+    requireMessage(name.isNotBlank() && name.toByteArray().size <= 255) { UiMessages.errorsAndroidFileNameIsTooLongOrEmptyRenameTheFile().messageText() }
     fun <T> source(work: () -> T): T = try { work() } catch (e: java.io.IOException) { throw FileSourceException(e) } catch (e: SecurityException) { throw FileSourceException(e) }
     fun openSource(): InputStream = object : java.io.FilterInputStream(source { open() }) {
         override fun close() { try { super.close() } catch (e: java.io.IOException) { throw FileSourceException(e) } }
@@ -130,7 +130,7 @@ suspend fun uploadFile(
             val n = source { input.read(buffer) }
             if (n < 0) break
             actual += n
-            require(actual <= minOf(maxBytes, MAX_FILE_BYTES)) { "文件过大，单个文件最多 ${fileSize(minOf(maxBytes, MAX_FILE_BYTES))}" }
+            requireMessage(actual <= minOf(maxBytes, MAX_FILE_BYTES)) { UiMessages.errorsAndroidFileTooLargeMaximumSizePerFileValue1((fileSize(minOf(maxBytes, MAX_FILE_BYTES))).toString()).messageText() }
             digest.update(buffer, 0, n)
         }
     }
@@ -148,7 +148,7 @@ suspend fun uploadFile(
     val chunk = minOf(maxChunk, DEFAULT_CHUNK_BYTES, st.maxChunkBytes.takeIf { it > 0 } ?: DEFAULT_CHUNK_BYTES)
     require(chunk > 0)
     if (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
-        require(st.persistedBytes in 0..actual) { "电脑返回的文件进度无效" }
+        requireMessage(st.persistedBytes in 0..actual) { UiMessages.errorsAndroidTheComputerReturnedInvalidFileProgress().messageText() }
         // Read even the resumed prefix: changes there must not silently pass verification.
         val check = MessageDigest.getInstance("SHA-256")
         openSource().use { input ->
@@ -182,10 +182,10 @@ suspend fun uploadFile(
     }
     var completing = 0
     while (st.state == ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
-        if (completing++ > retries) throw CommandException("unavailable", "电脑尚未确认附件上传完成，请重试")
+        if (completing++ > retries) throw CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText())
         st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
     }
-    if (st.fileId.isEmpty()) throw CommandException("internal", "电脑没有返回文件 ID")
+    if (st.fileId.isEmpty()) throw CommandException("internal", UiMessages.errorsAndroidTheComputerDidNotReturnAFileId().messageText())
     onProgress(actual, actual)
     return UploadedFile(st.fileId, st.expiresMs)
 }

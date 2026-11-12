@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.update
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
@@ -8,7 +12,7 @@ import androidx.core.content.pm.PackageInfoCompat
 import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.Release
 import io.github.lewin671.remoteagent.core.Updates
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.isNewer
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -147,7 +151,7 @@ object Updater {
             }
         } catch (e: Exception) {
             if (e is kotlinx.coroutines.CancellationException) throw e
-            val error = errorText(e).ifEmpty { "连不上发布地址" }
+            val error = displayError(e).ifEmpty { sessionText(UiMessages.settingsAndroidCannotConnectToTheReleaseAddress()) }
             // A failure says nothing about what is already known, and only a look the user asked for says why.
             _checking.value = UpdateCheck(error = error.takeIf { manual })
         } finally {
@@ -178,7 +182,7 @@ object Updater {
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 installWhenReady = false
-                _state.value = UpdateState.DownloadFailed(release, errorText(e).ifEmpty { "下载失败" })
+                _state.value = UpdateState.DownloadFailed(release, displayError(e).ifEmpty { sessionText(UiMessages.settingsAndroidDownloadFailed()) })
             }
         }
     }
@@ -192,14 +196,14 @@ object Updater {
      * manifest promised.
      */
     fun notThisApp(app: RaApp, file: File, release: Release): String? {
-        val theirs = app.packageManager.getPackageArchiveInfo(file.path, 0) ?: return "下载的文件不是安装包"
+        val theirs = app.packageManager.getPackageArchiveInfo(file.path, 0) ?: return sessionText(UiMessages.settingsAndroidTheDownloadedFileIsNotAnInstallationPackage())
         return packageMismatch(app.packageName, theirs.packageName, PackageInfoCompat.getLongVersionCode(theirs), release)
     }
 
     /** [notThisApp] on what was read from the package. */
     fun packageMismatch(installedName: String, name: String?, versionCode: Long, release: Release): String? = when {
-        name != installedName -> "下载的安装包不是 remote-agent"
-        versionCode != release.versionCode -> "下载的安装包和发布信息不一致"
+        name != installedName -> sessionText(UiMessages.settingsAndroidTheDownloadedPackageIsNotRemoteAgent())
+        versionCode != release.versionCode -> sessionText(UiMessages.settingsAndroidTheDownloadedPackageDoesNotMatchTheReleaseInformation())
         else -> null
     }
 

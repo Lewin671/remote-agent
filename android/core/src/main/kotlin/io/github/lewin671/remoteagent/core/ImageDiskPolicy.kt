@@ -46,6 +46,6 @@ object ImageDiskPolicy {
     }.toList()
 
     fun requireRoom(dir: File, replacing: File, incoming: Long, limit: Long) {
-        require(bytes(dir) - replacing.length() + incoming <= limit) { "手机待发图片空间不足，请发送或移除旧草稿" }
+        requireMessage(bytes(dir) - replacing.length() + incoming <= limit) { UiMessages.imageAndroidPhoneStorageForPendingImagesIsFullSendOrRemove().messageText() }
     }
 }

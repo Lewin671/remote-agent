@@ -8,14 +8,15 @@ import io.github.lewin671.remoteagent.proto.DaemonSettings
 import io.github.lewin671.remoteagent.proto.MachineMeta
 
 data class QuotaWindowDescriptor(
-    val label: String,
-    val group: String? = null,
+    val label: MessageText,
+    val group: MessageText? = null,
 )
 
 interface AgentEntry {
     val agent: Agent
     val id: String
     val name: String
+    val nameMessage: UiMessage? get() = null
     val quotaWindows: List<String>
     fun quotaWindow(name: String): QuotaWindowDescriptor
     fun planName(raw: String): String
@@ -27,8 +28,8 @@ interface AgentEntry {
     val planNote: UiMessage?
     val standardContextOption: Boolean
     val autoMayBeUnavailable: Boolean
-    val trustFolderHint: String?
-    val usageHint: String?
+    val trustFolderHint: MessageText?
+    val usageHint: MessageText?
     val reconcilesUnclaimedInput: Boolean
     val sessionNeedsModelList: Boolean
     val switchesModelInSession: Boolean
@@ -62,17 +63,17 @@ fun gptSlugLabel(id: String): String =
         }
 
 private fun fixedWindowLabel(name: String): QuotaWindowDescriptor = when (name) {
-    "primary", "five_hour" -> QuotaWindowDescriptor("5 小时")
-    "secondary", "seven_day" -> QuotaWindowDescriptor("7 天")
-    else -> QuotaWindowDescriptor(name)
+    "primary", "five_hour" -> QuotaWindowDescriptor(UiMessages.quotaHr(5).messageText())
+    "secondary", "seven_day" -> QuotaWindowDescriptor(UiMessages.quotaDays(7).messageText())
+    else -> QuotaWindowDescriptor(name.messageText())
 }
 
 private val ANTIGRAVITY_QUOTA_WINDOWS = mapOf(
-    "gemini-5h" to QuotaWindowDescriptor("Gemini · 5 小时", "Gemini"),
-    "gemini-weekly" to QuotaWindowDescriptor("Gemini · 7 天", "Gemini"),
-    "gemini-argon-wtu-weekly" to QuotaWindowDescriptor("Gemini 4 Argon · 7 天", "Gemini"),
-    "3p-5h" to QuotaWindowDescriptor("第三方模型 · 5 小时", "第三方模型（Claude、GPT-OSS）"),
-    "3p-weekly" to QuotaWindowDescriptor("第三方模型 · 7 天", "第三方模型（Claude、GPT-OSS）"),
+    "gemini-5h" to QuotaWindowDescriptor(UiMessages.quotaNamedHours(5, "Gemini").messageText(), "Gemini".messageText()),
+    "gemini-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini").messageText(), "Gemini".messageText()),
+    "gemini-argon-wtu-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini 4 Argon").messageText(), "Gemini".messageText()),
+    "3p-5h" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedHours(5, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText()),
+    "3p-weekly" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedDays(7, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText()),
 )
 
 private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
@@ -94,8 +95,8 @@ private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
     override val planNote: UiMessage? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false
-    override val trustFolderHint: String? = null
-    override val usageHint: String? = null
+    override val trustFolderHint: MessageText? = null
+    override val usageHint: MessageText? = null
     override val reconcilesUnclaimedInput: Boolean = false
     override val sessionNeedsModelList: Boolean = false
     override val switchesModelInSession: Boolean = true
@@ -142,8 +143,8 @@ private val CLAUDE_ENTRY: AgentEntry = object : AgentEntry {
     override val planNote: UiMessage? = UiMessages.dockClaudePlanNote()
     override val standardContextOption: Boolean = true
     override val autoMayBeUnavailable: Boolean = true
-    override val trustFolderHint: String? = "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎"
-    override val usageHint: String? = " 可在本机 Claude Code 中查看 /usage。"
+    override val trustFolderHint: MessageText? = UiMessages.dockTrustFolder().messageText()
+    override val usageHint: MessageText? = UiMessages.quotaAndroidYouCanViewUsageInClaudeCodeOnThisComputer().messageText()
     override val reconcilesUnclaimedInput: Boolean = true
     override val sessionNeedsModelList: Boolean = true
     override val switchesModelInSession: Boolean = true
@@ -175,7 +176,7 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
     override val quotaWindows: List<String> = emptyList()
 
     override fun quotaWindow(name: String): QuotaWindowDescriptor =
-        ANTIGRAVITY_QUOTA_WINDOWS[name] ?: QuotaWindowDescriptor(name, name)
+        ANTIGRAVITY_QUOTA_WINDOWS[name] ?: QuotaWindowDescriptor(name.messageText(), name.messageText())
 
     override fun planName(raw: String): String = raw
 
@@ -188,8 +189,8 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
     override val planNote: UiMessage? = UiMessages.dockAgyPlanNote()
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = true
-    override val trustFolderHint: String? = null
-    override val usageHint: String? = null
+    override val trustFolderHint: MessageText? = null
+    override val usageHint: MessageText? = null
     override val reconcilesUnclaimedInput: Boolean = false
     override val sessionNeedsModelList: Boolean = true
     override val switchesModelInSession: Boolean = false
@@ -216,10 +217,11 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
 
 private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
     override val id: String = ""
-    override val name: String = "未知 CLI"
+    override val name: String = "CLI"
+    override val nameMessage = UiMessages.modelsUnknownCli()
     override val quotaWindows: List<String> = emptyList()
 
-    override fun quotaWindow(name: String): QuotaWindowDescriptor = QuotaWindowDescriptor(name)
+    override fun quotaWindow(name: String): QuotaWindowDescriptor = QuotaWindowDescriptor(name.messageText())
 
     override fun planName(raw: String): String = raw
 
@@ -232,8 +234,8 @@ private class UnknownAgentEntry(override val agent: Agent) : AgentEntry {
     override val planNote: UiMessage? = null
     override val standardContextOption: Boolean = false
     override val autoMayBeUnavailable: Boolean = false
-    override val trustFolderHint: String? = null
-    override val usageHint: String? = null
+    override val trustFolderHint: MessageText? = null
+    override val usageHint: MessageText? = null
     override val reconcilesUnclaimedInput: Boolean = false
     override val sessionNeedsModelList: Boolean = false
     override val switchesModelInSession: Boolean = false
@@ -270,7 +272,7 @@ fun agentById(id: String?): AgentEntry {
     return AGENTS.firstOrNull { it.id == id } ?: UNKNOWN_ENTRY
 }
 
-fun agentName(a: Agent? = null): String = agentInfo(a).name
+fun agentName(a: Agent? = null, copy: MessageResolver): String = agentInfo(a).let { it.nameMessage?.let(copy) ?: it.name }
 
 fun defaultsFor(settings: DaemonSettings?, agent: Agent): AgentDefaults =
     agentInfo(agent).defaults(settings)

@@ -46,7 +46,7 @@ class Attempt {
             // other failure (a network error, a failed login) leaves it
             // unknown, to be retried under the same request ID.
             frozen && !(error is CommandException && error.fromDaemon) ->
-                return CommandException(CommandException.UNKNOWN, "上一次的结果仍不确定：${errorText(error)}。重试会发送同一个请求", failureKind = CommandFailureKind.UNKNOWN)
+                return CommandException(CommandException.UNKNOWN, localized { copy -> copy(UiMessages.errorsAndroidThePreviousOutcomeIsStillUnknownValue1RetryingSendsThe(errorText(error).resolve(copy))) }, failureKind = CommandFailureKind.UNKNOWN)
             else -> abandon()
         }
         return error
@@ -60,7 +60,7 @@ class Attempt {
     }
 
     companion object {
-        const val EXPIRED_UNKNOWN = "不确定上一次是否已经执行，它已过期，不会再重发。请先去列表里确认，需要时放弃后重新开始"
+        val EXPIRED_UNKNOWN = UiMessages.errorsAndroidThePreviousOutcomeIsUnknownTheRequestExpiredAndWill().messageText()
 
         private fun expiry(e: Throwable) =
             e is CommandException && (e.code == CommandException.EXPIRED || (e.fromDaemon && e.code == "deadline_exceeded"))

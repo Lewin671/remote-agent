@@ -23,6 +23,7 @@ import java.io.File
 @Config(sdk = [35], application = android.app.Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MessageLocaleTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private val context: Context get() = RuntimeEnvironment.getApplication()
     @Test fun sharedLanguageContract() {
         val vectors = JSONArray(File("../../i18n/locale-vectors.json").readText())
@@ -33,9 +34,9 @@ class MessageLocaleTest {
         }
     }
     @Test fun nativeResourcePluralRulesAndStageZero() {
-        assertEquals("取消", resolveUiMessage(context, UiMessages.commonCancel()))
-        assertEquals("Copy", resolveUiMessage(context, UiMessages.commonCopy(), "en"))
-        assertEquals("复制", resolveUiMessage(context, UiMessages.commonCopy(), "unsupported"))
+        assertEquals(messageTextForTest(UiMessages.commonCancel()), resolveUiMessage(context, UiMessages.commonCancel()))
+        assertEquals(messageTextForTest(UiMessages.terminalAndroidSelectionCopy()), resolveUiMessage(context, UiMessages.commonCopy(), "en"))
+        assertEquals(messageTextForTest(UiMessages.commonCopy()), resolveUiMessage(context, UiMessages.commonCopy(), "unsupported"))
         assertEquals("1 image could not be attached. Tap it for details.", resolveUiMessage(context, UiMessages.imageAttachFailed(1), "en"))
         for (count in listOf(0, 2, 1000)) {
             assertEquals("$count 张图没加上，点图片看原因", resolveUiMessage(context, UiMessages.imageAttachFailed(count)))

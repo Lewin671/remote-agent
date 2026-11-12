@@ -1,7 +1,8 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import kotlinx.coroutines.runBlocking
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -52,12 +53,12 @@ class SessionLookupTest {
         val r = Run(List(6) { down } + listOf(false, down, true)).apply { go() }
         // Said why each time, never as missing; the waits double up to half a minute and start over after an answer.
         assertEquals(listOf(3_000L, 6_000L, 12_000L, 24_000L, 30_000L, 30_000L, 2_500L, 3_000L), r.waits)
-        assertEquals(SessionLookup.Failed("连不上"), r.reports.first())
+        assertEquals(SessionLookup.Failed("连不上".messageText()), r.reports.first())
         assertEquals(0, r.reports.count { it == SessionLookup.Missing })
         // What the pages say meanwhile.
-        assertEquals("没能读取这个会话：连不上", lookupNote(SessionLookup.Failed("连不上")))
-        assertEquals("找不到这个会话", lookupNote(SessionLookup.Missing))
-        assertNull(lookupNote(SessionLookup.Reading))
-        assertNull(lookupNote(null))
+        assertEquals("没能读取这个会话：连不上", lookupNote(SessionLookup.Failed("连不上".messageText()), copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.commonAndroidCannotFindThisSession()), lookupNote(SessionLookup.Missing, copy = ::messageTextForTest))
+        assertNull(lookupNote(SessionLookup.Reading, copy = ::messageTextForTest))
+        assertNull(lookupNote(null, copy = ::messageTextForTest))
     }
 }

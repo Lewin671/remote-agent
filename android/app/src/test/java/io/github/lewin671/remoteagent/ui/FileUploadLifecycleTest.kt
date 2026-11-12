@@ -194,10 +194,10 @@ class FileUploadLifecycleTest {
     }
 
     @Test fun errorsAndUriOwnershipArePrecise() {
-        assertEquals("上传连接中断，请重试", uploadErrorText(java.io.IOException("network")))
-        assertTrue(uploadErrorText(FileSourceException(java.io.IOException())).contains("源文件"))
-        assertTrue(uploadErrorText(CommandException("aborted", "the transfer changed")).contains("发生变化"))
-        assertTrue(uploadErrorText(CommandException("invalid_argument", "the bytes do not match the hash")).contains("校验失败"))
+        assertEquals(messageTextForTest(UiMessages.errorsAndroidUploadConnectionInterruptedRetry()), uploadErrorText(java.io.IOException("network")).resolve(::messageTextForTest))
+        assertTrue(uploadErrorText(FileSourceException(java.io.IOException())).resolve(::messageTextForTest).contains("源文件"))
+        assertTrue(uploadErrorText(CommandException("aborted", "the transfer changed")).resolve(::messageTextForTest).contains("发生变化"))
+        assertTrue(uploadErrorText(CommandException("invalid_argument", "the bytes do not match the hash")).resolve(::messageTextForTest).contains("校验失败"))
         assertEquals(emptySet<String>(), unusedUriPermissions(setOf("u"), setOf("u"), emptySet()))
         assertEquals(emptySet<String>(), unusedUriPermissions(setOf("u"), emptySet(), setOf("u")))
         assertEquals(setOf("u"), unusedUriPermissions(setOf("u"), emptySet(), emptySet()))

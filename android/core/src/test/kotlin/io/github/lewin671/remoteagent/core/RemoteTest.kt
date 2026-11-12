@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import io.github.lewin671.remoteagent.proto.*
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Command
@@ -29,7 +31,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -284,7 +285,7 @@ class RemoteTest {
                 "an offline hint cannot settle an earlier execution: $error",
                 error is CommandException && error.unknown,
             )
-            assertEquals("不确定电脑有没有执行：连接中途断了", error?.message)
+            assertEquals(messageTextForTest(UiMessages.errorsAndroidComputerOutcomeUnknownTheConnectionDropped()), errorText(error!!).testText())
             attempt.settle(error)
             assertSame(original, attempt.next { r.prepare(daemon.id, "s1", cmd) })
             daemon.connect()
@@ -1140,11 +1141,11 @@ class RemoteTest {
                 r.awaitState("session meta") {
                     it.conn == ConnState.ONLINE && it.sessions["s1"]?.info != null
                 }
-            assertEquals("fake-mac", machineName(st.machines[daemon.id]))
+            assertEquals("fake-mac", machineName(st.machines[daemon.id], copy = ::messageTextForTest))
             assertTrue(st.machines[daemon.id]!!.online)
             val s = st.sessions.getValue("s1")
-            assertEquals("修复登录超时", titleOf(s))
-            assertEquals("foo", projects(st).single().name)
+            assertEquals("修复登录超时", titleOf(s, copy = ::messageTextForTest))
+            assertEquals("foo", projects(st, copy = ::messageTextForTest).single().name)
 
             val ev = r.awaitEvents("s1", 3)
             assertEquals(listOf(1L, 2L, 3L), ev.events.map { it.seq })
@@ -1257,7 +1258,7 @@ class RemoteTest {
         runBlocking<Unit> {
             val e = refused(PROTOCOL_VERSION - 1)
             assertEquals("failed_precondition", e.code)
-            assertEquals("fake-mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", e.message)
+            assertEquals("fake-mac 上的 remote-agent 版本较旧，请在电脑上更新后再试", errorText(e).testText())
         }
 
     @Test
@@ -1265,7 +1266,7 @@ class RemoteTest {
         runBlocking<Unit> {
             val e = refused(PROTOCOL_VERSION + 1)
             assertEquals("failed_precondition", e.code)
-            assertEquals("这个 App 版本较旧，请更新后再试", e.message)
+            assertEquals(messageTextForTest(UiMessages.commonAndroidThisAppVersionIsOldUpdateAndRetry()), errorText(e).testText())
         }
 
     @Test
@@ -1287,7 +1288,7 @@ class RemoteTest {
                             frames += frame
                         }
 
-                        override fun onClose(reason: String) {}
+                        override fun onClose(reason: MessageText) {}
                     },
                 )
             val snap = frames.poll(5, TimeUnit.SECONDS)!!
@@ -1437,7 +1438,7 @@ class RemoteTest {
                 )
             closers += AutoCloseable { r.close() }
             r.start()
-            val progress = r.awaitState("waiting for Ready") { it.connStep == "建立推送连接" }
+            val progress = r.awaitState("waiting for Ready") { it.connStep.testText() == "建立推送连接" }
             assertTrue(progress.connStartedAtMs != null)
             assertEquals("", progress.connError)
             r.awaitState("missing Ready timeout") {
@@ -1520,7 +1521,7 @@ class RemoteTest {
                 r.close()
             }
             r.start()
-            val login = r.awaitState("login progress") { it.connStep == "登录" }
+            val login = r.awaitState("login progress") { it.connStep.testText() == "登录" }
             assertTrue(login.connStartedAtMs != null)
             assertEquals("", login.connError)
             r.awaitState("login timeout") { it.conn == ConnState.OFFLINE }
@@ -2106,7 +2107,7 @@ class RemoteTest {
                 b.awaitState("b sees the name") {
                     it.devices[a.account.deviceId]?.meta?.name == "我的手机"
                 }
-            assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId))
+            assertEquals("我的手机", clientName(sb.devices[a.account.deviceId], a.account.deviceId, copy = ::messageTextForTest))
         }
 
     @Test

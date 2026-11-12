@@ -30,6 +30,81 @@
     }
   },
   {
+    "key": "image.android_cannot_decode_image",
+    "zh-CN": "解不出图片",
+    "en": "Cannot decode image",
+    "notes": "Android Viewer 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_cannot_decode_this_image",
+    "zh-CN": "解不出这张图片",
+    "en": "Cannot decode this image",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_cannot_read_this_image",
+    "zh-CN": "读不到这张图片",
+    "en": "Cannot read this image",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_converted_to_value1_keeping_original_dimensions",
+    "zh-CN": "转成了 {value1}，保留原始尺寸",
+    "en": "Converted to {value1}, keeping original dimensions",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_could_not_save_image_cache",
+    "zh-CN": "没能保存图片缓存",
+    "en": "Could not save image cache",
+    "notes": "Android ImageFiles 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.android_download_retry",
     "zh-CN": "没能下载：{reason} · 点按重试",
     "en": "Could not download: {reason} · Tap to retry",
@@ -53,6 +128,20 @@
     "zh-CN": "没有图片",
     "en": "No images",
     "notes": "Android 批次 B：Viewer.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_file_upload_unavailable",
+    "zh-CN": "文件上传不可用",
+    "en": "File upload unavailable",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -92,6 +181,67 @@
         "example": "Example"
       }
     },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_gif_contains_an_unrecognized_block",
+    "zh-CN": "GIF 里有认不出的块",
+    "en": "GIF contains an unrecognized block",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_gif_is_truncated",
+    "zh-CN": "GIF 被截断",
+    "en": "GIF is truncated",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_image_exceeds_value1_mb",
+    "zh-CN": "图片超过 {value1} MB",
+    "en": "Image exceeds {value1} MB",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_image_has_no_dimensions",
+    "zh-CN": "图片没有尺寸",
+    "en": "Image has no dimensions",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
     "platforms": [
       "android"
     ],
@@ -143,10 +293,99 @@
     }
   },
   {
+    "key": "image.android_original_exceeds_20_mb",
+    "zh-CN": "原图超过 20 MB",
+    "en": "Original exceeds 20 MB",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.android_original_meta",
     "zh-CN": " 原图",
     "en": " Original",
     "notes": "Android 批次 B：ImagePick.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_phone_storage_for_pending_images_is_full_send_or_remove",
+    "zh-CN": "手机待发图片空间不足，请发送或移除旧草稿",
+    "en": "Phone storage for pending images is full. Send or remove old drafts",
+    "notes": "Android ImageDiskPolicy 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_photo_library_is_not_writable",
+    "zh-CN": "相册不可写",
+    "en": "Photo library is not writable",
+    "notes": "Android Viewer 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_pixel_count_exceeds_this_phone_s_limit_scaled_down_to",
+    "zh-CN": "；像素超过手机能处理的上限，缩小到 1/{value1}",
+    "en": "; pixel count exceeds this phone's limit; scaled down to 1/{value1}",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_reprocess_or_select_the_image_again",
+    "zh-CN": "需要重新处理或重新选择图片",
+    "en": "Reprocess or select the image again",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_reprocess_using_the_current_mode",
+    "zh-CN": "需要按当前模式重新处理",
+    "en": "Reprocess using the current mode",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
     "params": {},
     "platforms": [
       "android"
@@ -237,6 +476,20 @@
     }
   },
   {
+    "key": "image.android_rotate_to_the_capture_orientation_and_re_encode_at_maximum",
+    "zh-CN": "按拍摄方向转正后以最高画质重新编码",
+    "en": "Rotate to the capture orientation and re-encode at maximum quality",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.android_save_permission",
     "zh-CN": "没有存储权限，没能保存",
     "en": "Could not save without storage permission",
@@ -279,6 +532,90 @@
     }
   },
   {
+    "key": "image.android_the_computer_did_not_provide_an_image_id",
+    "zh-CN": "电脑没有给出图片 ID",
+    "en": "The computer did not provide an image ID",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_the_computer_has_not_confirmed_the_attachment_upload_retry",
+    "zh-CN": "电脑尚未确认附件上传完成，请重试",
+    "en": "The computer has not confirmed the attachment upload. Retry",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_this_image_has_no_local_copy_available_for_reprocessing_remove",
+    "zh-CN": "这张图没有可重新处理的本机副本，请移除后重新选择",
+    "en": "This image has no local copy available for reprocessing. Remove it and select it again",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_this_image_has_no_local_copy_remove_it_and_select",
+    "zh-CN": "这张图没有本机副本，请移除后重新选择",
+    "en": "This image has no local copy. Remove it and select it again",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_this_image_is_too_large_for_the_phone_s_available",
+    "zh-CN": "这张图太大，手机内存不够处理",
+    "en": "This image is too large for the phone's available memory",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_this_phone_cannot_read_this_image_format",
+    "zh-CN": "这台手机读不了这种图片格式",
+    "en": "This phone cannot read this image format",
+    "notes": "Android ImageProcess 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.android_total_size",
     "zh-CN": " · 共 {size} MB",
     "en": " · {size} MB total",
@@ -298,6 +635,76 @@
     }
   },
   {
+    "key": "image.android_unreadable_gif",
+    "zh-CN": "不是能读的 GIF",
+    "en": "Unreadable GIF",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_unreadable_jpeg",
+    "zh-CN": "不是能读的 JPEG",
+    "en": "Unreadable JPEG",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_unreadable_png",
+    "zh-CN": "不是能读的 PNG",
+    "en": "Unreadable PNG",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_unreadable_webp",
+    "zh-CN": "不是能读的 WebP",
+    "en": "Unreadable WebP",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_unsupported_image_format",
+    "zh-CN": "不支持的图片格式",
+    "en": "Unsupported image format",
+    "notes": "Android Images 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "image.android_upload_progress",
     "zh-CN": "正在传到电脑，{percent}%",
     "en": "Uploading to computer, {percent}%",
@@ -308,6 +715,34 @@
         "example": "Example"
       }
     },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_upload_to_the_computer_again",
+    "zh-CN": "需要重新传到电脑",
+    "en": "Upload to the computer again",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.android_upload_to_the_computer_again_if_the_source_cannot_be",
+    "zh-CN": "需要重新传到电脑；源文件无法读取时请重新选择文件",
+    "en": "Upload to the computer again. If the source cannot be read, select the file again",
+    "notes": "Android ImageDrafts 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
     "platforms": [
       "android"
     ],

@@ -20,7 +20,7 @@ fun sessionOrigin(o: io.github.lewin671.remoteagent.proto.Origin?, state: Remote
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_CLIENT -> when {
             o.deviceId == me -> UiMessages.sessionOriginSelf().messageText()
             o.deviceId.isEmpty() || state.devices.isEmpty() -> UiMessages.sessionOriginOther().messageText()
-            else -> state.devices[o.deviceId]?.let { clientName(it, o.deviceId, state.devices.values).messageText() }
+            else -> state.devices[o.deviceId]?.let { localized { copy -> clientName(it, o.deviceId, state.devices.values, copy = copy) } }
                 ?: UiMessages.sessionOriginRemoved().messageText()
         }
         io.github.lewin671.remoteagent.proto.OriginKind.ORIGIN_KIND_LOCAL -> UiMessages.sessionOriginTerminal(machine).messageText()

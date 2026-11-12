@@ -16,7 +16,10 @@ import org.junit.Assert.fail
 import org.junit.Test
 
 /** Looking again for a newer release while one is already known (client-v42). */
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class UpdaterTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private val installed = 1L
     private val old = Release("0.0.2", 2, 4, "remote-agent-v0.0.2.apk", "0".repeat(64), 1024, "更新说明")
     private val newer = old.copy(version = "0.0.3", versionCode = 3, apk = "remote-agent-v0.0.3.apk")

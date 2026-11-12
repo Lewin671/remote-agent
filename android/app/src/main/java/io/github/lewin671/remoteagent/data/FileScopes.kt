@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.data
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.ui.SealedFiles
 
 /** A store view ends with its account, including work still waiting on IO. */
@@ -12,7 +16,7 @@ class FileScopes(private val files: SealedFiles) {
         val owned = epoch
         object : SealedFiles {
             override fun <T> transaction(work: () -> T): T = files.transaction {
-                check(owned == epoch) { "账户已退出" }
+                check(owned == epoch) { sessionText(UiMessages.commonAndroidAccountSignedOut()) }
                 work()
             }
             override fun put(folder: String, name: String, data: ByteArray) = transaction { files.put(folder, name, data) }

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.BasicTextField
@@ -28,6 +30,7 @@ import kotlinx.coroutines.Dispatchers
 /** Same selected-input interaction as session rename; only a complete title-only spec is submitted. */
 @Composable
 fun ScheduleRenameDialog(task: ScheduledTask, onClose: () -> Unit, enabled: Boolean = true, onSave: suspend (String) -> Unit) {
+    val copy = uiText()
     val scope = rememberCoroutineScope()
     var value by remember { mutableStateOf(TextFieldValue(task.title, TextRange(0, task.title.length))) }
     var saving by remember { mutableStateOf(false) }
@@ -41,7 +44,7 @@ fun ScheduleRenameDialog(task: ScheduledTask, onClose: () -> Unit, enabled: Bool
         scope.launch(Dispatchers.Main.immediate) {
             try { onSave(value.text); onClose() }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) { error = errorText(e); unknown = (e as? CommandException)?.unknown == true }
+            catch (e: Exception) { error = displayError(e); unknown = (e as? CommandException)?.unknown == true }
             finally { saving = false }
         }
     }
@@ -50,15 +53,15 @@ fun ScheduleRenameDialog(task: ScheduledTask, onClose: () -> Unit, enabled: Bool
         LaunchedEffect(window) { snapshotFlow { window.isWindowFocused }.collect { if (it) focus.requestFocus() } }
         Box(Modifier.fillMaxWidth().padding(horizontal = 30.dp).imePadding(), contentAlignment = Alignment.Center) {
             Column(Modifier.widthIn(max = 320.dp).fillMaxWidth().clip(Radii.R20).background(pal.paper).padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 12.dp)) {
-                Text("重命名任务", style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
+                Text(copy(UiMessages.scheduleRenameTask()), style = T.s17b, color = pal.ink, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp))
                 BasicTextField(value, { value = it.copy(text = scheduleNameInput(it.text)) }, Modifier.fillMaxWidth().padding(bottom = 8.dp).focusRequester(focus),
                     textStyle = T.s15.copy(color = pal.ink), cursorBrush = SolidColor(pal.blue), singleLine = true, readOnly = !enabled,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done), keyboardActions = KeyboardActions(onDone = { save() }),
                     decorationBox = { inner -> FieldBox { inner() } })
-                Text(if (error.isEmpty()) "留空保存会用消息的第一句" else error, style = T.s13, color = if (error.isEmpty()) pal.ink2 else pal.red, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp))
+                Text(if (error.isEmpty()) copy(UiMessages.scheduleSavingBlankUsesTheMessageSFirstSentence()) else error, style = T.s13, color = if (error.isEmpty()) pal.ink2 else pal.red, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp))
                 Btns {
-                    PillButton("取消", onClose, Modifier.weight(1f), enabled = !saving)
-                    PillButton(if (saving) "保存中…" else "保存", { save() }, Modifier.weight(1f), ButtonKind.INK, enabled = enabled && !saving && !unknown)
+                    PillButton(copy(UiMessages.commonCancel()), onClose, Modifier.weight(1f), enabled = !saving)
+                    PillButton(if (saving) copy(UiMessages.scheduleAndroidSavingFf509C()) else copy(UiMessages.commonSave()), { save() }, Modifier.weight(1f), ButtonKind.INK, enabled = enabled && !saving && !unknown)
                 }
             }
         }

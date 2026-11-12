@@ -187,7 +187,7 @@ suspend fun registerDevice(
     beforeRegister(exact)
     val res = Api(server, http).auth.registerDevice(exact, emptyMap()).value()
     if (res.deviceId != deviceId(device.publicKey))
-        throw IllegalStateException("server 返回了意外的设备 ID")
+        throw MessageException(UiMessages.errorsTheServerReturnedAnUnexpectedDeviceId().messageText())
     return Account(server, root, deviceSeed.copyOf(), res.deviceId, accountId, accountKey)
 }
 
@@ -235,7 +235,10 @@ suspend fun loginResponse(api: Api, account: Account): LoginResponse {
 enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNOWN, COMPUTER_OFFLINE, IMAGE_MISSING }
 
 class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW) :
-    Exception(message) {
+    Exception(message), MessageFailure {
+    override var display: MessageText = message.messageText()
+        private set
+    constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW) : this(code, "command_failure", fromDaemon, failureKind) { display = message }
     // fromDaemon: the daemon's own answer for this request, the final word
     // on it (except that it expired before reaching the daemon).
 
@@ -254,31 +257,27 @@ class CommandException(val code: String, message: String, val fromDaemon: Boolea
 }
 
 /** Short text for an error, without content. */
-fun errorText(e: Throwable, state: RemoteState? = null): String =
+fun errorText(e: Throwable, state: RemoteState? = null): MessageText = localized { copy ->
     when (e) {
-        is DeviceSecurity.Failure ->
-            when (e.code) {
-                "unavailable" -> "等待所属电脑更新当前状态：这台设备没有当时的内容密钥"
-                "invalid",
-                "untrusted" -> "密文无效：签名、密钥或内容校验失败"
-                "conflict" -> "成员链冲突，安全操作已停止；请核对设备后明确重新加入"
-                "lease" -> "远程控制有效期已过，无法保存更改、控制会话或上传新内容；${state?.renewalAdvice ?: "请在当前管理端续期"}后重试。历史仍可查看"
-                "clock" -> "手机时钟比服务器快，成员状态暂不可用；请校准系统时间"
-                else -> e.message ?: "安全状态不可用"
-            }
-        is CommandException -> e.message ?: e.code
-        // A request that never reached the server carries the network failure
-        // as its cause, and that failure's own message as its text.
-        is ConnectException ->
-            networkText(e.exception)
-                ?: when (e.code) {
-                    Code.UNAVAILABLE -> "连不上服务器" + (e.message?.let { "：$it" } ?: "")
-                    Code.PERMISSION_DENIED -> if (e.message == "login failed") "服务器不认识这台设备（可能已被移除，或服务已重建）" else e.message ?: e.code.codeName
-                    Code.UNAUTHENTICATED -> "登录失效：" + (e.message ?: "")
-                    else -> e.message ?: e.code.codeName
-                }
-        else -> networkText(e) ?: e.message ?: e.javaClass.simpleName
+        is MessageFailure -> e.display.resolve(copy)
+        is DeviceSecurity.Failure -> when (e.code) {
+            "unavailable" -> copy(UiMessages.errorsWaitingForTheOwningComputerToUpdateTheCurrentRemote())
+            "invalid", "untrusted" -> copy(UiMessages.errorsInvalidCiphertextSignatureKeyOrContentVerificationFailed())
+            "conflict" -> copy(UiMessages.errorsMembershipChainConflictSecurityOperationsStoppedVerifyDevicesAnd())
+            "lease" -> copy(UiMessages.errorsAndroidRemoteControlAuthorizationExpiredCannotSaveChangesControlSessionsOr(
+                state?.renewalAdvice?.resolve(copy) ?: copy(UiMessages.securityAndroidRenewOnAuthority())))
+            "clock" -> copy(UiMessages.errorsAndroidThePhoneClockIsAheadOfTheServerMembershipState())
+            else -> e.message ?: copy(UiMessages.errorsAndroidSecurityStateUnavailable())
+        }
+        is ConnectException -> networkText(e.exception, copy) ?: when (e.code) {
+            Code.UNAVAILABLE -> e.message?.let { copy(UiMessages.errorsAndroidServerUnavailableReason(it)) } ?: copy(UiMessages.connectionNoServer())
+            Code.PERMISSION_DENIED -> if (e.message == "login failed") copy(UiMessages.errorsTheServerDoesNotRecognizeThisDeviceItMay()) else e.message ?: e.code.codeName
+            Code.UNAUTHENTICATED -> copy(UiMessages.errorsAndroidLoginExpired(e.message.orEmpty()))
+            else -> e.message ?: e.code.codeName
+        }
+        else -> networkText(e, copy) ?: e.message ?: e.javaClass.simpleName
     }
+}
 
 /** The failure as the system worded it, for the details of a lost connection; without content. */
 fun detailText(e: Throwable): String {
@@ -297,15 +296,13 @@ fun detailText(e: Throwable): String {
 fun unresolvedHost(e: Throwable): Boolean =
     ((e as? ConnectException)?.exception ?: e) is java.net.UnknownHostException
 
-private fun networkText(e: Throwable?): String? =
-    when (e) {
-        // No address for the server: on a phone, nearly always no network.
-        is java.net.UnknownHostException -> "找不到服务器，检查一下网络"
-        is java.net.ConnectException -> "连不上服务器"
-        is java.net.SocketTimeoutException -> "连接超时"
-        is javax.net.ssl.SSLException -> "安全连接失败：" + (e.message ?: "")
-        else -> null
-    }
+private fun networkText(e: Throwable?, copy: MessageResolver): String? = when (e) {
+    is java.net.UnknownHostException -> copy(UiMessages.errorsAndroidCannotFindTheServerCheckYourNetwork())
+    is java.net.ConnectException -> copy(UiMessages.connectionNoServer())
+    is java.net.SocketTimeoutException -> copy(UiMessages.errorsConnectionTimedOut())
+    is javax.net.ssl.SSLException -> copy(UiMessages.errorsAndroidSecureConnectionFailed(e.message.orEmpty()))
+    else -> null
+}
 
 /** Only meaningful for an error returned by a login attempt. */
 fun loginDenied(error: Throwable): Boolean =

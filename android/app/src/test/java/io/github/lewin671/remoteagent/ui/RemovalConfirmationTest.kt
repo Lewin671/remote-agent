@@ -4,7 +4,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Removing a device is one confirmation that names it and says what is deleted. */
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class RemovalConfirmationTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test
     fun aClientRemovalNamesTheDeviceAndTheOneConfirmation() {
         val (title, text) = removalDialog("我的 iPad", machine = false)

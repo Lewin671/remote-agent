@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.core
 
+import io.github.lewin671.remoteagent.core.assertMessageEquals as assertEquals
+
 import com.google.protobuf.Timestamp
 import io.github.lewin671.remoteagent.proto.AgentMessage
 import io.github.lewin671.remoteagent.proto.Event
@@ -13,7 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -205,7 +206,7 @@ class SessionPagingTest {
             assertNull(st.sessions[endedId(3)])
             assertTrue(r.fetchSession(endedId(3)))
             val got = r.state.value.sessions.getValue(endedId(3))
-            assertEquals("结束 3", titleOf(got))
+            assertEquals("结束 3", titleOf(got, copy = ::messageTextForTest))
             assertEquals(endedAt(3), got.listedEndedMs)
             // The cursor does not move: the pages between are still to come.
             assertEquals(firstEnd, r.state.value.sessionsNext)
@@ -740,17 +741,17 @@ class SessionPagingTest {
                             .build(),
                     ),
             )
-        assertEquals(listOf("/code/added", "/code/foo", "/code/old"), projects(st).map { it.key })
-        val added = projects(st).first()
+        assertEquals(listOf("/code/added", "/code/foo", "/code/old"), projects(st, copy = ::messageTextForTest).map { it.key })
+        val added = projects(st, copy = ::messageTextForTest).first()
         assertEquals(listOf("m1"), added.machineIds)
         assertEquals(5_000_000L, added.latestCreatedMs)
         assertEquals(0, added.ended)
         assertFalse(added.hasLive)
         assertTrue(added.sessions.isEmpty())
-        assertEquals(4_000_000L, projects(st)[1].latestCreatedMs)
+        assertEquals(4_000_000L, projects(st, copy = ::messageTextForTest)[1].latestCreatedMs)
         assertEquals(
             listOf("/code/added", "/code/foo", "/code/old"),
-            listedProjects(st).map { it.key },
+            listedProjects(st, copy = ::messageTextForTest).map { it.key },
         )
     }
 
@@ -786,12 +787,12 @@ class SessionPagingTest {
                         )
                         .associateBy { it.id },
             )
-        val ps = projects(st).associateBy { it.key }
+        val ps = projects(st, copy = ::messageTextForTest).associateBy { it.key }
         // Live projects first, then by the latest creation, which is the later of the summaries'
         // and the sessions'.
         assertEquals(
             listOf("/code/new", "/code/foo", "/code/bar", "/code/old"),
-            projects(st).map { it.key },
+            projects(st, copy = ::messageTextForTest).map { it.key },
         )
         val foo = ps.getValue("/code/foo")
         // Whether a session has not ended is the sessions' to say; how many ended is the
@@ -825,11 +826,11 @@ class SessionPagingTest {
         // The lists, the default scope and the pickers all read this list.
         assertEquals(
             listOf("/code/new", "/code/foo", "/code/bar", "/code/old"),
-            listedProjects(st).map { it.key },
+            listedProjects(st, copy = ::messageTextForTest).map { it.key },
         )
-        assertEquals(HomeScope.All, defaultScope(st))
-        assertEquals(old, project(st, "/code/old"))
-        assertNull(project(st, "/code/none"))
+        assertEquals(HomeScope.All, defaultScope(st, copy = ::messageTextForTest))
+        assertEquals(old, project(st, "/code/old", copy = ::messageTextForTest))
+        assertNull(project(st, "/code/none", copy = ::messageTextForTest))
         assertEquals(listOf("/code/foo", "/code/old"), machineProjects(st, "m1"))
         assertEquals(listOf("/code/foo", "/code/bar"), machineProjects(st, "m2"))
         assertEquals(listOf("/code/new"), machineProjects(st, "m3"))
@@ -852,7 +853,7 @@ class SessionPagingTest {
                                 .build(),
                         )
                 )
-            )
+            , copy = ::messageTextForTest)
         assertEquals(listOf("/code/old"), arranged.pinned.map { it.key })
         assertEquals(listOf("/code/new", "/code/foo"), arranged.others.map { it.key })
         assertEquals(listOf("/code/bar"), arranged.hidden.map { it.key })
@@ -860,7 +861,7 @@ class SessionPagingTest {
         // scope.
         val only =
             RemoteState(machines = mapOf("m1" to machine("m1", "mac", summary("/code/old", 9))))
-        assertEquals(HomeScope.Of("/code/old"), defaultScope(only))
+        assertEquals(HomeScope.Of("/code/old"), defaultScope(only, copy = ::messageTextForTest))
     }
 
     @Test

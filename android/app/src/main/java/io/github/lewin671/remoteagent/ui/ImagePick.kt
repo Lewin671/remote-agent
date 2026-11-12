@@ -208,10 +208,10 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val messageContext = androidx.compose.ui.platform.LocalContext.current
         val messageLocale = LocalMessageLocale.current
-        val line = imageFailureLine(failed) { resolveUiMessage(messageContext, UiMessages.imageAttachFailed(it), messageLocale) }.takeIf { it.isNotEmpty() } ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
+        val line = imageFailureLine(failed, copy = copy) { resolveUiMessage(messageContext, UiMessages.imageAttachFailed(it), messageLocale) }.takeIf { it.isNotEmpty() } ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
         if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
-        if (draft.original && draft.pictures.isNotEmpty()) Text(ORIGINAL_IMAGE_HINT, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+        if (draft.original && draft.pictures.isNotEmpty()) Text(copy(ORIGINAL_IMAGE_HINT), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
     }
     viewing?.let { DraftImageViewer(draft, remote, machineId, it) { viewing = null } }
 }

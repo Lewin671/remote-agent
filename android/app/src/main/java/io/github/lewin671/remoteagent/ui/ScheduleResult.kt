@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -44,19 +46,20 @@ internal fun resolvedScheduleResult(run: ScheduledRun, events: SessionEvents): S
     val answer = if (events.loaded && events.error == null && events.fetchError == null && !events.historyPartial)
         scheduleFinalAnswer(run, events.verifiedEvents) else null
     return answer ?: run.json.text("final_summary").ifBlank {
-        run.json.text("reason").takeIf { it.isNotBlank() }?.let(::scheduleReason).orEmpty()
+        run.json.text("reason").takeIf { it.isNotBlank() }?.let { scheduleReason(it, copy = ::sessionText) }.orEmpty()
     }
 }
 
 /** The card enters together with the rest of the detail, after its text is resolved. */
 @Composable
 internal fun ScheduleLatestResult(run: ScheduledRun, text: String, now: Instant, unreadOnEntry: Boolean, showConversation: Boolean, open: () -> Unit) {
+    val copy = uiText()
     Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)) {
             Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (unreadOnEntry) ScheduleResultDot()
-                Text(scheduleWhen(run.notificationTime, now), Modifier.weight(1f), style = T.s12, color = pal.ink2)
-                if (showConversation && run.session.isNotEmpty()) TextAction("对话", open, style = T.s13, arrow = true)
+                Text(scheduleWhen(run.notificationTime, now, copy = copy), Modifier.weight(1f), style = T.s12, color = pal.ink2)
+                if (showConversation && run.session.isNotEmpty()) TextAction(copy(UiMessages.scheduleConversation()), open, style = T.s13, arrow = true)
             }
             val heading = run.resultTitle
             if (heading.isNotBlank()) Text(heading, style = T.s15b, color = pal.ink, modifier = Modifier.padding(bottom = 8.dp))

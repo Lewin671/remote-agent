@@ -14,9 +14,10 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class SchedulePresentationTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test fun destinationIsTheSharedPlaceholderUntilInfoLoads() {
         val task=ScheduledTask("m",Json.parseToJsonElement("""{"spec":{"target":{"type":"resume_session","session":"s"}}}""").jsonObject)
-        assertEquals("对话",scheduleDestination(task,RemoteState(sessions=mapOf("s" to SessionView("s","m")))))
+        assertEquals(messageTextForTest(UiMessages.scheduleConversation()),scheduleDestination(task,RemoteState(sessions=mapOf("s" to SessionView("s","m")))))
         assertEquals("修复登录超时",scheduleDestination(task,RemoteState(sessions=mapOf("s" to SessionView("s","m",Session.newBuilder().setTitle("修复登录超时").build())))))
     }
     @Test fun defaultPermissionIsResolvedBeforeCreatingTheTaskTarget() {
@@ -42,7 +43,7 @@ class SchedulePresentationTest {
         assertEquals("每天 09:49", scheduleTiming(calendar("US/Pacific"), local))
         assertEquals("每天 09:49（北京时间）", scheduleTiming(calendar("Asia/Shanghai"), local))
         assertEquals("每天 09:49（柏林时间）", scheduleTiming(calendar("Europe/Berlin"), local))
-        assertEquals("每小时", scheduleTiming(buildJsonObject { put("type", "interval"); put("interval_seconds", 3600); put("timezone", "Asia/Shanghai") }, local))
+        assertEquals(messageTextForTest(UiMessages.scheduleHourly()), scheduleTiming(buildJsonObject { put("type", "interval"); put("interval_seconds", 3600); put("timezone", "Asia/Shanghai") }, local))
         assertTrue(scheduleTiming(buildJsonObject { put("type", "at"); put("at", "2026-10-24T13:00:00Z") }, local).endsWith("06:00，一次"))
     }
     @Test fun locationsDistinguishConversationFromNewProjectAndStripUsesActualState() {
@@ -50,10 +51,10 @@ class SchedulePresentationTest {
         val machine = MachineView("m", true, 0, MachineMeta.newBuilder().setProtocolVersion(PROTOCOL_VERSION).setCapabilities(MachineCapabilities.newBuilder().setScheduledTasks(true)).build())
         val state = RemoteState(conn=ConnState.ONLINE, machines=mapOf("m" to machine), sessions=mapOf("s" to SessionView("s", "m", Session.newBuilder().setTitle("修复登录超时").setMode(ApprovalMode.APPROVAL_MODE_AUTO).build())))
         assertEquals("在「修复登录超时」里", taskLocation(task,state))
-        assertEquals("在对话里",taskLocation(task,state.copy(sessions=mapOf("s" to SessionView("s","m")))))
+        assertEquals(messageTextForTest(UiMessages.scheduleInConversation()),taskLocation(task,state.copy(sessions=mapOf("s" to SessionView("s","m")))))
         val withAgent = state.copy(sessions = mapOf("s" to state.sessions.getValue("s").copy(info = state.sessions.getValue("s").info!!.toBuilder().setAgent(Agent.AGENT_CLAUDE).build())))
         assertEquals("在「修复登录超时」里 · Claude Code", taskLocation(task, withAgent))
-        assertEquals("自动", taskPermission(task,state))
+        assertEquals(messageTextForTest(UiMessages.modesAuto()), taskPermission(task,state))
         assertEquals("定时 · 每小时，未连接，显示的是上次的状态", sessionScheduleText(listOf(task),state.copy(conn=ConnState.OFFLINE)))
         val paused = ScheduledTask("m", JsonObject(task.json + ("status" to JsonPrimitive("paused")) + ("reason" to JsonPrimitive("user_paused"))))
         assertEquals("定时 · 每小时，已暂停", sessionScheduleText(listOf(paused),state))
@@ -118,7 +119,7 @@ class SchedulePresentationTest {
 
 
     @Test fun thePageSaysWhatStoppedFirstAndTheOtherKindUnderIt() {
-        org.junit.Assert.assertEquals(ScheduleHeadline(1, "个任务停下了", "另有 2 个新结果"), scheduleHeadline(1, 2, empty = false, loading = false))
+        org.junit.Assert.assertEquals(ScheduleHeadline(1, messageTextForTest(UiMessages.scheduleStoppedCount(1, "\uFFFC")), "另有 2 个新结果"), scheduleHeadline(1, 2, empty = false, loading = false))
         org.junit.Assert.assertEquals(ScheduleHeadline(null, "2 个新结果", ""), scheduleHeadline(0, 2, empty = false, loading = false))
         org.junit.Assert.assertEquals(ScheduleHeadline(null, "没有新结果", ""), scheduleHeadline(0, 0, empty = false, loading = false))
         org.junit.Assert.assertEquals(ScheduleHeadline(null, "还没有定时任务", ""), scheduleHeadline(0, 0, empty = true, loading = false))

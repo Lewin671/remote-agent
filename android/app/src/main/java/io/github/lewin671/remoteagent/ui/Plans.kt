@@ -37,9 +37,7 @@ object Plans {
     /** Sends [choice] as a new reply. Refused while an earlier reply is unknown: that one is retried or given up first. */
     suspend fun send(
         reply: Reply, choice: PlanChoice,
-        prepare: (PlanChoice) -> PreparedCommand,
-        forward: suspend (PreparedCommand, Boolean) -> Unit,
-    ) {
+        prepare: (PlanChoice) -> PreparedCommand, forward: suspend (PreparedCommand, Boolean) -> Unit) {
         // Never the earlier command under this choice's name.
         if (reply.attempt.frozen) throw CommandException("failed_precondition", sessionText(UiMessages.dockAndroidReplyPending()))
         run(reply, forward) { reply.choice = choice; prepare(choice) }

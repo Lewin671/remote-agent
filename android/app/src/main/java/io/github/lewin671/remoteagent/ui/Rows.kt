@@ -72,6 +72,7 @@ fun SessionRow(
     last: Boolean = false,
     selected: Boolean = false,
 ) {
+    val copy = uiText()
     if (exited(s)) return EndedRow(s, t, project = meta.project, selected = selected, last = last)
     val p = pal
     val nav = LocalNav.current
@@ -88,7 +89,7 @@ fun SessionRow(
         rowMeta,
         when {
             timed.size > 1 -> uiText(UiMessages.homeScheduledTasks(count = timed.size))
-            timed.size == 1 -> uiText(UiMessages.homeScheduledFrequency(scheduleFrequency(timed.single().trigger)))
+            timed.size == 1 -> uiText(UiMessages.homeScheduledFrequency(scheduleFrequency(timed.single().trigger, copy = copy)))
             else -> ""
         },
     ).filter { it.isNotEmpty() }.joinToString(" · ")
@@ -114,7 +115,7 @@ fun SessionRow(
                 // The CLI leads the line as its mark (design-system §5); the row's spoken text already names it.
                 row.agent?.let { AgentMarkLead(it, T.s13, p.ink2, scale = 1.15f) }
                 // A mark alone looks unfinished: with nothing else to say, the line names the CLI.
-                val words = third.ifEmpty { row.agent?.let { agentName(it) }.orEmpty() }
+                val words = third.ifEmpty { row.agent?.let { agentName(it, copy = copy) }.orEmpty() }
                 if (words.isNotEmpty()) Text(words, style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
             }
         }

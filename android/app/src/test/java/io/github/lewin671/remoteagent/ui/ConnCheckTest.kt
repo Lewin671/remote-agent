@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.messageText
+
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +24,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ConnCheckTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule val ui = createComposeRule()
     private var serverCalls = 0
     private var machineCalls = 0
@@ -49,7 +52,7 @@ class ConnCheckTest {
 
     @Test fun disconnectedPushStaysVisibleWhenRoundTripsSucceedAndRecoveryDoesNotRerunProbes() {
         val failure = "同步设备状态超时，正在重连"
-        var state by mutableStateOf(waiting.copy(connError = failure))
+        var state by mutableStateOf(waiting.copy(connError = failure.messageText()))
         show { state }
         ui.onNodeWithText("12 ms").assertExists()
         ui.onNodeWithText("34 ms").assertExists()
@@ -67,7 +70,7 @@ class ConnCheckTest {
         ui.runOnIdle {
             assertEquals(3, serverCalls)
             assertEquals(1, machineCalls)
-            state = state.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "")
+            state = state.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "".messageText())
         }
         ui.onNodeWithText("已连接").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
@@ -84,7 +87,7 @@ class ConnCheckTest {
     }
 
     @Test fun initialWaitingIsShownWithoutAnEmptyFailureSentence() {
-        show { waiting.copy(conn = ConnState.CONNECTING, synced = false, connStep = "登录", connStartedAtMs = 7000) }
+        show { waiting.copy(conn = ConnState.CONNECTING, synced = false, connStep = "登录".messageText(), connStartedAtMs = 7000) }
         ui.onNodeWithText("实时推送").assertExists()
         ui.onNodeWithText("连接中").assertExists()
         ui.onNodeWithText("正在连接：登录，已 3 秒。").assertExists()
@@ -93,34 +96,34 @@ class ConnCheckTest {
     }
 
     @Test fun reconnectProgressTicksAndChangesStepUntilFailure() {
-        var state by mutableStateOf(waiting.copy(conn = ConnState.CONNECTING, connStep = "读取本机状态", connStartedAtMs = 7000, error = "普通请求错误"))
+        var state by mutableStateOf(waiting.copy(conn = ConnState.CONNECTING, connStep = "读取本机状态".messageText(), connStartedAtMs = 7000, error = "普通请求错误".messageText()))
         show { state }
         ui.onNodeWithText("正在重连：读取本机状态，已 3 秒。").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
         ui.runOnIdle { clockMs += 1000 }
         ui.mainClock.advanceTimeBy(1000)
         ui.onNodeWithText("正在重连：读取本机状态，已 4 秒。").assertExists()
-        ui.runOnIdle { state = state.copy(connStep = "建立推送连接") }
+        ui.runOnIdle { state = state.copy(connStep = "建立推送连接".messageText()) }
         ui.onNodeWithText("正在重连：建立推送连接，已 4 秒。").assertExists()
         ui.runOnIdle { state = state.copy(connStartedAtMs = clockMs) }
         ui.onNodeWithText("正在重连：建立推送连接，已 0 秒。").assertExists()
-        ui.runOnIdle { state = state.copy(conn = ConnState.OFFLINE, connError = "没有回应", connStep = "", connStartedAtMs = null) }
+        ui.runOnIdle { state = state.copy(conn = ConnState.OFFLINE, connError = "没有回应".messageText(), connStep = "".messageText(), connStartedAtMs = null) }
         ui.onNodeWithText(hint + "最近一次失败：没有回应").assertExists()
         ui.onNodeWithText("正在重连：", substring = true).assertDoesNotExist()
-        ui.runOnIdle { state = state.copy(conn = ConnState.CONNECTING, connStep = "登录", connStartedAtMs = clockMs) }
+        ui.runOnIdle { state = state.copy(conn = ConnState.CONNECTING, connStep = "登录".messageText(), connStartedAtMs = clockMs) }
         ui.onNodeWithText("正在重连：登录，已 0 秒。上一次失败：没有回应").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()
     }
 
     @Test fun unreachableInitialStreamUsesExistingFailureWording() {
-        show { waiting.copy(link = Link.NO_SERVER, synced = false, connError = "没有回应") }
+        show { waiting.copy(link = Link.NO_SERVER, synced = false, connError = "没有回应".messageText()) }
         ui.onNodeWithText("连不上").assertExists()
         ui.onNodeWithText(hint + "最近一次失败：没有回应").assertExists()
         ui.onNodeWithText("12 ms").assertExists()
     }
 
     @Test fun onlineStreamHasNoDisconnectedHintEvenWithAnEarlierError() {
-        show { waiting.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "earlier failure") }
+        show { waiting.copy(conn = ConnState.ONLINE, link = Link.ONLINE, connError = "earlier failure".messageText()) }
         ui.onNodeWithText("实时推送").assertExists()
         ui.onNodeWithText("已连接").assertExists()
         ui.onNodeWithText(hint, substring = true).assertDoesNotExist()

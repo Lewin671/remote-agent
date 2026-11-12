@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,6 +54,7 @@ import java.time.*
 
 @Composable
 fun SchedulesScreen() {
+    val copy = uiText()
     val remote = LocalRemote.current
     LifecycleStartEffect(remote) {
         remote.schedules.showList()
@@ -80,19 +83,24 @@ fun SchedulesScreen() {
     val fresh = recent.filter(isNew)
     val others = recent.filterNot(isNew)
     val ended = scheduleSorted(tasks, ScheduleInboxGroup.ENDED, isNew)
-    val headline = scheduleHeadline(stopped.size, fresh.size, tasks.isEmpty(), loading)
+    val headline = scheduleHeadline(stopped.size, fresh.size, tasks.isEmpty(), loading, copy = copy)
     // In the shell (client-v58): the bottom tabs and 新定时 float over the page, and 新定时 is the only way to start one.
     ShellPage(
         Modifier.fillMaxSize(),
-        bottom = { ShellBottom(ShellTab.SCHEDULES, "新定时", Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
+        bottom = { ShellBottom(ShellTab.SCHEDULES, copy(UiMessages.homeNewSchedule()), Lucide.Plus, enabled = !state.unlinked && state.machines.isNotEmpty()) { nav.newTask("") } },
     ) {
         // No glass row on this page, so the title sits just under the status bar.
         LazyColumn(Modifier.fillMaxSize().readableColumn(), contentPadding = shellPadding(top = false)) {
             item("headline") {
                 Text(
                     buildAnnotatedString {
-                        headline.count?.let { withStyle(SpanStyle(color = pal.orange)) { append("$it") }; append(" ") }
-                        append(headline.text)
+                        val count = headline.count
+                        if (count == null) append(headline.text) else {
+                            val template = copy(UiMessages.scheduleStoppedCount(count, "\uFFFC"))
+                            append(template.substringBefore('\uFFFC'))
+                            withStyle(SpanStyle(color = pal.orange)) { append(count.toString()) }
+                            append(template.substringAfter('\uFFFC'))
+                        }
                     },
                     style = T.title, color = pal.ink, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp),
                 )
@@ -100,22 +108,22 @@ fun SchedulesScreen() {
                 Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (!state.loaded) ConnStrip(state) else ScheduleOffline(state, tasks)
                     snapshots.forEach { (machine, snapshot) ->
-                        if (snapshot.error.isNotEmpty()) Notice(snapshot.error, action = "重试", onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } })
+                        if (snapshot.error.isNotEmpty()) Notice(uiText(snapshot.error), action = copy(UiMessages.commonRetry()), onAction = { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine) } })
                     }
                 }
-                if (tasks.isEmpty() && !loading) Text(SCHEDULE_EMPTY, style = T.s17, color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
+                if (tasks.isEmpty() && !loading) Text(copy(SCHEDULE_EMPTY), style = T.s17, color = pal.ink2, modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp))
             }
             items(stopped, key = { "stop/${it.machine}/${it.id}" }) { task ->
                 ScheduleCard(task, state, t, warn = true, hasNew = isNew(task), tasks = tasks,
                     onMark = { if (isNew(task)) remote.schedules.markRead(listOf(task)) else remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
             }
             if (fresh.isNotEmpty()) item("fresh") {
-                ScheduleSection("新结果", if (fresh.size > 1) "全部标为已读" else null) { remote.schedules.markRead(fresh) }
+                ScheduleSection(copy(UiMessages.scheduleNewResultsSchedules()), if (fresh.size > 1) copy(UiMessages.scheduleMarkAllAsRead()) else null) { remote.schedules.markRead(fresh) }
             }
             items(fresh, key = { "new/${it.machine}/${it.id}" }) { task ->
                 ScheduleCard(task, state, t, warn = false, hasNew = true, tasks = tasks, onMark = { remote.schedules.markRead(listOf(task)) }) { nav.task(task.machine, task.id) }
             }
-            if (others.isNotEmpty()) item("others") { ScheduleSection(if (stopped.isEmpty() && fresh.isEmpty()) "任务" else "其他任务") }
+            if (others.isNotEmpty()) item("others") { ScheduleSection(if (stopped.isEmpty() && fresh.isEmpty()) copy(UiMessages.scheduleAndroidTask()) else copy(UiMessages.scheduleOtherTasks())) }
             items(others, key = { "row/${it.machine}/${it.id}" }) { task ->
                 TaskRow(task, state, t, last = task == others.last(), tasks = tasks, onMark = { remote.schedules.markUnread(task) }) { nav.task(task.machine, task.id) }
             }
@@ -125,7 +133,7 @@ fun SchedulesScreen() {
                         endedOpen = !endedOpen
                         preferences.edit().putBoolean("ended-open", endedOpen).apply()
                     }.padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically) {
-                        ArrowText("已结束 ${ended.size}", pal.ink2, T.s15, down = !endedOpen, up = endedOpen)
+                        ArrowText(copy(UiMessages.scheduleAndroidEndedValue1((ended.size).toString())), pal.ink2, T.s15, down = !endedOpen, up = endedOpen)
                     }
                 }
                 if (endedOpen) items(ended, key = { "end/${it.machine}/${it.id}" }) { task ->
@@ -152,17 +160,18 @@ private fun ScheduleSection(text: String, action: String? = null, onAction: () -
  */
 @Composable
 fun ScheduleCard(task: ScheduledTask, state: RemoteState, now: Instant, warn: Boolean, hasNew: Boolean, tasks: List<ScheduledTask>, onMark: () -> Unit, onClick: () -> Unit) {
+    val copy = uiText()
     val p = pal
     SwipeToMark(scheduleCanMark(task, hasNew), hasNew, onMark, onClick, Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp).clip(Radii.R28)) {
         Column(Modifier.fillMaxWidth().background(p.gbg).padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ScheduleResultDot(if (warn) p.orange else p.blue, if (warn) "需要你处理" else "有新结果")
+                ScheduleResultDot(if (warn) p.orange else p.blue, if (warn) copy(UiMessages.scheduleNeedsYourAttention()) else copy(UiMessages.scheduleAndroidNewResult()))
                 Text(task.title, Modifier.weight(1f), style = T.s15b, color = p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(scheduleNotificationTime(task, now), style = T.s13, color = p.ink2, maxLines = 1)
+                Text(scheduleNotificationTime(task, now, copy = copy), style = T.s13, color = p.ink2, maxLines = 1)
             }
-            val preview = schedulePreview(task, now)
+            val preview = schedulePreview(task, now, copy = copy)
             if (warn) {
-                val word = scheduleAttentionWord(task)
+                val word = scheduleAttentionWord(task, copy = copy)
                 Text(
                     buildAnnotatedString {
                         if (!scheduleInProgress(task)) {
@@ -174,8 +183,8 @@ fun ScheduleCard(task: ScheduledTask, state: RemoteState, now: Instant, warn: Bo
                 )
             } else Text(preview, style = T.s17.copy(lineHeight = 25.5.sp), color = p.ink, maxLines = 4, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp))
             Row(Modifier.padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(scheduleRowMetadata(task, state, tasks), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                ArrowText(if (warn) "去处理" else "看全文", p.blue, T.s15)
+                Text(scheduleRowMetadata(task, state, tasks, copy = copy, locale = LocalMessageLocale.current), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                ArrowText(if (warn) copy(UiMessages.scheduleTakeAction()) else copy(UiMessages.scheduleReadFullText()), p.blue, T.s15)
             }
         }
     }
@@ -187,16 +196,17 @@ fun ScheduleCard(task: ScheduledTask, state: RemoteState, now: Instant, warn: Bo
  */
 @Composable
 private fun SwipeToMark(canMark: Boolean, hasNew: Boolean, onMark: () -> Unit, onClick: () -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    val copy = uiText()
     var offset by remember(canMark, hasNew) { mutableFloatStateOf(0f) }
     var width by remember { mutableIntStateOf(1) }
     val reveal = with(LocalDensity.current) { 88.dp.toPx() }
-    val action = if (hasNew) "标为已读" else "标为未读"
+    val action = if (hasNew) copy(UiMessages.scheduleMarkAsRead()) else copy(UiMessages.scheduleMarkAsUnread())
     Box(modifier.fillMaxWidth().onSizeChanged { width = it.width }) {
         if (canMark && offset < 0) Row(Modifier.matchParentSize().background(pal.blue).padding(end = 16.dp),
             horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
             Row(Modifier.width(72.dp).fillMaxHeight().clickable { offset = 0f; onMark() }, horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 if (hasNew) { Ic(Lucide.Check, 16.dp, Color.White); Spacer(Modifier.width(4.dp)) }
-                Text(if (hasNew) "已读" else "未读", style = T.s15b, color = Color.White)
+                Text(if (hasNew) copy(UiMessages.scheduleAndroidRead()) else copy(UiMessages.scheduleAndroidUnread()), style = T.s15b, color = Color.White)
             }
         }
         Box(Modifier.offset { IntOffset(offset.roundToInt(), 0) }.fillMaxWidth().background(pal.paper)
@@ -214,23 +224,24 @@ private fun SwipeToMark(canMark: Boolean, hasNew: Boolean, onMark: () -> Unit, o
 @Composable
 fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(), last: Boolean = false, hasNew: Boolean = false,
     tasks: List<ScheduledTask> = listOf(task), onMark: () -> Unit = {}, onClick: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val attention = taskGroup(task) == TaskGroup.ATTENTION
     val running = scheduleInProgress(task)
     val paused = task.status == "paused"
     SwipeToMark(scheduleCanMark(task, hasNew), hasNew, onMark, onClick) {
         Row(Modifier.fillMaxWidth().padding(start = 24.dp), verticalAlignment = Alignment.Top) {
-            if (attention || hasNew) Box(Modifier.width(26.dp).padding(top = 20.dp)) { ScheduleResultDot(if (attention) p.orange else p.blue, if (attention) "需要你处理" else "有新结果") }
+            if (attention || hasNew) Box(Modifier.width(26.dp).padding(top = 20.dp)) { ScheduleResultDot(if (attention) p.orange else p.blue, if (attention) copy(UiMessages.scheduleNeedsYourAttention()) else copy(UiMessages.scheduleAndroidNewResult0653C4())) }
             Column(Modifier.weight(1f).then(if (last) Modifier else Modifier.bottomLine(p.sep)).padding(end = 24.dp, top = 13.dp, bottom = 13.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(task.title, Modifier.weight(1f), style = T.s17b, color = if (paused) p.ink3 else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(scheduleNotificationTime(task, now), style = T.s13, color = p.ink2, maxLines = 1)
+                    Text(scheduleNotificationTime(task, now, copy = copy), style = T.s13, color = p.ink2, maxLines = 1)
                 }
-                val preview = schedulePreview(task, now)
+                val preview = schedulePreview(task, now, copy = copy)
                 if (preview.isNotEmpty()) Text(preview, modifier = Modifier.padding(top = 2.dp), style = T.s15, color = p.ink2, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Row(Modifier.padding(top = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (running) { Spinner(p.ink2, size = 12.dp); Text("正在运行 ·", style = T.s13, color = p.ink2) }
-                    Text(scheduleRowMetadata(task, state, tasks), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (running) { Spinner(p.ink2, size = 12.dp); Text(copy(UiMessages.scheduleAndroidRunningLabel()), style = T.s13, color = p.ink2) }
+                    Text(scheduleRowMetadata(task, state, tasks, copy = copy, locale = LocalMessageLocale.current), style = T.s13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -238,20 +249,23 @@ fun TaskRow(task: ScheduledTask, state: RemoteState, now: Instant = Instant.now(
 }
 
 @Composable
-internal fun ScheduleResultDot(color: Color = pal.blue, description: String = "进入时未读") {
-    Box(Modifier.size(8.dp).background(color, CircleShape).semantics { contentDescription = description })
+internal fun ScheduleResultDot(color: Color = pal.blue, description: String? = null) {
+    val label = description ?: uiText(UiMessages.scheduleUnreadOnEntry())
+    Box(Modifier.size(8.dp).background(color, CircleShape).semantics { contentDescription = label })
 }
 
 @Composable
 private fun ScheduleOffline(state: RemoteState, tasks: List<ScheduledTask>) {
+    val copy = uiText()
     // The connection bar speaks for a lost relay; this names the computers that are away.
     val away = tasks.map { it.machine }.distinct().filter { state.machines[it]?.online != true }
     if (state.conn == ConnState.ONLINE && away.isNotEmpty())
-        Notice(away.joinToString("、") { machineLabel(state, it) } + " " + SCHEDULE_OFFLINE)
+        Notice(away.joinToString("、") { machineLabel(state, it) } + " " + copy(SCHEDULE_OFFLINE))
 }
 
 @Composable
 fun ScheduleDetailScreen(machine: String, id: String) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -293,7 +307,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         scope.launch(Dispatchers.Main.immediate) {
             try { remote.schedules.operate(machine, op, if (spec != null) editBase ?: task else task, spec); edit = ""; editBase = null; if (op == "cancel") nav.back() }
             catch (e: kotlinx.coroutines.CancellationException) { throw e }
-            catch (e: Exception) { error = errorText(e); uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null } }
+            catch (e: Exception) { error = displayError(e); uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null } }
             finally { busy = false }
         }
     }
@@ -312,10 +326,10 @@ fun ScheduleDetailScreen(machine: String, id: String) {
     val enabled = writable && !busy && !uncertain
     val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
     Column(Modifier.fillMaxSize().background(pal.paper)) {
-        PageBar(task?.title ?: "定时任务", nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t) }, more = { menu = true })
+        PageBar(task?.title ?: copy(UiMessages.queueAndroidScheduled()), nav.back, subtitle = task?.let { scheduleDetailSubtitle(it, state, t, copy = copy, locale = LocalMessageLocale.current) }, more = { menu = true })
         if (!state.loaded) ConnBanner(state)
         if (task == null) {
-            Notice(snapshots[machine]?.error?.ifEmpty { null } ?: if (snapshots[machine]?.loading == true) "正在读取任务…" else "任务未找到，可能已在另一端删除")
+            Notice(snapshots[machine]?.error?.takeIf { it.isNotEmpty() }?.let { uiText(it) } ?: if (snapshots[machine]?.loading == true) copy(UiMessages.scheduleReadingTasks()) else copy(UiMessages.scheduleAndroidTaskNotFoundItMayHaveBeenDeletedOnAnother()))
             return@Column
         }
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScrollFaded()) {
@@ -325,20 +339,20 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                 return@Column
             }
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
-            if (uncertain) TextAction("重新读取", { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
+            if (uncertain) TextAction(copy(UiMessages.scheduleAndroidReadAgain()), { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
             if (attention) {
-                ScheduleAttentionBanner(scheduleAttentionText(task, t))
-                if (!targetMissing) PillButton(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, enabled)
+                ScheduleAttentionBanner(scheduleAttentionText(task, t, copy = copy))
+                if (!targetMissing) PillButton(if (onceFailed) copy(UiMessages.scheduleRunOnceNow()) else copy(UiMessages.scheduleResume()), { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, enabled)
             }
             if (pinned != null && task.latestNotification != null && task.latestNotification?.id != pinned.id) {
-                TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
+                TextAction(copy(UiMessages.scheduleAndroidNewResult0653C4()), { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
             }
             task.active?.let { run ->
                 Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Row(Modifier.fillMaxWidth().padding(start = 14.dp, end = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         Mark(Lucide.LoaderCircle, pal.blue, 14.dp)
-                        Text("正在运行 · ${scheduleClock(run.time)} 开始", Modifier.weight(1f), style = T.s13, color = pal.blue)
-                        if (run.session.isNotEmpty()) TextAction("对话", { nav.scheduledSession(run.session, run.seq) }, style = T.s13, arrow = true)
+                        Text(copy(UiMessages.scheduleRunningSince((scheduleClock(run.time)).toString())), Modifier.weight(1f), style = T.s13, color = pal.blue)
+                        if (run.session.isNotEmpty()) TextAction(copy(UiMessages.scheduleConversation()), { nav.scheduledSession(run.session, run.seq) }, style = T.s13, arrow = true)
                     }
                 }
             }
@@ -351,74 +365,74 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             var allRuns by remember(task.id) { mutableStateOf(false) }
             if (earlier.isNotEmpty()) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("更早", Modifier.weight(1f), style = T.s13b, color = pal.ink2)
-                    Text("${earlier.size} 次", style = T.s13, color = pal.ink2)
+                    Text(copy(UiMessages.scheduleEarlier()), Modifier.weight(1f), style = T.s13b, color = pal.ink2)
+                    Text(copy(UiMessages.scheduleRunsCount((earlier.size).toInt())), style = T.s13, color = pal.ink2)
                 }
                 Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Column {
                         scheduleRunGroups(if (allRuns) earlier else earlier.take(5)).forEach { group -> ScheduleRunGroup(group, t, entryUnread) { run -> if (run.session.isNotEmpty()) nav.scheduledSession(run.session, run.seq) } }
-                        if (!allRuns && earlier.size > 5) TextAction("查看全部 ${earlier.size} 次", { allRuns = true }, Modifier.fillMaxWidth())
+                        if (!allRuns && earlier.size > 5) TextAction(copy(UiMessages.scheduleViewAllRuns((earlier.size).toInt())), { allRuns = true }, Modifier.fillMaxWidth())
                     }
                 }
-            } else if (result == null && task.active == null) Hint("还没有运行")
+            } else if (result == null && task.active == null) Hint(copy(UiMessages.scheduleHasNotRunYet()))
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
                     Row(Modifier.fillMaxWidth().bottomLine(pal.sep).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text("让 agent 做什么", Modifier.weight(1f), style = T.s15, color = pal.ink)
-                        TextAction("编辑", { beginEdit("message") }, enabled = definitionEnabled, style = T.s13)
+                        Text(copy(UiMessages.scheduleWhatShouldTheAgentDo()), Modifier.weight(1f), style = T.s15, color = pal.ink)
+                        TextAction(copy(UiMessages.toolsAndroidEdit()), { beginEdit("message") }, enabled = definitionEnabled, style = T.s13)
                     }
                     ScheduleDescription(task.message, Modifier.padding(horizontal = 14.dp, vertical = 12.dp))
                 }
             }
-            Label("设置")
+            Label(copy(UiMessages.commonSettings()))
             Card(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Column {
-                    ScheduleSetting("什么时候", scheduleTiming(task.trigger), definitionEnabled) { beginEdit("time") }
-                    ToggleRow("完成后通知", "", task.notifyOnFinish, enabled = enabled, onChange = { on -> if (enabled) { editBase = task; operate("update", JsonObject(task.spec + ("notify" to JsonPrimitive(if (on) "finish" else "agent_only")))) } })
-                    val end = scheduleLimits(task, t)
-                    if (end.isNotEmpty()) ScheduleSetting("结束", end, definitionEnabled) { beginEdit("time") }
+                    ScheduleSetting(copy(UiMessages.scheduleWhen()), scheduleTiming(task.trigger, copy = copy, locale = LocalMessageLocale.current), definitionEnabled) { beginEdit("time") }
+                    ToggleRow(copy(UiMessages.scheduleNotifyOnCompletion()), "", task.notifyOnFinish, enabled = enabled, onChange = { on -> if (enabled) { editBase = task; operate("update", JsonObject(task.spec + ("notify" to JsonPrimitive(if (on) "finish" else "agent_only")))) } })
+                    val end = scheduleLimits(task, t, copy = copy)
+                    if (end.isNotEmpty()) ScheduleSetting(copy(UiMessages.sessionEnd()), end, definitionEnabled) { beginEdit("time") }
                     if (task.target.text("type") == "resume_session") {
-                        ScheduleSetting("发到", scheduleDestination(task, state), enabled && state.sessions[task.target.text("session")]?.info != null) { nav.session(task.target.text("session")) }
-                    } else ScheduleSetting("在哪运行", taskLocation(task, state), definitionEnabled) { beginEdit("config") }
+                        ScheduleSetting(copy(UiMessages.scheduleSendToSchedules()), scheduleDestination(task, state, copy = copy), enabled && state.sessions[task.target.text("session")]?.info != null) { nav.session(task.target.text("session")) }
+                    } else ScheduleSetting(copy(UiMessages.scheduleRunIn()), taskLocation(task, state, copy = copy), definitionEnabled) { beginEdit("config") }
                     Box(Modifier.bottomLine(pal.sep)) {
-                        GRow("权限", taskPermission(task, state), onClick = if (task.target.text("type") == "new_session" && definitionEnabled) ({ beginEdit("mode") }) else null,
+                        GRow(copy(UiMessages.newSessionPermissions()), taskPermission(task, state, copy = copy), onClick = if (task.target.text("type") == "new_session" && definitionEnabled) ({ beginEdit("mode") }) else null,
                             chevron = task.target.text("type") == "new_session" && definitionEnabled, enabled = definitionEnabled, singleLineValue = true)
                     }
-                    ScheduleSetting("任务名", task.title, scheduleRenameAllowed(writable, busy || uncertain)) { beginEdit("name") }
+                    ScheduleSetting(copy(UiMessages.scheduleTaskName()), task.title, scheduleRenameAllowed(writable, busy || uncertain)) { beginEdit("name") }
                 }
             }
-            Hint(scheduleCreation(task, t))
-            if (!writable) Hint("${machineLabel(state, machine)} 连上后才能修改、运行或删除。", Modifier.padding(bottom = 8.dp))
-            Hint("立即运行一次不占自动次数及日历当天名额。删除任务会停止后续调度，已发出的消息和已开的对话保留。", Modifier.padding(bottom = 8.dp))
+            Hint(scheduleCreation(task, t, copy = copy))
+            if (!writable) Hint(copy(UiMessages.scheduleAndroidConnectValue1ToEditRunOrDelete((machineLabel(state, machine)).toString())), Modifier.padding(bottom = 8.dp))
+            Hint(copy(UiMessages.scheduleAndroidRunOnceNowDoesNotCountTowardAutomaticRunsOr()), Modifier.padding(bottom = 8.dp))
         }
     }
     if (task != null) {
-        if (menu) ActionSheet(info = { SheetInfo(task.title, taskLocation(task, state) + " · " + scheduleCreation(task, t)) }, groups = listOf(buildList {
-            add(SheetAction("立即运行一次", enabled = enabled && (scheduleRunAllowed(task) || scheduleFailedOnce(task))) { operate("run") })
-            add(SheetAction("标为未读", enabled = task.latestNotification != null) { remote.schedules.markUnread(machine, id); nav.schedules() })
-            if (taskGroup(task) != TaskGroup.ENDED && !onceFailed) add(SheetAction(if (task.status == "paused" || attention) "恢复" else "暂停", enabled = enabled) {
+        if (menu) ActionSheet(info = { SheetInfo(task.title, taskLocation(task, state, copy = copy) + " · " + scheduleCreation(task, t, copy = copy)) }, groups = listOf(buildList {
+            add(SheetAction(copy(UiMessages.scheduleRunOnceNow()), enabled = enabled && (scheduleRunAllowed(task) || scheduleFailedOnce(task))) { operate("run") })
+            add(SheetAction(copy(UiMessages.scheduleMarkAsUnread()), enabled = task.latestNotification != null) { remote.schedules.markUnread(machine, id); nav.schedules() })
+            if (taskGroup(task) != TaskGroup.ENDED && !onceFailed) add(SheetAction(if (task.status == "paused" || attention) copy(UiMessages.scheduleResume()) else copy(UiMessages.schedulePause()), enabled = enabled) {
                 if (task.status == "paused" || attention) recover() else operate("pause")
             })
-        }, listOf(SheetAction("删除任务…", danger = true, enabled = enabled) { deleting = true })), onDismiss = { menu = false })
+        }, listOf(SheetAction(copy(UiMessages.scheduleDeleteTask()), danger = true, enabled = enabled) { deleting = true })), onDismiss = { menu = false })
         val base = editBase ?: task
         if (edit == "name") ScheduleRenameDialog(base, { edit = "" }, enabled = scheduleRenameAllowed(writable, busy || uncertain)) { name ->
-            check(scheduleRenameAllowed(writable, busy || uncertain)) { "当前任务不能单独改名" }
+            check(scheduleRenameAllowed(writable, busy || uncertain)) { copy(UiMessages.scheduleAndroidThisTaskCannotBeRenamedSeparately()) }
             busy = true
             try { remote.schedules.rename(base, name) }
-            catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null; error = errorText(e) }; throw e }
+            catch (e: Exception) { uncertain = (e as? CommandException)?.unknown == true; if (e is ScheduleConflictException) { edit = ""; editBase = null; error = displayError(e) }; throw e }
             finally { busy = false }
         }
         if (edit == "time") ScheduleTimeSheet(base.trigger, { operate("update", JsonObject(base.spec + ("trigger" to it))) }, { edit = "" }, enabled = definitionEnabled)
         if (edit == "message") ScheduleMessageEditor(base.message, busy, error, { edit = "" }, { text -> operate("update", JsonObject(base.spec + ("message" to JsonPrimitive(text)))) }, writable = definitionEnabled)
         if (edit == "config" || edit == "mode") {
             val cfg = scheduleConfig(base)
-            NewSettingsSheet(scheduleEditingState(state, machine), cfg.cwd, projectName(cfg.cwd), machine, cfg.agent, if (edit == "mode") "mode" else "",
+            NewSettingsSheet(scheduleEditingState(state, machine), cfg.cwd, projectName(cfg.cwd, copy = copy), machine, cfg.agent, if (edit == "mode") "mode" else "",
                 onDone = { op ->
                     val picked = op?.sets?.firstOrNull { it.agent == op.agent }
                     if (picked == null) edit = "" else operate("update", JsonObject(base.spec + ("target" to scheduleTarget(agentConfig(machine, cfg.cwd, picked), base.target))))
                 }, onClose = { edit = "" }, initial = cfg, scheduling = true, lockMachine = true, chooseAgent = true)
         }
-        if (deleting) Confirm("删除这个任务？", "停止后续调度，已发出的消息和已开的对话保留。", "删除", true, { deleting = false }) { deleting = false; operate("cancel") }
+        if (deleting) Confirm(copy(UiMessages.scheduleAndroidDeleteThisTask()), copy(UiMessages.scheduleAndroidStopFutureSchedulingSentMessagesAndOpenedConversationsAreKept()), copy(UiMessages.scheduleDelete()), true, { deleting = false }) { deleting = false; operate("cancel") }
     }
 }
 
@@ -434,13 +448,14 @@ internal fun ScheduleAttentionBanner(text: String, modifier: Modifier = Modifier
 /** Expands only for this visit; a complete description remains selectable. */
 @Composable
 fun ScheduleDescription(message: String, modifier: Modifier = Modifier) {
+    val copy = uiText()
     var expanded by remember(message) { mutableStateOf(false) }
     var overflow by remember(message) { mutableStateOf(false) }
     Column(modifier) {
         Text(message, style = T.s15, color = pal.ink, maxLines = if (expanded) Int.MAX_VALUE else 3,
             overflow = TextOverflow.Ellipsis, onTextLayout = { if (!expanded) overflow = it.hasVisualOverflow })
         if (expanded || overflow) Row(Modifier.heightIn(min = 44.dp).clickable { expanded = !expanded }, verticalAlignment = Alignment.CenterVertically) {
-            Text(if (expanded) "收起" else "展开全文", style = T.s13b, color = pal.blue)
+            Text(if (expanded) copy(UiMessages.markdownCollapse()) else copy(UiMessages.markdownExpand()), style = T.s13b, color = pal.blue)
             Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 14.dp, pal.blue)
         }
     }
@@ -448,6 +463,7 @@ fun ScheduleDescription(message: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: () -> Unit, save: (String) -> Unit, writable: Boolean = true) {
+    val copy = uiText()
     var text by remember { mutableStateOf(initial) }
     var discard by remember { mutableStateOf(false) }
     fun cancel() { if (text != initial) discard = true else close() }
@@ -462,30 +478,31 @@ fun ScheduleMessageEditor(initial: String, busy: Boolean, error: String, close: 
         BackHandler { if (!busy) cancel() }
         Column(Modifier.fillMaxSize().background(pal.paper).safeDrawingPadding().imePadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                TextAction("取消", { cancel() }, enabled = !busy)
-                Text("让 agent 做什么", Modifier.weight(1f), style = T.s15b, color = pal.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                TextAction(if (busy) "保存中…" else "保存", { save(text) }, enabled = !busy && writable && scheduleMessageValid(text))
+                TextAction(copy(UiMessages.commonCancel()), { cancel() }, enabled = !busy)
+                Text(copy(UiMessages.scheduleWhatShouldTheAgentDo()), Modifier.weight(1f), style = T.s15b, color = pal.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                TextAction(if (busy) copy(UiMessages.scheduleAndroidSaving()) else copy(UiMessages.commonSave()), { save(text) }, enabled = !busy && writable && scheduleMessageValid(text))
             }
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             BasicTextField(text, { text = it }, Modifier.weight(1f).fillMaxWidth().padding(16.dp),
                 textStyle = T.s15.copy(color = pal.ink), cursorBrush = SolidColor(pal.blue), readOnly = busy || !writable)
-            if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB", Modifier.padding(vertical = 16.dp), inset = 16.dp)
+            if (text.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint(copy(UiMessages.scheduleTooLongMaximum32Kb()), Modifier.padding(vertical = 16.dp), inset = 16.dp)
         }
-        if (discard) Confirm("放弃修改？", "修改还没有保存。", "放弃", true, { discard = false }) { discard = false; close() }
+        if (discard) Confirm(copy(UiMessages.scheduleDiscardChanges()), copy(UiMessages.scheduleAndroidChangesHaveNotBeenSaved()), copy(UiMessages.newSessionAndroidAbandon()), true, { discard = false }) { discard = false; close() }
     }
 }
 
 @Composable
 internal fun ScheduleRunGroup(group: RunGroup, now: Instant, entryUnread: Set<String> = emptySet(), open: (ScheduledRun) -> Unit) {
+    val copy = uiText()
     var expanded by rememberSaveable(group.key) { mutableStateOf(false) }
     if (group.quiet && group.runs.size > 1) {
         Box(Modifier.bottomLine(pal.sep)) {
-            GRow("${scheduleWhen(group.runs.first().notificationTime, now).substringBefore(' ')} · ${group.runs.size} 次，都没有通知", singleLineValue = true, onClick = { expanded = !expanded }, trailing = {
+            GRow(copy(UiMessages.scheduleQuietRuns((group.runs.size).toInt(), (scheduleDay(group.runs.first().notificationTime, now, copy = copy)).toString())), singleLineValue = true, onClick = { expanded = !expanded }, trailing = {
                 Ic(if (expanded) Lucide.ChevronUp else Lucide.ChevronDown, 16.dp, pal.ink2)
             })
         }
         val latest = group.runs.first()
-        Text("最近一次 ${scheduleClock(latest.notificationTime)}：${latest.foldedSummary}", style = T.s12, color = pal.ink2, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
+        Text(copy(UiMessages.scheduleLatestSummary(uiText(latest.foldedSummary), (scheduleClock(latest.notificationTime)).toString())), style = T.s12, color = pal.ink2, modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 12.dp))
         if (!expanded) return
     }
     group.runs.forEach { run ->
@@ -493,8 +510,8 @@ internal fun ScheduleRunGroup(group: RunGroup, now: Instant, entryUnread: Set<St
             .bottomLine(pal.sep).padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.Top) {
             Box(Modifier.width(22.dp).padding(top = 5.dp), contentAlignment = Alignment.TopCenter) { if (run.id in entryUnread) ScheduleResultDot() }
             Column(Modifier.weight(1f)) {
-                Text(scheduleWhen(run.notificationTime, now), style = T.s13, color = pal.ink2)
-                Text(run.summary.ifEmpty { run.foldedSummary }, style = T.s15, color = pal.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(scheduleWhen(run.notificationTime, now, copy = copy), style = T.s13, color = pal.ink2)
+                Text(uiText(run.summary.ifEmpty { run.foldedSummary }), style = T.s15, color = pal.ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
             if (run.session.isNotEmpty()) Ic(Lucide.ChevronRight, 16.dp, pal.ink3)
         }
@@ -511,10 +528,11 @@ fun ScheduleSetting(label: String, value: String, enabled: Boolean = true, onCli
 /** A CLI setting uses the same grouped row and small segments as the settings page. */
 @Composable
 internal fun ScheduleAgentSetting(agents: List<Agent>, selected: Agent, enabled: Boolean, onSelect: (Agent) -> Unit) {
+    val copy = uiText()
     if (agents.size < 2) return
     Box(Modifier.bottomLine(pal.sep)) {
         GRow("CLI", trailing = {
-            SegPick(agents.map(::agentName), agents.indexOf(selected), enabled) { onSelect(agents[it]) }
+            SegPick(agents.map { agentName(it, copy = copy) }, agents.indexOf(selected), enabled) { onSelect(agents[it]) }
         })
     }
 }
@@ -546,6 +564,7 @@ fun NewScheduleScreen(session: String) {
 
 @Composable
 fun ScheduleEditor(session: String, onClose: () -> Unit) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val state by remote.state.collectAsState()
@@ -572,37 +591,37 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
     val machine = if (current) state.sessions[session]?.machineId else cfg?.machineId
     val writable = machine != null && scheduleWritable(state, machine)
     val editable = frozen == null && !busy
-    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) "这台电脑需要更新 remote-agent，才能管理定时任务" else if (!writable) SCHEDULE_OFFLINE else null }
+    val blocked = machine?.let { if (!scheduleSupported(state.machines[it])) copy(UiMessages.scheduleAndroidUpdateRemoteAgentOnThisComputerToManageScheduledTasks()) else if (!writable) copy(SCHEDULE_OFFLINE) else null }
     Column(Modifier.fillMaxSize().background(pal.paper)) {
-        if (current) SheetHead("定时发到这个对话", "取消", onClose) else PageBar("新任务", onClose)
+        if (current) SheetHead(copy(UiMessages.scheduleScheduleMessagesToThisConversation()), copy(UiMessages.commonCancel()), onClose) else PageBar(copy(UiMessages.homeNewTask()), onClose)
         ConnBanner(state)
         FormColumn(Modifier.weight(1f).fillMaxWidth().readableColumn().imePadding().verticalScrollFaded()) {
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (blocked != null) Notice(blocked, tone = NoticeTone.WARN)
-            FieldLabel("让 agent 做什么")
-            InputField(message, { if (editable) message = it }, "检查项目的更新，有值得注意的变化再通知我。", maxLines = if (current) 4 else 8)
-            if (message.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint("太长了，最多 32 KB")
-            FieldLabel("任务名")
-            InputField(title, { if (editable) title = scheduleNameInput(it) }, if (message.isBlank()) "留空就用消息的第一句" else "留空会用：${scheduleName("", message)}", singleLine = true)
-            ToggleRow("完成后通知", "", notifyFinish, enabled = editable) { notifyFinish = it }
-            ScheduleSetting("什么时候", scheduleTiming(trigger), editable) { timeOpen = true }
+            FieldLabel(copy(UiMessages.scheduleWhatShouldTheAgentDo()))
+            InputField(message, { if (editable) message = it }, copy(UiMessages.scheduleAndroidCheckProjectUpdatesAndNotifyMeOfNoteworthyChanges()), maxLines = if (current) 4 else 8)
+            if (message.toByteArray(Charsets.UTF_8).size > SCHEDULE_MESSAGE_MAX_BYTES) Hint(copy(UiMessages.scheduleTooLongMaximum32Kb()))
+            FieldLabel(copy(UiMessages.scheduleTaskName()))
+            InputField(title, { if (editable) title = scheduleNameInput(it) }, if (message.isBlank()) copy(UiMessages.scheduleLeaveBlankToUseTheMessageSFirstSentence()) else copy(UiMessages.scheduleIfBlankUses((scheduleName("", message)).toString())), singleLine = true)
+            ToggleRow(copy(UiMessages.scheduleNotifyOnCompletion()), "", notifyFinish, enabled = editable) { notifyFinish = it }
+            ScheduleSetting(copy(UiMessages.scheduleWhen()), scheduleTiming(trigger, copy = copy, locale = LocalMessageLocale.current), editable) { timeOpen = true }
             if (!current) {
-                ScheduleSetting("项目", project.takeIf { it.isNotEmpty() }?.let(::projectName) ?: "选择项目", editable) { pickProject = true }
+                ScheduleSetting(copy(UiMessages.scheduleProject()), project.takeIf { it.isNotEmpty() }?.let { projectName(it, copy = copy) } ?: copy(UiMessages.scheduleAndroidChooseAProject()), editable) { pickProject = true }
                 if (cfg != null) {
                     ScheduleAgentSetting(machineAgents(state.machines[cfg.machineId]), cfg.agent, editable) { agent -> config = projectConfig(state, project, agent, cfg.machineId) }
-                    val permission = effectiveModeText(cfg.mode, defaultModeOf(state.machines[cfg.machineId], cfg.agent))
-                    ScheduleSetting("权限", permission, editable) { settings = "mode" }
-                    val model = listOf(cfg.model.ifEmpty { "默认模型" }, cfg.effort).filter { it.isNotEmpty() }.joinToString(" · ")
-                    ScheduleSetting(if (state.machines.size > 1) "机器和模型" else "模型", if (state.machines.size > 1) "${machineLabel(state, cfg.machineId)} · $model" else model, editable) { settings = if (state.machines.size > 1) "" else "model" }
+                    val permission = effectiveModeText(cfg.mode, defaultModeOf(state.machines[cfg.machineId], cfg.agent), copy = copy)
+                    ScheduleSetting(copy(UiMessages.newSessionPermissions()), permission, editable) { settings = "mode" }
+                    val model = listOf(cfg.model.ifEmpty { copy(UiMessages.newSessionDefaultModel()) }, cfg.effort).filter { it.isNotEmpty() }.joinToString(" · ")
+                    ScheduleSetting(if (state.machines.size > 1) copy(UiMessages.scheduleComputerAndModel()) else copy(UiMessages.modelsTitle()), if (state.machines.size > 1) "${machineLabel(state, cfg.machineId)} · $model" else model, editable) { settings = if (state.machines.size > 1) "" else "model" }
                 }
-                Hint("每次运行新开一个对话，归在这个任务下面，不进会话列表。完成后默认通知；关闭后仅由 agent 主动通知。")
-                if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint("电脑需要更新 remote-agent，才能创建定时任务。")
-            } else Hint("消息等当前这一轮结束后再发，不会打断正在做的事。")
+                Hint(copy(UiMessages.scheduleAndroidEachRunOpensANewConversationUnderThisTaskOutside()))
+                if (machine == null && state.machines.values.any { !scheduleSupported(it) }) Hint(copy(UiMessages.scheduleAndroidUpdateRemoteAgentOnTheComputerToCreateScheduledTasks()))
+            } else Hint(copy(UiMessages.scheduleAndroidTheMessageIsSentAfterTheCurrentTurnEndsWithout()))
             val plan = schedulePlanBlocked(current,cfg,state)
-            if (plan) Hint("计划模式不能创建执行任务，请先选择其他权限")
-            if (!current && cfg != null && resolvedScheduleConfig(cfg, state).mode == null) Hint("请选择明确的权限，再创建定时任务。")
+            if (plan) Hint(copy(UiMessages.schedulePlanModeCannotCreateExecutionTasksChooseOtherPermissions()))
+            if (!current && cfg != null && resolvedScheduleConfig(cfg, state).mode == null) Hint(copy(UiMessages.scheduleSelectExplicitPermissionsBeforeCreatingAScheduledTask()))
             val ready = !plan && (current || cfg?.let { resolvedScheduleConfig(it, state).mode != null } == true) && writable && !busy && (scheduleMessageValid(message) || frozen != null) && (current || cfg != null && (config != null || start?.settled == true))
-            PillButton(if (busy) "创建中…" else if (frozen != null) "重试创建" else "创建", {
+            PillButton(if (busy) copy(UiMessages.scheduleAndroidCreating()) else if (frozen != null) copy(UiMessages.scheduleRetryCreation()) else copy(UiMessages.scheduleCreate()), {
                 if (!ready) return@PillButton
                 val spec = frozen?.let { Json.parseToJsonElement(it).jsonObject } ?: taskSpec(scheduleName(title, message), message, trigger,
                     if (current) buildJsonObject { put("type", "resume_session"); put("session", session) } else scheduleTarget(resolvedScheduleConfig(cfg!!, state))).let { JsonObject(it + ("notify" to JsonPrimitive(if (notifyFinish) "finish" else "agent_only"))) }.also { frozen = it.toString() }
@@ -613,23 +632,23 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
                         onClose()
                         if (result != null) nav.task(machine, result.id)
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                    catch (e: Exception) { error = errorText(e); if (e is CommandException && e.fromDaemon && !e.unknown) frozen = null }
+                    catch (e: Exception) { error = displayError(e); if (e is CommandException && e.fromDaemon && !e.unknown) frozen = null }
                     finally { busy = false }
                 }
             }, Modifier.fillMaxWidth().padding(vertical = 16.dp), ButtonKind.INK, ready)
-            if (frozen != null) Hint("创建结果尚未确认，再试一次使用同一个请求。返回后可先查看任务列表。")
+            if (frozen != null) Hint(copy(UiMessages.scheduleAndroidCreationIsUnconfirmedRetryingUsesTheSameRequestYouCan()))
         }
     }
     if (timeOpen) ScheduleTimeSheet(trigger, { triggerText = it.toString(); timeOpen = false }, { timeOpen = false })
     if (pickProject) Sheet({ pickProject = false }) {
-        SheetHead("选项目", "取消", { pickProject = false })
+        SheetHead(copy(UiMessages.projectsChoose()), copy(UiMessages.commonCancel()), { pickProject = false })
         ProjectPickList(state, { path -> project = path; config = null; pickProject = false }, { pickProject = false; pickDirectory = true })
     }
     if (pickDirectory) Sheet({ pickDirectory = false }, scroll = false) {
-        DirPickerBody(state, "选目录") { m, path -> project = path; config = NewConfig(m, path, machineAgents(state.machines[m]).first()); pickDirectory = false }
+        DirPickerBody(state, copy(UiMessages.scheduleAndroidChooseDirectory())) { m, path -> project = path; config = NewConfig(m, path, machineAgents(state.machines[m]).first()); pickDirectory = false }
     }
     val settingsPage = settings
-    if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project), cfg.machineId, cfg.agent, settingsPage,
+    if (settingsPage != null && cfg != null) NewSettingsSheet(state, project, projectName(project, copy = copy), cfg.machineId, cfg.agent, settingsPage,
         onDone = { op ->
             if (op != null) {
                 config = agentConfig(op.machineId, project, op.sets.single { it.agent == op.agent })
@@ -640,6 +659,7 @@ fun ScheduleEditor(session: String, onClose: () -> Unit) {
 
 @Composable
 fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: () -> Unit, enabled: Boolean = true) {
+    val copy = uiText()
     val original = remember { ScheduleTime.from(initial) }
     var value by remember { mutableStateOf(original) }
     var replaced by remember { mutableStateOf(false) }
@@ -652,54 +672,55 @@ fun ScheduleTimeSheet(initial: JsonObject, done: (JsonObject) -> Unit, close: ()
     }
     Sheet(close) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("什么时候", Modifier.weight(1f), style = T.s17b, color = pal.ink)
-            TextAction("完成", {
-                try { done(if (keepTurnDelay || value == original && !replaced) initial else value.trigger()) } catch (e: Exception) { error = e.message ?: "请检查时间" }
+            Text(copy(UiMessages.scheduleWhen()), Modifier.weight(1f), style = T.s17b, color = pal.ink)
+            TextAction(copy(UiMessages.commonDone()), {
+                try { done(if (keepTurnDelay || value == original && !replaced) initial else value.trigger()) } catch (e: Exception) { error = if (e is io.github.lewin671.remoteagent.core.MessageFailure) e.display.resolve(copy) else e.message ?: copy(UiMessages.scheduleAndroidCheckTheTime()) }
             }, enabled = enabled && (keepTurnDelay || value.kind != 2 || value.weekdays.isNotEmpty()))
         }
-        SegPick(listOf("一次", "每天", "每周", "每隔"), if (keepTurnDelay) -1 else value.kind) { replaced = true; value = value.copy(kind = it) }
+        SegPick(listOf(copy(UiMessages.scheduleOnceSchedules()), copy(UiMessages.scheduleDaily()), copy(UiMessages.scheduleWeeklyOn()), copy(UiMessages.scheduleEvery())), if (keepTurnDelay) -1 else value.kind) { replaced = true; value = value.copy(kind = it) }
         if (keepTurnDelay) {
-            Hint("当前是「${scheduleFrequency(initial)}」。直接完成会保留原规则；选择上面的时间类型后再更改。")
+            Hint(copy(UiMessages.scheduleAndroidCurrentlyValue1FinishingDirectlyPreservesTheOriginalRuleChooseA((scheduleFrequency(initial, copy = copy)).toString())))
         } else {
         if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
-        if (value.kind == 0) ScheduleSetting("日期", value.date) { date(value.date) { value = value.copy(date = it) } }
+        if (value.kind == 0) ScheduleSetting(copy(UiMessages.scheduleAndroidDate()), value.date) { date(value.date) { value = value.copy(date = it) } }
         if (value.kind != 3) {
-            ScheduleSetting("时间", value.time) {
+            ScheduleSetting(copy(UiMessages.scheduleTime()), value.time) {
                 val t = runCatching { LocalTime.parse(value.time) }.getOrElse { LocalTime.of(8, 0) }
                 android.app.TimePickerDialog(context, { _, h, m -> value = value.copy(time = "%02d:%02d".format(h, m)) }, t.hour, t.minute, true).show()
             }
         } else {
-            FieldLabel("间隔")
-            InputField(value.interval, { value = value.copy(interval = it) }, "正整数")
-            GRow("单位", trailing = { SegPick(listOf("分钟", "小时", "天", "秒"), value.unit) { value = value.copy(unit = it) } })
+            FieldLabel(copy(UiMessages.scheduleAndroidInterval()))
+            InputField(value.interval, { value = value.copy(interval = it) }, copy(UiMessages.scheduleAndroidPositiveInteger()))
+            GRow(copy(UiMessages.scheduleAndroidUnit()), trailing = { SegPick(listOf(copy(UiMessages.scheduleAndroidMinutes()), copy(UiMessages.scheduleAndroidHours()), copy(UiMessages.scheduleAndroidDays()), copy(UiMessages.scheduleAndroidSeconds())), value.unit) { value = value.copy(unit = it) } })
         }
-        if (value.kind == 1) ToggleRow("只在工作日", "周一到周五", value.workdays) { value = value.copy(workdays = it) }
+        if (value.kind == 1) ToggleRow(copy(UiMessages.scheduleWeekdaysOnly()), copy(UiMessages.scheduleAndroidMondayToFriday()), value.workdays) { value = value.copy(workdays = it) }
         if (value.kind == 2) {
             Row(Modifier.fillMaxWidth().clip(Radii.R14).background(pal.fill2).padding(2.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 (1..7).forEach { day ->
                     val selected = day in value.weekdays
                     Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(Radii.R14).background(if (selected) (if (pal.paper == androidx.compose.ui.graphics.Color.White) pal.paper else pal.fill2) else androidx.compose.ui.graphics.Color.Transparent)
                         .toggleable(value = selected, role = Role.Checkbox) { value = value.copy(weekdays = if (day in value.weekdays) value.weekdays - day else value.weekdays + day) }, contentAlignment = Alignment.Center) {
-                        Text(listOf("一", "二", "三", "四", "五", "六", "日")[day-1], style = if (selected) T.s13b else T.s13, color = if (selected) pal.ink else pal.ink2)
+                        Text(listOf(copy(UiMessages.scheduleMon()), copy(UiMessages.scheduleTue()), copy(UiMessages.scheduleWed()), copy(UiMessages.scheduleThu()), copy(UiMessages.scheduleFri()), copy(UiMessages.scheduleSat()), copy(UiMessages.scheduleSun()))[day-1], style = if (selected) T.s13b else T.s13, color = if (selected) pal.ink else pal.ink2)
                     }
                 }
             }
         }
         if (value.kind != 0) {
-            GRow("结束", trailing = { SegPick(listOf("不结束", "运行指定次数", "截止日期"), value.end) { value = value.copy(end = it) } })
-            if (value.end == 1) InputField(value.count, { value = value.copy(count = it) }, "自动运行次数")
-            if (value.end == 2) ScheduleSetting("结束日期", value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
+            GRow(copy(UiMessages.sessionEnd()), trailing = { SegPick(listOf(copy(UiMessages.scheduleNever()), copy(UiMessages.scheduleAfterARunCount()), copy(UiMessages.scheduleEndDate())), value.end) { value = value.copy(end = it) } })
+            if (value.end == 1) InputField(value.count, { value = value.copy(count = it) }, copy(UiMessages.scheduleAndroidAutomaticRunCount()))
+            if (value.end == 2) ScheduleSetting(copy(UiMessages.scheduleAndroidEndDate()), value.until) { date(value.until) { value = value.copy(until = it, deadline = "") } }
         }
         if (value.kind != 3) {
-            FieldLabel("时区")
-            InputField(value.zone, { value = value.inZone(it.trim()) }, "例如 Asia/Shanghai")
-        } else Hint(SCHEDULE_INTERVAL_HINT)
+            FieldLabel(copy(UiMessages.scheduleTimeZone()))
+            InputField(value.zone, { value = value.inZone(it.trim()) }, copy(UiMessages.scheduleAndroidForExampleAsiaShanghai()))
+        } else Hint(copy(SCHEDULE_INTERVAL_HINT))
         }
     }
 }
 
 @Composable
 fun SessionScheduleStrip(sid: String, modifier: Modifier = Modifier) {
+    val copy = uiText()
     val remote = LocalRemote.current
     val state by remote.state.collectAsState()
     val snapshots by remote.schedules.state.collectAsState()
@@ -707,13 +728,13 @@ fun SessionScheduleStrip(sid: String, modifier: Modifier = Modifier) {
     if (tasks.isEmpty()) return
     val nav = LocalNav.current
     val next = tasks.minByOrNull { it.next ?: Instant.MAX }!!
-    val text = sessionScheduleText(tasks, state, Instant.ofEpochMilli(now()))
+    val text = sessionScheduleText(tasks, state, Instant.ofEpochMilli(now()), copy = copy)
     var choosing by remember { mutableStateOf(false) }
     if (choosing) Sheet({ choosing = false }) {
-        SheetHead("定时任务", "取消", { choosing = false })
+        SheetHead(copy(UiMessages.queueAndroidScheduled()), copy(UiMessages.commonCancel()), { choosing = false })
         tasks.forEach { task -> GRow(task.title, onClick = { choosing = false; nav.task(task.machine, task.id) }, chevron = true, singleLineValue = true) }
     }
-    Strip(Lucide.Clock, text, modifier, action = "管理", onClick = {
+    Strip(Lucide.Clock, text, modifier, action = copy(UiMessages.scheduleManage()), onClick = {
         if (tasks.size == 1) nav.task(next.machine, next.id) else choosing = true
     })
 }

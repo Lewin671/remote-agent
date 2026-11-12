@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.term
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.proto.TerminalHistoryPage
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.advanceTimeBy
@@ -81,7 +85,7 @@ class TerminalHistoryTest {
         history.disconnected()
         assertTrue(history.state.value.disconnected)
         assertEquals(listOf(listOf("read so far")), history.state.value.pages.map { plain(it) })
-        assertEquals("终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的", historyStatus(history.state.value, waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalHistoryClosed()), historyStatus(history.state.value, waiting = false))
         history.close()
         // A cursor that expired in the reader has its own wording and no retry: it went with its
         // stream, so earlier pages have to be asked for from the live screen again.
@@ -93,7 +97,7 @@ class TerminalHistoryTest {
         runCurrent()
         assertTrue(history.state.value.expired)
         assertFalse(history.state.value.failed)
-        assertEquals("记录已过期，回到实时后重新往上滑", historyStatus(history.state.value, waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalHistoryExpired()), historyStatus(history.state.value, waiting = false))
         history.close()
     }
 
@@ -107,7 +111,7 @@ class TerminalHistoryTest {
         // No reader: the live screen stays, with one line over it and its retry at hand.
         assertFalse(history.state.value.entered)
         assertTrue(history.state.value.failed)
-        assertEquals("读取失败", historyStatus(history.state.value, waiting = true))
+        assertEquals(messageTextForTest(UiMessages.terminalReadFailed()), historyStatus(history.state.value, waiting = true))
         history.request(true, send)
         assertEquals("", requests.last().second)
         assertFalse(history.state.value.failed)
@@ -131,12 +135,12 @@ class TerminalHistoryTest {
     @Test fun theStatusLineSaysOneThingAtATime() {
         fun state(visible: Boolean = true, entered: Boolean = true, cursor: String = "", pending: String = "", failed: Boolean = false, expired: Boolean = false, disconnected: Boolean = false) =
             TerminalHistory.State(visible, entered, emptyList(), cursor, pending, failed, expired, disconnected)
-        assertEquals("读取记录…", historyStatus(state(entered = false, pending = "r"), waiting = true))
-        assertEquals("读取更早的记录…", historyStatus(state(pending = "r"), waiting = false))
-        assertEquals("读取失败", historyStatus(state(failed = true, pending = "r"), waiting = false))
-        assertEquals("记录已过期，回到实时后重新往上滑", historyStatus(state(expired = true), waiting = false))
-        assertEquals("已经是保留的最早记录", historyStatus(state(), waiting = false))
-        assertEquals("终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的", historyStatus(state(disconnected = true, cursor = "capture:1"), waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalReading()), historyStatus(state(entered = false, pending = "r"), waiting = true))
+        assertEquals(messageTextForTest(UiMessages.terminalEarlier()), historyStatus(state(pending = "r"), waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalReadFailed()), historyStatus(state(failed = true, pending = "r"), waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalHistoryExpired()), historyStatus(state(expired = true), waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalHistoryStart()), historyStatus(state(), waiting = false))
+        assertEquals(messageTextForTest(UiMessages.terminalHistoryClosed()), historyStatus(state(disconnected = true, cursor = "capture:1"), waiting = false))
         // A page still to come is no reason to say anything, and the first capture says nothing else.
         assertNull(historyStatus(state(cursor = "capture:1"), waiting = false))
         assertNull(historyStatus(state(entered = false), waiting = true))

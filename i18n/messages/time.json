@@ -1,5 +1,66 @@
 [
   {
+    "key": "time.android_day_clock",
+    "zh-CN": "{day} {clock}",
+    "en": "{day} {clock}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "day": {
+        "type": "string",
+        "example": "Tomorrow"
+      },
+      "clock": {
+        "type": "string",
+        "example": "05:02"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.android_used_clock",
+    "zh-CN": "{time} 使用",
+    "en": "Used {time}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.android_used_relative",
+    "zh-CN": "{time}使用",
+    "en": "Used {time}",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "time.tomorrow",
     "zh-CN": "明天",
     "en": "Tomorrow",

@@ -116,7 +116,7 @@ class I18nBatchBTest(private val locale: String) {
             event(7) { planProposed = PlanProposed.newBuilder().setText(plan).build() } +
             event(8) { settingsChanged = SettingsChanged.newBuilder().setMode(ApprovalMode.APPROVAL_MODE_PLAN).build() }
         val rows = buildChat(events, derive(events), "Example computer", copy = ::text)
-        show { Column(Modifier.fillMaxSize()) { rows.forEach { ChatItemView(it, agentName(Agent.AGENT_CLAUDE), "/example/demo", "/example") } } }
+        show { Column(Modifier.fillMaxSize()) { rows.forEach { ChatItemView(it, agentName(Agent.AGENT_CLAUDE, copy = ::messageTextForTest), "/example/demo", "/example") } } }
         shot("history")
     }
     @Test fun queuedMessages() {

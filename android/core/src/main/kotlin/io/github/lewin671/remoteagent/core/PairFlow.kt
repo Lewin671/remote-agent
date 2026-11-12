@@ -31,7 +31,11 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.OkHttpClient
 import org.bouncycastle.crypto.params.X25519PrivateKeyParameters
 
-class PairException(message: String, val retryable: Boolean = true, val uncertain: Boolean = false) : Exception(message)
+class PairException(message: String, val retryable: Boolean = true, val uncertain: Boolean = false) : Exception(message), MessageFailure {
+    override var display: MessageText = message.messageText()
+        private set
+    constructor(message: MessageText, retryable: Boolean = true, uncertain: Boolean = false) : this("pairing_failure", retryable, uncertain) { display = message }
+}
 
 /** The approval binds this account, pairing, candidate, approver and expiry, as Go verifies it. */
 internal fun validJoinApproval(
@@ -140,15 +144,15 @@ private suspend fun poll(
     get: suspend () -> GetPairingResponse,
 ): GetPairingResponse {
     while (true) {
-        if (stopped()) throw PairException("已取消", retryable = false)
+        if (stopped()) throw PairException(UiMessages.queueCanceled().messageText(), retryable = false)
         val res =
             try {
                 get()
             } catch (e: ConnectException) {
-                if (e.code == Code.NOT_FOUND) throw PairException("配对已过期或被取消", retryable = false)
+                if (e.code == Code.NOT_FOUND) throw PairException(UiMessages.securityPairingExpiredOrWasCanceled().messageText(), retryable = false)
                 throw e
             }
-        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException("配对已取消", retryable = false)
+        if (res.state == PairingState.PAIRING_STATE_CANCELED) throw PairException(UiMessages.securityPairingCanceled().messageText(), retryable = false)
         if (res.stateValue >= want.number) return res
         delay(intervalMs)
     }
@@ -176,7 +180,7 @@ internal constructor(
 
     override suspend fun joined(): Pair<List<String>, DeviceKind> {
         if (remote.security.head().core.authorityID != remote.account.deviceId)
-            throw PairException("只有管理端能添加设备")
+            throw PairException(UiMessages.securityAndroidOnlyTheManagingClientCanAddDevices().messageText())
         val tok = remote.currentToken()
         val st =
             poll({ stopped }, PairingState.PAIRING_STATE_JOINED, pollIntervalMs) {
@@ -191,7 +195,7 @@ internal constructor(
         val descriptor = DeviceSecurityRPC.pairTrustDescriptor(pin, remote.account.deviceId)
         val cp = st.devicePublicKey.toByteArray()
         val xp = st.deviceHpkePublicKey.toByteArray()
-        require(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) { "候选设备需要更新" }
+        requireMessage(cp.size == 32 && xp.size == 32 && st.joinerKindValue in 1..2) { UiMessages.securityAndroidTheCandidateDeviceNeedsAnUpdate().messageText() }
         remote.api.pairing
             .revealPairing(
                 RevealPairingRequest.newBuilder()
@@ -203,7 +207,7 @@ internal constructor(
             )
             .value()
         if (replacesDeviceId.isNotEmpty() && st.joinerKind != DeviceKind.DEVICE_KIND_MACHINE)
-            throw PairException("这份配对只允许原电脑重新加入")
+            throw PairException(UiMessages.securityAndroidThisPairingOnlyAllowsTheOriginalComputerToRejoin().messageText())
         candidateSeed = cp
         candidateX = xp
         candidateKind = st.joinerKind
@@ -259,7 +263,7 @@ internal constructor(
         } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) {
-            throw PairException("这次配对已失效，暂时无法核实新设备是否已加入。请在新设备或设备列表确认后重新开始。", retryable = false, uncertain = true)
+            throw PairException(UiMessages.securityAndroidThisPairingIsNoLongerValidCannotVerifyWhetherThe().messageText(), retryable = false, uncertain = true)
         }
         if (registered) {
             // Install and verify the published chain before clearing its durable intent.
@@ -268,16 +272,16 @@ internal constructor(
             remote.finishPairingOperation(pairingId)
             return
         }
-        throw PairException("这次配对已失效，新设备未加入。请先在设备列表移除未完成配对的设备，再重新开始。", retryable = false)
+        throw PairException(UiMessages.securityAndroidThisPairingIsNoLongerValidTheNewDeviceDid().messageText(), retryable = false)
     }
 
     /** Signs in foreground, uploads once, then waits without further signing. */
     private suspend fun approveOnce() {
-        val s = secrets ?: throw PairException("还没有设备加入")
+        val s = secrets ?: throw PairException(UiMessages.securityAndroidNoDeviceHasJoinedYet().messageText())
         val acct = remote.account
-        val cp = candidateSeed ?: throw PairException("没有候选设备")
+        val cp = candidateSeed ?: throw PairException(UiMessages.securityAndroidNoCandidateDevice().messageText())
         if (deviceId(cp) == acct.deviceId)
-            throw PairException("候选设备不能使用管理端身份")
+            throw PairException(UiMessages.securityAndroidTheCandidateDeviceCannotUseTheManagingClientSIdentity().messageText())
         val tok = remote.currentToken()
         val request = approvalLock.withLock {
             approvalRequest
@@ -289,20 +293,20 @@ internal constructor(
                         // This can be replay of a previous pairing's durable intent;
                         // it says nothing about the current candidate's registration.
                         if (e.code !in setOf(Code.NOT_FOUND, Code.CANCELED, Code.FAILED_PRECONDITION)) throw e
-                        throw PairException("同步成员状态失败，可能有已失效的配对。请在设备列表检查并移除未完成配对的设备，再重新开始。", retryable = false, uncertain = true)
+                        throw PairException(UiMessages.securityAndroidMembershipSyncFailedThereMayBeAnInvalidPairingCheck().messageText(), retryable = false, uncertain = true)
                     }
-                    val xp = candidateX ?: throw PairException("没有候选设备")
-                    val kind = candidateKind ?: throw PairException("没有候选设备")
+                    val xp = candidateX ?: throw PairException(UiMessages.securityAndroidNoCandidateDevice().messageText())
+                    val kind = candidateKind ?: throw PairException(UiMessages.securityAndroidNoCandidateDevice().messageText())
                     val now = remote.security.signingTime(System.currentTimeMillis())
                     val head = remote.security.head()
-                    if (head.core.authorityID != acct.deviceId) throw PairException("只有管理端能批准")
+                    if (head.core.authorityID != acct.deviceId) throw PairException(UiMessages.securityAndroidOnlyTheManagingClientCanApprove().messageText())
                     val old =
                         remote.security.contentKey(head.core.contentEpoch)
-                            ?: throw PairException("缺少当前内容密钥")
+                            ?: throw PairException(UiMessages.securityAndroidCurrentContentKeyMissing().messageText())
                     val member = DeviceSecurity.Member(deviceId(cp), cp, xp, kind.number.toUInt())
                     val existing = head.core.member(member.id)
                     if (existing == null && member.id in head.core.removed)
-                        throw PairException("这台设备已被移除，旧身份不能重新加入；请在那台设备上重新加入，以生成新的设备身份")
+                        throw PairException(UiMessages.securityAndroidThisDeviceWasRemovedItsOldIdentityCannotRejoinRejoin().messageText())
                     remote.authorityForeground()
                     val next =
                         if (existing == null)
@@ -320,7 +324,7 @@ internal constructor(
                                 existing.kind != member.kind ||
                                     !existing.ed.contentEquals(member.ed)
                             )
-                                throw PairException("这台设备的身份与成员记录不一致，不能重新加入")
+                                throw PairException(UiMessages.securityAndroidThisDeviceSIdentityDiffersFromItsMemberRecordCannot().messageText())
                             Authority.rotateX(
                                 head,
                                 member.id,
@@ -332,16 +336,16 @@ internal constructor(
                             )
                         }
                     if (acct.accountPublicKey.size != 32)
-                        throw PairException("这台手机没有账户公钥，不能给新设备登记；请先用带账户根密钥的设备重新加入")
+                        throw PairException(UiMessages.securityAndroidThisPhoneHasNoAccountPublicKeyAndCannotRegister().messageText())
                     val chain = remote.security.chain() + next
                     val proofs = remote.security.chainProofs()
                     if (chain.size > DeviceSecurity.MAX_PAIR_STATES)
-                        throw PairException("状态链太大，无法配对；请重建账户")
+                        throw PairException(UiMessages.securityAndroidStateChainIsTooLargeToPairRecreateTheAccount().messageText())
                     val rawSize =
                         chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
                             proofs.values.sumOf { it.size.toLong() }
                     if (rawSize > DeviceSecurity.MAX_PAIR_CHAIN_BYTES)
-                        throw PairException("状态链太大，无法配对；请重建账户")
+                        throw PairException(UiMessages.securityAndroidStateChainIsTooLargeToPairRecreateTheAccount().messageText())
                     val certificate = HeadLease.sign(next, SigningKey(acct.deviceSeed), now)
                     val (approval, signature) =
                         makePairApproval(acct, pairingId, cp, kind, expiresMs, replacesDeviceId)
@@ -446,7 +450,7 @@ internal constructor(
         ): Initiation {
             require(pollIntervalMs > 0)
             if (remote.security.head().core.authorityID != remote.account.deviceId)
-                throw PairException("只有管理端能添加设备")
+                throw PairException(UiMessages.securityAndroidOnlyTheManagingClientCanAddDevices().messageText())
             if (replacesDeviceId.isNotEmpty()) {
                 val head = remote.security.head()
                 if (
@@ -456,7 +460,7 @@ internal constructor(
                             it.core.member(replacesDeviceId)?.kind == 1u
                         }
                 )
-                    throw PairException("只能接续同一账户已移除电脑的档案")
+                    throw PairException(UiMessages.securityAndroidOnlyARemovedComputerSArchiveFromTheSameAccount().messageText())
             }
             val current = remote.security.chain()
             val currentBytes =
@@ -466,7 +470,7 @@ internal constructor(
                 current.size >= DeviceSecurity.MAX_PAIR_STATES ||
                     currentBytes >= DeviceSecurity.MAX_PAIR_CHAIN_BYTES
             )
-                throw PairException("状态链太大，无法配对；请重建账户")
+                throw PairException(UiMessages.securityAndroidStateChainIsTooLargeToPairRecreateTheAccount().messageText())
             val key = PairKey()
             val identity = remote.security.identity()
             val commit =
@@ -520,7 +524,7 @@ suspend fun joinByPairing(
     pollIntervalMs: Long = 1000,
 ): Account {
     require(pollIntervalMs > 0)
-    if (existing != null && existing.server != link.server) throw PairException("安全设置必须使用原账户的服务器")
+    if (existing != null && existing.server != link.server) throw PairException(UiMessages.securitySecuritySetupMustUseTheOriginalAccountSServer().messageText())
     val api = Api(link.server, http)
     val removed =
         if (existing != null) existingIdentityRemoved(api, existing) || existingRemoved else false
@@ -541,7 +545,7 @@ suspend fun joinByPairing(
             peek.pairingId.isEmpty() ||
             link.commit != null && !link.commit.contentEquals(peek.commit.toByteArray())
     )
-        throw PairException("配对承诺不匹配", retryable = false)
+        throw PairException(UiMessages.securityAndroidPairingCommitmentMismatch().messageText(), retryable = false)
     val identity = loadIdentity(link.server, peek.pairingId)
     val deviceSeed =
         identity?.seed ?: if (existing != null && !removed) existing.deviceSeed else randomBytes(32)
@@ -578,12 +582,12 @@ suspend fun joinByPairing(
                     e.code == Code.INVALID_ARGUMENT ||
                     e.code == Code.FAILED_PRECONDITION
             )
-                throw PairException("配对码不对，或者已经用过了")
-            if (e.code == Code.RESOURCE_EXHAUSTED) throw PairException("试得太频繁了，稍等一分钟再试")
+                throw PairException(UiMessages.securityThePairingCodeIsWrongOrHasAlreadyBeen().messageText())
+            if (e.code == Code.RESOURCE_EXHAUSTED) throw PairException(UiMessages.securityAndroidTooManyAttemptsWaitAMinuteAndRetry().messageText())
             throw e
         }
     if (joined.pairingId != peek.pairingId || !joined.commit.equals(peek.commit))
-        throw PairException("临时公钥公开后配对承诺发生变化")
+        throw PairException(UiMessages.securityAndroidPairingCommitmentChangedAfterTheEphemeralPublicKeyWasRevealed().messageText())
     val id = joined.pairingId
     val token = joined.candidateToken
     val get: suspend () -> GetPairingResponse = {
@@ -595,12 +599,12 @@ suspend fun joinByPairing(
             .value()
     }
     val st = poll(stopped, PairingState.PAIRING_STATE_REVEALED, pollIntervalMs, get)
-    if (st.trust.size() > 8192) throw PairException("配对信任信息过大")
+    if (st.trust.size() > 8192) throw PairException(UiMessages.securityAndroidPairingTrustInformationIsTooLarge().messageText())
     val (pin, approver) =
         try {
             DeviceSecurityRPC.parsePairTrustDescriptor(st.trust.toByteArray())
         } catch (_: Exception) {
-            throw PairException("无效的配对信任信息", retryable = false)
+            throw PairException(UiMessages.securityInvalidPairingTrustInformation().messageText(), retryable = false)
         }
     if (
         !DeviceSecurityRPC.pairDomainCommit(
@@ -609,7 +613,7 @@ suspend fun joinByPairing(
             )
             .contentEquals(peek.commit.toByteArray())
     )
-        throw PairException("管理端信任信息与承诺不匹配", retryable = false)
+        throw PairException(UiMessages.securityAndroidTheManagingClientSTrustInformationDoesNotMatchIts().messageText(), retryable = false)
     val tr =
         Pairing.domainTranscript(
             id,
@@ -622,7 +626,7 @@ suspend fun joinByPairing(
         )
     val s = key.derive(st.initiatorPublic.toByteArray(), tr)
     onEmoji(s.emoji)
-    if (stopped() || !confirm(s.emoji)) throw PairException("本机未确认图案，已停止安全绑定")
+    if (stopped() || !confirm(s.emoji)) throw PairException(UiMessages.securityAndroidPatternsWereNotConfirmedOnThisDeviceSecureBindingStopped().messageText())
     onRegistering()
     val done = poll(stopped, PairingState.PAIRING_STATE_APPROVED, pollIntervalMs, get)
     val (_, payload) =
@@ -632,11 +636,11 @@ suspend fun joinByPairing(
             Place(PayloadKind.PAYLOAD_KIND_PAIRING, requestId = id),
             PairingPayload::parseFrom,
         )
-    if (payload.server != link.server) throw PairException("账户属于另一个服务器")
-    if (stopped()) throw PairException("已取消本次加入", retryable = false)
+    if (payload.server != link.server) throw PairException(UiMessages.securityTheAccountBelongsToAnotherServer().messageText())
+    if (stopped()) throw PairException(UiMessages.securityAndroidThisJoinAttemptWasCancelled().messageText(), retryable = false)
     val accountPublicKey = payload.accountPublicKey.toByteArray()
     if (accountPublicKey.size != 32 || deviceId(accountPublicKey) != pin.account)
-        throw PairException("配对载荷缺少账户公钥")
+        throw PairException(UiMessages.securityAndroidPairingPayloadIsMissingTheAccountPublicKey().messageText())
     val chain = ArrayList<DeviceSecurity.State>()
     val proofs = ArrayList<ByteArray?>()
     for (inState in payload.securityStatesList) {
@@ -645,12 +649,12 @@ suspend fun joinByPairing(
         proofs.add(inState.recovery.takeIf { it.size() > 0 }?.toByteArray())
     }
     if (chain.isEmpty() || chain.size > DeviceSecurity.MAX_STATES)
-        throw PairException("配对载荷的状态链不完整")
-    if (chain.size > DeviceSecurity.MAX_PAIR_STATES) throw PairException("状态链太大，无法配对；请重建账户")
+        throw PairException(UiMessages.securityAndroidPairingPayloadStateChainIsIncomplete().messageText())
+    if (chain.size > DeviceSecurity.MAX_PAIR_STATES) throw PairException(UiMessages.securityAndroidStateChainIsTooLargeToPairRecreateTheAccount().messageText())
     val chainBytes =
         chain.sumOf { DeviceSecurity.stateBytes(it).size.toLong() } +
             proofs.filterNotNull().sumOf { it.size.toLong() }
-    if (chainBytes > DeviceSecurity.MAX_PAIR_CHAIN_BYTES) throw PairException("状态链太大，无法配对；请重建账户")
+    if (chainBytes > DeviceSecurity.MAX_PAIR_CHAIN_BYTES) throw PairException(UiMessages.securityAndroidStateChainIsTooLargeToPairRecreateTheAccount().messageText())
     if (
         !DeviceSecurity.pinOf(chain[0]).let {
             it.account == pin.account &&
@@ -658,7 +662,7 @@ suspend fun joinByPairing(
                 it.genesis.contentEquals(pin.genesis)
         }
     )
-        throw PairException("配对载荷属于另一个安全域")
+        throw PairException(UiMessages.securityAndroidPairingPayloadBelongsToAnotherSecurityDomain().messageText())
     val now = System.currentTimeMillis()
     chain.forEachIndexed { i, state ->
         DeviceSecurity.verifyState(pin, state)
@@ -668,17 +672,17 @@ suspend fun joinByPairing(
             DeviceSecurity.verifyTransition(chain[i - 1], state, proof)
         }
     }
-    if (chain.last().core.authorityID != approver) throw PairException("配对载荷的管理端不匹配", retryable = false)
+    if (chain.last().core.authorityID != approver) throw PairException(UiMessages.securityAndroidPairingPayloadManagingClientMismatch().messageText(), retryable = false)
     val member =
-        chain.last().core.member(deviceId(devicePublic)) ?: throw PairException("加入回执没有本机身份")
+        chain.last().core.member(deviceId(devicePublic)) ?: throw PairException(UiMessages.securityAndroidJoinReceiptDoesNotContainThisDeviceSIdentity().messageText())
     if (
         !member.ed.contentEquals(devicePublic) ||
             !member.x.contentEquals(xPublic) ||
             member.kind != 2u
     )
-        throw PairException("加入回执的本机公钥不匹配", retryable = false)
+        throw PairException(UiMessages.securityAndroidJoinReceiptDevicePublicKeyMismatch().messageText(), retryable = false)
     DeviceSecurity.openGrant(pin, chain.last(), member.id, xPrivate)
-    if (payload.approval.size() > 1024) throw PairException("配对批准与这台设备不匹配或签名无效", retryable = false)
+    if (payload.approval.size() > 1024) throw PairException(UiMessages.securityAndroidPairingApprovalDoesNotMatchThisDeviceOrItsSignature().messageText(), retryable = false)
     val approval = PairApproval.parseFrom(payload.approval)
     if (
         !validJoinApproval(
@@ -692,7 +696,7 @@ suspend fun joinByPairing(
             now,
         )
     )
-        throw PairException("配对批准与这台设备不匹配或签名无效", retryable = false)
+        throw PairException(UiMessages.securityAndroidPairingApprovalDoesNotMatchThisDeviceOrItsSignature().messageText(), retryable = false)
     val acct =
         Account(
             link.server,

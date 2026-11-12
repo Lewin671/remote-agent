@@ -111,6 +111,6 @@ data class PrefsObject(val revision: Long, val prefs: ProjectPrefs) {
     }
 }
 
-class PrefsConflictException : Exception("项目偏好一直在被其他客户端修改，没能保存")
+class PrefsConflictException : MessageException(UiMessages.errorsAndroidOtherClientsKeptChangingProjectPreferencesCouldNotSave().messageText())
 
 fun newerPrefs(have: PrefsObject?, got: PrefsObject): PrefsObject = if (have == null || got.revision >= have.revision) got else have

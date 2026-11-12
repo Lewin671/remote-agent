@@ -44,10 +44,10 @@ class TimelineTest {
     @Test fun taskOwnedApprovalsStillNeedAttention() {
         val base = session("task", "/scheduled", approvals = 1)
         val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).build())
-        val timeline = homeTimeline(state(owned), HomeScope.All)
+        val timeline = homeTimeline(state(owned), HomeScope.All, copy = ::messageTextForTest)
         assertEquals(listOf("task"), timeline.attention.map { it.id })
-        assertEquals(1, projects(state(owned)).size)
-        assertEquals(listOf("task"), projects(state(owned)).single().sessions.map { it.id })
+        assertEquals(1, projects(state(owned), copy = ::messageTextForTest).size)
+        assertEquals(listOf("task"), projects(state(owned), copy = ::messageTextForTest).single().sessions.map { it.id })
         assertTrue(timeline.running.isEmpty())
         assertTrue(timeline.ended.isEmpty())
         assertTrue(timeline.meta.project)
@@ -59,9 +59,9 @@ class TimelineTest {
         val approval = session("approval", "/task", approvals = 1).let { it.copy(info = it.info!!.toBuilder().setTaskOwned(true).build()) }
         val snapshot = state(*ordinary, quiet, approval)
         assertEquals("1 个待处理 · 2 个进行中", activityCounts(snapshot.sessions.values))
-        assertEquals("1 个待处理 · 2 个进行中", scopeRows(snapshot, HomeScope.All).first().detail)
-        assertEquals(listOf("approval"), homeTimeline(snapshot, HomeScope.All).attention.map { it.id })
-        assertEquals(setOf("a", "b"), homeTimeline(snapshot, HomeScope.All).running.map { it.id }.toSet())
+        assertEquals("1 个待处理 · 2 个进行中", scopeRows(snapshot, HomeScope.All, copy = ::messageTextForTest).first().detail)
+        assertEquals(listOf("approval"), homeTimeline(snapshot, HomeScope.All, copy = ::messageTextForTest).attention.map { it.id })
+        assertEquals(setOf("a", "b"), homeTimeline(snapshot, HomeScope.All, copy = ::messageTextForTest).running.map { it.id }.toSet())
     }
 
     @Test fun taskOwnedSessionsRemainAddressableButDoNotEnterLists() {
@@ -69,38 +69,38 @@ class TimelineTest {
         val owned = base.copy(info = base.info!!.toBuilder().setTaskOwned(true).setScheduledTaskId("task-id").build())
         val snapshot = state(owned)
         assertTrue(snapshot.sessions.containsKey("task"))
-        assertEquals(0, homeTimeline(snapshot, HomeScope.All).size)
-        assertTrue(projects(snapshot).isEmpty())
+        assertEquals(0, homeTimeline(snapshot, HomeScope.All, copy = ::messageTextForTest).size)
+        assertTrue(projects(snapshot, copy = ::messageTextForTest).isEmpty())
     }
 
     @Test
     fun theOnlyListedProjectIsTheDefaultScopeElseEveryProject() {
-        assertEquals(HomeScope.All, defaultScope(state()))
-        assertEquals(HomeScope.Of("/a"), defaultScope(state(session("1", "/a"))))
-        assertEquals(HomeScope.All, defaultScope(state(session("1", "/a"), session("2", "/b"))))
+        assertEquals(HomeScope.All, defaultScope(state(), copy = ::messageTextForTest))
+        assertEquals(HomeScope.Of("/a"), defaultScope(state(session("1", "/a")), copy = ::messageTextForTest))
+        assertEquals(HomeScope.All, defaultScope(state(session("1", "/a"), session("2", "/b")), copy = ::messageTextForTest))
         // A removed project does not count.
-        assertEquals(HomeScope.Of("/a"), defaultScope(state(session("1", "/a"), session("2", "/b"), hidden = listOf("/b"))))
+        assertEquals(HomeScope.Of("/a"), defaultScope(state(session("1", "/a"), session("2", "/b"), hidden = listOf("/b")), copy = ::messageTextForTest))
     }
 
     @Test
     fun theRememberedScopeHoldsWhileItsProjectIsListed() {
         val two = state(session("1", "/a"), session("2", "/b"), session("3", "/c"))
-        assertEquals(HomeScope.Of("/b"), resolveScope(HomeScope.Of("/b"), two))
-        assertEquals(HomeScope.All, resolveScope(HomeScope.All, two))
-        assertEquals(HomeScope.All, resolveScope(null, two))
+        assertEquals(HomeScope.Of("/b"), resolveScope(HomeScope.Of("/b"), two, copy = ::messageTextForTest))
+        assertEquals(HomeScope.All, resolveScope(HomeScope.All, two, copy = ::messageTextForTest))
+        assertEquals(HomeScope.All, resolveScope(null, two, copy = ::messageTextForTest))
         // Gone or removed: the default again.
-        assertEquals(HomeScope.All, resolveScope(HomeScope.Of("/gone"), two))
-        assertEquals(HomeScope.All, resolveScope(HomeScope.Of("/b"), state(session("1", "/a"), session("2", "/b"), session("3", "/c"), hidden = listOf("/b"))))
-        assertEquals(HomeScope.Of("/a"), resolveScope(HomeScope.Of("/b"), state(session("1", "/a"), session("2", "/b"), hidden = listOf("/b"))))
+        assertEquals(HomeScope.All, resolveScope(HomeScope.Of("/gone"), two, copy = ::messageTextForTest))
+        assertEquals(HomeScope.All, resolveScope(HomeScope.Of("/b"), state(session("1", "/a"), session("2", "/b"), session("3", "/c"), hidden = listOf("/b")), copy = ::messageTextForTest))
+        assertEquals(HomeScope.Of("/a"), resolveScope(HomeScope.Of("/b"), state(session("1", "/a"), session("2", "/b"), hidden = listOf("/b")), copy = ::messageTextForTest))
         // 全部项目 is not offered for a single project.
-        assertEquals(HomeScope.Of("/a"), resolveScope(HomeScope.All, state(session("1", "/a"))))
+        assertEquals(HomeScope.Of("/a"), resolveScope(HomeScope.All, state(session("1", "/a")), copy = ::messageTextForTest))
     }
 
     @Test
     fun theScopeSurvivesTheDeviceSettingsWithoutItsPath() {
         val key = scopeKey(ByteArray(32) { 7 })
         val foo = "/Users/me/Code/foo"
-        val listed = listedProjects(state(session("1", foo), session("2", "/a:b/project:c"), session("3", "/work/caf\u00e9")))
+        val listed = listedProjects(state(session("1", foo), session("2", "/a:b/project:c"), session("3", "/work/caf\u00e9")), copy = ::messageTextForTest)
         for (s in listOf(HomeScope.All, HomeScope.Of(foo), HomeScope.Of("/a:b/project:c"))) assertEquals(s, decodeScope(encodeScope(s, key), key, listed))
         // What is stored is a mark made with the account's key, the same on iOS: nothing of the path.
         assertEquals("all", encodeScope(HomeScope.All, key))
@@ -127,9 +127,9 @@ class TimelineTest {
         assertEquals(EndedGroup.Month(2026, 9), g(at(2026, 9, 27, 23, 59)))
         assertEquals(EndedGroup.Month(2025, 12), g(at(2025, 12, 31)))
 
-        assertEquals("今天", groupTitle(EndedGroup.Today, now, zone))
-        assertEquals("昨天", groupTitle(EndedGroup.Yesterday, now, zone))
-        assertEquals("近 7 天", groupTitle(EndedGroup.Week, now, zone))
+        assertEquals(messageTextForTest(UiMessages.timeToday()), groupTitle(EndedGroup.Today, now, zone))
+        assertEquals(messageTextForTest(UiMessages.timeYesterday()), groupTitle(EndedGroup.Yesterday, now, zone))
+        assertEquals(messageTextForTest(UiMessages.timeLastWeek()), groupTitle(EndedGroup.Week, now, zone))
         assertEquals("9 月", groupTitle(EndedGroup.Month(2026, 9), now, zone))
         assertEquals("2025 年 12 月", groupTitle(EndedGroup.Month(2025, 12), now, zone))
     }
@@ -145,8 +145,8 @@ class TimelineTest {
     fun anEndedRowWritesTheTimeItsGroupCalls() {
         assertEquals("7:10", endedTime(at(2026, 10, 4, 7, 10), now, zone))
         assertEquals("18:44", endedTime(at(2026, 10, 3, 18, 44), now, zone))
-        assertEquals("周五", endedTime(at(2026, 10, 2, 8, 0), now, zone))
-        assertEquals("周一", endedTime(at(2026, 9, 28, 8, 0), now, zone))
+        assertEquals(messageTextForTest(UiMessages.timeWeekday("fri")), endedTime(at(2026, 10, 2, 8, 0), now, zone))
+        assertEquals(messageTextForTest(UiMessages.timeWeekday("mon")), endedTime(at(2026, 9, 28, 8, 0), now, zone))
         assertEquals("9月27日", endedTime(at(2026, 9, 27, 8, 0), now, zone))
         assertEquals("12月31日", endedTime(at(2025, 12, 31), now, zone))
         assertEquals("", endedTime(0, now, zone))
@@ -176,9 +176,9 @@ class TimelineTest {
         val online = state(session("run", "/a"), popup, plan, question, approval, ended)
         val offline = online.copy(machines = online.machines.mapValues { it.value.copy(online = false) })
         val scope = HomeScope.Of("/a")
-        assertEquals(listOf("approval", "question", "plan", "popup"), homeTimeline(offline, scope).attention.map { it.id })
-        assertEquals(homeTimeline(online, scope).attention.size, homeTimeline(offline, scope).attention.size)
-        assertEquals(listOf("run"), homeTimeline(offline, scope).running.map { it.id })
+        assertEquals(listOf("approval", "question", "plan", "popup"), homeTimeline(offline, scope, copy = ::messageTextForTest).attention.map { it.id })
+        assertEquals(homeTimeline(online, scope, copy = ::messageTextForTest).attention.size, homeTimeline(offline, scope, copy = ::messageTextForTest).attention.size)
+        assertEquals(listOf("run"), homeTimeline(offline, scope, copy = ::messageTextForTest).running.map { it.id })
         assertEquals(Status.OFFLINE, statusOf(approval, offline.machines["m"]))
         assertEquals(Status.UNLINKED, shownStatus(offline.copy(link = Link.NO_SERVER), approval))
     }
@@ -190,7 +190,7 @@ class TimelineTest {
             session("run-b", "/b"), session("old-b", "/b", ended = now - 4000),
             session("wait-b", "/b", approvals = 1), session("wait-a", "/a", approvals = 1, created = now - 9000),
         )
-        val a = homeTimeline(st, HomeScope.Of("/a"), zone = zone)
+        val a = homeTimeline(st, HomeScope.Of("/a"), zone = zone, copy = ::messageTextForTest)
         assertEquals(setOf("wait-a", "wait-b"), a.attention.map { it.id }.toSet())
         assertEquals(listOf("run-a"), a.running.map { it.id })
         assertEquals(listOf("old-a"), a.ended.map { it.id })
@@ -199,15 +199,15 @@ class TimelineTest {
         assertTrue(outsideScope(st.sessions.getValue("wait-b"), HomeScope.Of("/a")))
         assertFalse(outsideScope(st.sessions.getValue("wait-a"), HomeScope.Of("/a")))
         // The card from outside the scope names its project; the scope's own does not.
-        assertEquals(listOf("b"), cardMeta(st, st.sessions.getValue("wait-b"), HomeScope.Of("/a")))
-        assertEquals(emptyList<String>(), cardMeta(st, st.sessions.getValue("wait-a"), HomeScope.Of("/a")))
+        assertEquals(listOf("b"), cardMeta(st, st.sessions.getValue("wait-b"), HomeScope.Of("/a"), copy = ::messageTextForTest))
+        assertEquals(emptyList<String>(), cardMeta(st, st.sessions.getValue("wait-a"), HomeScope.Of("/a"), copy = ::messageTextForTest))
 
-        val all = homeTimeline(st, HomeScope.All, zone = zone)
+        val all = homeTimeline(st, HomeScope.All, zone = zone, copy = ::messageTextForTest)
         assertEquals(listOf("run-a", "run-b"), all.running.map { it.id })
         assertEquals(listOf("old-b", "old-a"), all.ended.map { it.id })
         assertEquals(6, all.total)
         assertTrue(all.meta.project)
-        assertEquals(listOf("a"), cardMeta(st, st.sessions.getValue("wait-a"), HomeScope.All))
+        assertEquals(listOf("a"), cardMeta(st, st.sessions.getValue("wait-a"), HomeScope.All, copy = ::messageTextForTest))
     }
 
     @Test
@@ -217,7 +217,7 @@ class TimelineTest {
             session("run-h", "/h"), session("wait-h", "/h", approvals = 1), session("old-h", "/h", ended = now - 1000),
             session("x", "/c"), hidden = listOf("/h"),
         )
-        val all = homeTimeline(st, HomeScope.All, zone = zone)
+        val all = homeTimeline(st, HomeScope.All, zone = zone, copy = ::messageTextForTest)
         assertEquals(listOf("wait-h"), all.attention.map { it.id })
         assertEquals(setOf("run-a", "run-h", "x"), all.running.map { it.id }.toSet())
         assertEquals(listOf("old-a"), all.ended.map { it.id })
@@ -226,25 +226,25 @@ class TimelineTest {
     @Test
     fun theThirdLineOnlyWritesWhatDiffers() {
         val one = state(session("1", "/a"), session("2", "/a", forkedFrom = "1"))
-        val m1 = homeTimeline(one, HomeScope.Of("/a"), zone = zone).meta
+        val m1 = homeTimeline(one, HomeScope.Of("/a"), zone = zone, copy = ::messageTextForTest).meta
         assertEquals(RowMeta(), m1)
         assertEquals("", metaLine(one, one.sessions.getValue("1"), m1))
-        assertEquals("分叉", metaLine(one, one.sessions.getValue("2"), m1))
+        assertEquals(messageTextForTest(UiMessages.homeForked()), metaLine(one, one.sessions.getValue("2"), m1))
 
         val many = state(
             session("1", "/Code/foo", machine = "m"), session("2", "/Code/foo", agent = Agent.AGENT_CLAUDE, machine = "n", forkedFrom = "1"),
             session("3", "/Code/bar"), machines = listOf("m", "n"),
         )
-        val all = homeTimeline(many, HomeScope.All, zone = zone).meta
+        val all = homeTimeline(many, HomeScope.All, zone = zone, copy = ::messageTextForTest).meta
         assertEquals(RowMeta(project = true, agent = true, machine = true), all)
         assertEquals("分叉 · foo · n", metaLine(many, many.sessions.getValue("2"), all))
         // One CLI in the scope: not written, though the account has two.
-        val bar = homeTimeline(many, HomeScope.Of("/Code/bar"), zone = zone).meta
+        val bar = homeTimeline(many, HomeScope.Of("/Code/bar"), zone = zone, copy = ::messageTextForTest).meta
         assertEquals(RowMeta(machine = true), bar)
         assertEquals("m", metaLine(many, many.sessions.getValue("3"), bar))
         // An ended session's CLI counts: the scope used more than one.
         val used = state(session("1", "/a"), session("2", "/a", agent = Agent.AGENT_CLAUDE, ended = now - 1000))
-        assertTrue(homeTimeline(used, HomeScope.Of("/a"), zone = zone).meta.agent)
+        assertTrue(homeTimeline(used, HomeScope.Of("/a"), zone = zone, copy = ::messageTextForTest).meta.agent)
         // A project page never writes the project.
         assertEquals(RowMeta(agent = true, machine = true), rowMeta(many, many.sessions.values.filter { projectKey(it) == "/Code/foo" }, project = false))
     }
@@ -256,16 +256,16 @@ class TimelineTest {
             session("3", "/a", title = "给登录接口加限流", ended = now - 3000), session("4", "/a", title = "Upgrade API layer", ended = now - 4000),
             session("5", "/a", title = "接口返回值统一成驼峰", ended = at(2026, 9, 21)),
         )
-        val f = homeTimeline(st, HomeScope.Of("/a"), " 接口 ", zone)
+        val f = homeTimeline(st, HomeScope.Of("/a"), " 接口 ", zone, copy = ::messageTextForTest)
         assertEquals(listOf("1"), f.running.map { it.id })
         assertEquals(listOf("3", "5"), f.ended.map { it.id })
         assertEquals(3, f.size)
         // The count that decides whether the box shows does not shrink with the filter.
         assertEquals(5, f.total)
-        assertEquals(listOf("4"), homeTimeline(st, HomeScope.Of("/a"), "api", zone).ended.map { it.id })
+        assertEquals(listOf("4"), homeTimeline(st, HomeScope.Of("/a"), "api", zone, copy = ::messageTextForTest).ended.map { it.id })
         // The folder is not the title.
-        assertEquals(0, homeTimeline(st, HomeScope.Of("/a"), "/a", zone).size)
-        assertEquals(5, homeTimeline(st, HomeScope.Of("/a"), "  ", zone).size)
+        assertEquals(0, homeTimeline(st, HomeScope.Of("/a"), "/a", zone, copy = ::messageTextForTest).size)
+        assertEquals(5, homeTimeline(st, HomeScope.Of("/a"), "  ", zone, copy = ::messageTextForTest).size)
 
         assertEquals("3 个会话的标题里有「接口」", filterTail(3, " 接口 "))
         assertEquals("没有标题里有「zzz」的会话", filterTail(0, "zzz"))
@@ -298,22 +298,22 @@ class TimelineTest {
             "m" to listOf(summary("/a", 40), summary("/b", 7), summary("/gone", 100)),
             "n" to listOf(summary("/a", 2), summary("/old", 5)),
         )
-        val a = homeTimeline(st, HomeScope.Of("/a"), zone = zone)
+        val a = homeTimeline(st, HomeScope.Of("/a"), zone = zone, copy = ::messageTextForTest)
         assertEquals(listOf("2", "3"), a.ended.map { it.id })
         assertEquals(42, a.endedTotal)
         // The filter is offered by what the scope has, not by what is held: one running and 42 ended.
         assertEquals(43, a.total)
         // Every project leaves out the removed ones, and counts a project nothing of which is held.
-        val all = homeTimeline(st, HomeScope.All, zone = zone)
+        val all = homeTimeline(st, HomeScope.All, zone = zone, copy = ::messageTextForTest)
         assertEquals(40 + 2 + 7 + 5, all.endedTotal)
         assertEquals(1 + all.endedTotal, all.total)
         // A filter changes what is listed, not how many the scope has.
-        assertEquals(42, homeTimeline(st, HomeScope.Of("/a"), "zzz", zone).endedTotal)
+        assertEquals(42, homeTimeline(st, HomeScope.Of("/a"), "zzz", zone, copy = ::messageTextForTest).endedTotal)
         // Summaries behind the sessions held never count fewer than those.
-        assertEquals(2, homeTimeline(withSummaries(st, "m" to emptyList(), "n" to emptyList()), HomeScope.Of("/a"), zone = zone).endedTotal)
+        assertEquals(2, homeTimeline(withSummaries(st, "m" to emptyList(), "n" to emptyList()), HomeScope.Of("/a"), zone = zone, copy = ::messageTextForTest).endedTotal)
         // A project known from a summary alone can be the scope.
-        assertEquals(HomeScope.Of("/old"), resolveScope(HomeScope.Of("/old"), st))
-        assertEquals(5, homeTimeline(st, HomeScope.Of("/old"), zone = zone).total)
+        assertEquals(HomeScope.Of("/old"), resolveScope(HomeScope.Of("/old"), st, copy = ::messageTextForTest))
+        assertEquals(5, homeTimeline(st, HomeScope.Of("/old"), zone = zone, copy = ::messageTextForTest).total)
     }
 
     @Test
@@ -347,11 +347,11 @@ class TimelineTest {
     @Test
     fun theEndSaysWhatBecomesOfTheEarlierPages() {
         val online = RemoteState(conn = ConnState.ONLINE, sessionsNext = SessionPlace(1, "a"))
-        assertEquals("正在加载更早的会话…", earlierTail(online))
-        assertEquals("连上服务器后加载更早的会话", earlierTail(online.copy(conn = ConnState.OFFLINE)))
-        assertEquals("没能加载更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时")))
+        assertEquals(messageTextForTest(UiMessages.homeLoadingEarlier()), earlierTail(online))
+        assertEquals(messageTextForTest(UiMessages.homeAndroidEarlierOffline()), earlierTail(online.copy(conn = ConnState.OFFLINE)))
+        assertEquals("没能加载更早的会话：超时 · 点这里重试", earlierTail(online.copy(sessionsError = "超时".messageText())))
         // The first page itself: there is no listing yet to have earlier pages.
-        assertEquals("没能读取会话列表：超时 · 点这里重试", earlierTail(RemoteState(conn = ConnState.ONLINE, sessionsError = "超时", sessionsListed = false)))
+        assertEquals("没能读取会话列表：超时 · 点这里重试", earlierTail(RemoteState(conn = ConnState.ONLINE, sessionsError = "超时".messageText(), sessionsListed = false)))
     }
 
     @Test
@@ -363,14 +363,14 @@ class TimelineTest {
         )
         val expected = "2 个待处理 · 4 个进行中"
         assertEquals(expected, activityCounts(st.sessions.values))
-        assertEquals("/work/foo · $expected", scopeRows(st, HomeScope.All).single { it.name.testText() == "foo" }.detail)
-        assertEquals(expected, scopeRows(st, HomeScope.All).first().detail)
-        assertEquals("/work/empty", scopeRows(st, HomeScope.All).single { it.name.testText() == "empty" }.detail)
+        assertEquals("/work/foo · $expected", scopeRows(st, HomeScope.All, copy = ::messageTextForTest).single { it.name.testText() == "foo" }.detail)
+        assertEquals(expected, scopeRows(st, HomeScope.All, copy = ::messageTextForTest).first().detail)
+        assertEquals("/work/empty", scopeRows(st, HomeScope.All, copy = ::messageTextForTest).single { it.name.testText() == "empty" }.detail)
         // Pending work does not disappear just because its computer is offline.
         val offline = st.copy(machines = st.machines.mapValues { (_, m) -> MachineView(m.id, false, m.lastSeenMs, m.meta) })
-        assertEquals(expected, scopeRows(offline, HomeScope.All).first().detail)
+        assertEquals(expected, scopeRows(offline, HomeScope.All, copy = ::messageTextForTest).first().detail)
         val idle = state(session("x", "/work/foo", ended = now), session("y", "/work/empty", ended = now))
-        assertEquals("2 个项目", scopeRows(idle, HomeScope.All).first().detail)
+        assertEquals("2 个项目", scopeRows(idle, HomeScope.All, copy = ::messageTextForTest).first().detail)
         assertEquals("1 个待处理", activityCounts(listOf(session("a", "/work/foo", approvals = 1))))
     }
 
@@ -381,12 +381,12 @@ class TimelineTest {
             session("3", "/Users/me/Code/billing", created = now - 50), session("4", "/Users/me/Code/blog", ended = now - 2 * 3600_000),
             session("5", "/Users/me/gone", ended = now - 1000), pinned = listOf("/Users/me/Code/blog"), hidden = listOf("/Users/me/gone"),
         )
-        val rows = scopeRows(st, HomeScope.Of("/Users/me/Code/foo"))
+        val rows = scopeRows(st, HomeScope.Of("/Users/me/Code/foo"), copy = ::messageTextForTest)
         assertEquals(listOf("全部项目", "blog", "billing", "foo"), rows.map { it.name })
         assertEquals(listOf("3 个进行中", "~/Code/blog", "~/Code/billing · 1 个进行中", "~/Code/foo · 2 个进行中"), rows.map { it.detail })
         assertEquals(listOf(false, false, false, true), rows.map { it.current })
-        assertEquals(listOf("billing"), scopeRows(st, HomeScope.All, "BILL").map { it.name })
+        assertEquals(listOf("billing"), scopeRows(st, HomeScope.All, "BILL", copy = ::messageTextForTest).map { it.name })
         // One project: nothing to choose 全部项目 over.
-        assertEquals(listOf("foo"), scopeRows(state(session("1", "/Users/me/Code/foo")), HomeScope.Of("/Users/me/Code/foo")).map { it.name })
+        assertEquals(listOf("foo"), scopeRows(state(session("1", "/Users/me/Code/foo")), HomeScope.Of("/Users/me/Code/foo"), copy = ::messageTextForTest).map { it.name })
     }
 }

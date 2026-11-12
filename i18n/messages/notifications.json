@@ -1,5 +1,486 @@
 [
   {
+    "key": "notifications.android_a_conversation_turn_finished",
+    "zh-CN": "一轮对话结束了",
+    "en": "A conversation turn finished",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_a_session_needs_your_attention",
+    "zh-CN": "有会话在等你处理",
+    "en": "A session needs your attention",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_allowing",
+    "zh-CN": "允许中…",
+    "en": "Allowing…",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_approvals_questions_plans_and_terminal_prompts",
+    "zh-CN": "审批、提问、计划和终端弹窗",
+    "en": "Approvals, questions, plans, and terminal prompts",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_background_push_is_disabled_in_this_build",
+    "zh-CN": "本版本未启用后台推送",
+    "en": "Background push is disabled in this build",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_cannot_reach_google_push_services_retrying_automatically_check_your_network",
+    "zh-CN": "暂时连不上 Google 推送服务，正在自动重试。请检查网络和 Google Play 服务",
+    "en": "Cannot reach Google push services. Retrying automatically. Check your network and Google Play services",
+    "notes": "Android Registration 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_read_the_account_open_the_app_to_continue",
+    "zh-CN": "没能读取账户，请打开 App 处理",
+    "en": "Could not read the account. Open the app to continue",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_save_approval_submission_state_nothing_was_sent",
+    "zh-CN": "没能保存审批提交状态，没有发出",
+    "en": "Could not save approval submission state. Nothing was sent",
+    "notes": "Android ApprovalAttempt 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_submit_phone_stayed_locked_until_approval_timed_out",
+    "zh-CN": "没能提交：手机一直锁着，审批已超时",
+    "en": "Could not submit: phone stayed locked until approval timed out",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_submit_this_phone_has_no_account",
+    "zh-CN": "没能提交：这台手机没有账户",
+    "en": "Could not submit: this phone has no account",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_sync_the_notification_subscription_retry",
+    "zh-CN": "通知订阅未能同步到服务器，请重试",
+    "en": "Could not sync the notification subscription. Retry",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_could_not_sync_the_notification_subscription_retrying_automatically",
+    "zh-CN": "通知订阅未能同步到服务器，正在自动重试",
+    "en": "Could not sync the notification subscription. Retrying automatically",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_current_authorization_could_not_be_verified_open_the_app_to",
+    "zh-CN": "无法核实当前授权，请打开 App 处理",
+    "en": "Current authorization could not be verified. Open the app to continue",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_fix",
+    "zh-CN": "修复",
+    "en": "Fix",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_are_disabled_push_is_unavailable",
+    "zh-CN": "Google Play 服务已停用，收不到推送",
+    "en": "Google Play services are disabled. Push is unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_are_not_installed_push_is_unavailable",
+    "zh-CN": "未安装 Google Play 服务，收不到推送",
+    "en": "Google Play services are not installed. Push is unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_are_unavailable_install_or_enable_them_then",
+    "zh-CN": "Google Play 服务不可用，请安装或启用后重试",
+    "en": "Google Play services are unavailable. Install or enable them, then retry",
+    "notes": "Android Registration 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_are_unavailable_push_is_unavailable",
+    "zh-CN": "Google Play 服务不可用，收不到推送",
+    "en": "Google Play services are unavailable. Push is unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_are_updating_background_alerts_are_temporarily_unavailable",
+    "zh-CN": "Google Play 服务正在更新，后台提醒暂不可用",
+    "en": "Google Play services are updating. Background alerts are temporarily unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_play_services_need_an_update_push_is_unavailable",
+    "zh-CN": "Google Play 服务需要更新，收不到推送",
+    "en": "Google Play services need an update. Push is unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_google_push_registration_could_not_be_verified_check_google_play",
+    "zh-CN": "Google 推送注册未通过验证，请检查 Google Play 服务或应用的推送配置",
+    "en": "Google push registration could not be verified. Check Google Play services or the app's push configuration",
+    "notes": "Android Registration 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_install_update_or_enable_google_play_services_in_system_settings",
+    "zh-CN": "请在系统设置中安装、更新或启用 Google Play 服务，再重试",
+    "en": "Install, update, or enable Google Play services in system settings, then retry",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_outcome_unknown_open_the_app_to_check",
+    "zh-CN": "不确定是否生效，请打开 App 看一眼",
+    "en": "Outcome unknown. Open the app to check",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_phone_locked_submission_continues_after_unlocking",
+    "zh-CN": "手机锁上了，解锁后继续提交…",
+    "en": "Phone locked. Submission continues after unlocking…",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_recovery_requested_open_devices_to_view_it",
+    "zh-CN": "有恢复请求，打开设备页查看",
+    "en": "Recovery requested. Open Devices to view it",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_rejecting",
+    "zh-CN": "拒绝中…",
+    "en": "Rejecting…",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_still_submitting_value1",
+    "zh-CN": "还在提交…（{value1}）",
+    "en": "Still submitting… ({value1})",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_submitting_approval",
+    "zh-CN": "正在提交审批…",
+    "en": "Submitting approval…",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_system_notification_permission_is_disabled",
+    "zh-CN": "系统通知权限未开启",
+    "en": "System notification permission is disabled",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_the_server_could_not_save_the_notification_subscription_retry",
+    "zh-CN": "服务器未能保存通知订阅，请重试",
+    "en": "The server could not save the notification subscription. Retry",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_the_server_has_not_configured_fcm_push_is_unavailable",
+    "zh-CN": "服务器没有配置 FCM，收不到推送",
+    "en": "The server has not configured FCM. Push is unavailable",
+    "notes": "Android Push 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_this_approval_timed_out_and_was_rejected_by_policy",
+    "zh-CN": "这条审批已超时，按规则拒绝了",
+    "en": "This approval timed out and was rejected by policy",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_unlock_the_phone_then_open_the_app_to_approve",
+    "zh-CN": "请先解锁手机，再打开 App 审批",
+    "en": "Unlock the phone, then open the app to approve",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.android_view_full_text",
+    "zh-CN": "查看全文",
+    "en": "View full text",
+    "notes": "Android Notifications 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "notifications.the_browser_did_not_allow_notifications",
     "zh-CN": "浏览器没有允许通知",
     "en": "The browser did not allow notifications",

@@ -215,6 +215,7 @@ class ApprovalReply internal constructor(
 
 @Composable
 fun rememberApprovalReply(s: SessionView, a: ApprovalRequested): ApprovalReply {
+    val copy = uiText()
     val remote = LocalRemote.current
     val act = rememberAction(a.approvalId)
     val r = Resolves.of(a.approvalId)

@@ -47,7 +47,7 @@ sealed interface HomeTail {
     /** A count: 「共 71 个」, 「3 个会话的标题里有「接口」」. */
     data class Text(val text: UiMessage?) : HomeTail
     /** Earlier pages are wanted and on their way, waiting for the connection, or failed ([earlierTail]); [retry] when a tap tries again. */
-    data class Earlier(val text: UiMessage, val retry: Boolean) : HomeTail
+    data class Earlier(val text: MessageText, val retry: Boolean) : HomeTail
 }
 
 /**
@@ -121,12 +121,12 @@ private fun groupId(g: EndedGroup): String = when (g) {
 }
 
 /** What an account with no session and no project is told. */
-fun accountEmpty(state: RemoteState): AccountEmpty {
+fun accountEmpty(state: RemoteState, copy: MessageResolver): AccountEmpty {
     if (state.machines.isEmpty()) return AccountEmpty.NoMachines
     // Out of reach of the server every computer reads as offline, which says nothing about them.
     if (state.unlinked) return AccountEmpty.Unlinked
     val first = state.machines.values.filter { it.online }.minByOrNull { it.id } ?: return AccountEmpty.NoneOnline
-    return AccountEmpty.Ready(machineName(first, first.id))
+    return AccountEmpty.Ready(machineName(first, first.id, copy = copy))
 }
 
 /**
@@ -144,17 +144,17 @@ fun homeList(
     shown: HomeShown = HomeShown(),
     now: Long,
     zone: ZoneId = ZoneId.systemDefault(),
-): HomeList {
+    copy: MessageResolver): HomeList {
     val filtering = query.isNotBlank()
-    val tl = homeTimeline(state, scope, query, zone)
+    val tl = homeTimeline(state, scope, query, zone, copy = copy)
     // Without any project, removed ones included, there is nothing to scope by.
-    val anyProject = projects(state).isNotEmpty()
+    val anyProject = projects(state, copy = copy).isNotEmpty()
     val wantAll = filtering && state.moreSessions
     val wantPage = !filtering && needsEndedPage(state, tl.ended, shown.ended, tl.endedTotal)
 
     val empty = when {
         !state.loaded && state.sessions.isEmpty() -> HomeEmpty.Loading
-        state.sessions.isEmpty() && !anyProject -> HomeEmpty.Account(accountEmpty(state))
+        state.sessions.isEmpty() && !anyProject -> HomeEmpty.Account(accountEmpty(state, copy = copy))
         scope != HomeScope.All && tl.total == 0 && !filtering -> HomeEmpty.Scope
         else -> null
     }
@@ -225,7 +225,7 @@ data class SessionRowText(
 ) {
     /** The row as one sentence for the screen reader: the title first, then its state, what it last said, where it runs and when. */
     val spoken: MessageText
-        get() = listOf(title, listStatus(status).messageText(), preview, agent?.let { agentName(it) }.orEmpty().messageText(), meta.spokenText(), time).joinMessages("，")
+        get() = listOf(title, listStatus(status).messageText(), preview, agent?.let { localized { copy -> agentName(it, copy = copy) } }.orEmpty(), meta.spokenText(), time).joinMessages("，")
 }
 
 fun sessionRowText(state: RemoteState, s: SessionView, meta: RowMeta, now: Long, zone: ZoneId = ZoneId.systemDefault()): SessionRowText {
@@ -276,13 +276,13 @@ fun pendingRowText(
     approval: ApprovalRequested?,
     question: String?,
     zone: ZoneId = ZoneId.systemDefault(),
-): PendingRowText {
+    copy: MessageResolver): PendingRowText {
     // What it waits for stays true while the server is out of reach.
     val st = statusOf(s, state.machines[s.machineId])
     val (kind, about) = when (st) {
         // One line: the row is a summary, the card and the dock show the command whole.
         Status.APPROVAL -> (approval?.let { if (it.command.isNotEmpty()) UiMessages.listStateAndroidRequestCommand() else if (it.toolName.isNotEmpty()) UiMessages.listStateRequestPermission(approvalDisplay(it.toolName)) else UiMessages.listStateAndroidRequestPermission() } ?: listStatus(st)).messageText() to (approval?.let { approvalBody(it).split(Regex("\\s+")).filter(String::isNotEmpty).joinToString(" ") } ?: "")
-        Status.QUESTION -> UiMessages.listStateAgentAsking(agentName(s.agent())).messageText() to question.orEmpty()
+        Status.QUESTION -> UiMessages.listStateAgentAsking(agentName(s.agent(), copy = copy)).messageText() to question.orEmpty()
         Status.POPUP -> listStatus(st).messageText() to s.info?.statusDetail.orEmpty()
         else -> listStatus(st).messageText() to ""
     }
@@ -375,7 +375,7 @@ data class HomeHeadline(
  * under it counts the scope's running and idle sessions apart. Null while
  * nothing was read yet.
  */
-fun homeHeadline(state: RemoteState, scope: HomeScope): HomeHeadline? {
+fun homeHeadline(state: RemoteState, scope: HomeScope, copy: MessageResolver): HomeHeadline? {
     // Something from before to show under the sentence: what was cached or listed.
     val kept = state.loaded || state.sessions.isNotEmpty()
     val before = UiMessages.connectionPreviousBelow().messageText()
@@ -388,7 +388,7 @@ fun homeHeadline(state: RemoteState, scope: HomeScope): HomeHeadline? {
         Link.ONLINE -> {}
     }
     if (!state.loaded && state.sessions.isEmpty()) return null
-    val tl = homeTimeline(state, scope)
+    val tl = homeTimeline(state, scope, copy = copy)
     var running = 0
     var idle = 0
     for (s in tl.running) when (statusOf(s, state.machines[s.machineId]).tone) {

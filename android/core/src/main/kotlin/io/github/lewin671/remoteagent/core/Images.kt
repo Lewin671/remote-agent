@@ -122,7 +122,7 @@ private fun keepJpegSegment(b: ByteArray, marker: Int, start: Int, end: Int): Bo
  * into account first: without Exif the picture shows as stored.
  */
 fun stripJpeg(b: ByteArray): ByteArray {
-    fun bad(): Nothing = throw IllegalArgumentException("不是能读的 JPEG")
+    fun bad(): Nothing = throw MessageException(UiMessages.imageAndroidUnreadableJpeg().messageText())
     if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_JPEG) bad()
     val out = ByteArrayOutputStream(b.size)
     out.write(b, 0, 2)
@@ -198,7 +198,7 @@ fun pngOrientation(b: ByteArray): Int {
 
 /** A PNG without text, time and Exif chunks; the image data is not touched. */
 fun stripPng(b: ByteArray): ByteArray {
-    val chunks = pngChunks(b) ?: throw IllegalArgumentException("不是能读的 PNG")
+    val chunks = pngChunks(b) ?: throw MessageException(UiMessages.imageAndroidUnreadablePng().messageText())
     val drop = setOf("tEXt", "zTXt", "iTXt", "eXIf", "tIME")
     val out = ByteArrayOutputStream(b.size)
     out.write(b, 0, 8)
@@ -232,7 +232,7 @@ fun webpOrientation(b: ByteArray): Int {
 
 /** A WebP without its EXIF and XMP chunks, with the extended header's flags and the file size to match. */
 fun stripWebp(b: ByteArray): ByteArray {
-    val chunks = webpChunks(b) ?: throw IllegalArgumentException("不是能读的 WebP")
+    val chunks = webpChunks(b) ?: throw MessageException(UiMessages.imageAndroidUnreadableWebp().messageText())
     val out = ByteArrayOutputStream(b.size)
     out.write(b, 0, 12)
     for ((type, start, end) in chunks) {
@@ -258,7 +258,7 @@ fun stripWebp(b: ByteArray): ByteArray {
  * touched.
  */
 fun stripGif(b: ByteArray): ByteArray {
-    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_GIF || b.size < 13) throw IllegalArgumentException("不是能读的 GIF")
+    if (detectFormat(b) != ImageFormat.IMAGE_FORMAT_GIF || b.size < 13) throw MessageException(UiMessages.imageAndroidUnreadableGif().messageText())
     val out = ByteArrayOutputStream(b.size)
     var i = 13
     val flags = b[10].toInt() and 0xff
@@ -267,7 +267,7 @@ fun stripGif(b: ByteArray): ByteArray {
     fun subBlocks(from: Int): Int {
         var j = from
         while (true) {
-            if (j >= b.size) throw IllegalArgumentException("GIF 被截断")
+            if (j >= b.size) throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText())
             val n = b[j].toInt() and 0xff
             j += 1 + n
             if (n == 0) return j
@@ -280,7 +280,7 @@ fun stripGif(b: ByteArray): ByteArray {
                 return out.toByteArray()
             }
             0x2C -> {
-                if (i + 10 > b.size) throw IllegalArgumentException("GIF 被截断")
+                if (i + 10 > b.size) throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText())
                 val f = b[i + 9].toInt() and 0xff
                 var j = i + 10
                 if (f and 0x80 != 0) j += 3 * (1 shl ((f and 7) + 1))
@@ -300,10 +300,10 @@ fun stripGif(b: ByteArray): ByteArray {
                 if (keep) out.write(b, i, j - i)
                 i = j
             }
-            else -> throw IllegalArgumentException("GIF 里有认不出的块")
+            else -> throw MessageException(UiMessages.imageAndroidGifContainsAnUnrecognizedBlock().messageText())
         }
     }
-    throw IllegalArgumentException("GIF 被截断")
+    throw MessageException(UiMessages.imageAndroidGifIsTruncated().messageText())
 }
 
 /** An image's orientation, by format; 1 for GIF and anything without one. */
@@ -351,7 +351,7 @@ const val DEFAULT_CHUNK_BYTES = 768 * 1024
 /** The daemon's upload commands for one machine; each call is one machine command. */
 interface UploadChannel {
     suspend fun begin(transferId: String, format: ImageFormat, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
-    suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus = error("文件上传不可用")
+    suspend fun beginFile(transferId: String, name: String, total: Long, sha256: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus = messageError(UiMessages.imageAndroidFileUploadUnavailable().messageText())
     suspend fun put(transferId: String, offset: Long, data: ByteArray): io.github.lewin671.remoteagent.proto.ImageUploadStatus
     suspend fun status(transferId: String): io.github.lewin671.remoteagent.proto.ImageUploadStatus
     suspend fun abort(transferId: String)
@@ -377,7 +377,7 @@ suspend fun uploadImage(
     retries: Int = 3,
     onProgress: (Long, Long) -> Unit = { _, _ -> },
 ): UploadedImage {
-    val format = detectFormat(data) ?: throw IllegalArgumentException("不支持的图片格式")
+    val format = detectFormat(data) ?: throw MessageException(UiMessages.imageAndroidUnsupportedImageFormat().messageText())
     val total = data.size.toLong()
     var tries = 0
     suspend fun <T> step(block: suspend () -> T, resync: suspend () -> Unit): T {
@@ -402,10 +402,10 @@ suspend fun uploadImage(
     onProgress(total, total)
     var completing = 0
     while (st.state == io.github.lewin671.remoteagent.proto.ImageUploadState.IMAGE_UPLOAD_STATE_RECEIVING) {
-        if (completing++ > retries) throw CommandException("unavailable", "电脑尚未确认附件上传完成，请重试")
+        if (completing++ > retries) throw CommandException("unavailable", UiMessages.imageAndroidTheComputerHasNotConfirmedTheAttachmentUploadRetry().messageText())
         st = step({ ch.complete(transferId) }) { st = ch.status(transferId) }
     }
-    if (st.imageId.isEmpty()) throw CommandException("internal", "电脑没有给出图片 ID")
+    if (st.imageId.isEmpty()) throw CommandException("internal", UiMessages.imageAndroidTheComputerDidNotProvideAnImageId().messageText())
     return UploadedImage(st.imageId, st.expiresMs)
 }
 
@@ -468,7 +468,7 @@ const val MAX_DECODE_PIXELS = 40_000_000L
  * allows).
  */
 fun decodeSample(w: Int, h: Int, minLong: Int, pixelBudget: Long): Int {
-    require(w > 0 && h > 0) { "图片没有尺寸" }
+    requireMessage(w > 0 && h > 0) { UiMessages.imageAndroidImageHasNoDimensions().messageText() }
     var s = 1
     if (minLong > 0) while (maxOf(w, h) / (s * 2) >= minLong) s *= 2
     while ((w.toLong() / s) * (h.toLong() / s) > pixelBudget) s *= 2

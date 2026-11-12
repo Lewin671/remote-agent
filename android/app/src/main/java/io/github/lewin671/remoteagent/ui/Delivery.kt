@@ -13,19 +13,19 @@ internal fun deliveryFailure(reason: String, uncertain: Boolean,
     kind: io.github.lewin671.remoteagent.core.CommandFailureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW,
     copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback {
     val short = when (kind) {
-        io.github.lewin671.remoteagent.core.CommandFailureKind.CONNECTION_DROPPED -> "连接中途断了"
-        io.github.lewin671.remoteagent.core.CommandFailureKind.REPLY_UNVERIFIED -> "回复验证失败"
-        io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN -> "结果不确定"
-        io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE -> "电脑不在线"
-        io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING -> "图片不在电脑上"
-        io.github.lewin671.remoteagent.core.CommandFailureKind.RAW -> reason.trim().ifEmpty { "原因未知" }
+        io.github.lewin671.remoteagent.core.CommandFailureKind.CONNECTION_DROPPED -> copy(UiMessages.errorsConnectionDroppedMidway())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.REPLY_UNVERIFIED -> copy(UiMessages.composerAndroidReplyUnverified())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN -> copy(UiMessages.approvalAndroidUnknownResult())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE -> copy(UiMessages.projectsComputerOffline())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING -> copy(UiMessages.composerAndroidImageNotOnComputer())
+        io.github.lewin671.remoteagent.core.CommandFailureKind.RAW -> reason.trim().ifEmpty { copy(UiMessages.composerAndroidUnknownReason()) }
     }
     return SendFeedback(copy(if (uncertain) UiMessages.composerMaybeFailure(short) else UiMessages.composerSendFailure(short)), uncertain)
 }
 
 internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =
     if (status == InputStatus.INPUT_STATUS_UNCONFIRMED) SendFeedback(copy(UiMessages.composerMaybeFailure(copy(UiMessages.queueAndroidUnconfirmed()))), true)
-    else deliveryFailure(copy(failureText(reason, agent)), status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL, copy = copy)
+    else deliveryFailure(copy(failureText(reason, agent, copy = copy)), status == InputStatus.INPUT_STATUS_NEEDS_TERMINAL, copy = copy)
 
 internal fun pendingInputLabel(
     pending: PendingInput,

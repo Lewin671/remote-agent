@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.app.Application
 import android.app.KeyguardManager
 import android.app.Notification
@@ -19,6 +23,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ScheduledPushIdentityTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test
     fun scheduledResultsCoexistAndRetriesReplaceOnlyTheirOwnEvent() {
         val context = RuntimeEnvironment.getApplication()
@@ -29,7 +34,7 @@ class ScheduledPushIdentityTest {
         }
         assertEquals(2, shadowOf(manager).allNotifications.size)
         assertTrue(shadowOf(manager).allNotifications.all { it.channelId == Push.CHANNEL_SCHEDULED })
-        assertEquals("定时任务结果", manager.getNotificationChannel(Push.CHANNEL_SCHEDULED).name.toString())
+        assertEquals(messageTextForTest(UiMessages.settingsScheduledTaskResults()), manager.getNotificationChannel(Push.CHANNEL_SCHEDULED).name.toString())
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_ATTENTION, null, false)
         assertEquals("ordinary notifications retain replacement behavior", 3, shadowOf(manager).allNotifications.size)
@@ -100,7 +105,7 @@ class ScheduledPushIdentityTest {
         assertEquals("任务名来自签名内容", n.extras.getCharSequence("android.title").toString())
         assertEquals("通知正文", n.extras.getCharSequence("android.text").toString())
         assertEquals(NotificationCompat.VISIBILITY_SECRET, n.visibility)
-        assertEquals("定时任务有新结果", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         assertTrue(n.actions.isNullOrEmpty())
         assertEquals(7L, shadowOf(n.contentIntent).savedIntent.getLongExtra(Notifier.EXTRA_SCHEDULE_SEQ,0))
     }
@@ -115,7 +120,7 @@ class ScheduledPushIdentityTest {
         Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, false, "scheduled:7")
         val n = shadowOf(manager).allNotifications.single()
         assertEquals("remote-agent", n.extras.getCharSequence("android.title").toString())
-        assertEquals("定时任务有新结果", n.extras.getCharSequence("android.text").toString())
+        assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.extras.getCharSequence("android.text").toString())
     }
 
     @Test fun lockedScheduledPushIsGenericEvenWhenContentIsEnabled() {
@@ -128,9 +133,9 @@ class ScheduledPushIdentityTest {
             Notifier.show(context, "session", NotifyKind.NOTIFY_KIND_SCHEDULED, content, showContent, "scheduled:7")
             val n = shadowOf(manager).allNotifications.single()
             assertEquals("remote-agent", n.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
-            assertEquals("定时任务有新结果", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+            assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
             assertEquals(NotificationCompat.VISIBILITY_PRIVATE, n.visibility)
-            assertEquals("定时任务有新结果", n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+            assertEquals(messageTextForTest(UiMessages.notificationsScheduledTasksHaveNewResults()), n.publicVersion.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
         }
     }
 

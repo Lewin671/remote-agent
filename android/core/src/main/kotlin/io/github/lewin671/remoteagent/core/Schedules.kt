@@ -36,13 +36,18 @@ data class ScheduledRun(val json: JsonObject) {
     val time get() = scheduleInstant(json.text("started_at")) ?: scheduleInstant(json.text("scheduled_at")) ?: Instant.EPOCH
     val notificationTime get() = scheduleInstant(json.text("ended_at")) ?: time
     val status get() = json.text("status")
-    val notificationSource get() = when (json.text("notification_source")) { "agent" -> "agent 通知"; "daemon" -> "完成后通知"; "agent_and_daemon" -> "agent 通知、完成后通知"; "undeliverable" -> "无法请求通知"; else -> "" }
+    val notificationSource get() = when (json.text("notification_source")) { "agent" -> (UiMessages.scheduleAndroidAgentNotification()).messageText(); "daemon" -> (UiMessages.scheduleNotifyOnCompletion()).messageText(); "agent_and_daemon" -> (UiMessages.scheduleAndroidAgentNotificationCompletionNotification()).messageText(); "undeliverable" -> (UiMessages.scheduleAndroidCannotRequestNotification()).messageText(); else -> "".messageText() }
     val notified get() = (json["notified"] as? JsonPrimitive)?.booleanOrNull == true
-    val summary get() = if (status in stoppedScheduleRuns) scheduleReason(json.text("reason")) else json.text("notification_text").ifEmpty { json.text("final_summary") }.ifEmpty { json.text("reason").takeIf { it.isNotEmpty() }?.let(::scheduleReason).orEmpty() }
+    val summary: MessageText get() {
+        if (status in stoppedScheduleRuns) return localized { copy -> scheduleReason(json.text("reason"), copy = copy) }
+        val content = json.text("notification_text").ifEmpty { json.text("final_summary") }
+        if (content.isNotEmpty()) return content.messageText()
+        return json.text("reason").takeIf { it.isNotEmpty() }?.let { reason -> localized { copy -> scheduleReason(reason, copy = copy) } } ?: "".messageText()
+    }
     val resultTitle get() = json.text("notification_text").trim().takeIf {
         json.text("notification_source") in setOf("agent", "agent_and_daemon") && it.isNotEmpty() && it != json.text("final_summary").trim()
     }.orEmpty()
-    val foldedSummary get() = json.text("final_summary").ifBlank { "没有通知" }
+    val foldedSummary get() = json.text("final_summary").takeIf { it.isNotBlank() }?.messageText() ?: UiMessages.scheduleNoNotification().messageText()
     val quiet get() = status == "completed" && !notified
 }
 fun JsonObject.text(k: String) = (this[k] as? JsonPrimitive)?.contentOrNull.orEmpty()
@@ -53,7 +58,7 @@ fun taskSpec(title: String, message: String, trigger: JsonObject, target: JsonOb
     put("title", title); put("message", message); put("trigger", trigger); put("target", target)
 }
 
-enum class TaskGroup(val label: String) { ATTENTION("需要你看一下"), ACTIVE("进行中"), PAUSED("已暂停"), ENDED("已结束") }
+enum class TaskGroup(val label: UiMessage) { ATTENTION(UiMessages.scheduleAndroidNeedsYourAttention()), ACTIVE(UiMessages.homeLive()), PAUSED(UiMessages.queuePaused()), ENDED(UiMessages.listStateEnded()) }
 fun taskGroup(t: ScheduledTask): TaskGroup = when {
     t.status == "cancelled" && t.reason.isNotEmpty() && t.reason != "user_cancelled" -> TaskGroup.ATTENTION
     t.status in setOf("failed", "uncertain") || (t.status == "paused" && t.reason !in setOf("", "user_paused", "completed_while_paused")) -> TaskGroup.ATTENTION
@@ -61,14 +66,14 @@ fun taskGroup(t: ScheduledTask): TaskGroup = when {
     t.status in setOf("completed", "cancelled") -> TaskGroup.ENDED
     else -> TaskGroup.ACTIVE
 }
-const val SCHEDULE_OFFLINE = "未连接，显示的是上次的状态"
-const val SCHEDULE_OFFLINE_ROW = "未连接"
+val SCHEDULE_OFFLINE = (UiMessages.scheduleNotConnectedShowingThePreviousState())
+val SCHEDULE_OFFLINE_ROW = (UiMessages.listStateUnlinked())
 const val SCHEDULE_MESSAGE_MAX_BYTES = 32 * 1024
 fun scheduleMessageValid(message: String) = message.isNotBlank() && message.toByteArray(Charsets.UTF_8).size <= SCHEDULE_MESSAGE_MAX_BYTES
-const val SCHEDULE_EMPTY = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。"
-const val SCHEDULE_INTERVAL_HINT = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。"
+val SCHEDULE_EMPTY = (UiMessages.scheduleTellTheAgentInAConversationCheckForMe())
+val SCHEDULE_INTERVAL_HINT = (UiMessages.scheduleTheFirstRunIsAfterAFullIntervalTo())
 fun scheduleVisible(t: ScheduledTask) = t.status != "cancelled" || t.reason.isNotEmpty() && t.reason != "user_cancelled"
-enum class ScheduleInboxGroup(val label: String) { ATTENTION("需要你看一下"), RECENT("最近"), ENDED("已结束") }
+enum class ScheduleInboxGroup(val label: UiMessage) { ATTENTION(UiMessages.scheduleAndroidNeedsYourAttention()), RECENT(UiMessages.scheduleAndroidRecent()), ENDED(UiMessages.listStateEnded()) }
 fun scheduleStopTime(task: ScheduledTask): Instant = task.allRuns.firstOrNull()?.notificationTime
     ?: scheduleInstant(task.json.text("updated_at")) ?: Instant.EPOCH
 fun scheduleInboxGroup(task: ScheduledTask, hasNew: Boolean): ScheduleInboxGroup = when {
@@ -86,30 +91,30 @@ fun scheduleSorted(tasks: List<ScheduledTask>, group: ScheduleInboxGroup, hasNew
                 .thenBy { it.next ?: Instant.MAX }
         })
             .thenBy { it.machine }.thenBy { it.id })
-fun scheduleAttentionWord(task: ScheduledTask) = if (task.status == "failed" &&
-    (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)) "没能运行" else "已停下"
+fun scheduleAttentionWord(task: ScheduledTask, copy: MessageResolver) = if (task.status == "failed" &&
+    (task.trigger.text("type") == "at" || task.trigger.text("type") == "after_turn" && task.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)) copy(UiMessages.scheduleCouldNotRun()) else copy(UiMessages.scheduleStopped())
 fun scheduleInProgress(task: ScheduledTask) = task.active != null || task.allRuns.any { it.status in setOf("dispatching", "queued", "running") }
-fun schedulePreview(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
-    scheduleInProgress(task) -> task.latestNotification?.summary ?: "还没有结果"
-    taskGroup(task) == TaskGroup.ATTENTION -> "${scheduleAttentionWord(task)} · ${scheduleReason(task.reason, short = true)}"
-    else -> task.latestNotification?.summary ?: if (task.allRuns.isEmpty()) "还没有运行" + task.next?.let { " · 下次 ${scheduleWhen(it, now, zone)}" }.orEmpty()
-        else scheduleLastResult(task, now, zone)
+fun schedulePreview(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String = when {
+    scheduleInProgress(task) -> task.latestNotification?.summary?.resolve(copy) ?: copy(UiMessages.scheduleNoResultsYet())
+    taskGroup(task) == TaskGroup.ATTENTION -> "${scheduleAttentionWord(task, copy = copy)} · ${scheduleReason(task.reason, short = true, copy = copy)}"
+    else -> task.latestNotification?.summary?.resolve(copy) ?: if (task.allRuns.isEmpty()) copy(UiMessages.scheduleHasNotRunYet()) + task.next?.let { copy(UiMessages.scheduleAndroidNextValue1((scheduleWhen(it, now, zone, copy = copy)).toString())) }.orEmpty()
+        else scheduleLastResult(task, now, zone, copy = copy)
 }
 
 /** Task rows deliberately use clock/calendar dates, independently of conversation rows. */
-fun scheduleRowTime(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+fun scheduleRowTime(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
     val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate(); val date = dt.toLocalDate()
     return when {
         date == today -> scheduleClock(at, zone)
-        date == today.minusDays(1) -> "昨天"
-        date < today && date >= today.minusDays(6) -> "周" + listOf("一", "二", "三", "四", "五", "六", "日")[date.dayOfWeek.value - 1]
-        dt.year != today.year -> "${dt.year}年${dt.monthValue}月${dt.dayOfMonth}日"
-        else -> "${dt.monthValue}月${dt.dayOfMonth}日"
+        date == today.minusDays(1) -> copy(UiMessages.timeYesterday())
+        date < today && date >= today.minusDays(6) -> copy(UiMessages.timeWeekday(date.dayOfWeek.name.take(3).lowercase()))
+        dt.year != today.year -> copy(UiMessages.timeCalendarDateYear((dt.dayOfMonth).toInt(), (dt.monthValue).toInt(), (dt.year).toInt()))
+        else -> copy(UiMessages.timeMonthDay((dt.dayOfMonth).toInt(), (dt.monthValue).toInt()))
     }
 }
-fun scheduleNotificationTime(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String =
+fun scheduleNotificationTime(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String =
     (if (taskGroup(task) == TaskGroup.ATTENTION) scheduleStopTime(task) else task.latestNotification?.notificationTime)
-        ?.let { scheduleRowTime(it, now, zone) }.orEmpty()
+        ?.let { scheduleRowTime(it, now, zone, copy = copy) }.orEmpty()
 
 /** Match the daemon's follow-up boundary; never borrow another scheduled or human turn's reply. */
 fun scheduleFinalAnswer(run: ScheduledRun, events: List<Event>): String? {
@@ -138,25 +143,25 @@ fun scheduleDefinitionAllowed(t: ScheduledTask) = t.active == null
 fun scheduleSupported(m: MachineView?) = capabilities(m)?.scheduledTasks == true && protocolMismatch(m) == null
 fun scheduleWritable(s: RemoteState, machine: String) = s.conn == ConnState.ONLINE && s.machines[machine]?.online == true && scheduleSupported(s.machines[machine])
 val stoppedScheduleRuns = setOf("failed", "uncertain", "interrupted", "skipped", "cancelled")
-fun scheduleReason(reason: String, short: Boolean = false): String = when (reason) {
-    "relay_session_limit" -> "中继上的会话数已满"
-    "execution_failed" -> if (short) "运行失败" else "运行失败，任务已停下"
-    "execution_interrupted" -> if (short) "运行被中断" else "运行被中断，任务已停下"
-    "execution_session_exited" -> "运行中的对话已结束"
-    "execution_session_missing" -> "找不到运行的对话"
-    "message_delivery_failed" -> "消息没有送达 CLI"
-    "could_not_queue_message" -> "消息没能加入待发队列"
-    "message_cancelled" -> if (short) "定时消息在送达前被取消" else "定时消息在送达前被取消，任务已停下"
-    "execution_input_paused" -> "定时消息已暂停，请先在对话里恢复或取消这条消息"
-    "restart_dispatching" -> "电脑重启前的发送结果无法确认"
-    "agent_schedule_permissions_changed" -> if (short) "创建任务时的权限已改变" else "创建任务时的权限已改变，任务已停下"
-    "agent_schedule_interval_below_minimum" -> if (short) "Agent 创建的任务间隔过短" else "Agent 创建的任务间隔过短，任务已停下"
-    "catch_up_window_expired" -> "已超过补跑时间，本次跳过"
-    "completed_while_paused" -> "已暂停：期间计划已到期"
-    "user_paused" -> "已暂停"
-    "user_cancelled" -> "已删除"
-    "" -> "运行结果无法确认"
-    else -> "电脑返回的原因：$reason"
+fun scheduleReason(reason: String, short: Boolean = false, copy: MessageResolver): String = when (reason) {
+    "relay_session_limit" -> copy(UiMessages.scheduleTheRelaySSessionLimitHasBeenReached())
+    "execution_failed" -> if (short) copy(UiMessages.scheduleExecutionFailed()) else copy(UiMessages.scheduleExecutionFailedTheTaskStopped())
+    "execution_interrupted" -> if (short) copy(UiMessages.scheduleExecutionInterrupted()) else copy(UiMessages.scheduleExecutionInterruptedTheTaskStopped())
+    "execution_session_exited" -> copy(UiMessages.scheduleTheRunningConversationEnded())
+    "execution_session_missing" -> copy(UiMessages.scheduleTheRunningConversationCouldNotBeFound())
+    "message_delivery_failed" -> copy(UiMessages.scheduleTheMessageWasNotDeliveredToTheCli())
+    "could_not_queue_message" -> copy(UiMessages.scheduleTheMessageCouldNotBeQueued())
+    "message_cancelled" -> if (short) copy(UiMessages.scheduleTheScheduledMessageWasCanceledBeforeDelivery()) else copy(UiMessages.scheduleTheScheduledMessageWasCanceledBeforeDeliveryTheTask())
+    "execution_input_paused" -> copy(UiMessages.scheduleTheScheduledMessageIsPausedResumeOrCancelIt())
+    "restart_dispatching" -> copy(UiMessages.scheduleDeliveryBeforeTheComputerRestartedCouldNotBeConfirmed())
+    "agent_schedule_permissions_changed" -> if (short) copy(UiMessages.scheduleTaskCreationPermissionsChanged()) else copy(UiMessages.scheduleTaskCreationPermissionsChangedTheTaskStopped())
+    "agent_schedule_interval_below_minimum" -> if (short) copy(UiMessages.scheduleTheAgentCreatedTaskIntervalIsTooShort()) else copy(UiMessages.scheduleTheAgentCreatedTaskIntervalIsTooShortThe())
+    "catch_up_window_expired" -> copy(UiMessages.scheduleTheCatchUpWindowExpiredThisRunWasSkipped())
+    "completed_while_paused" -> copy(UiMessages.schedulePausedTheScheduleExpiredInTheMeantime())
+    "user_paused" -> copy(UiMessages.queuePaused())
+    "user_cancelled" -> copy(UiMessages.scheduleDeleted())
+    "" -> copy(UiMessages.scheduleExecutionOutcomeIsUnconfirmed())
+    else -> copy(UiMessages.scheduleReasonReturnedByTheComputer((reason).toString()))
 }
 
 /** Unicode characters, rather than UTF-16 code units, match the other clients' 60-character limit. */
@@ -176,67 +181,73 @@ fun renamedScheduleSpec(task: ScheduledTask, name: String): JsonObject? {
 }
 fun scheduleRenameAllowed(online: Boolean, changing: Boolean = false): Boolean = online && !changing
 
-fun scheduleFrequency(t: JsonObject, localZone: ZoneId = ZoneId.systemDefault()): String = when (t.text("type")) {
-    "at" -> scheduleInstant(t.text("at"))?.let { "${scheduleWhen(it, zone = localZone)}，一次" } ?: "一次"
+fun scheduleFrequency(t: JsonObject, localZone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String = when (t.text("type")) {
+    "at" -> scheduleInstant(t.text("at"))?.let { copy(UiMessages.scheduleOnceAt((scheduleWhen(it, zone = localZone, copy = copy)).toString())) } ?: copy(UiMessages.scheduleOnceSchedules())
     "calendar" -> {
         val days = (t["weekdays"] as? JsonArray).orEmpty().mapNotNull { it.jsonPrimitive.intOrNull }
-        val prefix = when { days.isEmpty() || days.size == 7 -> "每天"; days == listOf(1,2,3,4,5) -> "工作日"; else -> "每周" + days.joinToString("、") { listOf("", "一", "二", "三", "四", "五", "六", "日").getOrElse(it) { "?" } } }
-        "$prefix ${t.text("time")}".trim()
+        val clock = t.text("time")
+        when {
+            days.isEmpty() || days.size == 7 -> copy(UiMessages.scheduleDailyAt(clock)).trim()
+            days == listOf(1,2,3,4,5) -> copy(UiMessages.scheduleWorkdaysAt(clock)).trim()
+            else -> copy(UiMessages.scheduleWeeklyAt(days.joinToString("、") { listOf("", copy(UiMessages.scheduleMon()), copy(UiMessages.scheduleTue()), copy(UiMessages.scheduleWed()), copy(UiMessages.scheduleThu()), copy(UiMessages.scheduleFri()), copy(UiMessages.scheduleSat()), copy(UiMessages.scheduleSun())).getOrElse(it) { "?" } }, clock)).trim()
+        }
     }
     "interval" -> t.long("interval_seconds").let { when {
-        it == 3600L -> "每小时"
-        it % 86400 == 0L -> "每 ${it / 86400} 天"
-        it % 3600 == 0L -> "每 ${it / 3600} 小时"
-        it % 60 == 0L -> "每 ${it / 60} 分钟"
-        else -> "每 $it 秒"
+        it == 3600L -> copy(UiMessages.scheduleHourly())
+        it % 86400 == 0L -> copy(scheduleQuantity(it / 86400, { UiMessages.scheduleEveryDays(it) }, { count, total -> UiMessages.scheduleAndroidLargeEveryDays(count, total) }))
+        it % 3600 == 0L -> copy(scheduleQuantity(it / 3600, { UiMessages.scheduleEveryHr(it) }, { count, total -> UiMessages.scheduleAndroidLargeEveryHours(count, total) }))
+        it % 60 == 0L -> copy(scheduleQuantity(it / 60, { UiMessages.scheduleEveryMin(it) }, { count, total -> UiMessages.scheduleAndroidLargeEveryMinutes(count, total) }))
+        else -> copy(scheduleQuantity(it, { UiMessages.scheduleEverySec(it) }, { count, total -> UiMessages.scheduleAndroidLargeEverySeconds(count, total) }))
     } }
-    "after_turn" -> "${if ((t["repeat"] as? JsonPrimitive)?.booleanOrNull == true) "每轮" else "当前轮"}结束 ${t.long("delay_seconds")} 秒后"
-    else -> "时间未知"
+    "after_turn" -> copy(if ((t["repeat"] as? JsonPrimitive)?.booleanOrNull == true) scheduleQuantity(t.long("delay_seconds"), { UiMessages.scheduleAfterEachTurn(it) }, { count, total -> UiMessages.scheduleAndroidLargeAfterEachTurn(count, total) }) else scheduleQuantity(t.long("delay_seconds"), { UiMessages.scheduleAfterCurrentTurn(it) }, { count, total -> UiMessages.scheduleAndroidLargeAfterCurrentTurn(count, total) }))
+    else -> copy(UiMessages.scheduleAndroidUnknownTime())
 }
-fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = buildList {
+fun scheduleLimits(task: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String = buildList {
     val max = task.trigger.long("max_runs")
-    if (max > 0) add("共 $max 次")
-    scheduleInstant(task.trigger.text("until"))?.let { add("到 ${scheduleWhen(it, now, zone)}") }
-}.joinToString("，或")
+    if (max > 0) add(copy(scheduleQuantity(max, { UiMessages.scheduleRunsTotal(it) }, { count, total -> UiMessages.scheduleAndroidLargeRunsTotal(count, total) })))
+    scheduleInstant(task.trigger.text("until"))?.let { add(copy(UiMessages.scheduleUntil((scheduleWhen(it, now, zone, copy = copy)).toString()))) }
+}.let { limits -> if (limits.size == 2) copy(UiMessages.scheduleAndroidAlternativeLimit(limits[0], limits[1])) else limits.firstOrNull().orEmpty() }
 
 fun scheduleZone(t: JsonObject): ZoneId = if (t.text("type") == "calendar")
     runCatching { ZoneId.of(t.text("timezone")) }.getOrElse { ZoneId.systemDefault() }
 else ZoneId.systemDefault()
-fun scheduleWhen(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
+fun scheduleDay(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
     val dt = at.atZone(zone); val today = now.atZone(zone).toLocalDate()
-    val day = when (dt.toLocalDate()) { today -> "今天"; today.plusDays(1) -> "明天"; today.minusDays(1) -> "昨天"; else -> "${if (dt.year != today.year) "${dt.year}年" else ""}${dt.monthValue}月${dt.dayOfMonth}日" }
-    return "$day ${dt.format(DateTimeFormatter.ofPattern("HH:mm"))}"
+    return when (dt.toLocalDate()) { today -> copy(UiMessages.timeToday()); today.plusDays(1) -> copy(UiMessages.timeTomorrow()); today.minusDays(1) -> copy(UiMessages.timeYesterday()); else -> if (dt.year != today.year) copy(UiMessages.timeCalendarDateYear(dt.dayOfMonth, dt.monthValue, dt.year)) else copy(UiMessages.timeMonthDay(dt.dayOfMonth, dt.monthValue)) }
 }
+fun scheduleWhen(at: Instant, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String =
+    copy(UiMessages.timeAndroidDayClock(scheduleClock(at, zone), scheduleDay(at, now, zone, copy)))
 fun scheduleClock(at: Instant, zone: ZoneId = ZoneId.systemDefault()): String = at.atZone(zone).format(DateTimeFormatter.ofPattern("HH:mm"))
-fun scheduleNext(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String = when {
-    t.active?.status in setOf("dispatching", "queued", "running") -> "运行中"
-    taskGroup(t) == TaskGroup.ATTENTION -> "已停下"
-    taskGroup(t) == TaskGroup.PAUSED -> "已暂停"
-    taskGroup(t) == TaskGroup.ENDED -> "已结束"
-    t.next != null -> "下次 " + scheduleWhen(t.next!!, now, zone)
-    else -> "下次待定"
+fun scheduleNext(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String = when {
+    t.active?.status in setOf("dispatching", "queued", "running") -> copy(UiMessages.listStateRunning())
+    taskGroup(t) == TaskGroup.ATTENTION -> copy(UiMessages.scheduleStopped())
+    taskGroup(t) == TaskGroup.PAUSED -> copy(UiMessages.queuePaused())
+    taskGroup(t) == TaskGroup.ENDED -> copy(UiMessages.listStateEnded())
+    t.next != null -> copy(UiMessages.scheduleAndroidNextRun(scheduleWhen(t.next!!, now, zone, copy = copy)))
+    else -> copy(UiMessages.scheduleNextRunPending())
 }
-fun runResult(r: ScheduledRun): String = when (r.status) {
-    "failed" -> "失败"
-    "uncertain" -> "无法确认"
-    "interrupted" -> "已中断"
-    "skipped" -> "跳过"
-    "cancelled" -> "已取消"
-    else -> if (r.notified) "通知了你" else when(r.status) {
-        "completed" -> "没有通知"
-        "dispatching" -> "正在启动"
-        "queued" -> "等待当前轮结束"
-        "running" -> "正在运行"
-        else -> "等待结果"
+fun runResult(r: ScheduledRun, copy: MessageResolver): String = when (r.status) {
+    "failed" -> copy(UiMessages.attachmentFailed())
+    "uncertain" -> copy(UiMessages.scheduleUnconfirmed())
+    "interrupted" -> copy(UiMessages.sessionInterrupted())
+    "skipped" -> copy(UiMessages.scheduleSkipped())
+    "cancelled" -> copy(UiMessages.queueCanceled())
+    else -> if (r.notified) copy(UiMessages.scheduleNotifiedYou()) else when(r.status) {
+        "completed" -> copy(UiMessages.scheduleNoNotification())
+        "dispatching" -> copy(UiMessages.scheduleStarting())
+        "queued" -> copy(UiMessages.scheduleWaitingForTheCurrentTurnToEnd())
+        "running" -> copy(UiMessages.scheduleRunning())
+        else -> copy(UiMessages.scheduleWaitingForResults())
     }
 }
-fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): String {
-    if (taskGroup(t) == TaskGroup.ATTENTION) return scheduleReason(t.reason)
-    val last = t.allRuns.firstOrNull() ?: return "还没有运行"
+fun scheduleLastResult(t: ScheduledTask, now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(), copy: MessageResolver): String {
+    if (taskGroup(t) == TaskGroup.ATTENTION) return scheduleReason(t.reason, copy = copy)
+    val last = t.allRuns.firstOrNull() ?: return copy(UiMessages.scheduleHasNotRunYet())
     val today = t.allRuns.filter { it.time.atZone(zone).toLocalDate() == now.atZone(zone).toLocalDate() }
-    if (today.size > 1 && today.all { it.quiet }) return "今天 ${today.size} 次，都没有通知"
-    val detail = if (last.notified || last.status in stoppedScheduleRuns) last.summary else ""
-    return "${scheduleWhen(last.time, now, zone)} ${runResult(last)}" + detail.takeIf { it.isNotBlank() }?.let { "：$it" }.orEmpty()
+    if (today.size > 1 && today.all { it.quiet }) return copy(UiMessages.scheduleRunsTodayNoneNotifiedYou((today.size).toInt()))
+    val detail = if (last.notified || last.status in stoppedScheduleRuns) last.summary.resolve(copy) else ""
+    return if (detail.isNotBlank()) copy(UiMessages.scheduleLastResultDetail(detail, runResult(last, copy = copy), scheduleWhen(last.time, now, zone, copy = copy)))
+        else copy(UiMessages.scheduleLastResult(runResult(last, copy = copy), scheduleWhen(last.time, now, zone, copy = copy)))
 }
 data class RunGroup(val key: String, val runs: List<ScheduledRun>, val quiet: Boolean)
 fun scheduleRunGroups(runs: List<ScheduledRun>, zone: ZoneId = ZoneId.systemDefault()): List<RunGroup> {
@@ -249,9 +260,9 @@ fun scheduleRunGroups(runs: List<ScheduledRun>, zone: ZoneId = ZoneId.systemDefa
     }
 }
 
-class ScheduleConflictException : IllegalStateException("任务刚被修改，已更新为最新内容")
+class ScheduleConflictException : MessageException(UiMessages.errorsTheTaskWasJustChangedUpdatedToTheLatest().messageText())
 
-data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTask> = emptyList(), val loading: Boolean = false, val error: String = "", val cached: Boolean = true)
+data class ScheduleSnapshot(val revision: Long = -1, val tasks: List<ScheduledTask> = emptyList(), val loading: Boolean = false, val error: MessageText = "".messageText(), val cached: Boolean = true)
 
 /** Persist only opaque task/run identities, scoped to this relay and client identity. */
 class ScheduleSeen(
@@ -439,7 +450,7 @@ class ScheduleRepository(
     }
     suspend fun refresh(id: String, revision: Long = remoteState.value.machines[id]?.meta?.scheduleRevision ?: 0L) = withContext(worker) { locks.getOrPut(id) { Mutex() }.withLock {
         if (id in removed || !scheduleWritable(remoteState.value, id)) return@withLock
-        set(id) { it.copy(loading = true, error = "") }
+        set(id) { it.copy(loading = true, error = "".messageText()) }
         try {
             val raw = send(id, ScheduleRequest.newBuilder().setOperation("list").build())
             val obj = Json.parseToJsonElement(raw.decodeToString()).jsonObject
@@ -459,15 +470,15 @@ class ScheduleRepository(
             val tasks = (obj["tasks"] as? JsonArray).orEmpty().map { ScheduledTask(id, it.jsonObject) }
             if (id !in removed) { seen.observe(id, tasks, authoritative = false); set(id) { ScheduleSnapshot(tasks = tasks, cached = true) } }
         } catch (e: CancellationException) { throw e
-        } catch (_: Exception) { if (id !in removed) set(id) { it.copy(error = "上次的任务列表无法读取，联网后重新读取") } }
+        } catch (_: Exception) { if (id !in removed) set(id) { it.copy(error = UiMessages.scheduleAndroidCannotReadThePreviousTaskListConnectToReadIt().messageText()) } }
     }
     suspend fun rename(task: ScheduledTask, name: String): ScheduledTask? {
         val spec = renamedScheduleSpec(task, name) ?: return task
-        check(scheduleRenameAllowed(scheduleWritable(remoteState.value, task.machine))) { "当前任务不能单独改名" }
+        check(scheduleRenameAllowed(scheduleWritable(remoteState.value, task.machine))) { UiMessages.scheduleAndroidThisTaskCannotBeRenamedSeparately().messageText() }
         return operate(task.machine, "update", task, spec)
     }
     suspend fun operate(machine: String, op: String, task: ScheduledTask? = null, spec: JsonObject? = null, requestId: String = ""): ScheduledTask? = withContext(worker) {
-        check(scheduleWritable(remoteState.value, machine)) { "电脑不在线，不能修改任务" }
+        check(scheduleWritable(remoteState.value, machine)) { UiMessages.scheduleAndroidComputerOfflineTasksCannotBeEdited().messageText() }
         val req = ScheduleRequest.newBuilder().setOperation(op).setTaskId(task?.id.orEmpty()).setExpectedRevision(task?.revision ?: 0).setRequestId(requestId)
         if (spec != null) req.specJson = ByteString.copyFromUtf8(spec.toString())
         try {
@@ -490,3 +501,7 @@ class ScheduleRepository(
 internal fun scheduleSnapshot(request: String, envelope: Envelope): ByteArray = buildJsonObject {
     put("request", request); put("envelope", java.util.Base64.getEncoder().encodeToString(envelope.toByteArray()))
 }.toString().toByteArray()
+
+/** Preserve the daemon's Long count while selecting an Android integer plural form. */
+internal fun scheduleQuantity(value: Long, normal: (Int) -> UiMessage, large: (Int, String) -> UiMessage): UiMessage =
+    if (value in 0..Int.MAX_VALUE.toLong()) normal(value.toInt()) else large(2, value.toString())

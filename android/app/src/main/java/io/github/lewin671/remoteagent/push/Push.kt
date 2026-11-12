@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.sessionText
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -70,16 +74,16 @@ object Push {
         }
     }
 
-    fun createChannels(context: Context) {
+    fun createChannels(context: Context, copy: io.github.lewin671.remoteagent.core.MessageResolver = { io.github.lewin671.remoteagent.ui.resolveUiMessage(context, it) }) {
         val nm = context.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CHANNEL_ATTENTION, "等我处理时", NotificationManager.IMPORTANCE_HIGH).apply {
-            description = "审批、提问、计划和终端弹窗"
+        nm.createNotificationChannel(NotificationChannel(CHANNEL_ATTENTION, copy(UiMessages.settingsWhenINeedToAct()), NotificationManager.IMPORTANCE_HIGH).apply {
+            description = copy(UiMessages.notificationsAndroidApprovalsQuestionsPlansAndTerminalPrompts())
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
-        nm.createNotificationChannel(NotificationChannel(CHANNEL_SCHEDULED, "定时任务结果", NotificationManager.IMPORTANCE_DEFAULT).apply {
+        nm.createNotificationChannel(NotificationChannel(CHANNEL_SCHEDULED, copy(UiMessages.settingsScheduledTaskResults()), NotificationManager.IMPORTANCE_DEFAULT).apply {
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
-        nm.createNotificationChannel(NotificationChannel(CHANNEL_TURN, "一轮结束时", NotificationManager.IMPORTANCE_DEFAULT).apply {
+        nm.createNotificationChannel(NotificationChannel(CHANNEL_TURN, copy(UiMessages.settingsWhenATurnEnds()), NotificationManager.IMPORTANCE_DEFAULT).apply {
             lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
         })
     }
@@ -104,7 +108,7 @@ object Push {
     private suspend fun attempt(context: Context, remote: Remote, token: String?, autoRetry: Boolean): PushAttempt {
         try {
             if (!available(context)) {
-                return PushAttempt(PushStatus("本版本未启用后台推送"))
+                return PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidBackgroundPushIsDisabledInThisBuild())))
             }
             val s = RaApp.instance.prefs.settings.first()
             val kinds = buildList {
@@ -118,16 +122,16 @@ object Push {
                 val gms = GoogleApiAvailabilityLight.getInstance().isGooglePlayServicesAvailable(context)
                 if (gms != ConnectionResult.SUCCESS) {
                     val problem = when (gms) {
-                        ConnectionResult.SERVICE_MISSING -> "未安装 Google Play 服务，收不到推送"
-                        ConnectionResult.SERVICE_DISABLED -> "Google Play 服务已停用，收不到推送"
-                        ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED -> "Google Play 服务需要更新，收不到推送"
-                        ConnectionResult.SERVICE_UPDATING -> "Google Play 服务正在更新，后台提醒暂不可用"
-                        else -> "Google Play 服务不可用，收不到推送"
+                        ConnectionResult.SERVICE_MISSING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreNotInstalledPushIsUnavailable())
+                        ConnectionResult.SERVICE_DISABLED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreDisabledPushIsUnavailable())
+                        ConnectionResult.SERVICE_VERSION_UPDATE_REQUIRED -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesNeedAnUpdatePushIsUnavailable())
+                        ConnectionResult.SERVICE_UPDATING -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUpdatingBackgroundAlertsAreTemporarilyUnavailable())
+                        else -> sessionText(UiMessages.notificationsAndroidGooglePlayServicesAreUnavailablePushIsUnavailable())
                     }
-                    return PushAttempt(PushStatus(problem, "修复"), retry = gms == ConnectionResult.SERVICE_UPDATING)
+                    return PushAttempt(PushStatus(problem, sessionText(UiMessages.notificationsAndroidFix())), retry = gms == ConnectionResult.SERVICE_UPDATING)
                 }
                 if (!permitted(context)) {
-                    return PushAttempt(PushStatus("系统通知权限未开启", "开启"))
+                    return PushAttempt(PushStatus(sessionText(UiMessages.notificationsAndroidSystemNotificationPermissionIsDisabled()), sessionText(UiMessages.settingsEnable())))
                 }
                 try {
                     token ?: fcmToken()
@@ -141,7 +145,7 @@ object Push {
                 SetPushTargetRequest.newBuilder().setType(PushType.PUSH_TYPE_FCM).setTarget(if (kinds.isEmpty()) "" else fcm).addAllKinds(kinds).build(),
                 Api.headers(remote.currentToken()),
             ).value()
-            val status = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus("服务器没有配置 FCM，收不到推送")
+            val status = if (res.enabled || kinds.isEmpty()) PushStatus() else PushStatus(sessionText(UiMessages.notificationsAndroidTheServerHasNotConfiguredFcmPushIsUnavailable()))
             // Only the length: the token identifies this phone to FCM.
             Log.i(TAG, "push registered, token length ${fcm.length}")
             return PushAttempt(status)
@@ -151,11 +155,11 @@ object Push {
             val retry = e is java.io.IOException || e is com.connectrpc.ConnectException &&
                 e.code in setOf(com.connectrpc.Code.UNKNOWN, com.connectrpc.Code.UNAVAILABLE, com.connectrpc.Code.DEADLINE_EXCEEDED)
             val problem = when {
-                retry && autoRetry -> "通知订阅未能同步到服务器，正在自动重试"
-                retry -> "通知订阅未能同步到服务器，请重试"
-                else -> "服务器未能保存通知订阅，请重试"
+                retry && autoRetry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetryingAutomatically())
+                retry -> sessionText(UiMessages.notificationsAndroidCouldNotSyncTheNotificationSubscriptionRetry())
+                else -> sessionText(UiMessages.notificationsAndroidTheServerCouldNotSaveTheNotificationSubscriptionRetry())
             }
-            return PushAttempt(PushStatus(problem, "重试"), retry)
+            return PushAttempt(PushStatus(problem, sessionText(UiMessages.commonRetry())), retry)
         }
     }
 
@@ -169,7 +173,7 @@ object Push {
                 if (intent != null) context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 else register(context, remote)
             } catch (e: ActivityNotFoundException) {
-                _status.value = PushStatus("请在系统设置中安装、更新或启用 Google Play 服务，再重试", "重试")
+                _status.value = PushStatus(sessionText(UiMessages.notificationsAndroidInstallUpdateOrEnableGooglePlayServicesInSystemSettings()), sessionText(UiMessages.commonRetry()))
             }
         } else if (!permitted(context)) {
             context.startActivity(

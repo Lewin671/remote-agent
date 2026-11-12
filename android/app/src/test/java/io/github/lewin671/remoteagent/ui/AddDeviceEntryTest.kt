@@ -19,6 +19,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class AddDeviceEntryTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule val ui = createComposeRule()
     private val machine = "1111111111111111"
     private val remote =
@@ -81,7 +82,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateKeepsItsButtonOnlyOnTheAuthority() {
-        show(empty.copy(isAuthority = true)) { EmptyAccount(it, accountEmpty(it)) }
+        show(empty.copy(isAuthority = true)) { EmptyAccount(it, accountEmpty(it, copy = ::messageTextForTest)) }
         ui.onNodeWithText("添加设备").performClick()
         assertEquals(1, paired)
         ui.onNodeWithText(noMachinesHint(empty)).assertDoesNotExist()
@@ -89,7 +90,7 @@ class AddDeviceEntryTest {
 
     @Test
     fun homeEmptyStateOnAnotherClientSaysWhereToAdd() {
-        show(empty) { EmptyAccount(it, accountEmpty(it)) }
+        show(empty) { EmptyAccount(it, accountEmpty(it, copy = ::messageTextForTest)) }
         ui.onNodeWithText("添加设备").assertDoesNotExist()
         ui.onNodeWithText(noMachinesHint(empty)).assertExists()
     }

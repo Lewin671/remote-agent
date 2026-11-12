@@ -18,6 +18,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ScheduleComponentsTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @get:Rule val ui = createComposeRule()
     @Test fun taskRowOpensItsDetailAndShowsAllThreeLines() {
         var clicked = false
@@ -44,7 +45,7 @@ class ScheduleComponentsTest {
         }
         ui.onNodeWithText("99+").assertDoesNotExist()
         ui.onNodeWithContentDescription("有新结果").assertExists()
-        ui.onNodeWithText(SCHEDULE_OFFLINE_ROW, substring = true, useUnmergedTree = true).assertExists()
+        ui.onNodeWithText(messageTextForTest(SCHEDULE_OFFLINE_ROW), substring = true, useUnmergedTree = true).assertExists()
     }
     @Test fun visitDotsAppearOnlyForTheUnreadRunsCapturedOnEntry() {
         val runs = (1..2).map { ScheduledRun(buildJsonObject { put("id", "r$it"); put("notified", true); put("status", "completed"); put("started_at", "2026-10-24T08:00:00Z") }) }
@@ -80,7 +81,7 @@ class ScheduleComponentsTest {
         var marks = 0
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { TaskRow(task, RemoteState(), hasNew = true, onMark = { marks++ }) {} } }
         val actions = ui.onNodeWithText("测试任务").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.CustomActions]
-        ui.runOnIdle { assertEquals("标为已读", actions.single().label); actions.single().action() }
+        ui.runOnIdle { assertEquals(messageTextForTest(UiMessages.scheduleMarkAsRead()), actions.single().label); actions.single().action() }
         ui.onNodeWithText("测试任务").performTouchInput { swipeLeft() }
         ui.runOnIdle { assertEquals(2, marks) }
     }
@@ -163,7 +164,7 @@ class ScheduleComponentsTest {
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { ScheduleTimeSheet(initial,{saved=it},{}) } }
         ui.onNodeWithText("每隔").performClick()
         ui.onNodeWithText("时区").assertDoesNotExist()
-        ui.onNodeWithText(SCHEDULE_INTERVAL_HINT).assertExists()
+        ui.onNodeWithText(messageTextForTest(SCHEDULE_INTERVAL_HINT)).assertExists()
         ui.onNodeWithText("一次").performClick();ui.onNodeWithText("每周").performClick();ui.onNodeWithText("每天").performClick()
         ui.onNodeWithText("13:24",useUnmergedTree=true).assertExists()
         ui.onNodeWithText("完成").performClick()
@@ -225,7 +226,7 @@ class ScheduleComponentsTest {
         var muted=androidx.compose.ui.graphics.Color.Unspecified
         ui.setContent { RaTheme(io.github.lewin671.remoteagent.data.ThemeMode.LIGHT) { muted=pal.ink2; TaskRow(task,state,Instant.parse(fixture.text("now"))) {} } }
         val layouts=mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
-        ui.onNodeWithText(schedulePreview(task), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
+        ui.onNodeWithText(schedulePreview(task, copy = ::messageTextForTest), useUnmergedTree = true).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult) { it(layouts) }
         assertEquals(muted,layouts.single().layoutInput.style.color)
     }
 }

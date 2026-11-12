@@ -1,5 +1,1445 @@
 [
   {
+    "key": "settings.android_allow_in_settings",
+    "zh-CN": "去允许",
+    "en": "Allow in settings",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_allow_remote_agent_to_install_apps_in_system_settings_then",
+    "zh-CN": "先在系统设置里允许 remote-agent 安装应用，回来后继续。",
+    "en": "Allow remote-agent to install apps in system settings, then return to continue.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_allow_the_original_computer_to_resume_value1_s_retained_sessions",
+    "zh-CN": "允许原电脑接续 {value1} 的保留会话和图片。旧身份仍然撤销；请在原电脑上输入配对码。",
+    "en": "Allow the original computer to resume {value1}'s retained sessions and images. The old identity remains revoked. Enter the pairing code on the original computer.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_already_on_the_latest_published_version",
+    "zh-CN": "已是最新发布版本",
+    "en": "Already on the latest published version",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_approval_commands_will_appear_in_system_notifications_and_may_remain",
+    "zh-CN": "打开后审批的命令会进入系统通知，可能留在通知历史里；锁屏上仍只显示通用文案",
+    "en": "Approval commands will appear in system notifications and may remain in notification history. The lock screen still shows generic text",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_attachment_storage_this_phone",
+    "zh-CN": "附件存储 · 这台手机",
+    "en": "Attachment storage · This phone",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_cannot_connect_to_the_release_address",
+    "zh-CN": "连不上发布地址",
+    "en": "Cannot connect to the release address",
+    "notes": "Android Updater 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_cannot_open_the_system_installer",
+    "zh-CN": "打不开系统的安装器。",
+    "en": "Cannot open the system installer.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_checking_for_updates",
+    "zh-CN": "正在检查更新…",
+    "en": "Checking for updates…",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_clean_up_reclaimable_images",
+    "zh-CN": "清理可回收图片？",
+    "en": "Clean up reclaimable images?",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_cleaning",
+    "zh-CN": "正在清理…",
+    "en": "Cleaning…",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_clear_viewing_cache",
+    "zh-CN": "清理查看缓存",
+    "en": "Clear viewing cache",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_code_paths_commands_and_terminal",
+    "zh-CN": "代码、路径、命令和终端",
+    "en": "Code, paths, commands, and terminal",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_compare_these_4_patterns_on_the_new_device_and_confirm",
+    "zh-CN": "请在新设备上核对这 4 个图案，并点确认。确认后才能加入；可以离开本页等待。",
+    "en": "Compare these 4 patterns on the new device and confirm there. It can join after confirmation. You can leave this page while waiting.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_could_not_check_for_updates_value1",
+    "zh-CN": "没能检查更新：{value1}",
+    "en": "Could not check for updates: {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_could_not_download_value1",
+    "zh-CN": "没能下载：{value1}",
+    "en": "Could not download: {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_could_not_read_release_information_value1",
+    "zh-CN": "读取发布信息失败（{value1}）",
+    "en": "Could not read release information ({value1})",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_could_not_save_installation_package",
+    "zh-CN": "没能保存安装包",
+    "en": "Could not save installation package",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_current_version_value1",
+    "zh-CN": "当前版本 {value1}",
+    "en": "Current version {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_default_value1_s_own_configuration",
+    "zh-CN": "默认（{value1} 自己的配置）",
+    "en": "Default ({value1}'s own configuration)",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_download_again",
+    "zh-CN": "重新下载",
+    "en": "Download again",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_download_and_install_value1",
+    "zh-CN": "下载并安装（{value1}）",
+    "en": "Download and install ({value1})",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_download_failed",
+    "zh-CN": "下载失败",
+    "en": "Download failed",
+    "notes": "Android Updater 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_download_failed_value1",
+    "zh-CN": "下载失败（{value1}）",
+    "en": "Download failed ({value1})",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_downloaded_file_does_not_match_release_information",
+    "zh-CN": "下载的文件和发布信息不一致",
+    "en": "Downloaded file does not match release information",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_downloading_value1",
+    "zh-CN": "正在下载 {value1}",
+    "en": "Downloading {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_downloading_value1_value2",
+    "zh-CN": "正在下载 {value1} / {value2}",
+    "en": "Downloading {value1} / {value2}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：已格式化的文件大小（MiB/GiB 等）；value2：已格式化的文件大小（MiB/GiB 等）。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      },
+      "value2": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_fonts_sil_open_font_license_1_1",
+    "zh-CN": "字体 · SIL Open Font License 1.1",
+    "en": "Fonts · SIL Open Font License 1.1",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_for_an_unverified_version_run_remote_agent_doctor_on_the",
+    "zh-CN": "未验证的版本请在电脑上运行 remote-agent doctor",
+    "en": "For an unverified version, run remote-agent doctor on the computer",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_icons_isc_license",
+    "zh-CN": "图标 · ISC License",
+    "en": "Icons · ISC License",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_image_drafts_and_file_source_information_are_cleared_after_7",
+    "zh-CN": "图片草稿和文件来源信息闲置 7 天后清理；待确认消息保留到确认或移除。文件正文不复制到手机，容量不足时保留已有内容。",
+    "en": "Image drafts and file source information are cleared after 7 idle days. Unconfirmed messages stay until confirmed or removed. File contents are not copied to the phone. Existing content is kept when storage is full.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_install",
+    "zh-CN": "安装",
+    "en": "Install",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_installation_did_not_finish_you_can_install_again",
+    "zh-CN": "安装没有完成，可以再装一次。",
+    "en": "Installation did not finish. You can install again.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_interface_icons",
+    "zh-CN": "界面中的图标",
+    "en": "Interface icons",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_invalid_release_information_format",
+    "zh-CN": "发布信息格式不对",
+    "en": "Invalid release information format",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_later",
+    "zh-CN": "以后再说",
+    "en": "Later",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_latin_text_and_numbers_in_the_interface",
+    "zh-CN": "界面中的西文和数字",
+    "en": "Latin text and numbers in the interface",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_local_storage",
+    "zh-CN": "本机存储",
+    "en": "Local storage",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_new_computer",
+    "zh-CN": "新电脑",
+    "en": "New computer",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_new_device",
+    "zh-CN": "新设备",
+    "en": "New device",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_new_device_joined",
+    "zh-CN": "新设备已加入",
+    "en": "New device joined",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_new_version_value1",
+    "zh-CN": "新版本 {value1}",
+    "en": "New version {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_new_version_value1_available",
+    "zh-CN": "有新版本 {value1}",
+    "en": "New version {value1} available",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_offline_last_online_value1",
+    "zh-CN": "不在线 · 最后在线 {value1}",
+    "en": "Offline · Last online {value1}",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：按照本地日历显示的时间字段，不能改变原始时间戳或调度时区。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_online",
+    "zh-CN": "在线",
+    "en": "Online",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_online_b90866",
+    "zh-CN": "在线",
+    "en": "Online",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_only_affects_system_notifications_while_the_app_is_in_the",
+    "zh-CN": "\n仅影响 App 在后台时的系统通知，不影响聊天和审批",
+    "en": "\nOnly affects system notifications while the app is in the background; chat and approvals are unaffected",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_open_source_licenses",
+    "zh-CN": "开源许可",
+    "en": "Open source licenses",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_pairing_qr_code",
+    "zh-CN": "配对二维码",
+    "en": "Pairing QR code",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_pending_and_unconfirmed_attachments",
+    "zh-CN": "待发和待确认附件",
+    "en": "Pending and unconfirmed attachments",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_reconnect_archives_or_delete_records_on_the_managing_client_value1",
+    "zh-CN": "档案重接和删除记录，请在管理端（{value1}）上操作。",
+    "en": "Reconnect archives or delete records on the managing client ({value1}).",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_recovery_code_qr_code",
+    "zh-CN": "恢复码二维码",
+    "en": "Recovery code QR code",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_recovery_pending_eligible_at_value1",
+    "zh-CN": "恢复申请待处理 · 可生效时间：{value1}",
+    "en": "Recovery pending · Eligible at: {value1}",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：按照本地日历显示的时间字段，不能改变原始时间戳或调度时区。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_rejoin_this_computer_and_resume_sessions",
+    "zh-CN": "让这台电脑重新加入并接续会话",
+    "en": "Rejoin this computer and resume sessions",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_release_information_is_missing_value1",
+    "zh-CN": "发布信息缺少 {value1}",
+    "en": "Release information is missing {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_release_protocol_is_not_a_number",
+    "zh-CN": "发布信息的 protocol 不是数字",
+    "en": "Release protocol is not a number",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_release_size_is_not_a_number",
+    "zh-CN": "发布信息的 size 不是数字",
+    "en": "Release size is not a number",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_release_versioncode_is_not_a_number",
+    "zh-CN": "发布信息的 versionCode 不是数字",
+    "en": "Release versionCode is not a number",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_remote_agent_on_this_computer_cannot_read_value1_quotas",
+    "zh-CN": "这台电脑上的 remote-agent 读不到 {value1} 的额度。",
+    "en": "remote-agent on this computer cannot read {value1} quotas.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_removal_immediately_disconnects_it_and_keeps_sessions_and_images_on",
+    "zh-CN": "移除会立即断开连接，保留中继上的会话和图片；它需要重新加入账户才能连接。",
+    "en": "Removal immediately disconnects it and keeps sessions and images on the relay. It must rejoin the account to connect again.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_remove_devices_on_the_managing_client_value1",
+    "zh-CN": "请在管理端（{value1}）上移除设备。",
+    "en": "Remove devices on the managing client ({value1}).",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：管理端的设备名称，用户内容原样保留。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_remove_reclaimable_originals_and_cache_large_images_not_yet_synced",
+    "zh-CN": "清除可回收原图和缓存，尚未同步的大图会只显示预览。排队和当前执行中的原图、会话历史保留。",
+    "en": "Remove reclaimable originals and cache. Large images not yet synced will show previews only. Originals queued or in use, and session history, are kept.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_remove_this_machine",
+    "zh-CN": "移除这台机器…",
+    "en": "Remove this machine…",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_removed_retained_session_archive",
+    "zh-CN": "已移除 · 保留的会话档案",
+    "en": "Removed · Retained session archive",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_requests_to_join",
+    "zh-CN": " 请求加入",
+    "en": " requests to join",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_sarasa_fixed_sc_symbol_subset",
+    "zh-CN": "Sarasa Fixed SC（符号子集）",
+    "en": "Sarasa Fixed SC (symbol subset)",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_sessions_end_automatically_after_prolonged_inactivity_not_running_no_pending",
+    "zh-CN": "会话长时间没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在。",
+    "en": "Sessions end automatically after prolonged inactivity (not running, no pending actions, and no terminal input). You can resume at any time; chat history is kept.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_show_content_and_approve_in_notifications",
+    "zh-CN": "在通知里显示内容并直接审批",
+    "en": "Show content and approve in notifications",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_terminal_symbols",
+    "zh-CN": "终端里的符号",
+    "en": "Terminal symbols",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_downloaded_file_is_not_an_installation_package",
+    "zh-CN": "下载的文件不是安装包",
+    "en": "The downloaded file is not an installation package",
+    "notes": "Android Updater 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_downloaded_package_does_not_match_the_release_information",
+    "zh-CN": "下载的安装包和发布信息不一致",
+    "en": "The downloaded package does not match the release information",
+    "notes": "Android Updater 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_downloaded_package_is_not_remote_agent",
+    "zh-CN": "下载的安装包不是 remote-agent",
+    "en": "The downloaded package is not remote-agent",
+    "notes": "Android Updater 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_phone_clock_is_ahead_of_the_server_remote_control",
+    "zh-CN": "手机时钟比服务器快，远程控制暂停。请在系统设置里校准时间。",
+    "en": "The phone clock is ahead of the server. Remote control is paused. Correct the time in system settings.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_system_could_not_install_this_package",
+    "zh-CN": "系统没能安装这个包。",
+    "en": "The system could not install this package.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_the_system_will_confirm_installation_after_downloading_the_first_time",
+    "zh-CN": "下载后由系统确认安装。第一次会请你允许 remote-agent 安装应用。",
+    "en": "The system will confirm installation after downloading. The first time, you will be asked to allow remote-agent to install apps.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_this_computer_is_outside_the_current_trusted_directory_check_the",
+    "zh-CN": "这台电脑不在当前可信目录中，撤销状态以回执为准",
+    "en": "This computer is outside the current trusted directory. Check the receipt for its revocation status",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_this_is_the_managing_device_ordinary_removal_is_unavailable",
+    "zh-CN": "这是管理端设备，普通移除不可用",
+    "en": "This is the managing device. Ordinary removal is unavailable",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_this_machine_has_been_removed",
+    "zh-CN": "这台机器已经移除了",
+    "en": "This machine has been removed",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_this_release_changes_the_protocol_after_installing_also_update_remote",
+    "zh-CN": "这一版换了协议版本：装好后，电脑上的 remote-agent 也要升级才能继续用。",
+    "en": "This release changes the protocol. After installing, also update remote-agent on the computer to continue.",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_to_resume_a_removed_computer_s_sessions_open_its_retained",
+    "zh-CN": "已移除的电脑要接续原会话，请从那台电脑的保留档案进入“重新加入并接续会话”。",
+    "en": "To resume a removed computer's sessions, open its retained archive and choose “Rejoin and resume sessions”.",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_unknown",
+    "zh-CN": "未知",
+    "en": "Unknown",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_unverified",
+    "zh-CN": "未验证",
+    "en": "Unverified",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_up_to_date",
+    "zh-CN": "已是最新版本",
+    "en": "Up to date",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_update",
+    "zh-CN": "更新",
+    "en": "Update",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_update_available_value1",
+    "zh-CN": "可更新到 {value1}",
+    "en": "Update available: {value1}",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_value1_approval_mode",
+    "zh-CN": "{value1} · 审批模式",
+    "en": "{value1} · Approval mode",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_value1_default",
+    "zh-CN": "{value1}（默认）",
+    "en": "{value1} (default)",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_value1_default_model_for_new_sessions",
+    "zh-CN": "{value1} · 新会话默认模型",
+    "en": "{value1} · Default model for new sessions",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：CLI 产品名，不翻译产品标识。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_value1_downloaded",
+    "zh-CN": "{value1} 已下载",
+    "en": "{value1} downloaded",
+    "notes": "Android Update 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_value1_is_offline_connect_to_read_and_edit_new_session",
+    "zh-CN": "{value1} 不在线，连上后才能读取和修改新会话默认设置",
+    "en": "{value1} is offline. Connect to read and edit new-session defaults",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：界面字段或用户/CLI 原文，保留变量内容，仅翻译完整句外壳。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_version",
+    "zh-CN": "版本",
+    "en": "Version",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_viewing_cache",
+    "zh-CN": "查看缓存",
+    "en": "Viewing cache",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_waiting_for_a_new_device",
+    "zh-CN": "等待新设备…",
+    "en": "Waiting for a new device…",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "settings.android_waiting_for_the_new_device_to_confirm",
+    "zh-CN": "等新设备确认图案…",
+    "en": "Waiting for the new device to confirm…",
+    "notes": "Android Settings 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "settings.computer",
     "zh-CN": "电脑",
     "en": "Computer",

@@ -794,6 +794,7 @@ fun Markdown(text: String, modifier: Modifier = Modifier, bleed: Dp = 0.dp) {
 /** Keep whole blocks, except an oversize leading paragraph previews eight complete lines. */
 @Composable
 internal fun ScheduleResultMarkdown(text: String) {
+    val copy = uiText()
     val blocks = remember(text) { parseMarkdown(text) }
     val rows = remember(blocks) { spaced(blocks, Place.REPLY) }
     var expanded by remember(text) { mutableStateOf(false) }
@@ -839,7 +840,7 @@ internal fun ScheduleResultMarkdown(text: String) {
                 if (count < rows.size || clippedParagraph) {
                     val more = subcompose("expand") {
                         Row(Modifier.heightIn(min = 44.dp).clickable { expanded = true }, verticalAlignment = Alignment.CenterVertically) {
-                            Text("展开全文", style = T.s13, color = pal.blue)
+                            Text(copy(UiMessages.markdownExpand()), style = T.s13, color = pal.blue)
                             Ic(Lucide.ChevronDown, 14.dp, pal.blue)
                         }
                     }.single().measure(constraints.copy(minHeight = 0))
@@ -980,6 +981,7 @@ internal fun codeText(lines: List<String>, diff: Boolean, added: Color, removed:
  */
 @Composable
 private fun ReplyCode(b: Block.Code) {
+    val copy = uiText()
     val p = pal
     val lines = remember(b.text) { b.text.split("\n") }
     val long = lines.size > FOLD_OVER
@@ -998,9 +1000,9 @@ private fun ReplyCode(b: Block.Code) {
                 Modifier.fillMaxWidth().heightIn(min = 44.dp).tap { open = !open }.padding(horizontal = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ArrowText(if (open) "收起" else "展开全文", p.blue, T.s13b, down = !open, up = open)
+                ArrowText(if (open) copy(UiMessages.markdownCollapse()) else copy(UiMessages.markdownExpand()), p.blue, T.s13b, down = !open, up = open)
                 Spacer(Modifier.weight(1f))
-                Text("共 ${lines.size} 行", style = T.s13, color = p.ink2, maxLines = 1)
+                Text(copy(UiMessages.markdownLineCount((lines.size).toInt())), style = T.s13, color = p.ink2, maxLines = 1)
             }
         }
         // Over the corner without adding to the block's height: one line of code is lower than the button.
@@ -1021,6 +1023,7 @@ private fun copyText(context: Context, text: String): Boolean = try {
 /** Copies a code block; the icon says for a moment how it went. */
 @Composable
 internal fun CopyButton(text: String) {
+    val copy = uiText()
     val p = pal
     val context = LocalContext.current
     var state by remember { mutableStateOf(Copied.NO) }
@@ -1036,7 +1039,7 @@ internal fun CopyButton(text: String) {
         Ic(
             when (state) { Copied.OK -> Lucide.Check; Copied.FAILED -> Lucide.X; Copied.NO -> Lucide.Copy }, 16.dp, p.ink2,
             Modifier.padding(top = 9.dp, end = 12.dp),
-            contentDescription = when (state) { Copied.OK -> uiText(UiMessages.commonCopied()); Copied.FAILED -> "复制失败"; Copied.NO -> "复制代码" },
+            contentDescription = when (state) { Copied.OK -> uiText(UiMessages.commonCopied()); Copied.FAILED -> copy(UiMessages.markdownCopyFailed()); Copied.NO -> copy(UiMessages.markdownCopyCode()) },
         )
     }
 }

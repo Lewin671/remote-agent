@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.derive
 import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.ApprovalRequested
@@ -143,7 +145,7 @@ class BackgroundFieldTest {
         assertTrue(tool.background)
         assertTrue(items.none { it is ChatItem.Running })
         assertEquals(messageTextForTest(io.github.lewin671.remoteagent.core.UiMessages.toolsBackgroundTurn()), messageTextForTest(io.github.lewin671.remoteagent.core.backgroundNote(tool.call.background)))
-        assertEquals("后台命令", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE).testText())
+        assertEquals(messageTextForTest(UiMessages.toolsAndroidBackgroundCommand()), io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE).testText())
         assertEquals("Task（后台）", io.github.lewin671.remoteagent.core.backgroundTitle(ToolKind.TOOL_KIND_OTHER, "Task", Agent.AGENT_CLAUDE).testText())
     }
 }

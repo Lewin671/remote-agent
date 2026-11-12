@@ -16,6 +16,20 @@
     }
   },
   {
+    "key": "composer.android_image_not_on_computer",
+    "zh-CN": "图片不在电脑上",
+    "en": "Image is not on the computer",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "composer.android_not_sent",
     "zh-CN": "这条没有发出：{reason}",
     "en": "This message was not sent: {reason}",
@@ -49,10 +63,38 @@
     }
   },
   {
+    "key": "composer.android_reply_unverified",
+    "zh-CN": "回复验证失败",
+    "en": "Reply verification failed",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "composer.android_restart_unknown",
     "zh-CN": "App 重启过，不确定这条有没有送到",
     "en": "The app restarted; it is unclear whether this message arrived",
     "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.android_unknown_reason",
+    "zh-CN": "原因未知",
+    "en": "Unknown reason",
+    "notes": "Android 原有完整句；参数保留原始详情或已经本地化的字段，英文初稿待审。",
     "params": {},
     "platforms": [
       "android"

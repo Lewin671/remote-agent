@@ -16,6 +16,151 @@
     }
   },
   {
+    "key": "common.android_account_signed_out",
+    "zh-CN": "账户已退出",
+    "en": "Account signed out",
+    "notes": "Android FileScopes 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_after_switching_machines_each_cli_starts_with_that_machine_s",
+    "zh-CN": "换机器后，各 CLI 的模型和权限从那台机器的默认设置开始。",
+    "en": "After switching machines, each CLI starts with that machine's default model and permissions.",
+    "notes": "Android Project 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_allow_camera_access",
+    "zh-CN": "允许使用相机",
+    "en": "Allow camera access",
+    "notes": "Android Scan 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_camera_access_is_needed_to_scan_you_can_also_go",
+    "zh-CN": "需要相机权限才能扫码；也可以返回手动输入配对码。",
+    "en": "Camera access is needed to scan. You can also go back and enter the pairing code.",
+    "notes": "Android Scan 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_cannot_find_this_session",
+    "zh-CN": "找不到这个会话",
+    "en": "Cannot find this session",
+    "notes": "Android Model 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_cli_s_own_mode",
+    "zh-CN": "CLI 自己的模式",
+    "en": "CLI's own mode",
+    "notes": "Android Project 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_could_not_clear_the_account_and_cache_on_this_phone",
+    "zh-CN": "没能清除这台手机上的账户和缓存，请重试",
+    "en": "Could not clear the account and cache on this phone. Retry",
+    "notes": "Android RaApp 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_could_not_read_this_session_value1",
+    "zh-CN": "没能读取这个会话：{value1}",
+    "en": "Could not read this session: {value1}",
+    "notes": "Android Model 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。value1：原始错误详情或已经本地化的完整错误，不翻译 CLI/daemon 原文。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {
+      "value1": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_could_not_save_pending_images",
+    "zh-CN": "没能保存待发图片",
+    "en": "Could not save pending images",
+    "notes": "Android PendingStore 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_each_cli_saves_its_own_settings_only_future_sessions_are",
+    "zh-CN": "各 CLI 独立保存一套。只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
+    "en": "Each CLI saves its own settings. Only future sessions are affected; active sessions stay unchanged. Synced across your devices.",
+    "notes": "Android Project 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "common.android_more",
     "zh-CN": "更多",
     "en": "More",
@@ -24,6 +169,76 @@
     "platforms": [
       "android",
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_new_full_access_sessions_start_directly_with_these_settings",
+    "zh-CN": "完全放行的新会话直接按此设置启动。",
+    "en": "New full-access sessions start directly with these settings.",
+    "notes": "Android Project 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_offline",
+    "zh-CN": "不在线",
+    "en": "Offline",
+    "notes": "Android ConnCheck 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_project_settings_may_differ",
+    "zh-CN": "（项目设置可能不同）",
+    "en": "(Project settings may differ)",
+    "notes": "Android Project 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_the_original_request_and_keys_are_saved_for_retry_if",
+    "zh-CN": "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，请退出并重新配对或创建。",
+    "en": ". The original request and keys are saved for retry. If approval expired or was rejected, exit and pair again or create an account.",
+    "notes": "Android RaApp 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "common.android_this_app_version_is_old_update_and_retry",
+    "zh-CN": "这个 App 版本较旧，请更新后再试",
+    "en": "This app version is old. Update and retry",
+    "notes": "Android Model 中原有的界面/无障碍或本地错误文案，中文（含空格、标点）逐字保留。无变量。英文为待审初稿；不要替换成浏览器专属安全说明。",
+    "params": {},
+    "platforms": [
+      "android"
     ],
     "status": {
       "zh-CN": "source",

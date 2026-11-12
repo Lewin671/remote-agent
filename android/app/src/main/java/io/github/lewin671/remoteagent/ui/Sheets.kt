@@ -57,7 +57,7 @@ import io.github.lewin671.remoteagent.core.agent
 import io.github.lewin671.remoteagent.core.agentInfo
 import io.github.lewin671.remoteagent.core.agentName
 import io.github.lewin671.remoteagent.core.contextPercent
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.minutesLeft
 import io.github.lewin671.remoteagent.core.modeOf
 import io.github.lewin671.remoteagent.core.renameInitial
@@ -140,7 +140,7 @@ fun ModeSheet(s: SessionView, onClose: () -> Unit) {
             val reason = unavailable(m)
             ListItem(
                 copy(io.github.lewin671.remoteagent.core.sessionMode(m)),
-                reason ?: modeHelpText(m, agentName(s.agent()), copy),
+                reason ?: modeHelpText(m, agentName(s.agent(), copy = copy), copy),
                 checked = m == cur,
                 enabled = reason == null && !act.running,
                 danger = m == Mode.FULL && reason == null,
@@ -348,7 +348,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
             models = remote.listModels(s.machineId, s.agent(), fresh = true)
             loadError = ""
         } catch (e: Exception) {
-            loadError = errorText(e)
+            loadError = displayError(e)
         }
     }
     val act = rememberAction()
@@ -534,7 +534,7 @@ fun ApprovalPage(sid: String, aid: String) {
         copy(UiMessages.approvalDetails()),
         subtitle =
             s?.let {
-                titleOf(it) +
+                titleOf(it, copy = copy) +
                     if (a != null && a.hasDeadline())
                         copy(UiMessages.approvalAndroidMinutesMeta(count = (minutesLeft(a.deadline.seconds * 1000, t)).toInt()))
                     else ""
@@ -544,7 +544,7 @@ fun ApprovalPage(sid: String, aid: String) {
             val r = d.resolved[aid]
             Text(
                 if (r != null) copy(UiMessages.sessionApprovalResolved())
-                else io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
+                else io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy) ?: copy(UiMessages.projectsReadingDirectory()),
                 style = T.s15,
                 color = p.ink2,
                 modifier = Modifier.padding(16.dp),
@@ -607,11 +607,11 @@ fun PlanPage(sid: String) {
     val lookup = sessionLookup(sid) // Fetches it by its ID when it is not held here.
     val events by remote.events(sid).collectAsState()
     val d = rememberDerived(events, s?.agent() ?: DEFAULT_AGENT)
-    PageScaffold(copy(UiMessages.modesPlan()), subtitle = s?.let { titleOf(it) }) {
+    PageScaffold(copy(UiMessages.modesPlan()), subtitle = s?.let { titleOf(it, copy = copy) }) {
         val plan = d.plan
         if (s == null || plan == null) {
             Text(
-                io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: copy(UiMessages.projectsReadingDirectory()),
+                io.github.lewin671.remoteagent.core.lookupNote(lookup, copy = copy) ?: copy(UiMessages.projectsReadingDirectory()),
                 style = T.s15,
                 color = pal.ink2,
                 modifier = Modifier.padding(16.dp),

@@ -9,9 +9,9 @@ import org.junit.Test
 class SessionSubtitleTest {
     @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test fun unknownModeLeavesOnlyTheStatus() {
-        Status.entries.forEach { assertEquals(it.text, sessionSubtitle(it, null)) }
-        assertEquals(Status.RUNNING.text + " · 询问", sessionSubtitle(Status.RUNNING, "询问"))
-        assertEquals(Status.EXITED.text, sessionSubtitle(Status.EXITED, "询问"))
+        Status.entries.forEach { assertEquals(messageTextForTest(it.text), sessionSubtitle(it, null)) }
+        assertEquals(messageTextForTest(Status.RUNNING.text) + " · 询问", sessionSubtitle(Status.RUNNING, "询问"))
+        assertEquals(messageTextForTest(Status.EXITED.text), sessionSubtitle(Status.EXITED, "询问"))
     }
 
     @Test fun theMenuNamesTheMachineOnlyWhenThereIsMoreThanOne() {

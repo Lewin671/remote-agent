@@ -1,5 +1,9 @@
 package io.github.lewin671.remoteagent.push
 
+import io.github.lewin671.remoteagent.ui.messageTextForTest
+
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import java.io.IOException
 import java.util.concurrent.ExecutionException
 import kotlinx.coroutines.CompletableDeferred
@@ -13,13 +17,16 @@ import org.junit.Assert.*
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class RegistrationTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test fun wrappedGoogleFailureHasAnActionableMessageAndRetries() {
         val failure = tokenFailure(IOException(ExecutionException(IOException("SERVICE_NOT_AVAILABLE"))))
         assertTrue(failure.retry)
         assertTrue(failure.status.problem.contains("Google"))
         assertFalse(failure.status.problem.contains("java."))
-        assertEquals("重试", failure.status.action)
+        assertEquals(messageTextForTest(UiMessages.commonRetry()), failure.status.action)
         assertFalse(tokenFailure(ExecutionException(IOException("AUTHENTICATION_FAILED"))).retry)
         assertFalse(tokenFailure(IOException("MISSING_INSTANCEID_SERVICE")).retry)
     }

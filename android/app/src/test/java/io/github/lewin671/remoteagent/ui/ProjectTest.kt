@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.Mode
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.PrefsObject
@@ -22,6 +24,7 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ProjectTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test
     fun aFinishedDraftFollowsTheProjectsNextSuggestion() {
         val project = NewConfig("main", "/p", Agent.AGENT_CODEX)
@@ -433,7 +436,7 @@ class ProjectTest {
             .addModels(io.github.lewin671.remoteagent.proto.ModelInfo.newBuilder().setSlug("gpt-6-astra").setDisplayName("GPT-6-Astra"))
             .build()
         assertEquals("GPT-6-Astra", modelLabel(NewConfig("mac", path), models))
-        assertEquals("默认模型", modelLabel(NewConfig("mac", path)))
+        assertEquals(messageTextForTest(UiMessages.newSessionDefaultModel()), modelLabel(NewConfig("mac", path)))
     }
 
     @Test
@@ -453,20 +456,20 @@ class ProjectTest {
     fun theCliDefaultTheMachineReportsIsShownWithoutAConfirmation() {
         // As measured on this machine: Claude Code defaults to bypass, Codex to auto.
         val m = machine(info(Agent.AGENT_CLAUDE, ApprovalMode.APPROVAL_MODE_FULL_ACCESS, cli, varies = true), info(Agent.AGENT_CODEX, ApprovalMode.APPROVAL_MODE_AUTO, cli))
-        assertEquals("默认：完全放行（项目设置可能不同）", modeLabel(null, defaultModeOf(m, Agent.AGENT_CLAUDE), Agent.AGENT_CLAUDE))
-        assertEquals("默认：自动", modeLabel(null, defaultModeOf(m, Agent.AGENT_CODEX), Agent.AGENT_CODEX))
-        assertEquals("自动", effectiveModeText(null, defaultModeOf(m, Agent.AGENT_CODEX)))
+        assertEquals("默认：完全放行（项目设置可能不同）", modeLabel(null, defaultModeOf(m, Agent.AGENT_CLAUDE), Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
+        assertEquals("默认：自动", modeLabel(null, defaultModeOf(m, Agent.AGENT_CODEX), Agent.AGENT_CODEX, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.modesAuto()), effectiveModeText(null, defaultModeOf(m, Agent.AGENT_CODEX)))
     }
 
     @Test
     fun anUnknownDefaultDoesNotBlockAStart() {
         // The daemon could not read it: it could be full access.
         val old = machine(io.github.lewin671.remoteagent.proto.AgentInfo.newBuilder().setAgent(Agent.AGENT_CODEX).build())
-        assertEquals("跟随 CLI 设置", modeLabel(null, defaultModeOf(old, Agent.AGENT_CODEX), Agent.AGENT_CODEX))
-        assertEquals("跟随 CLI 设置", effectiveModeText(null, defaultModeOf(old, Agent.AGENT_CODEX)))
+        assertEquals(messageTextForTest(UiMessages.newSessionFollowCli()), modeLabel(null, defaultModeOf(old, Agent.AGENT_CODEX), Agent.AGENT_CODEX, copy = ::messageTextForTest))
+        assertEquals(messageTextForTest(UiMessages.newSessionFollowCli()), effectiveModeText(null, defaultModeOf(old, Agent.AGENT_CODEX)))
         // A mode outside the four (accept edits) is known and not full access.
         val edits = machine(info(Agent.AGENT_CLAUDE, ApprovalMode.APPROVAL_MODE_UNSPECIFIED, cli))
-        assertEquals("默认：Claude Code 自己的模式", modeLabel(null, defaultModeOf(edits, Agent.AGENT_CLAUDE), Agent.AGENT_CLAUDE))
+        assertEquals("默认：Claude Code 自己的模式", modeLabel(null, defaultModeOf(edits, Agent.AGENT_CLAUDE), Agent.AGENT_CLAUDE, copy = ::messageTextForTest))
     }
 
     @Test

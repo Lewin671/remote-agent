@@ -94,7 +94,7 @@ object HomeScopes {
 
     /** The scope chosen, while the project it names is one of [state]'s lists. */
     fun remembered(context: Context, root: ByteArray, state: RemoteState): HomeScope? =
-        decodeScope(stored(context).value, scopeKey(root), listedProjects(state))
+        decodeScope(stored(context).value, scopeKey(root), listedProjects(state, copy = ::sessionText))
 
     fun choose(context: Context, root: ByteArray, scope: HomeScope) {
         val mark = encodeScope(scope, scopeKey(root))
@@ -118,21 +118,22 @@ object HomeScopes {
  */
 @Composable
 fun HomeScreen() {
+    val copy = uiText()
     val remote = LocalRemote.current
     val nav = LocalNav.current
     val context = LocalContext.current
     val state by remote.state.collectAsState()
     val t = now()
-    val scope = resolveScope(HomeScopes.remembered(context, remote.account.localKey, state), state)
+    val scope = resolveScope(HomeScopes.remembered(context, remote.account.localKey, state), state, copy = copy)
     // What is typed stays in memory: saved instance state is plaintext on disk (architecture §15).
     var query by remember(scope) { mutableStateOf("") }
     val wide = LocalConfiguration.current.screenWidthDp >= 600
     var shown by remember(scope) { mutableStateOf(HomeShown()) }
     // A wide window lists all of what waits and runs (design-system §6 「长内容」).
     val list = remember(state, scope, query, shown, t, wide) {
-        homeList(state, scope, query, if (wide) shown.copy(allAttention = true, allRunning = true) else shown, t)
+        homeList(state, scope, query, if (wide) shown.copy(allAttention = true, allRunning = true) else shown, t, copy = copy)
     }
-    val headline = remember(state, scope) { homeHeadline(state, scope) }
+    val headline = remember(state, scope) { homeHeadline(state, scope, copy = copy) }
     var calm by remember { mutableStateOf(false) }
     val hasRows = list.items.isNotEmpty()
     LaunchedEffect(scope, query, hasRows) {
@@ -147,7 +148,7 @@ fun HomeScreen() {
     var details by remember { mutableStateOf(false) }
     var updating by remember { mutableStateOf(false) }
     // Without any project, removed ones included, there is nothing to scope by.
-    val anyProject = remember(state) { projects(state).isNotEmpty() }
+    val anyProject = remember(state) { projects(state, copy = copy).isNotEmpty() }
     FetchEarlier(state, page = list.wantPage, all = list.wantAll)
     // A new session needs the server and a computer to run on.
     val canStart = !state.unlinked && state.machines.isNotEmpty()
@@ -251,6 +252,7 @@ private fun HomeLine(
 /** A row of what waits, from the session's own events: its approval or question. */
 @Composable
 private fun PendingItem(state: RemoteState, s: SessionView, scope: HomeScope, first: Boolean, last: Boolean) {
+    val copy = uiText()
     val nav = LocalNav.current
     val remote = LocalRemote.current
     val events by remote.events(s.id).collectAsState()
@@ -258,7 +260,7 @@ private fun PendingItem(state: RemoteState, s: SessionView, scope: HomeScope, fi
     val row = pendingRowText(
         state, s, scope, d.approvals.values.firstOrNull(),
         d.questions.values.firstOrNull()?.questionsList?.firstOrNull()?.text,
-    )
+     copy = copy)
     PendingRow(row, first, last) { nav.session(s.id) }
 }
 
@@ -325,7 +327,7 @@ internal fun EmptyAccount(state: RemoteState, why: AccountEmpty) {
         AccountEmpty.NoMachines -> if (state.isAuthority) Column {
             EmptyNote(uiText(UiMessages.homeAndroidNoMachines()))
             PillButton(uiText(UiMessages.homeAddDevice()), { nav.pair() }, Modifier.padding(start = 24.dp, top = 20.dp), ButtonKind.INK, icon = Lucide.Plus)
-        } else EmptyNote(uiText(UiMessages.homeAddViaManager(state.authorityName)))
+        } else EmptyNote(uiText(UiMessages.homeAddViaManager(uiText(state.authorityName))))
         AccountEmpty.NoneOnline -> EmptyNote(uiText(UiMessages.homeAndroidNoOnline()))
         is AccountEmpty.Ready -> EmptyNote(uiText(UiMessages.homeOnlineNewTask(name = why.machine)))
         AccountEmpty.Unlinked -> {}
@@ -362,6 +364,7 @@ private fun scopeName(scope: HomeScope): String =
  */
 @Composable
 private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope) -> Unit, onClose: () -> Unit) {
+    val copy = uiText()
     val p = pal
     val nav = LocalNav.current
     var browsing by remember { mutableStateOf(false) }
@@ -390,7 +393,7 @@ private fun ScopeSheet(state: RemoteState, scope: HomeScope, onPick: (HomeScope)
             state,
             onNew = { browsing = true },
             // 全部项目, when there is more than one project to choose between.
-            first = scopeRows(state, scope).firstOrNull { it.scope == HomeScope.All }?.let { all ->
+            first = scopeRows(state, scope, copy = copy).firstOrNull { it.scope == HomeScope.All }?.let { all ->
                 @Composable {
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) {

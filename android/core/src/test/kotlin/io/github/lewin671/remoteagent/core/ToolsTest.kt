@@ -112,7 +112,7 @@ class ToolsTest {
     @Test
     fun labelsNameClaudeToolsAndCodexKinds() {
         assertMessageEquals("Bash", toolLabel(ToolKind.TOOL_KIND_COMMAND, "Bash", Agent.AGENT_CLAUDE))
-        assertMessageEquals("命令", toolLabel(ToolKind.TOOL_KIND_COMMAND, "CommandExecution", Agent.AGENT_CODEX))
+        assertMessageEquals(messageTextForTest(UiMessages.toolsCommand()), toolLabel(ToolKind.TOOL_KIND_COMMAND, "CommandExecution", Agent.AGENT_CODEX))
     }
 }
 

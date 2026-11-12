@@ -17,7 +17,7 @@ import io.github.lewin671.remoteagent.core.MAX_IMAGES
 import io.github.lewin671.remoteagent.core.MachineView
 import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.core.capabilities
-import io.github.lewin671.remoteagent.core.errorText
+import io.github.lewin671.remoteagent.ui.displayError
 import io.github.lewin671.remoteagent.core.newRequestId
 import io.github.lewin671.remoteagent.core.takePicked
 import io.github.lewin671.remoteagent.core.uploadImage
@@ -97,12 +97,12 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         }
     }
     internal fun hasSource() = if (isFile) !uri.isNullOrEmpty() else processed != null || !uri.isNullOrEmpty()
-    internal fun restoreToDraft() {
+    internal fun restoreToDraft( ) {
         val turn = stopUpload(abort = false)
         if (!valid(turn)) return
         state = when {
-            !hasSource() -> State.Failed(if (isFile) "这个文件没有本机副本，请移除后重新选择" else "这张图没有本机副本，请移除后重新选择")
-            needsProcessing -> State.Failed("需要重新处理或重新选择图片")
+            !hasSource() -> State.Failed(if (isFile) sessionText(UiMessages.attachmentFileMissing()) else sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyRemoveItAndSelect()))
+            needsProcessing -> State.Failed(sessionText(UiMessages.imageAndroidReprocessOrSelectTheImageAgain()))
             else -> State.Processing
         }
     }
@@ -239,7 +239,7 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
             val img = java.io.DataInputStream(java.io.ByteArrayInputStream(file)).use {
                 PendingImage(id, it.readUTF(), it.readUTF(), it.readLong(), retainSource = false).apply { sizeVerified = it.readBoolean() }
             }
-            img.state = PendingImage.State.Failed("需要重新传到电脑；源文件无法读取时请重新选择文件")
+            img.state = PendingImage.State.Failed(sessionText(UiMessages.imageAndroidUploadToTheComputerAgainIfTheSourceCannotBe()))
             restoreUpload(files, folder, img)
             out += img
             continue
@@ -252,7 +252,7 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
         img.stale = (meta[3] == "1") != original
         img.thumb = bytes?.let(thumb)
         // Uploads are the daemon's for a while only: send them again.
-        img.state = PendingImage.State.Failed(if (img.stale) "需要按当前模式重新处理" else "需要重新传到电脑")
+        img.state = PendingImage.State.Failed(if (img.stale) sessionText(UiMessages.imageAndroidReprocessUsingTheCurrentMode()) else sessionText(UiMessages.imageAndroidUploadToTheComputerAgain()))
         restoreUpload(files, folder, img)
         out += img
     }
@@ -357,7 +357,7 @@ class ImageDraft(
     /** What waits for images to be on disk here or gone from the draft ([whenKept]); the main thread's. */
     private val waiting = ArrayList<Pair<List<String>, () -> Unit>>()
 
-    private fun saveNow() {
+    private fun saveNow( ) {
         if (awaitingRestore) return
         runCatching { files.transaction {
             val message = text.value
@@ -435,11 +435,11 @@ class ImageDraft(
                 img.processed = p
                 img.thumb = preview
                 prepared(img)
-                (selectedMachine ?: machine())?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed("先选一台电脑") }
+                (selectedMachine ?: machine())?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentAndroidChooseComputer())) }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (img.ownerAccount === AccountMemory.token && img.generation == turn) img.state = PendingImage.State.Failed(errorText(e))
+                if (img.ownerAccount === AccountMemory.token && img.generation == turn) img.state = PendingImage.State.Failed(displayError(e))
             }
         }
     }
@@ -482,7 +482,7 @@ class ImageDraft(
                 if (img.current(turn, machineId)) persistOrder()
             } catch (e: kotlin.coroutines.cancellation.CancellationException) { throw e
             } catch (e: Exception) {
-                img.change(turn, machineId) { img.state = PendingImage.State.Failed(io.github.lewin671.remoteagent.core.uploadErrorText(e)) }
+                img.change(turn, machineId) { img.state = PendingImage.State.Failed(sessionText(io.github.lewin671.remoteagent.core.uploadErrorText(e))) }
             }
         }
     }
@@ -542,7 +542,7 @@ class ImageDraft(
         val turn = img.stopUpload(staleBytes = true)
         if (!img.valid(turn)) return
         unmark(img, preparing = true)
-        img.state = PendingImage.State.Failed("这张图没有可重新处理的本机副本，请移除后重新选择")
+        img.state = PendingImage.State.Failed(sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyAvailableForReprocessingRemove()))
     }
 
     fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
@@ -633,7 +633,7 @@ class ImageDraft(
         for (img in back) {
             img.allowAbort()
             val turn = img.stopUpload(onInvalidated = {
-                if (!img.hasSource()) img.state = PendingImage.State.Failed(if (img.isFile) "这个文件没有本机副本，请移除后重新选择" else "这张图没有本机副本，请移除后重新选择")
+                if (!img.hasSource()) img.state = PendingImage.State.Failed(if (img.isFile) sessionText(UiMessages.attachmentFileMissing()) else sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyRemoveItAndSelect()))
                 images += img
             })
             if (!img.valid(turn)) continue
@@ -655,9 +655,7 @@ class ImageDraft(
 
     /** Restores disk bytes and thumbnails on IO; only this account may receive the result. */
     internal fun restore(
-        scope: kotlinx.coroutines.CoroutineScope,
-        thumb: (ByteArray) -> ImageBitmap? = ::thumbnail,
-    ): Job {
+        scope: kotlinx.coroutines.CoroutineScope, thumb: (ByteArray) -> ImageBitmap? = ::thumbnail): Job {
         restoring = true
         val account = AccountMemory.token
         retryRestore = { restore(scope, thumb) }

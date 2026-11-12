@@ -9,7 +9,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
 
+@org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
+@org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class ApprovalAttemptTest {
+    @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private val command = PreparedCommand("m", "s", "r", 1, Envelope.getDefaultInstance())
 
     @Test fun noAccountAndLocallyDisabledKindsNeverShowPushes() {
