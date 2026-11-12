@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
@@ -802,17 +803,121 @@ func utf8Start(b byte) bool { return b&0xC0 != 0x80 }
 
 // execCmd finds the shell command in Codex's exec tool call, which is a
 // small program like `tools.exec_command({cmd:"go test ./..."})`.
-var execCmd = regexp.MustCompile(`\bcmd"?\s*:\s*("(?:[^"\\]|\\.)*")`)
+var execCmd = regexp.MustCompile("\\bcmd\"?\\s*:\\s*(\"(?:[^\"\\\\]|\\\\.)*\"|'(?:[^'\\\\]|\\\\[\\s\\S])*'|`(?:[^`\\\\]|\\\\[\\s\\S])*`)")
 
 // toolTitle names a started tool call: its command for shell calls.
 func toolTitle(name, input string) string {
 	if m := execCmd.FindStringSubmatch(input); m != nil {
-		var cmd string
-		if json.Unmarshal([]byte(m[1]), &cmd) == nil && cmd != "" {
+		literal := m[1]
+		if literal[0] == '"' {
+			var cmd string
+			if json.Unmarshal([]byte(literal), &cmd) == nil && cmd != "" {
+				return cmd
+			}
+		} else if cmd, ok := staticJSString(literal); ok && cmd != "" {
 			return cmd
 		}
 	}
 	return name
+}
+
+// staticJSString cooks a single-quoted string or a template without substitutions.
+// Normalize its escapes to JSON, so UTF-16 surrogate pairs decode as they do
+// in the double-quoted form. Nothing here evaluates JavaScript.
+func staticJSString(literal string) (string, bool) {
+	quote := literal[0]
+	body := literal[1 : len(literal)-1]
+	var out strings.Builder
+	out.WriteByte('"')
+	write := func(s string) { b, _ := json.Marshal(s); out.Write(b[1 : len(b)-1]) }
+	for i := 0; i < len(body); i++ {
+		c := body[i]
+		if quote == '`' && c == '$' && i+1 < len(body) && body[i+1] == '{' {
+			return "", false
+		}
+		if c != '\\' {
+			if c == '\n' || c == '\r' {
+				if quote != '`' {
+					return "", false
+				}
+				if c == '\r' && i+1 < len(body) && body[i+1] == '\n' {
+					i++
+				}
+				out.WriteString(`\n`)
+			} else if c == '"' || c < 0x20 {
+				write(string(c))
+			} else {
+				out.WriteByte(c)
+			}
+			continue
+		}
+		i++
+		if i >= len(body) {
+			return "", false
+		}
+		c = body[i]
+		switch c {
+		case '\n': // JavaScript line continuation: no character in the value.
+		case '\r':
+			if i+1 < len(body) && body[i+1] == '\n' {
+				i++
+			}
+		case '\\', '"', 'b', 'f', 'n', 'r', 't':
+			out.WriteByte('\\')
+			out.WriteByte(c)
+		case 'v':
+			out.WriteString(`\u000b`)
+		case '0':
+			if i+1 < len(body) && body[i+1] >= '0' && body[i+1] <= '9' {
+				return "", false
+			}
+			out.WriteString(`\u0000`)
+		case 'x', 'u':
+			count := 2
+			if c == 'u' {
+				count = 4
+			}
+			start, end := i+1, i+1+count
+			braced := c == 'u' && start < len(body) && body[start] == '{'
+			if braced {
+				start++
+				n := strings.IndexByte(body[start:], '}')
+				if n < 0 {
+					return "", false
+				}
+				end = start + n
+			}
+			if end > len(body) || end == start {
+				return "", false
+			}
+			n, err := strconv.ParseUint(body[start:end], 16, 32)
+			if err != nil || n > 0x10ffff {
+				return "", false
+			}
+			if c == 'u' && !braced {
+				out.WriteString(`\u` + body[start:end])
+			} else {
+				write(string(rune(n)))
+			}
+			i = end - 1
+			if braced {
+				i++
+			}
+		default:
+			if c >= '1' && c <= '9' {
+				return "", false
+			} // Don't guess legacy octal escapes.
+			r, size := utf8.DecodeRuneInString(body[i:])
+			i += size - 1
+			if r != '\u2028' && r != '\u2029' { // Unicode line continuations.
+				write(string(r)) // Identity escapes: quotes, backticks, $, /, etc.
+			}
+		}
+	}
+	out.WriteByte('"')
+	var cmd string
+	err := json.Unmarshal([]byte(out.String()), &cmd)
+	return cmd, err == nil
 }
 
 // found1 records an image of the current line for ref.
