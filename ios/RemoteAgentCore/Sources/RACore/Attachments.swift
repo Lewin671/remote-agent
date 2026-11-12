@@ -399,9 +399,9 @@ public final class ImageDraft {
     /// A save ran. An image prepared again or taken out since is no longer that save's to answer for.
     private func wrote(_ ids: [String], _ save: Int, _ failure: String?) {
         let mine = ids.filter { saved[$0] == save }
-        if let failure {
+        if failure != nil {
             for id in mine { saved[id] = nil }
-            notice = "这张图未保存到手机：\(failure)。当前仍可发送，关闭应用后可能丢失"
+            notice = "这张图未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"
         } else {
             landed.formUnion(mine)
             settle()

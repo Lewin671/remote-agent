@@ -5,7 +5,10 @@
 // (session-files.md 从相册选视频), drawn in the tray among the images.
 
 import { memo, useEffect, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { Tray, type TrayItem } from "../attach";
+import { imageFailureLine, imageProblem, ORIGINAL_IMAGE_HINT } from "../image-problem";
+import { DraftImageViewer } from "./Images";
 import { clock, machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
 import { Banner } from "../ui";
@@ -147,7 +150,7 @@ const FilePickers = memo(function FilePickers({ tray, fileSupported, media, file
   </>;
 });
 
-function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => void; onRetry: () => void }) {
+function Thumb({ item, index, count, onOpen, onRemove }: { item: TrayItem; index: number; count: number; onOpen: () => void; onRemove: () => void }) {
   const [url, setUrl] = useState<string>();
   useEffect(() => {
     if (!item.thumb) return;
@@ -156,8 +159,11 @@ function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => vo
     return () => URL.revokeObjectURL(u);
   }, [item.thumb]);
   const busy = item.state === "preparing" || item.state === "uploading";
+  const state = item.state === "failed" ? "失败：" + imageProblem(item.error ?? "").message
+    : item.state === "preparing" ? "正在处理" : item.state === "uploading" ? "正在传到电脑" : "已传到电脑";
   return (
-    <span className="pic tthumb">
+    <span className="draft-thumb">
+      <button className="pic tthumb draft-open" onClick={onOpen} aria-label={`图片 ${index}，共 ${count} 张，${state}`}>
       {url && <img src={url} alt="" />}
       {busy && item.progress > 0 && item.progress < 1 ? (
         <span className="pct">
@@ -167,12 +173,11 @@ function Thumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () => vo
         busy && <span className="ring spin" aria-label="上传中" />
       )}
       {item.state === "failed" && (
-        <button className="badge retry" onClick={onRetry} title={item.error}>
-          重试
-        </button>
+        <span className="badge" aria-hidden="true">失败</span>
       )}
-      <button className="x" onClick={onRemove} aria-label="移除这张图">
-        <X />
+      </button>
+      <button className="x" onClick={onRemove} aria-label={`移除图片 ${index}`}>
+        <span className="draft-remove-mark"><X /></span>
       </button>
     </span>
   );
@@ -239,15 +244,16 @@ function mb(n: number): string {
 
 /** The chosen images above the text: each with its upload, 原图 for this
  * message, and how many of how many. */
-export function TrayView({ tray, note }: { tray: Tray; note?: ReactNode }) {
+export function TrayView({ tray, note, remote }: { tray: Tray; note?: ReactNode; remote?: Remote }) {
   if (tray.items.length === 0 && !tray.note) return <>{note}</>;
-  return <Attachments tray={tray} note={note} />;
+  return <Attachments tray={tray} note={note} remote={remote} />;
 }
 
 /** The tray itself: it opens to its height as the first picture comes and
  * closes up as the last goes, the input moving with it. */
-function Attachments({ tray, note }: { tray: Tray; note?: ReactNode }) {
+function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; remote?: Remote }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [viewing, setViewing] = useState<number>();
   useGrow(ref);
   const images = tray.images();
   // Videos from the library sit among the images, in the order chosen;
@@ -264,7 +270,7 @@ function Attachments({ tray, note }: { tray: Tray; note?: ReactNode }) {
             i.kind === "file" ? (
               <VideoThumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
             ) : (
-              <Thumb key={i.key} item={i} onRemove={() => tray.remove(i.key)} onRetry={() => tray.retry(i.key)} />
+              <Thumb key={i.key} item={i} index={images.indexOf(i) + 1} count={images.length} onOpen={() => setViewing(images.indexOf(i))} onRemove={() => tray.remove(i.key)} />
             ),
           )}
         </div>
@@ -289,17 +295,18 @@ function Attachments({ tray, note }: { tray: Tray; note?: ReactNode }) {
           </div>
         </>
       )}
-      {tray.original && images.length > 0 && <div className="att-hint">原图保住画质；两个 CLI 仍会把过大的图缩到 2000px 左右。</div>}
+      {tray.original && images.length > 0 && <div className="att-hint">{ORIGINAL_IMAGE_HINT}</div>}
       {files.length > 0 && <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>}
       {tray.files().length > 0 && <div className="att-hint">文件原样发送，包含其中的元数据。</div>}
       {failedFiles.length > 0 && <Banner kind="err">{failedFiles[0].error}。点「重试」或移除后才能发送</Banner>}
       {failed.length > 0 && (
         <Banner kind="err">
-          {failed.length} 张图没能传到电脑：{failed[0].error}。点「重试」或移除后才能发送
+          {imageFailureLine(failed.map(i => i.error ?? ""))}
         </Banner>
       )}
       {tray.note && <Banner>{tray.note}</Banner>}
       {note}
+      {viewing !== undefined && remote && createPortal(<DraftImageViewer remote={remote} tray={tray} start={viewing} onClose={() => setViewing(undefined)} />, document.body)}
     </div>
   );
 }

@@ -118,7 +118,7 @@
 //   machine.timeout             a computer's page: the next approval timeout
 //   check.again         再测一次 of 连接检测
 //   images.clear        清理 of 附件存储
-//   images.add, images.pick, images.original, images.retry, images.remove
+//   images.add, images.pick, images.preview, images.original, images.retry, images.remove
 //                       a message box's images: the paths of debug.imagePaths, what ＋ does, 原图, 重试, 移除
 //   viewer.close, viewer.next, viewer.zoom, viewer.retry, viewer.save, viewer.share   the image viewer
 //   term.type, term.ime, term.paste             the terminal: the text of the tmp directory's `term-input`

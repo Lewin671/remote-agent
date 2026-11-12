@@ -4,10 +4,15 @@
 // URLs, each revoked as soon as nothing shows it.
 
 import { useRowExpanded } from "./RowState";
+import { create } from "@bufbuild/protobuf";
+import { ImageFormat, ImageRefSchema } from "../gen/remoteagent/v1/event_pb";
+import type { Tray, TrayItem } from "../attach";
+import { imageProblem } from "../image-problem";
 import {
   createContext,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -53,14 +58,14 @@ export function useBlobUrl(
 
 /** The URL of a blob while mounted. */
 function useObjectUrl(blob: Blob | undefined): string | undefined {
-  const [url, setUrl] = useState<string>();
+  const [shown, setShown] = useState<{ blob: Blob; url: string }>();
   useEffect(() => {
-    if (!blob) return setUrl(undefined);
+    if (!blob) return setShown(undefined);
     const u = URL.createObjectURL(blob);
-    setUrl(u);
+    setShown({ blob, url: u });
     return () => URL.revokeObjectURL(u);
   }, [blob]);
-  return url;
+  return shown?.blob === blob ? shown?.url : undefined;
 }
 
 /** A ref's embedded preview, if it is what it claims to be. */
@@ -223,10 +228,19 @@ function useDisplay(
   sid: string,
   img: SessionImage | undefined,
   attempt: number,
+  local?: TrayItem,
 ): Load {
   useRemote(remote);
   const [state, setState] = useState<Load>({ kind: "idle" });
+  const localLoad = useMemo<Load | undefined>(() => {
+    if (!local) return;
+    const p = local.prepared;
+    if (!p || p.format === "file") return { kind: local.state === "failed" ? "error" : "loading" };
+    const format = { jpeg: ImageFormat.JPEG, png: ImageFormat.PNG, webp: ImageFormat.WEBP, gif: ImageFormat.GIF }[p.format];
+    return { kind: "ok", blob: new Blob([p.bytes as Uint8Array<ArrayBuffer>], { type: mimeOf(format) }), width: p.width, height: p.height, format };
+  }, [local?.key, local?.prepared, local?.state]);
   useEffect(() => {
+    if (local) return;
     if (!img) return;
     const r = img.ref;
     if (r.sync === ImageSync.NAME_ONLY) return setState({ kind: "name-only" });
@@ -250,8 +264,8 @@ function useDisplay(
       alive = false;
     };
     // Offline, it waits for the connection and then fetches by itself.
-  }, [remote, sid, img, attempt, remote.conn === "online"]); // eslint-disable-line react-hooks/exhaustive-deps
-  return state;
+  }, [remote, sid, local ? undefined : img, attempt, remote.conn === "online", local?.prepared, local?.state]); // eslint-disable-line react-hooks/exhaustive-deps
+  return localLoad ?? state;
 }
 
 function sourceText(img: SessionImage, agent: string): string {
@@ -297,6 +311,7 @@ export function ImageViewer({
   wide,
   onClose,
   showPath = (p) => p,
+  draft,
 }: {
   remote: Remote;
   sid: string;
@@ -308,12 +323,16 @@ export function ImageViewer({
   onClose: () => void;
   // Paths as the chat writes them: relative to the session's folder.
   showPath?: (path: string) => string;
+  draft?: Tray;
 }) {
   const [i, setI] = useState(start);
   const [attempt, setAttempt] = useState(0);
   const [note, setNote] = useState("");
-  const img = images[Math.min(i, images.length - 1)];
-  const load = useDisplay(remote, sid, img, attempt);
+  const index = Math.min(i, images.length - 1);
+  const img = images[index];
+  const local = draft?.images()[index];
+  const problem = local?.state === "failed" ? imageProblem(local.error ?? "") : undefined;
+  const load = useDisplay(remote, sid, img, attempt, local);
   const full = useObjectUrl(load.kind === "ok" ? load.blob : undefined);
   const preview = usePreview(img?.ref ?? NO_REF);
   const go = (d: number) => {
@@ -376,8 +395,12 @@ export function ImageViewer({
       setNote("没能复制：" + errorText(e));
     }
   };
-  const status = loadNote(load);
+  const status = local ? "" : loadNote(load);
   const retryable = load.kind === "error";
+  const draftActions = local && draft && <>
+    {problem?.retryable && <button className="glass" onClick={() => draft.retry(local.key)}>重试</button>}
+    <button className="glass" onClick={() => { draft.remove(local.key); if (!draft.images().length) onClose(); }}>移除</button>
+  </>;
   const picture = (
     <div
       className="vimg"
@@ -413,7 +436,7 @@ export function ImageViewer({
           className={full ? "" : "soft"}
         />
       )}
-      {load.kind === "loading" && <span className="ring" aria-label="加载中" />}
+      {load.kind === "loading" && !problem && <span className="ring" aria-label="加载中" />}
       {status && (
         <button
           className="vnote"
@@ -425,7 +448,11 @@ export function ImageViewer({
       )}
     </div>
   );
-  const info = (
+  const info = local ? <>
+    <b>图片 {index + 1}，共 {images.length} 张</b>
+    {local.file instanceof File && <div>{local.file.name}</div>}
+    <div>{problem?.message ?? (local.state === "preparing" ? "正在处理" : local.state === "uploading" ? "正在传到电脑" : "待发送的图片")}</div>
+  </> : (
     <>
       {sourceText(img, agent)}
       {img.ref.path && (
@@ -452,7 +479,7 @@ export function ImageViewer({
       >
         <div className="lb-top">
           <span>
-            {i + 1} / {images.length} · {sourceText(img, agent)}
+            {index + 1} / {images.length} · {draft ? "待发送的图片" : sourceText(img, agent)}
           </span>
           <GlassButton label="关闭" onClick={onClose}>
             <X />
@@ -470,6 +497,7 @@ export function ImageViewer({
         <div className="lb-foot">
           <span className="lb-info">{info}</span>
           {note && <span className="lb-note">{note}</span>}
+          {draft ? draftActions : <>
           <button className="glass" onClick={save} disabled={!full}>
             保存
           </button>
@@ -481,6 +509,7 @@ export function ImageViewer({
             复制
           </button>
           <button className="glass" onClick={onClose}>回到消息</button>
+          </>}
         </div>
       </div>
     );
@@ -490,18 +519,20 @@ export function ImageViewer({
       role="dialog"
       aria-modal="true"
       aria-label="查看图片"
+      ref={box}
     >
       <div className="vbar">
         <GlassButton label="关闭" onClick={onClose}>
           <X />
         </GlassButton>
         <b>
-          {i + 1} / {images.length}
+          {index + 1} / {images.length}
         </b>
         <span />
       </div>
       {picture}
       <div className="vinfo">
+        {local ? info : <>
         <b>{sourceText(img, agent)}</b>
         {img.ref.path && <code>{showPath(img.ref.path)}</code>}
         <div>
@@ -510,17 +541,30 @@ export function ImageViewer({
             .join(" · ")}
         </div>
         {img.prompt && <div className="vprompt">{img.prompt}</div>}
+        </>}
         {note && <div>{note}</div>}
       </div>
       <div className="vact">
+        {draft ? draftActions : <>
         <button className="glass" onClick={save} disabled={!full}>
           保存
         </button>
         {canShare && <button className="glass" onClick={() => void share()}>分享</button>}
         <button className="glass" onClick={onClose}>回到消息</button>
+        </>}
       </div>
     </div>
   );
+}
+
+/** Draft and message pictures use the same zooming, paging and dialog. Only
+ * their source/available actions differ; drafts never fetch a server image. */
+export function DraftImageViewer({ remote, tray, start, onClose }: { remote: Remote; tray: Tray; start: number; onClose: () => void }) {
+  const images: SessionImage[] = tray.images().map((item) => ({
+    ref: create(ImageRefSchema, { imageId: item.key, path: item.file instanceof File ? item.file.name : "", width: item.prepared?.width, height: item.prepared?.height }),
+    seq: 0n, time: 0, kind: "user",
+  }));
+  return <ImageViewer remote={remote} sid="" images={images} start={start} agent="" title="待发送的图片" wide={matchMedia("(min-width: 900px)").matches} onClose={onClose} draft={tray} />;
 }
 
 async function toPng(blob: Blob): Promise<Blob> {

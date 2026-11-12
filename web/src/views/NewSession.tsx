@@ -592,6 +592,7 @@ export function NewBox({
   const trayView = (
     <TrayView
       tray={tray}
+      remote={ns.remote}
       note={
         <>
           {moved && tray.busy() && <Banner>已换到 {moved}，附件正在重新上传</Banner>}

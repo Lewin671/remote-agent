@@ -602,7 +602,7 @@ export function SessionPage({
             }}
             onInterrupt={interrupt}
             tray={tray}
-            trayView={<TrayView tray={tray} />}
+            trayView={<TrayView tray={tray} remote={remote} />}
             attach={
               <AttachButton
                 tray={tray}

@@ -280,7 +280,7 @@ final class MemoryFiles: SealedFiles, @unchecked Sendable {
         let d = draft("session:s", files)
         files.full = true
         d.attach([img("a")], max: 6)
-        #expect(d.notice == "这张图未保存到手机：磁盘已满。当前仍可发送，关闭应用后可能丢失")
+        #expect(d.notice == "这张图未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失")
         #expect(files.keys.isEmpty)
         // Room again: the next save writes the image it could not write before.
         files.full = false

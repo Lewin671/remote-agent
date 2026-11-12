@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -43,6 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import io.github.lewin671.remoteagent.core.Remote
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +120,7 @@ object ImageNotices {
 fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) {
     val p = pal
     val context = LocalContext.current
+    var viewing by remember(draft.key) { mutableStateOf<Int?>(null) }
     val notice = ImageNotices.text[draft.key]
     LaunchedEffect(notice) {
         if (notice != null) {
@@ -133,9 +140,19 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         return
     }
     Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
-        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
             for (img in thumbs) {
-                Box(Modifier.size(64.dp).clip(Radii.R14).background(p.fill)) {
+                val index = draft.pictures.indexOf(img)
+                // The 44dp remove target lives in its own cell: it reaches
+                // above this image, never into the next image's body.
+                Box(Modifier.width(70.dp).height(82.dp)) {
+                  Box(Modifier.align(Alignment.BottomStart).size(64.dp).clip(Radii.R14).background(p.fill)
+                    .clickable(role = Role.Button) {
+                        if (!img.isFile) viewing = index
+                        else if (img.state is PendingImage.State.Failed) machineId?.let { draft.upload(remote, img, it, forceFresh = true) }
+                    }.semantics {
+                        if (!img.isFile) { contentDescription = "图片 ${index + 1}，共 ${draft.pictures.size} 张"; stateDescription = imageStateWords(img) }
+                    }) {
                     if (img.isFile) VideoFrame(img)
                     else img.thumb?.let { Image(it, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
                     when (val st = img.state) {
@@ -147,18 +164,17 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                             }
                         }
                         is PendingImage.State.Failed -> Box(
-                            Modifier.fillMaxSize().background(Color(0x99000000)).clickable {
-                                if (img.isFile) machineId?.let { draft.upload(remote, img, it, forceFresh = true) }
-                                else draft.retry(context, img, remote) { machineId }
-                            },
+                            Modifier.fillMaxSize().background(Color(0x99000000)),
                             contentAlignment = Alignment.BottomCenter,
-                        ) { Text("重试", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp)) }
+                        ) { Text(if (img.isFile) "重试" else "失败", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {}) }
                         PendingImage.State.Ready -> {}
                     }
-                    // 18 dp to see, 30 to tap within the thumbnail.
-                    Box(Modifier.align(Alignment.TopEnd).size(30.dp).clickable { draft.remove(img) }, contentAlignment = Alignment.TopEnd) {
-                        Box(Modifier.padding(4.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片")
+                  }
+                    Box(Modifier.align(Alignment.TopStart).offset(x = 24.dp).size(44.dp)
+                        .clickable(role = Role.Button) { draft.remove(img) }
+                        .semantics { contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片 ${index + 1}" }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.offset(x = 7.dp, y = 5.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = null)
                         }
                     }
                 }
@@ -172,12 +188,14 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
             Spacer(Modifier.weight(1f))
             Text("${draft.pictures.size} / $max", style = T.s13, color = p.ink2)
         }
-        val failed = thumbs.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }.firstOrNull()
+        val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
-        val line = notice ?: draft.notice.takeIf { it.isNotEmpty() } ?: failed?.let { "有图没能传到电脑：$it，点按重试或移除" }
+        val line = imageFailureLine(failed).takeIf { it.isNotEmpty() } ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
         if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+        if (draft.original && draft.pictures.isNotEmpty()) Text(ORIGINAL_IMAGE_HINT, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
     }
+    viewing?.let { DraftImageViewer(draft, remote, machineId, it) { viewing = null } }
 }
 
 /** Whether a draft's file is a video from the library, which sits among the images. */

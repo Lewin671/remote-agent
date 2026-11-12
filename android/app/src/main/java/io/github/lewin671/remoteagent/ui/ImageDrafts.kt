@@ -351,7 +351,7 @@ class ImageDraft(
             saveOrder(files, key, now, original)
             synchronized(marks) { for ((img, turn) in fresh) if ((turns[img.id] ?: 0) == turn) saved += img.id }
         } }.onFailure {
-            notice = "附件未保存到手机：${errorText(it)}。当前仍可发送，关闭应用后可能丢失"
+            notice = "附件未保存到手机，请检查可用空间。当前仍可发送，关闭应用后可能丢失"
             android.util.Log.w("remote-agent", "pending images not kept: ${it.javaClass.simpleName}")
         }
         scope?.launch { settle() } ?: settle()
@@ -659,7 +659,7 @@ class ImageDraft(
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (account === AccountMemory.token) notice = "没能恢复待发图片：${errorText(e)}"
+                if (account === AccountMemory.token) notice = "待发图片没能恢复，请重新打开应用后重试"
             } finally {
                 restoring = false
             }

@@ -22,6 +22,7 @@ struct ImageStrip: View {
     var machine: MachineView? = nil
 
     @Environment(\.scenePhase) private var scenePhase
+    @State private var viewing: DraftImageSelection?
 
     @ScaledMetric(relativeTo: .caption) private var scaledSide: CGFloat = 56
 
@@ -44,17 +45,18 @@ struct ImageStrip: View {
             } else {
                 tray(draft)
                 meta(draft)
-                let failed = draft.photos.lazy.compactMap { img -> String? in
+                let failed = draft.photos.compactMap { img -> String? in
                     if case .failed(let why) = img.state { return why }
                     return nil
-                }.first
-                if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice)
-                    ?? failed.map({ "有图没能传到电脑：\($0)，点按重试或移除" })
+                }
+                let failures = imageFailureLine(failed)
+                if let text = failures.isEmpty ? notice ?? (draft.notice.isEmpty ? nil : draft.notice) : failures
                 {
                     line(text, DS.orangeInk)
                 }
                 let notes = draft.photos.compactMap { $0.processed?.note }.filter { !$0.isEmpty }
                 if draft.original, !notes.isEmpty { line(unique(notes).joined(separator: "；"), DS.ink2) }
+                if draft.original { line(originalImageHint, DS.ink2) }
             }
             if !draft.documents.isEmpty {
                 VStack(alignment: .leading, spacing: 6) {
@@ -72,6 +74,8 @@ struct ImageStrip: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .modifier(ImagePickerHost(center: center, key: key, max: max, machine: machine, blocked: blocked))
+        .fullScreenCover(item: $viewing) { pick in DraftImageViewer(center: center, key: key, start: pick.index) { viewing = nil } }
+        .debugSignal("images.preview") { if !draft.photos.isEmpty { viewing = DraftImageSelection(index: 0) } }
         .onChange(of: Aim(machine: machineId, blocked: blocked != nil, count: draft.images.count, filesSupported: fileSupported(machine), fileLimit: fileLimit(for: machine), byteLimit: fileByteLimit(for: machine)), initial: true) { _, aim in
             center.aim(key, at: aim.machine, blocked: aim.blocked, machine: machine)
         }
@@ -101,20 +105,19 @@ struct ImageStrip: View {
         // A thumbnail keeps a size a finger can hit and grows a little with the text, not without end.
         let side = min(scaledSide, 80)
         return ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
+            HStack(spacing: 0) {
                 ForEach(Array(draft.photos.enumerated()), id: \.element.id) { i, img in
                     DraftThumb(
                         image: img, thumb: center.thumb(img), side: side, index: i + 1, count: draft.photos.count,
                         showProgress: draft.original,
-                        onRetry: { center.retry(key, img) },
+                        onOpen: { viewing = DraftImageSelection(index: i) },
                         onRemove: {
                             Haptics.selection()
                             center.remove(key, img)
                         })
                 }
             }
-            // Room for the remove buttons, which reach 4 pt past their pictures.
-            .padding(.top, 6).padding(.horizontal, 6).padding(.bottom, 8)
+            .padding(.horizontal, 6).padding(.bottom, 8)
         }
         .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
     }
@@ -169,7 +172,7 @@ private struct DraftThumb: View {
     let count: Int
     /// The bar under the picture: for originals, whose upload takes a while.
     let showProgress: Bool
-    let onRetry: () -> Void
+    let onOpen: () -> Void
     let onRemove: () -> Void
 
     private var failed: Bool {
@@ -177,46 +180,33 @@ private struct DraftThumb: View {
         return false
     }
 
-    private var stateWords: String {
-        switch image.state {
-        case .processing: "正在处理"
-        case .uploading(let progress): "正在传到电脑，\(Int((progress * 100).rounded()))%"
-        case .ready: "已传到电脑"
-        case .failed(let why): "没能传到电脑：\(why)"
-        }
-    }
-
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
-        DS.fill
-            .overlay { if let thumb { Image(uiImage: thumb).resizable().scaledToFill() } }
-            .overlay { state }
-            .frame(width: side, height: side)
-            .clipShape(shape)
-            .overlay { shape.strokeBorder(Color.black.opacity(0.1), lineWidth: 1) }
-            .contentShape(Rectangle())
-            .onTapGesture { if failed { onRetry() } }
-            .overlay(alignment: .topTrailing) {
-                // 18 pt to see, 44 pt to tap.
-                Button(action: onRemove) {
-                    SymbolImage("xmark", size: 12, color: Color.white)
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        .frame(width: 18, height: 18)
-                        .background(Color.black.opacity(0.6), in: Circle())
-                        .padding(7)
-                        .frame(width: DS.minHit, height: DS.minHit, alignment: .topTrailing)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(PressStyle())
-                .offset(x: 4, y: -4)
+        ZStack(alignment: .topLeading) {
+            Button(action: onOpen) {
+                DS.fill
+                    .overlay { if let thumb { Image(uiImage: thumb).resizable().scaledToFill() } }
+                    .overlay { state }
+                    .frame(width: side, height: side).clipShape(shape)
+                    .overlay { shape.strokeBorder(Color.black.opacity(0.1), lineWidth: 1) }
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain).padding(.top, 18)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("图片 \(index)，共 \(count) 张")
-            .accessibilityValue(stateWords)
-            .accessibilityAddTraits(failed ? .isButton : [])
-            .accessibilityHint(failed ? "重试" : "")
-            .accessibilityAction { if failed { onRetry() } }
-            .accessibilityAction(named: "移除图片", onRemove)
+            .accessibilityValue(draftImageState(image))
+            .accessibilityHint(failed ? "查看原因和可用操作" : "查看大图")
+            .accessibilityAction(named: "移除图片 \(index)", onRemove)
+            Button(action: onRemove) {
+                SymbolImage("xmark", size: 12, color: Color.white)
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    .frame(width: 18, height: 18).background(Color.black.opacity(0.6), in: Circle())
+                    .offset(x: 5, y: 9).frame(width: DS.minHit, height: DS.minHit).contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle()).offset(x: side - 40)
+            .accessibilityLabel("移除图片 \(index)")
+        }
+        .frame(width: side + 6, height: side + 18, alignment: .topLeading)
     }
 
     @ViewBuilder private var state: some View {
@@ -240,7 +230,7 @@ private struct DraftThumb: View {
             Color.black.opacity(0.6)
             VStack(spacing: 0) {
                 Spacer(minLength: 0)
-                Text("重试").font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
+                Text("失败").font(.caption2).ink(Color.white).lineLimit(1).minimumScaleFactor(0.7).padding(.bottom, 4)
             }
         case .ready:
             EmptyView()

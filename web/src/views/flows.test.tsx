@@ -2218,9 +2218,9 @@ it("revokes every blob: URL made for a picture once nothing shows it", async () 
 });
 
 describe("sending images (v2)", () => {
-  function setup(fail: (name: string) => boolean) {
+  function setup(fail: (name: string) => boolean, prepare?: DemoRemote["prepareImage"]) {
     const r = demo();
-    r.prepareImage = async (f) => Object.assign({ bytes: new Uint8Array(4), format: "png" as const, width: 1, height: 1 }, { name: (f as File).name });
+    r.prepareImage = prepare ?? (async (f) => Object.assign({ bytes: new Uint8Array(4), format: "png" as const, width: 1, height: 1 }, { name: (f as File).name }));
     r.uploadImage = async (_m, p) => {
       const name = (p as { name?: string }).name ?? "";
       if (fail(name)) throw new CommandError("unavailable", "连接超时");
@@ -2246,7 +2246,7 @@ describe("sending images (v2)", () => {
   it("never sends a message with fewer images than shown", async () => {
     const t = setup((n) => n === "b.png");
     await t.pick("a.png", "b.png");
-    await vi.waitFor(() => expect(host.textContent).toContain("1 张图没能传到电脑"));
+    await vi.waitFor(() => expect(host.textContent).toContain("图片没能传到电脑，连接恢复后重试"));
     expect(sendButton()?.disabled).toBe(true);
     // Removing the failed one lets the rest go, with only their IDs.
     await click(host.querySelectorAll<HTMLButtonElement>(".att-tray .x")[1]);
@@ -2263,6 +2263,41 @@ describe("sending images (v2)", () => {
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
     expect(host.textContent).toContain("一条消息最多 6 张，多选的 2 张没有加入");
     expect(host.querySelector(".cm-plus")!.classList.contains("off")).toBe(true);
+  });
+
+  it("opens each failed picture in the shared viewer and offers only useful actions", async () => {
+    const t = setup(() => false, async f => {
+      if ((f as File).name === "bad.heic") throw new Error("unsupported image format");
+      if ((f as File).name === "large.png") throw new Error("图片尺寸太大");
+      return { bytes: new Uint8Array(4), format: "png", width: 900, height: 600 };
+    });
+    await t.pick("ok.png", "bad.heic", "large.png");
+    await vi.waitFor(() => expect(host.textContent).toContain("2 张图没加上，点图片看原因"));
+    await click(host.querySelectorAll<HTMLButtonElement>(".draft-open")[1]);
+    const dialog = () => document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
+    expect(button("重试", dialog())).toBeFalsy();
+    act(() => dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
+    expect(dialog().textContent).toContain("图片尺寸太大，缩小后再试");
+    await click(button("移除", dialog()));
+    expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
+    expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
+    await click(dialog().querySelector<HTMLElement>('button[aria-label="关闭"]')!);
+  });
+
+  it("retries a recoverable upload from its details without dropping its source", async () => {
+    let offline = true;
+    const t = setup(() => offline);
+    await t.pick("photo.png");
+    await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
+    await click(host.querySelector<HTMLElement>(".draft-open")!);
+    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    expect(button("重试", dialog)).toBeTruthy();
+    offline = false;
+    await click(button("重试", dialog));
+    await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
+    expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
+    await click(dialog.querySelector<HTMLElement>('button[aria-label="关闭"]')!);
   });
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {

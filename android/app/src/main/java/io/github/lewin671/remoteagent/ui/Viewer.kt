@@ -116,16 +116,31 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
             n.coerceIn(0, (all.size - 1).coerceAtLeast(0))
         }
     BackHandler { nav.back() }
+    PagedImageViewer(all.size, start, nav.back, io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
+        picture = { page -> ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE) },
+        info = { page ->
+            val cur = all[page]
+            val agent = agentName(s?.agent() ?: DEFAULT_AGENT)
+            val from = when (cur.ref.source) {
+                ImageSource.IMAGE_SOURCE_TOOL -> "$agent 查看的图片"
+                ImageSource.IMAGE_SOURCE_GENERATED -> "$agent 生成的图片"
+                else -> "用户粘贴"
+            }
+            Text(from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "", color = Color(0xFFD5DADE), style = T.s13, fontFamily = MonoFamily, maxLines = 2)
+            val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
+            val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
+            Text(listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it) }).joinToString(" · "), color = Color(0xFFB9BFC6), style = T.s13)
+            ViewerActions(remote, sid, cur)
+        })
+}
+
+/** The same full-screen paging/close controls for message and draft images. */
+@Composable
+internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty: String = "没有图片", picture: @Composable (Int) -> Unit, info: @Composable (Int) -> Unit) {
+    BackHandler { onClose() }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        if (all.isEmpty()) {
-            Text(
-                io.github.lewin671.remoteagent.core.lookupNote(lookup) ?: "读取中…",
-                Modifier.align(Alignment.Center),
-                color = Color.White,
-            )
-            return@Box
-        }
-        val pager = rememberPagerState(initialPage = start) { all.size }
+        if (count == 0) { Text(empty, Modifier.align(Alignment.Center), color = Color.White); return@Box }
+        val pager = rememberPagerState(initialPage = start.coerceIn(0, count - 1)) { count }
         var drag by remember { mutableFloatStateOf(0f) }
         HorizontalPager(
             pager,
@@ -134,17 +149,16 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 .draggable(
                     rememberDraggableState { drag = (drag + it).coerceAtLeast(0f) },
                     Orientation.Vertical,
-                    onDragStopped = { if (drag > 300f) nav.back() else drag = 0f },
+                    onDragStopped = { if (drag > 300f) onClose() else drag = 0f },
                 ),
         ) { page ->
-            ViewerPage(remote, sid, all[page], state.conn == ConnState.ONLINE)
+            picture(page)
         }
-        val cur = all[pager.currentPage]
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassButton(Lucide.X, "关闭", nav.back, dark = true)
+            GlassButton(Lucide.X, "关闭", onClose, dark = true)
             Spacer(Modifier.width(12.dp))
             Text(
-                "${pager.currentPage + 1} / ${all.size}",
+                "${pager.currentPage.coerceAtMost(count - 1) + 1} / $count",
                 color = Color.White,
                 style = T.s15b,
             )
@@ -155,30 +169,7 @@ fun ImageViewer(sid: String, seq: Long, index: Int) {
                 .background(Color(0xAA000000))
                 .padding(horizontal = 16.dp, vertical = 10.dp),
         ) {
-            val agent =
-                agentName(s?.agent() ?: DEFAULT_AGENT)
-            val from =
-                when (cur.ref.source) {
-                    ImageSource.IMAGE_SOURCE_TOOL -> "$agent 查看的图片"
-                    ImageSource.IMAGE_SOURCE_GENERATED -> "$agent 生成的图片"
-                    else -> "用户粘贴"
-                }
-            Text(
-                from + if (cur.ref.path.isNotEmpty()) "  " + cur.ref.path else "",
-                color = Color(0xFFD5DADE),
-                style = T.s13,
-                fontFamily = MonoFamily,
-                maxLines = 2,
-            )
-            val w = if (cur.ref.originalWidth > 0) cur.ref.originalWidth else cur.ref.width
-            val h = if (cur.ref.originalHeight > 0) cur.ref.originalHeight else cur.ref.height
-            Text(
-                listOfNotNull(if (w > 0) "$w × $h" else null, s?.let { titleOf(it) })
-                    .joinToString(" · "),
-                color = Color(0xFFB9BFC6),
-                style = T.s13,
-            )
-            ViewerActions(remote, sid, cur)
+            info(pager.currentPage.coerceAtMost(count - 1))
         }
     }
 }
@@ -198,27 +189,11 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
     LaunchedEffect(ref.imageId, attempt, online) {
         big = load(remote, sid, img, online)
     }
-    var scale by remember { mutableFloatStateOf(1f) }
-    var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-    val zoom = rememberTransformableState { z, pan, _ ->
-        scale = (scale * z).coerceIn(1f, 6f)
-        offset = if (scale == 1f) androidx.compose.ui.geometry.Offset.Zero else offset + pan
-    }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val b = big
         val bmp = (b as? Big.Ready)?.bitmap ?: preview
         if (bmp != null)
-            Image(
-                bmp,
-                ref.path.ifEmpty { "图片" },
-                Modifier.fillMaxSize().transformable(zoom, canPan = { scale > 1f }).graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
-                    translationX = offset.x
-                    translationY = offset.y
-                },
-                contentScale = ContentScale.Fit,
-            )
+            ViewerBitmap(bmp, ref.path.ifEmpty { "图片" })
         else Text(fileName(ref.path), color = Color.White)
         val note =
             when (b) {
@@ -246,6 +221,19 @@ private fun ViewerPage(remote: Remote, sid: String, img: SessionImage, online: B
                 style = T.s15,
             )
     }
+}
+
+@Composable
+internal fun ViewerBitmap(bitmap: ImageBitmap, label: String) {
+    var scale by remember(bitmap) { mutableFloatStateOf(1f) }
+    var offset by remember(bitmap) { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val zoom = rememberTransformableState { z, pan, _ ->
+        scale = (scale * z).coerceIn(1f, 6f)
+        offset = if (scale == 1f) androidx.compose.ui.geometry.Offset.Zero else offset + pan
+    }
+    Image(bitmap, label, Modifier.fillMaxSize().transformable(zoom, canPan = { scale > 1f }).graphicsLayer {
+        scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y
+    }, contentScale = ContentScale.Fit)
 }
 
 private suspend fun load(remote: Remote, sid: String, img: SessionImage, online: Boolean): Big {

@@ -15,14 +15,11 @@ struct ImageViewerScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(Navigator.self) private var nav
     @Environment(AccountContext.self) private var context
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var all: [SessionImage] = []
     /// The page shown; nil until the session's images are known.
     @State private var page: Int?
     @State private var finder = SessionFinder()
-    /// How far the picture is dragged down to close.
-    @State private var drag: CGFloat = 0
     @State private var message = ""
     @State private var saving = false
     @State private var sharing: LeavingImage?
@@ -33,38 +30,13 @@ struct ImageViewerScreen: View {
         let s = state.sessions[session]
         let loader = ViewerLoader(center: ImageCenter.of(context.remote), session: session)
         let shown = page.flatMap { all.indices.contains($0) ? all[$0] : nil }
-        // The page behind shows through as the picture is dragged away.
-        let fade = 1 - min(drag / 300, 1)
-        ZStack {
-            Color.black.opacity(0.4 + 0.6 * fade).ignoresSafeArea()
-            if let page, !all.isEmpty {
-                TabView(selection: Binding(get: { page }, set: { self.page = $0 })) {
-                    ForEach(Array(all.enumerated()), id: \.offset) { i, image in
-                        ViewerPage(
-                            loader: loader, image: image, online: state.conn == .online, current: i == page, pokes: pokes,
-                            onDrag: { y in
-                                if y > 0 || reduceMotion { drag = y } else { withAnimation(.easeOut(duration: 0.2)) { drag = 0 } }
-                            },
-                            onClose: { nav.back() }
-                        )
-                        .tag(i)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                .ignoresSafeArea()
-                .offset(y: drag)
-            } else {
-                Text(s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…").font(.body).ink(ViewerInk.text)
-                    .multilineTextAlignment(.center).padding(24)
-            }
-        }
-        .overlay(alignment: .top) { bar.opacity(fade) }
-        .overlay(alignment: .bottom) {
-            if let shown { info(shown, session: s, loader: loader).opacity(fade) }
-        }
-        .toolbar(.hidden, for: .navigationBar)
-        .statusBarHidden()
-        .accessibilityAction(.escape) { nav.back() }
+        PagedImageViewer(count: page == nil ? 0 : all.count,
+            selection: Binding(get: { page ?? 0 }, set: { page = $0 }),
+            empty: s == nil ? lookupNote(finder.lookup) ?? "读取中…" : "读取中…", onClose: { nav.back() },
+            picture: { i, drag in
+                ViewerPage(loader: loader, image: all[i], online: state.conn == .online, current: i == page, pokes: pokes,
+                    onDrag: { drag.wrappedValue = $0 }, onClose: { nav.back() })
+            }, info: { i in info(all[i], session: s, loader: loader) })
         .sheet(item: $sharing) { picture in
             ShareSheet(picture: picture).presentationDetents([.medium, .large])
         }
@@ -107,29 +79,6 @@ struct ImageViewerScreen: View {
         .onChange(of: pokes.next) { if let page, page + 1 < all.count { self.page = page + 1 } }
         .onChange(of: pokes.save) { if let shown { save(shown, loader) } }
         .onChange(of: pokes.share) { if let shown { sharing = ImageLeaving.picture(shown.ref, loader: loader) } }
-    }
-
-    private var bar: some View {
-        ZStack {
-            if let page, !all.isEmpty {
-                Text("\(page + 1) / \(all.count)").font(.body).ink(ViewerInk.text)
-                    .accessibilityLabel("第 \(page + 1) 张，共 \(all.count) 张")
-            }
-            HStack {
-                Button {
-                    nav.back()
-                } label: {
-                    SymbolImage("xmark", size: 22, color: ViewerInk.text).hitTarget()
-                }
-                .buttonStyle(PressStyle())
-                .accessibilityLabel("关闭")
-                Spacer()
-            }
-        }
-        // The bar has one line's room; the caption below says the rest at any size.
-        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
-        .frame(height: DS.minHit)
-        .padding(.horizontal, 4)
     }
 
     private func info(_ image: SessionImage, session s: SessionView?, loader: ViewerLoader) -> some View {
