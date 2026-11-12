@@ -28,15 +28,11 @@ struct CodeBlockView: View, Equatable {
     let text: String
     let look: Look
 
-    private enum Copied {
-        case no, ok, failed
-    }
 
     private var theme: MarkdownTheme { look.theme }
     private var scale: CGFloat { look.scale }
     // Kept with the view, which is identified by the block's place in the reply: a block stays open while the reply grows.
     @State private var open = false
-    @State private var copied = Copied.no
 
     nonisolated static func == (a: CodeBlockView, b: CodeBlockView) -> Bool {
         a.lang == b.lang && a.text == b.text && a.look == b.look
@@ -80,7 +76,7 @@ struct CodeBlockView: View, Equatable {
         .background(theme.soft)
         .clipShape(RoundedRectangle(cornerRadius: 6))
         // Over the corner without adding to the block's height: one line of code is lower than the button.
-        .overlay(alignment: .topTrailing) { copyButton }
+        .overlay(alignment: .topTrailing) { CodeCopyButton(text: text, theme: theme) }
     }
 
     private func fold(_ count: Int) -> some View {
@@ -105,8 +101,21 @@ struct CodeBlockView: View, Equatable {
         .buttonStyle(.plain)
     }
 
-    /// Copies the block; the icon says for a moment how it went.
-    private var copyButton: some View {
+}
+
+/// The same copy control for reply code and expanded tool commands.
+public struct CodeCopyButton: View {
+    private let text: String
+    private let theme: MarkdownTheme
+    private enum Copied { case no, ok, failed }
+    @State private var copied = Copied.no
+
+    public init(text: String, theme: MarkdownTheme) {
+        self.text = text
+        self.theme = theme
+    }
+
+    public var body: some View {
         Button {
             copied = copyToClipboard(text) ? .ok : .failed
         } label: {

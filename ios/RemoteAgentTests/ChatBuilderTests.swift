@@ -387,3 +387,21 @@ private func called(_ id: String) -> PBEvent.OneOf_Kind {
         #expect(changed.rows.last?.item == .unsent(.init(key: "uq1", requestId: "q1", text: "改过的")))
     }
 }
+
+@Suite struct ToolCommandTextTests {
+    @Test func originalCommandsAndPaths() throws {
+        let text = "cat <<'EOF'\n/work/file\nEOF\n"
+        for key in ["command", "CommandLine", "cmd"] {
+            let input = String(decoding: try JSONSerialization.data(withJSONObject: [key: text]), as: UTF8.self)
+            #expect(commandOf(kind: .command, title: "preview", input: input) == text)
+        }
+        #expect(commandOf(kind: .command, title: "exec", input: "") == "exec")
+        #expect(commandOf(kind: .command, title: "\"printf\"", input: "\"printf\"") == "\"printf\"")
+        #expect(commandOf(kind: .command, title: "original", input: "{}") == "original")
+        #expect(commandOf(kind: .command, title: "preview", input: "\"printf\"") == "\"printf\"")
+        #expect(commandOf(kind: .command, title: "preview", input: "true") == "true")
+        #expect(commandOf(kind: .command, title: "preview", input: text) == text)
+        #expect(commandOf(kind: .fileChange, title: "/work/full/path", input: "{}") == "/work/full/path")
+    }
+
+}

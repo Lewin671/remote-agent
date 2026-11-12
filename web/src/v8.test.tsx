@@ -11,7 +11,8 @@ import { Home, Sidebar } from "./views/Home";
 import { SessionPage } from "./views/Session";
 import { useNewSession } from "./views/NewSession";
 import { switchMachine } from "./model";
-import { ActiveTool, BackgroundTool, ToolGroup, ToolRow } from "./views/Tools";
+import { RowState } from "./views/RowState";
+import { ActiveTool, BackgroundTool, ToolGroup, ToolRow, commandOf } from "./views/Tools";
 import { PendingBubbles } from "./views/Queue";
 import type { CommandKind } from "./remote";
 import { CommandResultSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -214,4 +215,64 @@ it.each([InputStatus.FAILED, InputStatus.NEEDS_TERMINAL])("does not claim delive
   expect(host.textContent).toContain("没发出去");
   expect(host.textContent).not.toContain("已送达电脑");
   expect(host.querySelectorAll(".me")).toHaveLength(1);
+});
+
+it("expands original tool text, collapses it and copies the entire command", async () => {
+  const text = "cat <<'EOF'\n" + "a very long line\n".repeat(20) + "EOF\n";
+  const copy = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: copy } });
+  const t = create(ToolCallSchema, { callId: "one", kind: ToolKind.COMMAND, title: "short preview", input: JSON.stringify({ CommandLine: text }) });
+  mount(<ToolRow t={t} short={{ text: () => "shortened", path: (x) => x }} />);
+  const row = host.querySelector<HTMLElement>('[role="button"]')!;
+  expect(row.getAttribute("aria-expanded")).toBe("false");
+  expect(host.querySelector(".tool-command")).toBeNull();
+  act(() => row.click());
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+  expect(host.querySelector(".tool-command code")?.textContent).toBe(text);
+  await act(async () => host.querySelector<HTMLButtonElement>(".cp")!.click());
+  expect(copy).toHaveBeenCalledWith(text);
+  expect(row.getAttribute("aria-expanded")).toBe("true");
+  expect(host.querySelector(".cp")?.getAttribute("aria-label")).toBe("已复制");
+  act(() => row.click());
+  expect(host.querySelector(".tool-command")).toBeNull();
+});
+
+it("keeps independent group commands expanded through viewport remounts", () => {
+  const calls = ["one", "two"].map((callId) => create(ToolCallSchema, { callId, kind: ToolKind.COMMAND, title: `echo /work/${callId}\nsecond line` }));
+  const states = new Map<string, boolean>();
+  const view = () => <RowState id="group" states={states}><ToolGroup calls={calls} short={{ text: () => "short", path: (x) => x }} /></RowState>;
+  mount(view());
+  act(() => host.querySelector<HTMLButtonElement>(".tgrp")!.click());
+  act(() => host.querySelector<HTMLElement>('.grpbody [role="button"]')!.click());
+  expect(host.querySelectorAll(".tool-command")).toHaveLength(1);
+  expect(host.querySelector(".tool-command code")?.textContent).toBe(calls[0]!.title);
+  act(() => root!.render(null));
+  act(() => root!.render(view()));
+  expect(host.querySelectorAll(".tool-command")).toHaveLength(1);
+  expect(host.querySelectorAll('[aria-expanded="false"]')).toHaveLength(1);
+});
+
+it("does not collapse while selecting, and expands full paths and running/background rows", () => {
+  const r = demo();
+  const t = create(ToolCallSchema, { callId: "file", kind: ToolKind.FILE_CHANGE, title: "/work/long/path/file.txt", input: '{"file_path":"/work/long/path/file.txt"}' });
+  const tool = { seq: 1n, callId: "run", kind: ToolKind.COMMAND, title: "exec", input: '{"command":"sleep 20\\necho done"}', inputDigest: "", itemType: "exec", since: Date.now() };
+  mount(<><ToolRow t={t} short={{ text: (x) => x, path: () => "file.txt" }} /><ActiveTool tool={tool} d={derive([])} remote={r} /><BackgroundTool call={create(ToolCallSchema, { ...t, callId: "background", title: "exec", kind: ToolKind.COMMAND, input: "" })} short={{ text: (x) => x, path: (x) => x }} remote={r} /></>);
+  const rows = host.querySelectorAll<HTMLElement>('[role="button"]');
+  for (const row of rows) act(() => row.click());
+  expect([...host.querySelectorAll(".tool-command code")].map((x) => x.textContent)).toEqual([t.title, "sleep 20\necho done", "exec"]);
+  const selection = vi.spyOn(window, "getSelection").mockReturnValue({ toString: () => "selected" } as Selection);
+  act(() => rows[0]!.click());
+  expect(rows[0]!.getAttribute("aria-expanded")).toBe("true");
+  act(() => rows[0]!.dispatchEvent(new Event("pointerdown", { bubbles: true })));
+  selection.mockReturnValue({ toString: () => "" } as Selection);
+  act(() => rows[0]!.click());
+  expect(rows[0]!.getAttribute("aria-expanded")).toBe("true");
+  selection.mockRestore();
+});
+
+it("keeps raw shell quoting and falls back to the original title for unknown structured input", () => {
+  expect(commandOf({ kind: ToolKind.COMMAND, title: '\"printf\"', input: '\"printf\"' })).toBe('\"printf\"');
+  expect(commandOf({ kind: ToolKind.COMMAND, title: "original", input: "{}" })).toBe("original");
+  expect(commandOf({ kind: ToolKind.COMMAND, title: "preview", input: '"printf"' })).toBe('"printf"');
+  expect(commandOf({ kind: ToolKind.COMMAND, title: "preview", input: "true" })).toBe("true");
 });

@@ -55,6 +55,52 @@ import io.github.lewin671.remoteagent.proto.Agent
 import io.github.lewin671.remoteagent.proto.Event
 import io.github.lewin671.remoteagent.proto.InterruptRequest
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.unit.sp
+import io.github.lewin671.remoteagent.proto.ToolKind
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+
+/** Original input, never the shortened preview or just its first line. */
+fun commandOf(kind: ToolKind, title: String, input: String): String {
+    if (kind == ToolKind.TOOL_KIND_FILE_CHANGE || input.isEmpty() || input == title) return title
+    val value = runCatching { Json.parseToJsonElement(input) }.getOrElse { return input }
+    if (value !is JsonObject) return input
+    for (key in listOf("command", "CommandLine", "cmd")) {
+        val command = value[key] as? JsonPrimitive
+        if (command?.isString == true) return command.content
+    }
+    return title
+}
+
+/** Saveable with its chat row, including independent calls inside a group. */
+@Composable
+fun ExpandableTool(rowKey: String, text: String, modifier: Modifier = Modifier, textColor: Color? = null, expanded: Boolean? = null, onToggle: (() -> Unit)? = null, preview: @Composable () -> Unit) {
+    var saved by rememberSaveable(rowKey) { mutableStateOf(false) }
+    val open = expanded ?: saved
+    val p = pal
+    val maxHeight = with(LocalDensity.current) { (19.5.sp.toPx() * 12).toDp() }
+    Column(modifier.animateContentSize(Motion.enter(Motion.BASE))
+        .semantics { stateDescription = if (open) "已展开" else "已折叠" }
+        .clickable(role = Role.Button) { if (onToggle != null) onToggle() else saved = !saved }) {
+        preview()
+        if (open) Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(p.gbg)) {
+            SelectionContainer {
+                Text(text, style = T.mono13.copy(lineHeight = 19.5.sp), color = textColor ?: p.ink2,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp).heightIn(max = maxHeight)
+                        .verticalScroll(rememberScrollState()).padding(start = 14.dp, end = 44.dp))
+            }
+            Box(Modifier.align(Alignment.TopEnd)) { CopyButton(text) }
+        }
+    }
+}
+
 /** What the chat's tool rows need besides the row itself. */
 class ChatContext(
     val sid: String,
@@ -108,20 +154,24 @@ fun RunningToolRow(item: ChatItem.Running, cwd: String, home: String) {
     val tool = item.tool
     val state = toolState(tool, item.unfinished, ctx.derived, ctx.frozenAt)
     val title = toolTitle(tool, cwd, home).lines().first()
-    val side = Modifier.padding(horizontal = ChatSide)
     // The turn completed without this tool's result: say only that.
-    if (item.unfinished && tool.seq in ctx.derived.noResult) return NowRow(title, "等待同步", spin = false)
-    if (item.unfinished) return ToolLine(Lucide.LoaderCircle, p.ink3, title, side, meta = "后台运行")
-    val timer = toolTimer(tool, state, t, ctx.frozenAt)
-    if (state == ToolState.SYNC) NowRow(title, timer.ifEmpty { "等待同步" }, spin = false)
-    else NowRow(title, if (state == ToolState.APPROVAL) state.text else timer, spin = true)
+    ExpandableTool(item.key, commandOf(tool.kind, tool.title, tool.input), Modifier.padding(horizontal = ChatSide),
+        textColor = if (item.unfinished && tool.seq !in ctx.derived.noResult) p.ink2 else p.ink) {
+        if (item.unfinished && tool.seq in ctx.derived.noResult) NowRow(title, "等待同步", spin = false)
+        else if (item.unfinished) ToolLine(Lucide.LoaderCircle, p.ink3, title, meta = "后台运行")
+        else {
+            val timer = toolTimer(tool, state, t, ctx.frozenAt)
+            if (state == ToolState.SYNC) NowRow(title, timer.ifEmpty { "等待同步" }, spin = false)
+            else NowRow(title, if (state == ToolState.APPROVAL) state.text else timer, spin = true)
+        }
+    }
 }
 
 @Composable
 private fun NowRow(title: String, meta: String, spin: Boolean) {
     val p = pal
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = ChatSide, vertical = 6.dp).clip(Radii.R18).background(p.gbg).padding(horizontal = 14.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().padding(vertical = 6.dp).clip(Radii.R18).background(p.gbg).padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {

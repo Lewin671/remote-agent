@@ -1018,7 +1018,7 @@ private fun copyText(context: Context, text: String): Boolean = try {
 
 /** Copies a code block; the icon says for a moment how it went. */
 @Composable
-private fun CopyButton(text: String) {
+internal fun CopyButton(text: String) {
     val p = pal
     val context = LocalContext.current
     var state by remember { mutableStateOf(Copied.NO) }

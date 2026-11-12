@@ -16,6 +16,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RunningToolsTest {
+    @Test
+    fun expandedTextUsesOriginalInputAndFullPaths() {
+        val kind = ToolKind.TOOL_KIND_COMMAND
+        for (key in listOf("command", "CommandLine", "cmd")) {
+            assertEquals("cat <<'EOF'\n/work/file\nEOF\n", commandOf(kind, "preview", "{\"$key\":\"cat <<'EOF'\\n/work/file\\nEOF\\n\"}"))
+        }
+        assertEquals("exec", commandOf(kind, "exec", ""))
+        assertEquals("\"printf\"", commandOf(kind, "\"printf\"", "\"printf\""))
+        assertEquals("original", commandOf(kind, "original", "{}"))
+        assertEquals("\"printf\"", commandOf(kind, "preview", "\"printf\""))
+        assertEquals("true", commandOf(kind, "preview", "true"))
+        assertEquals("echo /work/file\nnext", commandOf(kind, "preview", "echo /work/file\nnext"))
+        assertEquals("/work/full/path", commandOf(ToolKind.TOOL_KIND_FILE_CHANGE, "/work/full/path", "{}"))
+    }
+
     private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
     private fun start(seq: Long, title: String, id: String, input: String = "") =
         ev(seq, Event.newBuilder().setToolStarted(ToolStarted.newBuilder().setTitle(title).setCallId(id).setInput(input).setKind(ToolKind.TOOL_KIND_COMMAND).setItemType("Bash")))

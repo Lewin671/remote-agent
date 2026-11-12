@@ -589,7 +589,7 @@ function CellLines({ text }: { text: string }) {
 }
 
 /** Copies a code block; the icon says for a moment how it went. */
-function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text }: { text: string }) {
   const [state, setState] = useState<"" | "ok" | "fail">("");
   useEffect(() => {
     if (!state) return;

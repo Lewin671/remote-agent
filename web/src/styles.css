@@ -1874,3 +1874,17 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .desk .wstart .wbox .ask, .desk .wstart .wbox .ask:placeholder-shown { font-size: 16px; }
 .desk .wstart .acc { margin-left: -6px; padding-top: 10px; }
 .desk .wstart .kh { color: var(--ink3); }
+
+/* Expanded tool text shares the approval command's wrapping and radius. */
+.command-row { cursor: pointer; border-radius: 16px; }
+.command-row:active, .tool.tgrp:active { background-color: var(--fill); }
+.command-row:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.command-row.expanded { flex-wrap: wrap; align-items: flex-start; }
+.command-row.expanded > .muted { margin-top: 4px; flex-basis: 100%; text-align: right; }
+.tool-command { position: relative; flex: 1; min-width: 0; background: var(--gbg); border-radius: 16px; }
+.tool .tool-command code { display: block; max-height: calc(18em + 24px); overflow-y: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.5 var(--mono); padding: 12px 44px 12px 14px; user-select: text; cursor: text; }
+.tool-command .cp { position: absolute; top: 0; right: 0; width: 44px; height: 44px; display: grid; place-items: center; color: var(--ink3); }
+.tool-command .cp svg { width: 16px; height: 16px; }
+.tool-entry { min-width: 0; }
+.desk .tool-command code { font-size: 12px; }
+.desk .command-row:hover { background-color: var(--fill); }

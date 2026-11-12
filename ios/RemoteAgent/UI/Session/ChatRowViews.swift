@@ -129,10 +129,12 @@ struct ChatRowView: View, Equatable {
             .padding(.horizontal, chatMargin)
         case .tool(let t):
             VStack(alignment: .leading, spacing: 0) {
-                if t.background {
-                    BackgroundToolRow(call: t.call, env: env)
-                } else {
-                    DoneToolRow(call: t.call, decision: t.decision, decisionOk: t.decisionOk, env: env)
+                ExpandableToolRow(key: t.key, text: commandOf(kind: t.call.kind, title: t.call.title, input: t.call.input)) {
+                    if t.background {
+                        BackgroundToolRow(call: t.call, env: env)
+                    } else {
+                        DoneToolRow(call: t.call, decision: t.decision, decisionOk: t.decisionOk, env: env)
+                    }
                 }
                 // A tool's images sit right under it, e.g. the file Claude Code read.
                 if !t.call.images.isEmpty {
@@ -141,7 +143,9 @@ struct ChatRowView: View, Equatable {
             }
             .padding(.horizontal, chatMargin)
         case .running(let r):
-            RunningToolRow(item: r, env: env).padding(.horizontal, chatMargin)
+            ExpandableToolRow(key: r.key, text: commandOf(kind: r.tool.kind, title: r.tool.title, input: r.tool.input)) {
+                RunningToolRow(item: r, env: env)
+            }.padding(.horizontal, chatMargin)
         case .tools(let g):
             ToolGroupRow(group: g, env: env).padding(.horizontal, chatMargin)
         case .generated(let g):
@@ -487,6 +491,112 @@ extension ChatToolLine where Trailing == EmptyView {
     }
 }
 
+/// Resolve original command input identically to web and Android. File rows keep the full path.
+func commandOf(kind: PBToolKind, title: String, input: String) -> String {
+    if kind == .fileChange || input.isEmpty || input == title { return title }
+    if let data = input.data(using: .utf8),
+       let value = try? JSONSerialization.jsonObject(with: data, options: .fragmentsAllowed) {
+        if let object = value as? [String: Any] {
+            for key in ["command", "CommandLine", "cmd"] {
+                if let command = object[key] as? String { return command }
+            }
+            return title
+        }
+    }
+    return input
+}
+
+private struct ExpandableToolRow<Preview: View>: View {
+    let key: String
+    let text: String
+    @ViewBuilder let preview: () -> Preview
+    @Environment(ChatOpen.self) private var open
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private func toggle() {
+        withAnimation(reduceMotion ? nil : Motion.enter()) { open.toggle("command/" + key) }
+    }
+
+    var body: some View {
+        let expanded = open.isOpen("command/" + key)
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: toggle) {
+                preview().frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityValue(expanded ? "已展开" : "已折叠")
+            if expanded {
+                ToolSelectableCommand(text: text, onTap: toggle)
+                    .background(DS.gbg, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(alignment: .topTrailing) { CodeCopyButton(text: text, theme: DS.markdown) }
+            }
+        }
+    }
+}
+
+/// UIKit owns selection and scrolling; a selection gesture never toggles the row.
+private struct ToolSelectableCommand: UIViewRepresentable {
+    let text: String
+    let onTap: () -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onTap: () -> Void
+        init(onTap: @escaping () -> Void) { self.onTap = onTap }
+        @objc func tap(_ gesture: UITapGestureRecognizer) {
+            guard let view = gesture.view as? UITextView, view.selectedRange.length == 0 else { return }
+            onTap()
+        }
+        func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+            (gestureRecognizer.view as? UITextView)?.selectedRange.length == 0
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+
+    func makeUIView(context: Context) -> UITextView {
+        let view = UITextView()
+        view.isEditable = false
+        view.isSelectable = true
+        view.backgroundColor = .clear
+        view.textContainerInset = UIEdgeInsets(top: 12, left: 14, bottom: 12, right: 44)
+        view.textContainer.lineFragmentPadding = 0
+        view.textContainer.lineBreakMode = .byCharWrapping
+        view.adjustsFontForContentSizeCategory = true
+        view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.tap))
+        tap.delegate = context.coordinator
+        tap.cancelsTouchesInView = false
+        for recognizer in view.gestureRecognizers ?? [] {
+            if let other = recognizer as? UITapGestureRecognizer, other.numberOfTapsRequired > 1 {
+                tap.require(toFail: other)
+            }
+        }
+        view.addGestureRecognizer(tap)
+        return view
+    }
+
+    func updateUIView(_ view: UITextView, context: Context) {
+        context.coordinator.onTap = onTap
+        let font = UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .monospacedSystemFont(ofSize: 13, weight: .regular))
+        if view.text != text || view.font != font || view.textColor != UIColor(DS.ink2) {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.lineBreakMode = .byCharWrapping
+            paragraph.minimumLineHeight = font.pointSize * 1.5
+            paragraph.maximumLineHeight = font.pointSize * 1.5
+            view.attributedText = NSAttributedString(string: text, attributes: [.font: font, .foregroundColor: UIColor(DS.ink2), .paragraphStyle: paragraph])
+        }
+        view.tintColor = UIColor(DS.blue)
+    }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UITextView, context: Context) -> CGSize? {
+        guard let width = proposal.width else { return nil }
+        let height = uiView.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+        let line = (uiView.font?.pointSize ?? 13) * 1.5
+        return CGSize(width: width, height: min(height, line * 12 + 24))
+    }
+}
+
 private struct DoneToolRow: View {
     let call: PBToolCall
     let decision: String
@@ -589,9 +699,11 @@ private struct ToolGroupRow: View {
             if isOpen {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(Array(group.calls.enumerated()), id: \.offset) { i, call in
-                        Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
-                            .font(.footnote.monospaced()).ink(DS.ink2).lineLimit(1)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                        ExpandableToolRow(key: "\(group.key)/\(call.callID.isEmpty ? String(i) : call.callID)", text: commandOf(kind: call.kind, title: call.title, input: call.input)) {
+                            Text(firstLine(toolTitle(call, cwd: env.cwd, home: env.home)))
+                                .font(.footnote.monospaced()).ink(DS.ink2).lineLimit(1)
+                                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                        }
                         // Each call's images stay under it when the group is open.
                         if !call.images.isEmpty {
                             ChatImageRow(call.images) { actions.image(seq(i), $0) }.padding(.leading, 21).padding(.bottom, 6)

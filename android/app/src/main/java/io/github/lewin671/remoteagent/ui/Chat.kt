@@ -637,20 +637,30 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
             Text(item.text, style = T.s15, color = p.ink2, modifier = Modifier.padding(bottom = 6.dp))
         }
         is ChatItem.Tool -> Column(Modifier.padding(horizontal = ChatSide)) {
-            if (item.background) BackgroundRow(item.call, cwd, home, item.decision)
-            else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
+            ExpandableTool(item.key, commandOf(item.call.kind, item.call.title, item.call.input)) {
+                if (item.background) BackgroundRow(item.call, cwd, home, item.decision)
+                else ToolRow(item.call, cwd, home, item.decision, item.decisionOk)
+            }
             // A tool's images sit right under it, e.g. the file Claude Code read.
             if (item.call.imagesCount > 0) ImageRow(item.call.imagesList, { i -> chat?.onImage?.invoke(item.seq, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
         }
         is ChatItem.Running -> RunningToolRow(item, cwd, home)
         is ChatItem.Tools -> Column(Modifier.padding(horizontal = ChatSide).animateContentSize(Motion.enter(Motion.BASE))) {
             var open by rememberSaveable(item.key) { mutableStateOf(false) }
+            var commands by rememberSaveable(item.key) { mutableStateOf(emptyList<String>()) }
             ToolLine(Lucide.Check, p.ink3, toolsSummary(item.calls), Modifier.heightIn(min = 28.dp), onClick = { open = !open }, bold = true) {
                 Arrow(p.ink2, T.s13, down = !open, up = open)
             }
             if (open) Column(Modifier.padding(start = 12.dp)) {
                 item.calls.forEachIndexed { ci, c ->
-                    Text(toolTitle(c, cwd, home).lines().first(), style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    androidx.compose.runtime.key(c.callId.ifEmpty { ci.toString() }) {
+                        val id = c.callId.ifEmpty { ci.toString() }
+                        ExpandableTool("${item.key}/$id", commandOf(c.kind, c.title, c.input),
+                            expanded = id in commands, onToggle = { commands = if (id in commands) commands - id else commands + id }) {
+                            Text(toolTitle(c, cwd, home).lines().first(), style = T.mono13, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 28.dp))
+                        }
+                    }
                     // Each call's images stay under it when the group is open.
                     if (c.imagesCount > 0) ImageRow(c.imagesList, { i -> chat?.onImage?.invoke(item.callSeqs.getOrElse(ci) { 0L }, i) }, Modifier.padding(start = 21.dp, bottom = 6.dp))
                 }
