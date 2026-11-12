@@ -11,6 +11,10 @@ const sampleAgyModelsOutput = `⠋ Fetching available models...⠙ Fetching avai
 gemini-4-argon-medium     Gemini 4 Argon (Medium)
 gemini-4-argon-high       Gemini 4 Argon (High)
 gemini-4-argon-low        Gemini 4 Argon (Low)
+gemini-4-hydrogen-high    Gemini 4 Hydrogen (High)
+gemini-4-hydrogen-xhigh   Gemini 4 Hydrogen (XHigh)
+gemini-4-hydrogen-medium  Gemini 4 Hydrogen (Medium)
+gemini-4-hydrogen-low     Gemini 4 Hydrogen (Low)
 gemini-3.8-flash-high     Gemini 3.8 Flash (High)
 gemini-3.8-flash-medium   Gemini 3.8 Flash (Medium)
 gemini-3.8-flash-low      Gemini 3.8 Flash (Low)
@@ -31,6 +35,7 @@ func TestParseModels(t *testing.T) {
 
 	expectedSlugs := []string{
 		"gemini-4-argon",
+		"gemini-4-hydrogen",
 		"gemini-3.8-flash",
 		"claude-opus-5-5",
 		"claude-sonnet-5-5",
@@ -66,8 +71,17 @@ func TestParseModels(t *testing.T) {
 		t.Errorf("expected no inferred context window, got %d", argon.ContextWindow)
 	}
 
+	// Verify gemini-4-hydrogen: "-xhigh" is an effort, not a separate model
+	hydrogen := models[1]
+	if hydrogen.DisplayName != "Gemini 4 Hydrogen" {
+		t.Errorf("expected 'Gemini 4 Hydrogen', got %q", hydrogen.DisplayName)
+	}
+	if want := []string{"low", "medium", "high", "xhigh"}; !slices.Equal(hydrogen.Efforts, want) {
+		t.Errorf("expected efforts %v, got %v", want, hydrogen.Efforts)
+	}
+
 	// Verify gpt-oss-120b
-	gpt := models[4]
+	gpt := models[5]
 	if gpt.DisplayName != "GPT-OSS 120B" {
 		t.Errorf("expected 'GPT-OSS 120B', got %q", gpt.DisplayName)
 	}
@@ -80,12 +94,12 @@ func TestParseModels(t *testing.T) {
 }
 
 func TestCheckEffort(t *testing.T) {
-	for _, e := range []string{"", "low", "medium", "high"} {
+	for _, e := range []string{"", "low", "medium", "high", "xhigh", "max"} {
 		if err := CheckEffort(e); err != nil {
 			t.Errorf("CheckEffort(%q) returned unexpected error: %v", e, err)
 		}
 	}
-	for _, e := range []string{"max", "xhigh", "turbo", "invalid"} {
+	for _, e := range []string{"ultra", "turbo", "invalid"} {
 		if err := CheckEffort(e); err == nil {
 			t.Errorf("CheckEffort(%q) expected error, got nil", e)
 		}

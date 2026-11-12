@@ -16,13 +16,15 @@ import (
 )
 
 // Allowed effort levels for Antigravity models.
-var efforts = []string{"low", "medium", "high"}
+var efforts = []string{"low", "medium", "high", "xhigh", "max"}
 
 // EffortOrder maps effort names to sort order.
 var effortOrder = map[string]int{
 	"low":    1,
 	"medium": 2,
 	"high":   3,
+	"xhigh":  4,
+	"max":    5,
 }
 
 // CheckEffort verifies that effort is one of the supported levels.
@@ -95,7 +97,7 @@ func ParseModels(output string) ([]*pb.ModelInfo, error) {
 	result := make([]*pb.ModelInfo, 0, len(order))
 	for _, baseID := range order {
 		g := groups[baseID]
-		// Sort efforts canonically: low, medium, high
+		// Sort efforts canonically: low, medium, high, xhigh, max
 		sortEfforts(g.efforts)
 
 		defaultEffort := ""
@@ -131,7 +133,7 @@ func cleanDisplayName(rawName, effort string) string {
 	if rawName == "" {
 		return ""
 	}
-	// Strip " (Low)", " (Medium)", " (High)" suffix if present
+	// Strip an effort suffix such as " (Low)" or " (XHigh)" if present
 	for _, eff := range efforts {
 		target := fmt.Sprintf("(%s)", strings.ToLower(eff))
 		idx := strings.Index(strings.ToLower(rawName), target)
