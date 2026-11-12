@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 /** User-facing image errors. Never echo a codec, RPC or OS error verbatim. */
 export interface ImageProblem { message: string; retryable: boolean }
 export const ORIGINAL_IMAGE_HINT = "原图保住画质；CLI 仍可能缩小过大的图片。";
@@ -14,5 +15,5 @@ export function imageProblem(error: string): ImageProblem {
 export function imageFailureLine(errors: string[]): string {
   if (!errors.length) return "";
   const messages = errors.map(e => imageProblem(e).message);
-  return new Set(messages).size === 1 ? messages[0] : `${errors.length} 张图没加上，点图片看原因`;
+  return new Set(messages).size === 1 ? messages[0] : t("image.attach_failed", { count: errors.length });
 }

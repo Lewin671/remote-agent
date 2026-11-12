@@ -204,7 +204,7 @@
                 }
                 HStack(spacing: 14) {
                     IconText(Mark.progress, "正在连接…")
-                    IconText("checkmark", "完成", color: DS.green)
+                    IconText("checkmark", L10n.commonDone(), color: DS.green)
                     IconText("xmark", "失败", color: DS.red)
                     IconText("minus", "已取消")
                 }
@@ -257,8 +257,8 @@
                     Btn("允许", kind: .primary) {}
                 }
                 Btns {
-                    Btn("取消") {}
-                    Btn("移除", kind: .danger) {}
+                    Btn(L10n.commonCancel()) {}
+                    Btn(L10n.commonRemove(), kind: .danger) {}
                 }
                 Btns {
                     Btn("拒绝", kind: .negative) {}
@@ -280,7 +280,7 @@
             .padding(.horizontal, 12)
             SectionLabel("文字操作")
             HStack(spacing: 20) {
-                TextAction("重试") {}
+                TextAction(L10n.commonRetry()) {}
                 TextAction("中断", color: DS.red) {}
                 TextAction("撤销", enabled: false) {}
                 Spacer(minLength: 0)
@@ -307,7 +307,7 @@
             VStack(spacing: 8) {
                 Banner("已停止等待这次配对")
                 Banner("通知没有开启，等你处理时收不到提醒", tone: .warn, action: "开启") {}
-                Banner("没能读取模型列表：MacBook 不在线", tone: .error, action: "重试") {}
+                Banner("没能读取模型列表：MacBook 不在线", tone: .error, action: L10n.commonRetry()) {}
                 Banner("这个项目已从列表移除", action: "恢复") {}
                 Banner("正在保存…", icon: Mark.progress)
             }
@@ -472,7 +472,7 @@
                 InputField(
                     text: $reason, placeholder: "拒绝理由（可选）", lines: 1...4, background: DS.gbg)
                 Btns {
-                    Btn("取消", background: DS.gbg) {}
+                    Btn(L10n.commonCancel(), background: DS.gbg) {}
                     Btn("不允许", kind: .negative, background: DS.gbg) {}
                 }
             }
@@ -583,7 +583,7 @@
             }
             .navBar(GalleryPage.sheet.title)
             .kitSheet(isPresented: $shown) {
-                SheetHead("审批模式", action: "完成") { shown = false }
+                SheetHead("审批模式", action: L10n.commonDone()) { shown = false }
                 ListItem("询问", desc: "需要审批时由你确认，超时拒绝", checked: mode == 0, onTap: { mode = 0 })
                 ListItem(
                     "自动", desc: "由 Codex 自己判断，拿不准的在对话里问你", checked: mode == 1, onTap: { mode = 1 })
@@ -611,7 +611,7 @@
             .navBar(GalleryPage.dialog.title)
             .confirm(
                 isPresented: $shown, title: "移除 MacBook？", text: "它的会话记录会从服务器上删除，它要重新加入账户才能再连上。",
-                confirm: "移除", danger: true
+                confirm: L10n.commonRemove(), danger: true
             ) {}
             .confirm(
                 isPresented: $plain, title: "恢复这个会话？", text: "会在 MacBook 上重新打开它。", confirm: "恢复"
@@ -629,7 +629,7 @@
             .navBar(GalleryPage.input.title)
             .inputAlert(
                 isPresented: $shown, title: "重命名会话", initial: "修复 relay 重连", placeholder: "会话标题",
-                confirm: "保存",
+                confirm: L10n.commonSave(),
                 text: "留空保存会恢复自动标题"
             ) { _ in }
         }

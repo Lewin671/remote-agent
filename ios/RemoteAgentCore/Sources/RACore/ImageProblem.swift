@@ -20,8 +20,8 @@ public func imageProblem(_ error: String) -> ImageProblem {
     return ImageProblem(message: "这张图片处理失败", retryable: false)
 }
 
-public func imageFailureLine(_ errors: [String]) -> String {
+public func imageFailureLine(_ errors: [String], locale: String = "zh-CN") -> String {
     let messages = errors.map { imageProblem($0).message }
     guard let first = messages.first else { return "" }
-    return Set(messages).count == 1 ? first : "\(errors.count) 张图没加上，点图片看原因"
+    return Set(messages).count == 1 ? first : L10n.imageAttachFailed(count: errors.count, locale: locale)
 }

@@ -1,3 +1,4 @@
+import RACore
 import SwiftUI
 import UIKit
 
@@ -27,7 +28,7 @@ struct MessageTextSelection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                SheetHead("选择文字", action: "完成", onAction: onDone)
+                SheetHead("选择文字", action: L10n.commonDone(), onAction: onDone)
                 Text("长按文字，再拖动两端选择要复制的内容")
                     .font(.subheadline).ink(DS.ink2)
                     .padding(.bottom, 10)

@@ -102,7 +102,7 @@ struct ScheduleDetailScreen: View {
                 }), fixedMachine: machine) { permissions = false }
             }
         }
-        .inputAlert(isPresented: $rename, title: "重命名任务", initial: editor.task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: "保存", text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
+        .inputAlert(isPresented: $rename, title: "重命名任务", initial: editor.task?.spec.title ?? "", placeholder: "留空就用消息的第一句", confirm: L10n.commonSave(), text: "留空保存会用消息的第一句", limit: 60, lines: 1...1, save: { typed in
             guard let task = editor.task else { return }
             var spec = task.spec; spec.title = scheduleTitle(typed, message: task.spec.message)
             guard spec.title != task.spec.title else { return }

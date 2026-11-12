@@ -1,3 +1,4 @@
+import RACore
 // Bottom sheets (docs/design-system.md §6): the system's sheet, with its
 // grabber, swipe to dismiss and detents, on the theme's card with the top
 // corners of r-lg. A sheet is as tall as what it holds unless told
@@ -98,7 +99,7 @@ struct SheetHead: View {
                     SymbolImage("chevron.left", size: 22, color: DS.blue).hitTarget(minWidth: 28, alignment: .leading)
                 }
                 .buttonStyle(PressStyle())
-                .accessibilityLabel("返回")
+                .accessibilityLabel(L10n.commonBack())
             }
             Text(title).font(.headline).ink(DS.ink).frame(maxWidth: .infinity, alignment: .leading).accessibilityAddTraits(.isHeader)
             // As wide as its words: 完成 and 取消 fit in 44 pt, 以后再说 does not.

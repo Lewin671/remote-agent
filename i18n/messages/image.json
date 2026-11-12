@@ -1,0 +1,35 @@
+[
+  {
+    "en": {
+      "forms": {
+        "one": "{count} image could not be attached. Tap it for details.",
+        "other": "{count} images could not be attached. Tap an image for details."
+      },
+      "plural": "count"
+    },
+    "key": "image.attach_failed",
+    "notes": "会话输入框附件失败汇总，一行说明，可换行。count 是本机失败图片数（非用户内容），点各图片可见原因；不暴露原始系统异常。",
+    "params": {
+      "count": {
+        "example": 2,
+        "type": "integer"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios",
+      "go"
+    ],
+    "status": {
+      "en": "draft",
+      "zh-CN": "source"
+    },
+    "zh-CN": {
+      "forms": {
+        "other": "{count} 张图没加上，点图片看原因"
+      },
+      "plural": "count"
+    }
+  }
+]

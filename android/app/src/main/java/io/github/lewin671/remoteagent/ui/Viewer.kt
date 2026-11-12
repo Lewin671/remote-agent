@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -155,7 +157,7 @@ internal fun PagedImageViewer(count: Int, start: Int, onClose: () -> Unit, empty
             picture(page)
         }
         Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            GlassButton(Lucide.X, "关闭", onClose, dark = true)
+            GlassButton(Lucide.X, uiText(UiMessages.commonClose()), onClose, dark = true)
             Spacer(Modifier.width(12.dp))
             Text(
                 "${pager.currentPage.coerceAtMost(count - 1) + 1} / $count",

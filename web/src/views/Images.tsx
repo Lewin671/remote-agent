@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Pictures in a session (client-v2 会话里的图片): previews under messages
 // and tool rows, the card of a generated image, and the viewer that
 // fetches the display copy on demand. Decrypted bytes are shown as blob:
@@ -389,7 +390,7 @@ export function ImageViewer({
       await navigator.clipboard.write([
         new ClipboardItem({ "image/png": png }),
       ]);
-      setNote("已复制");
+      setNote(t("common.copied"));
     } catch (e) {
       setNote("没能复制：" + errorText(e));
     }
@@ -397,8 +398,8 @@ export function ImageViewer({
   const status = local ? "" : loadNote(load);
   const retryable = load.kind === "error";
   const draftActions = local && draft && <>
-    {problem?.retryable && <button className="glass" onClick={() => draft.retry(local.key)}>重试</button>}
-    <button className="glass" onClick={() => { draft.remove(local.key); if (!draft.images().length) onClose(); }}>移除</button>
+    {problem?.retryable && <button className="glass" onClick={() => draft.retry(local.key)}>{t("common.retry")}</button>}
+    <button className="glass" onClick={() => { draft.remove(local.key); if (!draft.images().length) onClose(); }}>{t("common.remove")}</button>
   </>;
   const picture = (
     <div
@@ -498,14 +499,14 @@ export function ImageViewer({
           {note && <span className="lb-note">{note}</span>}
           {draft ? draftActions : <>
           <button className="glass" onClick={save} disabled={!full}>
-            保存
+            {t("common.save")}
           </button>
           <button
             className="glass"
             onClick={() => void copy()}
             disabled={!blob || typeof ClipboardItem === "undefined"}
           >
-            复制
+            {t("common.copy")}
           </button>
           <button className="glass" onClick={onClose}>回到消息</button>
           </>}
@@ -546,7 +547,7 @@ export function ImageViewer({
       <div className="vact">
         {draft ? draftActions : <>
         <button className="glass" onClick={save} disabled={!full}>
-          保存
+          {t("common.save")}
         </button>
         {canShare && <button className="glass" onClick={() => void share()}>分享</button>}
         <button className="glass" onClick={onClose}>回到消息</button>

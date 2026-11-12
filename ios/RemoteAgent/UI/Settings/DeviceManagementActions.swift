@@ -33,7 +33,7 @@ struct DeviceManagementActions: View {
         Color.clear.frame(height: 0)
             .confirm(isPresented: $removing, title: "移除设备？",
                 text: "移除后，这台设备不能再操作账户。电脑本地文件保留，中继上的档案可另行删除。",
-                confirm: "移除", danger: true) {
+                confirm: L10n.commonRemove(), danger: true) {
                     done = ""
                     action.run { try await context.remote.removeDevice(id) } onDone: { done = "设备已移除。" }
                 }

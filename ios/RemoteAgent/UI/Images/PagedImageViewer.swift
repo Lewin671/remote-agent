@@ -1,3 +1,4 @@
+import RACore
 import SwiftUI
 
 /// Message and draft images share paging, dark chrome and closing gestures.
@@ -39,7 +40,7 @@ struct PagedImageViewer<Picture: View, Info: View>: View {
                 }
                 HStack {
                     Button(action: onClose) { SymbolImage("xmark", size: 22, color: ViewerInk.text).hitTarget() }
-                        .buttonStyle(PressStyle()).accessibilityLabel("关闭")
+                        .buttonStyle(PressStyle()).accessibilityLabel(L10n.commonClose())
                     Spacer()
                 }
             }

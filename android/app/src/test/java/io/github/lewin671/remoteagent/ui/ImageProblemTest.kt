@@ -10,7 +10,7 @@ class ImageProblemTest {
         assertFalse(imageProblem("the image does not decode").retryable)
         assertTrue(imageProblem("unavailable: machine offline").retryable)
         assertEquals("这张图片处理失败", imageProblem("opaque internal exception").message)
-        assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed")))
+        assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed")) { "$it 张图没加上，点图片看原因" })
     }
 
     @Test fun uncertainMessagesAreRecoverableOnlyWhileTheirLocalAttachmentSurvives() {

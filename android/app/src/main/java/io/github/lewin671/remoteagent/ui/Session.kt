@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -118,8 +120,8 @@ fun SessionScreen(sid: String) {
                 )
                 // The server could not be asked: it is asked again by itself, and at once on a tap.
                 if (lookup is io.github.lewin671.remoteagent.core.SessionLookup.Failed)
-                    PillButton("重试", { lookupAttempt++ }, Modifier.padding(top = 16.dp), ButtonKind.INK)
-                TextLink("返回", nav.back)
+                    PillButton(uiText(UiMessages.commonRetry()), { lookupAttempt++ }, Modifier.padding(top = 16.dp), ButtonKind.INK)
+                TextLink(uiText(UiMessages.commonBack()), nav.back)
             } else {
                 Spinner(p.ink2, size = 24.dp)
                 Text(
@@ -325,7 +327,7 @@ private fun SessionTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        GlassButton(Lucide.ChevronLeft, "返回", back, dark = dark)
+        GlassButton(Lucide.ChevronLeft, uiText(UiMessages.commonBack()), back, dark = dark)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(titleOf(s), style = T.s17b, color = if (dark) CardColors.text else p.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -715,7 +717,7 @@ internal fun ChatPane(
                                 "后面的记录没读到：$shown",
                                 Modifier.padding(horizontal = ChatSide, vertical = 8.dp),
                                 NoticeTone.ERROR,
-                                action = "重试",
+                                action = uiText(UiMessages.commonRetry()),
                                 onAction = { remote.retryEvents(s.id) },
                             )
                         }
@@ -855,7 +857,7 @@ private fun PendingBubble(
             )
             if (pending.paused && cancel != Cancels.State.Canceling)
                 TextAction(
-                    if (resume.error.isNotEmpty()) "重试" else "发送",
+                    if (resume.error.isNotEmpty()) uiText(UiMessages.commonRetry()) else "发送",
                     {
                         resume.run({
                             remote.command(
@@ -877,7 +879,7 @@ private fun PendingBubble(
                 )
             if (cancel != Cancels.State.Canceling)
                 TextAction(
-                    if (cancel is Cancels.State.Failed) "重试" else "取消",
+                    if (cancel is Cancels.State.Failed) uiText(UiMessages.commonRetry()) else uiText(UiMessages.commonCancel()),
                     { Cancels.cancel(remote, sid, pending.id) },
                     enabled = online,
                     modifier = Modifier.padding(start = 8.dp),
@@ -950,7 +952,7 @@ private fun OutgoingView(
                                 Unit
                             }
                 if (!o.missingImages)
-                    links += "重试" to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
+                    links += uiText(UiMessages.commonRetry()) to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
                 links +=
                     "移除此提示" to
                         {

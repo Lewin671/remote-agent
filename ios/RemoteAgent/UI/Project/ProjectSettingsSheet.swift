@@ -141,7 +141,7 @@ struct ProjectSettingsSheet: View {
     @ViewBuilder private func main(_ state: RemoteState, _ c: NewConfig, blocked: String?, done: (() -> Void)?) -> some View {
         let agents = draft.agents(state)
         let cur = draft.current(state)
-        SheetHead("项目设置", action: done == nil ? nil : "完成", onAction: done)
+        SheetHead("项目设置", action: done == nil ? nil : L10n.commonDone(), onAction: done)
         if let blocked { Banner(blocked).padding(.bottom, 8) }
         SetCard([
             AnyView(SetRow("机器", machineLabel(state, id: draft.machine), dot: state.machines[draft.machine]?.online == true ? DS.green : DS.ink3) {
@@ -175,7 +175,7 @@ struct ProjectSettingsSheet: View {
     /// `alone`: the sheet was opened for the machine only, and picking one is done with it.
     @ViewBuilder private func machines(_ state: RemoteState, done: (() -> Void)?, back: (() -> Void)?, alone: Bool) -> some View {
         let rows = machineRows(state, cwd: cwd, agent: agent)
-        SheetHead("机器", action: done == nil ? nil : "完成", onAction: done, onBack: back)
+        SheetHead("机器", action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
         ForEach(Array(rows.enumerated()), id: \.element.id) { i, m in
             ListItem(m.name, desc: m.note, checked: draft.machine == m.id, enabled: m.online, last: i == rows.count - 1) {
                 Haptics.selection()
@@ -189,7 +189,7 @@ struct ProjectSettingsSheet: View {
     }
 
     @ViewBuilder private func modelPage(_ state: RemoteState, _ c: NewConfig, done: (() -> Void)?, back: (() -> Void)?) -> some View {
-        SheetHead("模型", action: done == nil ? nil : "完成", onAction: done, onBack: back)
+        SheetHead("模型", action: done == nil ? nil : L10n.commonDone(), onAction: done, onBack: back)
         if let blocked = prefsBlocked(state), back == nil { Banner(blocked).padding(.bottom, 8) }
         if draft.unread(state) {
             reading(state, draft.current(state))

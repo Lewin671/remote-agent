@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 // Small building blocks shared by the views.
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
@@ -108,12 +109,12 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
       <div className="dim" onClick={onClose} />
       <div className={"sheet " + (at ? "anchored " : "") + className} style={place} role="dialog" aria-modal="true">
         {/* The handle is the phone sheet's; a dialog in a wide window has nothing to drag. */}
-        {!wide && <button className="grab" aria-label="关闭" onClick={onClose} />}
+        {!wide && <button className="grab" aria-label={t("common.close")} onClick={onClose} />}
         {title !== undefined && (
           <div className="sheet-head">
             {back ? (
               <span className="side-act">
-                <button className="fbtn" aria-label="返回" onClick={back}>
+                <button className="fbtn" aria-label={t("common.back")} onClick={back}>
                   <ChevronLeft />
                 </button>
               </span>
@@ -121,7 +122,7 @@ export function Sheet({ onClose, children, className = "", title, action, back, 
               <span className="side-act" />
             )}
             <b>{title}</b>
-            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : wide ? <button className="side-act close" aria-label="关闭" title="关闭" onClick={onClose}><X /></button> : <span className="side-act" />}
+            {action ? <button className="side-act" disabled={action.disabled} onClick={action.onClick}>{action.label}</button> : wide ? <button className="side-act close" aria-label={t("common.close")} title={t("common.close")} onClick={onClose}><X /></button> : <span className="side-act" />}
           </div>
         )}
         {children}
@@ -224,7 +225,7 @@ export function Alert({
         <p>{text}</p>
         <div className="btns">
           <button className="btn" onClick={onCancel}>
-            取消
+            {t("common.cancel")}
           </button>
           <button className={"btn " + (danger ? "danger" : "pri")} onClick={onOk}>
             {ok}
@@ -390,7 +391,7 @@ export function ConnBar({ remote, className = "connbar" }: { remote: Remote; cla
         {/* A browser only knows of no network at all: one that leads nowhere looks the same as a server that is down. */}
         {kept ? <CloudOff /> : <X />}
         <span>连不上服务器{details ? `：${remote.connError || "没有回应"}。也可能是这台设备的网络不通，会一直自动重试` : " · 正在重试"}</span>
-        {details ? <button onClick={() => remote.reconnectNow(true)}>重试</button> : <button onClick={() => setDetails(true)}>详情</button>}
+        {details ? <button onClick={() => remote.reconnectNow(true)}>{t("common.retry")}</button> : <button onClick={() => setDetails(true)}>{t("common.details")}</button>}
       </div>
     );
   return <div className={className}><LoaderCircle /><span>{remote.everOnline ? "正在重连…" : "连接中…"}</span></div>;
@@ -414,7 +415,7 @@ export function NavBar({ onBack, title, sub, right, className = "" }: { onBack?:
   return (
     <header className={"navbar " + className}>
       {onBack ? (
-        <button className="back" onClick={onBack} aria-label="返回">
+        <button className="back" onClick={onBack} aria-label={t("common.back")}>
           <ChevronLeft />
         </button>
       ) : (

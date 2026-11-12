@@ -11,6 +11,12 @@
 set -eu
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
+# Localized resources are embedded in the existing binaries and web assets;
+# no language packs or extra archive members are downloaded or distributed.
+python3 scripts/i18n.py generate --check
+python3 scripts/i18n.py lint
+# Translator notes and source text must meet the same public-data policy.
+python3 scripts/public_scan.py i18n
 tag=v$(sed -n 's/^version=//p' version.properties)
 mkdir -p dist
 rm -f dist/remote-agent-*.tar.gz

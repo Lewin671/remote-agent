@@ -44,6 +44,10 @@ jobs:
           node-version: '24'
       - name: Install pnpm
         run: npm install --global pnpm@10.19.0
+      - name: Localized resources and new hardcoded text
+        run: |
+          python3 scripts/i18n.py generate --check
+          python3 scripts/i18n.py lint
       - name: Release policy tests
         run: python3 -m unittest discover -s scripts -p '*_test.py'
       - name: Go tests
@@ -88,6 +92,8 @@ jobs:
       - name: Install pnpm
         run: npm install --global pnpm@10.19.0
       - name: Build the archives
+        env:
+          RA_PUBLIC_DENY: ${{ secrets.RA_PUBLIC_DENY }}
         run: scripts/build-dist.sh
       # Also in a rehearsal, which stops before the release is packaged.
       - name: Refuse anything of our deployment

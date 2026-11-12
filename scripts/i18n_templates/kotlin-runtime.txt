@@ -1,0 +1,13 @@
+
+object MessageLocale {
+    val appleTags = mapOf(APPLE_TAGS)
+    private val languages = mapOf(LANGUAGE_MAP)
+    fun resolve(preference: String = "auto", system: List<String> = listOf(java.util.Locale.getDefault().toLanguageTag())): String {
+        if (preference in appleTags) return preference
+        for (tag in system) {
+            val base = tag.replace('_', '-').lowercase(java.util.Locale.ROOT).substringBefore('.').substringBefore('@').substringBefore('-')
+            languages[base]?.let { return it }
+        }
+        return "zh-CN"
+    }
+}

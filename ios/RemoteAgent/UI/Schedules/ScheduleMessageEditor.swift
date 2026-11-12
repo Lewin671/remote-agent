@@ -80,10 +80,10 @@ struct ScheduleMessageEditor: View {
             .navigationTitle("让 agent 做什么").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    TextAction("取消", enabled: !saving) { if text == initial { onClose() } else { discard = true } }
+                    TextAction(L10n.commonCancel(), enabled: !saving) { if text == initial { onClose() } else { discard = true } }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    TextAction(saving ? "保存中…" : "保存", enabled: enabled && !saving && scheduleMessageValid(text)) {
+                    TextAction(saving ? "保存中…" : L10n.commonSave(), enabled: enabled && !saving && scheduleMessageValid(text)) {
                         save()
                     }
                 }

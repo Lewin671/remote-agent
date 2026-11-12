@@ -106,7 +106,7 @@ struct NewTaskModelPanel: View {
                             Text("模型").font(.headline).ink(DS.ink)
                         }
                         Spacer()
-                        Button("完成", action: onClose).tint(DS.blue)
+                        Button(L10n.commonDone(), action: onClose).tint(DS.blue)
                             .frame(minWidth: 44, minHeight: 44)
                     }
                     .frame(minHeight: 44)

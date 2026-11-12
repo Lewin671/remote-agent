@@ -31,6 +31,8 @@ if [ "${RA_SKIP_CATALOG_CHECK:-}" != 1 ]; then
         exit 1
     }
 fi
+python3 scripts/i18n.py generate --check
+python3 scripts/i18n.py lint
 result=$(python3 scripts/release.py prepare "$kind")
 if [ "$(printf '%s' "$result" | python3 -c 'import json,sys; print(json.load(sys.stdin)["eligible"])')" = False ]; then
     printf '%s\n' "$result"

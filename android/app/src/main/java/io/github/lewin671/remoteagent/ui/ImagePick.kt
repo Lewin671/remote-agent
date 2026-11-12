@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -169,7 +171,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                         is PendingImage.State.Failed -> Box(
                             Modifier.fillMaxSize().background(Color(0x99000000)),
                             contentAlignment = Alignment.BottomCenter,
-                        ) { Text(if (img.isFile) "重试" else "失败", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {}) }
+                        ) { Text(if (img.isFile) uiText(UiMessages.commonRetry()) else "失败", color = Color.White, style = T.s12b, modifier = Modifier.padding(bottom = 4.dp).clearAndSetSemantics {}) }
                         PendingImage.State.Ready -> {}
                     }
                   }
@@ -202,7 +204,9 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         }
         val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
-        val line = imageFailureLine(failed).takeIf { it.isNotEmpty() } ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
+        val messageContext = androidx.compose.ui.platform.LocalContext.current
+        val messageLocale = LocalMessageLocale.current
+        val line = imageFailureLine(failed) { resolveUiMessage(messageContext, UiMessages.imageAttachFailed(it), messageLocale) }.takeIf { it.isNotEmpty() } ?: notice ?: draft.notice.takeIf { it.isNotEmpty() }
         if (line != null) Text(line, style = T.s13, color = p.orangeInk, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && notes.isNotEmpty()) Text(notes.joinToString("；"), style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
         if (draft.original && draft.pictures.isNotEmpty()) Text(ORIGINAL_IMAGE_HINT, style = T.s13, color = p.ink2, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))

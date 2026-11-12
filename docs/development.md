@@ -106,3 +106,18 @@ xcrun devicectl device copy from --device "$RA_TEST_DEVICE" \
 - 手动运行工作流且不勾选 `publish`，完成测试及无签名 Release 归档演练；实际发布验证成功后，将仓库变量 `IOS_APP_STORE_ENABLED` 设为 `true`，启用后续自动发布。
 
 本地演练需要 Ruby 3.3、Bundler 4 和 Xcode 27。在 `ios/` 执行 `bundle install`，再执行 `IOS_OUTPUT_DIR=/tmp/ios-release-check bundle exec fastlane ios verify`。演练额外执行无签名归档；正式发布只执行后续的分发签名归档。需单独验证签名时，传入 `IOS_SOURCE_DIR`（tag 的干净 checkout）、`IOS_OUTPUT_DIR` 和 `IOS_SIGNING` 后运行 `bundle exec fastlane ios package`，只生成 IPA。签名配置仅临时用于 App 的 Release 目标，构建结束后原样恢复工程，并再次核对 checkout 干净。自动发布工具的 Ruby 依赖由 `ios/Gemfile.lock` 固定；工具从 main 读取，产品源码来自不可移动的正式 tag，旧 tag 无需包含这些工具。发布工具本身的修改不升产品版本。
+
+## 文案生成与检查
+
+```sh
+python3 scripts/i18n.py generate
+python3 scripts/i18n.py generate --check
+python3 scripts/i18n.py lint
+python3 -m unittest discover -s scripts -p 'i18n_test.py'
+```
+
+新增 key 时，在对应 domain JSON 加中文原句、英文初稿、译者说明、参数类型/例值、适用端和逐语言审校状态，遵循 `i18n/messages.schema.json`；运行 generate 后一起提交源和全部产物。网页调用 `t("domain.key", { name: value })`，无参数时省略第二参；参与语言切换的独立 React 树使用 `useLocale()` 订阅。Android core 用生成的 `UiMessages.domainKey(...)` 表达消息，Compose 显示边界用 `uiText(...)`，后台显示用 `resolveUiMessage(context, message, locale)`。iOS 用 `L10n.domainKey(name: value)` 显式得到 String，再交给自定义组件；测试可传 locale。Go 用生成的 `i18n.DomainKey(locale, ...)`。不要手改 generated 文件。
+
+新增 key 必须实际使用，lint 拒绝孤儿/未定义/不适用端调用。新增写死中英文命中时优先抽取；非产品内容在 `i18n/lint-allowlist.json` 精确写 path、literal 和 reason。基线是阶段 0 抽取前 HEAD 的历史债务，以路径、字串摘要和出现次数计数，移动行不新增债务、复制旧字串会失败；`lint --update-baseline` 只用于明确批准的债务重建，日常新增 key 不运行它。扫描是保守词法检查，覆盖 CJK 字串、JSX/HTML 文本以及已知原生 UI/错误/命令行输出入口的英文；不是完整语法解析器，动态拼接、间接英文变量和新 UI API 仍需代码审查并扩展扫描规则。
+
+语言入口仍关闭，不能用系统英文作为全端英文完成的验收。三端试点可显式 locale 做单测快照；Android 设置 `RA_I18N_SCREENSHOT_DIR` 后运行 `:app:testDebugUnitTest --tests '*MessageLocaleTest'`，iOS `MessageLocaleSnapshotTests` 在测试宿主 Documents 写入 i18n-<locale>.png。截图不代表配对、通知或真实 CLI 端到端验收。

@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import androidx.compose.foundation.selection.selectableGroup
 
 import androidx.compose.ui.draw.alpha
@@ -663,7 +665,7 @@ fun DeviceScreen(id: String) {
                         "没能读取设置：$loadError",
                         Modifier.padding(horizontal = 16.dp).padding(bottom = 12.dp),
                         NoticeTone.ERROR,
-                        action = "重试",
+                        action = uiText(UiMessages.commonRetry()),
                         onAction = { attempt++ },
                     )
                 s == null ->
@@ -830,7 +832,7 @@ fun DeviceScreen(id: String) {
         Alert(
             title,
             text,
-            "移除",
+            uiText(UiMessages.commonRemove()),
             danger = true,
             onDismiss = { confirm = false },
         ) {
@@ -1408,7 +1410,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                     Notice(
                         "新设备已加入",
                         Modifier.padding(top = 14.dp),
-                        action = "完成",
+                        action = uiText(UiMessages.commonDone()),
                         onAction = nav.back,
                         icon = Lucide.Check,
                     )
@@ -1417,7 +1419,7 @@ fun PairScreen(replacesDeviceId: String = "") {
                         step.message,
                         Modifier.padding(top = 14.dp),
                         if (step.uncertain) NoticeTone.PLAIN else NoticeTone.ERROR,
-                        action = if (step.canRetry) "重试" else "重新开始",
+                        action = if (step.canRetry) uiText(UiMessages.commonRetry()) else "重新开始",
                         onAction = model::retry,
                     )
             }

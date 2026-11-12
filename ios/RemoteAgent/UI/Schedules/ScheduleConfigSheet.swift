@@ -21,7 +21,7 @@ struct ScheduleConfigSheet: View {
     var body: some View {
         let state = selectionState
         let c = config
-        SheetHead([ScheduleConfigPage.project: "项目", .mode: "权限", .model: "模型", .machine: "机器和模型"][page] ?? "设置", action: "完成", onAction: onClose)
+        SheetHead([ScheduleConfigPage.project: "项目", .mode: "权限", .model: "模型", .machine: "机器和模型"][page] ?? "设置", action: L10n.commonDone(), onAction: onClose)
         switch page {
         case .project:
             if browsing {

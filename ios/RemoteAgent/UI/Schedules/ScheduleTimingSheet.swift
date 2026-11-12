@@ -29,7 +29,7 @@ struct ScheduleTimingSheet: View {
         } else {
             HStack {
                 Text("什么时候").font(.headline).ink(DS.ink); Spacer()
-                TextAction("完成", enabled: draft.kind != .weekly || !draft.weekdays.isEmpty, action: save)
+                TextAction(L10n.commonDone(), enabled: draft.kind != .weekly || !draft.weekdays.isEmpty, action: save)
             }.padding(.bottom, 10)
             SegPick(draft.kind == .afterTurn ? ["一次", "每天", "每周", "每隔", "轮结束后"] : ["一次", "每天", "每周", "每隔"], selected: Binding(get: { draft.kind.rawValue }, set: { draft.kind = ScheduleTiming.Kind(rawValue: $0) ?? .daily }))
                 .padding(.bottom, 12)
@@ -75,7 +75,7 @@ struct ScheduleTimingSheet: View {
             if draft.kind != .interval { GRow("时区", value: draft.timezone, chevron: true) { zones = true } }
             if !error.isEmpty { Hint(error, color: DS.red) }
             Hint("立即运行一次不占自动次数及日历当天名额。")
-            TextAction("取消", alignment: .center, action: onClose)
+            TextAction(L10n.commonCancel(), alignment: .center, action: onClose)
         }
     }
     private func save() {

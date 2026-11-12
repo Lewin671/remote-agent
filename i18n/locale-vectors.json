@@ -1,0 +1,98 @@
+[
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": []
+  },
+  {
+    "expected": "en",
+    "preference": "auto",
+    "system": [
+      "fr-FR",
+      "en-US"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": [
+      "zh-TW",
+      "en"
+    ]
+  },
+  {
+    "expected": "en",
+    "preference": "auto",
+    "system": [
+      "EN_gb.UTF-8"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": [
+      "ja-JP"
+    ]
+  },
+  {
+    "expected": "en",
+    "preference": "en",
+    "system": [
+      "zh-CN"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "zh-CN",
+    "system": [
+      "en"
+    ]
+  },
+  {
+    "expected": "en",
+    "preference": "bad",
+    "system": [
+      "en-AU"
+    ]
+  },
+  {
+    "expected": "en",
+    "preference": "auto",
+    "system": [
+      "C",
+      "POSIX",
+      "en"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": [
+      "english",
+      "zh"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": [
+      "zh-Hant-HK"
+    ]
+  },
+  {
+    "expected": "zh-CN",
+    "preference": "auto",
+    "system": [
+      "-en"
+    ]
+  },
+  {
+    "expected": "en",
+    "preference": "auto",
+    "system": [
+      "",
+      "fr-CA",
+      "en-GB"
+    ]
+  }
+]

@@ -79,7 +79,7 @@ struct ApprovalScreen: View {
             if !kept.isEmpty {
                 // What was being typed is the user's: kept to be copied, not sent anywhere.
                 Code(kept).textSelection(.enabled).padding(.top, 16)
-                TextAction("复制", alignment: .center) { UIPasteboard.general.string = kept }
+                TextAction(L10n.commonCopy(), alignment: .center) { UIPasteboard.general.string = kept }
             }
         }
         .frame(maxWidth: .infinity)

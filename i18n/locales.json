@@ -1,0 +1,36 @@
+{
+  "default": "zh-CN",
+  "locales": [
+    {
+      "android": "b+zh+Hans",
+      "apple": "zh-Hans",
+      "id": "zh-CN",
+      "languages": [
+        "zh"
+      ],
+      "name": "简体中文",
+      "plural": {
+        "other": {}
+      }
+    },
+    {
+      "android": "en",
+      "apple": "en",
+      "id": "en",
+      "languages": [
+        "en"
+      ],
+      "name": "English",
+      "plural": {
+        "one": {
+          "integers": [
+            1
+          ]
+        },
+        "other": {}
+      }
+    }
+  ],
+  "selectionEnabled": false,
+  "source": "zh-CN"
+}

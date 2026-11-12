@@ -92,7 +92,7 @@ struct ImageViewerScreen: View {
             }
             if !details.isEmpty { Text(details).font(.footnote).ink(ViewerInk.meta).lineLimit(large ? 3 : 1) }
             let actions = Group {
-                action(saving ? "保存中…" : "保存", enabled: !saving) { save(image, loader) }
+                action(saving ? "保存中…" : L10n.commonSave(), enabled: !saving) { save(image, loader) }
                 action("分享", enabled: true) {
                     if let picture = ImageLeaving.picture(ref, loader: loader) { sharing = picture }
                 }

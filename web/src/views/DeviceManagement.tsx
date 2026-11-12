@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
 import { futureTime } from "../model";
@@ -101,7 +102,7 @@ export function DeviceActions({
               ? incomplete ? "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。" : "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。"
               : "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。"
           }
-          ok={confirm === "remove" ? "移除" : "删除记录"}
+          ok={confirm === "remove" ? t("common.remove") : "删除记录"}
           danger
           onCancel={() => setConfirm(undefined)}
           onOk={() => {

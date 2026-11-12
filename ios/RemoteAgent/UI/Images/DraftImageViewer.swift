@@ -31,8 +31,8 @@ struct DraftImageViewer: View {
                     Text("图片 \(i + 1)，共 \(images.count) 张").font(.subheadline.weight(.semibold))
                     Text(failure?.message ?? draftImageState(img)).font(.body)
                     HStack(spacing: 24) {
-                        if failure?.retryable == true { action("重试") { center.retry(key, img) } }
-                        action("移除") { center.remove(key, img); if center.draft(key).photos.isEmpty { onClose() } }
+                        if failure?.retryable == true { action(L10n.commonRetry()) { center.retry(key, img) } }
+                        action(L10n.commonRemove()) { center.remove(key, img); if center.draft(key).photos.isEmpty { onClose() } }
                     }
                 }
                 .foregroundStyle(ViewerInk.text).frame(maxWidth: .infinity, alignment: .leading)

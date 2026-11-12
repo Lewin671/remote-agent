@@ -1,3 +1,4 @@
+import RACore
 // Dialogs and the action menu (docs/design-system.md §6). The design gives
 // them their own look (a card of r-lg, the title in the text colour, 取消 at
 // the left and the action at the right, the one place a solid red button
@@ -262,7 +263,7 @@ extension View {
                     .accessibilityAddTraits(.isHeader)
                 Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 14)
                 Btns {
-                    Btn("取消") { isPresented.wrappedValue = false }
+                    Btn(L10n.commonCancel()) { isPresented.wrappedValue = false }
                     Btn(confirm, kind: danger ? .danger : .primary) {
                         if danger { Haptics.destructive() } else { Haptics.confirm() }
                         isPresented.wrappedValue = false
@@ -275,7 +276,7 @@ extension View {
 
     /// A confirmation with a line or two of text to enter, such as a name; at
     /// most `limit` characters. The dialog closes on 保存 and hands the text over.
-    func inputAlert(isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String, dismiss: String = "取消", text: String? = nil, limit: Int = 40, onConfirm: @escaping (String) -> Void) -> some View {
+    func inputAlert(isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String, dismiss: String = L10n.commonCancel(), text: String? = nil, limit: Int = 40, onConfirm: @escaping (String) -> Void) -> some View {
         modifier(InputAlert(
             isPresented: isPresented, title: title, initial: initial, placeholder: placeholder, confirm: confirm, dismiss: dismiss,
             text: text, limit: limit, lines: 1...4, filter: nil, debugSignal: nil, debugText: { "" }, save: .now(onConfirm)))
@@ -288,8 +289,8 @@ extension View {
     /// keyboard's 完成 save; `filter` says what may be typed. `debugSignal`
     /// names a signal that saves `debugText()` as if typed (debug builds).
     func inputAlert(
-        isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String = "保存",
-        dismiss: String = "取消", text: String? = nil, limit: Int = 40, lines: ClosedRange<Int> = 1...4,
+        isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String = L10n.commonSave(),
+        dismiss: String = L10n.commonCancel(), text: String? = nil, limit: Int = 40, lines: ClosedRange<Int> = 1...4,
         filter: ((String) -> String)? = nil, debugSignal: String? = nil, debugText: @escaping () -> String = { "" },
         save: @escaping (String) async throws -> Void
     ) -> some View {

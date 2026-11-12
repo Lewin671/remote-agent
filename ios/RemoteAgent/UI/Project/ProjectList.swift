@@ -188,7 +188,7 @@ struct ProjectRow<Trailing: View, Accessory: View>: View {
             if case .failed(let op, let error)? = change {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text("没能保存，列表保持原样：\(error)").font(.footnote).ink(DS.red).frame(maxWidth: .infinity, alignment: .leading)
-                    TextAction("重试", style: .footnote.weight(.semibold), enabled: prefsBlocked(state) == nil, alignment: .trailing) {
+                    TextAction(L10n.commonRetry(), style: .footnote.weight(.semibold), enabled: prefsBlocked(state) == nil, alignment: .trailing) {
                         context.prefsChanges.run(context.remote, op)
                     }
                 }
@@ -268,7 +268,7 @@ private struct RemoveProjectConfirm: ViewModifier {
             .confirm(
                 isPresented: Binding(get: { key != nil }, set: { if !$0 { key = nil } }),
                 title: "移除 \(projectName(shown))？", text: "只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。",
-                confirm: "移除", danger: true
+                confirm: L10n.commonRemove(), danger: true
             ) {
                 context.prefsChanges.run(context.remote, .hide(path: shown), onDone: onRemoved)
             }

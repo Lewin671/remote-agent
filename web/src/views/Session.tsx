@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
 import { Sheet } from "../ui";
 import { canAnimate, Swap, useExit, useFresh, useHeightFlip, useKnob, useSettle } from "../motion";
@@ -501,7 +502,7 @@ export function SessionPage({
 
   const header = wide ? (
     <header className="dh">
-      {session.info?.taskOwned && <button className="schedule-run-back" aria-label="返回" title="返回任务" onClick={onBack}><ChevronLeft /></button>}
+      {session.info?.taskOwned && <button className="schedule-run-back" aria-label={t("common.back")} title="返回任务" onClick={onBack}><ChevronLeft /></button>}
       <b>{title}</b>
       <span className="st">
         <StateMark kind={st.tone} />
@@ -1052,7 +1053,7 @@ function ChatBody({
       {remote.liveSnapshotError(sid) && (
         <Banner
           kind="warn"
-          action="重试"
+          action={t("common.retry")}
           onAction={() => void remote.refreshLiveSnapshot(sid)}
         >
           {remote.liveSnapshotError(sid)}
@@ -1073,7 +1074,7 @@ function ChatBody({
       {hist.error && !hist.broken && remote.conn === "online" && (
         <Banner
           kind="err"
-          action="重试"
+          action={t("common.retry")}
           onAction={() => remote.retryEvents(sid)}
         >
           后面的记录没读到
@@ -1110,7 +1111,7 @@ function ChatBody({
                       .catch(() => undefined)
                   }
                 >
-                  复制
+                  {t("common.copy")}
                 </button>
               </div>,
             ]
@@ -1344,7 +1345,7 @@ function Pending({
             {o.unknown ? "可能没发出去：" : "没发出去："}
             {o.error}
             {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>放回输入框</button>}
-            {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>重试</button>}
+            {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>{t("common.retry")}</button>}
             <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
           </>
         ) : (
@@ -1681,7 +1682,7 @@ function Row({
                 >
                   {remote.replaced.has(k.value.requestId)
                     ? "已重新发送"
-                    : "重试"}
+                    : t("common.retry")}
                 </button>
               )}
               {(text || images.length > 0 || !!files?.length) && (

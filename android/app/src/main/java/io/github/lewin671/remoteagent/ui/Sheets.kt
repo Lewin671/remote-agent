@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import io.github.lewin671.remoteagent.core.approvalDisplay
 import io.github.lewin671.remoteagent.core.approvalBody
 import io.github.lewin671.remoteagent.core.approvalHead
@@ -253,9 +255,9 @@ fun RenameDialog(s: SessionView, onClose: () -> Unit) {
                     modifier = Modifier.padding(bottom = 14.dp),
                 )
                 Btns {
-                    PillButton("取消", onClose, Modifier.weight(1f), enabled = !act.running)
+                    PillButton(uiText(UiMessages.commonCancel()), onClose, Modifier.weight(1f), enabled = !act.running)
                     PillButton(
-                        "保存",
+                        uiText(UiMessages.commonSave()),
                         { save() },
                         Modifier.weight(1f),
                         ButtonKind.INK,
@@ -440,7 +442,7 @@ fun ModelSheet(state: RemoteState, s: SessionView, running: Boolean, onClose: ()
                 Notice(
                     "没能读取模型列表：$loadError",
                     tone = NoticeTone.ERROR,
-                    action = "重试",
+                    action = uiText(UiMessages.commonRetry()),
                     onAction = { attempt++ },
                 )
             ms == null ->
@@ -552,7 +554,7 @@ fun ApprovalPage(sid: String, aid: String) {
                     Code(reason)
                     val clipboard = androidx.compose.ui.platform.LocalClipboard.current
                     TextAction(
-                        "复制",
+                        uiText(UiMessages.commonCopy()),
                         {
                             act.run(
                                 {

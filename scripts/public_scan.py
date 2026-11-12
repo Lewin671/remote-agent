@@ -171,6 +171,9 @@ def main():
     if missing:
         sys.exit("Nothing to scan at: " + ", ".join(missing))
     found += scan(args)
+    source = Path(__file__).resolve().parents[1] / "i18n"
+    if source.is_dir():
+        found += scan([source])
     for file, member, term in found:
         print(f"{file}{' › ' + member if member else ''}: {term}", file=sys.stderr)
     if found:

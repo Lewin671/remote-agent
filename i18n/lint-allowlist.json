@@ -1,0 +1,17 @@
+[
+  {
+    "path": "web/src/i18n/index.ts",
+    "literal": "Unknown UI message key",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "web/src/i18n/index.ts",
+    "literal": "Invalid plural count",
+    "reason": "Developer contract exception; never rendered as a product message."
+  },
+  {
+    "path": "web/src/i18n/index.ts",
+    "literal": "Missing message parameter",
+    "reason": "Developer contract exception; never rendered as a product message."
+  }
+]

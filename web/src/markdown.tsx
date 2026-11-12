@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 // Markdown as the CLIs write it, rendered as React elements. Text is
 // always text: nothing is inserted as HTML, and only http(s) links become
 // links. Other targets, mostly local file paths, show as monospace refs.
@@ -603,7 +604,7 @@ export function CopyButton({ text }: { text: string }) {
     );
   };
   return (
-    <button className="cp" onClick={copy} aria-label={state === "ok" ? "已复制" : state === "fail" ? "复制失败" : "复制代码"}>
+    <button className="cp" onClick={copy} aria-label={state === "ok" ? t("common.copied") : state === "fail" ? "复制失败" : "复制代码"}>
       {state === "ok" ? <Check /> : state === "fail" ? <X /> : <Copy />}
     </button>
   );

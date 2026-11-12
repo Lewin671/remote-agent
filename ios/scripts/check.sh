@@ -24,6 +24,14 @@ fail() {
     exit 1
 }
 
+# Validate the checked-in catalog and its native compiler output too.
+python3 "$ios/../scripts/i18n.py" generate --check >"$out" 2>&1 || fail "localized resources are stale"
+resources=$(mktemp -d -t ra-ios-messages)
+xcrun xcstringstool compile "$ios/RemoteAgentCore/Localization/Localizable.xcstrings" --output-directory "$resources" >"$out" 2>&1
+compiled=$?
+rm -rf "$resources"
+[ "$compiled" = 0 ] || fail "the String Catalog did not compile"
+
 # 1
 (cd "$ios/RemoteAgentCore" && swift test --jobs "${IOS_BUILD_JOBS:-4}") >"$out" 2>&1 || fail "the package's tests failed (swift test in ios/RemoteAgentCore)"
 

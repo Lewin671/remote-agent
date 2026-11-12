@@ -18,7 +18,7 @@ internal fun imageProblem(error: String): ImageProblem {
     }
 }
 
-internal fun imageFailureLine(errors: List<String>): String {
+internal fun imageFailureLine(errors: List<String>, countLine: (Int) -> String): String {
     val messages = errors.map { imageProblem(it).message }
-    return when { messages.isEmpty() -> ""; messages.distinct().size == 1 -> messages.first(); else -> "${errors.size} 张图没加上，点图片看原因" }
+    return when { messages.isEmpty() -> ""; messages.distinct().size == 1 -> messages.first(); else -> countLine(errors.size) }
 }

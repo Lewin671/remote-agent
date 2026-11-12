@@ -18,7 +18,7 @@ struct ScheduleTargetSheet: View {
     }
     var body: some View {
         VStack(spacing: 0) {
-            SheetHead("在哪运行", action: "保存", onAction: save)
+            SheetHead("在哪运行", action: L10n.commonSave(), onAction: save)
             if let c = config {
                 GRow("项目", value: projectName(c.cwd), chevron: true) { picker = .project }
                 ScheduleAgentRow(state: model.state, config: $config, fixedMachine: machine)
@@ -26,7 +26,7 @@ struct ScheduleTargetSheet: View {
                 GRow("模型", value: modelValue(c.model, models: models.list), chevron: true) { picker = .model }
             }
             Hint("任务保存在这台电脑上；更改只影响之后的运行。")
-            TextAction("取消", alignment: .center, action: onClose)
+            TextAction(L10n.commonCancel(), alignment: .center, action: onClose)
         }.kitSheet(item: $picker, size: .large) { page in
             ScheduleConfigSheet(page: page, config: $config, fixedMachine: machine) { picker = nil }
         }

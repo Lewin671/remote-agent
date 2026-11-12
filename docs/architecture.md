@@ -867,3 +867,28 @@ Antigravity CLI（`agy`）走和 Codex、Claude Code 同一条路：原生 TUI �
 原生 hook payload、状态栏格式、transcript 与全文读取游标、原生菜单和按键确认都留在 adapter；本地 hook RPC 传入原始 payload，daemon 负责仲裁、持久化、交付和加密，不按某个 CLI 的字段先行解码。
 
 Antigravity 接入将协议从 12 提升为 13：`Agent` 枚举加 `AGENT_ANTIGRAVITY`；`DaemonSettings` 加 `antigravity` 一组默认值；会话信息加 `mode_locked`（这个会话的审批模式不能再切换，客户端把四种都置灰）。其余沿用已有字段：`full_access_unavailable`、`ModelInfo.auto_unavailable`、`MachineMeta.agents` 和 `quotas`。
+
+## 20. 界面语言与文案资源
+
+### 阶段 0 的边界
+
+`i18n/messages/<domain>.json` 是产品文案的唯一源，`messages.schema.json` 规定结构，`locales.json` 规定支持语言和平台标识，`glossary.json` 维护术语。首批为 `zh-CN` 和 `en`。阶段 0 只接入公共操作与图片失败数量句：语言入口不开放，三端始终默认中文，英文只通过测试的显式 locale 呈现；英文初稿标 `draft`，不能冒充人工审校。开启语言选择前，生成器要求所有条目达到 source/reviewed。文案与本地语言偏好不改变协议版本。
+
+用户输入、CLI 原文、终端和已有纯文本历史保留原文，不按 UI 语言翻译，也不推断、重建旧历史。语言偏好按安装独立保存，不进入账户、设备元信息或同步内容。server 不解析文案，不增加包含内容参数的日志。
+
+### 语言匹配契约
+
+语言解析器支持「手选优先，否则按系统有序列表查找」：精确手选 `zh-CN`/`en` 优先；自动匹配忽略大小写、地区、脚本、编码后缀，中文各地区落简中、英文各地区落 en；跳过未支持的语言，整列无匹配时回退 zh-CN。非法偏好按自动处理。共同向量在 `i18n/locale-vectors.json`，网页、Android、iOS 和 Go 都验证同一份数据；网页副本由生成器维护。
+
+网页用 `localeStore` 与 `useLocale()`，监听 languagechange 和跨标签 storage，偏好存 localStorage；Android core 的 `MessageLocale` 不依赖 Context，app 用本地 SharedPreferences scaffold；iOS 偏好存 UserDefaults，不改 AppleLanguages。阶段 0 显示门控独立于匹配算法：保存英文也仍显示中文。网页测试可用 `overrideForTesting`，Android 可在测试提供 `LocalMessageLocale`，原生包装器均可显式传 locale。后台与系统 App 语言、SW 偏好共享和切换状态保留尚未接入；未来开放入口时再实现，不把阶段 0 当作全端语言切换已完成。
+
+### 编译与运行时
+
+`scripts/i18n.py` 只依赖 Python 标准库，按 key/参数稳定排序，不含时间戳。产物入库并禁止手改，`i18n/generated-files.json` 记录精确列表。`generate --check` 在临时目录重建比对，也拒绝过期和多余旧产物。生成器校验重复/缺失/空译、参数类型与例值、跨语言参数和选择结构、复数类别、平台资源及方法名碰撞；lint 校验未定义、孤儿和跨端误用。源数据只允许文本、命名参数、单层 plural 或 select，不支持嵌套选择、任意 HTML 或 printf。复数 selector 必须是 integer；当前语言元数据使用 CLDR 的中文 other、英文整数 one/other，增加不能以有限整数集合表示的规则时必须扩展编译器，不能猜测。
+
+- **网页**：生成 MessageKey、逐 key 参数类型和本地字典，`t()` 同步返回文本，React 按文本节点转义；复数用 Intl.PluralRules。所有语言随现有资源包缓存，不下载语言包。
+- **Android**：生成完整中文 values、values-b+zh+Hans、values-en 的 strings/plurals，所有格式参数为位置参数；app 在明确 locale 的 Configuration Context 中读取资源。纯 JVM core 只提供 typed `UiMessages` 工厂与 `UiMessage(key,args)`，在 app 显示边界 resolve，不引入 R/Context。图片错误推导保持原逻辑，只有混合失败汇总在显示边界解析数量消息。
+- **iOS**：生成手工管理的 String Catalog，以及同源的原生 `.strings`/`.stringsdict` 给 SwiftPM（命令行 swift test 不编译 Catalog）。Catalog 在 iOS 检查中经 xcstringstool 验证；SwiftPM 用 defaultLocalization 与 Resources 处理，wrapper 始终找 RACore 的 Bundle.module 对应 lproj。原生位置参数支持重排；阶段 0 数字保留原始无分组十进制，格式 locale 用 en_US_POSIX，简中资源只有 other、英文资源用整数 one/other。扩展其他语言/数字格式前要补充对应契约，不能直接沿用这个限制。
+- **Go**：`internal/i18n` 内嵌生成表并提供有类型的函数参数。Resolve 使用同源规则，现有 CLI 输出尚未抽取，也不修改子进程的语言环境。
+
+生成的语言资源嵌入现有二进制/网页资源，不新增压缩包成员或独立语言包。i18n 源和编译器计入产品变化；公开扫描也检查译者说明与源数据。release-task、Release checks、build-dist 和 iOS 流水线拒绝过期产物或新增写死文案。用法与抽取步骤见 [development.md](development.md#文案生成与检查)，文案和译审规则见 [design-system.md](design-system.md#8-文案)。

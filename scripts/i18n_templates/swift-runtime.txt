@@ -1,0 +1,11 @@
+    private static func format(_ key: String, locale: String, args: [CVarArg]) -> String {
+        let language = MessageLocale.resolve(locale, system: [])
+        let tag = MessageLocale.appleTags[language]!
+        guard let path = Bundle.module.path(forResource: tag, ofType: "lproj"),
+              let bundle = Bundle(path: path) else { preconditionFailure("Missing message bundle") }
+        let text = bundle.localizedString(forKey: key, value: nil, table: "Localizable")
+        precondition(text != key, "Unknown UI message key")
+        // Keep raw digits identical to Swift interpolation (no grouping). The
+        // first two locales use English integer plurals or only `other`.
+        return String(format: text, locale: Locale(identifier: "en_US_POSIX"), arguments: args)
+    }

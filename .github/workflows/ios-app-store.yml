@@ -107,6 +107,12 @@ jobs:
         with:
           go-version-file: product/go.mod
           cache-dependency-path: product/go.sum
+      - name: Localized resources and new hardcoded text
+        if: steps.plan.outputs.skip != 'true'
+        working-directory: product
+        run: |
+          python3 scripts/i18n.py generate --check
+          python3 scripts/i18n.py lint
       - name: Report Xcode toolchain
         if: steps.plan.outputs.skip != 'true'
         run: |

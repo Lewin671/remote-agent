@@ -1,3 +1,4 @@
+import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
 import { authorityStartup } from "./authority-setup";
@@ -43,6 +44,7 @@ async function loadRemote(): Promise<Remote | undefined> {
 }
 
 export function App() {
+  useLocale();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
   const [retained, setRetained] = useState<StoredAccount>();
   const [denied, setDenied] = useState(false);

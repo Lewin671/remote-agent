@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Everything that lists or manages projects (client-v34): one row and one
 // list for the scope menu, the project picker and 项目管理, and the two
 // things done to a project there, pinning and removing. Removing only
@@ -39,7 +40,7 @@ export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean
   const p = remote.prefs;
   if (p.failed)
     return (
-      <Banner kind="err" action="重试" onAction={() => remote.retryPrefs()}>
+      <Banner kind="err" action={t("common.retry")} onAction={() => remote.retryPrefs()}>
         没能保存，列表保持原样：{p.failed.error}
       </Banner>
     );
@@ -47,7 +48,7 @@ export function PrefsBanner({ remote, quiet }: { remote: Remote; quiet?: boolean
   if (quiet) return null;
   if (p.status === "error" && !p.snap)
     return (
-      <Banner kind="err" action="重试" onAction={() => void remote.loadPrefs()}>
+      <Banner kind="err" action={t("common.retry")} onAction={() => void remote.loadPrefs()}>
         没能读取项目列表
       </Banner>
     );
@@ -202,7 +203,7 @@ export function RemoveProjectAlert({ remote, path, onDone, onCancel }: { remote:
     <Alert
       title={`移除 ${projectName(path)}？`}
       text="只从项目列表里移除，会话、历史和电脑上的目录都不动。以后要用，再用「新项目」添加这个目录。"
-      ok="移除"
+      ok={t("common.remove")}
       danger
       onCancel={onCancel}
       onOk={() => {

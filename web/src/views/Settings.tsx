@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
 import { Switch } from "../ui";
 import { useEffect, useState } from "react";
@@ -87,7 +88,7 @@ export function Settings({
     <div className="body set settings">
       {onBack && (
         <div className="tbar">
-          <GlassButton label="返回" onClick={onBack}>
+          <GlassButton label={t("common.back")} onClick={onBack}>
             <ChevronLeft />
           </GlassButton>
         </div>
@@ -516,7 +517,7 @@ export function DevicesPage({
                 className="link"
                 onClick={() => void remote.loadDevices()}
               >
-                重试
+                {t("common.retry")}
               </button>
             </div>
           )}
@@ -691,7 +692,7 @@ export function ClientPage({
               disabled={busy}
               onClick={() => void save(name)}
             >
-              {busy ? "保存中…" : "保存"}
+              {busy ? "保存中…" : t("common.save")}
             </button>
           </div>
         </Sheet>
@@ -784,7 +785,7 @@ function usePush(remote: Remote) {
         <div className="set-banners">
           <Banner
             kind="err"
-            action="重试"
+            action={t("common.retry")}
             onAction={() => last && void change(last)}
           >
             订阅失败：{error}
@@ -1118,7 +1119,7 @@ export function MachinePage({
           <div className="set-banners">
             <Banner
               kind="err"
-              action="重试"
+              action={t("common.retry")}
               onAction={() => setAttempt((a) => a + 1)}
             >
               没能读取设置：{error}
@@ -1129,7 +1130,7 @@ export function MachinePage({
           <div className="set-banners">
             <Banner
               kind="err"
-              action="重试"
+              action={t("common.retry")}
               onAction={() => void save(saveError.next)}
             >
               没能保存：{saveError.text}

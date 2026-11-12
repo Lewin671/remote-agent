@@ -1,3 +1,4 @@
+import RACore
 // Lists (docs/design-system.md §6): section labels, grouped cards on a grey
 // page and their rows, the choices of a sheet, and the notes that stand in
 // for a list that is empty, loading or failed.
@@ -519,7 +520,7 @@ struct ErrorRow: View {
     private let action: String
     private let onRetry: (() -> Void)?
 
-    init(_ text: String, action: String = "重试", onRetry: (() -> Void)? = nil) {
+    init(_ text: String, action: String = L10n.commonRetry(), onRetry: (() -> Void)? = nil) {
         self.text = text
         self.action = action
         self.onRetry = onRetry

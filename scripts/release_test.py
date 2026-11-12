@@ -55,12 +55,14 @@ class ReleaseTests(unittest.TestCase):
     def test_release_tooling_and_public_pages_do_not_release(self):
         for path in ('scripts/release.py', 'scripts/public_scan.py', 'scripts/publish-public.sh', 'scripts/dist-smoke.sh', '.github/workflows/release.yml',
                      'ios/Gemfile', 'ios/Gemfile.lock', 'ios/fastlane/Fastfile', 'ios/fastlane/publishing.rb', '.github/workflows/ios-app-store.yml',
+                     'scripts/i18n_lint.py', 'i18n/lint-baseline.json', 'i18n/lint-allowlist.json',
                      'deploy/deploy.sh', 'install.sh', 'docs/assets/demo-light.svg', 'README.md'):
             self.assertFalse(release.product_change(path), path)
 
     def test_what_is_packed_or_decides_the_build_releases(self):
         for path in ('cmd/remote-agent/main.go', 'web/src/main.tsx', 'android/app/build.gradle.kts', 'go.mod', 'scripts/daemon.sh', 'scripts/build-go.sh',
                      'ios/RemoteAgent/Views/ChatView.swift', 'ios/RemoteAgentCore/Sources/RACore/App.swift', 'ios/RemoteAgent.xcodeproj/project.pbxproj',
+                     'i18n/messages/common.json', 'i18n/locales.json', 'scripts/i18n.py', 'scripts/i18n_templates/swift-runtime.txt',
                      'ios/scripts/version.sh', 'scripts/build-dist.sh', 'scripts/notices.py', 'scripts/android-ci.py', 'deploy/self-host/compose.yaml'):
             self.assertTrue(release.product_change(path), path)
 

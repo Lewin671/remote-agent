@@ -1,0 +1,110 @@
+//go:embed messages.generated.json
+var files embed.FS
+var catalog struct {
+	Locales struct {
+		Locales []struct {
+			ID        string   `json:"id"`
+			Languages []string `json:"languages"`
+			Plural    map[string]struct {
+				Integers []int `json:"integers"`
+			} `json:"plural"`
+		} `json:"locales"`
+	} `json:"locales"`
+	Messages map[string]map[string]json.RawMessage `json:"messages"`
+}
+
+func init() {
+	data, err := files.ReadFile("messages.generated.json")
+	if err != nil {
+		panic(err)
+	}
+	if err := json.Unmarshal(data, &catalog); err != nil {
+		panic(err)
+	}
+}
+
+// Resolve implements the shared language contract, independent of the stage-0
+// display gate. It never changes the environment inherited by a CLI subprocess.
+func Resolve(preference string, system []string) string {
+	for _, locale := range catalog.Locales.Locales {
+		if preference == locale.ID {
+			return preference
+		}
+	}
+	for _, tag := range system {
+		base := strings.ToLower(strings.ReplaceAll(tag, "_", "-"))
+		if index := strings.IndexAny(base, ".@-"); index >= 0 {
+			base = base[:index]
+		}
+		for _, locale := range catalog.Locales.Locales {
+			for _, language := range locale.Languages {
+				if base == language {
+					return locale.ID
+				}
+			}
+		}
+	}
+	return "zh-CN"
+}
+
+var parameter = regexp.MustCompile(`\{([a-z][a-zA-Z0-9]*)\}`)
+
+func render(locale, key string, args map[string]any) string {
+	locale = Resolve(locale, nil)
+	raw := catalog.Messages[key][locale]
+	var text string
+	if len(raw) == 0 {
+		panic("Unknown UI message key")
+	}
+	if raw[0] == '{' {
+		var choice struct {
+			Plural string            `json:"plural"`
+			Select string            `json:"select"`
+			Forms  map[string]string `json:"forms"`
+		}
+		if err := json.Unmarshal(raw, &choice); err != nil {
+			panic(err)
+		}
+		form := "other"
+		if choice.Select != "" {
+			selected := args[choice.Select].(string)
+			if _, ok := choice.Forms[selected]; ok {
+				form = selected
+			}
+		} else {
+			count := args[choice.Plural].(int)
+			if count < 0 {
+				panic("Negative plural count")
+			}
+			for _, loc := range catalog.Locales.Locales {
+				if loc.ID != locale {
+					continue
+				}
+				for category, rule := range loc.Plural {
+					for _, integer := range rule.Integers {
+						if count == integer {
+							form = category
+						}
+					}
+				}
+			}
+		}
+		text = choice.Forms[form]
+	} else if err := json.Unmarshal(raw, &text); err != nil {
+		panic(err)
+	}
+	return parameter.ReplaceAllStringFunc(text, func(token string) string {
+		value, ok := args[token[1:len(token)-1]]
+		if !ok {
+			panic("Missing message parameter")
+		}
+		switch v := value.(type) {
+		case int:
+			return strconv.Itoa(v)
+		case float64:
+			return strconv.FormatFloat(v, 'f', -1, 64)
+		default:
+			return fmt.Sprint(v)
+		}
+	})
+}

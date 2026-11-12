@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import io.github.lewin671.remoteagent.core.UiMessages
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -1034,7 +1036,7 @@ internal fun CopyButton(text: String) {
         Ic(
             when (state) { Copied.OK -> Lucide.Check; Copied.FAILED -> Lucide.X; Copied.NO -> Lucide.Copy }, 16.dp, p.ink2,
             Modifier.padding(top = 9.dp, end = 12.dp),
-            contentDescription = when (state) { Copied.OK -> "已复制"; Copied.FAILED -> "复制失败"; Copied.NO -> "复制代码" },
+            contentDescription = when (state) { Copied.OK -> uiText(UiMessages.commonCopied()); Copied.FAILED -> "复制失败"; Copied.NO -> "复制代码" },
         )
     }
 }

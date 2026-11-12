@@ -6,6 +6,7 @@ import PackageDescription
 
 let package = Package(
     name: "RemoteAgentCore",
+    defaultLocalization: "zh-Hans",
     platforms: [.iOS(.v17), .macOS(.v14)],
     products: [
         .library(name: "RACore", targets: ["RACore"]),
@@ -33,7 +34,8 @@ let package = Package(
                 "RAProto",
                 .product(name: "SwiftProtobuf", package: "swift-protobuf"),
                 .product(name: "Connect", package: "connect-swift"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(name: "RACoreTests", dependencies: ["RACore"]),
         // The reply's Markdown: a parser held to testdata/markdown, and the SwiftUI that draws it.

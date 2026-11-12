@@ -1,0 +1,11 @@
+[
+  {"zh-CN":"对话 / 会话 / 一轮","en":"conversation / session / turn","notes":"conversation 指内容和上下文；session 是 tmux 中可恢复的 CLI 实例，不都叫 chat。","status":"draft"},
+  {"zh-CN":"中继 / 电脑 / 客户端 / 设备","en":"relay / computer / client / device","notes":"技术字段可用 machine；用户界面用 computer。","status":"draft"},
+  {"zh-CN":"审批 / 询问 / 自动 / 完全放行 / 计划","en":"approval / Ask / Auto / Full access / Plan","notes":"模式和单次回答分开。","status":"draft"},
+  {"zh-CN":"允许 / 不允许 / 批准计划 / 以后不再问","en":"Allow / Deny / Approve plan / Always allow","notes":"保留 CLI 原生选项原文。","status":"draft"},
+  {"zh-CN":"管理端 / 恢复码 / 交接管理权","en":"managing client / recovery code / transfer management","notes":"界面不使用 authority certificate 等协议术语。","status":"draft"},
+  {"zh-CN":"远程控制有效期 / 续期","en":"remote control expiry / renew remote control","notes":"用户界面不使用 lease。","status":"draft"},
+  {"zh-CN":"定时任务 / 新任务 / 新定时","en":"scheduled task / New task / New schedule","notes":"运行按上下文用 run 或 running。","status":"draft"},
+  {"zh-CN":"中断 / 结束会话 / 分叉 / 压缩上下文","en":"Interrupt / End session / Fork session / Compact context","notes":"结束会话不同于中断一轮。","status":"draft"},
+  {"zh-CN":"待发送 / 已送达电脑 / 无法确认","en":"queued / delivered to computer / unconfirmed","notes":"送达电脑不能译成模型已经接收。","status":"draft"}
+]

@@ -15,11 +15,11 @@ SEMVER = re.compile(r"v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)")
 # the binaries, and the scripts that decide how they are built. The tools
 # that test, version and publish a release are not in it, nor are the
 # installer and the guides, which are read from main.
-PRODUCT_PATHS = ("cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/self-host/",
+PRODUCT_PATHS = ("i18n/", "scripts/i18n_templates/", "cmd/", "internal/", "gen/", "proto/", "android/", "web/", "deploy/self-host/",
                  "ios/RemoteAgent/", "ios/RemoteAgentCore/", "ios/RemoteAgent.xcodeproj/")
 PRODUCT_FILES = {"go.mod", "go.sum", "buf.yaml", "buf.gen.yaml", "scripts/daemon.sh", "scripts/build-go.sh", "scripts/build-dist.sh", "scripts/notices.py",
                  # Writes the signing and Firebase settings the APK is built with.
-                 "scripts/android-ci.py", "ios/scripts/version.sh"}
+                 "scripts/android-ci.py", "scripts/i18n.py", "ios/scripts/version.sh"}
 
 
 def git(*args):
@@ -40,6 +40,8 @@ def release_tags():
 
 
 def product_change(path):
+    if path in {"i18n/lint-baseline.json", "i18n/lint-allowlist.json"}:
+        return False  # Validation debt/justifications do not enter product resources.
     # The web build type-checks all of web/src, its tests included, so a
     # broken test there fails the release as surely as broken code.
     if path.startswith("web/src/"):
