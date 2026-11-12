@@ -16,10 +16,11 @@ import RACore
 
 /// The Keychain refused, or what it holds cannot be read. `status` is the system's OSStatus, 0 when the data itself is at fault.
 struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
-    enum Operation: String, Sendable {
-        case read = "读取"
-        case save = "保存"
-        case delete = "删除"
+    enum Operation: Sendable {
+        case read, save, delete
+        var text: String {
+            switch self { case .read: "读取"; case .save: "保存"; case .delete: "删除" }
+        }
     }
 
     let operation: Operation
@@ -32,10 +33,10 @@ struct VaultError: Error, LocalizedError, Equatable, CustomStringConvertible {
     var isLocked: Bool { status == errSecInteractionNotAllowed }
 
     var errorDescription: String? {
-        if isLocked { return "设备锁定时不能\(operation.rawValue)账户密钥，解锁后再试" }
+        if isLocked { return "设备锁定时不能\(operation.text)账户密钥，解锁后再试" }
         if status == 0 { return "钥匙串里的账户密钥读不出来，需要重新加入账户" }
         let detail = SecCopyErrorMessageString(status, nil).map { $0 as String } ?? "未知错误"
-        return "没能\(operation.rawValue)钥匙串里的账户密钥：\(detail)（\(status)）"
+        return "没能\(operation.text)钥匙串里的账户密钥：\(detail)（\(status)）"
     }
 
     var description: String { "VaultError(\(operation), status=\(status))" }

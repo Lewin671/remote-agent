@@ -106,11 +106,12 @@ func wholeBytes(_ n: Int64) -> String {
 /// cache says of the computers is not known to still hold (architecture §9
 /// 「断线时显示什么」), and the connection bar already says why.
 func machineStatus(_ m: MachineView, state: RemoteState, now: Int64) -> (
-    text: String, online: Bool
+    text: String, online: Bool, hasLastSeen: Bool
 )? {
     if state.unlinked { return nil }
-    if m.online { return ("在线", true) }
-    return (ago(m.lastSeenMs, now: now).or("离线"), false)
+    if m.online { return ("在线", true, false) }
+    let lastSeen = ago(m.lastSeenMs, now: now)
+    return (lastSeen.or("离线"), false, !lastSeen.isEmpty)
 }
 
 /// The computer as far as it is known from here: while this client is not

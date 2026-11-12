@@ -267,13 +267,16 @@ public func loginResponse(api: Api, account: Account) async throws -> PBLoginRes
 /// A daemon's answer, or a failure to get one. `code` is a Connect code name.
 public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomStringConvertible {
     public let code: String
+    /// Raw local cause for outbox captions, without the unknown-outcome heading.
+    public let outcomeDetail: String?
     public let message: String
     /// The daemon's own answer for this request, the final word on it
     /// (except that it expired before reaching the daemon).
     public let fromDaemon: Bool
 
-    public init(_ code: String, _ message: String, fromDaemon: Bool = false) {
+    public init(_ code: String, _ message: String, fromDaemon: Bool = false, outcomeDetail: String? = nil) {
         self.code = code
+        self.outcomeDetail = outcomeDetail
         self.message = message
         self.fromDaemon = fromDaemon
     }

@@ -4,6 +4,16 @@ import RAProto
 @testable import RACore
 
 @Suite struct SchedulesTests {
+    @Test func compactReasonsUseCodesAndLeaveUnknownReasonsIntact() {
+        #expect(scheduleReason("execution_failed", short: true) == "运行失败")
+        #expect(scheduleReason("execution_failed") == "运行失败，任务已停下")
+        #expect(scheduleReason("raw，任务已停下", short: true) == "电脑返回的原因：raw，任务已停下")
+        let failure = CommandError.unknownBecause("raw reason")
+        #expect(failure.unknown)
+        #expect(failure.outcomeDetail == "raw reason")
+        #expect(failure.message == "不确定电脑有没有执行：raw reason")
+    }
+
     let now = scheduleDate("2026-10-24T17:00:00Z")!
     let zone = TimeZone(identifier: "America/Los_Angeles")!
     func task(_ status: String = "scheduled", reason: String? = nil) -> ScheduleTask {

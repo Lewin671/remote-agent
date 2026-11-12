@@ -139,11 +139,11 @@ public struct ScheduleTask: Codable, Equatable, Sendable, Identifiable {
     public var latestNotification: ScheduleRun? {
         history.filter(\.notified).max { $0.notificationTime < $1.notificationTime }
     }
-    public func notificationPreview(now: Date = Date(), zone: TimeZone = .current) -> String {
-        if group == .attention { return scheduleReason(reason) }
+    public func notificationPreview(now: Date = Date(), zone: TimeZone = .current, shortReason: Bool = false) -> String {
+        if group == .attention { return scheduleReason(reason, short: shortReason) }
         guard let run = latestNotification else { return lastResult(now: now, zone: zone) }
         // A stopped run shows its readable reason, as on web and Android, not the daemon's notice text.
-        if ["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(run.status) { return scheduleReason(run.reason) }
+        if ["failed", "skipped", "uncertain", "interrupted", "cancelled"].contains(run.status) { return scheduleReason(run.reason, short: shortReason) }
         for text in [run.notificationText, run.finalSummary] {
             if let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return text }
         }
@@ -357,7 +357,17 @@ public func scheduleFrequency(_ t: ScheduleTrigger, zone: TimeZone = .current, i
         return day + " " + (t.time ?? "08:00") + (includeZone && canonicalScheduleZone(tz) != canonicalScheduleZone(zone.identifier) ? " · " + tz : "")
     }
 }
-public func scheduleReason(_ reason: String?) -> String {
+public func scheduleReason(_ reason: String?, short: Bool = false) -> String {
+    if short {
+        switch reason {
+        case "execution_failed": return "运行失败"
+        case "execution_interrupted": return "运行被中断"
+        case "message_cancelled": return "定时消息在送达前被取消"
+        case "agent_schedule_permissions_changed": return "创建任务时的权限已改变"
+        case "agent_schedule_interval_below_minimum": return "Agent 创建的任务间隔过短"
+        default: break
+        }
+    }
     let r = reason ?? ""
     let known = [
         "relay_session_limit": "中继上的会话数已满", "execution_failed": "运行失败，任务已停下",

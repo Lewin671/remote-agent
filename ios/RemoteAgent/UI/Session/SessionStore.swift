@@ -278,7 +278,7 @@ final class SessionStore {
                 o.missingImages = !unknown && ce?.fromDaemon == true && ce?.code == "not_found" && (!o.imageIds.isEmpty || !o.fileIds.isEmpty) &&
                     ce?.message.contains("is not on this machine; upload it again") == true
                 // Put back, the text and the images stay and the images go up again.
-                o.error = errorText(error)
+                o.error = ce?.outcomeDetail ?? errorText(error)
             }
             delivering.remove(o.requestId)
         }

@@ -27,7 +27,7 @@ struct DefaultModeSheet: View {
                 mode?.text ?? "默认",
                 desc: mode == nil
                     ? (effective.known
-                        ? "不指定时实际用：" + modeLabel(chosen: nil, default: effective, agent: agent).replacingOccurrences(of: "默认：", with: "")
+                        ? "不指定时实际用：" + modeLabel(chosen: nil, default: effective, agent: agent, includeDefault: false)
                         : unknownModeText)
                     : choice?.desc,
                 checked: mode == current || (mode == nil && !defaultModeChoices.contains(current)),

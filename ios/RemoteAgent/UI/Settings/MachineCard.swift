@@ -29,7 +29,7 @@ struct MachineCard: View {
                     if let status {
                         HStack(spacing: 6) {
                             StatusMark(online ? .online : .off)
-                            Text(online ? status.text : status.text == "离线" ? "离线" : "\(status.text)在线")
+                            Text(online ? status.text : status.hasLastSeen ? "\(status.text)在线" : "离线")
                                 .font(.subheadline).foregroundStyle(DS.ink2)
                         }
                     }

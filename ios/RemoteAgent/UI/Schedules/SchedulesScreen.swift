@@ -155,7 +155,7 @@ private struct ScheduleCard: View {
                 }
                 if attention {
                     (Text(task.attentionWord).foregroundStyle(DS.orangeInk).fontWeight(.semibold)
-                        + Text(" · " + task.notificationPreview(now: date).replacingOccurrences(of: "，任务已停下", with: "")).foregroundStyle(DS.ink2))
+                        + Text(" · " + task.notificationPreview(now: date, shortReason: true)).foregroundStyle(DS.ink2))
                         .font(.subheadline).lineLimit(2)
                     HStack { Spacer(); Text("去处理 ›").font(.subheadline.weight(.semibold)).foregroundStyle(DS.blue) }
                 } else {

@@ -266,16 +266,16 @@ public func defaultModeOf(_ m: MachineView?, agent: PBAgent) -> DefaultMode {
 public let unknownModeText = "跟随 CLI 设置"
 
 /// The mode a start uses: chosen, or the CLI's effective default on that machine.
-public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent) -> String {
+public func modeLabel(chosen: Mode?, default d: DefaultMode, agent: PBAgent, includeDefault: Bool = true) -> String {
     let text: String
     if let chosen {
         text = chosen.text
     } else if !d.known {
         text = unknownModeText
     } else if let m = d.mode {
-        text = "默认：\(m.text)"
+        text = includeDefault ? "默认：\(m.text)" : m.text
     } else {
-        text = "默认：\(agentName(agent)) 自己的模式"
+        text = includeDefault ? "默认：\(agentName(agent)) 自己的模式" : "\(agentName(agent)) 自己的模式"
     }
     return text + (chosen == nil && d.varies ? "（项目设置可能不同）" : "")
 }

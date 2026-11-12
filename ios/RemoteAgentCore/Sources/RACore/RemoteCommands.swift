@@ -6,8 +6,11 @@ import Connect
 import Foundation
 import RAProto
 
-/// How the error of a command whose outcome is unknown begins.
-public let unknownOutcomePrefix = "不确定电脑有没有执行："
+extension CommandError {
+    static func unknownBecause(_ reason: String) -> CommandError {
+        CommandError(unknownOutcome, "不确定电脑有没有执行：" + reason, outcomeDetail: reason)
+    }
+}
 
 /// A display copy fetched for viewing: its pixels, or why there are none.
 public enum ImageResult: Equatable, Sendable {
@@ -122,7 +125,7 @@ extension Remote {
         var mayHaveRun = retryOfUnknown
         func notSent(_ code: String, _ text: String) -> CommandError {
             mayHaveRun
-                ? CommandError(CommandError.unknownOutcome, unknownOutcomePrefix + "连接中途断了")
+                ? CommandError.unknownBecause("连接中途断了")
                 : CommandError(code, text)
         }
         var req = PBForwardRequest()
@@ -191,7 +194,7 @@ extension Remote {
                     throw notSent(CommandError.unavailable, "电脑不在线，指令没有发出")
                 }
                 if unknown || ce.code == .unavailable {
-                    throw CommandError(CommandError.unknownOutcome, unknownOutcomePrefix + errorText(ce))
+                    throw CommandError.unknownBecause(errorText(ce))
                 }
                 throw CommandError(CommandError.unknownOutcome, "中继未提供可验证的执行结果，请重试同一请求")
             } catch {
@@ -215,8 +218,7 @@ extension Remote {
             return try await signIn()
         } catch {
             if !mayHaveRun { throw error }
-            throw CommandError(
-                CommandError.unknownOutcome, unknownOutcomePrefix + "请求可能已经送到，之后登录失败（\(errorText(error))）")
+            throw CommandError.unknownBecause("请求可能已经送到，之后登录失败（\(errorText(error))）")
         }
     }
 
