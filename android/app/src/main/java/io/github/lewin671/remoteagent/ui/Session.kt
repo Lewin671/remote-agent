@@ -40,7 +40,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.snapshotFlow
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -491,7 +491,7 @@ private fun SessionTopBar(
 }
 
 @Composable
-private fun ChatPane(
+internal fun ChatPane(
     state: RemoteState,
     s: SessionView,
     status: Status,
@@ -564,7 +564,7 @@ private fun ChatPane(
             // Following: the end from the first frame of the longer list, and of a history shown for the
             // first time. Left to the list, it would keep the index on a long history and show older
             // rows for a frame.
-            list.requestScrollToItem(next.items.size + d.tools.size + outbox.size + 3)
+            list.requestScrollToItem(next.items.size + pendingInputs(d).size + outbox.size + 3)
         }
         rows.value = next
     }
@@ -604,20 +604,22 @@ private fun ChatPane(
         }
     }
     var allPending by remember { mutableStateOf(false) }
+    val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
+    val sentHere = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
     val scope = rememberCoroutineScope()
     val atBottom by remember { derivedStateOf { !list.canScrollForward } }
     val dragged by list.interactionSource.collectIsDraggedAsState()
     LaunchedEffect(dragged, atBottom) { followState.observe(dragged, atBottom) }
     val follow = followState.on
-    var chatHeight by remember { androidx.compose.runtime.mutableIntStateOf(0) }
-    val endIndex by rememberUpdatedState(items.size + d.tools.size + outbox.size + 3)
+    val endIndex by rememberUpdatedState(items.size + visiblePending.size + sentHere.size + 3)
     val ime = WindowInsets.ime.getBottom(LocalDensity.current)
     // The dock appearing or going also moves the bottom.
     LaunchedEffect(
         followState.sends,
         items.size,
         outbox.size,
-        d.tools.size,
+        visiblePending,
+        sentHere.size,
         ime,
         d.approvals.size,
         d.questions.size,
@@ -626,15 +628,18 @@ private fun ChatPane(
     ) {
         // Past the end: the list stops at its last item, even before its first layout.
         if (follow && items.isNotEmpty())
-            list.scrollToItem(items.size + d.tools.size + outbox.size + 3)
+            list.scrollToItem(endIndex)
         if (follow) unseen.saw(items.size)
         // A bubble opening or the dock coming moves the end for a few frames: stay on it, frame by frame.
         if (follow && items.isNotEmpty()) list.pinBottom({ endIndex }, { followState.on }, { list.moved() })
     }
-    // So does the message box growing and shrinking, which changes how tall the chat is.
-    LaunchedEffect(Unit) {
-        snapshotFlow { chatHeight }.collectLatest { h ->
-            if (h > 0 && followState.on && endIndex > 3) list.pinBottom({ endIndex }, { followState.on }, { list.moved() })
+    // Queued rows can arrive without a new projected chat item. Their entrance and action
+    // line also change height after the initial scroll has settled. Observe every measured
+    // layout, including the actual tail count, rather than only the viewport height.
+    LaunchedEffect(list) {
+        snapshotFlow { list.layoutInfo }.collect { layout ->
+            if (followState.on && !list.isScrollInProgress && list.canScrollForward && layout.totalItemsCount > 0)
+                list.requestScrollToItem(layout.totalItemsCount - 1)
         }
     }
     LaunchedEffect(atBottom) { if (atBottom) unseen.saw(items.size) }
@@ -652,12 +657,10 @@ private fun ChatPane(
     val dockMax = with(density) { maxOf(240.dp, (shownHeight * 0.6f).toDp()) }
 
     // What waits under the chat: messages sent from here and messages queued behind the running turn.
-    val visiblePending = if (pendingInputs.size > 3 && !allPending) pendingInputs.take(2) else pendingInputs
-    val sentHere = outbox.filter { outgoingShown(d.inputs[it.requestId]) }
     entrances.outgoing(sentHere.map { "out" + it.requestId } + visiblePending.map { "pending-${it.id}" })
 
     Column(modifier.onSizeChanged { shownHeight = it.height }) {
-        Box(Modifier.weight(1f).onSizeChanged { chatHeight = it.height }) {
+        Box(Modifier.weight(1f)) {
             val chatCtx =
                 ChatContext(
                     s.id,

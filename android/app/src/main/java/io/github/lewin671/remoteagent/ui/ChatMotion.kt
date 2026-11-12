@@ -76,7 +76,10 @@ internal class RowEntrances {
             return
         }
         for (k in keys) if (outKnown.add(k)) {
-            fresh[k] = Entrance.RISE to now
+            // The daemon accepted this device's bubble: keep its full height while
+            // replacing the local status with queue actions, rather than rising again.
+            if (!k.startsWith("pending-") || "out" + k.removePrefix("pending-") !in outKnown)
+                fresh[k] = Entrance.RISE to now
             if (k.startsWith("out")) sentAt = now
         }
     }
