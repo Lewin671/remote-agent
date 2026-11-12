@@ -787,6 +787,12 @@ func (a *Adapter) DecodeHook(raw []byte) (*agent.Hook, error) { return agent.Dec
 
 func (a *Adapter) ImageInput(styled, footer string) (string, []int32, bool) {
 	text, ok := a.ComposerText(styled, footer)
+	// The native composer can wrap anywhere inside an image label. Read
+	// its indexes only after joining those screen rows, just as the injector
+	// already joins wrapped paths. ComposerText trims each row, so a wrap
+	// at the label's space needs that space restored before joining.
+	text = strings.ReplaceAll(text, "Image\n#", "Image #")
+	text = strings.ReplaceAll(text, "\n", "")
 	return text, agent.ImagePlaceholders(text), ok
 }
 func (a *Adapter) ClearImageInput(_ int, _ bool) []byte { return a.ClearInput() }
