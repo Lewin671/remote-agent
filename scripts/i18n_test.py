@@ -21,7 +21,10 @@ class CompilerTest(unittest.TestCase):
 
     def mutate(self, change):
         path = self.root / 'i18n/messages/image.json'
-        rows = i18n.read(path); change(rows)
+        rows = i18n.read(path)
+        # The checks below mutate a plural row; keep it first whatever order the source file has.
+        rows.sort(key=lambda r: r['key'] != 'image.attach_failed')
+        change(rows)
         path.write_text(i18n.dump(rows))
 
     def rejected(self, change, pattern):
@@ -75,7 +78,7 @@ class CompilerTest(unittest.TestCase):
         self.assertIn('%3$lld',i18n.native(row['en']['forms']['photo'],row,True))
 
     def test_native_compilers_accept_escaping_and_reordered_plural_arguments(self):
-        row=i18n.read(self.root/'i18n/messages/image.json')[0]
+        row=next(r for r in i18n.read(self.root/'i18n/messages/image.json') if r['key']=='image.attach_failed')
         row['params']['aName']={'type':'string','example':'A & B'}
         for lang in ('zh-CN','en'):
             for f in row[lang]['forms']:
