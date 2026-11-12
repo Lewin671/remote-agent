@@ -455,9 +455,31 @@ fun lookupNote(l: SessionLookup?): String? =
         else -> null
     }
 
+/** Table rows in list previews keep their words, without pipes or alignment rows. */
+private fun previewTableText(text: String): String {
+    val lines = text.split("\n")
+    val pipe = Regex("(?<!\\\\)\\|")
+    fun cells(line: String) = line.trim().removePrefix("|")
+        .replace(Regex("(?<!\\\\)\\|$"), "").split(pipe).map { it.trim() }
+    fun separator(line: String) = '|' in line && cells(line).all { it.matches(Regex(":?-{3,}:?")) }
+    var inTable = false
+    return lines.mapIndexed { i, line ->
+        if (separator(line)) {
+            inTable = true
+            ""
+        } else if ('|' in line && (line.trimStart().startsWith("|") ||
+                Regex("(?<!\\\\)\\|\\s*$").containsMatchIn(line) || inTable || separator(lines.getOrNull(i + 1).orEmpty()))) {
+            cells(line).filter { it.isNotEmpty() }.joinToString("、") { it.replace("\\|", "|") }
+        } else {
+            inTable = false
+            line
+        }
+    }.joinToString("\n")
+}
+
 /** Text for one-line previews: Markdown marks and the CLIs' image placeholders removed. */
 fun plain(text: String): String =
-    text
+    previewTableText(text)
         .replace(Regex("\\[Image #\\d+]\\s*"), "")
         .replace(Regex("```[a-zA-Z0-9]*"), "")
         .replace(Regex("`([^`]*)`"), "$1")

@@ -26,6 +26,16 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 class ModelTest {
+    @Test fun markdownTablePreviewMatchesSharedVectors() {
+        val vectors = kotlinx.serialization.json.Json.parseToJsonElement(
+            java.io.File(System.getProperty("previewTableVectors")).readText()) as kotlinx.serialization.json.JsonArray
+        for (vector in vectors) {
+            val fields = vector as kotlinx.serialization.json.JsonObject
+            fun value(key: String) = (fields.getValue(key) as kotlinx.serialization.json.JsonPrimitive).content
+            assertEquals(value("input"), value("expected"), plain(value("input")))
+        }
+    }
+
     private fun ev(seq: Long, b: Event.Builder) = b.setSeq(seq).build()
 
     @Test
