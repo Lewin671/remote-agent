@@ -627,7 +627,8 @@
     "notes": "新任务附件按钮读屏标签。 iOS 现有原句；保持标点与空格。参数为显示内容，CLI/用户原文不翻译。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

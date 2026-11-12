@@ -1,7 +1,8 @@
+import * as i18n from "./i18n";
 import { t } from "./i18n";
 /** User-facing image errors. Never echo a codec, RPC or OS error verbatim. */
 export interface ImageProblem { message: string; retryable: boolean }
-export const ORIGINAL_IMAGE_HINT = "原图保住画质；CLI 仍可能缩小过大的图片。";
+export function originalImageHint(): string { return i18n.t("image.original_hint"); }
 /** Stable local categories; translated messages never decide aggregation. */
 export function imageProblemKind(error: string) {
   const e = error.toLowerCase();

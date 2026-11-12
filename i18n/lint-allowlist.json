@@ -148,5 +148,70 @@
     "path": "web/src/views/HistoryRows.tsx",
     "literal": ": null; if (!windowed.current) return",
     "reason": "Lexical JSX scanner false positive: conditional render control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/model.ts",
+    "literal": "./gen/remoteagent/v1/event_pb",
+    "reason": "TypeScript generated protocol module import path, never rendered; lexical sink scanner false positive."
+  },
+  {
+    "path": "web/src/image-problem.ts",
+    "literal": "source_missing",
+    "reason": "Stable local image failure category, used by switch/aggregation; displayed wording is resolved separately from image.* messages."
+  },
+  {
+    "path": "web/src/image-problem.ts",
+    "literal": "storage_full",
+    "reason": "Stable local image failure category, used by switch/aggregation; displayed wording is resolved separately from image.* messages."
+  },
+  {
+    "path": "web/src/image-problem.ts",
+    "literal": "upload_failed",
+    "reason": "Stable local image failure category, used by switch/aggregation; displayed wording is resolved separately from image.* messages."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "imageGenerated",
+    "reason": "Protocol event discriminant, never rendered; the event row uses image.* display messages."
+  },
+  {
+    "path": "web/src/views/Session.tsx",
+    "literal": "{value}",
+    "reason": "Named rich-text slot token passed to the message formatter and replaced with emphasized display content, never shown as UI prose."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": ", \"\\x1b[D\", i18n.t(\"terminal.left\")], [",
+    "reason": "Lexical JSX scanner false positive between icon elements: tuple of terminal control sequence and localized accessibility label, not a text node."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": ", \"\\x1b[A\", i18n.t(\"terminal.up\")], [",
+    "reason": "Lexical JSX scanner false positive between icon elements: tuple of terminal control sequence and localized accessibility label, not a text node."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": ", \"\\x1b[B\", i18n.t(\"terminal.down\")], [",
+    "reason": "Lexical JSX scanner false positive between icon elements: tuple of terminal control sequence and localized accessibility label, not a text node."
+  },
+  {
+    "path": "web/src/views/Terminal.tsx",
+    "literal": ", \"\\x1b[C\", i18n.t(\"terminal.right\")], [",
+    "reason": "Lexical JSX scanner false positive between icon elements: tuple of terminal control sequence and localized accessibility label, not a text node."
+  },
+  {
+    "path": "web/src/image-problem.ts",
+    "literal": "dimensions",
+    "reason": "Stable local image failure category; the display error mapping remains in batch C. Not user-facing text."
+  },
+  {
+    "path": "web/src/image-problem.ts",
+    "literal": "decode",
+    "reason": "Stable local image failure category; the display error mapping remains in batch C. Not user-facing text."
+  },
+  {
+    "path": "web/src/views/Attach.tsx",
+    "literal": "file-chips",
+    "reason": "CSS class for file attachment layout, never rendered as text; lexical presentation sink false positive."
   }
 ]

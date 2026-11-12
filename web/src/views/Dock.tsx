@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import { isSkeleton, skeletonMessage } from "../skeleton";
 // What a session waits for, docked above the input (design-system §6 停靠区):
 // approvals, questions, plans and terminal popups, each in the dark card's
@@ -38,7 +39,7 @@ function OpenHead({ frame, label, meta, extra, busy }: { frame: Frame; label: st
       {extra}
       {/* The same toggle as the label; the label is the one read aloud. */}
       <button className="pending-action" tabIndex={-1} aria-hidden onMouseDown={keep} onClick={frame.onToggle}>
-        {busy ? "等待确认" : "收起"}
+        {busy ? i18n.t("dock.waiting_confirmation") : i18n.t("markdown.collapse")}
       </button>
     </div>
   );
@@ -46,7 +47,7 @@ function OpenHead({ frame, label, meta, extra, busy }: { frame: Frame; label: st
 
 /** A folded item: one dark line 「● 类型 · 摘要 · 处理 ⌄」 that opens it. */
 function FoldedLine({ frame, label, brief, busy }: { frame: Frame; label: string; brief: string; busy?: boolean }) {
-  const info = [brief, frame.more > 0 ? `还有 ${frame.more} 项` : ""].filter(Boolean).join(" · ");
+  const info = [brief, frame.more > 0 ? i18n.t("dock.more", { count: frame.more }) : ""].filter(Boolean).join(" · ");
   return (
     <div className={"dock pending" + (busy ? " submitting" : "")}>
       <div className="tc line">
@@ -54,7 +55,7 @@ function FoldedLine({ frame, label, brief, busy }: { frame: Frame; label: string
           <i />
           <span className="pending-label">{label}</span>
           <span className="pending-brief">{info}</span>
-          <span className="pending-action">{busy ? "等待确认" : <>处理 <Exp /></>}</span>
+          <span className="pending-action">{busy ? i18n.t("dock.waiting_confirmation") : <>{i18n.t("dock.handle")} <Exp /></>}</span>
         </button>
       </div>
     </div>
@@ -127,7 +128,7 @@ function ApprovalDock({
   const deadline = deadlineOf(a);
   const left = deadline ? minutesLeft(deadline, now) : "";
   const title = approvalTitle(a);
-  if (isSkeleton(a)) return <div className="dock pending"><div className="tc line"><div className="k">{skeletonMessage}</div></div></div>;
+  if (isSkeleton(a)) return <div className="dock pending"><div className="tc line"><div className="k">{skeletonMessage()}</div></div></div>;
   // A permission request's arguments are no summary: its title says it.
   if (!frame.open) return <FoldedLine frame={frame} label={title} brief={a.command ? approvalDisplay(a.command).replace(/\s+/g, " ") : ""} />;
   // Answered, the card itself shrinks to its one line of where it stands.
@@ -140,7 +141,7 @@ function ApprovalDock({
         docked
         onDenying={onReasonOpen}
         // The head says the time; what happens at its end is the home card's to say.
-        head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, left)} />}
+        head={<OpenHead frame={frame} label={title} meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), left)} />}
       />
     </div>
   );
@@ -155,7 +156,7 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
   const ans = useAnswer(remote, sid, q.questionId, isSkeleton(q));
   const ticked = ans.ticked;
   const setTicked = (f: number[] | ((t: number[]) => number[])) => ans.setTicked(typeof f === "function" ? f : () => f);
-  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage, busy: false, progress: "", answers: null, actions: (_page: boolean) => null };
+  if (isSkeleton(q)) return { label: askTitle(agent), text: skeletonMessage(), busy: false, progress: "", answers: null, actions: (_page: boolean) => null };
   const n = q.questions.length;
   const index = Math.min(ans.index, n - 1);
   const item = q.questions[index];
@@ -182,8 +183,8 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
     if (ans.error) ans.clearError();
     setTicked((t) => (t.includes(o) ? t.filter((x) => x !== o) : [...t, o].sort((a, b) => a - b)));
   };
-  const where = n > 1 ? `第 ${index + 1} 题，共 ${n} 题` : item.header;
-  const progress = [where, multi ? "可多选" : ""].filter(Boolean).join(" · ");
+  const where = n > 1 ? i18n.t("dock.question_progress", { index: index + 1, count: n }) : item.header;
+  const progress = [where, multi ? i18n.t("dock.multiselect") : ""].filter(Boolean).join(" · ");
   const answers = (
     <div className="answers">
       {item.options.map((o, i) => {
@@ -203,14 +204,14 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
             <div>
               {text}
               {status === "err" && !multi ? (
-                <small className="err">没能提交，终端里的问题可能已经变了</small>
+                <small className="err">{i18n.t("dock.question_changed")}</small>
               ) : status && status !== "err" && !multi ? (
-                <small>{status === "sending" ? "提交中…" : ""}</small>
+                <small>{status === "sending" ? i18n.t("dock.submitting") : ""}</small>
               ) : (
                 o.description && <small>{o.description}</small>
               )}
             </div>
-            {recommended && <span className="tag">推荐</span>}
+            {recommended && <span className="tag">{i18n.t("dock.recommended")}</span>}
             {!multi && on && <Check className="ck" />}
           </button>
         );
@@ -220,22 +221,21 @@ function useQuestion(remote: Remote, sid: string, q: QuestionAsked, agent: Agent
   const submit = multi && !(ans.error && ans.unknown) && (
     <div className="btns">
       <button className="btn pri" disabled={!!ans.busy || ticked.length === 0} onClick={() => void pick(ticked)}>
-        {ans.busy ? "提交中…" : ticked.length ? `提交 ${ticked.length} 项` : "选好后提交"}
+        {ans.busy ? i18n.t("dock.submitting") : ticked.length ? i18n.t("dock.submit_selected", { count: ticked.length }) : i18n.t("dock.select_then_submit")}
       </button>
     </div>
   );
-  const failed = multi && ans.error && <div className="ml red">{ans.unknown ? "不确定提交了没有，重试会发送同一个回答" : `没能提交：${ans.error}。可以改选后再提交`}</div>;
+  const failed = multi && ans.error && <div className="ml red">{ans.unknown ? i18n.t("dock.answer_unknown") : i18n.t("dock.submit_failed_edit", { reason: ans.error })}</div>;
   const foot = (page: boolean) => (
     <div className="st">
       {ans.error && (!multi || ans.unknown) ? (
         <button className="lk" onClick={retry}>
-          重试
-        </button>
+          {i18n.t("common.retry")}</button>
       ) : (
         <>
-          <span>{page && multi ? (ticked.length ? `已选 ${ticked.length} 项` : "") : "都不合适？"}</span>
+          <span>{page && multi ? (ticked.length ? i18n.t("dock.selected", { count: ticked.length }) : "") : i18n.t("dock.none_fit")}</span>
           <button className="lk" onClick={onTerminal}>
-            其他回答：去终端<ChevronRight />
+            {i18n.t("dock.other_terminal")}<ChevronRight />
           </button>
         </>
       )}
@@ -266,7 +266,7 @@ function QuestionDock({ remote, sid, q, agent, frame, onTerminal }: { remote: Re
       label={p.label}
       brief={p.text}
       busy={p.busy}
-      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, p.progress)}
+      meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), p.progress)}
       body={
         <>
           <div className="q">{p.text}</div>
@@ -284,28 +284,28 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
   const plan = shared ?? own;
   const b = plan.busy;
   const entry = agentInfo(agentOf(remote.sessions.get(sid)));
-  if (terminalOnly) return <div className="muted">{skeletonMessage}</div>;
+  if (terminalOnly) return <div className="muted">{skeletonMessage()}</div>;
   return (
     <>
       {/* The full page offers Codex's third choice above the other two. */}
       {full && entry.planClearContext && (
         <div className="btns decide">
           <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.CLEAR_AND_IMPLEMENT)}>
-            {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? "提交中…" : "清空上下文后执行"}
+            {b === String(PlanChoice.CLEAR_AND_IMPLEMENT) ? i18n.t("dock.submitting") : i18n.t("dock.plan_clear")}
           </button>
         </div>
       )}
       <div className="btns decide">
         <button className="btn" disabled={!!b} onClick={() => void plan.answer(PlanChoice.KEEP_PLANNING)}>
-          {b === String(PlanChoice.KEEP_PLANNING) ? "提交中…" : entry.planKeepLabel}
+          {b === String(PlanChoice.KEEP_PLANNING) ? i18n.t("dock.submitting") : entry.planKeepLabel}
         </button>
         <button className="btn pri" disabled={!!b} onClick={() => void plan.answer(PlanChoice.IMPLEMENT)}>
-          {b === String(PlanChoice.IMPLEMENT) ? "提交中…" : entry.planApproveLabel}
+          {b === String(PlanChoice.IMPLEMENT) ? i18n.t("dock.submitting") : entry.planApproveLabel}
         </button>
       </div>
       {plan.error && (
-        <Banner kind="err" action="重试" onAction={plan.retry}>
-          没能提交：{plan.error}
+        <Banner kind="err" action={i18n.t("common.retry")} onAction={plan.retry}>
+          {i18n.t("dock.submit_failed", { reason: plan.error })}
         </Banner>
       )}
     </>
@@ -314,22 +314,22 @@ export function PlanButtons({ remote, sid, full, shared, terminalOnly = false }:
 
 function PlanDock({ remote, sid, plan, frame, onFull }: { remote: Remote; sid: string; plan?: PlanProposed; frame: Frame; onFull: () => void }) {
   const state = usePlan(remote, sid, isSkeleton(plan));
-  if (isSkeleton(plan)) return <div className="dock muted">{skeletonMessage}</div>;
+  if (isSkeleton(plan)) return <div className="dock muted">{skeletonMessage()}</div>;
   return (
     <Pending
       frame={frame}
-      label="计划待批准"
+      label={i18n.t("list_state.plan")}
       brief=""
       busy={!!state.busy}
-      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`)}
+      meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }))}
       extra={
         plan && (
           <button className="lk pending-full" onClick={onFull}>
-            展开全文<ChevronRight />
+            {i18n.t("markdown.expand")}<ChevronRight />
           </button>
         )
       }
-      body={<div className="plan">{plan ? <Markdown text={plan.text} /> : "计划的内容还没读到，可以去终端看"}</div>}
+      body={<div className="plan">{plan ? <Markdown text={plan.text} /> : i18n.t("dock.plan_unread")}</div>}
       actions={
         <>
           <PlanButtons remote={remote} sid={sid} shared={state} terminalOnly={isSkeleton(plan)} />
@@ -353,9 +353,9 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
   return (
     <Pending
       frame={frame}
-      label="终端里有弹窗"
+      label={i18n.t("list_state.popup")}
       brief={title}
-      meta={metaOf(frame.more > 0 && `还有 ${frame.more} 项`, `${agentName(agent)} 在等你`)}
+      meta={metaOf(frame.more > 0 && i18n.t("dock.more", { count: frame.more }), i18n.t("dock.agent_waiting", { agent: agentName(agent) }))}
       body={
         title && (
           <>
@@ -374,8 +374,7 @@ function PopupDock({ title, agent, frame, onTerminal }: { title: string; agent: 
       actions={
         <div className="btns">
           <button className="btn pri" onClick={onTerminal}>
-            去终端处理
-          </button>
+            {i18n.t("dock.handle_terminal")}</button>
         </div>
       }
     />
@@ -525,7 +524,7 @@ export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal 
   const p = useQuestion(remote, sid, q, agent, onTerminal);
   return (
     <div className="page dpage">
-      <NavBar onBack={onBack} title="回答提问" sub={`${title} · ${agentName(agent)}`} />
+      <NavBar onBack={onBack} title={i18n.t("dock.answer_title")} sub={`${title} · ${agentName(agent)}`} />
       {p && (
         <div className="tc">
           <div className="k">
@@ -552,10 +551,10 @@ export function QuestionPage({ remote, sid, q, agent, title, onBack, onTerminal 
 export function ApprovalPage({ remote, sid, a, title, onBack }: { remote: Remote; sid: string; a: ApprovalRequested; agent: Agent; title: string; onBack: () => void }) {
   const now = useNow(1000);
   const deadline = deadlineOf(a);
-  if (isSkeleton(a)) return <div className="page dpage"><NavBar onBack={onBack} title="审批" sub={title} /><div className="tc"><div className="y">{skeletonMessage}</div></div></div>;
+  if (isSkeleton(a)) return <div className="page dpage"><NavBar onBack={onBack} title={i18n.t("approval.title")} sub={title} /><div className="tc"><div className="y">{skeletonMessage()}</div></div></div>;
   return (
     <div className="page dpage">
-      <NavBar onBack={onBack} title="审批详情" sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
+      <NavBar onBack={onBack} title={i18n.t("approval.details")} sub={`${title}${deadline ? " · " + minutesLeft(deadline, now) : ""}`} />
       <ApprovalCard remote={remote} sid={sid} a={a} docked />
     </div>
   );
@@ -563,10 +562,10 @@ export function ApprovalPage({ remote, sid, a, title, onBack }: { remote: Remote
 
 /** The whole plan on a paper page, its choices fixed at the bottom. */
 export function PlanPage({ remote, sid, plan, title, onBack }: { remote: Remote; sid: string; plan: PlanProposed; title: string; onBack: () => void }) {
-  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title="计划全文" sub={title} /><div className="body chat muted">{skeletonMessage}</div></div>;
+  if (isSkeleton(plan)) return <div className="page"><NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={title} /><div className="body chat muted">{skeletonMessage()}</div></div>;
   return (
     <div className="page">
-      <NavBar onBack={onBack} title="计划全文" sub={`${title} · 计划待批准`} />
+      <NavBar onBack={onBack} title={i18n.t("dock.plan_full")} sub={i18n.t("dock.plan_title", { title })} />
       <div className="body chat">
         <div className="ai">
           <Markdown text={plan.text} />

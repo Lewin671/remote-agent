@@ -13,6 +13,206 @@ public enum L10n {
         // first two locales use English integer plurals or only `other`.
         return String(format: text, locale: Locale(identifier: "en_US_POSIX"), arguments: args)
     }
+    public static func approvalAllow(locale: String = MessageLocale.current) -> String {
+        let key = "approval_allow"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalAllowed(locale: String = MessageLocale.current) -> String {
+        let key = "approval_allowed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalAlwaysAllow(locale: String = MessageLocale.current) -> String {
+        let key = "approval_always_allow"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalAlwaysAllowed(locale: String = MessageLocale.current) -> String {
+        let key = "approval_always_allowed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalAlwaysDirectory(path: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_always_directory"
+        return format(key, locale: locale, args: [path])
+    }
+    public static func approvalAlwaysPrefix(command: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_always_prefix"
+        return format(key, locale: locale, args: [command])
+    }
+    public static func approvalApprove(locale: String = MessageLocale.current) -> String {
+        let key = "approval_approve"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalApproveExecute(locale: String = MessageLocale.current) -> String {
+        let key = "approval_approve_execute"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalAutoEdits(locale: String = MessageLocale.current) -> String {
+        let key = "approval_auto_edits"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalDeliveryFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_delivery_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func approvalDenialReason(locale: String = MessageLocale.current) -> String {
+        let key = "approval_denial_reason"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalDenied(locale: String = MessageLocale.current) -> String {
+        let key = "approval_denied"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalDeny(locale: String = MessageLocale.current) -> String {
+        let key = "approval_deny"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalDetails(locale: String = MessageLocale.current) -> String {
+        let key = "approval_details"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalExpired(locale: String = MessageLocale.current) -> String {
+        let key = "approval_expired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalFullCommand(locale: String = MessageLocale.current) -> String {
+        let key = "approval_full_command"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalInTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "approval_in_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalReasonPlaceholder(locale: String = MessageLocale.current) -> String {
+        let key = "approval_reason_placeholder"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalSecondsLeft(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "approval_seconds_left"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func approvalTimedOut(locale: String = MessageLocale.current) -> String {
+        let key = "approval_timed_out"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalTimeoutNote(remaining: String, locale: String = MessageLocale.current) -> String {
+        let key = "approval_timeout_note"
+        return format(key, locale: locale, args: [remaining])
+    }
+    public static func approvalTitle(locale: String = MessageLocale.current) -> String {
+        let key = "approval_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func approvalTruncated(locale: String = MessageLocale.current) -> String {
+        let key = "approval_truncated"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentComputerOffline(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_computer_offline"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func attachmentComputerUnread(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_computer_unread"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func attachmentDisconnected(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_disconnected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentFailed(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentFailedSendHint(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_failed_send_hint"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func attachmentFailure(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_failure"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func attachmentFile(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_file"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentFileMissing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_file_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentFileProgress(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_file_progress"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentFilenameLimit(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_filename_limit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentImagesLimit(count: Int, limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_images_limit"
+        return format(key, locale: locale, args: [Int64(count), Int64(limit)])
+    }
+    public static func attachmentMaxFiles(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_max_files"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func attachmentMaxImages(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_max_images"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func attachmentMetadata(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_metadata"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentNamedSizeLimit(limit: Int, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_named_size_limit"
+        return format(key, locale: locale, args: [Int64(limit), name])
+    }
+    public static func attachmentPathSpaces(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_path_spaces"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func attachmentPhotosVideos(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_photos_videos"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentPreparing(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_preparing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentReadFailed(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_read_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentRemoveFile(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_remove_file"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func attachmentRemoveVideo(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_remove_video"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func attachmentSizeLimit(limit: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_size_limit"
+        return format(key, locale: locale, args: [Int64(limit)])
+    }
+    public static func attachmentUpdateRequired(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_update_required"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentUploadFailed(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_upload_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentUploadProgress(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "attachment_upload_progress"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func attachmentUploading(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_uploading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func attachmentZipFolder(locale: String = MessageLocale.current) -> String {
+        let key = "attachment_zip_folder"
+        return format(key, locale: locale, args: [])
+    }
     public static func commonAllProjectsAvatar(locale: String = MessageLocale.current) -> String {
         let key = "common_all_projects_avatar"
         return format(key, locale: locale, args: [])
@@ -121,6 +321,118 @@ public enum L10n {
         let key = "common_unknown_computer"
         return format(key, locale: locale, args: [])
     }
+    public static func composerAfterTurn(locale: String = MessageLocale.current) -> String {
+        let key = "composer_after_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerAwaitRecord(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_await_record"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func composerComputerRestarted(locale: String = MessageLocale.current) -> String {
+        let key = "composer_computer_restarted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerImagesUnrecognized(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_images_unrecognized"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func composerInputUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_input_unconfirmed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerInsertHint(locale: String = MessageLocale.current) -> String {
+        let key = "composer_insert_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerInsertNow(locale: String = MessageLocale.current) -> String {
+        let key = "composer_insert_now"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerMaybeFailure(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_maybe_failure"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func composerMessage(locale: String = MessageLocale.current) -> String {
+        let key = "composer_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerMessageFallback(locale: String = MessageLocale.current) -> String {
+        let key = "composer_message_fallback"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerMessageUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_message_unconfirmed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerNotWritten(locale: String = MessageLocale.current) -> String {
+        let key = "composer_not_written"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerPlanPlaceholder(locale: String = MessageLocale.current) -> String {
+        let key = "composer_plan_placeholder"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerQueueAfterAnswer(locale: String = MessageLocale.current) -> String {
+        let key = "composer_queue_after_answer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerQueueHint(locale: String = MessageLocale.current) -> String {
+        let key = "composer_queue_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerReadyTimeout(locale: String = MessageLocale.current) -> String {
+        let key = "composer_ready_timeout"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerResent(locale: String = MessageLocale.current) -> String {
+        let key = "composer_resent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerRestore(locale: String = MessageLocale.current) -> String {
+        let key = "composer_restore"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerRestoreFilesFull(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "composer_restore_files_full"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func composerRestoreImagesFull(count: Int, existing: Int, locale: String = MessageLocale.current) -> String {
+        let key = "composer_restore_images_full"
+        return format(key, locale: locale, args: [Int64(count), Int64(existing)])
+    }
+    public static func composerSend(locale: String = MessageLocale.current) -> String {
+        let key = "composer_send"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerSendFailure(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_send_failure"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func composerSending(locale: String = MessageLocale.current) -> String {
+        let key = "composer_sending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerShortcut(keys: String, locale: String = MessageLocale.current) -> String {
+        let key = "composer_shortcut"
+        return format(key, locale: locale, args: [keys])
+    }
+    public static func composerSlashNote(locale: String = MessageLocale.current) -> String {
+        let key = "composer_slash_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerSlashTitle(locale: String = MessageLocale.current) -> String {
+        let key = "composer_slash_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerUnconfirmed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_unconfirmed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func composerWriteFailed(locale: String = MessageLocale.current) -> String {
+        let key = "composer_write_failed"
+        return format(key, locale: locale, args: [])
+    }
     public static func connectionConnecting(locale: String = MessageLocale.current) -> String {
         let key = "connection_connecting"
         return format(key, locale: locale, args: [])
@@ -195,6 +507,130 @@ public enum L10n {
     }
     public static func connectionServerRetrying(locale: String = MessageLocale.current) -> String {
         let key = "connection_server_retrying"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockAgentWaiting(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_agent_waiting"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func dockAgyPlanNote(locale: String = MessageLocale.current) -> String {
+        let key = "dock_agy_plan_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockAnswerTitle(locale: String = MessageLocale.current) -> String {
+        let key = "dock_answer_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockAnswerUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "dock_answer_unknown"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockAnswered(answers: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_answered"
+        return format(key, locale: locale, args: [answers])
+    }
+    public static func dockClaudePlanNote(locale: String = MessageLocale.current) -> String {
+        let key = "dock_claude_plan_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockHandle(locale: String = MessageLocale.current) -> String {
+        let key = "dock_handle"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockHandleTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "dock_handle_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockMore(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "dock_more"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func dockMultiselect(locale: String = MessageLocale.current) -> String {
+        let key = "dock_multiselect"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockNoneFit(locale: String = MessageLocale.current) -> String {
+        let key = "dock_none_fit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockOtherTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "dock_other_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanAnswered(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_answered"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanClear(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_clear"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanClearRecord(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_clear_record"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanFull(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_full"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanImplementRecord(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_implement_record"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanKeep(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_keep"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockPlanTitle(title: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_title"
+        return format(key, locale: locale, args: [title])
+    }
+    public static func dockPlanUnread(locale: String = MessageLocale.current) -> String {
+        let key = "dock_plan_unread"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockQuestionChanged(locale: String = MessageLocale.current) -> String {
+        let key = "dock_question_changed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockQuestionProgress(count: Int, index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "dock_question_progress"
+        return format(key, locale: locale, args: [Int64(count), Int64(index)])
+    }
+    public static func dockRecommended(locale: String = MessageLocale.current) -> String {
+        let key = "dock_recommended"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockSelectThenSubmit(locale: String = MessageLocale.current) -> String {
+        let key = "dock_select_then_submit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockSelected(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "dock_selected"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func dockSubmitFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_submit_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func dockSubmitFailedEdit(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "dock_submit_failed_edit"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func dockSubmitSelected(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "dock_submit_selected"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func dockSubmitting(locale: String = MessageLocale.current) -> String {
+        let key = "dock_submitting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockTrustFolder(locale: String = MessageLocale.current) -> String {
+        let key = "dock_trust_folder"
+        return format(key, locale: locale, args: [])
+    }
+    public static func dockWaitingConfirmation(locale: String = MessageLocale.current) -> String {
+        let key = "dock_waiting_confirmation"
         return format(key, locale: locale, args: [])
     }
     public static func homeAddDevice(locale: String = MessageLocale.current) -> String {
@@ -433,9 +869,165 @@ public enum L10n {
         let key = "home_waiting_count"
         return format(key, locale: locale, args: [Int64(count)])
     }
+    public static func imageAdd(locale: String = MessageLocale.current) -> String {
+        let key = "image_add"
+        return format(key, locale: locale, args: [])
+    }
     public static func imageAttachFailed(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "image_attach_failed"
         return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageBackMessage(locale: String = MessageLocale.current) -> String {
+        let key = "image_back_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageConvertFailed(locale: String = MessageLocale.current) -> String {
+        let key = "image_convert_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageCopyFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_copy_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func imageCount(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_count"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageDownloadRetry(locale: String = MessageLocale.current) -> String {
+        let key = "image_download_retry"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageDraft(locale: String = MessageLocale.current) -> String {
+        let key = "image_draft"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageGenerated(locale: String = MessageLocale.current) -> String {
+        let key = "image_generated"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageLoadConnected(locale: String = MessageLocale.current) -> String {
+        let key = "image_load_connected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageMore(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_more"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageNamed(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_named"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func imageNext(locale: String = MessageLocale.current) -> String {
+        let key = "image_next"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageNumbered(index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_numbered"
+        return format(key, locale: locale, args: [Int64(index)])
+    }
+    public static func imageOriginal(locale: String = MessageLocale.current) -> String {
+        let key = "image_original"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageOriginalExpired(locale: String = MessageLocale.current) -> String {
+        let key = "image_original_expired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageOriginalHint(locale: String = MessageLocale.current) -> String {
+        let key = "image_original_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageOriginalMissing(locale: String = MessageLocale.current) -> String {
+        let key = "image_original_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageOriginalNotUploaded(locale: String = MessageLocale.current) -> String {
+        let key = "image_original_not_uploaded"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageOriginalOnComputer(locale: String = MessageLocale.current) -> String {
+        let key = "image_original_on_computer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imagePlaceholder(index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_placeholder"
+        return format(key, locale: locale, args: [Int64(index)])
+    }
+    public static func imagePosition(count: Int, index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_position"
+        return format(key, locale: locale, args: [Int64(count), Int64(index)])
+    }
+    public static func imagePositionState(count: Int, index: Int, state: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_position_state"
+        return format(key, locale: locale, args: [Int64(count), Int64(index), state])
+    }
+    public static func imagePreparing(locale: String = MessageLocale.current) -> String {
+        let key = "image_preparing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imagePreviewOnly(locale: String = MessageLocale.current) -> String {
+        let key = "image_preview_only"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imagePrevious(locale: String = MessageLocale.current) -> String {
+        let key = "image_previous"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imagePrompt(locale: String = MessageLocale.current) -> String {
+        let key = "image_prompt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageRemoveIndex(index: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_remove_index"
+        return format(key, locale: locale, args: [Int64(index)])
+    }
+    public static func imageScreenshots(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "image_screenshots"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func imageShare(locale: String = MessageLocale.current) -> String {
+        let key = "image_share"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageShareFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_share_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func imageTitle(locale: String = MessageLocale.current) -> String {
+        let key = "image_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageToolSource(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_tool_source"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func imageTotalSize(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "image_total_size"
+        return format(key, locale: locale, args: [size])
+    }
+    public static func imageUnsynced(locale: String = MessageLocale.current) -> String {
+        let key = "image_unsynced"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageUploaded(locale: String = MessageLocale.current) -> String {
+        let key = "image_uploaded"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageUploading(locale: String = MessageLocale.current) -> String {
+        let key = "image_uploading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageUserSource(locale: String = MessageLocale.current) -> String {
+        let key = "image_user_source"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageVerificationFailed(locale: String = MessageLocale.current) -> String {
+        let key = "image_verification_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func imageView(locale: String = MessageLocale.current) -> String {
+        let key = "image_view"
+        return format(key, locale: locale, args: [])
     }
     public static func listStateAgentAsking(agent: String, locale: String = MessageLocale.current) -> String {
         let key = "list_state_agent_asking"
@@ -549,6 +1141,10 @@ public enum L10n {
         let key = "models_back"
         return format(key, locale: locale, args: [])
     }
+    public static func modelsContextSize(size: String, locale: String = MessageLocale.current) -> String {
+        let key = "models_context_size"
+        return format(key, locale: locale, args: [size])
+    }
     public static func modelsContextWindow(locale: String = MessageLocale.current) -> String {
         let key = "models_context_window"
         return format(key, locale: locale, args: [])
@@ -615,6 +1211,134 @@ public enum L10n {
     }
     public static func modelsTitle(locale: String = MessageLocale.current) -> String {
         let key = "models_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAccountNoAuto(locale: String = MessageLocale.current) -> String {
+        let key = "modes_account_no_auto"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAccountUnsupported(locale: String = MessageLocale.current) -> String {
+        let key = "modes_account_unsupported"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAgyAskDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_agy_ask_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAgyPlanDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_agy_plan_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAsk(locale: String = MessageLocale.current) -> String {
+        let key = "modes_ask"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAskDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_ask_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAskPermissionDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_ask_permission_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAuto(locale: String = MessageLocale.current) -> String {
+        let key = "modes_auto"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesAutoDesc(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_auto_desc"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func modesCurrentTerminal(mode: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_current_terminal"
+        return format(key, locale: locale, args: [mode])
+    }
+    public static func modesDefaultAgent(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_default_agent"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func modesDefaultNamed(mode: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_default_named"
+        return format(key, locale: locale, args: [mode])
+    }
+    public static func modesDefaultVaries(mode: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_default_varies"
+        return format(key, locale: locale, args: [mode])
+    }
+    public static func modesFullAccess(locale: String = MessageLocale.current) -> String {
+        let key = "modes_full_access"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesFullCurrentNote(locale: String = MessageLocale.current) -> String {
+        let key = "modes_full_current_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesFullNewNote(locale: String = MessageLocale.current) -> String {
+        let key = "modes_full_new_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesFullTitle(locale: String = MessageLocale.current) -> String {
+        let key = "modes_full_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesFullUnavailable(locale: String = MessageLocale.current) -> String {
+        let key = "modes_full_unavailable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesLocked(locale: String = MessageLocale.current) -> String {
+        let key = "modes_locked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesLockedNote(locale: String = MessageLocale.current) -> String {
+        let key = "modes_locked_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesModelNoAuto(locale: String = MessageLocale.current) -> String {
+        let key = "modes_model_no_auto"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesModelUnsupported(locale: String = MessageLocale.current) -> String {
+        let key = "modes_model_unsupported"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesPermissionNotice(locale: String = MessageLocale.current) -> String {
+        let key = "modes_permission_notice"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesPlan(locale: String = MessageLocale.current) -> String {
+        let key = "modes_plan"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesPlanDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_plan_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesPlanEdit(locale: String = MessageLocale.current) -> String {
+        let key = "modes_plan_edit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesPlanProposeDesc(locale: String = MessageLocale.current) -> String {
+        let key = "modes_plan_propose_desc"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesSkipAll(locale: String = MessageLocale.current) -> String {
+        let key = "modes_skip_all"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesSwitch(locale: String = MessageLocale.current) -> String {
+        let key = "modes_switch"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesSwitchFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "modes_switch_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func modesSwitching(locale: String = MessageLocale.current) -> String {
+        let key = "modes_switching"
+        return format(key, locale: locale, args: [])
+    }
+    public static func modesTitle(locale: String = MessageLocale.current) -> String {
+        let key = "modes_title"
         return format(key, locale: locale, args: [])
     }
     public static func newSessionAbandonStart(locale: String = MessageLocale.current) -> String {
@@ -1089,6 +1813,102 @@ public enum L10n {
         let key = "projects_view_sessions"
         return format(key, locale: locale, args: [name])
     }
+    public static func queueAfterCurrentTurn(locale: String = MessageLocale.current) -> String {
+        let key = "queue_after_current_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueAfterStart(locale: String = MessageLocale.current) -> String {
+        let key = "queue_after_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueAfterTurn(locale: String = MessageLocale.current) -> String {
+        let key = "queue_after_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueAgentReady(agent: String, locale: String = MessageLocale.current) -> String {
+        let key = "queue_agent_ready"
+        return format(key, locale: locale, args: [agent])
+    }
+    public static func queueAlreadySubmitted(locale: String = MessageLocale.current) -> String {
+        let key = "queue_already_submitted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueCancelFailed(locale: String = MessageLocale.current) -> String {
+        let key = "queue_cancel_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueCanceled(locale: String = MessageLocale.current) -> String {
+        let key = "queue_canceled"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueCanceledElsewhere(locale: String = MessageLocale.current) -> String {
+        let key = "queue_canceled_elsewhere"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueCanceledRecord(locale: String = MessageLocale.current) -> String {
+        let key = "queue_canceled_record"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueCanceling(locale: String = MessageLocale.current) -> String {
+        let key = "queue_canceling"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueImagesRecognized(locale: String = MessageLocale.current) -> String {
+        let key = "queue_images_recognized"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueInsert(locale: String = MessageLocale.current) -> String {
+        let key = "queue_insert"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueMore(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "queue_more"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func queueOtherMessage(locale: String = MessageLocale.current) -> String {
+        let key = "queue_other_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queuePastingImages(locale: String = MessageLocale.current) -> String {
+        let key = "queue_pasting_images"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queuePaused(locale: String = MessageLocale.current) -> String {
+        let key = "queue_paused"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueRank(rank: Int, locale: String = MessageLocale.current) -> String {
+        let key = "queue_rank"
+        return format(key, locale: locale, args: [Int64(rank)])
+    }
+    public static func queueResumeFailed(locale: String = MessageLocale.current) -> String {
+        let key = "queue_resume_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueResuming(locale: String = MessageLocale.current) -> String {
+        let key = "queue_resuming"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueScheduled(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "queue_scheduled"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func queueSubmitting(locale: String = MessageLocale.current) -> String {
+        let key = "queue_submitting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueTerminalDraft(locale: String = MessageLocale.current) -> String {
+        let key = "queue_terminal_draft"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueUnrecognized(locale: String = MessageLocale.current) -> String {
+        let key = "queue_unrecognized"
+        return format(key, locale: locale, args: [])
+    }
+    public static func queueWhenReady(locale: String = MessageLocale.current) -> String {
+        let key = "queue_when_ready"
+        return format(key, locale: locale, args: [])
+    }
     public static func quotaExhausted(name: String, window: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_exhausted"
         return format(key, locale: locale, args: [name, window])
@@ -1136,6 +1956,574 @@ public enum L10n {
     public static func quotaWarning(name: String, window: String, locale: String = MessageLocale.current) -> String {
         let key = "quota_warning"
         return format(key, locale: locale, args: [name, window])
+    }
+    public static func sessionAbandonFork(locale: String = MessageLocale.current) -> String {
+        let key = "session_abandon_fork"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionActionFailed(action: String, reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_action_failed"
+        return format(key, locale: locale, args: [action, reason])
+    }
+    public static func sessionApprovalResolved(locale: String = MessageLocale.current) -> String {
+        let key = "session_approval_resolved"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionAutoTitleHint(locale: String = MessageLocale.current) -> String {
+        let key = "session_auto_title_hint"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionBackTask(locale: String = MessageLocale.current) -> String {
+        let key = "session_back_task"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionChat(locale: String = MessageLocale.current) -> String {
+        let key = "session_chat"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionCompact(locale: String = MessageLocale.current) -> String {
+        let key = "session_compact"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionCompactFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_compact_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionCompacted(locale: String = MessageLocale.current) -> String {
+        let key = "session_compacted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionCompacting(locale: String = MessageLocale.current) -> String {
+        let key = "session_compacting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionConnectResume(locale: String = MessageLocale.current) -> String {
+        let key = "session_connect_resume"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionContext(locale: String = MessageLocale.current) -> String {
+        let key = "session_context"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionContextTokens(total: String, used: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_context_tokens"
+        return format(key, locale: locale, args: [total, used])
+    }
+    public static func sessionContextUsed(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_context_used"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func sessionDelivered(locale: String = MessageLocale.current) -> String {
+        let key = "session_delivered"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionDisconnectedAgo(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_disconnected_ago"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func sessionDismissNotice(locale: String = MessageLocale.current) -> String {
+        let key = "session_dismiss_notice"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEffortLocked(locale: String = MessageLocale.current) -> String {
+        let key = "session_effort_locked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEnd(locale: String = MessageLocale.current) -> String {
+        let key = "session_end"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEndAction(locale: String = MessageLocale.current) -> String {
+        let key = "session_end_action"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEndNote(agent: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_end_note"
+        return format(key, locale: locale, args: [agent, name])
+    }
+    public static func sessionEndSession(locale: String = MessageLocale.current) -> String {
+        let key = "session_end_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEndTitle(locale: String = MessageLocale.current) -> String {
+        let key = "session_end_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEnded(locale: String = MessageLocale.current) -> String {
+        let key = "session_ended"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEndedAt(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_ended_at"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func sessionEndedMessageFailed(locale: String = MessageLocale.current) -> String {
+        let key = "session_ended_message_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionEndedSendFailed(locale: String = MessageLocale.current) -> String {
+        let key = "session_ended_send_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionFork(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkAfterMessage(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_after_message"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkAfterPending(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_after_pending"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkAfterStart(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_after_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkAfterTurn(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_after_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkExpired(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_expired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkFailed(reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_failed"
+        return format(key, locale: locale, args: [reason])
+    }
+    public static func sessionForkUnknown(locale: String = MessageLocale.current) -> String {
+        let key = "session_fork_unknown"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionForkedFrom(source: String, time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_forked_from"
+        return format(key, locale: locale, args: [source, time])
+    }
+    public static func sessionForking(locale: String = MessageLocale.current) -> String {
+        let key = "session_forking"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionGoTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "session_go_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionHistoryTailMissing(locale: String = MessageLocale.current) -> String {
+        let key = "session_history_tail_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionHistoryUnavailable(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_history_unavailable"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sessionHistoryUnreadable(locale: String = MessageLocale.current) -> String {
+        let key = "session_history_unreadable"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionIdleClosed(locale: String = MessageLocale.current) -> String {
+        let key = "session_idle_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionInterrupt(locale: String = MessageLocale.current) -> String {
+        let key = "session_interrupt"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionInterruptTurn(locale: String = MessageLocale.current) -> String {
+        let key = "session_interrupt_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionInterrupted(locale: String = MessageLocale.current) -> String {
+        let key = "session_interrupted"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionLatest(locale: String = MessageLocale.current) -> String {
+        let key = "session_latest"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionLoadingEarlier(locale: String = MessageLocale.current) -> String {
+        let key = "session_loading_earlier"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionManuallyClosed(locale: String = MessageLocale.current) -> String {
+        let key = "session_manually_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionMaxEffort(effort: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_max_effort"
+        return format(key, locale: locale, args: [effort])
+    }
+    public static func sessionModeChanged(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_mode_changed"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func sessionModeChangedBy(origin: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_mode_changed_by"
+        return format(key, locale: locale, args: [origin, value])
+    }
+    public static func sessionModelChanged(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_model_changed"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func sessionModelChangedBy(origin: String, value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_model_changed_by"
+        return format(key, locale: locale, args: [origin, value])
+    }
+    public static func sessionModelLocked(locale: String = MessageLocale.current) -> String {
+        let key = "session_model_locked"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionModelSwitchFailed(model: String, reason: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_model_switch_failed"
+        return format(key, locale: locale, args: [model, reason])
+    }
+    public static func sessionModelsFailed(locale: String = MessageLocale.current) -> String {
+        let key = "session_models_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionMoreContext(percent: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_more_context"
+        return format(key, locale: locale, args: [Int64(percent)])
+    }
+    public static func sessionNewMessages(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "session_new_messages"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func sessionNoEffort(locale: String = MessageLocale.current) -> String {
+        let key = "session_no_effort"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionNoEffortAdjustment(model: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_no_effort_adjustment"
+        return format(key, locale: locale, args: [model])
+    }
+    public static func sessionNotRunning(locale: String = MessageLocale.current) -> String {
+        let key = "session_not_running"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionNotification(text: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_notification"
+        return format(key, locale: locale, args: [text])
+    }
+    public static func sessionOfflineNote(lastSeen: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_offline_note"
+        return format(key, locale: locale, args: [lastSeen])
+    }
+    public static func sessionOfflineResume(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_offline_resume"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func sessionOnlyCurrent(locale: String = MessageLocale.current) -> String {
+        let key = "session_only_current"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionOriginElsewhere(locale: String = MessageLocale.current) -> String {
+        let key = "session_origin_elsewhere"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionOriginOther(locale: String = MessageLocale.current) -> String {
+        let key = "session_origin_other"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionOriginRemoved(locale: String = MessageLocale.current) -> String {
+        let key = "session_origin_removed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionOriginSelf(locale: String = MessageLocale.current) -> String {
+        let key = "session_origin_self"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionOriginTerminal(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_origin_terminal"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func sessionOtherSession(locale: String = MessageLocale.current) -> String {
+        let key = "session_other_session"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionQuietChecks(times: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_quiet_checks"
+        return format(key, locale: locale, args: [times])
+    }
+    public static func sessionReadingModels(locale: String = MessageLocale.current) -> String {
+        let key = "session_reading_models"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionRename(locale: String = MessageLocale.current) -> String {
+        let key = "session_rename"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionRenameTitle(locale: String = MessageLocale.current) -> String {
+        let key = "session_rename_title"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionReopenAgent(agent: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_reopen_agent"
+        return format(key, locale: locale, args: [agent, name])
+    }
+    public static func sessionReplyMoves(locale: String = MessageLocale.current) -> String {
+        let key = "session_reply_moves"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionRestoreOtherFiles(locale: String = MessageLocale.current) -> String {
+        let key = "session_restore_other_files"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionRestoreOtherImages(locale: String = MessageLocale.current) -> String {
+        let key = "session_restore_other_images"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionResume(locale: String = MessageLocale.current) -> String {
+        let key = "session_resume"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionResumeFailed(locale: String = MessageLocale.current) -> String {
+        let key = "session_resume_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionResumeNote(name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_resume_note"
+        return format(key, locale: locale, args: [name])
+    }
+    public static func sessionResuming(locale: String = MessageLocale.current) -> String {
+        let key = "session_resuming"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionScheduleSend(locale: String = MessageLocale.current) -> String {
+        let key = "session_schedule_send"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionScheduledAt(time: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_scheduled_at"
+        return format(key, locale: locale, args: [time])
+    }
+    public static func sessionScheduledClosed(locale: String = MessageLocale.current) -> String {
+        let key = "session_scheduled_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionSettings(locale: String = MessageLocale.current) -> String {
+        let key = "session_settings"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionShellFailed(detail: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_shell_failed"
+        return format(key, locale: locale, args: [detail])
+    }
+    public static func sessionShellTimeout(detail: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_shell_timeout"
+        return format(key, locale: locale, args: [detail])
+    }
+    public static func sessionSkeleton(locale: String = MessageLocale.current) -> String {
+        let key = "session_skeleton"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionSplit(locale: String = MessageLocale.current) -> String {
+        let key = "session_split"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionStartingAgent(agent: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_starting_agent"
+        return format(key, locale: locale, args: [agent, name])
+    }
+    public static func sessionSwitchAfterTurn(locale: String = MessageLocale.current) -> String {
+        let key = "session_switch_after_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionSwitchConnected(locale: String = MessageLocale.current) -> String {
+        let key = "session_switch_connected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionSwitchIdle(locale: String = MessageLocale.current) -> String {
+        let key = "session_switch_idle"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionSwitchingModel(model: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_switching_model"
+        return format(key, locale: locale, args: [model])
+    }
+    public static func sessionTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "session_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionTerminalChanges(changes: String, name: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_terminal_changes"
+        return format(key, locale: locale, args: [changes, name])
+    }
+    public static func sessionTerminalModeChange(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_terminal_mode_change"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func sessionTerminalModelChange(value: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_terminal_model_change"
+        return format(key, locale: locale, args: [value])
+    }
+    public static func sessionThinking(locale: String = MessageLocale.current) -> String {
+        let key = "session_thinking"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionTitleLabel(locale: String = MessageLocale.current) -> String {
+        let key = "session_title_label"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionTmuxMissing(locale: String = MessageLocale.current) -> String {
+        let key = "session_tmux_missing"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionTryAgain(locale: String = MessageLocale.current) -> String {
+        let key = "session_try_again"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionTurnDuration(duration: String, locale: String = MessageLocale.current) -> String {
+        let key = "session_turn_duration"
+        return format(key, locale: locale, args: [duration])
+    }
+    public static func sessionUpdateComputer(locale: String = MessageLocale.current) -> String {
+        let key = "session_update_computer"
+        return format(key, locale: locale, args: [])
+    }
+    public static func sessionView(locale: String = MessageLocale.current) -> String {
+        let key = "session_view"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalClosed(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalClosedEndedNote(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_closed_ended_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalClosedRunningNote(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_closed_running_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalComputerDimensions(cols: Int, rows: Int, locale: String = MessageLocale.current) -> String {
+        let key = "terminal_computer_dimensions"
+        return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
+    }
+    public static func terminalConnecting(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_connecting"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalDisconnected(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_disconnected"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalDown(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_down"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalEarlier(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_earlier"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalEnter(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_enter"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalFit(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_fit"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalFitShort(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_fit_short"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalFittedSize(cols: Int, rows: Int, locale: String = MessageLocale.current) -> String {
+        let key = "terminal_fitted_size"
+        return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
+    }
+    public static func terminalFresh(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_fresh"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalFreshLive(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_fresh_live"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalHistory(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_history"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalHistoryClosed(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_history_closed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalHistoryExpired(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_history_expired"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalHistoryStart(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_history_start"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalKeyboard(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_keyboard"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalLeft(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_left"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalLive(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_live"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalReadFailed(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_read_failed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalReading(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_reading"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalReadonly(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_readonly"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalReconnect(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_reconnect"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalRemoteDimensions(cols: Int, rows: Int, locale: String = MessageLocale.current) -> String {
+        let key = "terminal_remote_dimensions"
+        return format(key, locale: locale, args: [Int64(cols), Int64(rows)])
+    }
+    public static func terminalRestore(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_restore"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalRight(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_right"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalSizeChanged(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_size_changed"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalSizeNote(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_size_note"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalUp(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_up"
+        return format(key, locale: locale, args: [])
+    }
+    public static func terminalViewDetails(locale: String = MessageLocale.current) -> String {
+        let key = "terminal_view_details"
+        return format(key, locale: locale, args: [])
+    }
+    public static func timeDurationHoursMinutes(hours: Int, minutes: Int, locale: String = MessageLocale.current) -> String {
+        let key = "time_duration_hours_minutes"
+        return format(key, locale: locale, args: [Int64(hours), Int64(minutes)])
+    }
+    public static func timeDurationMinutesSeconds(minutes: Int, seconds: Int, locale: String = MessageLocale.current) -> String {
+        let key = "time_duration_minutes_seconds"
+        return format(key, locale: locale, args: [Int64(minutes), Int64(seconds)])
+    }
+    public static func timeDurationSeconds(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "time_duration_seconds"
+        return format(key, locale: locale, args: [Int64(count)])
     }
     public static func timeHoursAgo(count: Int, locale: String = MessageLocale.current) -> String {
         let key = "time_hours_ago"
@@ -1189,6 +2577,70 @@ public enum L10n {
     }
     public static func timeYesterday(locale: String = MessageLocale.current) -> String {
         let key = "time_yesterday"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackground(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackgroundAgent(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background_agent"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackgroundReturned(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background_returned"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackgroundTerminal(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background_terminal"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackgroundTimeout(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background_timeout"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsBackgroundTurn(locale: String = MessageLocale.current) -> String {
+        let key = "tools_background_turn"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsCommand(locale: String = MessageLocale.current) -> String {
+        let key = "tools_command"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsCompletedCalls(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "tools_completed_calls"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func toolsCompletedCommands(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "tools_completed_commands"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func toolsCompletedFiles(count: Int, locale: String = MessageLocale.current) -> String {
+        let key = "tools_completed_files"
+        return format(key, locale: locale, args: [Int64(count)])
+    }
+    public static func toolsEditFile(path: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_edit_file"
+        return format(key, locale: locale, args: [path])
+    }
+    public static func toolsElapsed(duration: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_elapsed"
+        return format(key, locale: locale, args: [duration])
+    }
+    public static func toolsElapsedSync(elapsed: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_elapsed_sync"
+        return format(key, locale: locale, args: [elapsed])
+    }
+    public static func toolsExitCode(code: String, locale: String = MessageLocale.current) -> String {
+        let key = "tools_exit_code"
+        return format(key, locale: locale, args: [code])
+    }
+    public static func toolsTool(locale: String = MessageLocale.current) -> String {
+        let key = "tools_tool"
+        return format(key, locale: locale, args: [])
+    }
+    public static func toolsWaitingSync(locale: String = MessageLocale.current) -> String {
+        let key = "tools_waiting_sync"
         return format(key, locale: locale, args: [])
     }
 }

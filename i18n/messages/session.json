@@ -1,12 +1,1212 @@
 [
   {
-    "key": "session.title",
-    "zh-CN": "会话",
-    "en": "Conversation",
-    "notes": "会话尚未读到标题时的顶栏标题。 无变量。",
+    "key": "session.abandon_fork",
+    "zh-CN": "放弃上次的分叉",
+    "en": "Abandon previous fork",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.action_failed",
+    "zh-CN": "{action}失败：{reason}",
+    "en": "{action} failed: {reason}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：action 为已本地化的操作名；reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "action": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.approval_resolved",
+    "zh-CN": "这条审批已经处理了。",
+    "en": "This approval has already been handled.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.auto_title_hint",
+    "zh-CN": "留空保存会恢复自动标题",
+    "en": "Save an empty title to restore the automatic title",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.back_task",
+    "zh-CN": "返回任务",
+    "en": "Back to task",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.chat",
+    "zh-CN": "聊天",
+    "en": "Chat",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.compact",
+    "zh-CN": "压缩",
+    "en": "Compact",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.compact_failed",
+    "zh-CN": "没能压缩：{reason}",
+    "en": "Could not compact: {reason}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.compacted",
+    "zh-CN": "上下文已压缩",
+    "en": "Context compacted",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.compacting",
+    "zh-CN": "正在压缩…",
+    "en": "Compacting…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.connect_resume",
+    "zh-CN": "连上服务器后才能恢复。",
+    "en": "Connect to the server to resume.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.context",
+    "zh-CN": "上下文",
+    "en": "Context",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.context_tokens",
+    "zh-CN": "上下文 {used} / {total}",
+    "en": "Context {used} / {total}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：total 为总 token 数（原有 k/M 格式）；used 为已用 token 数（原有 k/M 格式）。",
+    "params": {
+      "total": {
+        "type": "string",
+        "example": "Example"
+      },
+      "used": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.context_used",
+    "zh-CN": "已用 {percent}%",
+    "en": "{percent}% used",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.delivered",
+    "zh-CN": "已送达电脑",
+    "en": "Delivered to computer",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.disconnected_ago",
+    "zh-CN": "{time}断开，",
+    "en": "Disconnected {time}. ",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。断线时间的完整前置句；time 为已格式化相对时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.dismiss_notice",
+    "zh-CN": "移除此提示",
+    "en": "Dismiss this notice",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.effort_locked",
+    "zh-CN": "运行中不能换推理强度",
+    "en": "Reasoning effort cannot be changed while running",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.end",
+    "zh-CN": "结束",
+    "en": "End",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.end_action",
+    "zh-CN": "结束会话…",
+    "en": "End session…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.end_note",
+    "zh-CN": "{name} 上的 {agent} 会被关掉，聊天记录保留，之后可以恢复。",
+    "en": "{agent} on {name} will close. History is kept, and you can resume later.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      },
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.end_session",
+    "zh-CN": "结束会话",
+    "en": "End session",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.end_title",
+    "zh-CN": "结束这个会话？",
+    "en": "End this session?",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.ended",
+    "zh-CN": "会话已结束",
+    "en": "Session ended",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.ended_at",
+    "zh-CN": "{time}结束",
+    "en": "{time}Ended",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.ended_message_failed",
+    "zh-CN": "有一条消息没发出去：会话已结束",
+    "en": "A message was not sent: session ended",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.ended_send_failed",
+    "zh-CN": "没发出去：会话已结束",
+    "en": "Not sent: session ended",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork",
+    "zh-CN": "分叉会话",
+    "en": "Fork session",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_after_message",
+    "zh-CN": "发过消息后可用",
+    "en": "Available after a message is sent",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_after_pending",
+    "zh-CN": "处理完等待事项后可用",
+    "en": "Available after pending items are handled",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_after_start",
+    "zh-CN": "启动完成后可用",
+    "en": "Available after startup",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_after_turn",
+    "zh-CN": "这一轮结束后可用",
+    "en": "Available after this turn",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_expired",
+    "zh-CN": "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
+    "en": "The previous fork is unconfirmed and has expired. It will not be retried. Check the session list first.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_failed",
+    "zh-CN": "没能分叉：{reason}",
+    "en": "Could not fork: {reason}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.fork_unknown",
+    "zh-CN": "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次",
+    "en": "The previous fork is unconfirmed. Tap again to resend the same request; the computer will not fork twice.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.forked_from",
+    "zh-CN": "{time}分叉自{source}",
+    "en": "{time}Forked from {source}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。分叉历史行；time 为日期时间（无时间为空），source 为会话链接槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：source 为源会话链接的富文本槽位；time 为已按当前界面语言格式化的本地时间。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "source": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.forking",
+    "zh-CN": "正在分叉…",
+    "en": "Forking…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.go_terminal",
+    "zh-CN": "去终端",
+    "en": "Go to terminal",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.history_failed",
+    "zh-CN": "没能读取记录，请重试。已输入的内容会保留。",
+    "en": "Could not load history. Retry to continue; your draft will stay here.",
+    "notes": "正文尚未就绪时读取历史或会话失败；不用技术错误详情。 无变量。",
     "params": {},
     "platforms": [
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.history_tail_missing",
+    "zh-CN": "后面的记录没读到",
+    "en": "Later history has not loaded",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.history_unavailable",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "恢复前有 {count} 条记录不可读；后续可读记录照常显示。"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} record before resume could not be read; later readable history is shown normally.",
+        "other": "{count} records before resume could not be read; later readable history is shown normally."
+      }
+    },
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.history_unreadable",
+    "zh-CN": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全",
+    "en": "A record could not be read. History stops here; later content and status may be incomplete.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.idle_closed",
+    "zh-CN": "会话长时间没有活动，已自动结束。",
+    "en": "The session ended automatically after a long period of inactivity.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.interrupt",
+    "zh-CN": "中断",
+    "en": "Interrupt",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.interrupt_turn",
+    "zh-CN": "中断本轮",
+    "en": "Interrupt turn",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.interrupted",
+    "zh-CN": "已中断",
+    "en": "Interrupted",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.latest",
+    "zh-CN": "回到最新",
+    "en": "Back to latest",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.loading_earlier",
+    "zh-CN": "正在加载更早的记录…",
+    "en": "Loading earlier history…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.manually_closed",
+    "zh-CN": "会话是被手动结束的。",
+    "en": "The session was ended manually.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.max_effort",
+    "zh-CN": "最高 {effort}",
+    "en": "Up to {effort}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：effort 为CLI 推理级别，保持原文。",
+    "params": {
+      "effort": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.mode_changed",
+    "zh-CN": "模式切换到 {value}",
+    "en": "Approval mode switched to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更，value 用加粗槽位显示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.mode_changed_by",
+    "zh-CN": "{origin} 将模式切到 {value}",
+    "en": "{origin} switched approval mode to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更；origin 为可信来源显示名，value 为加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：origin 为经过身份验证的来源显示名；value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "origin": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.model_changed",
+    "zh-CN": "切换到 {value}",
+    "en": "Switched to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更，value 用加粗槽位显示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.model_changed_by",
+    "zh-CN": "{origin} 将模型切到 {value}",
+    "en": "{origin} switched model to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史设置变更；origin 为可信来源显示名，value 为加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：origin 为经过身份验证的来源显示名；value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "origin": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.model_locked",
+    "zh-CN": "运行中不能换模型，新建会话时可选",
+    "en": "Model cannot be changed while running. Choose it when starting a new session.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.model_switch_failed",
+    "zh-CN": "没能切到 {model}：{reason}",
+    "en": "Could not switch to {model}: {reason}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文；reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.models_failed",
+    "zh-CN": "没能读取模型列表",
+    "en": "Could not load model list",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.more_context",
+    "zh-CN": "更多，上下文 {percent}%",
+    "en": "More, context {percent}%",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.new_messages",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 条新消息"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} new message",
+        "other": "{count} new messages"
+      }
+    },
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.no_effort",
+    "zh-CN": "无推理强度",
+    "en": "No reasoning effort",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.no_effort_adjustment",
+    "zh-CN": "{model} 没有推理强度可调",
+    "en": "{model} has no adjustable reasoning effort",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.not_running",
+    "zh-CN": "现在没有在运行",
+    "en": "Nothing is running",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.notification",
+    "zh-CN": "通知你：{text}",
+    "en": "Notification: {text}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：text 为原始通知/用户文本，不翻译。",
+    "params": {
+      "text": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.offline_note",
+    "zh-CN": "{lastSeen}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
+    "en": "{lastSeen}The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：lastSeen 为已格式化的完整断线时间前置句（可空）。",
+    "params": {
+      "lastSeen": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.offline_resume",
+    "zh-CN": "{name} 不在线，连上后才能恢复。",
+    "en": "{name} is offline. Reconnect to resume.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.only_current",
+    "zh-CN": "只改当前会话",
+    "en": "Applies only to this session",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",
@@ -28,13 +1228,762 @@
     }
   },
   {
-    "key": "session.history_failed",
-    "zh-CN": "没能读取记录，请重试。已输入的内容会保留。",
-    "en": "Could not load history. Retry to continue; your draft will stay here.",
-    "notes": "正文尚未就绪时读取历史或会话失败；不用技术错误详情。 无变量。",
+    "key": "session.origin_elsewhere",
+    "zh-CN": "另一端",
+    "en": "Elsewhere",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.origin_other",
+    "zh-CN": "另一客户端",
+    "en": "Another client",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.origin_removed",
+    "zh-CN": "已移除的设备",
+    "en": "Removed device",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.origin_self",
+    "zh-CN": "本客户端",
+    "en": "This client",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.origin_terminal",
+    "zh-CN": "{name} 终端",
+    "en": "{name} terminal",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史行来源元信息；name 为电脑显示名。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.other_session",
+    "zh-CN": "另一个会话",
+    "en": "Another session",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.quiet_checks",
+    "zh-CN": "{times} 定时检查 · 没有新回复",
+    "en": "{times} Scheduled check · No new reply",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：times 为按当前语言分隔的检查时间列表。",
+    "params": {
+      "times": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.reading_models",
+    "zh-CN": "读取模型列表…",
+    "en": "Loading model list…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.rename",
+    "zh-CN": "重命名",
+    "en": "Rename",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.rename_title",
+    "zh-CN": "重命名会话",
+    "en": "Rename session",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.reopen_agent",
+    "zh-CN": "在 {name} 上重新打开 {agent}",
+    "en": "Reopen {agent} on {name}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      },
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.reply_moves",
+    "zh-CN": "回复后，这个对话会移到会话列表",
+    "en": "After you reply, this conversation will move to the session list",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.restore_other_files",
+    "zh-CN": "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件",
+    "en": "Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.restore_other_images",
+    "zh-CN": "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
+    "en": "Another client uploaded this message’s images. Only the text was restored; select images here if needed.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.resume",
+    "zh-CN": "恢复会话",
+    "en": "Resume session",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.resume_failed",
+    "zh-CN": "恢复失败",
+    "en": "Could not resume",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.resume_note",
+    "zh-CN": "恢复会在 {name} 上用同样的设置重新打开它，聊天记录都在。",
+    "en": "Resume reopens it on {name} with the same settings. All history is kept.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.resuming",
+    "zh-CN": "正在恢复…",
+    "en": "Resuming…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.schedule_send",
+    "zh-CN": "定时发送…",
+    "en": "Schedule message…",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.scheduled_at",
+    "zh-CN": "定时任务 · {time}",
+    "en": "Scheduled task · {time}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.scheduled_closed",
+    "zh-CN": "定时任务运行已结束，会话自动关闭了。",
+    "en": "The scheduled run ended and the session closed automatically.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.settings",
+    "zh-CN": "会话设置",
+    "en": "Session settings",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.shell_failed",
+    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    "en": "The computer’s login shell could not start the CLI ({detail}). Check its shell configuration, such as ~/.zshrc.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
+    "params": {
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.shell_timeout",
+    "zh-CN": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    "en": "The computer’s login shell could not start the CLI ({detail}) and may be waiting for input. Check its shell configuration, such as ~/.zshrc.",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。会话恢复卡退出原因；detail 为原始 CLI 诊断，不改变现有原因识别。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：detail 为CLI 原始诊断，保持原文。",
+    "params": {
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.skeleton",
+    "zh-CN": "内容过大，请在终端查看/回答",
+    "en": "Content too large; view or answer in the terminal",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.split",
+    "zh-CN": "并排",
+    "en": "Side by side",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.starting_agent",
+    "zh-CN": "正在 {name} 上启动 {agent}…",
+    "en": "Starting {agent} on {name}…",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文；name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      },
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.switch_after_turn",
+    "zh-CN": "这一轮在运行，结束后才能切换模型和推理强度",
+    "en": "This turn is running. Change model and reasoning effort after it ends.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.switch_connected",
+    "zh-CN": "和服务器断线了，连上后才能切换",
+    "en": "Disconnected from server. Reconnect to switch.",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.switch_idle",
+    "zh-CN": "只在空闲时能切换，只改当前会话",
+    "en": "Can only switch while idle; applies only to this session",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.switching_model",
+    "zh-CN": "正在切换到 {model}…",
+    "en": "Switching to {model}…",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：model 为CLI 模型显示名，保持原文。",
+    "params": {
+      "model": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.terminal",
+    "zh-CN": "终端",
+    "en": "Terminal",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.terminal_changes",
+    "zh-CN": "{name} 终端把{changes}",
+    "en": "{name} terminal {changes}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。历史终端变更行；changes 是结构化变更列表的富文本槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：changes 为结构化终端变更列表的富文本槽位；name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "changes": {
+        "type": "string",
+        "example": "Example"
+      },
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.terminal_mode_change",
+    "zh-CN": "模式切到了 {value}",
+    "en": "switched approval mode to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。终端变更列表一项；value 为模式名加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.terminal_model_change",
+    "zh-CN": "模型切到了 {value}",
+    "en": "switched model to {value}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。终端变更列表一项；value 为原始模型名/推理级别加粗槽位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：value 为已有加粗节点的富文本槽位，不显示花括号。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.thinking",
+    "zh-CN": "思考",
+    "en": "Thinking",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.title",
+    "zh-CN": "会话",
+    "en": "Conversation",
+    "notes": "会话尚未读到标题时的顶栏标题。 无变量。",
     "params": {},
     "platforms": [
       "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.title_label",
+    "zh-CN": "会话标题",
+    "en": "Session title",
+    "notes": "会话页的可视状态、历史提示或操作标签。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.tmux_missing",
+    "zh-CN": "tmux 会话已经不在了。",
+    "en": "The tmux session no longer exists.",
+    "notes": "会话页的可视状态、历史提示或操作标签。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.try_again",
+    "zh-CN": "再试一次",
+    "en": "Try again",
+    "notes": "会话页的可视状态、历史提示或操作标签。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.turn_duration",
+    "zh-CN": "本轮用时 {duration}",
+    "en": "Turn took {duration}",
+    "notes": "会话页顶栏、菜单、历史行或恢复卡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：duration 为已本地化的时长或 m:ss 计时钟。",
+    "params": {
+      "duration": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.update_computer",
+    "zh-CN": "请更新电脑上的 remote-agent",
+    "en": "Update remote-agent on the computer",
+    "notes": "会话页的可视状态、历史提示或操作标签。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.view",
+    "zh-CN": "视图",
+    "en": "View",
+    "notes": "会话页的可视状态、历史提示或操作标签。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
     ],
     "status": {
       "zh-CN": "source",

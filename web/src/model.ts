@@ -1,3 +1,4 @@
+import * as i18n from "./i18n";
 import { t } from "./i18n";
 import { isSkeleton } from "./skeleton";
 import { approvalDisplay } from "./approval-display";
@@ -330,17 +331,17 @@ export function forkBlocked(
 ): string {
   switch (stateOf(s, machine).kind) {
     case "starting":
-      return "启动完成后可用";
+      return i18n.t("session.fork_after_start");
     case "running":
     case "approval":
     case "question":
-      return "这一轮结束后可用";
+      return i18n.t("session.fork_after_turn");
     case "plan":
     case "popup":
-      return "处理完等待事项后可用";
+      return i18n.t("session.fork_after_pending");
   }
-  if (running) return "这一轮结束后可用";
-  return s.info?.title || s.info?.preview ? "" : "发过消息后可用";
+  if (running) return i18n.t("session.fork_after_turn");
+  return s.info?.title || s.info?.preview ? "" : i18n.t("session.fork_after_message");
 }
 
 export function needsAttention(s: SessionLike, machine?: MachineLike): boolean {
@@ -391,7 +392,7 @@ export function tablePreview(text: string): string {
   return lines.map((line, i) => {
     if (separator(line)) { inTable = true; return ""; }
     if (line.includes("|") && (/^\s*\||(?<!\\)\|\s*$/.test(line) || inTable || separator(lines[i + 1] ?? "")))
-      return cells(line).filter(Boolean).map(c => c.replace(/\\\|/g, "|")).join("、");
+      return cells(line).filter(Boolean).map(c => c.replace(/\\\|/g, "|")).join(i18n.t("common.list_separator"));
     inTable = false;
     return line;
   }).join("\n");
@@ -404,9 +405,9 @@ export function plain(text: string): string {
     tablePreview(text)
       // The CLIs' image placeholders: gone before the words, 图 N among them.
       .replace(/^(?:\s*\[Image #\d+\])+\s*/, "")
-      .replace(/\[Image #(\d+)\]/g, "图 $1")
-      .replace(/```[^\n]*\n?/g, "")
-      .replace(/`([^`]*)`/g, "$1")
+      .replace(/\[Image #(\d+)\]/g, (_, index: string) => i18n.t("image.placeholder", { index: Number(index) }))
+      .replace(/\x60\x60\x60[^\n]*\n?/g, "")
+      .replace(/\x60([^\x60]*)\x60/g, "$1")
       .replace(/\*\*([^*]+)\*\*/g, "$1")
       .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
       .replace(/^\s{0,3}#{1,6}\s+/gm, "")
@@ -489,7 +490,7 @@ export function hhmm(ms: number): string {
 export function dayTime(ms: number, now = Date.now()): string {
   const d = new Date(ms);
   if (d.toDateString() === new Date(now).toDateString()) return hhmm(ms);
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${hhmm(ms)}`;
+  return i18n.t("time.ios_date_time", { month: d.getMonth() + 1, day: d.getDate(), time: hhmm(ms) });
 }
 
 /** A future local time in Chinese, independent of the browser's locale.
@@ -512,17 +513,17 @@ export function futureTime(ms: number | bigint, now = Date.now(), format: "date-
 /** Minutes left before a deadline, as the dock writes it. */
 export function minutesLeft(deadlineMs: number, now = Date.now()): string {
   const left = deadlineMs - now;
-  if (left <= 0) return "已超时";
-  if (left < 60_000) return `剩 ${Math.ceil(left / 1000)} 秒`;
-  return `剩 ${Math.ceil(left / 60_000)} 分钟`;
+  if (left <= 0) return i18n.t("approval.expired");
+  if (left < 60_000) return i18n.t("approval.seconds_left", { count: Math.ceil(left / 1000) });
+  return i18n.t("home.ios_approval_remaining", { count: Math.ceil(left / 60_000) });
 }
 
 export function duration(ms: number): string {
   const s = Math.round(ms / 1000);
-  if (s < 60) return `${s} 秒`;
+  if (s < 60) return i18n.t("time.duration_seconds", { count: s });
   const m = Math.floor(s / 60);
-  if (m < 60) return `${m} 分 ${s % 60} 秒`;
-  return `${Math.floor(m / 60)} 小时 ${m % 60} 分`;
+  if (m < 60) return i18n.t("time.duration_minutes_seconds", { minutes: m, seconds: s % 60 });
+  return i18n.t("time.duration_hours_minutes", { hours: Math.floor(m / 60), minutes: m % 60 });
 }
 
 /** Home folders as ~. */
@@ -562,7 +563,7 @@ function samePlace(p: string): string {
  * original text. */
 export function shortenPaths(text: string, cwd: string, home = ""): string {
   return text.replace(
-    /(^|[\s=:([{,])(?:(["'])(\/[^"'\n]*)\2|(\/[^\s"'`]*))/g,
+    /(^|[\s=:([{,])(?:([\x22\x27])(\/[^\x22\x27\n]*)\2|(\/[^\s\x22\x27\x60]*))/g,
     (
       all,
       before: string,
@@ -629,10 +630,10 @@ export function permissionModeName(pm: string): string {
   return (
     (
       {
-        default: "询问",
-        auto: "自动",
-        plan: "计划",
-        bypassPermissions: "完全放行",
+        default: i18n.t("modes.ask"),
+        auto: i18n.t("modes.auto"),
+        plan: i18n.t("modes.plan"),
+        bypassPermissions: i18n.t("modes.full_access"),
         acceptEdits: "accept edits",
       } as Record<string, string>
     )[pm] ?? pm
@@ -656,15 +657,15 @@ export function contextMode(
   return "default";
 }
 
-const modeNames: Record<number, string> = {
-  [ApprovalMode.ASK]: "询问",
-  [ApprovalMode.AUTO]: "自动",
-  [ApprovalMode.PLAN]: "计划",
-  [ApprovalMode.FULL_ACCESS]: "完全放行",
+const modeNames: Record<number, () => string> = {
+  [ApprovalMode.ASK]: () => i18n.t("modes.ask"),
+  [ApprovalMode.AUTO]: () => i18n.t("modes.auto"),
+  [ApprovalMode.PLAN]: () => i18n.t("modes.plan"),
+  [ApprovalMode.FULL_ACCESS]: () => i18n.t("modes.full_access"),
 };
 
 export function modeName(m: ApprovalMode): string {
-  return modeNames[m] ?? "";
+  return modeNames[m]?.() ?? "";
 }
 
 const permissionModes: Record<string, ApprovalMode> = {
@@ -747,7 +748,7 @@ export const STANDARD_WINDOW = 200_000n;
 export function contextText(tokens: bigint | undefined): string {
   const n = Number(tokens ?? 0n);
   if (n <= 0) return "";
-  return `${n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k`} 上下文`;
+  return i18n.t("models.context_size", { size: n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : `${Math.round(n / 1000)}k` });
 }
 
 /** The name to show for a model: its display name from the machine's
@@ -879,9 +880,9 @@ export function newConfigIssue(
 ): string {
   const kind = autoIssueKind(agent, model, mode, models);
   return kind === "account"
-    ? "当前账户不支持自动模式，换一种审批模式再开始"
+    ? i18n.t("modes.account_no_auto")
     : kind === "model"
-      ? "这个模型没有自动模式，换一种审批模式再开始"
+      ? i18n.t("modes.model_no_auto")
       : "";
 }
 
@@ -922,11 +923,11 @@ export function modeLabel(
 ): string {
   if (chosen) return modeName(chosen);
   const base = !d.known
-    ? "跟随 CLI 设置"
+    ? i18n.t("new_session.follow_cli")
     : d.mode
-      ? `默认：${modeName(d.mode)}`
-      : `默认：${agentName(agent)} 自己的模式`;
-  return base + (d.varies ? "（项目设置可能不同）" : "");
+      ? i18n.t("modes.default_named", { mode: modeName(d.mode) })
+      : i18n.t("modes.default_agent", { agent: agentName(agent) });
+  return d.varies ? i18n.t("modes.default_varies", { mode: base }) : base;
 }
 
 // --- events ---
@@ -1330,8 +1331,8 @@ export function toolName(t: Pick<RunningTool, "itemType" | "kind">): string {
   return (
     t.itemType ||
     (t.kind === ToolKind.COMMAND || t.kind === ToolKind.UNSPECIFIED
-      ? "命令"
-      : "工具")
+      ? i18n.t("tools.command")
+      : i18n.t("tools.tool"))
   );
 }
 
@@ -1342,33 +1343,33 @@ export function eventTime(e: Event): number {
 export function decisionText(d: ApprovalDecision): string {
   switch (d) {
     case ApprovalDecision.ALLOW:
-      return "已允许";
+      return i18n.t("approval.allowed");
     case ApprovalDecision.ALLOW_ALWAYS:
-      return "已允许，以后不再问";
+      return i18n.t("approval.always_allowed");
     case ApprovalDecision.DENY:
-      return "已拒绝";
+      return i18n.t("approval.denied");
     case ApprovalDecision.TIMEOUT:
-      return "超时，已拒绝";
+      return i18n.t("approval.timed_out");
     case ApprovalDecision.CANCELED:
-      return "已取消";
+      return i18n.t("queue.canceled");
     case ApprovalDecision.TERMINAL:
-      return "已在终端处理";
+      return i18n.t("approval.in_terminal");
   }
   return "";
 }
 
 export function alwaysText(message: string): string {
   const command = message.match(
-    /commands that start with [`'“]?(.+?)[`'”]?(?:\s*$)/i,
+    /commands that start with [\x60\x27“]?(.+?)[\x60\x27”]?(?:\s*$)/i,
   );
   if (command)
-    return `「${command[1].replace(/[`'”]$/, "")}」开头的命令以后不再问`;
+    return i18n.t("approval.always_prefix", { command: command[1].replace(/[\x60\x27”]$/, "") });
   const dir = message.match(
     /always allow access to (.+?)(?: from this project)?\s*$/i,
   );
-  if (dir) return `本项目访问 ${dir[1]} 以后不再问`;
+  if (dir) return i18n.t("approval.always_directory", { path: dir[1] });
   if (/accept edits|automatically accept edits/i.test(message))
-    return "本会话自动接受编辑";
+    return i18n.t("approval.auto_edits");
   return message;
 }
 
@@ -1476,14 +1477,14 @@ export function phaseOf(
 /** Why queued messages wait, in the mockup's words. */
 export function queueReason(s: SessionLike, d: Derived): string {
   const i = s.info;
-  if (i?.inputWait === "unrecognized") return "认不出输入框，已暂停";
-  if (i?.inputWait === "draft") return "终端里有没发出的草稿，发完或清掉后再发";
+  if (i?.inputWait === "unrecognized") return i18n.t("queue.unrecognized");
+  if (i?.inputWait === "draft") return i18n.t("queue.terminal_draft");
   if (i?.status === SessionStatus.BLOCKED || i?.inputWait === "popup")
-    return "就绪后发送";
-  if (d.questions.size > 0 || d.approvals.size > 0) return "就绪后发送";
-  if (i?.planOpen) return "就绪后发送";
-  if (i?.status === SessionStatus.STARTING) return "启动后发送";
-  if (d.running) return "本轮结束后发送";
+    return i18n.t("queue.when_ready");
+  if (d.questions.size > 0 || d.approvals.size > 0) return i18n.t("queue.when_ready");
+  if (i?.planOpen) return i18n.t("queue.when_ready");
+  if (i?.status === SessionStatus.STARTING) return i18n.t("queue.after_start");
+  if (d.running) return i18n.t("queue.after_current_turn");
   return "";
 }
 
@@ -1514,17 +1515,17 @@ export function endedUnsent(state: {
 export function inputFailure(reason: string, agent: Agent): string {
   switch (reason) {
     case "image_not_recognized":
-      return `${agentName(agent)} 没认出图片`;
+      return i18n.t("composer.images_unrecognized", { agent: agentName(agent) });
     case "input_changed":
-      return "无法确认终端输入框的内容";
+      return i18n.t("composer.input_unconfirmed");
     case "timeout":
-      return "等终端就绪超时";
+      return i18n.t("composer.ready_timeout");
     case "restarted":
-      return "电脑上的 remote-agent 写入时重启了";
+      return i18n.t("composer.computer_restarted");
     case "write_failed":
-      return "写入终端失败";
+      return i18n.t("composer.write_failed");
   }
-  return "没有写进终端";
+  return i18n.t("composer.not_written");
 }
 
 // --- the chat timeline ---
@@ -1601,18 +1602,17 @@ export function isBackground(t: ToolCall): boolean {
 
 /** Why a call is in the background, and what that means. */
 export function backgroundNote(b: ToolBackground): string {
-  const rest = "它什么时候结束这里不知道，请到终端确认。";
   switch (b) {
     case ToolBackground.REQUESTED:
-      return "按模型的要求在后台运行；" + rest;
+      return i18n.t("tools.background_agent");
     case ToolBackground.TIMED_OUT:
-      return "运行超时后被移到后台继续运行；" + rest;
+      return i18n.t("tools.background_timeout");
     case ToolBackground.BY_USER:
-      return "在电脑终端里被移到后台（Ctrl+B）；" + rest;
+      return i18n.t("tools.background_terminal");
     case ToolBackground.STILL_RUNNING:
-      return "这一轮结束时它仍在运行；" + rest;
+      return i18n.t("tools.background_turn");
   }
-  return "调用已返回，命令转到了后台；" + rest;
+  return i18n.t("tools.background_returned");
 }
 
 export function toolOk(t: ToolCall): boolean {
@@ -1798,10 +1798,10 @@ export function approvalsOnCalls(
 export function toolsSummary(calls: ToolCall[]): string {
   const n = calls.length;
   if (calls.every((c) => c.kind === ToolKind.COMMAND))
-    return `运行了 ${n} 条命令`;
+    return i18n.t("tools.completed_commands", { count: n });
   if (calls.every((c) => c.kind === ToolKind.FILE_CHANGE))
-    return `编辑了 ${n} 个文件`;
-  return `完成了 ${n} 个工具调用`;
+    return i18n.t("tools.completed_files", { count: n });
+  return i18n.t("tools.completed_calls", { count: n });
 }
 
 /** The daemon's status detail when a client-created session's login shell
@@ -1816,16 +1816,13 @@ export function exitReason(
   scheduledClosed = false,
   idleClosed = false,
 ): string {
-  if (detail === "stopped" && scheduledClosed) return "定时任务运行已结束，会话自动关闭了。";
-  if (detail === "stopped" && idleClosed) return "会话长时间没有活动，已自动结束。";
-  if (detail === "stopped") return "会话是被手动结束的。";
+  if (detail === "stopped" && scheduledClosed) return i18n.t("session.scheduled_closed");
+  if (detail === "stopped" && idleClosed) return i18n.t("session.idle_closed");
+  if (detail === "stopped") return i18n.t("session.manually_closed");
   if (detail.startsWith(loginShellDetail)) {
-    const stuck = detail.includes(loginShellTimeoutDetail)
-      ? "，可能卡在等待输入"
-      : "";
-    return `电脑上的登录 shell 没能启动 CLI（${detail}）${stuck}。请检查电脑上的 shell 配置，比如 ~/.zshrc。`;
+    return detail.includes(loginShellTimeoutDetail) ? i18n.t("session.shell_timeout", { detail }) : i18n.t("session.shell_failed", { detail });
   }
-  return "tmux 会话已经不在了。";
+  return i18n.t("session.tmux_missing");
 }
 
 // --- wording that names the CLI ---

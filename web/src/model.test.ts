@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { t } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
@@ -117,15 +118,15 @@ describe("forking a session", () => {
   it("is offered between turns, once a message was sent", () => {
     expect(forkBlocked(sess({ title: "修复登录超时" }), online)).toBe("");
     expect(forkBlocked(sess({ title: "修复登录超时", status: SessionStatus.EXITED }), online)).toBe("");
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.RUNNING }), online)).toBe("这一轮结束后可用");
-    expect(forkBlocked(sess({ title: "x", pendingApprovals: 1 }), online)).toBe("这一轮结束后可用");
-    expect(forkBlocked(sess({ title: "x", pendingQuestions: 1 }), online)).toBe("这一轮结束后可用");
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.RUNNING }), online)).toBe(message("session.fork_after_turn"));
+    expect(forkBlocked(sess({ title: "x", pendingApprovals: 1 }), online)).toBe(message("session.fork_after_turn"));
+    expect(forkBlocked(sess({ title: "x", pendingQuestions: 1 }), online)).toBe(message("session.fork_after_turn"));
     // The events may say a turn runs before the summary does.
-    expect(forkBlocked(sess({ title: "x" }), online, true)).toBe("这一轮结束后可用");
-    expect(forkBlocked(sess({ title: "x", planOpen: true }), online)).toBe("处理完等待事项后可用");
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.BLOCKED }), online)).toBe("处理完等待事项后可用");
-    expect(forkBlocked(sess({ title: "x", status: SessionStatus.STARTING }), online)).toBe("启动完成后可用");
-    expect(forkBlocked(sess(), online)).toBe("发过消息后可用");
+    expect(forkBlocked(sess({ title: "x" }), online, true)).toBe(message("session.fork_after_turn"));
+    expect(forkBlocked(sess({ title: "x", planOpen: true }), online)).toBe(message("session.fork_after_pending"));
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.BLOCKED }), online)).toBe(message("session.fork_after_pending"));
+    expect(forkBlocked(sess({ title: "x", status: SessionStatus.STARTING }), online)).toBe(message("session.fork_after_start"));
+    expect(forkBlocked(sess(), online)).toBe(message("session.fork_after_message"));
   });
 
   it("draws the line where the fork leaves its source, and nothing of the source's still runs", () => {
@@ -200,11 +201,11 @@ describe("message phases", () => {
     const none = derive([]);
     const running = derive(events({ case: "turnStarted", value: {} }));
     const asking = derive(events({ case: "turnStarted", value: {} }, { case: "questionAsked", value: { questionId: "q" } }));
-    expect(queueReason(sess({ status: SessionStatus.RUNNING }), running)).toBe("本轮结束后发送");
-    expect(queueReason(sess(), asking)).toBe("就绪后发送");
-    expect(queueReason(sess({ status: SessionStatus.BLOCKED }), none)).toBe("就绪后发送");
-    expect(queueReason(sess({ inputWait: "draft" }), none)).toBe("终端里有没发出的草稿，发完或清掉后再发");
-    expect(queueReason(sess({ inputWait: "unrecognized" }), running)).toBe("认不出输入框，已暂停");
+    expect(queueReason(sess({ status: SessionStatus.RUNNING }), running)).toBe(message("queue.after_current_turn"));
+    expect(queueReason(sess(), asking)).toBe(message("queue.when_ready"));
+    expect(queueReason(sess({ status: SessionStatus.BLOCKED }), none)).toBe(message("queue.when_ready"));
+    expect(queueReason(sess({ inputWait: "draft" }), none)).toBe(message("queue.terminal_draft"));
+    expect(queueReason(sess({ inputWait: "unrecognized" }), running)).toBe(message("queue.unrecognized"));
   });
 });
 
@@ -247,21 +248,21 @@ describe("a message the CLI recorded after the daemon stopped waiting", () => {
 describe("why a session ended", () => {
   it("says so in the daemon's own words when its login shell never started the CLI", () => {
     expect(exitReason("the login shell could not find codex in PATH")).toBe(
-      "电脑上的登录 shell 没能启动 CLI（the login shell could not find codex in PATH）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+      message("session.shell_failed", {"detail":"the login shell could not find codex in PATH"}),
     );
-    expect(exitReason("the login shell did not start the CLI")).toBe("电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI）。请检查电脑上的 shell 配置，比如 ~/.zshrc。");
+    expect(exitReason("the login shell did not start the CLI")).toBe(message("session.shell_failed", {"detail":"the login shell did not start the CLI"}));
   });
 
   it("points out that a login shell that timed out may be waiting for input", () => {
     expect(exitReason("the login shell did not start the CLI within 1m0s")).toBe(
-      "电脑上的登录 shell 没能启动 CLI（the login shell did not start the CLI within 1m0s），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+      message("session.shell_timeout", {"detail":"the login shell did not start the CLI within 1m0s"}),
     );
   });
 
   it("keeps the plain wording for every other detail", () => {
-    expect(exitReason("stopped")).toBe("会话是被手动结束的。");
-    expect(exitReason("")).toBe("tmux 会话已经不在了。");
-    expect(exitReason("tmux session gone")).toBe("tmux 会话已经不在了。");
+    expect(exitReason("stopped")).toBe(message("session.manually_closed"));
+    expect(exitReason("")).toBe(message("session.tmux_missing"));
+    expect(exitReason("tmux session gone")).toBe(message("session.tmux_missing"));
   });
 });
 
@@ -308,7 +309,7 @@ describe("tools", () => {
     const items = timeline(list, derive(list));
     expect(items.map((i) => i.kind + (i.kind === "tools" ? i.calls.length : ""))).toEqual(["event", "tools3", "event", "event", "event", "turn"]);
     const tools = items[1];
-    expect(tools.kind === "tools" && toolsSummary(tools.calls)).toBe("运行了 3 条命令");
+    expect(tools.kind === "tools" && toolsSummary(tools.calls)).toBe(message("tools.completed_commands", {"count":3}));
   });
 });
 
@@ -452,8 +453,8 @@ describe("new sessions follow the project", () => {
 
 describe("approval modes", () => {
   it("prefers Session.mode, for either CLI", () => {
-    expect(modeOf(sess({ mode: ApprovalMode.AUTO, approvalsReviewer: "user", approvalPolicy: "on-request" }))?.text).toBe("自动");
-    expect(modeOf(sess({ agent: Agent.CLAUDE, mode: ApprovalMode.FULL_ACCESS, permissionMode: "bypassPermissions" }))).toMatchObject({ text: "完全放行", mode: ApprovalMode.FULL_ACCESS });
+    expect(modeOf(sess({ mode: ApprovalMode.AUTO, approvalsReviewer: "user", approvalPolicy: "on-request" }))?.text).toBe(message("modes.auto"));
+    expect(modeOf(sess({ agent: Agent.CLAUDE, mode: ApprovalMode.FULL_ACCESS, permissionMode: "bypassPermissions" }))).toMatchObject({ text: message("modes.full_access"), mode: ApprovalMode.FULL_ACCESS });
   });
 
   it("shows a Claude Code mode outside the four by its own name", () => {
@@ -487,7 +488,7 @@ describe("approval modes", () => {
   });
 
   it("records approvals answered in the terminal", () => {
-    expect(decisionText(ApprovalDecision.TERMINAL)).toBe("已在终端处理");
+    expect(decisionText(ApprovalDecision.TERMINAL)).toBe(message("approval.in_terminal"));
   });
 });
 
@@ -585,10 +586,10 @@ describe("text", () => {
     expect(when(now - 3 * 60_000, now)).toBe(t("time.minutes_ago", {"count":3}, "zh-CN"));
     expect(when(new Date(2026, 8, 29, 8, 12).getTime(), now)).toBe("8:12");
     expect(when(new Date(2026, 8, 28, 20, 0).getTime(), now)).toBe(t("time.yesterday", {}, "zh-CN"));
-    expect(when(new Date(2026, 8, 27, 20, 0).getTime(), now)).toBe("9月27日");
+    expect(when(new Date(2026, 8, 27, 20, 0).getTime(), now)).toBe(message("time.month_day", {"month":9,"day":27}));
     expect(ago(new Date(2026, 8, 29, 7, 30).getTime(), now)).toBe(t("time.hours_ago", {"count":2}, "zh-CN"));
-    expect(minutesLeft(now + 7.5 * 60_000, now)).toBe("剩 8 分钟");
-    expect(minutesLeft(now - 1, now)).toBe("已超时");
+    expect(minutesLeft(now + 7.5 * 60_000, now)).toBe(message("home.ios_approval_remaining", {"count":8}));
+    expect(minutesLeft(now - 1, now)).toBe(message("approval.expired"));
   });
 
   it("keeps the end of long paths", () => {
@@ -848,13 +849,13 @@ describe("switching a new session's machine (v2)", () => {
 
   it("refuses a mode the model cannot run in", () => {
     const models = [create(ModelInfoSchema, { slug: "claude-haiku-4-5-20251001", autoUnavailable: true }), create(ModelInfoSchema, { slug: "claude-sonnet-5-5" })];
-    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("这个模型没有自动模式，换一种审批模式再开始");
+    expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe(message("modes.model_no_auto"));
     expect(newConfigIssue(Agent.CLAUDE, "claude-sonnet-5-5", ApprovalMode.AUTO, models)).toBe("");
     expect(newConfigIssue(Agent.CLAUDE, "haiku", ApprovalMode.AUTO, models)).toBe("");
     expect(newConfigIssue(Agent.CODEX, "claude-haiku-4-5-20251001", ApprovalMode.AUTO, models)).toBe("");
     expect(newConfigIssue(Agent.CLAUDE, "claude-haiku-4-5-20251001", ApprovalMode.ASK, models)).toBe("");
     const agyModels = [create(ModelInfoSchema, { slug: "gemini-3.1-pro-high", autoUnavailable: true }), create(ModelInfoSchema, { slug: "gemini-3-flash", autoUnavailable: true })];
-    expect(newConfigIssue(Agent.ANTIGRAVITY, "", ApprovalMode.AUTO, agyModels)).toBe("当前账户不支持自动模式，换一种审批模式再开始");
+    expect(newConfigIssue(Agent.ANTIGRAVITY, "", ApprovalMode.AUTO, agyModels)).toBe(message("modes.account_no_auto"));
   });
 });
 
@@ -885,9 +886,9 @@ describe("messages the computer accepted (v2)", () => {
     expect(queuedIds(d)).toEqual([]);
     const rows = timeline(list, d).map((i) => (i.kind === "event" && i.event.kind.case === "inputState" ? `${i.event.kind.value.requestId}:${i.event.kind.value.status}` : i.kind));
     expect(rows).toEqual([`a:${InputStatus.FAILED}`, `b:${InputStatus.NEEDS_TERMINAL}`]);
-    expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe("Claude Code 没认出图片");
-    expect(inputFailure("input_changed", Agent.CODEX)).toBe("无法确认终端输入框的内容");
-    expect(inputFailure("", Agent.CODEX)).toBe("没有写进终端");
+    expect(inputFailure("image_not_recognized", Agent.CLAUDE)).toBe(message("composer.images_unrecognized", {"agent":"Claude Code"}));
+    expect(inputFailure("input_changed", Agent.CODEX)).toBe(message("composer.input_unconfirmed"));
+    expect(inputFailure("", Agent.CODEX)).toBe(message("composer.not_written"));
   });
 
   it("tells a message typed at the computer by its origin when the daemon gives one", () => {
@@ -918,11 +919,11 @@ describe("a CLI's effective default mode (Go 0f6ad8d)", () => {
   const acceptEdits = machine({ agent: Agent.CLAUDE, defaultMode: ApprovalMode.UNSPECIFIED, defaultModeSource: DefaultModeSource.CLI_CONFIG });
 
   it("names the mode a start will really use", () => {
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：完全放行（项目设置可能不同）");
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe("默认：自动");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.default_varies", { mode: message("modes.default_named", { mode: message("modes.full_access") }) }));
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(codexAuto, Agent.CODEX), Agent.CODEX)).toBe(message("modes.default_named", { mode: message("modes.auto") }));
     expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(unread, Agent.CODEX), Agent.CODEX)).toBe(t("new_session.follow_cli", {}, "zh-CN"));
-    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe("默认：Claude Code 自己的模式");
-    expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe("询问");
+    expect(modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(acceptEdits, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.default_agent", {"agent":"Claude Code"}));
+    expect(modeLabel(ApprovalMode.ASK, defaultModeOf(claudeFull, Agent.CLAUDE), Agent.CLAUDE)).toBe(message("modes.ask"));
   });
 });
 
@@ -959,8 +960,8 @@ describe("Codex call IDs and background calls (Go 60492f9, 1e4ed59)", () => {
 });
 
 it("writes a model's context window, and nothing when it is unknown", () => {
-  expect(contextText(1_000_000n)).toBe("1M 上下文");
-  expect(contextText(200_000n)).toBe("200k 上下文");
+  expect(contextText(1_000_000n)).toBe(message("models.context_size", {"size":"1M"}));
+  expect(contextText(200_000n)).toBe(message("models.context_size", {"size":"200k"}));
   expect(contextText(0n)).toBe("");
   expect(contextText(undefined)).toBe("");
 });
@@ -975,7 +976,7 @@ describe("dayTime", () => {
   it("writes the date only when it is not today", () => {
     const now = new Date(2026, 9, 2, 18, 0).getTime();
     expect(dayTime(new Date(2026, 9, 2, 5, 51).getTime(), now)).toBe("5:51");
-    expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe("9月27日 14:02");
+    expect(dayTime(new Date(2026, 8, 27, 14, 2).getTime(), now)).toBe(message("time.ios_date_time", {"month":9,"day":27,"time":"14:02"}));
   });
 });
 

@@ -1,0 +1,406 @@
+[
+  {
+    "key": "approval.allow",
+    "zh-CN": "允许",
+    "en": "Allow",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.allowed",
+    "zh-CN": "已允许",
+    "en": "Allowed",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.always_allow",
+    "zh-CN": "允许，这类请求以后不再问",
+    "en": "Allow, and always allow this type of request",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.always_allowed",
+    "zh-CN": "已允许，以后不再问",
+    "en": "Allowed; always allow",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.always_directory",
+    "zh-CN": "本项目访问 {path} 以后不再问",
+    "en": "Always allow access to {path} in this project",
+    "notes": "会话/首页的审批卡与审批详情。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：path 为原始目录/文件路径，保持原文。",
+    "params": {
+      "path": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.always_prefix",
+    "zh-CN": "「{command}」开头的命令以后不再问",
+    "en": "Always allow commands starting with “{command}”",
+    "notes": "会话/首页的审批卡与审批详情。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：command 为CLI 原始命令前缀，保持原文。",
+    "params": {
+      "command": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.approve",
+    "zh-CN": "批准",
+    "en": "Approve",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.approve_execute",
+    "zh-CN": "批准执行",
+    "en": "Approve execution",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.auto_edits",
+    "zh-CN": "本会话自动接受编辑",
+    "en": "Automatically accept edits in this session",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.delivery_failed",
+    "zh-CN": "没送到电脑：{reason}",
+    "en": "Did not reach the computer: {reason}",
+    "notes": "会话/首页的审批卡与审批详情。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.denial_reason",
+    "zh-CN": "不允许的理由",
+    "en": "Reason for denial",
+    "notes": "审批卡及详情页的操作/状态文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.denied",
+    "zh-CN": "已拒绝",
+    "en": "Denied",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.deny",
+    "zh-CN": "不允许",
+    "en": "Deny",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.details",
+    "zh-CN": "审批详情",
+    "en": "Approval details",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.expired",
+    "zh-CN": "已超时",
+    "en": "Timed out",
+    "notes": "会话/首页的审批卡与审批详情。审批卡到期状态。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.full_command",
+    "zh-CN": "看完整命令",
+    "en": "View full command",
+    "notes": "审批卡及详情页的操作/状态文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.in_terminal",
+    "zh-CN": "已在终端处理",
+    "en": "Handled in terminal",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.reason_placeholder",
+    "zh-CN": "说说该怎么做，可以不填",
+    "en": "Suggest what to do instead (optional)",
+    "notes": "审批卡及详情页的操作/状态文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.seconds_left",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "剩 {count} 秒"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} second left",
+        "other": "{count} seconds left"
+      }
+    },
+    "notes": "会话/首页的审批卡与审批详情。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.timed_out",
+    "zh-CN": "超时，已拒绝",
+    "en": "Timed out; denied",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.timeout_note",
+    "zh-CN": "{remaining}，超时拒绝",
+    "en": "{remaining}; deny on timeout",
+    "notes": "会话/首页的审批卡与审批详情。审批卡倒计时完整句；remaining 为按秒/分钟本地化的剩余时间，超时拒绝后果必须完整可读。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：remaining 为已本地化的剩余秒/分钟句。",
+    "params": {
+      "remaining": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.title",
+    "zh-CN": "审批",
+    "en": "Approval",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "approval.truncated",
+    "zh-CN": "内容被截断，请在终端查看",
+    "en": "Content truncated; view in terminal",
+    "notes": "审批卡及详情页的操作/状态文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

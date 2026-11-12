@@ -1,0 +1,540 @@
+[
+  {
+    "key": "attachment.computer_offline",
+    "zh-CN": "{name} 离线，连上后才能添加图片",
+    "en": "{name} is offline. Reconnect to add images.",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.computer_unread",
+    "zh-CN": "还没读到 {name} 的信息，稍后才能添加图片",
+    "en": "Information for {name} has not loaded yet. Add images shortly.",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.disconnected",
+    "zh-CN": "和服务器断线了，连上后才能添加图片",
+    "en": "Disconnected from server. Reconnect to add images.",
+    "notes": "附件栏的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.failed",
+    "zh-CN": "失败",
+    "en": "Failed",
+    "notes": "附件栏的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.failed_send_hint",
+    "zh-CN": "{reason}。点「重试」或移除后才能发送",
+    "en": "{reason}. Retry or remove the file before sending.",
+    "notes": "会话文件/视频附件栏。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.failure",
+    "zh-CN": "失败：{reason}",
+    "en": "Failed: {reason}",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file",
+    "zh-CN": "文件",
+    "en": "File",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file_missing",
+    "zh-CN": "这个文件没有本机副本，请移除后重新选择",
+    "en": "This file has no local copy. Remove it and select it again.",
+    "notes": "附件栏的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.file_progress",
+    "zh-CN": "文件上传进度",
+    "en": "File upload progress",
+    "notes": "附件栏的状态、提示或操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.filename_limit",
+    "zh-CN": "文件名不能超过 255 字节，请重命名后选择",
+    "en": "File names cannot exceed 255 bytes. Rename the file, then select it again.",
+    "notes": "附件栏的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.images_limit",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "一条消息最多 {limit} 张，多选的 {count} 张没有加入"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Image limit per message: {limit}. {count} extra image was not added.",
+        "other": "Image limit per message: {limit}. {count} extra images were not added."
+      }
+    },
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）；limit 为当前数量上限或 MB 大小上限。",
+    "params": {
+      "limit": {
+        "type": "integer",
+        "example": 2
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.max_files",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "一条消息最多 {count} 个文件"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "A message can have at most {count} file",
+        "other": "A message can have at most {count} files"
+      }
+    },
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.max_images",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "一条消息最多 {count} 张"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "A message can have at most {count} image",
+        "other": "A message can have at most {count} images"
+      }
+    },
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.metadata",
+    "zh-CN": "文件原样发送，包含其中的元数据。",
+    "en": "Files are sent unchanged, including their metadata.",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.named_size_limit",
+    "zh-CN": "「{name}」超过单个文件 {limit} MB 的上限",
+    "en": "“{name}” exceeds the {limit} MB limit per file",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：limit 为当前数量上限或 MB 大小上限；name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "limit": {
+        "type": "integer",
+        "example": 2
+      },
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.path_spaces",
+    "zh-CN": "{name} 上 remote-agent 的目录路径带空格，不能发图片",
+    "en": "The remote-agent directory path on {name} contains spaces, so images cannot be sent.",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.photos_videos",
+    "zh-CN": "照片和视频",
+    "en": "Photos and videos",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.preparing",
+    "zh-CN": "准备中",
+    "en": "Preparing",
+    "notes": "会话文件/视频附件栏。文件附件准备状态短标签。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.read_failed",
+    "zh-CN": "无法读取这个文件；文件夹不能直接发送，请压缩后选择，或重新选择可读取的文件",
+    "en": "Cannot read this file. Compress folders before selecting them, or select a readable file again.",
+    "notes": "附件栏的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.remove_file",
+    "zh-CN": "移除文件 {name}",
+    "en": "Remove file {name}",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.remove_video",
+    "zh-CN": "移除视频 {name}",
+    "en": "Remove video {name}",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.size_limit",
+    "zh-CN": "单个文件不能超过 {limit} MB",
+    "en": "A file cannot exceed {limit} MB",
+    "notes": "会话文件/视频附件栏。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：limit 为当前数量上限或 MB 大小上限。",
+    "params": {
+      "limit": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.update_required",
+    "zh-CN": "这台电脑不支持发送文件，请更新电脑上的 remote-agent",
+    "en": "This computer does not support file uploads. Update remote-agent on the computer.",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_failed",
+    "zh-CN": "上传失败",
+    "en": "Upload failed",
+    "notes": "会话文件/视频附件栏。文件附件失败状态短标签。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.upload_progress",
+    "zh-CN": "上传 {percent}%",
+    "en": "Uploading {percent}%",
+    "notes": "会话文件/视频附件栏。文件上传状态短标签；percent 为整数百分比。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：percent 为整数百分比。",
+    "params": {
+      "percent": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.uploading",
+    "zh-CN": "上传中",
+    "en": "Uploading",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.zip_folder",
+    "zh-CN": "不能直接发送文件夹，请先压缩成 ZIP 再选择文件",
+    "en": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
+    "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

@@ -1,4 +1,5 @@
-export const FILE_UPLOAD_UPDATE_REQUIRED = "这台电脑不支持发送文件，请更新电脑上的 remote-agent";
+import * as i18n from "./i18n";
+export function fileUploadUpdateRequired(): string { return i18n.t("attachment.update_required"); }
 
 // Images chosen to go with a message (architecture §17 从客户端发图片):
 // each is prepared on this device (compressed, or the original with its
@@ -90,7 +91,7 @@ export class Tray {
     const taken = files.slice(0, room);
     if (taken.length) this.onAdd?.();
     const left = files.length - taken.length;
-    this.note = left > 0 ? `一条消息最多 ${this.max} 张，多选的 ${left} 张没有加入` : "";
+    this.note = left > 0 ? i18n.t("attachment.images_limit", { limit: this.max, count: left }) : "";
     for (const file of taken) {
       const item: TrayItem = { key: "t" + ++keys, file, state: "preparing", progress: 0, thumb: file };
       this.items.push(item);
@@ -120,13 +121,13 @@ export class Tray {
 
   addFiles(files: File[]) {
     if (this.restoring) return;
-    if (!this.fileSupported) { this.note = FILE_UPLOAD_UPDATE_REQUIRED; this.onChange(); return; }
+    if (!this.fileSupported) { this.note = fileUploadUpdateRequired(); this.onChange(); return; }
     const notes: string[] = [];
     let added = false;
     for (const file of files) {
-      if (this.files().length >= this.maxFiles) { notes.push(`一条消息最多 ${this.maxFiles} 个文件`); break; }
-      if (file.size > this.maxFileBytes) { notes.push(`「${file.name}」超过单个文件 ${Math.round(this.maxFileBytes / 1024 / 1024)} MB 的上限`); continue; }
-      if (!file.name || new TextEncoder().encode(file.name).length > 255) { notes.push("文件名不能超过 255 字节，请重命名后选择"); continue; }
+      if (this.files().length >= this.maxFiles) { notes.push(i18n.t("attachment.max_files", { count: this.maxFiles })); break; }
+      if (file.size > this.maxFileBytes) { notes.push(i18n.t("attachment.named_size_limit", { name: file.name, limit: Math.round(this.maxFileBytes / 1024 / 1024) })); continue; }
+      if (!file.name || new TextEncoder().encode(file.name).length > 255) { notes.push(i18n.t("attachment.filename_limit")); continue; }
       const item: TrayItem = { key: "t" + ++keys, file, kind: "file", name: file.name, bytes: file.size, state: "preparing", progress: 0 };
       this.items.push(item); added = true; void this.run(item, true);
     }
@@ -135,7 +136,7 @@ export class Tray {
   }
 
   restoreFiles(files: { fileId: string; name: string; size: number; file?: Blob }[]): boolean {
-    if (files.length && !this.fileSupported) { this.note = FILE_UPLOAD_UPDATE_REQUIRED; this.onChange(); return false; }
+    if (files.length && !this.fileSupported) { this.note = fileUploadUpdateRequired(); this.onChange(); return false; }
     if (this.files().length + files.length > this.maxFiles) return false;
     for (const f of files) {
       const item: TrayItem = { key: "t" + ++keys, kind: "file", name: f.name, bytes: f.size, fileId: f.fileId, file: f.file ?? new Blob(), state: "preparing", progress: 0, remoteOnly: !f.file };
@@ -260,7 +261,7 @@ export class Tray {
     const g = this.invalidate(item);
     this.onChange();
     if (item.remoteOnly) {
-      Object.assign(item, { state: "failed", error: item.kind === "file" ? "这个文件没有本机副本，请移除后重新选择" : "source_missing" });
+      Object.assign(item, { state: "failed", error: item.kind === "file" ? i18n.t("attachment.file_missing") : "source_missing" });
       this.onChange();
       return;
     }
@@ -280,8 +281,8 @@ export class Tray {
     }
     try {
       if (!current()) return;
-      if (item.kind === "file" && !this.fileSupported) throw new Error(FILE_UPLOAD_UPDATE_REQUIRED);
-      if (item.kind === "file" && item.file.size > this.maxFileBytes) throw new Error(`单个文件不能超过 ${Math.round(this.maxFileBytes / 1024 / 1024)} MB`);
+      if (item.kind === "file" && !this.fileSupported) throw new Error(fileUploadUpdateRequired());
+      if (item.kind === "file" && item.file.size > this.maxFileBytes) throw new Error(i18n.t("attachment.size_limit", { limit: Math.round(this.maxFileBytes / 1024 / 1024) }));
       if (prepare || !this.fresh(item)) {
         // What was prepared the other way is never sent in its place.
         const original = this.original;
@@ -310,5 +311,5 @@ export class Tray {
 
 async function readAttachment(file: Blob): Promise<ArrayBuffer> {
  try { return await file.arrayBuffer(); }
- catch { throw new Error("无法读取这个文件；文件夹不能直接发送，请压缩后选择，或重新选择可读取的文件"); }
+ catch { throw new Error(i18n.t("attachment.read_failed")); }
 }

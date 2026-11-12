@@ -1,3 +1,4 @@
+import * as i18n from "./i18n";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings } from "./gen/remoteagent/v1/local_pb";
 import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
@@ -96,8 +97,8 @@ const CODEX_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: true,
-  planKeepLabel: "继续规划",
-  planApproveLabel: "批准执行",
+  get planKeepLabel() { return i18n.t("dock.plan_keep"); },
+  get planApproveLabel() { return i18n.t("approval.approve_execute"); },
   planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,
@@ -122,8 +123,8 @@ const CODEX_ENTRY: AgentEntry = {
       ...(patch.mode !== undefined && { defaultMode: patch.mode }),
     };
   },
-  askModeDesc: "需要审批时由你确认，超时拒绝",
-  planModeDesc: "只读和出计划，你批准后才开始改",
+  get askModeDesc() { return i18n.t("modes.ask_desc"); },
+  get planModeDesc() { return i18n.t("modes.plan_desc"); },
   permissionModeNotice: null,
   showMaxEffort: true,
 };
@@ -144,12 +145,12 @@ const CLAUDE_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: true,
   planClearContext: false,
-  planKeepLabel: "修改计划…",
-  planApproveLabel: "批准",
-  planNote: "批准后使用询问模式",
+  get planKeepLabel() { return i18n.t("modes.plan_edit"); },
+  get planApproveLabel() { return i18n.t("approval.approve"); },
+  get planNote() { return i18n.t("dock.claude_plan_note"); },
   standardContextOption: true,
   autoMayBeUnavailable: true,
-  trustFolderHint: "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
+  get trustFolderHint() { return i18n.t("dock.trust_folder"); },
   usageHint: null,
   reconcilesUnclaimedInput: true,
   sessionNeedsModelList: true,
@@ -169,9 +170,9 @@ const CLAUDE_ENTRY: AgentEntry = {
       claude: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
     };
   },
-  askModeDesc: "需要权限时由你确认",
-  planModeDesc: "先出方案，再批准执行",
-  permissionModeNotice: "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
+  get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
+  get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
+  get permissionModeNotice() { return i18n.t("modes.permission_notice"); },
   showMaxEffort: false,
 };
 
@@ -191,9 +192,9 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: false,
-  planKeepLabel: "修改计划…",
-  planApproveLabel: "批准",
-  planNote: "批准后回到默认模式（询问）",
+  get planKeepLabel() { return i18n.t("modes.plan_edit"); },
+  get planApproveLabel() { return i18n.t("approval.approve"); },
+  get planNote() { return i18n.t("dock.agy_plan_note"); },
   standardContextOption: false,
   autoMayBeUnavailable: true,
   trustFolderHint: null,
@@ -216,8 +217,8 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
       antigravity: { $typeName: "remoteagent.v1.AgentDefaults", ...cur, ...patch },
     };
   },
-  askModeDesc: "需要审批时由你确认，超时自动拒绝",
-  planModeDesc: "先只读探索并写方案，批准后回到默认模式执行",
+  get askModeDesc() { return i18n.t("modes.agy_ask_desc"); },
+  get planModeDesc() { return i18n.t("modes.agy_plan_desc"); },
   permissionModeNotice: null,
   showMaxEffort: false,
 };
@@ -238,8 +239,8 @@ const UNKNOWN_ENTRY: AgentEntry = {
   },
   toolLabelFromItemType: false,
   planClearContext: false,
-  planKeepLabel: "修改计划…",
-  planApproveLabel: "批准",
+  get planKeepLabel() { return i18n.t("modes.plan_edit"); },
+  get planApproveLabel() { return i18n.t("approval.approve"); },
   planNote: null,
   standardContextOption: false,
   autoMayBeUnavailable: false,
@@ -259,8 +260,8 @@ const UNKNOWN_ENTRY: AgentEntry = {
   withDefaults(settings: DaemonSettings): DaemonSettings {
     return settings;
   },
-  askModeDesc: "需要审批时由你确认",
-  planModeDesc: "先出方案，再批准执行",
+  get askModeDesc() { return i18n.t("modes.ask_permission_desc"); },
+  get planModeDesc() { return i18n.t("modes.plan_propose_desc"); },
   permissionModeNotice: null,
   showMaxEffort: false,
 };

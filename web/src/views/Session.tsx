@@ -1,3 +1,5 @@
+import * as i18n from "../i18n";
+import { rich } from "../i18n/rich";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
 import { Sheet } from "../ui";
@@ -179,7 +181,7 @@ function ViewSwitch({ className, tabs, tab, inactive, popup, onPick }: { classNa
   const ref = useRef<HTMLDivElement>(null);
   useKnob(ref, tab);
   return (
-    <div className={className} role="tablist" aria-label="视图" ref={ref}>
+    <div className={className} role="tablist" aria-label={i18n.t("session.view")} ref={ref}>
       <i className="mo-knob" aria-hidden />
       {tabs.map(([t, name]) => (
         <button
@@ -296,7 +298,7 @@ export function SessionPage({
     if (fileIssue) return setToast(fileIssue);
     const files = ours ? sourceFiles : [];
     const foreign = !ours && ((acc?.imageIds.length ?? 0) > 0 || (acc?.files?.length ?? 0) > 0);
-    if (tray.files().length + files.length > tray.maxFiles) return setToast(`输入框放不下这条消息的 ${files.length} 个文件；先移除一些再放回`);
+    if (tray.files().length + files.length > tray.maxFiles) return setToast(i18n.t("composer.restore_files_full", { count: files.length }));
     // All of the message or none of it: never a message short of images.
     if (
       ids.length &&
@@ -310,7 +312,7 @@ export function SessionPage({
       )
     )
       return setToast(
-        `输入框里已有 ${tray.images().length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`,
+        i18n.t("composer.restore_images_full", { existing: tray.images().length, count: ids.length }),
       );
     tray.restoreFiles(files.map((f, i) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: o?.files?.[i]?.file })));
     const draft = remote.drafts.get(sid) ?? "";
@@ -321,7 +323,7 @@ export function SessionPage({
     if (o) remote.dismissSend(sid, o.sendId, true);
     if (foreign)
       setToast(
-        acc?.files?.length ? "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件" : "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
+        acc?.files?.length ? i18n.t("session.restore_other_files") : i18n.t("session.restore_other_images"),
       );
     setComposerKey((k) => k + 1);
     setTimeout(() => composer.current?.focus());
@@ -351,12 +353,12 @@ export function SessionPage({
       await fn();
       return true;
     } catch (e) {
-      setToast(label + "失败：" + errorText(e));
+      setToast(i18n.t("session.action_failed", { action: label, reason: errorText(e) }));
       return false;
     }
   };
   const interrupt = () =>
-    void run("中断", () =>
+    void run(i18n.t("session.interrupt"), () =>
       remote.command(sid, { case: "interrupt", value: { sessionId: sid } }),
     );
   const toTerminal = () => setTab(canSplit ? "split" : "term");
@@ -405,9 +407,9 @@ export function SessionPage({
   }
 
   const tabs: [Tab, string][] = [
-    ["chat", "聊天"],
-    ["term", "终端"],
-    ...(canSplit ? ([["split", "并排"]] as [Tab, string][]) : []),
+    ["chat", i18n.t("session.chat")],
+    ["term", i18n.t("session.terminal")],
+    ...(canSplit ? ([["split", i18n.t("session.split")]] as [Tab, string][]) : []),
   ];
   // Chat / terminal: a glass segmented control under the title on a phone
   // (dark glass over the terminal), the toolbar's own on a wide window.
@@ -449,7 +451,7 @@ export function SessionPage({
         .filter(Boolean)
         .join(" · ")
     : "";
-  const moreLabel = high ? `更多，上下文 ${pct}%` : "更多";
+  const moreLabel = high ? i18n.t("session.more_context", { percent: pct! }) : i18n.t("common.android_more");
   const openMenu = () => {
     setForkError("");
     setMenu(true);
@@ -472,7 +474,7 @@ export function SessionPage({
       forkTry.settle();
       setForkUnknown("");
       if (res.kind.case !== "forkSession" || !res.kind.value.session)
-        throw new Error("意外的回复");
+        throw new Error(i18n.t("new_session.unexpected_reply"));
       const id = res.kind.value.session.id;
       remote.created.add(id);
       setMenu(false);
@@ -483,7 +485,7 @@ export function SessionPage({
         forkTry.expired ? "expired" : forkTry.frozen ? "unknown" : "",
       );
       if (menuOpen.current) setForkError(errorText(e));
-      else setToast("没能分叉：" + errorText(e));
+      else setToast(i18n.t("session.fork_failed", { reason: errorText(e) }));
     } finally {
       setForking(false);
     }
@@ -509,7 +511,7 @@ export function SessionPage({
 
   const header = wide ? (
     <header className="dh">
-      {session.info?.taskOwned && <button className="schedule-run-back" aria-label={t("common.back")} title="返回任务" onClick={onBack}><ChevronLeft /></button>}
+      {session.info?.taskOwned && <button className="schedule-run-back" aria-label={t("common.back")} title={i18n.t("session.back_task")} onClick={onBack}><ChevronLeft /></button>}
       <b>{title}</b>
       <span className="st">
         <StateMark kind={st.tone} />
@@ -573,7 +575,7 @@ export function SessionPage({
           onTerminal={toTerminal}
         />
       )}
-      {session.info?.taskOwned && <div className="schedule-reply-hint">回复后，这个对话会移到会话列表</div>}
+      {session.info?.taskOwned && <div className="schedule-reply-hint">{i18n.t("session.reply_moves")}</div>}
       {inactive ? (
         <EndCard
           remote={remote}
@@ -682,7 +684,7 @@ export function SessionPage({
               ...(!inactive && mode
                 ? [
                     {
-                      label: "审批模式",
+                      label: i18n.t("modes.title"),
                       value: mode.text,
                       red: mode.mode === ApprovalMode.FULL_ACCESS,
                       onClick: () => setSheet("mode"),
@@ -692,7 +694,7 @@ export function SessionPage({
               ...(!inactive
                 ? [
                     {
-                      label: model ? "模型" : "会话设置",
+                      label: model ? i18n.t("models.title") : i18n.t("session.settings"),
                       value: model,
                       onClick: () => setSheet("model"),
                     },
@@ -701,21 +703,21 @@ export function SessionPage({
               ...(!inactive && pct !== undefined
                 ? [
                     {
-                      label: "上下文",
-                      value: `已用 ${pct}%`,
+                      label: i18n.t("session.context"),
+                      value: i18n.t("session.context_used", { percent: pct! }),
                       warn: high,
                       onClick: () => setSheet("model"),
                     },
                   ]
                 : []),
               ...(machine?.online && remote.conn === "online"
-                ? [{ label: "重命名", group: 1, onClick: () => setRenaming(true) }]
+                ? [{ label: i18n.t("session.rename"), group: 1, onClick: () => setRenaming(true) }]
                 : []),
               ...(agentInfo(agent).forks && machine?.online && remote.conn === "online"
                 ? [
                     forking
                       ? {
-                          label: "正在分叉…",
+                          label: i18n.t("session.forking"),
                           busy: true,
                           keep: true,
                           group: 1,
@@ -723,7 +725,7 @@ export function SessionPage({
                         }
                       : forkWhy
                         ? {
-                            label: "分叉会话",
+                            label: i18n.t("session.fork"),
                             disabled: true,
                             note: forkWhy,
                             group: 1,
@@ -731,40 +733,40 @@ export function SessionPage({
                           }
                         : forkUnknown === "expired"
                           ? {
-                              label: "放弃上次的分叉",
+                              label: i18n.t("session.abandon_fork"),
                               keep: true,
-                              note: "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
+                              note: i18n.t("session.fork_expired"),
                               noteRed: true,
                               group: 1,
                               onClick: abandonFork,
                             }
                           : {
-                              label: "分叉会话",
+                              label: i18n.t("session.fork"),
                               keep: true,
                               // It may have happened: only the same request is sent again.
                               note: forkUnknown
-                                ? "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次"
-                                : forkError && "没能分叉：" + forkError,
+                                ? i18n.t("session.fork_unknown")
+                                : forkError && i18n.t("session.fork_failed", { reason: forkError }),
                               noteRed: true,
                               group: 1,
                               onClick: () => void fork(),
                             },
                   ]
                 : []),
-              { label: "定时发送…", group: 1, disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? "请更新电脑上的 remote-agent" : undefined, onClick: () => setScheduling(true) },
+              { label: i18n.t("session.schedule_send"), group: 1, disabled: !machine?.online || remote.conn !== "online" || !remote.supportsSchedules(session.machineId), note: !remote.supportsSchedules(session.machineId) ? i18n.t("session.update_computer") : undefined, onClick: () => setScheduling(true) },
               // Stopping the turn stays in its place while there is none,
               // grayed, saying why.
               ...(!inactive
                 ? [
                     d.running
-                      ? { label: "中断本轮", red: true, group: 1, onClick: interrupt }
-                      : { label: "中断本轮", disabled: true, note: "现在没有在运行", group: 1, onClick: () => undefined },
+                      ? { label: i18n.t("session.interrupt_turn"), red: true, group: 1, onClick: interrupt }
+                      : { label: i18n.t("session.interrupt_turn"), disabled: true, note: i18n.t("session.not_running"), group: 1, onClick: () => undefined },
                   ]
                 : []),
               ...(!ended && machine?.online
                 ? [
                     {
-                      label: "结束会话…",
+                      label: i18n.t("session.end_action"),
                       red: true,
                       group: 2,
                       onClick: () => setConfirmEnd(true),
@@ -781,14 +783,14 @@ export function SessionPage({
         {scheduling && <Sheet className="schedule-session-sheet" onClose={() => setScheduling(false)}><div className="schedule-session-overlay"><Suspense fallback={null}><ScheduleCreate remote={remote} session={session} go={route => { setScheduling(false); location.hash = "/" + route; }} onBack={() => setScheduling(false)} /></Suspense></div></Sheet>}
         {confirmEnd && (
           <Alert
-            title="结束这个会话？"
-            text={`${mname} 上的 ${agentLabel} 会被关掉，聊天记录保留，之后可以恢复。`}
-            ok="结束"
+            title={i18n.t("session.end_title")}
+            text={i18n.t("session.end_note", { name: mname, agent: agentLabel })}
+            ok={i18n.t("session.end")}
             danger
             onCancel={() => setConfirmEnd(false)}
             onOk={() => {
               setConfirmEnd(false);
-              void run("结束会话", () =>
+              void run(i18n.t("session.end_session"), () =>
                 remote.command(sid, {
                   case: "stopSession",
                   value: { sessionId: sid },
@@ -926,7 +928,7 @@ function ChatBody({
   // bubble that was waiting, in the same place.
   const sentHere = useRef(new Map<string, Sent>());
   useLayoutEffect(() => {
-    for (const o of outbox) if (!sentHere.current.has(o.sendId)) sentHere.current.set(o.sendId, { text: "已送达电脑", queued: false });
+    for (const o of outbox) if (!sentHere.current.has(o.sendId)) sentHere.current.set(o.sendId, { text: i18n.t("session.delivered"), queued: false });
   });
   const rowClass = (it: ScheduledItem) => {
     if (!freshRow(it.key)) return undefined;
@@ -1052,7 +1054,7 @@ function ChatBody({
         <PathText path={shortPath(cwd)} />
       </div>
       {hist.backfilling && !hist.error && !hist.broken && (
-        <div className="sysline">正在加载更早的记录…</div>
+        <div className="sysline">{i18n.t("session.loading_earlier")}</div>
       )}
     </>
   );
@@ -1069,12 +1071,12 @@ function ChatBody({
       )}
       {(hist.unavailable ?? 0) > 0 && (
         <Banner>
-          恢复前有 {hist.unavailable} 条记录不可读；后续可读记录照常显示。
+          {i18n.t("session.history_unavailable", { count: hist.unavailable! })}
         </Banner>
       )}
       {hist.broken && hist.ready && (
         <Banner>
-          {hist.error || "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"}
+          {hist.error || i18n.t("session.history_unreadable")}
         </Banner>
       )}
       {/* Offline, the connection banner says the content may be stale and the
@@ -1085,18 +1087,17 @@ function ChatBody({
           action={t("common.retry")}
           onAction={() => remote.retryEvents(sid)}
         >
-          后面的记录没读到
-        </Banner>
+          {i18n.t("session.history_tail_missing")}</Banner>
       )}
       {showPrompt && (
         <div className="me">
           <div>{prompt}</div>
-          <small>已送达电脑</small>
+          <small>{i18n.t("session.delivered")}</small>
         </div>
       )}
       {session.info?.status === SessionStatus.STARTING && (
         <div className="sysline">
-          正在 {machine} 上启动 {agentName(agent)}…
+          {i18n.t("session.starting_agent", { name: machine, agent: agentName(agent) })}
         </div>
       )}
       {events.flatMap((e) => {
@@ -1109,7 +1110,7 @@ function ChatBody({
         return reason
           ? [
               <div className="record" key={"reason:" + e.kind.value.approvalId}>
-                <span className="muted">这条审批已经处理了。</span>
+                <span className="muted">{i18n.t("session.approval_resolved")}</span>
                 <pre>{reason}</pre>
                 <button
                   className="link"
@@ -1210,7 +1211,7 @@ function ChatBody({
           ready={hist.ready || !!hist.error || hist.broken}
           header={header}
           footer={footer}
-          render={(it) => it.kind === "quiet" ? <button className="schedule-quiet" onClick={() => setExpandedQuiet(old => new Set(old).add(it.key))}>{it.times.join("、")} 定时检查 · 没有新回复 <ChevronDown /></button> : (
+          render={(it) => it.kind === "quiet" ? <button className="schedule-quiet" onClick={() => setExpandedQuiet(old => new Set(old).add(it.key))}>{i18n.t("session.quiet_checks", { times: it.times.join(i18n.t("common.list_separator")) })} <ChevronDown /></button> : (
             <RowState id={it.key} states={rowStates.current}>
               <Row
                 it={it}
@@ -1263,7 +1264,7 @@ function NewMessages({ n, onClick }: { n: number; onClick: () => void }) {
   useExit(ref);
   return (
     <button ref={ref} className="newmsg" onClick={onClick}>
-      <ArrowDown /> {n > 0 ? `${n} 条新消息` : "回到最新"}
+      <ArrowDown /> {n > 0 ? i18n.t("session.new_messages", { count: n }) : i18n.t("session.latest")}
     </button>
   );
 }
@@ -1346,7 +1347,7 @@ function Pending({
   const line = queued ? queueLine(remote, session, d, o.sendId, rank, count) : undefined;
   const asQueue = !!line && (line.needed || late);
   const lineKey = asQueue ? "queue" : phase === "queued" ? "delivered" : phase;
-  const said = phase === "sending" ? "发送中…" : phase === "written" ? `已送入终端，等 ${agentName(agent)} 记录` : "已送达电脑";
+  const said = phase === "sending" ? i18n.t("composer.sending") : phase === "written" ? i18n.t("composer.await_record", { agent: agentName(agent) }) : i18n.t("session.delivered");
   // What the chat's own line for it will start from.
   sentHere.set(o.sendId, { text: asQueue ? line.text : said, queued: asQueue });
   // Either it surely did not go, or it may have: the computer may have
@@ -1360,11 +1361,10 @@ function Pending({
       <small ref={tail}>
         {failed ? (
           <>
-            {o.unknown ? "可能没发出去：" : "没发出去："}
-            {o.error}
-            {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>放回输入框</button>}
+            {o.unknown ? i18n.t("composer.maybe_failure", { reason: o.error ?? "" }) : i18n.t("composer.send_failure", { reason: o.error ?? "" })}
+            {remote.canRestoreAttachments(sid, o.sendId) && <button onClick={() => onRestore(o.text, o.sendId)}>{i18n.t("composer.restore")}</button>}
             {!o.missingImages && <button onClick={() => remote.retrySend(sid, o.sendId)}>{t("common.retry")}</button>}
-            <button onClick={() => remote.dismissSend(sid, o.sendId)}>移除此提示</button>
+            <button onClick={() => remote.dismissSend(sid, o.sendId)}>{i18n.t("session.dismiss_notice")}</button>
           </>
         ) : (
           /* Where it has got to: each word fades into the next. */
@@ -1463,10 +1463,10 @@ function Row({
       />
     );
   if (it.kind === "turn")
-    return <div className="sep">本轮用时 {duration(it.ms)}</div>;
+    return <div className="sep">{i18n.t("session.turn_duration", { duration: duration(it.ms) })}</div>;
   const e = it.event;
   if (isSkeleton(e))
-    return <div className="record muted">{skeletonMessage}</div>;
+    return <div className="record muted">{skeletonMessage()}</div>;
   const k = e.kind;
   switch (k.case) {
     case "userMessage": {
@@ -1487,14 +1487,14 @@ function Row({
         <MessageRow from={settle && sent?.queued}>
           <ImageStrip refs={images} numbered />
           <FileChips files={k.value.files} />
-          {e.origin?.scheduledTaskId ? <ScheduleText key={e.seq.toString()} text={k.value.text} meta={`定时任务 · ${clockTime(Number(e.time?.seconds ?? 0n) * 1000)}`} /> : segs.length > 0 && (
+          {e.origin?.scheduledTaskId ? <ScheduleText key={e.seq.toString()} text={k.value.text} meta={i18n.t("session.scheduled_at", { time: clockTime(Number(e.time?.seconds ?? 0n) * 1000) })} /> : segs.length > 0 && (
             <div className="mo-text">
               {segs.map((x, i) =>
                 "text" in x ? (
                   <span key={i}>{x.text}</span>
                 ) : (
                   <span key={i} className="ichip">
-                    图 {x.image}
+                    {i18n.t("image.placeholder", { index: x.image })}
                   </span>
                 ),
               )}
@@ -1508,7 +1508,7 @@ function Row({
       );
     }
     case "scheduledNotification":
-      return <div className="sysline schedule-notification">通知你：{k.value.text}</div>;
+      return <div className="sysline schedule-notification">{i18n.t("session.notification", { text: k.value.text })}</div>;
     case "imageGenerated":
       return <GenCard refs={k.value.images} prompt={k.value.revisedPrompt} />;
     case "agentMessage":
@@ -1525,7 +1525,7 @@ function Row({
       return (
         <RememberDetails name="details" className="think">
           <summary>
-            思考 <Exp />
+            {i18n.t("session.thinking")}<Exp />
           </summary>
           <div className="thinktext">{k.value.text}</div>
         </RememberDetails>
@@ -1551,19 +1551,18 @@ function Row({
     case "turnEnded":
       return (
         <div className="sysline">
-          已中断
-          {otherThanMe(e.origin, who)
+          {i18n.t("session.interrupted")}{otherThanMe(e.origin, who)
             ? ` · ${originLabel(e.origin, who.ctx)}`
             : ""}
         </div>
       );
     case "planAnswered": {
       const choices: Record<number, string> = {
-        [PlanChoice.IMPLEMENT]: "批准执行计划",
-        [PlanChoice.KEEP_PLANNING]: "继续规划",
-        [PlanChoice.CLEAR_AND_IMPLEMENT]: "清空上下文后执行计划",
+        [PlanChoice.IMPLEMENT]: i18n.t("dock.plan_implement_record"),
+        [PlanChoice.KEEP_PLANNING]: i18n.t("dock.plan_keep"),
+        [PlanChoice.CLEAR_AND_IMPLEMENT]: i18n.t("dock.plan_clear_record"),
       };
-      const choice = choices[k.value.choice] ?? "回答了计划";
+      const choice = choices[k.value.choice] ?? i18n.t("dock.plan_answered");
       return (
         <div className="sysline">
           {choice}
@@ -1628,7 +1627,7 @@ function Row({
       const by = d.by.get(k.value.questionId);
       return a ? (
         <div className="sysline">
-          回答了 <b>{a.join("、")}</b>
+          {rich(i18n.t("dock.answered", { answers: "{answers}" }), { answers: <b>{a.join(i18n.t("common.list_separator"))}</b> })}
           {otherThanMe(by, who) && ` · ${elsewhereLabel(by, who.ctx)}`}
         </div>
       ) : null;
@@ -1643,20 +1642,18 @@ function Row({
         return text !== undefined && (text || images || files?.length) ? (
           <div className="me fail unsent">
             <FileChips files={files} />
-            <div>{text || (images ? `${images} 张图片` : "")}</div>
+            <div>{text || (images ? i18n.t("image.count", { count: images }) : "")}</div>
             <small>
-              没发出去：会话已结束
-              <button onClick={() => onRestore(text, k.value.requestId)}>
-                放回输入框
-              </button>
+              {i18n.t("session.ended_send_failed")}<button onClick={() => onRestore(text, k.value.requestId)}>
+                {i18n.t("composer.restore")}</button>
             </small>
           </div>
         ) : (
-          <div className="sysline fail">有一条消息没发出去：会话已结束</div>
+          <div className="sysline fail">{i18n.t("session.ended_message_failed")}</div>
         );
       }
       if (k.value.status === InputStatus.CANCELED)
-        return <div className="sysline">取消了一条排队的消息</div>;
+        return <div className="sysline">{i18n.t("queue.canceled_record")}</div>;
       if (
         k.value.status === InputStatus.FAILED ||
         k.value.status === InputStatus.NEEDS_TERMINAL
@@ -1673,11 +1670,11 @@ function Row({
             <div className="me warn">
               <LocalThumbs blobs={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.thumbs} sizes={remote.outbox(sid).find(o => o.sendId === k.value.requestId)?.imageSizes} />
               <FileChips files={files} />
-              <div>{text || (files?.length ? "" : "一条消息")}</div>
+              <div>{text || (files?.length ? "" : i18n.t("composer.message_fallback"))}</div>
               <small>
-                可能没发出去：{why}
-                {onTerminal && <button onClick={onTerminal}>去终端</button>}
-                {remote.canRestoreAttachments(sid, k.value.requestId) && <button onClick={() => onRestore(text, k.value.requestId)}>放回输入框</button>}
+                {i18n.t("composer.maybe_failure", { reason: why })}
+                {onTerminal && <button onClick={onTerminal}>{i18n.t("session.go_terminal")}</button>}
+                {remote.canRestoreAttachments(sid, k.value.requestId) && <button onClick={() => onRestore(text, k.value.requestId)}>{i18n.t("composer.restore")}</button>}
               </small>
             </div>
           );
@@ -1685,12 +1682,12 @@ function Row({
           <div className="me fail">
             <FileChips files={files} />
             {!text && images.length > 0 ? (
-              <div>{images.length} 张图片</div>
+              <div>{i18n.t("image.count", { count: images.length })}</div>
             ) : (
-              <div>{text || (files?.length ? "" : "一条消息")}</div>
+              <div>{text || (files?.length ? "" : i18n.t("composer.message_fallback"))}</div>
             )}
             <small>
-              没发出去：{why}
+              {i18n.t("composer.send_failure", { reason: why })}
               {mine && (text || images.length > 0 || !!files?.length) && (
                 <button
                   disabled={remote.replaced.has(k.value.requestId)}
@@ -1699,28 +1696,27 @@ function Row({
                   }
                 >
                   {remote.replaced.has(k.value.requestId)
-                    ? "已重新发送"
+                    ? i18n.t("composer.resent")
                     : t("common.retry")}
                 </button>
               )}
               {(text || images.length > 0 || !!files?.length) && (
                 <button onClick={() => onRestore(text, k.value.requestId)}>
-                  放回输入框
-                </button>
+                  {i18n.t("composer.restore")}</button>
               )}
             </small>
           </div>
         );
       }
       const text = textOf.get(k.value.requestId);
-      const note = "可能没发出去：已送到终端但没确认";
+      const note = i18n.t("composer.unconfirmed");
       return text ? (
         <div className="me warn">
           <div>{text}</div>
           <small>{note}</small>
         </div>
       ) : (
-        <div className="sysline warn">有一条消息{note}</div>
+        <div className="sysline warn">{i18n.t("composer.message_unconfirmed")}</div>
       );
     }
     case "settingsChanged": {
@@ -1729,8 +1725,7 @@ function Row({
         const x = d.compactions.get(e.seq);
         return (
           <div className="sysline">
-            上下文已压缩
-            {x?.before !== undefined && x.after !== undefined
+            {i18n.t("session.compacted")}{x?.before !== undefined && x.after !== undefined
               ? ` · ${x.before}% → ${x.after}%`
               : ""}
           </div>
@@ -1739,39 +1734,34 @@ function Row({
       if (c.model)
         return (
           <div className="sysline">
-            {otherThanMe(e.origin, who)
-              ? `${originLabel(e.origin, who.ctx)} 将模型切到 `
-              : "切换到 "}<b>{nameModel(c.model)}</b>
+            {rich(otherThanMe(e.origin, who) ? i18n.t("session.model_changed_by", { origin: originLabel(e.origin, who.ctx) ?? "", value: "{value}" }) : i18n.t("session.model_changed", { value: "{value}" }), { value: <b>{nameModel(c.model)}</b> })}
             {c.effort && ` · ${c.effort}`}
           </div>
         );
       return (
         <div className="sysline">
-          {otherThanMe(e.origin, who)
-            ? `${originLabel(e.origin, who.ctx)} 将模式切到 `
-            : "模式切换到 "}
-          <b>{modeName(c.mode)}</b>
+          {rich(otherThanMe(e.origin, who) ? i18n.t("session.mode_changed_by", { origin: originLabel(e.origin, who.ctx) ?? "", value: "{value}" }) : i18n.t("session.mode_changed", { value: "{value}" }), { value: <b>{modeName(c.mode)}</b> })}
         </div>
       );
     }
     case "turnContext":
       return (
         <div className="sysline">
-          {machine} 终端把
-          {(d.terminalChanges.get(e.seq) ?? []).map((c, i) => (
+          {rich(i18n.t("session.terminal_changes", { name: machine, changes: "{changes}" }), { changes: (d.terminalChanges.get(e.seq) ?? []).map((c, i) => (
             <span key={i}>
-              {i > 0 && "，"}
-              {c.kind === "mode" ? "模式切到了 " : "模型切到了 "}
-              <b>{c.kind === "mode" ? permissionModeName(c.permission) : nameModel(c.model) + (c.effort ? " · " + c.effort : "")}</b>
+              {i > 0 && i18n.t("common.ios_spoken_separator")}
+              {rich(c.kind === "mode" ? i18n.t("session.terminal_mode_change", { value: "{value}" }) : i18n.t("session.terminal_model_change", { value: "{value}" }), {
+                value: <b>{c.kind === "mode" ? permissionModeName(c.permission) : nameModel(c.model) + (c.effort ? " · " + c.effort : "")}</b>,
+              })}
             </span>
-          ))}
+          )) })}
         </div>
       );
     case "planProposed":
       return (
         <RememberDetails name="details" className="think">
           <summary>
-            计划 <Exp />
+            {i18n.t("modes.plan")}<Exp />
           </summary>
           <div className="ai">
             <Markdown text={k.value.text} />
@@ -1782,11 +1772,7 @@ function Row({
       const t = eventTime(e);
       return (
         <div className="sep">
-          {t
-            ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} `
-            : ""}
-          结束
-        </div>
+          {i18n.t("session.ended_at", { time: t ? i18n.t("time.ios_date_time", { month: new Date(t).getMonth() + 1, day: new Date(t).getDate(), time: hhmm(t) }) + " " : "" })}</div>
       );
     }
     case "sessionForked": {
@@ -1798,25 +1784,21 @@ function Row({
       return (
         <div className="sep fork">
           <span>
-            {t
-              ? `${new Date(t).getMonth() + 1}月${new Date(t).getDate()}日 ${hhmm(t)} `
-              : ""}
-            分叉自
-            {k.value.sourceSessionId ? (
+            {rich(i18n.t("session.forked_from", { time: t ? i18n.t("time.ios_date_time", { month: new Date(t).getMonth() + 1, day: new Date(t).getDate(), time: hhmm(t) }) + " " : "", source: "{source}" }), { source: k.value.sourceSessionId ? (
               <a
                 className="src"
                 href={"#/s/" + encodeURIComponent(k.value.sourceSessionId)}
               >
                 {src
                   ? titleOf(src)
-                  : plain(k.value.sourceTitle) || "另一个会话"}
+                  : plain(k.value.sourceTitle) || i18n.t("session.other_session")}
                 <ChevronRight />
               </a>
             ) : (
               <span className="src">
-                {plain(k.value.sourceTitle) || "另一个会话"}
+                {plain(k.value.sourceTitle) || i18n.t("session.other_session")}
               </span>
-            )}
+            ) })}
           </span>
         </div>
       );
@@ -1870,12 +1852,10 @@ function EndCard({
       <div className="endcard">
         <div className="h">
           <StateMark kind="off" />
-          {mname} 不在线
+          {i18n.t("new_session.machine_offline", { name: mname })}
         </div>
         <div className="d">
-          {lastSeen ? `${ago(lastSeen)}断开，` : ""}可能是合盖睡眠、断网，或
-          remote-agent
-          没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。
+          {i18n.t("session.offline_note", { lastSeen: lastSeen ? i18n.t("session.disconnected_ago", { time: ago(lastSeen) }) : "" })}
         </div>
       </div>
     );
@@ -1897,10 +1877,9 @@ function EndCard({
       <div className="endcard">
         <div className="h">
           <StateMark kind="run" />
-          正在恢复…
-        </div>
+          {i18n.t("session.resuming")}</div>
         <div className="d">
-          在 {mname} 上重新打开 {agentName(agent)}
+          {i18n.t("session.reopen_agent", { name: mname, agent: agentName(agent) })}
         </div>
       </div>
     );
@@ -1909,8 +1888,7 @@ function EndCard({
       <div className="endcard">
         <div className="h">
           <StateMark kind="off" />
-          恢复失败
-        </div>
+          {i18n.t("session.resume_failed")}</div>
         <div className="d">{error}</div>
         <div className="btns">
           <button
@@ -1918,8 +1896,7 @@ function EndCard({
             onClick={() => void resume()}
             disabled={!machineOnline || remote.conn !== "online"}
           >
-            再试一次
-          </button>
+            {i18n.t("session.try_again")}</button>
         </div>
       </div>
     );
@@ -1927,10 +1904,9 @@ function EndCard({
     <div className="endcard">
       <div className="h">
         <StateMark kind="off" />
-        会话已结束
-      </div>
+        {i18n.t("session.ended")}</div>
       {remote.unlinked ? (
-        <div className="d">连上服务器后才能恢复。</div>
+        <div className="d">{i18n.t("session.connect_resume")}</div>
       ) : machineOnline ? (
         <>
           <div className="d">
@@ -1939,8 +1915,7 @@ function EndCard({
               exited && scheduledClosed,
               exited && idleClosed,
             )}
-            恢复会在 {mname}{" "}
-            上用同样的设置重新打开它，聊天记录都在。
+            {i18n.t("session.resume_note", { name: mname })}
           </div>
           <div className="btns">
             <button
@@ -1948,12 +1923,11 @@ function EndCard({
               onClick={() => void resume()}
               disabled={remote.conn !== "online"}
             >
-              恢复会话
-            </button>
+              {i18n.t("session.resume")}</button>
           </div>
         </>
       ) : (
-        <div className="d">{mname} 不在线，连上后才能恢复。</div>
+        <div className="d">{i18n.t("session.offline_resume", { name: mname })}</div>
       )}
     </div>
   );

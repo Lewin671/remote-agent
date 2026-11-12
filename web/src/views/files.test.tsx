@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -25,7 +26,7 @@ it("offers 照片和视频 / 文件, and selecting an image under 文件 never c
   const t = tray(); const prepare = vi.spyOn(t as unknown as { prepare: () => Promise<unknown> }, "prepare");
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   await act(async () => host.querySelector<HTMLButtonElement>("button")!.click());
-  expect([...host.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).toEqual(["照片和视频", "文件"]);
+  expect([...host.querySelectorAll('[role="menuitem"]')].map((b) => b.textContent)).toEqual([message("attachment.photos_videos"), message("attachment.file")]);
   const file = new File(["bytes"], "photo.png", { type: "image/png" });
   const input = host.querySelector<HTMLInputElement>('input:not([accept])')!;
   Object.defineProperty(input, "files", { value: [file], configurable: true });
@@ -67,7 +68,7 @@ it("uses one chip for progress, failed retry/remove and sent files", async () =>
   const file = create(SentFileSchema, { fileId: "f", name: "报告 very-long-name.pdf", sizeBytes: 1024n });
   const retry = vi.fn(); const remove = vi.fn();
   mount(<FileChip file={file} state="failed" error="连接中断" onRetry={retry} onRemove={remove} />);
-  expect(host.textContent).toContain("1.0 KB"); expect(host.textContent).toContain("上传失败");
+  expect(host.textContent).toContain("1.0 KB"); expect(host.textContent).toContain(message("attachment.upload_failed"));
   await act(async () => [...host.querySelectorAll<HTMLButtonElement>("button")].forEach((b) => b.click()));
   expect(retry).toHaveBeenCalledOnce(); expect(remove).toHaveBeenCalledOnce();
   act(() => root!.render(<FileChip file={file} state="uploading" progress={0.4} />));
@@ -100,7 +101,7 @@ it("hides labeled file lines without hiding ordinary File: sentences", () => {
 
 it("closes the plus menu after either choice, outside click and Escape", async () => {
   const t = tray(); mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
-  const plus = () => host.querySelector<HTMLButtonElement>('button[aria-label="添加附件"]')!;
+  const plus = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.ios_attach")}"]`)!;
   const menus = () => host.querySelectorAll('[role="menu"]');
   const inputs = [...host.querySelectorAll<HTMLInputElement>('input[type="file"]')];
   const clicks = inputs.map((input) => vi.spyOn(input, "click").mockImplementation(() => undefined));
@@ -131,7 +132,7 @@ it("rejects dropped folders before reading or uploading zero-byte entries", asyn
     { kind: "file", webkitGetAsEntry: () => ({ isDirectory: false }), getAsFile: () => file },
   ] } });
   await act(async () => host.firstElementChild!.dispatchEvent(event));
-  expect(blocked).toHaveBeenCalledWith("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+  expect(blocked).toHaveBeenCalledWith(message("attachment.zip_folder"));
   await vi.waitFor(() => expect(t.ready()).toBe(true));
   expect(t.files().map((f) => f.name)).toEqual(["empty.txt"]);
 });
@@ -158,7 +159,7 @@ it.each([Agent.CODEX, Agent.CLAUDE].flatMap((agent) => [false, true].map((text) 
   expect(host.querySelector(".file-name")?.getAttribute("aria-label")).toBe("held.csv");
   expect(host.textContent).toContain("9 B");
   expect(host.querySelector(".pending-text")?.textContent).toBe(text ? "inspect this" : "");
-  expect(host.textContent).not.toContain("另一客户端的消息");
+  expect(host.textContent).not.toContain(message("queue.other_message"));
   expect(d.accepted.get("held")).toMatchObject({ text: text ? "inspect this" : "", imageIds: text ? ["image"] : [], files: [file], mode: SendMode.QUEUE, origin: { deviceId: "other" } });
 });
 
@@ -214,25 +215,25 @@ it("says at once that a video over the file limit is too big, and uploads nothin
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
   await choose("照片和视频", [sized("long.mp4", "video/mp4", 100 * 1024 * 1024 + 1)]);
   expect(t.items).toHaveLength(0);
-  expect(t.note).toContain("「long.mp4」超过单个文件 100 MB 的上限");
+  expect(t.note).toContain(message("attachment.named_size_limit", {"name":"long.mp4","limit":100}));
   expect(upload).not.toHaveBeenCalled();
   // At the file count limit, a video is not taken either.
   t.maxFiles = 1;
   await choose("照片和视频", [sized("a.mp4", "video/mp4", 10), sized("b.mp4", "video/mp4", 10)]);
   expect(t.files().map((f) => f.name)).toEqual(["a.mp4"]);
-  expect(t.note).toContain("一条消息最多 1 个文件");
+  expect(t.note).toContain(message("attachment.max_files", {"count":1}));
 });
 it("offers only images from the library when the computer cannot take files", async () => {
   const t = tray(); t.fileSupported = false;
   mount(<AttachButton tray={t} blocked="" onBlocked={() => undefined} />);
-  expect(host.querySelector('[aria-label="添加图片"]')).toBeTruthy();
+  expect(host.querySelector(`[aria-label="${message("image.add")}"]`)).toBeTruthy();
   // ＋ opens the library at once, which lists images only.
   const input = await choose("", [sized("clip.mov", "video/quicktime", 10)]);
   expect(input.accept).toBe("image/*");
   expect(host.querySelector('[role="menu"]')).toBeNull();
   // A video slipped through the picker is not sent as a file.
   expect(t.files()).toHaveLength(0);
-  expect(t.note).toContain("这台电脑不支持发送文件");
+  expect(t.note).toBe(message("attachment.update_required"));
 });
 it("draws a chosen video among the images, its length in a corner, or its name when it cannot be read", async () => {
   const t = tray();

@@ -1,0 +1,544 @@
+[
+  {
+    "key": "modes.account_no_auto",
+    "zh-CN": "当前账户不支持自动模式，换一种审批模式再开始",
+    "en": "This account does not support Auto mode. Choose another approval mode before starting.",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.account_unsupported",
+    "zh-CN": "当前账户不支持自动模式",
+    "en": "This account does not support Auto mode",
+    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.agy_ask_desc",
+    "zh-CN": "需要审批时由你确认，超时自动拒绝",
+    "en": "You confirm approval requests; automatically deny on timeout",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.agy_plan_desc",
+    "zh-CN": "先只读探索并写方案，批准后回到默认模式执行",
+    "en": "Explore read-only and write a plan; after approval, return to the default mode to execute",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.ask",
+    "zh-CN": "询问",
+    "en": "Ask",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.ask_desc",
+    "zh-CN": "需要审批时由你确认，超时拒绝",
+    "en": "You confirm approval requests; deny on timeout",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.ask_permission_desc",
+    "zh-CN": "需要权限时由你确认",
+    "en": "You confirm permission requests",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.auto",
+    "zh-CN": "自动",
+    "en": "Auto",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.auto_desc",
+    "zh-CN": "由 {agent} 自己判断，拿不准的在对话里问你",
+    "en": "{agent} decides, and asks you in the conversation when unsure",
+    "notes": "审批模式选择器及会话状态。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.current_terminal",
+    "zh-CN": "当前：{mode}（在终端设置）",
+    "en": "Current: {mode} (set in terminal)",
+    "notes": "审批模式选择器及会话状态。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：mode 为已本地化的审批模式或完整默认模式标签。",
+    "params": {
+      "mode": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.default_agent",
+    "zh-CN": "默认：{agent} 自己的模式",
+    "en": "Default: {agent}’s own mode",
+    "notes": "审批模式选择器及会话状态。默认模式短说明；agent 为 CLI 品牌。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.default_named",
+    "zh-CN": "默认：{mode}",
+    "en": "Default: {mode}",
+    "notes": "审批模式选择器及会话状态。默认模式短说明；mode 为模式显示名。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：mode 为已本地化的审批模式或完整默认模式标签。",
+    "params": {
+      "mode": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.default_varies",
+    "zh-CN": "{mode}（项目设置可能不同）",
+    "en": "{mode} (project settings may differ)",
+    "notes": "审批模式选择器及会话状态。完整默认模式说明；mode 为前述完整默认模式标签。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：mode 为已本地化的审批模式或完整默认模式标签。",
+    "params": {
+      "mode": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.full_access",
+    "zh-CN": "完全放行",
+    "en": "Full access",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.full_current_note",
+    "zh-CN": "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
+    "en": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to this session.",
+    "notes": "审批模式选择器及会话状态。完全放行安全确认框正文；无变量，审批后果必须完整。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.full_new_note",
+    "zh-CN": "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。",
+    "en": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to the new session.",
+    "notes": "审批模式选择器及会话状态。完全放行安全确认框正文；无变量，审批后果必须完整。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.full_title",
+    "zh-CN": "切到完全放行？",
+    "en": "Switch to Full access?",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.full_unavailable",
+    "zh-CN": "本会话启动时未启用；需要时新建会话选择",
+    "en": "Not enabled when this session started. Choose it when starting a new session.",
+    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.locked",
+    "zh-CN": "本会话以完全放行启动，不能切换审批模式",
+    "en": "This session started with Full access; its approval mode cannot be changed",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.locked_note",
+    "zh-CN": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
+    "en": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",
+    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.model_no_auto",
+    "zh-CN": "这个模型没有自动模式，换一种审批模式再开始",
+    "en": "This model does not support Auto mode. Choose another approval mode before starting.",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.model_unsupported",
+    "zh-CN": "当前模型不支持",
+    "en": "Not supported by this model",
+    "notes": "审批模式选择器的标签或说明。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.permission_notice",
+    "zh-CN": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
+    "en": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.plan",
+    "zh-CN": "计划",
+    "en": "Plan",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.plan_desc",
+    "zh-CN": "只读和出计划，你批准后才开始改",
+    "en": "Read and plan only; changes start after your approval",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.plan_edit",
+    "zh-CN": "修改计划…",
+    "en": "Revise plan…",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.plan_propose_desc",
+    "zh-CN": "先出方案，再批准执行",
+    "en": "Propose a plan, then approve execution",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.skip_all",
+    "zh-CN": "所有操作都不审批",
+    "en": "No approval for any operation",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.switch",
+    "zh-CN": "切换",
+    "en": "Switch",
+    "notes": "审批模式选择器的标签或说明。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.switch_failed",
+    "zh-CN": "没能切换：{reason}",
+    "en": "Could not switch: {reason}",
+    "notes": "审批模式选择器及会话状态。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.switching",
+    "zh-CN": "正在切换…",
+    "en": "Switching…",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "modes.title",
+    "zh-CN": "审批模式",
+    "en": "Approval mode",
+    "notes": "审批模式选择器的标签或说明。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

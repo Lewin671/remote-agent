@@ -2,6 +2,166 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>approval_seconds_left</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld second left</string>
+			<key>other</key>
+			<string>%1$lld seconds left</string>
+		</dict>
+	</dict>
+	<key>attachment_images_limit</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Image limit per message: %2$lld. %1$lld extra image was not added.</string>
+			<key>other</key>
+			<string>Image limit per message: %2$lld. %1$lld extra images were not added.</string>
+		</dict>
+	</dict>
+	<key>attachment_max_files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>A message can have at most %1$lld file</string>
+			<key>other</key>
+			<string>A message can have at most %1$lld files</string>
+		</dict>
+	</dict>
+	<key>attachment_max_images</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>A message can have at most %1$lld image</string>
+			<key>other</key>
+			<string>A message can have at most %1$lld images</string>
+		</dict>
+	</dict>
+	<key>composer_restore_files_full</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>The input cannot fit this message’s %1$lld file. Remove some attachments first.</string>
+			<key>other</key>
+			<string>The input cannot fit this message’s %1$lld files. Remove some attachments first.</string>
+		</dict>
+	</dict>
+	<key>composer_restore_images_full</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>The input already has %2$lld image(s) and cannot fit this message’s %1$lld image. Remove some first.</string>
+			<key>other</key>
+			<string>The input already has %2$lld image(s) and cannot fit this message’s %1$lld images. Remove some first.</string>
+		</dict>
+	</dict>
+	<key>dock_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more item</string>
+			<key>other</key>
+			<string>%1$lld more items</string>
+		</dict>
+	</dict>
+	<key>dock_question_progress</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Question %2$lld of %1$lld</string>
+			<key>other</key>
+			<string>Question %2$lld of %1$lld</string>
+		</dict>
+	</dict>
+	<key>dock_selected</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld selected</string>
+			<key>other</key>
+			<string>%1$lld selected</string>
+		</dict>
+	</dict>
+	<key>dock_submit_selected</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Submit %1$lld selection</string>
+			<key>other</key>
+			<string>Submit %1$lld selections</string>
+		</dict>
+	</dict>
 	<key>home_idle_count</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -290,6 +450,86 @@
 			<string>%1$lld images could not be attached. Tap an image for details.</string>
 		</dict>
 	</dict>
+	<key>image_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld image</string>
+			<key>other</key>
+			<string>%1$lld images</string>
+		</dict>
+	</dict>
+	<key>image_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more image</string>
+			<key>other</key>
+			<string>%1$lld more images</string>
+		</dict>
+	</dict>
+	<key>image_position</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Image %2$lld of %1$lld</string>
+			<key>other</key>
+			<string>Image %2$lld of %1$lld</string>
+		</dict>
+	</dict>
+	<key>image_position_state</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Image %2$lld of %1$lld, %3$@</string>
+			<key>other</key>
+			<string>Image %2$lld of %1$lld, %3$@</string>
+		</dict>
+	</dict>
+	<key>image_screenshots</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string> · %1$lld screenshot</string>
+			<key>other</key>
+			<string> · %1$lld screenshots</string>
+		</dict>
+	</dict>
 	<key>markdown_ios_hidden_lines</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -418,6 +658,22 @@
 			<string>%1$lld pending</string>
 		</dict>
 	</dict>
+	<key>queue_more</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more queued message · Expand</string>
+			<key>other</key>
+			<string>%1$lld more queued messages · Expand</string>
+		</dict>
+	</dict>
 	<key>quota_old_hours</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -450,6 +706,54 @@
 			<string>Data from %1$lld minutes ago; may have changed</string>
 		</dict>
 	</dict>
+	<key>session_history_unavailable</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld record before resume could not be read; later readable history is shown normally.</string>
+			<key>other</key>
+			<string>%1$lld records before resume could not be read; later readable history is shown normally.</string>
+		</dict>
+	</dict>
+	<key>session_new_messages</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld new message</string>
+			<key>other</key>
+			<string>%1$lld new messages</string>
+		</dict>
+	</dict>
+	<key>time_duration_seconds</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld sec</string>
+			<key>other</key>
+			<string>%1$lld sec</string>
+		</dict>
+	</dict>
 	<key>time_hours_ago</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -480,6 +784,54 @@
 			<string>%1$lld minute ago</string>
 			<key>other</key>
 			<string>%1$lld minutes ago</string>
+		</dict>
+	</dict>
+	<key>tools_completed_calls</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Completed %1$lld tool call</string>
+			<key>other</key>
+			<string>Completed %1$lld tool calls</string>
+		</dict>
+	</dict>
+	<key>tools_completed_commands</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Ran %1$lld command</string>
+			<key>other</key>
+			<string>Ran %1$lld commands</string>
+		</dict>
+	</dict>
+	<key>tools_completed_files</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Edited %1$lld file</string>
+			<key>other</key>
+			<string>Edited %1$lld files</string>
 		</dict>
 	</dict>
 </dict>

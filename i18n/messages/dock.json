@@ -1,0 +1,591 @@
+[
+  {
+    "key": "dock.agent_waiting",
+    "zh-CN": "{agent} 在等你",
+    "en": "{agent} is waiting for you",
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.agy_plan_note",
+    "zh-CN": "批准后回到默认模式（询问）",
+    "en": "Return to the default mode (Ask) after approval",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.answer_title",
+    "zh-CN": "回答提问",
+    "en": "Answer question",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.answer_unknown",
+    "zh-CN": "不确定提交了没有，重试会发送同一个回答",
+    "en": "Submission is unconfirmed. Retry sends the same answer.",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.answered",
+    "zh-CN": "回答了 {answers}",
+    "en": "Answered {answers}",
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。历史提问回答行；answers 为加粗的原始答案列表。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：answers 为原始答案列表的加粗富文本槽位。",
+    "params": {
+      "answers": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.claude_plan_note",
+    "zh-CN": "批准后使用询问模式",
+    "en": "Use Ask mode after approval",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.handle",
+    "zh-CN": "处理",
+    "en": "Handle",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.handle_terminal",
+    "zh-CN": "去终端处理",
+    "en": "Handle in terminal",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.more",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 项"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more item",
+        "other": "{count} more items"
+      }
+    },
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.multiselect",
+    "zh-CN": "可多选",
+    "en": "Select multiple",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.none_fit",
+    "zh-CN": "都不合适？",
+    "en": "None of these?",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.other_terminal",
+    "zh-CN": "其他回答：去终端",
+    "en": "Other answer: go to terminal",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_answered",
+    "zh-CN": "回答了计划",
+    "en": "Answered the plan",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_clear",
+    "zh-CN": "清空上下文后执行",
+    "en": "Clear context and execute",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_clear_record",
+    "zh-CN": "清空上下文后执行计划",
+    "en": "Execute plan with cleared context",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_full",
+    "zh-CN": "计划全文",
+    "en": "Full plan",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_implement_record",
+    "zh-CN": "批准执行计划",
+    "en": "Approved plan execution",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_keep",
+    "zh-CN": "继续规划",
+    "en": "Keep planning",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_title",
+    "zh-CN": "{title} · 计划待批准",
+    "en": "{title} · Plan awaiting approval",
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：title 为调用提供的显示参数，保持原有格式。",
+    "params": {
+      "title": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.plan_unread",
+    "zh-CN": "计划的内容还没读到，可以去终端看",
+    "en": "The plan has not loaded yet. View it in the terminal.",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.question_changed",
+    "zh-CN": "没能提交，终端里的问题可能已经变了",
+    "en": "Could not submit; the question in the terminal may have changed",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.question_progress",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "第 {index} 题，共 {count} 题"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Question {index} of {count}",
+        "other": "Question {index} of {count}"
+      }
+    },
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）；index 为从 1 开始的图片/问题序号。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.recommended",
+    "zh-CN": "推荐",
+    "en": "Recommended",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.select_then_submit",
+    "zh-CN": "选好后提交",
+    "en": "Select, then submit",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.selected",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "已选 {count} 项"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} selected",
+        "other": "{count} selected"
+      }
+    },
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.submit_failed",
+    "zh-CN": "没能提交：{reason}",
+    "en": "Could not submit: {reason}",
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.submit_failed_edit",
+    "zh-CN": "没能提交：{reason}。可以改选后再提交",
+    "en": "Could not submit: {reason}. You can change your selection and submit again.",
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.submit_selected",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "提交 {count} 项"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Submit {count} selection",
+        "other": "Submit {count} selections"
+      }
+    },
+    "notes": "会话停靠区的提问/计划/弹窗卡及完整页。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.submitting",
+    "zh-CN": "提交中…",
+    "en": "Submitting…",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.trust_folder",
+    "zh-CN": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
+    "en": "No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "dock.waiting_confirmation",
+    "zh-CN": "等待确认",
+    "en": "Waiting for confirmation",
+    "notes": "停靠区及完整页中的提问/计划操作或状态。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

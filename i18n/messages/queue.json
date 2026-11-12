@@ -1,0 +1,417 @@
+[
+  {
+    "key": "queue.after_current_turn",
+    "zh-CN": "本轮结束后发送",
+    "en": "Send after this turn",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.after_start",
+    "zh-CN": "启动后发送",
+    "en": "Send after startup",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.after_turn",
+    "zh-CN": "这一轮结束后发",
+    "en": "Send after this turn",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.agent_ready",
+    "zh-CN": "等 {agent} 就绪后发出",
+    "en": "Send when {agent} is ready",
+    "notes": "会话排队消息气泡。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.already_submitted",
+    "zh-CN": "上一条已送入终端，不能取消",
+    "en": "The previous message is already in the terminal and cannot be canceled",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.cancel_failed",
+    "zh-CN": "取消没成功，仍在排队",
+    "en": "Could not cancel; still queued",
+    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.canceled",
+    "zh-CN": "已取消",
+    "en": "Canceled",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.canceled_elsewhere",
+    "zh-CN": "上一条已在另一客户端取消",
+    "en": "The previous message was canceled on another client",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.canceled_record",
+    "zh-CN": "取消了一条排队的消息",
+    "en": "Canceled a queued message",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.canceling",
+    "zh-CN": "正在取消…",
+    "en": "Canceling…",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.images_recognized",
+    "zh-CN": "图片已识别，正在发送…",
+    "en": "Images recognized, sending…",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.insert",
+    "zh-CN": "插入这一轮",
+    "en": "Insert into this turn",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.more",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 条排队 展开"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more queued message · Expand",
+        "other": "{count} more queued messages · Expand"
+      }
+    },
+    "notes": "会话排队消息气泡。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.other_message",
+    "zh-CN": "另一客户端的消息",
+    "en": "A message from another client",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.pasting_images",
+    "zh-CN": "正在粘贴图片…",
+    "en": "Pasting images…",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.paused",
+    "zh-CN": "已暂停",
+    "en": "Paused",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.rank",
+    "zh-CN": " · 第 {rank} 条",
+    "en": " · #{rank}",
+    "notes": "会话排队消息气泡。排队气泡顺序元信息；rank 为从 1 开始的队列序号。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：rank 为从 1 开始的队列序号。",
+    "params": {
+      "rank": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.resume_failed",
+    "zh-CN": "发送没成功，仍已暂停",
+    "en": "Could not send; still paused",
+    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.resuming",
+    "zh-CN": "正在发送…",
+    "en": "Sending…",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.scheduled",
+    "zh-CN": "定时任务{time} · ",
+    "en": "Scheduled task{time} · ",
+    "notes": "会话排队消息气泡。排队气泡来源元信息，time 为可选的分隔符和时间。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：time 为已按当前界面语言格式化的本地时间。",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.submitting",
+    "zh-CN": "已送入终端，等待确认",
+    "en": "Written to terminal, waiting for confirmation",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.terminal_draft",
+    "zh-CN": "终端里有没发出的草稿，发完或清掉后再发",
+    "en": "There is an unsent draft in the terminal. Send or clear it first.",
+    "notes": "排队消息气泡的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.unrecognized",
+    "zh-CN": "认不出输入框，已暂停",
+    "en": "Input field not recognized; paused",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "queue.when_ready",
+    "zh-CN": "就绪后发送",
+    "en": "Send when ready",
+    "notes": "排队消息气泡的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

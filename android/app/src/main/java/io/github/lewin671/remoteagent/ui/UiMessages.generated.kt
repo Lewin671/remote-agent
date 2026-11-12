@@ -13,6 +13,176 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
     configuration.setLocale(java.util.Locale.forLanguageTag(MessageLocale.appleTags.getValue(language)))
     val resources = context.createConfigurationContext(configuration).resources
     return when (message.key) {
+        "approval.allow" -> {
+            resources.getString(R.string.approval_allow)
+        }
+        "approval.allowed" -> {
+            resources.getString(R.string.approval_allowed)
+        }
+        "approval.always_allow" -> {
+            resources.getString(R.string.approval_always_allow)
+        }
+        "approval.always_allowed" -> {
+            resources.getString(R.string.approval_always_allowed)
+        }
+        "approval.always_directory" -> {
+            val path = message.args.getValue("path") as String
+            resources.getString(R.string.approval_always_directory, path)
+        }
+        "approval.always_prefix" -> {
+            val command = message.args.getValue("command") as String
+            resources.getString(R.string.approval_always_prefix, command)
+        }
+        "approval.approve" -> {
+            resources.getString(R.string.approval_approve)
+        }
+        "approval.approve_execute" -> {
+            resources.getString(R.string.approval_approve_execute)
+        }
+        "approval.auto_edits" -> {
+            resources.getString(R.string.approval_auto_edits)
+        }
+        "approval.delivery_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.approval_delivery_failed, reason)
+        }
+        "approval.denial_reason" -> {
+            resources.getString(R.string.approval_denial_reason)
+        }
+        "approval.denied" -> {
+            resources.getString(R.string.approval_denied)
+        }
+        "approval.deny" -> {
+            resources.getString(R.string.approval_deny)
+        }
+        "approval.details" -> {
+            resources.getString(R.string.approval_details)
+        }
+        "approval.expired" -> {
+            resources.getString(R.string.approval_expired)
+        }
+        "approval.full_command" -> {
+            resources.getString(R.string.approval_full_command)
+        }
+        "approval.in_terminal" -> {
+            resources.getString(R.string.approval_in_terminal)
+        }
+        "approval.reason_placeholder" -> {
+            resources.getString(R.string.approval_reason_placeholder)
+        }
+        "approval.seconds_left" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.approval_seconds_left, count, count)
+        }
+        "approval.timed_out" -> {
+            resources.getString(R.string.approval_timed_out)
+        }
+        "approval.timeout_note" -> {
+            val remaining = message.args.getValue("remaining") as String
+            resources.getString(R.string.approval_timeout_note, remaining)
+        }
+        "approval.title" -> {
+            resources.getString(R.string.approval_title)
+        }
+        "approval.truncated" -> {
+            resources.getString(R.string.approval_truncated)
+        }
+        "attachment.computer_offline" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_computer_offline, name)
+        }
+        "attachment.computer_unread" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_computer_unread, name)
+        }
+        "attachment.disconnected" -> {
+            resources.getString(R.string.attachment_disconnected)
+        }
+        "attachment.failed" -> {
+            resources.getString(R.string.attachment_failed)
+        }
+        "attachment.failed_send_hint" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.attachment_failed_send_hint, reason)
+        }
+        "attachment.failure" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.attachment_failure, reason)
+        }
+        "attachment.file" -> {
+            resources.getString(R.string.attachment_file)
+        }
+        "attachment.file_missing" -> {
+            resources.getString(R.string.attachment_file_missing)
+        }
+        "attachment.file_progress" -> {
+            resources.getString(R.string.attachment_file_progress)
+        }
+        "attachment.filename_limit" -> {
+            resources.getString(R.string.attachment_filename_limit)
+        }
+        "attachment.images_limit" -> {
+            val count = message.args.getValue("count") as Int
+            val limit = message.args.getValue("limit") as Int
+            resources.getQuantityString(R.plurals.attachment_images_limit, count, count, limit)
+        }
+        "attachment.max_files" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.attachment_max_files, count, count)
+        }
+        "attachment.max_images" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.attachment_max_images, count, count)
+        }
+        "attachment.metadata" -> {
+            resources.getString(R.string.attachment_metadata)
+        }
+        "attachment.named_size_limit" -> {
+            val limit = message.args.getValue("limit") as Int
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_named_size_limit, limit, name)
+        }
+        "attachment.path_spaces" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_path_spaces, name)
+        }
+        "attachment.photos_videos" -> {
+            resources.getString(R.string.attachment_photos_videos)
+        }
+        "attachment.preparing" -> {
+            resources.getString(R.string.attachment_preparing)
+        }
+        "attachment.read_failed" -> {
+            resources.getString(R.string.attachment_read_failed)
+        }
+        "attachment.remove_file" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_remove_file, name)
+        }
+        "attachment.remove_video" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.attachment_remove_video, name)
+        }
+        "attachment.size_limit" -> {
+            val limit = message.args.getValue("limit") as Int
+            resources.getString(R.string.attachment_size_limit, limit)
+        }
+        "attachment.update_required" -> {
+            resources.getString(R.string.attachment_update_required)
+        }
+        "attachment.upload_failed" -> {
+            resources.getString(R.string.attachment_upload_failed)
+        }
+        "attachment.upload_progress" -> {
+            val percent = message.args.getValue("percent") as Int
+            resources.getString(R.string.attachment_upload_progress, percent)
+        }
+        "attachment.uploading" -> {
+            resources.getString(R.string.attachment_uploading)
+        }
+        "attachment.zip_folder" -> {
+            resources.getString(R.string.attachment_zip_folder)
+        }
         "common.all_projects_avatar" -> {
             resources.getString(R.string.common_all_projects_avatar)
         }
@@ -72,6 +242,98 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "common.unknown_computer" -> {
             resources.getString(R.string.common_unknown_computer)
+        }
+        "composer.after_turn" -> {
+            resources.getString(R.string.composer_after_turn)
+        }
+        "composer.await_record" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.composer_await_record, agent)
+        }
+        "composer.computer_restarted" -> {
+            resources.getString(R.string.composer_computer_restarted)
+        }
+        "composer.images_unrecognized" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.composer_images_unrecognized, agent)
+        }
+        "composer.input_unconfirmed" -> {
+            resources.getString(R.string.composer_input_unconfirmed)
+        }
+        "composer.insert_hint" -> {
+            resources.getString(R.string.composer_insert_hint)
+        }
+        "composer.insert_now" -> {
+            resources.getString(R.string.composer_insert_now)
+        }
+        "composer.maybe_failure" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.composer_maybe_failure, reason)
+        }
+        "composer.message" -> {
+            resources.getString(R.string.composer_message)
+        }
+        "composer.message_fallback" -> {
+            resources.getString(R.string.composer_message_fallback)
+        }
+        "composer.message_unconfirmed" -> {
+            resources.getString(R.string.composer_message_unconfirmed)
+        }
+        "composer.not_written" -> {
+            resources.getString(R.string.composer_not_written)
+        }
+        "composer.plan_placeholder" -> {
+            resources.getString(R.string.composer_plan_placeholder)
+        }
+        "composer.queue_after_answer" -> {
+            resources.getString(R.string.composer_queue_after_answer)
+        }
+        "composer.queue_hint" -> {
+            resources.getString(R.string.composer_queue_hint)
+        }
+        "composer.ready_timeout" -> {
+            resources.getString(R.string.composer_ready_timeout)
+        }
+        "composer.resent" -> {
+            resources.getString(R.string.composer_resent)
+        }
+        "composer.restore" -> {
+            resources.getString(R.string.composer_restore)
+        }
+        "composer.restore_files_full" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.composer_restore_files_full, count, count)
+        }
+        "composer.restore_images_full" -> {
+            val count = message.args.getValue("count") as Int
+            val existing = message.args.getValue("existing") as Int
+            resources.getQuantityString(R.plurals.composer_restore_images_full, count, count, existing)
+        }
+        "composer.send" -> {
+            resources.getString(R.string.composer_send)
+        }
+        "composer.send_failure" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.composer_send_failure, reason)
+        }
+        "composer.sending" -> {
+            resources.getString(R.string.composer_sending)
+        }
+        "composer.shortcut" -> {
+            val keys = message.args.getValue("keys") as String
+            resources.getString(R.string.composer_shortcut, keys)
+        }
+        "composer.slash_note" -> {
+            resources.getString(R.string.composer_slash_note)
+        }
+        "composer.slash_title" -> {
+            resources.getString(R.string.composer_slash_title)
+        }
+        "composer.unconfirmed" -> {
+            resources.getString(R.string.composer_unconfirmed)
+        }
+        "composer.write_failed" -> {
+            resources.getString(R.string.composer_write_failed)
         }
         "connection.android_disconnected_at" -> {
             val time = message.args.getValue("time") as String
@@ -134,6 +396,109 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "connection.server_retrying" -> {
             resources.getString(R.string.connection_server_retrying)
+        }
+        "dock.agent_waiting" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.dock_agent_waiting, agent)
+        }
+        "dock.agy_plan_note" -> {
+            resources.getString(R.string.dock_agy_plan_note)
+        }
+        "dock.answer_title" -> {
+            resources.getString(R.string.dock_answer_title)
+        }
+        "dock.answer_unknown" -> {
+            resources.getString(R.string.dock_answer_unknown)
+        }
+        "dock.answered" -> {
+            val answers = message.args.getValue("answers") as String
+            resources.getString(R.string.dock_answered, answers)
+        }
+        "dock.claude_plan_note" -> {
+            resources.getString(R.string.dock_claude_plan_note)
+        }
+        "dock.handle" -> {
+            resources.getString(R.string.dock_handle)
+        }
+        "dock.handle_terminal" -> {
+            resources.getString(R.string.dock_handle_terminal)
+        }
+        "dock.more" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.dock_more, count, count)
+        }
+        "dock.multiselect" -> {
+            resources.getString(R.string.dock_multiselect)
+        }
+        "dock.none_fit" -> {
+            resources.getString(R.string.dock_none_fit)
+        }
+        "dock.other_terminal" -> {
+            resources.getString(R.string.dock_other_terminal)
+        }
+        "dock.plan_answered" -> {
+            resources.getString(R.string.dock_plan_answered)
+        }
+        "dock.plan_clear" -> {
+            resources.getString(R.string.dock_plan_clear)
+        }
+        "dock.plan_clear_record" -> {
+            resources.getString(R.string.dock_plan_clear_record)
+        }
+        "dock.plan_full" -> {
+            resources.getString(R.string.dock_plan_full)
+        }
+        "dock.plan_implement_record" -> {
+            resources.getString(R.string.dock_plan_implement_record)
+        }
+        "dock.plan_keep" -> {
+            resources.getString(R.string.dock_plan_keep)
+        }
+        "dock.plan_title" -> {
+            val title = message.args.getValue("title") as String
+            resources.getString(R.string.dock_plan_title, title)
+        }
+        "dock.plan_unread" -> {
+            resources.getString(R.string.dock_plan_unread)
+        }
+        "dock.question_changed" -> {
+            resources.getString(R.string.dock_question_changed)
+        }
+        "dock.question_progress" -> {
+            val count = message.args.getValue("count") as Int
+            val index = message.args.getValue("index") as Int
+            resources.getQuantityString(R.plurals.dock_question_progress, count, count, index)
+        }
+        "dock.recommended" -> {
+            resources.getString(R.string.dock_recommended)
+        }
+        "dock.select_then_submit" -> {
+            resources.getString(R.string.dock_select_then_submit)
+        }
+        "dock.selected" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.dock_selected, count, count)
+        }
+        "dock.submit_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.dock_submit_failed, reason)
+        }
+        "dock.submit_failed_edit" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.dock_submit_failed_edit, reason)
+        }
+        "dock.submit_selected" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.dock_submit_selected, count, count)
+        }
+        "dock.submitting" -> {
+            resources.getString(R.string.dock_submitting)
+        }
+        "dock.trust_folder" -> {
+            resources.getString(R.string.dock_trust_folder)
+        }
+        "dock.waiting_confirmation" -> {
+            resources.getString(R.string.dock_waiting_confirmation)
         }
         "home.add_device" -> {
             resources.getString(R.string.home_add_device)
@@ -332,9 +697,142 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.home_waiting_count, count, count)
         }
+        "image.add" -> {
+            resources.getString(R.string.image_add)
+        }
         "image.attach_failed" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.image_attach_failed, count, count)
+        }
+        "image.back_message" -> {
+            resources.getString(R.string.image_back_message)
+        }
+        "image.convert_failed" -> {
+            resources.getString(R.string.image_convert_failed)
+        }
+        "image.copy_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.image_copy_failed, reason)
+        }
+        "image.count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.image_count, count, count)
+        }
+        "image.download_retry" -> {
+            resources.getString(R.string.image_download_retry)
+        }
+        "image.draft" -> {
+            resources.getString(R.string.image_draft)
+        }
+        "image.generated" -> {
+            resources.getString(R.string.image_generated)
+        }
+        "image.load_connected" -> {
+            resources.getString(R.string.image_load_connected)
+        }
+        "image.more" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.image_more, count, count)
+        }
+        "image.named" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.image_named, name)
+        }
+        "image.next" -> {
+            resources.getString(R.string.image_next)
+        }
+        "image.numbered" -> {
+            val index = message.args.getValue("index") as Int
+            resources.getString(R.string.image_numbered, index)
+        }
+        "image.original" -> {
+            resources.getString(R.string.image_original)
+        }
+        "image.original_expired" -> {
+            resources.getString(R.string.image_original_expired)
+        }
+        "image.original_hint" -> {
+            resources.getString(R.string.image_original_hint)
+        }
+        "image.original_missing" -> {
+            resources.getString(R.string.image_original_missing)
+        }
+        "image.original_not_uploaded" -> {
+            resources.getString(R.string.image_original_not_uploaded)
+        }
+        "image.original_on_computer" -> {
+            resources.getString(R.string.image_original_on_computer)
+        }
+        "image.placeholder" -> {
+            val index = message.args.getValue("index") as Int
+            resources.getString(R.string.image_placeholder, index)
+        }
+        "image.position" -> {
+            val count = message.args.getValue("count") as Int
+            val index = message.args.getValue("index") as Int
+            resources.getQuantityString(R.plurals.image_position, count, count, index)
+        }
+        "image.position_state" -> {
+            val count = message.args.getValue("count") as Int
+            val index = message.args.getValue("index") as Int
+            val state = message.args.getValue("state") as String
+            resources.getQuantityString(R.plurals.image_position_state, count, count, index, state)
+        }
+        "image.preparing" -> {
+            resources.getString(R.string.image_preparing)
+        }
+        "image.preview_only" -> {
+            resources.getString(R.string.image_preview_only)
+        }
+        "image.previous" -> {
+            resources.getString(R.string.image_previous)
+        }
+        "image.prompt" -> {
+            resources.getString(R.string.image_prompt)
+        }
+        "image.remove_index" -> {
+            val index = message.args.getValue("index") as Int
+            resources.getString(R.string.image_remove_index, index)
+        }
+        "image.screenshots" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.image_screenshots, count, count)
+        }
+        "image.share" -> {
+            resources.getString(R.string.image_share)
+        }
+        "image.share_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.image_share_failed, reason)
+        }
+        "image.title" -> {
+            resources.getString(R.string.image_title)
+        }
+        "image.tool_source" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.image_tool_source, agent)
+        }
+        "image.total_size" -> {
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.image_total_size, size)
+        }
+        "image.unsynced" -> {
+            resources.getString(R.string.image_unsynced)
+        }
+        "image.uploaded" -> {
+            resources.getString(R.string.image_uploaded)
+        }
+        "image.uploading" -> {
+            resources.getString(R.string.image_uploading)
+        }
+        "image.user_source" -> {
+            resources.getString(R.string.image_user_source)
+        }
+        "image.verification_failed" -> {
+            resources.getString(R.string.image_verification_failed)
+        }
+        "image.view" -> {
+            resources.getString(R.string.image_view)
         }
         "list_state.agent_asking" -> {
             val agent = message.args.getValue("agent") as String
@@ -421,6 +919,10 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "models.back" -> {
             resources.getString(R.string.models_back)
         }
+        "models.context_size" -> {
+            val size = message.args.getValue("size") as String
+            resources.getString(R.string.models_context_size, size)
+        }
         "models.context_window" -> {
             resources.getString(R.string.models_context_window)
         }
@@ -465,6 +967,108 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "models.title" -> {
             resources.getString(R.string.models_title)
+        }
+        "modes.account_no_auto" -> {
+            resources.getString(R.string.modes_account_no_auto)
+        }
+        "modes.account_unsupported" -> {
+            resources.getString(R.string.modes_account_unsupported)
+        }
+        "modes.agy_ask_desc" -> {
+            resources.getString(R.string.modes_agy_ask_desc)
+        }
+        "modes.agy_plan_desc" -> {
+            resources.getString(R.string.modes_agy_plan_desc)
+        }
+        "modes.ask" -> {
+            resources.getString(R.string.modes_ask)
+        }
+        "modes.ask_desc" -> {
+            resources.getString(R.string.modes_ask_desc)
+        }
+        "modes.ask_permission_desc" -> {
+            resources.getString(R.string.modes_ask_permission_desc)
+        }
+        "modes.auto" -> {
+            resources.getString(R.string.modes_auto)
+        }
+        "modes.auto_desc" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.modes_auto_desc, agent)
+        }
+        "modes.current_terminal" -> {
+            val mode = message.args.getValue("mode") as String
+            resources.getString(R.string.modes_current_terminal, mode)
+        }
+        "modes.default_agent" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.modes_default_agent, agent)
+        }
+        "modes.default_named" -> {
+            val mode = message.args.getValue("mode") as String
+            resources.getString(R.string.modes_default_named, mode)
+        }
+        "modes.default_varies" -> {
+            val mode = message.args.getValue("mode") as String
+            resources.getString(R.string.modes_default_varies, mode)
+        }
+        "modes.full_access" -> {
+            resources.getString(R.string.modes_full_access)
+        }
+        "modes.full_current_note" -> {
+            resources.getString(R.string.modes_full_current_note)
+        }
+        "modes.full_new_note" -> {
+            resources.getString(R.string.modes_full_new_note)
+        }
+        "modes.full_title" -> {
+            resources.getString(R.string.modes_full_title)
+        }
+        "modes.full_unavailable" -> {
+            resources.getString(R.string.modes_full_unavailable)
+        }
+        "modes.locked" -> {
+            resources.getString(R.string.modes_locked)
+        }
+        "modes.locked_note" -> {
+            resources.getString(R.string.modes_locked_note)
+        }
+        "modes.model_no_auto" -> {
+            resources.getString(R.string.modes_model_no_auto)
+        }
+        "modes.model_unsupported" -> {
+            resources.getString(R.string.modes_model_unsupported)
+        }
+        "modes.permission_notice" -> {
+            resources.getString(R.string.modes_permission_notice)
+        }
+        "modes.plan" -> {
+            resources.getString(R.string.modes_plan)
+        }
+        "modes.plan_desc" -> {
+            resources.getString(R.string.modes_plan_desc)
+        }
+        "modes.plan_edit" -> {
+            resources.getString(R.string.modes_plan_edit)
+        }
+        "modes.plan_propose_desc" -> {
+            resources.getString(R.string.modes_plan_propose_desc)
+        }
+        "modes.skip_all" -> {
+            resources.getString(R.string.modes_skip_all)
+        }
+        "modes.switch" -> {
+            resources.getString(R.string.modes_switch)
+        }
+        "modes.switch_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.modes_switch_failed, reason)
+        }
+        "modes.switching" -> {
+            resources.getString(R.string.modes_switching)
+        }
+        "modes.title" -> {
+            resources.getString(R.string.modes_title)
         }
         "new_session.abandon_start" -> {
             resources.getString(R.string.new_session_abandon_start)
@@ -841,6 +1445,82 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             resources.getString(R.string.projects_view_sessions, name)
         }
+        "queue.after_current_turn" -> {
+            resources.getString(R.string.queue_after_current_turn)
+        }
+        "queue.after_start" -> {
+            resources.getString(R.string.queue_after_start)
+        }
+        "queue.after_turn" -> {
+            resources.getString(R.string.queue_after_turn)
+        }
+        "queue.agent_ready" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.queue_agent_ready, agent)
+        }
+        "queue.already_submitted" -> {
+            resources.getString(R.string.queue_already_submitted)
+        }
+        "queue.cancel_failed" -> {
+            resources.getString(R.string.queue_cancel_failed)
+        }
+        "queue.canceled" -> {
+            resources.getString(R.string.queue_canceled)
+        }
+        "queue.canceled_elsewhere" -> {
+            resources.getString(R.string.queue_canceled_elsewhere)
+        }
+        "queue.canceled_record" -> {
+            resources.getString(R.string.queue_canceled_record)
+        }
+        "queue.canceling" -> {
+            resources.getString(R.string.queue_canceling)
+        }
+        "queue.images_recognized" -> {
+            resources.getString(R.string.queue_images_recognized)
+        }
+        "queue.insert" -> {
+            resources.getString(R.string.queue_insert)
+        }
+        "queue.more" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.queue_more, count, count)
+        }
+        "queue.other_message" -> {
+            resources.getString(R.string.queue_other_message)
+        }
+        "queue.pasting_images" -> {
+            resources.getString(R.string.queue_pasting_images)
+        }
+        "queue.paused" -> {
+            resources.getString(R.string.queue_paused)
+        }
+        "queue.rank" -> {
+            val rank = message.args.getValue("rank") as Int
+            resources.getString(R.string.queue_rank, rank)
+        }
+        "queue.resume_failed" -> {
+            resources.getString(R.string.queue_resume_failed)
+        }
+        "queue.resuming" -> {
+            resources.getString(R.string.queue_resuming)
+        }
+        "queue.scheduled" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.queue_scheduled, time)
+        }
+        "queue.submitting" -> {
+            resources.getString(R.string.queue_submitting)
+        }
+        "queue.terminal_draft" -> {
+            resources.getString(R.string.queue_terminal_draft)
+        }
+        "queue.unrecognized" -> {
+            resources.getString(R.string.queue_unrecognized)
+        }
+        "queue.when_ready" -> {
+            resources.getString(R.string.queue_when_ready)
+        }
         "quota.exhausted" -> {
             val name = message.args.getValue("name") as String
             val window = message.args.getValue("window") as String
@@ -895,6 +1575,488 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val window = message.args.getValue("window") as String
             resources.getString(R.string.quota_warning, name, window)
         }
+        "session.abandon_fork" -> {
+            resources.getString(R.string.session_abandon_fork)
+        }
+        "session.action_failed" -> {
+            val action = message.args.getValue("action") as String
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_action_failed, action, reason)
+        }
+        "session.approval_resolved" -> {
+            resources.getString(R.string.session_approval_resolved)
+        }
+        "session.auto_title_hint" -> {
+            resources.getString(R.string.session_auto_title_hint)
+        }
+        "session.back_task" -> {
+            resources.getString(R.string.session_back_task)
+        }
+        "session.chat" -> {
+            resources.getString(R.string.session_chat)
+        }
+        "session.compact" -> {
+            resources.getString(R.string.session_compact)
+        }
+        "session.compact_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_compact_failed, reason)
+        }
+        "session.compacted" -> {
+            resources.getString(R.string.session_compacted)
+        }
+        "session.compacting" -> {
+            resources.getString(R.string.session_compacting)
+        }
+        "session.connect_resume" -> {
+            resources.getString(R.string.session_connect_resume)
+        }
+        "session.context" -> {
+            resources.getString(R.string.session_context)
+        }
+        "session.context_tokens" -> {
+            val total = message.args.getValue("total") as String
+            val used = message.args.getValue("used") as String
+            resources.getString(R.string.session_context_tokens, total, used)
+        }
+        "session.context_used" -> {
+            val percent = message.args.getValue("percent") as Int
+            resources.getString(R.string.session_context_used, percent)
+        }
+        "session.delivered" -> {
+            resources.getString(R.string.session_delivered)
+        }
+        "session.disconnected_ago" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_disconnected_ago, time)
+        }
+        "session.dismiss_notice" -> {
+            resources.getString(R.string.session_dismiss_notice)
+        }
+        "session.effort_locked" -> {
+            resources.getString(R.string.session_effort_locked)
+        }
+        "session.end" -> {
+            resources.getString(R.string.session_end)
+        }
+        "session.end_action" -> {
+            resources.getString(R.string.session_end_action)
+        }
+        "session.end_note" -> {
+            val agent = message.args.getValue("agent") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_end_note, agent, name)
+        }
+        "session.end_session" -> {
+            resources.getString(R.string.session_end_session)
+        }
+        "session.end_title" -> {
+            resources.getString(R.string.session_end_title)
+        }
+        "session.ended" -> {
+            resources.getString(R.string.session_ended)
+        }
+        "session.ended_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_ended_at, time)
+        }
+        "session.ended_message_failed" -> {
+            resources.getString(R.string.session_ended_message_failed)
+        }
+        "session.ended_send_failed" -> {
+            resources.getString(R.string.session_ended_send_failed)
+        }
+        "session.fork" -> {
+            resources.getString(R.string.session_fork)
+        }
+        "session.fork_after_message" -> {
+            resources.getString(R.string.session_fork_after_message)
+        }
+        "session.fork_after_pending" -> {
+            resources.getString(R.string.session_fork_after_pending)
+        }
+        "session.fork_after_start" -> {
+            resources.getString(R.string.session_fork_after_start)
+        }
+        "session.fork_after_turn" -> {
+            resources.getString(R.string.session_fork_after_turn)
+        }
+        "session.fork_expired" -> {
+            resources.getString(R.string.session_fork_expired)
+        }
+        "session.fork_failed" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_fork_failed, reason)
+        }
+        "session.fork_unknown" -> {
+            resources.getString(R.string.session_fork_unknown)
+        }
+        "session.forked_from" -> {
+            val source = message.args.getValue("source") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_forked_from, source, time)
+        }
+        "session.forking" -> {
+            resources.getString(R.string.session_forking)
+        }
+        "session.go_terminal" -> {
+            resources.getString(R.string.session_go_terminal)
+        }
+        "session.history_tail_missing" -> {
+            resources.getString(R.string.session_history_tail_missing)
+        }
+        "session.history_unavailable" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.session_history_unavailable, count, count)
+        }
+        "session.history_unreadable" -> {
+            resources.getString(R.string.session_history_unreadable)
+        }
+        "session.idle_closed" -> {
+            resources.getString(R.string.session_idle_closed)
+        }
+        "session.interrupt" -> {
+            resources.getString(R.string.session_interrupt)
+        }
+        "session.interrupt_turn" -> {
+            resources.getString(R.string.session_interrupt_turn)
+        }
+        "session.interrupted" -> {
+            resources.getString(R.string.session_interrupted)
+        }
+        "session.latest" -> {
+            resources.getString(R.string.session_latest)
+        }
+        "session.loading_earlier" -> {
+            resources.getString(R.string.session_loading_earlier)
+        }
+        "session.manually_closed" -> {
+            resources.getString(R.string.session_manually_closed)
+        }
+        "session.max_effort" -> {
+            val effort = message.args.getValue("effort") as String
+            resources.getString(R.string.session_max_effort, effort)
+        }
+        "session.mode_changed" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_mode_changed, value)
+        }
+        "session.mode_changed_by" -> {
+            val origin = message.args.getValue("origin") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_mode_changed_by, origin, value)
+        }
+        "session.model_changed" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_model_changed, value)
+        }
+        "session.model_changed_by" -> {
+            val origin = message.args.getValue("origin") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_model_changed_by, origin, value)
+        }
+        "session.model_locked" -> {
+            resources.getString(R.string.session_model_locked)
+        }
+        "session.model_switch_failed" -> {
+            val model = message.args.getValue("model") as String
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.session_model_switch_failed, model, reason)
+        }
+        "session.models_failed" -> {
+            resources.getString(R.string.session_models_failed)
+        }
+        "session.more_context" -> {
+            val percent = message.args.getValue("percent") as Int
+            resources.getString(R.string.session_more_context, percent)
+        }
+        "session.new_messages" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.session_new_messages, count, count)
+        }
+        "session.no_effort" -> {
+            resources.getString(R.string.session_no_effort)
+        }
+        "session.no_effort_adjustment" -> {
+            val model = message.args.getValue("model") as String
+            resources.getString(R.string.session_no_effort_adjustment, model)
+        }
+        "session.not_running" -> {
+            resources.getString(R.string.session_not_running)
+        }
+        "session.notification" -> {
+            val text = message.args.getValue("text") as String
+            resources.getString(R.string.session_notification, text)
+        }
+        "session.offline_note" -> {
+            val lastSeen = message.args.getValue("lastSeen") as String
+            resources.getString(R.string.session_offline_note, lastSeen)
+        }
+        "session.offline_resume" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_offline_resume, name)
+        }
+        "session.only_current" -> {
+            resources.getString(R.string.session_only_current)
+        }
+        "session.origin_elsewhere" -> {
+            resources.getString(R.string.session_origin_elsewhere)
+        }
+        "session.origin_other" -> {
+            resources.getString(R.string.session_origin_other)
+        }
+        "session.origin_removed" -> {
+            resources.getString(R.string.session_origin_removed)
+        }
+        "session.origin_self" -> {
+            resources.getString(R.string.session_origin_self)
+        }
+        "session.origin_terminal" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_origin_terminal, name)
+        }
+        "session.other_session" -> {
+            resources.getString(R.string.session_other_session)
+        }
+        "session.quiet_checks" -> {
+            val times = message.args.getValue("times") as String
+            resources.getString(R.string.session_quiet_checks, times)
+        }
+        "session.reading_models" -> {
+            resources.getString(R.string.session_reading_models)
+        }
+        "session.rename" -> {
+            resources.getString(R.string.session_rename)
+        }
+        "session.rename_title" -> {
+            resources.getString(R.string.session_rename_title)
+        }
+        "session.reopen_agent" -> {
+            val agent = message.args.getValue("agent") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_reopen_agent, agent, name)
+        }
+        "session.reply_moves" -> {
+            resources.getString(R.string.session_reply_moves)
+        }
+        "session.restore_other_files" -> {
+            resources.getString(R.string.session_restore_other_files)
+        }
+        "session.restore_other_images" -> {
+            resources.getString(R.string.session_restore_other_images)
+        }
+        "session.resume" -> {
+            resources.getString(R.string.session_resume)
+        }
+        "session.resume_failed" -> {
+            resources.getString(R.string.session_resume_failed)
+        }
+        "session.resume_note" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_resume_note, name)
+        }
+        "session.resuming" -> {
+            resources.getString(R.string.session_resuming)
+        }
+        "session.schedule_send" -> {
+            resources.getString(R.string.session_schedule_send)
+        }
+        "session.scheduled_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.session_scheduled_at, time)
+        }
+        "session.scheduled_closed" -> {
+            resources.getString(R.string.session_scheduled_closed)
+        }
+        "session.settings" -> {
+            resources.getString(R.string.session_settings)
+        }
+        "session.shell_failed" -> {
+            val detail = message.args.getValue("detail") as String
+            resources.getString(R.string.session_shell_failed, detail)
+        }
+        "session.shell_timeout" -> {
+            val detail = message.args.getValue("detail") as String
+            resources.getString(R.string.session_shell_timeout, detail)
+        }
+        "session.skeleton" -> {
+            resources.getString(R.string.session_skeleton)
+        }
+        "session.split" -> {
+            resources.getString(R.string.session_split)
+        }
+        "session.starting_agent" -> {
+            val agent = message.args.getValue("agent") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_starting_agent, agent, name)
+        }
+        "session.switch_after_turn" -> {
+            resources.getString(R.string.session_switch_after_turn)
+        }
+        "session.switch_connected" -> {
+            resources.getString(R.string.session_switch_connected)
+        }
+        "session.switch_idle" -> {
+            resources.getString(R.string.session_switch_idle)
+        }
+        "session.switching_model" -> {
+            val model = message.args.getValue("model") as String
+            resources.getString(R.string.session_switching_model, model)
+        }
+        "session.terminal" -> {
+            resources.getString(R.string.session_terminal)
+        }
+        "session.terminal_changes" -> {
+            val changes = message.args.getValue("changes") as String
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.session_terminal_changes, changes, name)
+        }
+        "session.terminal_mode_change" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_terminal_mode_change, value)
+        }
+        "session.terminal_model_change" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.session_terminal_model_change, value)
+        }
+        "session.thinking" -> {
+            resources.getString(R.string.session_thinking)
+        }
+        "session.title_label" -> {
+            resources.getString(R.string.session_title_label)
+        }
+        "session.tmux_missing" -> {
+            resources.getString(R.string.session_tmux_missing)
+        }
+        "session.try_again" -> {
+            resources.getString(R.string.session_try_again)
+        }
+        "session.turn_duration" -> {
+            val duration = message.args.getValue("duration") as String
+            resources.getString(R.string.session_turn_duration, duration)
+        }
+        "session.update_computer" -> {
+            resources.getString(R.string.session_update_computer)
+        }
+        "session.view" -> {
+            resources.getString(R.string.session_view)
+        }
+        "terminal.closed" -> {
+            resources.getString(R.string.terminal_closed)
+        }
+        "terminal.closed_ended_note" -> {
+            resources.getString(R.string.terminal_closed_ended_note)
+        }
+        "terminal.closed_running_note" -> {
+            resources.getString(R.string.terminal_closed_running_note)
+        }
+        "terminal.computer_dimensions" -> {
+            val cols = message.args.getValue("cols") as Int
+            val rows = message.args.getValue("rows") as Int
+            resources.getString(R.string.terminal_computer_dimensions, cols, rows)
+        }
+        "terminal.connecting" -> {
+            resources.getString(R.string.terminal_connecting)
+        }
+        "terminal.disconnected" -> {
+            resources.getString(R.string.terminal_disconnected)
+        }
+        "terminal.down" -> {
+            resources.getString(R.string.terminal_down)
+        }
+        "terminal.earlier" -> {
+            resources.getString(R.string.terminal_earlier)
+        }
+        "terminal.enter" -> {
+            resources.getString(R.string.terminal_enter)
+        }
+        "terminal.fit" -> {
+            resources.getString(R.string.terminal_fit)
+        }
+        "terminal.fit_short" -> {
+            resources.getString(R.string.terminal_fit_short)
+        }
+        "terminal.fitted_size" -> {
+            val cols = message.args.getValue("cols") as Int
+            val rows = message.args.getValue("rows") as Int
+            resources.getString(R.string.terminal_fitted_size, cols, rows)
+        }
+        "terminal.fresh" -> {
+            resources.getString(R.string.terminal_fresh)
+        }
+        "terminal.fresh_live" -> {
+            resources.getString(R.string.terminal_fresh_live)
+        }
+        "terminal.history" -> {
+            resources.getString(R.string.terminal_history)
+        }
+        "terminal.history_closed" -> {
+            resources.getString(R.string.terminal_history_closed)
+        }
+        "terminal.history_expired" -> {
+            resources.getString(R.string.terminal_history_expired)
+        }
+        "terminal.history_start" -> {
+            resources.getString(R.string.terminal_history_start)
+        }
+        "terminal.keyboard" -> {
+            resources.getString(R.string.terminal_keyboard)
+        }
+        "terminal.left" -> {
+            resources.getString(R.string.terminal_left)
+        }
+        "terminal.live" -> {
+            resources.getString(R.string.terminal_live)
+        }
+        "terminal.read_failed" -> {
+            resources.getString(R.string.terminal_read_failed)
+        }
+        "terminal.reading" -> {
+            resources.getString(R.string.terminal_reading)
+        }
+        "terminal.readonly" -> {
+            resources.getString(R.string.terminal_readonly)
+        }
+        "terminal.reconnect" -> {
+            resources.getString(R.string.terminal_reconnect)
+        }
+        "terminal.remote_dimensions" -> {
+            val cols = message.args.getValue("cols") as Int
+            val rows = message.args.getValue("rows") as Int
+            resources.getString(R.string.terminal_remote_dimensions, cols, rows)
+        }
+        "terminal.restore" -> {
+            resources.getString(R.string.terminal_restore)
+        }
+        "terminal.right" -> {
+            resources.getString(R.string.terminal_right)
+        }
+        "terminal.size_changed" -> {
+            resources.getString(R.string.terminal_size_changed)
+        }
+        "terminal.size_note" -> {
+            resources.getString(R.string.terminal_size_note)
+        }
+        "terminal.up" -> {
+            resources.getString(R.string.terminal_up)
+        }
+        "terminal.view_details" -> {
+            resources.getString(R.string.terminal_view_details)
+        }
+        "time.duration_hours_minutes" -> {
+            val hours = message.args.getValue("hours") as Int
+            val minutes = message.args.getValue("minutes") as Int
+            resources.getString(R.string.time_duration_hours_minutes, hours, minutes)
+        }
+        "time.duration_minutes_seconds" -> {
+            val minutes = message.args.getValue("minutes") as Int
+            val seconds = message.args.getValue("seconds") as Int
+            resources.getString(R.string.time_duration_minutes_seconds, minutes, seconds)
+        }
+        "time.duration_seconds" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.time_duration_seconds, count, count)
+        }
         "time.hours_ago" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.time_hours_ago, count, count)
@@ -942,6 +2104,61 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "time.yesterday" -> {
             resources.getString(R.string.time_yesterday)
+        }
+        "tools.background" -> {
+            resources.getString(R.string.tools_background)
+        }
+        "tools.background_agent" -> {
+            resources.getString(R.string.tools_background_agent)
+        }
+        "tools.background_returned" -> {
+            resources.getString(R.string.tools_background_returned)
+        }
+        "tools.background_terminal" -> {
+            resources.getString(R.string.tools_background_terminal)
+        }
+        "tools.background_timeout" -> {
+            resources.getString(R.string.tools_background_timeout)
+        }
+        "tools.background_turn" -> {
+            resources.getString(R.string.tools_background_turn)
+        }
+        "tools.command" -> {
+            resources.getString(R.string.tools_command)
+        }
+        "tools.completed_calls" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.tools_completed_calls, count, count)
+        }
+        "tools.completed_commands" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.tools_completed_commands, count, count)
+        }
+        "tools.completed_files" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.tools_completed_files, count, count)
+        }
+        "tools.edit_file" -> {
+            val path = message.args.getValue("path") as String
+            resources.getString(R.string.tools_edit_file, path)
+        }
+        "tools.elapsed" -> {
+            val duration = message.args.getValue("duration") as String
+            resources.getString(R.string.tools_elapsed, duration)
+        }
+        "tools.elapsed_sync" -> {
+            val elapsed = message.args.getValue("elapsed") as String
+            resources.getString(R.string.tools_elapsed_sync, elapsed)
+        }
+        "tools.exit_code" -> {
+            val code = message.args.getValue("code") as String
+            resources.getString(R.string.tools_exit_code, code)
+        }
+        "tools.tool" -> {
+            resources.getString(R.string.tools_tool)
+        }
+        "tools.waiting_sync" -> {
+            resources.getString(R.string.tools_waiting_sync)
         }
         else -> error("Unknown UI message key")
     }

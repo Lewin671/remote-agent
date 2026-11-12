@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import type { SentFile } from "../gen/remoteagent/v1/event_pb";
 import { FileIcon, X } from "../icons";
 
@@ -22,11 +23,11 @@ export function FileChip({ file, state, progress = 0, error, onRetry, onRemove }
     <FileIcon />
     <span className="file-info">
       <span className="file-name" aria-label={file.name}><span>{chars.slice(0, split).join("")}</span><span><bdi dir="ltr">{chars.slice(split).join("")}</bdi></span></span>
-      <small>{fileSize(file.sizeBytes)}{busy && ` · ${state === "preparing" ? "准备中" : `上传 ${Math.round(progress * 100)}%`}`}{state === "failed" && " · 上传失败"}</small>
-      {busy && <progress max={1} value={progress} aria-label="文件上传进度" />}
+      <small>{fileSize(file.sizeBytes)}{busy && " · " + (state === "preparing" ? i18n.t("attachment.preparing") : i18n.t("attachment.upload_progress", { percent: Math.round(progress * 100) }))}{state === "failed" && " · " + i18n.t("attachment.upload_failed")}</small>
+      {busy && <progress max={1} value={progress} aria-label={i18n.t("attachment.file_progress")} />}
     </span>
-    {state === "failed" && onRetry && <button onClick={onRetry}>重试</button>}
-    {onRemove && <button onClick={onRemove} aria-label={`移除文件 ${file.name}`}><X /></button>}
+    {state === "failed" && onRetry && <button onClick={onRetry}>{i18n.t("common.retry")}</button>}
+    {onRemove && <button onClick={onRemove} aria-label={i18n.t("attachment.remove_file", { name: file.name })}><X /></button>}
   </span>;
 }
 export function FileChips({ files }: { files?: Pick<SentFile, "name" | "sizeBytes" | "fileId">[] }) {

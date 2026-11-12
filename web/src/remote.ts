@@ -130,7 +130,7 @@ export type CommandKind = MessageInitShape<typeof CommandSchema>["kind"];
 import { EventSchema } from "./gen/remoteagent/v1/event_pb";
 import { stillUnknown } from "./attempt";
 import { describeBrowser, type DeviceInfo } from "./devices";
-import { FILE_UPLOAD_UPDATE_REQUIRED, type Prepare, type Tray } from "./attach";
+import { fileUploadUpdateRequired, type Prepare, type Tray } from "./attach";
 import {
   commitOp,
   emptyPrefs,
@@ -542,7 +542,7 @@ export class Remote {
 
   /** Current machine metadata, checked again for every file-bearing attempt. */
   fileUploadIssue(machineId: string): string {
-    return this.machines.get(machineId)?.meta?.capabilities?.fileUpload === true ? "" : FILE_UPLOAD_UPDATE_REQUIRED;
+    return this.machines.get(machineId)?.meta?.capabilities?.fileUpload === true ? "" : fileUploadUpdateRequired();
   }
 
   private checkFileCapability(machineId: string, cmd: CommandKind, mayHaveRun = false) {

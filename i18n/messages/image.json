@@ -1,5 +1,21 @@
 [
   {
+    "key": "image.add",
+    "zh-CN": "添加图片",
+    "en": "Add image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "en": {
       "forms": {
         "one": "{count} image could not be attached. Tap it for details.",
@@ -30,6 +46,746 @@
         "other": "{count} 张图没加上，点图片看原因"
       },
       "plural": "count"
+    }
+  },
+  {
+    "key": "image.back_message",
+    "zh-CN": "回到消息",
+    "en": "Back to message",
+    "notes": "图片附件/查看器的状态、提示或操作文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.convert_failed",
+    "zh-CN": "转换失败",
+    "en": "Conversion failed",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.copy_failed",
+    "zh-CN": "没能复制：{reason}",
+    "en": "Could not copy: {reason}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 张图片"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} image",
+        "other": "{count} images"
+      }
+    },
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.download_retry",
+    "zh-CN": "没能下载 · 点按重试",
+    "en": "Download failed · Tap to retry",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.draft",
+    "zh-CN": "待发送的图片",
+    "en": "Image ready to send",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.generated",
+    "zh-CN": "生成的图片",
+    "en": "Generated image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.load_connected",
+    "zh-CN": "连上后加载",
+    "en": "Load when connected",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.more",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "还有 {count} 张"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more image",
+        "other": "{count} more images"
+      }
+    },
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.named",
+    "zh-CN": "图片 {name}",
+    "en": "Image {name}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：name 为电脑/文件/图片的显示名（按调用提供）。",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.next",
+    "zh-CN": "下一张",
+    "en": "Next image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.numbered",
+    "zh-CN": "图片 {index}",
+    "en": "Image {index}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：index 为从 1 开始的图片/问题序号。",
+    "params": {
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original",
+    "zh-CN": "原图",
+    "en": "Original",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original_expired",
+    "zh-CN": "大图已过期，只剩预览",
+    "en": "Full image expired; preview only",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original_hint",
+    "zh-CN": "原图保住画质；CLI 仍可能缩小过大的图片。",
+    "en": "Original quality preserves detail; the CLI may still resize large images.",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original_missing",
+    "zh-CN": "放回的图片没有原始文件，不能切换原图",
+    "en": "Restored images have no original file, so original quality cannot be selected",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original_not_uploaded",
+    "zh-CN": "电脑没有上传大图，只有预览",
+    "en": "Computer did not upload the full image; preview only",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.original_on_computer",
+    "zh-CN": "只有预览，原图在电脑上",
+    "en": "Preview only; original is on the computer",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.placeholder",
+    "zh-CN": "图 {index}",
+    "en": "Image {index}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：index 为从 1 开始的图片/问题序号。",
+    "params": {
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.position",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "图片 {index}，共 {count} 张"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Image {index} of {count}",
+        "other": "Image {index} of {count}"
+      }
+    },
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）；index 为从 1 开始的图片/问题序号。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.position_state",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "图片 {index}，共 {count} 张，{state}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Image {index} of {count}, {state}",
+        "other": "Image {index} of {count}, {state}"
+      }
+    },
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）；index 为从 1 开始的图片/问题序号；state 为已本地化的附件状态。",
+    "params": {
+      "state": {
+        "type": "string",
+        "example": "Example"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.preparing",
+    "zh-CN": "正在处理",
+    "en": "Processing",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.preview_only",
+    "zh-CN": "只有预览",
+    "en": "Preview only",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.previous",
+    "zh-CN": "上一张",
+    "en": "Previous image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.prompt",
+    "zh-CN": "提示词",
+    "en": "Prompt",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.remove_index",
+    "zh-CN": "移除图片 {index}",
+    "en": "Remove image {index}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：index 为从 1 开始的图片/问题序号。",
+    "params": {
+      "index": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.screenshots",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": " · {count} 张截图"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": " · {count} screenshot",
+        "other": " · {count} screenshots"
+      }
+    },
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.share",
+    "zh-CN": "分享",
+    "en": "Share",
+    "notes": "图片附件/查看器的状态、提示或操作文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.share_failed",
+    "zh-CN": "没能分享：{reason}",
+    "en": "Could not share: {reason}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.title",
+    "zh-CN": "图片",
+    "en": "Image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.tool_source",
+    "zh-CN": "{agent} 查看的图",
+    "en": "Image viewed by {agent}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.total_size",
+    "zh-CN": " · 共 {size}",
+    "en": " · Total {size}",
+    "notes": "会话图片缩略图、附件栏或全屏查看器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：size 为原有格式的字节大小或紧凑 token 数。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.unsynced",
+    "zh-CN": "图片没有同步",
+    "en": "Image not synced",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.uploaded",
+    "zh-CN": "已传到电脑",
+    "en": "Uploaded to computer",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.uploading",
+    "zh-CN": "正在传到电脑",
+    "en": "Uploading to computer",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.user_source",
+    "zh-CN": "用户发送或粘贴的图",
+    "en": "Image sent or pasted by a user",
+    "notes": "图片附件/查看器的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.verification_failed",
+    "zh-CN": "图片校验失败，没有显示",
+    "en": "Image verification failed; not displayed",
+    "notes": "图片附件/查看器的状态、提示或操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.view",
+    "zh-CN": "查看图片",
+    "en": "View image",
+    "notes": "图片附件/查看器的状态、提示或操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
     }
   }
 ]

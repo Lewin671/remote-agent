@@ -448,7 +448,8 @@
       }
     },
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

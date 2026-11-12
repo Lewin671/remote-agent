@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import { clockTime } from "../schedules";
 import { FileChips } from "./Files";
 import { isSkeleton, skeletonMessage } from "../skeleton";
@@ -17,8 +18,8 @@ import { useFresh } from "../motion";
 /** How a cancel ended, as the page reports it once the message leaves
  * the queue: canceled here, canceled elsewhere, or written first. */
 export function cancelOutcome(status: InputStatus | undefined, mine: boolean): string {
-  if (status === InputStatus.CANCELED) return mine ? "已取消" : "上一条已在另一客户端取消";
-  if (status === InputStatus.SUBMITTED || status === InputStatus.UNCONFIRMED) return mine ? "上一条已送入终端，不能取消" : "";
+  if (status === InputStatus.CANCELED) return mine ? i18n.t("queue.canceled") : i18n.t("queue.canceled_elsewhere");
+  if (status === InputStatus.SUBMITTED || status === InputStatus.UNCONFIRMED) return mine ? i18n.t("queue.already_submitted") : "";
   return "";
 }
 
@@ -27,11 +28,11 @@ export function cancelOutcome(status: InputStatus | undefined, mine: boolean): s
 export function stageText(stage: InputStage | undefined): string {
   switch (stage) {
     case InputStage.PASTING_IMAGES:
-      return "正在粘贴图片…";
+      return i18n.t("queue.pasting_images");
     case InputStage.IMAGES_RECOGNIZED:
-      return "图片已识别，正在发送…";
+      return i18n.t("queue.images_recognized");
     case InputStage.SUBMITTING:
-      return "已送入终端，等待确认";
+      return i18n.t("queue.submitting");
   }
   return "";
 }
@@ -69,14 +70,14 @@ export function queueLine(remote: Remote, session: SessionView, d: Derived, id: 
   const mode = a?.mode ?? o?.mode;
   const starting = session.info?.status === SessionStatus.STARTING;
   const queuedTime = a?.origin?.scheduledTaskId ? remote.events(sid).find(e => e.kind.case === "inputState" && e.kind.value.requestId === id && e.time)?.time : undefined;
-  const scheduleLabel = a?.origin?.scheduledTaskId ? `定时任务${queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : ""} · ` : "";
-  const status = c?.state === "canceling" ? "正在取消…" : c?.state === "failed" ? "取消没成功，仍在排队" : resume?.state === "failed" ? "发送没成功，仍已暂停" : resume?.state === "sending" ? "正在发送…" : paused ? "已暂停" : held ? "插入这一轮" : mode === SendMode.QUEUE ? "这一轮结束后发" : starting ? `等 ${agentName(agentOf(session))} 就绪后发出` : "插入这一轮";
+  const scheduleLabel = a?.origin?.scheduledTaskId ? i18n.t("queue.scheduled", { time: queuedTime ? " · " + clockTime(Number(queuedTime.seconds) * 1000) : "" }) : "";
+  const status = c?.state === "canceling" ? i18n.t("queue.canceling") : c?.state === "failed" ? i18n.t("queue.cancel_failed") : resume?.state === "failed" ? i18n.t("queue.resume_failed") : resume?.state === "sending" ? i18n.t("queue.resuming") : paused ? i18n.t("queue.paused") : held ? i18n.t("queue.insert") : mode === SendMode.QUEUE ? i18n.t("queue.after_turn") : starting ? i18n.t("queue.agent_ready", { agent: agentName(agentOf(session)) }) : i18n.t("queue.insert");
   const needed = queueReason(session, d) !== "" || paused || held || !!c?.state || !!resume?.state || mode === SendMode.QUEUE || starting;
-  const text = `${scheduleLabel}${status}${count > 1 && !paused && !held && !c?.state ? ` · 第 ${rank} 条` : ""}${from ? ` · ${from}` : ""}`;
+  const text = scheduleLabel + status + (count > 1 && !paused && !held && !c?.state ? i18n.t("queue.rank", { rank }) : "") + (from ? ` · ${from}` : "");
   const buttons = (
     <>
-      {paused && <button disabled={resume?.state === "sending"} onClick={() => void queueAct(remote, sid, d, id, true)}>{resume?.state === "failed" ? "重试" : "发送"}</button>}
-      {c?.state === "failed" ? <button onClick={() => void queueAct(remote, sid, d, id)}>重试</button> : c?.state !== "canceling" && <button onClick={() => void queueAct(remote, sid, d, id)}>取消</button>}
+      {paused && <button disabled={resume?.state === "sending"} onClick={() => void queueAct(remote, sid, d, id, true)}>{resume?.state === "failed" ? i18n.t("common.retry") : i18n.t("composer.send")}</button>}
+      {c?.state === "failed" ? <button onClick={() => void queueAct(remote, sid, d, id)}>{i18n.t("common.retry")}</button> : c?.state !== "canceling" && <button onClick={() => void queueAct(remote, sid, d, id)}>{i18n.t("common.cancel")}</button>}
     </>
   );
   return { text, buttons, needed };
@@ -100,9 +101,9 @@ export function PendingBubbles({ remote, session, d, sentHere, own }: { remote: 
       // chat holds it; it does not come back as a queue bubble after that.
       if (own?.has(id) || sentHere?.has(id)) return null;
       const a = d.accepted.get(id);
-      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>{skeletonMessage}</div>;
+      if (isSkeleton(id) || isSkeleton(a?.text)) return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>{skeletonMessage()}</div>;
       const o = remote.outbox(sid).find((x) => x.sendId === id);
-      const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? `${a?.imageIds.length ?? o?.imageIds?.length} 张图片` : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : "另一客户端的消息");
+      const message = a?.text || o?.text || (id === promptIdOf(remote, sid, d) ? remote.prompts.get(sid) : undefined) || ((a?.imageIds.length ?? o?.imageIds?.length ?? 0) ? i18n.t("image.count", { count: a?.imageIds.length ?? o?.imageIds?.length ?? 0 }) : (a?.files?.length ?? o?.files?.length ?? 0) ? "" : i18n.t("queue.other_message"));
       const line = queueLine(remote, session, d, id, i + 1, ids.length);
       return <div className={"pending-bubble me" + (fresh(id) && !sentHere?.has(id) ? " mo-rise" : "")} key={id}>
         <LocalThumbs blobs={o?.thumbs} sizes={o?.imageSizes} />
@@ -111,6 +112,6 @@ export function PendingBubbles({ remote, session, d, sentHere, own }: { remote: 
         <div className="pending-meta"><span>{line.text}</span>{line.buttons}</div>
       </div>;
     })}
-    {!all && ids.length > 3 && <button className="more-row" onClick={() => setAll(true)}>还有 {ids.length - 2} 条排队 展开</button>}
+    {!all && ids.length > 3 && <button className="more-row" onClick={() => setAll(true)}>{i18n.t("queue.more", { count: ids.length - 2 })}</button>}
   </>;
 }

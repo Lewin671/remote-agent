@@ -1,5 +1,87 @@
 [
   {
+    "key": "time.duration_hours_minutes",
+    "zh-CN": "{hours} 小时 {minutes} 分",
+    "en": "{hours} hr {minutes} min",
+    "notes": "会话页面。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：hours 为整数小时数；minutes 为整数分钟数。",
+    "params": {
+      "hours": {
+        "type": "integer",
+        "example": 2
+      },
+      "minutes": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.duration_minutes_seconds",
+    "zh-CN": "{minutes} 分 {seconds} 秒",
+    "en": "{minutes} min {seconds} sec",
+    "notes": "会话页面。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：minutes 为整数分钟数；seconds 为整数秒数。",
+    "params": {
+      "seconds": {
+        "type": "integer",
+        "example": 2
+      },
+      "minutes": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.duration_seconds",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 秒"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} sec",
+        "other": "{count} sec"
+      }
+    },
+    "notes": "会话页面。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "time.hours_ago",
     "zh-CN": {
       "plural": "count",
@@ -51,7 +133,8 @@
       }
     },
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -22,7 +23,7 @@ it("shows safe approval text without changing the authenticated event or decisio
   const a = create(ApprovalRequestedSchema, { approvalId: "security-approval", command: "printf '\u202e'; dangerous", description: "desc\u2066hidden\u2069", toolName: "Bash\u200f" });
   const before = toBinary(ApprovalRequestedSchema, a);
   expect(approvalText(a)).toBe("printf '\\u202e'; dangerous");
-  expect(approvalTitle({ ...a, command: "" })).toBe("请求权限 · Bash\\u200f");
+  expect(approvalTitle({ ...a, command: "" })).toBe(message("list_state.request_permission", {"tool":"Bash\\u200f"}));
   const remote = DemoRemote.create(new URLSearchParams());
   remote.start();
   const sid = "s-appr";
@@ -36,7 +37,7 @@ it("shows safe approval text without changing the authenticated event or decisio
     expect(host.querySelector("pre")!.textContent).toBe("❯ " + approvalText(a));
     expect(host.textContent).toContain("desc\\u2066hidden\\u2069");
     expect(host.textContent).not.toContain("以后不再问");
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === "允许")!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.allow"))!.click());
     expect(command.mock.calls[0][1]).toEqual({ case: "resolveApproval", value: { sessionId: sid, approvalId: a.approvalId, allow: true, message: "", always: false } });
     expect(toBinary(ApprovalRequestedSchema, a)).toEqual(before);
   } finally {
@@ -59,7 +60,7 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
   const root = createRoot(host);
   try {
     act(() => root.render(<ApprovalPage remote={remote} sid={sid} a={a} agent={Agent.CODEX} title="session" onBack={() => undefined} />));
-    expect(host.textContent).toContain(approvalTruncatedMessage);
+    expect(host.textContent).toContain(approvalTruncatedMessage());
     for (const label of ["允许", "允许，这类请求以后不再问"]) {
       const button = [...host.querySelectorAll("button")].find(b => b.textContent === label)!;
       expect(button.disabled).toBe(true);
@@ -67,8 +68,8 @@ it.each(["command", "description", "toolInputJson"] as const)("blocks allow and 
     }
     expect(command).not.toHaveBeenCalled();
     // Refusing remains possible without approving an incomplete request.
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === "不允许")!.click());
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === "不允许")!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("approval.deny"))!.click());
     expect(command.mock.calls[0][1]).toMatchObject({ case: "resolveApproval", value: { allow: false, approvalId: a.approvalId } });
   } finally { act(() => root.unmount()); host.remove(); remote.stop(); }
 });

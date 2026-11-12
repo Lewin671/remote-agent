@@ -37,7 +37,58 @@ export const localeData = {
 } as const;
 export type Locale = typeof localeData.locales[number]["id"];
 export interface MessageArgs {
+  "approval.allow": { [name: string]: never };
+  "approval.allowed": { [name: string]: never };
+  "approval.always_allow": { [name: string]: never };
+  "approval.always_allowed": { [name: string]: never };
+  "approval.always_directory": { path: string };
+  "approval.always_prefix": { command: string };
+  "approval.approve": { [name: string]: never };
+  "approval.approve_execute": { [name: string]: never };
+  "approval.auto_edits": { [name: string]: never };
+  "approval.delivery_failed": { reason: string };
+  "approval.denial_reason": { [name: string]: never };
+  "approval.denied": { [name: string]: never };
+  "approval.deny": { [name: string]: never };
+  "approval.details": { [name: string]: never };
+  "approval.expired": { [name: string]: never };
+  "approval.full_command": { [name: string]: never };
+  "approval.in_terminal": { [name: string]: never };
+  "approval.reason_placeholder": { [name: string]: never };
+  "approval.seconds_left": { count: number };
+  "approval.timed_out": { [name: string]: never };
+  "approval.timeout_note": { remaining: string };
+  "approval.title": { [name: string]: never };
+  "approval.truncated": { [name: string]: never };
+  "attachment.computer_offline": { name: string };
+  "attachment.computer_unread": { name: string };
+  "attachment.disconnected": { [name: string]: never };
+  "attachment.failed": { [name: string]: never };
+  "attachment.failed_send_hint": { reason: string };
+  "attachment.failure": { reason: string };
+  "attachment.file": { [name: string]: never };
+  "attachment.file_missing": { [name: string]: never };
+  "attachment.file_progress": { [name: string]: never };
+  "attachment.filename_limit": { [name: string]: never };
+  "attachment.images_limit": { count: number; limit: number };
+  "attachment.max_files": { count: number };
+  "attachment.max_images": { count: number };
+  "attachment.metadata": { [name: string]: never };
+  "attachment.named_size_limit": { limit: number; name: string };
+  "attachment.path_spaces": { name: string };
+  "attachment.photos_videos": { [name: string]: never };
+  "attachment.preparing": { [name: string]: never };
+  "attachment.read_failed": { [name: string]: never };
+  "attachment.remove_file": { name: string };
+  "attachment.remove_video": { name: string };
+  "attachment.size_limit": { limit: number };
+  "attachment.update_required": { [name: string]: never };
+  "attachment.upload_failed": { [name: string]: never };
+  "attachment.upload_progress": { percent: number };
+  "attachment.uploading": { [name: string]: never };
+  "attachment.zip_folder": { [name: string]: never };
   "common.all_projects_avatar": { [name: string]: never };
+  "common.android_more": { [name: string]: never };
   "common.back": { [name: string]: never };
   "common.cancel": { [name: string]: never };
   "common.clear_search": { [name: string]: never };
@@ -47,6 +98,8 @@ export interface MessageArgs {
   "common.details": { [name: string]: never };
   "common.done": { [name: string]: never };
   "common.got_it": { [name: string]: never };
+  "common.ios_save_failed": { reason: string };
+  "common.ios_spoken_separator": { [name: string]: never };
   "common.list_separator": { [name: string]: never };
   "common.loading": { [name: string]: never };
   "common.machine": { [name: string]: never };
@@ -56,6 +109,34 @@ export interface MessageArgs {
   "common.save": { [name: string]: never };
   "common.settings": { [name: string]: never };
   "common.unknown_computer": { [name: string]: never };
+  "composer.after_turn": { [name: string]: never };
+  "composer.await_record": { agent: string };
+  "composer.computer_restarted": { [name: string]: never };
+  "composer.images_unrecognized": { agent: string };
+  "composer.input_unconfirmed": { [name: string]: never };
+  "composer.insert_hint": { [name: string]: never };
+  "composer.insert_now": { [name: string]: never };
+  "composer.maybe_failure": { reason: string };
+  "composer.message": { [name: string]: never };
+  "composer.message_fallback": { [name: string]: never };
+  "composer.message_unconfirmed": { [name: string]: never };
+  "composer.not_written": { [name: string]: never };
+  "composer.plan_placeholder": { [name: string]: never };
+  "composer.queue_after_answer": { [name: string]: never };
+  "composer.queue_hint": { [name: string]: never };
+  "composer.ready_timeout": { [name: string]: never };
+  "composer.resent": { [name: string]: never };
+  "composer.restore": { [name: string]: never };
+  "composer.restore_files_full": { count: number };
+  "composer.restore_images_full": { count: number; existing: number };
+  "composer.send": { [name: string]: never };
+  "composer.send_failure": { reason: string };
+  "composer.sending": { [name: string]: never };
+  "composer.shortcut": { keys: string };
+  "composer.slash_note": { [name: string]: never };
+  "composer.slash_title": { [name: string]: never };
+  "composer.unconfirmed": { [name: string]: never };
+  "composer.write_failed": { [name: string]: never };
   "connection.connecting": { [name: string]: never };
   "connection.network_required": { [name: string]: never };
   "connection.no_network": { [name: string]: never };
@@ -68,6 +149,37 @@ export interface MessageArgs {
   "connection.retrying_previous": { [name: string]: never };
   "connection.server_details": { reason: string };
   "connection.server_retrying": { [name: string]: never };
+  "dock.agent_waiting": { agent: string };
+  "dock.agy_plan_note": { [name: string]: never };
+  "dock.answer_title": { [name: string]: never };
+  "dock.answer_unknown": { [name: string]: never };
+  "dock.answered": { answers: string };
+  "dock.claude_plan_note": { [name: string]: never };
+  "dock.handle": { [name: string]: never };
+  "dock.handle_terminal": { [name: string]: never };
+  "dock.more": { count: number };
+  "dock.multiselect": { [name: string]: never };
+  "dock.none_fit": { [name: string]: never };
+  "dock.other_terminal": { [name: string]: never };
+  "dock.plan_answered": { [name: string]: never };
+  "dock.plan_clear": { [name: string]: never };
+  "dock.plan_clear_record": { [name: string]: never };
+  "dock.plan_full": { [name: string]: never };
+  "dock.plan_implement_record": { [name: string]: never };
+  "dock.plan_keep": { [name: string]: never };
+  "dock.plan_title": { title: string };
+  "dock.plan_unread": { [name: string]: never };
+  "dock.question_changed": { [name: string]: never };
+  "dock.question_progress": { count: number; index: number };
+  "dock.recommended": { [name: string]: never };
+  "dock.select_then_submit": { [name: string]: never };
+  "dock.selected": { count: number };
+  "dock.submit_failed": { reason: string };
+  "dock.submit_failed_edit": { reason: string };
+  "dock.submit_selected": { count: number };
+  "dock.submitting": { [name: string]: never };
+  "dock.trust_folder": { [name: string]: never };
+  "dock.waiting_confirmation": { [name: string]: never };
   "home.add_device": { [name: string]: never };
   "home.add_via_manager": { name: string };
   "home.all_projects": { [name: string]: never };
@@ -79,6 +191,7 @@ export interface MessageArgs {
   "home.filter_title": { [name: string]: never };
   "home.forked": { [name: string]: never };
   "home.idle_count": { count: number };
+  "home.ios_approval_remaining": { count: number };
   "home.list_failed": { reason: string };
   "home.live": { [name: string]: never };
   "home.loading_earlier": { [name: string]: never };
@@ -112,8 +225,48 @@ export interface MessageArgs {
   "home.total_load_earlier": { count: number };
   "home.update_ready": { [name: string]: never };
   "home.waiting_count": { count: number };
+  "image.add": { [name: string]: never };
   "image.attach_failed": { count: number };
+  "image.back_message": { [name: string]: never };
+  "image.convert_failed": { [name: string]: never };
+  "image.copy_failed": { reason: string };
+  "image.count": { count: number };
+  "image.download_retry": { [name: string]: never };
+  "image.draft": { [name: string]: never };
+  "image.generated": { [name: string]: never };
+  "image.load_connected": { [name: string]: never };
+  "image.more": { count: number };
+  "image.named": { name: string };
+  "image.next": { [name: string]: never };
+  "image.numbered": { index: number };
+  "image.original": { [name: string]: never };
+  "image.original_expired": { [name: string]: never };
+  "image.original_hint": { [name: string]: never };
+  "image.original_missing": { [name: string]: never };
+  "image.original_not_uploaded": { [name: string]: never };
+  "image.original_on_computer": { [name: string]: never };
+  "image.placeholder": { index: number };
+  "image.position": { count: number; index: number };
+  "image.position_state": { count: number; index: number; state: string };
+  "image.preparing": { [name: string]: never };
+  "image.preview_only": { [name: string]: never };
+  "image.previous": { [name: string]: never };
+  "image.prompt": { [name: string]: never };
+  "image.remove_index": { index: number };
+  "image.screenshots": { count: number };
+  "image.share": { [name: string]: never };
+  "image.share_failed": { reason: string };
+  "image.title": { [name: string]: never };
+  "image.tool_source": { agent: string };
+  "image.total_size": { size: string };
+  "image.unsynced": { [name: string]: never };
+  "image.uploaded": { [name: string]: never };
+  "image.uploading": { [name: string]: never };
+  "image.user_source": { [name: string]: never };
+  "image.verification_failed": { [name: string]: never };
+  "image.view": { [name: string]: never };
   "list_state.agent_asking": { agent: string };
+  "list_state.android_request_command": { [name: string]: never };
   "list_state.approval": { [name: string]: never };
   "list_state.ended": { [name: string]: never };
   "list_state.idle": { [name: string]: never };
@@ -131,9 +284,11 @@ export interface MessageArgs {
   "markdown.copy_code": { [name: string]: never };
   "markdown.copy_failed": { [name: string]: never };
   "markdown.expand": { [name: string]: never };
+  "markdown.ios_hidden_lines": { count: number };
   "markdown.line_count": { count: number };
   "models.all": { [name: string]: never };
   "models.back": { [name: string]: never };
+  "models.context_size": { size: string };
   "models.context_window": { [name: string]: never };
   "models.default": { [name: string]: never };
   "models.default_named": { model: string };
@@ -147,6 +302,38 @@ export interface MessageArgs {
   "models.summary_effort_label": { effort: string; model: string };
   "models.summary_label": { model: string };
   "models.title": { [name: string]: never };
+  "modes.account_no_auto": { [name: string]: never };
+  "modes.account_unsupported": { [name: string]: never };
+  "modes.agy_ask_desc": { [name: string]: never };
+  "modes.agy_plan_desc": { [name: string]: never };
+  "modes.ask": { [name: string]: never };
+  "modes.ask_desc": { [name: string]: never };
+  "modes.ask_permission_desc": { [name: string]: never };
+  "modes.auto": { [name: string]: never };
+  "modes.auto_desc": { agent: string };
+  "modes.current_terminal": { mode: string };
+  "modes.default_agent": { agent: string };
+  "modes.default_named": { mode: string };
+  "modes.default_varies": { mode: string };
+  "modes.full_access": { [name: string]: never };
+  "modes.full_current_note": { [name: string]: never };
+  "modes.full_new_note": { [name: string]: never };
+  "modes.full_title": { [name: string]: never };
+  "modes.full_unavailable": { [name: string]: never };
+  "modes.locked": { [name: string]: never };
+  "modes.locked_note": { [name: string]: never };
+  "modes.model_no_auto": { [name: string]: never };
+  "modes.model_unsupported": { [name: string]: never };
+  "modes.permission_notice": { [name: string]: never };
+  "modes.plan": { [name: string]: never };
+  "modes.plan_desc": { [name: string]: never };
+  "modes.plan_edit": { [name: string]: never };
+  "modes.plan_propose_desc": { [name: string]: never };
+  "modes.skip_all": { [name: string]: never };
+  "modes.switch": { [name: string]: never };
+  "modes.switch_failed": { reason: string };
+  "modes.switching": { [name: string]: never };
+  "modes.title": { [name: string]: never };
   "new_session.abandon_start": { [name: string]: never };
   "new_session.account_no_auto": { name: string };
   "new_session.attachments_moved": { name: string };
@@ -165,6 +352,7 @@ export interface MessageArgs {
   "new_session.follow_cli": { [name: string]: never };
   "new_session.installed": { agents: string };
   "new_session.installed_fallback": { agent: string; agents: string; missing: string };
+  "new_session.ios_attach": { [name: string]: never };
   "new_session.location": { project: string };
   "new_session.location_cli": { cli: string; project: string };
   "new_session.location_machine": { machine: string; project: string };
@@ -230,6 +418,30 @@ export interface MessageArgs {
   "projects.unpin": { [name: string]: never };
   "projects.use_directory": { name: string };
   "projects.view_sessions": { name: string };
+  "queue.after_current_turn": { [name: string]: never };
+  "queue.after_start": { [name: string]: never };
+  "queue.after_turn": { [name: string]: never };
+  "queue.agent_ready": { agent: string };
+  "queue.already_submitted": { [name: string]: never };
+  "queue.cancel_failed": { [name: string]: never };
+  "queue.canceled": { [name: string]: never };
+  "queue.canceled_elsewhere": { [name: string]: never };
+  "queue.canceled_record": { [name: string]: never };
+  "queue.canceling": { [name: string]: never };
+  "queue.images_recognized": { [name: string]: never };
+  "queue.insert": { [name: string]: never };
+  "queue.more": { count: number };
+  "queue.other_message": { [name: string]: never };
+  "queue.pasting_images": { [name: string]: never };
+  "queue.paused": { [name: string]: never };
+  "queue.rank": { rank: number };
+  "queue.resume_failed": { [name: string]: never };
+  "queue.resuming": { [name: string]: never };
+  "queue.scheduled": { time: string };
+  "queue.submitting": { [name: string]: never };
+  "queue.terminal_draft": { [name: string]: never };
+  "queue.unrecognized": { [name: string]: never };
+  "queue.when_ready": { [name: string]: never };
   "quota.exhausted": { name: string; window: string };
   "quota.failure": { detail: string; name: string };
   "quota.failure_no_reason": { name: string };
@@ -243,10 +455,153 @@ export interface MessageArgs {
   "quota.unknown_time": { [name: string]: never };
   "quota.waiting": { name: string };
   "quota.warning": { name: string; window: string };
+  "session.abandon_fork": { [name: string]: never };
+  "session.action_failed": { action: string; reason: string };
+  "session.approval_resolved": { [name: string]: never };
+  "session.auto_title_hint": { [name: string]: never };
+  "session.back_task": { [name: string]: never };
+  "session.chat": { [name: string]: never };
+  "session.compact": { [name: string]: never };
+  "session.compact_failed": { reason: string };
+  "session.compacted": { [name: string]: never };
+  "session.compacting": { [name: string]: never };
+  "session.connect_resume": { [name: string]: never };
+  "session.context": { [name: string]: never };
+  "session.context_tokens": { total: string; used: string };
+  "session.context_used": { percent: number };
+  "session.delivered": { [name: string]: never };
+  "session.disconnected_ago": { time: string };
+  "session.dismiss_notice": { [name: string]: never };
+  "session.effort_locked": { [name: string]: never };
+  "session.end": { [name: string]: never };
+  "session.end_action": { [name: string]: never };
+  "session.end_note": { agent: string; name: string };
+  "session.end_session": { [name: string]: never };
+  "session.end_title": { [name: string]: never };
+  "session.ended": { [name: string]: never };
+  "session.ended_at": { time: string };
+  "session.ended_message_failed": { [name: string]: never };
+  "session.ended_send_failed": { [name: string]: never };
+  "session.fork": { [name: string]: never };
+  "session.fork_after_message": { [name: string]: never };
+  "session.fork_after_pending": { [name: string]: never };
+  "session.fork_after_start": { [name: string]: never };
+  "session.fork_after_turn": { [name: string]: never };
+  "session.fork_expired": { [name: string]: never };
+  "session.fork_failed": { reason: string };
+  "session.fork_unknown": { [name: string]: never };
+  "session.forked_from": { source: string; time: string };
+  "session.forking": { [name: string]: never };
+  "session.go_terminal": { [name: string]: never };
   "session.history_failed": { [name: string]: never };
+  "session.history_tail_missing": { [name: string]: never };
+  "session.history_unavailable": { count: number };
+  "session.history_unreadable": { [name: string]: never };
+  "session.idle_closed": { [name: string]: never };
+  "session.interrupt": { [name: string]: never };
+  "session.interrupt_turn": { [name: string]: never };
+  "session.interrupted": { [name: string]: never };
+  "session.latest": { [name: string]: never };
+  "session.loading_earlier": { [name: string]: never };
+  "session.manually_closed": { [name: string]: never };
+  "session.max_effort": { effort: string };
+  "session.mode_changed": { value: string };
+  "session.mode_changed_by": { origin: string; value: string };
+  "session.model_changed": { value: string };
+  "session.model_changed_by": { origin: string; value: string };
+  "session.model_locked": { [name: string]: never };
+  "session.model_switch_failed": { model: string; reason: string };
+  "session.models_failed": { [name: string]: never };
+  "session.more_context": { percent: number };
+  "session.new_messages": { count: number };
+  "session.no_effort": { [name: string]: never };
+  "session.no_effort_adjustment": { model: string };
+  "session.not_running": { [name: string]: never };
+  "session.notification": { text: string };
+  "session.offline_note": { lastSeen: string };
+  "session.offline_resume": { name: string };
+  "session.only_current": { [name: string]: never };
   "session.opening_slow": { [name: string]: never };
+  "session.origin_elsewhere": { [name: string]: never };
+  "session.origin_other": { [name: string]: never };
+  "session.origin_removed": { [name: string]: never };
+  "session.origin_self": { [name: string]: never };
+  "session.origin_terminal": { name: string };
+  "session.other_session": { [name: string]: never };
+  "session.quiet_checks": { times: string };
+  "session.reading_models": { [name: string]: never };
+  "session.rename": { [name: string]: never };
+  "session.rename_title": { [name: string]: never };
+  "session.reopen_agent": { agent: string; name: string };
+  "session.reply_moves": { [name: string]: never };
+  "session.restore_other_files": { [name: string]: never };
+  "session.restore_other_images": { [name: string]: never };
+  "session.resume": { [name: string]: never };
+  "session.resume_failed": { [name: string]: never };
+  "session.resume_note": { name: string };
+  "session.resuming": { [name: string]: never };
+  "session.schedule_send": { [name: string]: never };
+  "session.scheduled_at": { time: string };
+  "session.scheduled_closed": { [name: string]: never };
+  "session.settings": { [name: string]: never };
+  "session.shell_failed": { detail: string };
+  "session.shell_timeout": { detail: string };
+  "session.skeleton": { [name: string]: never };
+  "session.split": { [name: string]: never };
+  "session.starting_agent": { agent: string; name: string };
+  "session.switch_after_turn": { [name: string]: never };
+  "session.switch_connected": { [name: string]: never };
+  "session.switch_idle": { [name: string]: never };
+  "session.switching_model": { model: string };
+  "session.terminal": { [name: string]: never };
+  "session.terminal_changes": { changes: string; name: string };
+  "session.terminal_mode_change": { value: string };
+  "session.terminal_model_change": { value: string };
+  "session.thinking": { [name: string]: never };
   "session.title": { [name: string]: never };
+  "session.title_label": { [name: string]: never };
+  "session.tmux_missing": { [name: string]: never };
+  "session.try_again": { [name: string]: never };
+  "session.turn_duration": { duration: string };
+  "session.update_computer": { [name: string]: never };
+  "session.view": { [name: string]: never };
+  "terminal.closed": { [name: string]: never };
+  "terminal.closed_ended_note": { [name: string]: never };
+  "terminal.closed_running_note": { [name: string]: never };
+  "terminal.computer_dimensions": { cols: number; rows: number };
+  "terminal.connecting": { [name: string]: never };
+  "terminal.disconnected": { [name: string]: never };
+  "terminal.down": { [name: string]: never };
+  "terminal.earlier": { [name: string]: never };
+  "terminal.enter": { [name: string]: never };
+  "terminal.fit": { [name: string]: never };
+  "terminal.fit_short": { [name: string]: never };
+  "terminal.fitted_size": { cols: number; rows: number };
+  "terminal.fresh": { [name: string]: never };
+  "terminal.fresh_live": { [name: string]: never };
+  "terminal.history": { [name: string]: never };
+  "terminal.history_closed": { [name: string]: never };
+  "terminal.history_expired": { [name: string]: never };
+  "terminal.history_start": { [name: string]: never };
+  "terminal.keyboard": { [name: string]: never };
+  "terminal.left": { [name: string]: never };
+  "terminal.live": { [name: string]: never };
+  "terminal.read_failed": { [name: string]: never };
+  "terminal.reading": { [name: string]: never };
+  "terminal.readonly": { [name: string]: never };
+  "terminal.reconnect": { [name: string]: never };
+  "terminal.remote_dimensions": { cols: number; rows: number };
+  "terminal.restore": { [name: string]: never };
+  "terminal.right": { [name: string]: never };
+  "terminal.size_changed": { [name: string]: never };
+  "terminal.size_note": { [name: string]: never };
+  "terminal.up": { [name: string]: never };
+  "terminal.view_details": { [name: string]: never };
+  "time.duration_hours_minutes": { hours: number; minutes: number };
+  "time.duration_minutes_seconds": { minutes: number; seconds: number };
+  "time.duration_seconds": { count: number };
   "time.hours_ago": { count: number };
+  "time.ios_date_time": { day: number; month: number; time: string };
   "time.just_now": { [name: string]: never };
   "time.last_week": { [name: string]: never };
   "time.minutes_ago": { count: number };
@@ -256,11 +611,102 @@ export interface MessageArgs {
   "time.weekday": { day: string };
   "time.year_month_group": { month: number; year: number };
   "time.yesterday": { [name: string]: never };
+  "tools.background": { [name: string]: never };
+  "tools.background_agent": { [name: string]: never };
+  "tools.background_returned": { [name: string]: never };
+  "tools.background_terminal": { [name: string]: never };
+  "tools.background_timeout": { [name: string]: never };
+  "tools.background_turn": { [name: string]: never };
+  "tools.command": { [name: string]: never };
+  "tools.completed_calls": { count: number };
+  "tools.completed_commands": { count: number };
+  "tools.completed_files": { count: number };
+  "tools.edit_file": { path: string };
+  "tools.elapsed": { duration: string };
+  "tools.elapsed_sync": { elapsed: string };
+  "tools.exit_code": { code: string };
+  "tools.tool": { [name: string]: never };
+  "tools.waiting_sync": { [name: string]: never };
 }
 export type MessageKey = keyof MessageArgs;
 export const messages = {
   "en": {
+    "approval.allow": "Allow",
+    "approval.allowed": "Allowed",
+    "approval.always_allow": "Allow, and always allow this type of request",
+    "approval.always_allowed": "Allowed; always allow",
+    "approval.always_directory": "Always allow access to {path} in this project",
+    "approval.always_prefix": "Always allow commands starting with “{command}”",
+    "approval.approve": "Approve",
+    "approval.approve_execute": "Approve execution",
+    "approval.auto_edits": "Automatically accept edits in this session",
+    "approval.delivery_failed": "Did not reach the computer: {reason}",
+    "approval.denial_reason": "Reason for denial",
+    "approval.denied": "Denied",
+    "approval.deny": "Deny",
+    "approval.details": "Approval details",
+    "approval.expired": "Timed out",
+    "approval.full_command": "View full command",
+    "approval.in_terminal": "Handled in terminal",
+    "approval.reason_placeholder": "Suggest what to do instead (optional)",
+    "approval.seconds_left": {
+      "forms": {
+        "one": "{count} second left",
+        "other": "{count} seconds left"
+      },
+      "plural": "count"
+    },
+    "approval.timed_out": "Timed out; denied",
+    "approval.timeout_note": "{remaining}; deny on timeout",
+    "approval.title": "Approval",
+    "approval.truncated": "Content truncated; view in terminal",
+    "attachment.computer_offline": "{name} is offline. Reconnect to add images.",
+    "attachment.computer_unread": "Information for {name} has not loaded yet. Add images shortly.",
+    "attachment.disconnected": "Disconnected from server. Reconnect to add images.",
+    "attachment.failed": "Failed",
+    "attachment.failed_send_hint": "{reason}. Retry or remove the file before sending.",
+    "attachment.failure": "Failed: {reason}",
+    "attachment.file": "File",
+    "attachment.file_missing": "This file has no local copy. Remove it and select it again.",
+    "attachment.file_progress": "File upload progress",
+    "attachment.filename_limit": "File names cannot exceed 255 bytes. Rename the file, then select it again.",
+    "attachment.images_limit": {
+      "forms": {
+        "one": "Image limit per message: {limit}. {count} extra image was not added.",
+        "other": "Image limit per message: {limit}. {count} extra images were not added."
+      },
+      "plural": "count"
+    },
+    "attachment.max_files": {
+      "forms": {
+        "one": "A message can have at most {count} file",
+        "other": "A message can have at most {count} files"
+      },
+      "plural": "count"
+    },
+    "attachment.max_images": {
+      "forms": {
+        "one": "A message can have at most {count} image",
+        "other": "A message can have at most {count} images"
+      },
+      "plural": "count"
+    },
+    "attachment.metadata": "Files are sent unchanged, including their metadata.",
+    "attachment.named_size_limit": "“{name}” exceeds the {limit} MB limit per file",
+    "attachment.path_spaces": "The remote-agent directory path on {name} contains spaces, so images cannot be sent.",
+    "attachment.photos_videos": "Photos and videos",
+    "attachment.preparing": "Preparing",
+    "attachment.read_failed": "Cannot read this file. Compress folders before selecting them, or select a readable file again.",
+    "attachment.remove_file": "Remove file {name}",
+    "attachment.remove_video": "Remove video {name}",
+    "attachment.size_limit": "A file cannot exceed {limit} MB",
+    "attachment.update_required": "This computer does not support file uploads. Update remote-agent on the computer.",
+    "attachment.upload_failed": "Upload failed",
+    "attachment.upload_progress": "Uploading {percent}%",
+    "attachment.uploading": "Uploading",
+    "attachment.zip_folder": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
     "common.all_projects_avatar": "All",
+    "common.android_more": "More",
     "common.back": "Back",
     "common.cancel": "Cancel",
     "common.clear_search": "Clear search",
@@ -270,6 +716,8 @@ export const messages = {
     "common.details": "Details",
     "common.done": "Done",
     "common.got_it": "Got it",
+    "common.ios_save_failed": "Could not save: {reason}",
+    "common.ios_spoken_separator": ", ",
     "common.list_separator": ", ",
     "common.loading": "Loading",
     "common.machine": "Computer",
@@ -279,6 +727,46 @@ export const messages = {
     "common.save": "Save",
     "common.settings": "Settings",
     "common.unknown_computer": "Unknown computer",
+    "composer.after_turn": "Send after this turn",
+    "composer.await_record": "Written to terminal, waiting for {agent} to record it",
+    "composer.computer_restarted": "remote-agent on the computer restarted while writing",
+    "composer.images_unrecognized": "{agent} did not recognize the images",
+    "composer.input_unconfirmed": "Could not confirm terminal input",
+    "composer.insert_hint": "This is what ↑ does",
+    "composer.insert_now": "Insert into this turn now",
+    "composer.maybe_failure": "Possibly not sent: {reason}",
+    "composer.message": "Message",
+    "composer.message_fallback": "A message",
+    "composer.message_unconfirmed": "A message may not have been sent: written to terminal but unconfirmed",
+    "composer.not_written": "Not written to terminal",
+    "composer.plan_placeholder": "Add requirements for the plan…",
+    "composer.queue_after_answer": "Queue message; continue after answering",
+    "composer.queue_hint": "Queue first, then send in order after this turn",
+    "composer.ready_timeout": "Timed out waiting for the terminal",
+    "composer.resent": "Resent",
+    "composer.restore": "Restore to input",
+    "composer.restore_files_full": {
+      "forms": {
+        "one": "The input cannot fit this message’s {count} file. Remove some attachments first.",
+        "other": "The input cannot fit this message’s {count} files. Remove some attachments first."
+      },
+      "plural": "count"
+    },
+    "composer.restore_images_full": {
+      "forms": {
+        "one": "The input already has {existing} image(s) and cannot fit this message’s {count} image. Remove some first.",
+        "other": "The input already has {existing} image(s) and cannot fit this message’s {count} images. Remove some first."
+      },
+      "plural": "count"
+    },
+    "composer.send": "Send",
+    "composer.send_failure": "Not sent: {reason}",
+    "composer.sending": "Sending…",
+    "composer.shortcut": "Message · {keys} to send",
+    "composer.slash_note": "Content starting with / will be sent to the model as a regular message instead of running a slash command.",
+    "composer.slash_title": "Send as a regular message?",
+    "composer.unconfirmed": "Possibly not sent: written to terminal but unconfirmed",
+    "composer.write_failed": "Could not write to terminal",
     "connection.connecting": "Connecting…",
     "connection.network_required": "Connect to read sessions",
     "connection.no_network": "No network connection",
@@ -291,6 +779,61 @@ export const messages = {
     "connection.retrying_previous": "Retrying, showing previous content below",
     "connection.server_details": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",
     "connection.server_retrying": "Cannot connect to server · Retrying",
+    "dock.agent_waiting": "{agent} is waiting for you",
+    "dock.agy_plan_note": "Return to the default mode (Ask) after approval",
+    "dock.answer_title": "Answer question",
+    "dock.answer_unknown": "Submission is unconfirmed. Retry sends the same answer.",
+    "dock.answered": "Answered {answers}",
+    "dock.claude_plan_note": "Use Ask mode after approval",
+    "dock.handle": "Handle",
+    "dock.handle_terminal": "Handle in terminal",
+    "dock.more": {
+      "forms": {
+        "one": "{count} more item",
+        "other": "{count} more items"
+      },
+      "plural": "count"
+    },
+    "dock.multiselect": "Select multiple",
+    "dock.none_fit": "None of these?",
+    "dock.other_terminal": "Other answer: go to terminal",
+    "dock.plan_answered": "Answered the plan",
+    "dock.plan_clear": "Clear context and execute",
+    "dock.plan_clear_record": "Execute plan with cleared context",
+    "dock.plan_full": "Full plan",
+    "dock.plan_implement_record": "Approved plan execution",
+    "dock.plan_keep": "Keep planning",
+    "dock.plan_title": "{title} · Plan awaiting approval",
+    "dock.plan_unread": "The plan has not loaded yet. View it in the terminal.",
+    "dock.question_changed": "Could not submit; the question in the terminal may have changed",
+    "dock.question_progress": {
+      "forms": {
+        "one": "Question {index} of {count}",
+        "other": "Question {index} of {count}"
+      },
+      "plural": "count"
+    },
+    "dock.recommended": "Recommended",
+    "dock.select_then_submit": "Select, then submit",
+    "dock.selected": {
+      "forms": {
+        "one": "{count} selected",
+        "other": "{count} selected"
+      },
+      "plural": "count"
+    },
+    "dock.submit_failed": "Could not submit: {reason}",
+    "dock.submit_failed_edit": "Could not submit: {reason}. You can change your selection and submit again.",
+    "dock.submit_selected": {
+      "forms": {
+        "one": "Submit {count} selection",
+        "other": "Submit {count} selections"
+      },
+      "plural": "count"
+    },
+    "dock.submitting": "Submitting…",
+    "dock.trust_folder": "No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎",
+    "dock.waiting_confirmation": "Waiting for confirmation",
     "home.add_device": "Add device",
     "home.add_via_manager": "No computers yet. Open “Settings › Add device” on the managing client ({name}) to add one.",
     "home.all_projects": "All projects",
@@ -305,6 +848,13 @@ export const messages = {
       "forms": {
         "one": "{count} session idle",
         "other": "{count} sessions idle"
+      },
+      "plural": "count"
+    },
+    "home.ios_approval_remaining": {
+      "forms": {
+        "one": "{count} minute left",
+        "other": "{count} minutes left"
       },
       "plural": "count"
     },
@@ -413,6 +963,7 @@ export const messages = {
       },
       "plural": "count"
     },
+    "image.add": "Add image",
     "image.attach_failed": {
       "forms": {
         "one": "{count} image could not be attached. Tap it for details.",
@@ -420,7 +971,76 @@ export const messages = {
       },
       "plural": "count"
     },
+    "image.back_message": "Back to message",
+    "image.convert_failed": "Conversion failed",
+    "image.copy_failed": "Could not copy: {reason}",
+    "image.count": {
+      "forms": {
+        "one": "{count} image",
+        "other": "{count} images"
+      },
+      "plural": "count"
+    },
+    "image.download_retry": "Download failed · Tap to retry",
+    "image.draft": "Image ready to send",
+    "image.generated": "Generated image",
+    "image.load_connected": "Load when connected",
+    "image.more": {
+      "forms": {
+        "one": "{count} more image",
+        "other": "{count} more images"
+      },
+      "plural": "count"
+    },
+    "image.named": "Image {name}",
+    "image.next": "Next image",
+    "image.numbered": "Image {index}",
+    "image.original": "Original",
+    "image.original_expired": "Full image expired; preview only",
+    "image.original_hint": "Original quality preserves detail; the CLI may still resize large images.",
+    "image.original_missing": "Restored images have no original file, so original quality cannot be selected",
+    "image.original_not_uploaded": "Computer did not upload the full image; preview only",
+    "image.original_on_computer": "Preview only; original is on the computer",
+    "image.placeholder": "Image {index}",
+    "image.position": {
+      "forms": {
+        "one": "Image {index} of {count}",
+        "other": "Image {index} of {count}"
+      },
+      "plural": "count"
+    },
+    "image.position_state": {
+      "forms": {
+        "one": "Image {index} of {count}, {state}",
+        "other": "Image {index} of {count}, {state}"
+      },
+      "plural": "count"
+    },
+    "image.preparing": "Processing",
+    "image.preview_only": "Preview only",
+    "image.previous": "Previous image",
+    "image.prompt": "Prompt",
+    "image.remove_index": "Remove image {index}",
+    "image.screenshots": {
+      "forms": {
+        "one": " · {count} screenshot",
+        "other": " · {count} screenshots"
+      },
+      "plural": "count"
+    },
+    "image.share": "Share",
+    "image.share_failed": "Could not share: {reason}",
+    "image.title": "Image",
+    "image.tool_source": "Image viewed by {agent}",
+    "image.total_size": " · Total {size}",
+    "image.unsynced": "Image not synced",
+    "image.uploaded": "Uploaded to computer",
+    "image.uploading": "Uploading to computer",
+    "image.user_source": "Image sent or pasted by a user",
+    "image.verification_failed": "Image verification failed; not displayed",
+    "image.view": "View image",
     "list_state.agent_asking": "{agent} is asking you",
+    "list_state.android_request_command": "Command approval",
     "list_state.approval": "Awaiting approval",
     "list_state.ended": "Ended",
     "list_state.idle": "Idle",
@@ -438,6 +1058,13 @@ export const messages = {
     "markdown.copy_code": "Copy code",
     "markdown.copy_failed": "Copy failed",
     "markdown.expand": "Show full text",
+    "markdown.ios_hidden_lines": {
+      "forms": {
+        "one": "{count} more line hidden",
+        "other": "{count} more lines hidden"
+      },
+      "plural": "count"
+    },
     "markdown.line_count": {
       "forms": {
         "one": "{count} line",
@@ -447,6 +1074,7 @@ export const messages = {
     },
     "models.all": "All models",
     "models.back": "Back to models",
+    "models.context_size": "{size} context",
     "models.context_window": "Context window",
     "models.default": "Default",
     "models.default_named": "Default ({model})",
@@ -460,6 +1088,38 @@ export const messages = {
     "models.summary_effort_label": "Model: {model}, reasoning effort: {effort}",
     "models.summary_label": "Model: {model}",
     "models.title": "Model",
+    "modes.account_no_auto": "This account does not support Auto mode. Choose another approval mode before starting.",
+    "modes.account_unsupported": "This account does not support Auto mode",
+    "modes.agy_ask_desc": "You confirm approval requests; automatically deny on timeout",
+    "modes.agy_plan_desc": "Explore read-only and write a plan; after approval, return to the default mode to execute",
+    "modes.ask": "Ask",
+    "modes.ask_desc": "You confirm approval requests; deny on timeout",
+    "modes.ask_permission_desc": "You confirm permission requests",
+    "modes.auto": "Auto",
+    "modes.auto_desc": "{agent} decides, and asks you in the conversation when unsure",
+    "modes.current_terminal": "Current: {mode} (set in terminal)",
+    "modes.default_agent": "Default: {agent}’s own mode",
+    "modes.default_named": "Default: {mode}",
+    "modes.default_varies": "{mode} (project settings may differ)",
+    "modes.full_access": "Full access",
+    "modes.full_current_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to this session.",
+    "modes.full_new_note": "Operations will no longer ask for confirmation, and no approvals will appear on your phone. Applies only to the new session.",
+    "modes.full_title": "Switch to Full access?",
+    "modes.full_unavailable": "Not enabled when this session started. Choose it when starting a new session.",
+    "modes.locked": "This session started with Full access; its approval mode cannot be changed",
+    "modes.locked_note": "A session started with Full access cannot return to a mode requiring approval. Start a new session to restore approvals.",
+    "modes.model_no_auto": "This model does not support Auto mode. Choose another approval mode before starting.",
+    "modes.model_unsupported": "Not supported by this model",
+    "modes.permission_notice": "Shows the mode reported by the terminal; switching to accept edits is not offered.",
+    "modes.plan": "Plan",
+    "modes.plan_desc": "Read and plan only; changes start after your approval",
+    "modes.plan_edit": "Revise plan…",
+    "modes.plan_propose_desc": "Propose a plan, then approve execution",
+    "modes.skip_all": "No approval for any operation",
+    "modes.switch": "Switch",
+    "modes.switch_failed": "Could not switch: {reason}",
+    "modes.switching": "Switching…",
+    "modes.title": "Approval mode",
     "new_session.abandon_start": "Abandon this start",
     "new_session.account_no_auto": "This account does not support Auto mode, but {name} uses Auto by default for new projects. Change the default in “Settings › This computer” before starting.",
     "new_session.attachments_moved": "Switched to {name}. Uploading attachments again",
@@ -478,6 +1138,7 @@ export const messages = {
     "new_session.follow_cli": "Follow CLI settings",
     "new_session.installed": "Installed: {agents}",
     "new_session.installed_fallback": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
+    "new_session.ios_attach": "Add attachment",
     "new_session.location": "In {project}",
     "new_session.location_cli": "In {project} using {cli}",
     "new_session.location_machine": "On {machine} in {project}",
@@ -567,6 +1228,36 @@ export const messages = {
     "projects.unpin": "Unpin",
     "projects.use_directory": "Use folder {name}",
     "projects.view_sessions": "View sessions in {name}",
+    "queue.after_current_turn": "Send after this turn",
+    "queue.after_start": "Send after startup",
+    "queue.after_turn": "Send after this turn",
+    "queue.agent_ready": "Send when {agent} is ready",
+    "queue.already_submitted": "The previous message is already in the terminal and cannot be canceled",
+    "queue.cancel_failed": "Could not cancel; still queued",
+    "queue.canceled": "Canceled",
+    "queue.canceled_elsewhere": "The previous message was canceled on another client",
+    "queue.canceled_record": "Canceled a queued message",
+    "queue.canceling": "Canceling…",
+    "queue.images_recognized": "Images recognized, sending…",
+    "queue.insert": "Insert into this turn",
+    "queue.more": {
+      "forms": {
+        "one": "{count} more queued message · Expand",
+        "other": "{count} more queued messages · Expand"
+      },
+      "plural": "count"
+    },
+    "queue.other_message": "A message from another client",
+    "queue.pasting_images": "Pasting images…",
+    "queue.paused": "Paused",
+    "queue.rank": " · #{rank}",
+    "queue.resume_failed": "Could not send; still paused",
+    "queue.resuming": "Sending…",
+    "queue.scheduled": "Scheduled task{time} · ",
+    "queue.submitting": "Written to terminal, waiting for confirmation",
+    "queue.terminal_draft": "There is an unsent draft in the terminal. Send or clear it first.",
+    "queue.unrecognized": "Input field not recognized; paused",
+    "queue.when_ready": "Send when ready",
     "quota.exhausted": "{name} · {window} quota is exhausted. CLI and model will not switch automatically.",
     "quota.failure": "Could not read {name} quota: {detail}",
     "quota.failure_no_reason": "Could not read {name} quota",
@@ -592,9 +1283,169 @@ export const messages = {
     "quota.unknown_time": "Observation time unknown; showing the last record",
     "quota.waiting": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
     "quota.warning": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
+    "session.abandon_fork": "Abandon previous fork",
+    "session.action_failed": "{action} failed: {reason}",
+    "session.approval_resolved": "This approval has already been handled.",
+    "session.auto_title_hint": "Save an empty title to restore the automatic title",
+    "session.back_task": "Back to task",
+    "session.chat": "Chat",
+    "session.compact": "Compact",
+    "session.compact_failed": "Could not compact: {reason}",
+    "session.compacted": "Context compacted",
+    "session.compacting": "Compacting…",
+    "session.connect_resume": "Connect to the server to resume.",
+    "session.context": "Context",
+    "session.context_tokens": "Context {used} / {total}",
+    "session.context_used": "{percent}% used",
+    "session.delivered": "Delivered to computer",
+    "session.disconnected_ago": "Disconnected {time}. ",
+    "session.dismiss_notice": "Dismiss this notice",
+    "session.effort_locked": "Reasoning effort cannot be changed while running",
+    "session.end": "End",
+    "session.end_action": "End session…",
+    "session.end_note": "{agent} on {name} will close. History is kept, and you can resume later.",
+    "session.end_session": "End session",
+    "session.end_title": "End this session?",
+    "session.ended": "Session ended",
+    "session.ended_at": "{time}Ended",
+    "session.ended_message_failed": "A message was not sent: session ended",
+    "session.ended_send_failed": "Not sent: session ended",
+    "session.fork": "Fork session",
+    "session.fork_after_message": "Available after a message is sent",
+    "session.fork_after_pending": "Available after pending items are handled",
+    "session.fork_after_start": "Available after startup",
+    "session.fork_after_turn": "Available after this turn",
+    "session.fork_expired": "The previous fork is unconfirmed and has expired. It will not be retried. Check the session list first.",
+    "session.fork_failed": "Could not fork: {reason}",
+    "session.fork_unknown": "The previous fork is unconfirmed. Tap again to resend the same request; the computer will not fork twice.",
+    "session.forked_from": "{time}Forked from {source}",
+    "session.forking": "Forking…",
+    "session.go_terminal": "Go to terminal",
     "session.history_failed": "Could not load history. Retry to continue; your draft will stay here.",
+    "session.history_tail_missing": "Later history has not loaded",
+    "session.history_unavailable": {
+      "forms": {
+        "one": "{count} record before resume could not be read; later readable history is shown normally.",
+        "other": "{count} records before resume could not be read; later readable history is shown normally."
+      },
+      "plural": "count"
+    },
+    "session.history_unreadable": "A record could not be read. History stops here; later content and status may be incomplete.",
+    "session.idle_closed": "The session ended automatically after a long period of inactivity.",
+    "session.interrupt": "Interrupt",
+    "session.interrupt_turn": "Interrupt turn",
+    "session.interrupted": "Interrupted",
+    "session.latest": "Back to latest",
+    "session.loading_earlier": "Loading earlier history…",
+    "session.manually_closed": "The session was ended manually.",
+    "session.max_effort": "Up to {effort}",
+    "session.mode_changed": "Approval mode switched to {value}",
+    "session.mode_changed_by": "{origin} switched approval mode to {value}",
+    "session.model_changed": "Switched to {value}",
+    "session.model_changed_by": "{origin} switched model to {value}",
+    "session.model_locked": "Model cannot be changed while running. Choose it when starting a new session.",
+    "session.model_switch_failed": "Could not switch to {model}: {reason}",
+    "session.models_failed": "Could not load model list",
+    "session.more_context": "More, context {percent}%",
+    "session.new_messages": {
+      "forms": {
+        "one": "{count} new message",
+        "other": "{count} new messages"
+      },
+      "plural": "count"
+    },
+    "session.no_effort": "No reasoning effort",
+    "session.no_effort_adjustment": "{model} has no adjustable reasoning effort",
+    "session.not_running": "Nothing is running",
+    "session.notification": "Notification: {text}",
+    "session.offline_note": "{lastSeen}The computer may be asleep, offline, or remote-agent may not be running. Sessions may still be running there. This page updates automatically after reconnecting; only history is available now.",
+    "session.offline_resume": "{name} is offline. Reconnect to resume.",
+    "session.only_current": "Applies only to this session",
     "session.opening_slow": "History is taking longer to load. You can retry; your draft will stay here.",
+    "session.origin_elsewhere": "Elsewhere",
+    "session.origin_other": "Another client",
+    "session.origin_removed": "Removed device",
+    "session.origin_self": "This client",
+    "session.origin_terminal": "{name} terminal",
+    "session.other_session": "Another session",
+    "session.quiet_checks": "{times} Scheduled check · No new reply",
+    "session.reading_models": "Loading model list…",
+    "session.rename": "Rename",
+    "session.rename_title": "Rename session",
+    "session.reopen_agent": "Reopen {agent} on {name}",
+    "session.reply_moves": "After you reply, this conversation will move to the session list",
+    "session.restore_other_files": "Another client uploaded this message’s attachments. Only the text was restored; select attachments here if needed.",
+    "session.restore_other_images": "Another client uploaded this message’s images. Only the text was restored; select images here if needed.",
+    "session.resume": "Resume session",
+    "session.resume_failed": "Could not resume",
+    "session.resume_note": "Resume reopens it on {name} with the same settings. All history is kept.",
+    "session.resuming": "Resuming…",
+    "session.schedule_send": "Schedule message…",
+    "session.scheduled_at": "Scheduled task · {time}",
+    "session.scheduled_closed": "The scheduled run ended and the session closed automatically.",
+    "session.settings": "Session settings",
+    "session.shell_failed": "The computer’s login shell could not start the CLI ({detail}). Check its shell configuration, such as ~/.zshrc.",
+    "session.shell_timeout": "The computer’s login shell could not start the CLI ({detail}) and may be waiting for input. Check its shell configuration, such as ~/.zshrc.",
+    "session.skeleton": "Content too large; view or answer in the terminal",
+    "session.split": "Side by side",
+    "session.starting_agent": "Starting {agent} on {name}…",
+    "session.switch_after_turn": "This turn is running. Change model and reasoning effort after it ends.",
+    "session.switch_connected": "Disconnected from server. Reconnect to switch.",
+    "session.switch_idle": "Can only switch while idle; applies only to this session",
+    "session.switching_model": "Switching to {model}…",
+    "session.terminal": "Terminal",
+    "session.terminal_changes": "{name} terminal {changes}",
+    "session.terminal_mode_change": "switched approval mode to {value}",
+    "session.terminal_model_change": "switched model to {value}",
+    "session.thinking": "Thinking",
     "session.title": "Conversation",
+    "session.title_label": "Session title",
+    "session.tmux_missing": "The tmux session no longer exists.",
+    "session.try_again": "Try again",
+    "session.turn_duration": "Turn took {duration}",
+    "session.update_computer": "Update remote-agent on the computer",
+    "session.view": "View",
+    "terminal.closed": "Terminal connection lost",
+    "terminal.closed_ended_note": "The last frame before disconnection is shown below. The session has ended.",
+    "terminal.closed_running_note": "The last frame before disconnection is shown below. The session is still running; chat updates continue.",
+    "terminal.computer_dimensions": "On computer {cols}×{rows}",
+    "terminal.connecting": "Connecting to terminal…",
+    "terminal.disconnected": "Terminal disconnected",
+    "terminal.down": "Down",
+    "terminal.earlier": "Loading earlier history…",
+    "terminal.enter": "Enter",
+    "terminal.fit": "Fit my screen",
+    "terminal.fit_short": "Fit",
+    "terminal.fitted_size": "Fitted to this screen · {cols}×{rows}",
+    "terminal.fresh": "New output",
+    "terminal.fresh_live": "New output; return to live",
+    "terminal.history": "Terminal history",
+    "terminal.history_closed": "Terminal disconnected. Loaded history is still available; reconnect, then scroll up for earlier history.",
+    "terminal.history_expired": "History expired. Return to live, then scroll up again.",
+    "terminal.history_start": "This is the earliest retained history",
+    "terminal.keyboard": "Keyboard",
+    "terminal.left": "Left",
+    "terminal.live": "Back to live",
+    "terminal.read_failed": "Could not load",
+    "terminal.reading": "Loading history…",
+    "terminal.readonly": "Reviewing history · Read only",
+    "terminal.reconnect": "Reconnect",
+    "terminal.remote_dimensions": "Remote {cols}×{rows}",
+    "terminal.restore": "Restore",
+    "terminal.right": "Right",
+    "terminal.size_changed": "Remote size changed",
+    "terminal.size_note": "The window size changed, possibly from the computer or another client. The latest size is shown here; opening the keyboard does not resize the remote terminal.",
+    "terminal.up": "Up",
+    "terminal.view_details": "View details",
+    "time.duration_hours_minutes": "{hours} hr {minutes} min",
+    "time.duration_minutes_seconds": "{minutes} min {seconds} sec",
+    "time.duration_seconds": {
+      "forms": {
+        "one": "{count} sec",
+        "other": "{count} sec"
+      },
+      "plural": "count"
+    },
     "time.hours_ago": {
       "forms": {
         "one": "{count} hour ago",
@@ -602,6 +1453,7 @@ export const messages = {
       },
       "plural": "count"
     },
+    "time.ios_date_time": "{month}/{day} {time}",
     "time.just_now": "Just now",
     "time.last_week": "Last 7 days",
     "time.minutes_ago": {
@@ -628,10 +1480,115 @@ export const messages = {
       "select": "day"
     },
     "time.year_month_group": "{year}/{month}",
-    "time.yesterday": "Yesterday"
+    "time.yesterday": "Yesterday",
+    "tools.background": "Running in background",
+    "tools.background_agent": "Running in the background at the model’s request. Its completion time is unknown here; check the terminal.",
+    "tools.background_returned": "The call returned and the command moved to the background. Its completion time is unknown here; check the terminal.",
+    "tools.background_terminal": "Moved to the background in the computer’s terminal (Ctrl+B). Its completion time is unknown here; check the terminal.",
+    "tools.background_timeout": "Moved to the background after a timeout. Its completion time is unknown here; check the terminal.",
+    "tools.background_turn": "Still running when this turn ended. Its completion time is unknown here; check the terminal.",
+    "tools.command": "Command",
+    "tools.completed_calls": {
+      "forms": {
+        "one": "Completed {count} tool call",
+        "other": "Completed {count} tool calls"
+      },
+      "plural": "count"
+    },
+    "tools.completed_commands": {
+      "forms": {
+        "one": "Ran {count} command",
+        "other": "Ran {count} commands"
+      },
+      "plural": "count"
+    },
+    "tools.completed_files": {
+      "forms": {
+        "one": "Edited {count} file",
+        "other": "Edited {count} files"
+      },
+      "plural": "count"
+    },
+    "tools.edit_file": "Edit {path}",
+    "tools.elapsed": "Running for {duration}",
+    "tools.elapsed_sync": "{elapsed}Waiting to sync",
+    "tools.exit_code": "Exit code {code}",
+    "tools.tool": "Tool",
+    "tools.waiting_sync": "Waiting to sync"
   },
   "zh-CN": {
+    "approval.allow": "允许",
+    "approval.allowed": "已允许",
+    "approval.always_allow": "允许，这类请求以后不再问",
+    "approval.always_allowed": "已允许，以后不再问",
+    "approval.always_directory": "本项目访问 {path} 以后不再问",
+    "approval.always_prefix": "「{command}」开头的命令以后不再问",
+    "approval.approve": "批准",
+    "approval.approve_execute": "批准执行",
+    "approval.auto_edits": "本会话自动接受编辑",
+    "approval.delivery_failed": "没送到电脑：{reason}",
+    "approval.denial_reason": "不允许的理由",
+    "approval.denied": "已拒绝",
+    "approval.deny": "不允许",
+    "approval.details": "审批详情",
+    "approval.expired": "已超时",
+    "approval.full_command": "看完整命令",
+    "approval.in_terminal": "已在终端处理",
+    "approval.reason_placeholder": "说说该怎么做，可以不填",
+    "approval.seconds_left": {
+      "forms": {
+        "other": "剩 {count} 秒"
+      },
+      "plural": "count"
+    },
+    "approval.timed_out": "超时，已拒绝",
+    "approval.timeout_note": "{remaining}，超时拒绝",
+    "approval.title": "审批",
+    "approval.truncated": "内容被截断，请在终端查看",
+    "attachment.computer_offline": "{name} 离线，连上后才能添加图片",
+    "attachment.computer_unread": "还没读到 {name} 的信息，稍后才能添加图片",
+    "attachment.disconnected": "和服务器断线了，连上后才能添加图片",
+    "attachment.failed": "失败",
+    "attachment.failed_send_hint": "{reason}。点「重试」或移除后才能发送",
+    "attachment.failure": "失败：{reason}",
+    "attachment.file": "文件",
+    "attachment.file_missing": "这个文件没有本机副本，请移除后重新选择",
+    "attachment.file_progress": "文件上传进度",
+    "attachment.filename_limit": "文件名不能超过 255 字节，请重命名后选择",
+    "attachment.images_limit": {
+      "forms": {
+        "other": "一条消息最多 {limit} 张，多选的 {count} 张没有加入"
+      },
+      "plural": "count"
+    },
+    "attachment.max_files": {
+      "forms": {
+        "other": "一条消息最多 {count} 个文件"
+      },
+      "plural": "count"
+    },
+    "attachment.max_images": {
+      "forms": {
+        "other": "一条消息最多 {count} 张"
+      },
+      "plural": "count"
+    },
+    "attachment.metadata": "文件原样发送，包含其中的元数据。",
+    "attachment.named_size_limit": "「{name}」超过单个文件 {limit} MB 的上限",
+    "attachment.path_spaces": "{name} 上 remote-agent 的目录路径带空格，不能发图片",
+    "attachment.photos_videos": "照片和视频",
+    "attachment.preparing": "准备中",
+    "attachment.read_failed": "无法读取这个文件；文件夹不能直接发送，请压缩后选择，或重新选择可读取的文件",
+    "attachment.remove_file": "移除文件 {name}",
+    "attachment.remove_video": "移除视频 {name}",
+    "attachment.size_limit": "单个文件不能超过 {limit} MB",
+    "attachment.update_required": "这台电脑不支持发送文件，请更新电脑上的 remote-agent",
+    "attachment.upload_failed": "上传失败",
+    "attachment.upload_progress": "上传 {percent}%",
+    "attachment.uploading": "上传中",
+    "attachment.zip_folder": "不能直接发送文件夹，请先压缩成 ZIP 再选择文件",
     "common.all_projects_avatar": "全",
+    "common.android_more": "更多",
     "common.back": "返回",
     "common.cancel": "取消",
     "common.clear_search": "清空搜索",
@@ -641,6 +1598,8 @@ export const messages = {
     "common.details": "详情",
     "common.done": "完成",
     "common.got_it": "知道了",
+    "common.ios_save_failed": "没能保存：{reason}",
+    "common.ios_spoken_separator": "，",
     "common.list_separator": "、",
     "common.loading": "加载中",
     "common.machine": "机器",
@@ -650,6 +1609,44 @@ export const messages = {
     "common.save": "保存",
     "common.settings": "设置",
     "common.unknown_computer": "未知电脑",
+    "composer.after_turn": "这一轮结束后再发",
+    "composer.await_record": "已送入终端，等 {agent} 记录",
+    "composer.computer_restarted": "电脑上的 remote-agent 写入时重启了",
+    "composer.images_unrecognized": "{agent} 没认出图片",
+    "composer.input_unconfirmed": "无法确认终端输入框的内容",
+    "composer.insert_hint": "点 ↑ 就是这个",
+    "composer.insert_now": "现在插入这一轮",
+    "composer.maybe_failure": "可能没发出去：{reason}",
+    "composer.message": "消息",
+    "composer.message_fallback": "一条消息",
+    "composer.message_unconfirmed": "有一条消息可能没发出去：已送到终端但没确认",
+    "composer.not_written": "没有写进终端",
+    "composer.plan_placeholder": "补充你对计划的要求…",
+    "composer.queue_after_answer": "排队发送，回答后继续",
+    "composer.queue_hint": "先排队，结束后按顺序发出",
+    "composer.ready_timeout": "等终端就绪超时",
+    "composer.resent": "已重新发送",
+    "composer.restore": "放回输入框",
+    "composer.restore_files_full": {
+      "forms": {
+        "other": "输入框放不下这条消息的 {count} 个文件；先移除一些再放回"
+      },
+      "plural": "count"
+    },
+    "composer.restore_images_full": {
+      "forms": {
+        "other": "输入框里已有 {existing} 张图，放不下这条消息的 {count} 张；先移除一些再放回"
+      },
+      "plural": "count"
+    },
+    "composer.send": "发送",
+    "composer.send_failure": "没发出去：{reason}",
+    "composer.sending": "发送中…",
+    "composer.shortcut": "消息 · {keys} 发送",
+    "composer.slash_note": "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
+    "composer.slash_title": "作为普通消息发送？",
+    "composer.unconfirmed": "可能没发出去：已送到终端但没确认",
+    "composer.write_failed": "写入终端失败",
     "connection.connecting": "连接中…",
     "connection.network_required": "联网后才能读取会话",
     "connection.no_network": "本机网络不通",
@@ -662,6 +1659,57 @@ export const messages = {
     "connection.retrying_previous": "正在重试，下面是上次的内容",
     "connection.server_details": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
     "connection.server_retrying": "连不上服务器 · 正在重试",
+    "dock.agent_waiting": "{agent} 在等你",
+    "dock.agy_plan_note": "批准后回到默认模式（询问）",
+    "dock.answer_title": "回答提问",
+    "dock.answer_unknown": "不确定提交了没有，重试会发送同一个回答",
+    "dock.answered": "回答了 {answers}",
+    "dock.claude_plan_note": "批准后使用询问模式",
+    "dock.handle": "处理",
+    "dock.handle_terminal": "去终端处理",
+    "dock.more": {
+      "forms": {
+        "other": "还有 {count} 项"
+      },
+      "plural": "count"
+    },
+    "dock.multiselect": "可多选",
+    "dock.none_fit": "都不合适？",
+    "dock.other_terminal": "其他回答：去终端",
+    "dock.plan_answered": "回答了计划",
+    "dock.plan_clear": "清空上下文后执行",
+    "dock.plan_clear_record": "清空上下文后执行计划",
+    "dock.plan_full": "计划全文",
+    "dock.plan_implement_record": "批准执行计划",
+    "dock.plan_keep": "继续规划",
+    "dock.plan_title": "{title} · 计划待批准",
+    "dock.plan_unread": "计划的内容还没读到，可以去终端看",
+    "dock.question_changed": "没能提交，终端里的问题可能已经变了",
+    "dock.question_progress": {
+      "forms": {
+        "other": "第 {index} 题，共 {count} 题"
+      },
+      "plural": "count"
+    },
+    "dock.recommended": "推荐",
+    "dock.select_then_submit": "选好后提交",
+    "dock.selected": {
+      "forms": {
+        "other": "已选 {count} 项"
+      },
+      "plural": "count"
+    },
+    "dock.submit_failed": "没能提交：{reason}",
+    "dock.submit_failed_edit": "没能提交：{reason}。可以改选后再提交",
+    "dock.submit_selected": {
+      "forms": {
+        "other": "提交 {count} 项"
+      },
+      "plural": "count"
+    },
+    "dock.submitting": "提交中…",
+    "dock.trust_folder": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
+    "dock.waiting_confirmation": "等待确认",
     "home.add_device": "添加设备",
     "home.add_via_manager": "还没有电脑。在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
     "home.all_projects": "全部项目",
@@ -675,6 +1723,12 @@ export const messages = {
     "home.idle_count": {
       "forms": {
         "other": "{count} 个会话空闲"
+      },
+      "plural": "count"
+    },
+    "home.ios_approval_remaining": {
+      "forms": {
+        "other": "剩 {count} 分钟"
       },
       "plural": "count"
     },
@@ -771,13 +1825,78 @@ export const messages = {
       },
       "plural": "count"
     },
+    "image.add": "添加图片",
     "image.attach_failed": {
       "forms": {
         "other": "{count} 张图没加上，点图片看原因"
       },
       "plural": "count"
     },
+    "image.back_message": "回到消息",
+    "image.convert_failed": "转换失败",
+    "image.copy_failed": "没能复制：{reason}",
+    "image.count": {
+      "forms": {
+        "other": "{count} 张图片"
+      },
+      "plural": "count"
+    },
+    "image.download_retry": "没能下载 · 点按重试",
+    "image.draft": "待发送的图片",
+    "image.generated": "生成的图片",
+    "image.load_connected": "连上后加载",
+    "image.more": {
+      "forms": {
+        "other": "还有 {count} 张"
+      },
+      "plural": "count"
+    },
+    "image.named": "图片 {name}",
+    "image.next": "下一张",
+    "image.numbered": "图片 {index}",
+    "image.original": "原图",
+    "image.original_expired": "大图已过期，只剩预览",
+    "image.original_hint": "原图保住画质；CLI 仍可能缩小过大的图片。",
+    "image.original_missing": "放回的图片没有原始文件，不能切换原图",
+    "image.original_not_uploaded": "电脑没有上传大图，只有预览",
+    "image.original_on_computer": "只有预览，原图在电脑上",
+    "image.placeholder": "图 {index}",
+    "image.position": {
+      "forms": {
+        "other": "图片 {index}，共 {count} 张"
+      },
+      "plural": "count"
+    },
+    "image.position_state": {
+      "forms": {
+        "other": "图片 {index}，共 {count} 张，{state}"
+      },
+      "plural": "count"
+    },
+    "image.preparing": "正在处理",
+    "image.preview_only": "只有预览",
+    "image.previous": "上一张",
+    "image.prompt": "提示词",
+    "image.remove_index": "移除图片 {index}",
+    "image.screenshots": {
+      "forms": {
+        "other": " · {count} 张截图"
+      },
+      "plural": "count"
+    },
+    "image.share": "分享",
+    "image.share_failed": "没能分享：{reason}",
+    "image.title": "图片",
+    "image.tool_source": "{agent} 查看的图",
+    "image.total_size": " · 共 {size}",
+    "image.unsynced": "图片没有同步",
+    "image.uploaded": "已传到电脑",
+    "image.uploading": "正在传到电脑",
+    "image.user_source": "用户发送或粘贴的图",
+    "image.verification_failed": "图片校验失败，没有显示",
+    "image.view": "查看图片",
     "list_state.agent_asking": "{agent} 在问你",
+    "list_state.android_request_command": "请求执行",
     "list_state.approval": "等待审批",
     "list_state.ended": "已结束",
     "list_state.idle": "空闲",
@@ -795,6 +1914,12 @@ export const messages = {
     "markdown.copy_code": "复制代码",
     "markdown.copy_failed": "复制失败",
     "markdown.expand": "展开全文",
+    "markdown.ios_hidden_lines": {
+      "forms": {
+        "other": "还有 {count} 行没显示"
+      },
+      "plural": "count"
+    },
     "markdown.line_count": {
       "forms": {
         "other": "共 {count} 行"
@@ -803,6 +1928,7 @@ export const messages = {
     },
     "models.all": "全部模型",
     "models.back": "返回模型",
+    "models.context_size": "{size} 上下文",
     "models.context_window": "上下文窗口",
     "models.default": "默认",
     "models.default_named": "默认（{model}）",
@@ -816,6 +1942,38 @@ export const messages = {
     "models.summary_effort_label": "模型：{model}，推理强度：{effort}",
     "models.summary_label": "模型：{model}",
     "models.title": "模型",
+    "modes.account_no_auto": "当前账户不支持自动模式，换一种审批模式再开始",
+    "modes.account_unsupported": "当前账户不支持自动模式",
+    "modes.agy_ask_desc": "需要审批时由你确认，超时自动拒绝",
+    "modes.agy_plan_desc": "先只读探索并写方案，批准后回到默认模式执行",
+    "modes.ask": "询问",
+    "modes.ask_desc": "需要审批时由你确认，超时拒绝",
+    "modes.ask_permission_desc": "需要权限时由你确认",
+    "modes.auto": "自动",
+    "modes.auto_desc": "由 {agent} 自己判断，拿不准的在对话里问你",
+    "modes.current_terminal": "当前：{mode}（在终端设置）",
+    "modes.default_agent": "默认：{agent} 自己的模式",
+    "modes.default_named": "默认：{mode}",
+    "modes.default_varies": "{mode}（项目设置可能不同）",
+    "modes.full_access": "完全放行",
+    "modes.full_current_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这个会话生效。",
+    "modes.full_new_note": "之后所有操作都不会再问你，手机上也收不到审批。只对这次新建的会话生效。",
+    "modes.full_title": "切到完全放行？",
+    "modes.full_unavailable": "本会话启动时未启用；需要时新建会话选择",
+    "modes.locked": "本会话以完全放行启动，不能切换审批模式",
+    "modes.locked_note": "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。",
+    "modes.model_no_auto": "这个模型没有自动模式，换一种审批模式再开始",
+    "modes.model_unsupported": "当前模型不支持",
+    "modes.permission_notice": "照实显示终端中的模式；不提供切到 accept edits 的按钮。",
+    "modes.plan": "计划",
+    "modes.plan_desc": "只读和出计划，你批准后才开始改",
+    "modes.plan_edit": "修改计划…",
+    "modes.plan_propose_desc": "先出方案，再批准执行",
+    "modes.skip_all": "所有操作都不审批",
+    "modes.switch": "切换",
+    "modes.switch_failed": "没能切换：{reason}",
+    "modes.switching": "正在切换…",
+    "modes.title": "审批模式",
     "new_session.abandon_start": "放弃这次启动",
     "new_session.account_no_auto": "当前账户不支持自动模式，而 {name} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始",
     "new_session.attachments_moved": "已换到 {name}，附件正在重新上传",
@@ -834,6 +1992,7 @@ export const messages = {
     "new_session.follow_cli": "跟随 CLI 设置",
     "new_session.installed": "已装 {agents}",
     "new_session.installed_fallback": "已装 {agents}；这台机器没有 {missing}，会改用 {agent}",
+    "new_session.ios_attach": "添加附件",
     "new_session.location": "在{project}",
     "new_session.location_cli": "在{project}用{cli}",
     "new_session.location_machine": "在{machine}的{project}",
@@ -919,6 +2078,35 @@ export const messages = {
     "projects.unpin": "取消常用",
     "projects.use_directory": "用 {name} 这个目录",
     "projects.view_sessions": "看 {name} 的会话",
+    "queue.after_current_turn": "本轮结束后发送",
+    "queue.after_start": "启动后发送",
+    "queue.after_turn": "这一轮结束后发",
+    "queue.agent_ready": "等 {agent} 就绪后发出",
+    "queue.already_submitted": "上一条已送入终端，不能取消",
+    "queue.cancel_failed": "取消没成功，仍在排队",
+    "queue.canceled": "已取消",
+    "queue.canceled_elsewhere": "上一条已在另一客户端取消",
+    "queue.canceled_record": "取消了一条排队的消息",
+    "queue.canceling": "正在取消…",
+    "queue.images_recognized": "图片已识别，正在发送…",
+    "queue.insert": "插入这一轮",
+    "queue.more": {
+      "forms": {
+        "other": "还有 {count} 条排队 展开"
+      },
+      "plural": "count"
+    },
+    "queue.other_message": "另一客户端的消息",
+    "queue.pasting_images": "正在粘贴图片…",
+    "queue.paused": "已暂停",
+    "queue.rank": " · 第 {rank} 条",
+    "queue.resume_failed": "发送没成功，仍已暂停",
+    "queue.resuming": "正在发送…",
+    "queue.scheduled": "定时任务{time} · ",
+    "queue.submitting": "已送入终端，等待确认",
+    "queue.terminal_draft": "终端里有没发出的草稿，发完或清掉后再发",
+    "queue.unrecognized": "认不出输入框，已暂停",
+    "queue.when_ready": "就绪后发送",
     "quota.exhausted": "{name} · {window}额度已用尽，不会自动切换 CLI 或模型",
     "quota.failure": "没能读取 {name} 额度：{detail}",
     "quota.failure_no_reason": "没能读取 {name} 额度",
@@ -942,15 +2130,173 @@ export const messages = {
     "quota.unknown_time": "数据时间未知，显示上次记录",
     "quota.waiting": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
     "quota.warning": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
+    "session.abandon_fork": "放弃上次的分叉",
+    "session.action_failed": "{action}失败：{reason}",
+    "session.approval_resolved": "这条审批已经处理了。",
+    "session.auto_title_hint": "留空保存会恢复自动标题",
+    "session.back_task": "返回任务",
+    "session.chat": "聊天",
+    "session.compact": "压缩",
+    "session.compact_failed": "没能压缩：{reason}",
+    "session.compacted": "上下文已压缩",
+    "session.compacting": "正在压缩…",
+    "session.connect_resume": "连上服务器后才能恢复。",
+    "session.context": "上下文",
+    "session.context_tokens": "上下文 {used} / {total}",
+    "session.context_used": "已用 {percent}%",
+    "session.delivered": "已送达电脑",
+    "session.disconnected_ago": "{time}断开，",
+    "session.dismiss_notice": "移除此提示",
+    "session.effort_locked": "运行中不能换推理强度",
+    "session.end": "结束",
+    "session.end_action": "结束会话…",
+    "session.end_note": "{name} 上的 {agent} 会被关掉，聊天记录保留，之后可以恢复。",
+    "session.end_session": "结束会话",
+    "session.end_title": "结束这个会话？",
+    "session.ended": "会话已结束",
+    "session.ended_at": "{time}结束",
+    "session.ended_message_failed": "有一条消息没发出去：会话已结束",
+    "session.ended_send_failed": "没发出去：会话已结束",
+    "session.fork": "分叉会话",
+    "session.fork_after_message": "发过消息后可用",
+    "session.fork_after_pending": "处理完等待事项后可用",
+    "session.fork_after_start": "启动完成后可用",
+    "session.fork_after_turn": "这一轮结束后可用",
+    "session.fork_expired": "不确定上次有没有分叉出新会话，它已过期，不会再重发。请先看看会话列表",
+    "session.fork_failed": "没能分叉：{reason}",
+    "session.fork_unknown": "上次的分叉结果不确定。再点会重发同一个请求，电脑收到过就不会再分叉一次",
+    "session.forked_from": "{time}分叉自{source}",
+    "session.forking": "正在分叉…",
+    "session.go_terminal": "去终端",
     "session.history_failed": "没能读取记录，请重试。已输入的内容会保留。",
+    "session.history_tail_missing": "后面的记录没读到",
+    "session.history_unavailable": {
+      "forms": {
+        "other": "恢复前有 {count} 条记录不可读；后续可读记录照常显示。"
+      },
+      "plural": "count"
+    },
+    "session.history_unreadable": "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全",
+    "session.idle_closed": "会话长时间没有活动，已自动结束。",
+    "session.interrupt": "中断",
+    "session.interrupt_turn": "中断本轮",
+    "session.interrupted": "已中断",
+    "session.latest": "回到最新",
+    "session.loading_earlier": "正在加载更早的记录…",
+    "session.manually_closed": "会话是被手动结束的。",
+    "session.max_effort": "最高 {effort}",
+    "session.mode_changed": "模式切换到 {value}",
+    "session.mode_changed_by": "{origin} 将模式切到 {value}",
+    "session.model_changed": "切换到 {value}",
+    "session.model_changed_by": "{origin} 将模型切到 {value}",
+    "session.model_locked": "运行中不能换模型，新建会话时可选",
+    "session.model_switch_failed": "没能切到 {model}：{reason}",
+    "session.models_failed": "没能读取模型列表",
+    "session.more_context": "更多，上下文 {percent}%",
+    "session.new_messages": {
+      "forms": {
+        "other": "{count} 条新消息"
+      },
+      "plural": "count"
+    },
+    "session.no_effort": "无推理强度",
+    "session.no_effort_adjustment": "{model} 没有推理强度可调",
+    "session.not_running": "现在没有在运行",
+    "session.notification": "通知你：{text}",
+    "session.offline_note": "{lastSeen}可能是合盖睡眠、断网，或 remote-agent 没在运行。电脑上的会话可能还在跑，重新连上后这里会自动更新，现在只能看历史。",
+    "session.offline_resume": "{name} 不在线，连上后才能恢复。",
+    "session.only_current": "只改当前会话",
     "session.opening_slow": "记录还没读到，可以重试。已输入的内容会保留。",
+    "session.origin_elsewhere": "另一端",
+    "session.origin_other": "另一客户端",
+    "session.origin_removed": "已移除的设备",
+    "session.origin_self": "本客户端",
+    "session.origin_terminal": "{name} 终端",
+    "session.other_session": "另一个会话",
+    "session.quiet_checks": "{times} 定时检查 · 没有新回复",
+    "session.reading_models": "读取模型列表…",
+    "session.rename": "重命名",
+    "session.rename_title": "重命名会话",
+    "session.reopen_agent": "在 {name} 上重新打开 {agent}",
+    "session.reply_moves": "回复后，这个对话会移到会话列表",
+    "session.restore_other_files": "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件",
+    "session.restore_other_images": "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
+    "session.resume": "恢复会话",
+    "session.resume_failed": "恢复失败",
+    "session.resume_note": "恢复会在 {name} 上用同样的设置重新打开它，聊天记录都在。",
+    "session.resuming": "正在恢复…",
+    "session.schedule_send": "定时发送…",
+    "session.scheduled_at": "定时任务 · {time}",
+    "session.scheduled_closed": "定时任务运行已结束，会话自动关闭了。",
+    "session.settings": "会话设置",
+    "session.shell_failed": "电脑上的登录 shell 没能启动 CLI（{detail}）。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    "session.shell_timeout": "电脑上的登录 shell 没能启动 CLI（{detail}），可能卡在等待输入。请检查电脑上的 shell 配置，比如 ~/.zshrc。",
+    "session.skeleton": "内容过大，请在终端查看/回答",
+    "session.split": "并排",
+    "session.starting_agent": "正在 {name} 上启动 {agent}…",
+    "session.switch_after_turn": "这一轮在运行，结束后才能切换模型和推理强度",
+    "session.switch_connected": "和服务器断线了，连上后才能切换",
+    "session.switch_idle": "只在空闲时能切换，只改当前会话",
+    "session.switching_model": "正在切换到 {model}…",
+    "session.terminal": "终端",
+    "session.terminal_changes": "{name} 终端把{changes}",
+    "session.terminal_mode_change": "模式切到了 {value}",
+    "session.terminal_model_change": "模型切到了 {value}",
+    "session.thinking": "思考",
     "session.title": "会话",
+    "session.title_label": "会话标题",
+    "session.tmux_missing": "tmux 会话已经不在了。",
+    "session.try_again": "再试一次",
+    "session.turn_duration": "本轮用时 {duration}",
+    "session.update_computer": "请更新电脑上的 remote-agent",
+    "session.view": "视图",
+    "terminal.closed": "终端连接断开了",
+    "terminal.closed_ended_note": "下面是断开前的画面。会话已经结束。",
+    "terminal.closed_running_note": "下面是断开前的画面。会话还在运行，聊天照常更新。",
+    "terminal.computer_dimensions": "电脑上 {cols}×{rows}",
+    "terminal.connecting": "连接终端…",
+    "terminal.disconnected": "终端已断开",
+    "terminal.down": "下",
+    "terminal.earlier": "读取更早的记录…",
+    "terminal.enter": "回车",
+    "terminal.fit": "适配我的屏幕",
+    "terminal.fit_short": "适配",
+    "terminal.fitted_size": "已适配这块屏幕 · {cols}×{rows}",
+    "terminal.fresh": "有新输出",
+    "terminal.fresh_live": "有新输出，回到实时",
+    "terminal.history": "终端记录",
+    "terminal.history_closed": "终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的",
+    "terminal.history_expired": "记录已过期，回到实时后重新往上滑",
+    "terminal.history_start": "已经是保留的最早记录",
+    "terminal.keyboard": "键盘",
+    "terminal.left": "左",
+    "terminal.live": "回到实时",
+    "terminal.read_failed": "读取失败",
+    "terminal.reading": "读取记录…",
+    "terminal.readonly": "回看中 · 只读",
+    "terminal.reconnect": "重新连接",
+    "terminal.remote_dimensions": "远端 {cols}×{rows}",
+    "terminal.restore": "还原",
+    "terminal.right": "右",
+    "terminal.size_changed": "远端尺寸已变化",
+    "terminal.size_note": "窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。",
+    "terminal.up": "上",
+    "terminal.view_details": "查看详情",
+    "time.duration_hours_minutes": "{hours} 小时 {minutes} 分",
+    "time.duration_minutes_seconds": "{minutes} 分 {seconds} 秒",
+    "time.duration_seconds": {
+      "forms": {
+        "other": "{count} 秒"
+      },
+      "plural": "count"
+    },
     "time.hours_ago": {
       "forms": {
         "other": "{count} 小时前"
       },
       "plural": "count"
     },
+    "time.ios_date_time": "{month}月{day}日 {time}",
     "time.just_now": "刚刚",
     "time.last_week": "近 7 天",
     "time.minutes_ago": {
@@ -976,6 +2322,37 @@ export const messages = {
       "select": "day"
     },
     "time.year_month_group": "{year} 年 {month} 月",
-    "time.yesterday": "昨天"
+    "time.yesterday": "昨天",
+    "tools.background": "后台运行",
+    "tools.background_agent": "按模型的要求在后台运行；它什么时候结束这里不知道，请到终端确认。",
+    "tools.background_returned": "调用已返回，命令转到了后台；它什么时候结束这里不知道，请到终端确认。",
+    "tools.background_terminal": "在电脑终端里被移到后台（Ctrl+B）；它什么时候结束这里不知道，请到终端确认。",
+    "tools.background_timeout": "运行超时后被移到后台继续运行；它什么时候结束这里不知道，请到终端确认。",
+    "tools.background_turn": "这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。",
+    "tools.command": "命令",
+    "tools.completed_calls": {
+      "forms": {
+        "other": "完成了 {count} 个工具调用"
+      },
+      "plural": "count"
+    },
+    "tools.completed_commands": {
+      "forms": {
+        "other": "运行了 {count} 条命令"
+      },
+      "plural": "count"
+    },
+    "tools.completed_files": {
+      "forms": {
+        "other": "编辑了 {count} 个文件"
+      },
+      "plural": "count"
+    },
+    "tools.edit_file": "编辑 {path}",
+    "tools.elapsed": "已运行 {duration}",
+    "tools.elapsed_sync": "{elapsed}等待同步",
+    "tools.exit_code": "退出码 {code}",
+    "tools.tool": "工具",
+    "tools.waiting_sync": "等待同步"
   }
 } as const;

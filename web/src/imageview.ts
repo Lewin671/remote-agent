@@ -1,3 +1,4 @@
+import * as i18n from "./i18n";
 // Images in a session as the chat shows them (architecture §17): the
 // preview each event carries, the "[Image #N]" placeholders in message
 // text, the session's pictures in order for the viewer, and checking that
@@ -121,7 +122,7 @@ export function sizeText(ref: Pick<ImageRef, "width" | "height" | "originalWidth
 
 /** "2 张截图" and the like, for a folded run of tool calls. */
 export function imagesNote(n: number): string {
-  return n ? ` · ${n} 张截图` : "";
+  return n ? i18n.t("image.screenshots", { count: n }) : "";
 }
 
 export function baseName(path: string): string {

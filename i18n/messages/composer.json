@@ -1,0 +1,511 @@
+[
+  {
+    "key": "composer.after_turn",
+    "zh-CN": "这一轮结束后再发",
+    "en": "Send after this turn",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.await_record",
+    "zh-CN": "已送入终端，等 {agent} 记录",
+    "en": "Written to terminal, waiting for {agent} to record it",
+    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.computer_restarted",
+    "zh-CN": "电脑上的 remote-agent 写入时重启了",
+    "en": "remote-agent on the computer restarted while writing",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.images_unrecognized",
+    "zh-CN": "{agent} 没认出图片",
+    "en": "{agent} did not recognize the images",
+    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：agent 为CLI 品牌名，保持原文。",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.input_unconfirmed",
+    "zh-CN": "无法确认终端输入框的内容",
+    "en": "Could not confirm terminal input",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.insert_hint",
+    "zh-CN": "点 ↑ 就是这个",
+    "en": "This is what ↑ does",
+    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.insert_now",
+    "zh-CN": "现在插入这一轮",
+    "en": "Insert into this turn now",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.maybe_failure",
+    "zh-CN": "可能没发出去：{reason}",
+    "en": "Possibly not sent: {reason}",
+    "notes": "会话输入框与发送菜单。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.message",
+    "zh-CN": "消息",
+    "en": "Message",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.message_fallback",
+    "zh-CN": "一条消息",
+    "en": "A message",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.message_unconfirmed",
+    "zh-CN": "有一条消息可能没发出去：已送到终端但没确认",
+    "en": "A message may not have been sent: written to terminal but unconfirmed",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.not_written",
+    "zh-CN": "没有写进终端",
+    "en": "Not written to terminal",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.plan_placeholder",
+    "zh-CN": "补充你对计划的要求…",
+    "en": "Add requirements for the plan…",
+    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.queue_after_answer",
+    "zh-CN": "排队发送，回答后继续",
+    "en": "Queue message; continue after answering",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.queue_hint",
+    "zh-CN": "先排队，结束后按顺序发出",
+    "en": "Queue first, then send in order after this turn",
+    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.ready_timeout",
+    "zh-CN": "等终端就绪超时",
+    "en": "Timed out waiting for the terminal",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.resent",
+    "zh-CN": "已重新发送",
+    "en": "Resent",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.restore",
+    "zh-CN": "放回输入框",
+    "en": "Restore to input",
+    "notes": "会话输入框的操作/状态提示。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.restore_files_full",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "输入框放不下这条消息的 {count} 个文件；先移除一些再放回"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "The input cannot fit this message’s {count} file. Remove some attachments first.",
+        "other": "The input cannot fit this message’s {count} files. Remove some attachments first."
+      }
+    },
+    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.restore_images_full",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "输入框里已有 {existing} 张图，放不下这条消息的 {count} 张；先移除一些再放回"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "The input already has {existing} image(s) and cannot fit this message’s {count} image. Remove some first.",
+        "other": "The input already has {existing} image(s) and cannot fit this message’s {count} images. Remove some first."
+      }
+    },
+    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）；existing 为当前输入框已有图片数。",
+    "params": {
+      "existing": {
+        "type": "integer",
+        "example": 2
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.send",
+    "zh-CN": "发送",
+    "en": "Send",
+    "notes": "会话输入框的操作/状态提示。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.send_failure",
+    "zh-CN": "没发出去：{reason}",
+    "en": "Not sent: {reason}",
+    "notes": "会话输入框与发送菜单。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：reason 为当前操作的失败详情，保持原文。",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.sending",
+    "zh-CN": "发送中…",
+    "en": "Sending…",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.shortcut",
+    "zh-CN": "消息 · {keys} 发送",
+    "en": "Message · {keys} to send",
+    "notes": "会话输入框与发送菜单。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：keys 为调用提供的显示参数，保持原有格式。",
+    "params": {
+      "keys": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.slash_note",
+    "zh-CN": "以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。",
+    "en": "Content starting with / will be sent to the model as a regular message instead of running a slash command.",
+    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.slash_title",
+    "zh-CN": "作为普通消息发送？",
+    "en": "Send as a regular message?",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.unconfirmed",
+    "zh-CN": "可能没发出去：已送到终端但没确认",
+    "en": "Possibly not sent: written to terminal but unconfirmed",
+    "notes": "会话输入框的操作/状态提示。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "composer.write_failed",
+    "zh-CN": "写入终端失败",
+    "en": "Could not write to terminal",
+    "notes": "会话输入框的操作/状态提示。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

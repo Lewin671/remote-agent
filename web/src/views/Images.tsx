@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import { t } from "../i18n";
 // Pictures in a session (client-v2 会话里的图片): previews under messages
 // and tool rows, the card of a generated image, and the viewer that
@@ -107,10 +108,9 @@ export function Pic({
             : style
         }
         onClick={onOpen}
-        aria-label="图片没有同步"
+        aria-label={i18n.t("image.unsynced")}
       >
-        图片没有同步
-        {r.path && <code>{baseName(r.path)}</code>}
+        {i18n.t("image.unsynced")}{r.path && <code>{baseName(r.path)}</code>}
       </button>
     );
   return (
@@ -118,12 +118,12 @@ export function Pic({
       className={"pic " + className}
       style={style}
       onClick={onOpen}
-      aria-label={r.path ? `图片 ${baseName(r.path)}` : "图片"}
+      aria-label={r.path ? i18n.t("image.named", { name: baseName(r.path) }) : i18n.t("image.title")}
     >
       {url && <img src={url} alt="" draggable={false} />}
       {number ? <span className="n">{number}</span> : null}
-      {(badge ?? (r.sync === ImageSync.PREVIEW_ONLY ? "只有预览" : "")) && (
-        <span className="badge">{badge ?? "只有预览"}</span>
+      {(badge ?? (r.sync === ImageSync.PREVIEW_ONLY ? i18n.t("image.preview_only") : "")) && (
+        <span className="badge">{badge ?? i18n.t("image.preview_only")}</span>
       )}
     </button>
   );
@@ -159,7 +159,7 @@ export function ImageStrip({
             <button
               className="more"
               onClick={() => open(r)}
-              aria-label={`还有 ${more} 张`}
+              aria-label={i18n.t("image.more", { count: more })}
             >
               +{more}
             </button>
@@ -186,14 +186,14 @@ export function GenCard({
         <div key={i} className="gen-card">
           <Pic image={r} className="lg" height={0} onOpen={() => open(r)} />
           <div className="meta">
-            <span>生成的图片{sizeText(r) && ` · ${sizeText(r)}`}</span>
+            <span>{i18n.t("image.generated")}{sizeText(r) && ` · ${sizeText(r)}`}</span>
             {prompt && i === 0 && (
               <button
                 className="link"
                 onClick={() => setShown(!shown)}
                 aria-expanded={shown}
               >
-                提示词 <Exp up={shown} />
+                {i18n.t("image.prompt")}<Exp up={shown} />
               </button>
             )}
           </div>
@@ -269,9 +269,9 @@ function useDisplay(
 }
 
 function sourceText(img: SessionImage, agent: string): string {
-  if (img.kind === "generated") return "生成的图片";
-  if (img.kind === "tool") return `${agent} 查看的图`;
-  return "用户发送或粘贴的图";
+  if (img.kind === "generated") return i18n.t("image.generated");
+  if (img.kind === "tool") return i18n.t("image.tool_source", { agent });
+  return i18n.t("image.user_source");
 }
 
 /** What to say over the picture while its display copy is not shown. */
@@ -280,19 +280,19 @@ function loadNote(l: Load): string {
     case "loading":
       return "";
     case "offline":
-      return "连上后加载";
+      return i18n.t("image.load_connected");
     case "error":
-      return "没能下载 · 点按重试";
+      return i18n.t("image.download_retry");
     case "expired":
-      return "大图已过期，只剩预览";
+      return i18n.t("image.original_expired");
     case "missing":
-      return "电脑没有上传大图，只有预览";
+      return i18n.t("image.original_not_uploaded");
     case "bad":
-      return l.why ?? "图片校验失败，没有显示";
+      return l.why ?? i18n.t("image.verification_failed");
     case "preview-only":
-      return "只有预览，原图在电脑上";
+      return i18n.t("image.original_on_computer");
     case "name-only":
-      return "图片没有同步";
+      return i18n.t("image.unsynced");
     case "ok":
       return "";
   }
@@ -379,7 +379,7 @@ export function ImageViewer({
       await navigator.share({ files: [file] });
     } catch (e) {
       if ((e as Error).name !== "AbortError")
-        setNote("没能分享：" + errorText(e));
+        setNote(i18n.t("image.share_failed", { reason: errorText(e) }));
     }
   };
   const copy = async () => {
@@ -392,7 +392,7 @@ export function ImageViewer({
       ]);
       setNote(t("common.copied"));
     } catch (e) {
-      setNote("没能复制：" + errorText(e));
+      setNote(i18n.t("image.copy_failed", { reason: errorText(e) }));
     }
   };
   const status = local ? "" : loadNote(load);
@@ -436,7 +436,7 @@ export function ImageViewer({
           className={full ? "" : "soft"}
         />
       )}
-      {load.kind === "loading" && !problem && <span className="ring" aria-label="加载中" />}
+      {load.kind === "loading" && !problem && <span className="ring" aria-label={i18n.t("common.loading")} />}
       {status && (
         <button
           className="vnote"
@@ -449,9 +449,9 @@ export function ImageViewer({
     </div>
   );
   const info = local ? <>
-    <b>图片 {index + 1}，共 {images.length} 张</b>
+    <b>{i18n.t("image.position", { index: index + 1, count: images.length })}</b>
     {local.file instanceof File && <div>{local.file.name}</div>}
-    <div>{problem?.message ?? (local.state === "preparing" ? "正在处理" : local.state === "uploading" ? "正在传到电脑" : "待发送的图片")}</div>
+    <div>{problem?.message ?? (local.state === "preparing" ? i18n.t("image.preparing") : local.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.draft"))}</div>
   </> : (
     <>
       {sourceText(img, agent)}
@@ -474,23 +474,23 @@ export function ImageViewer({
         className="lightbox"
         role="dialog"
         aria-modal="true"
-        aria-label="查看图片"
+        aria-label={i18n.t("image.view")}
         ref={box}
       >
         <div className="lb-top">
           <span>
-            {index + 1} / {images.length} · {draft ? "待发送的图片" : sourceText(img, agent)}
+            {index + 1} / {images.length} · {draft ? i18n.t("image.draft") : sourceText(img, agent)}
           </span>
-          <GlassButton label="关闭" onClick={onClose}>
+          <GlassButton label={i18n.t("common.close")} onClick={onClose}>
             <X />
           </GlassButton>
         </div>
         <div className="lb-mid">
-          <GlassButton label="上一张" onClick={() => go(-1)} disabled={i === 0}>
+          <GlassButton label={i18n.t("image.previous")} onClick={() => go(-1)} disabled={i === 0}>
             <ChevronLeft />
           </GlassButton>
           <div className="lb-img">{picture}</div>
-          <GlassButton label="下一张" onClick={() => go(1)} disabled={i >= images.length - 1}>
+          <GlassButton label={i18n.t("image.next")} onClick={() => go(1)} disabled={i >= images.length - 1}>
             <ChevronRight />
           </GlassButton>
         </div>
@@ -508,7 +508,7 @@ export function ImageViewer({
           >
             {t("common.copy")}
           </button>
-          <button className="glass" onClick={onClose}>回到消息</button>
+          <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
           </>}
         </div>
       </div>
@@ -518,11 +518,11 @@ export function ImageViewer({
       className="viewer"
       role="dialog"
       aria-modal="true"
-      aria-label="查看图片"
+      aria-label={i18n.t("image.view")}
       ref={box}
     >
       <div className="vbar">
-        <GlassButton label="关闭" onClick={onClose}>
+        <GlassButton label={i18n.t("common.close")} onClick={onClose}>
           <X />
         </GlassButton>
         <b>
@@ -549,8 +549,8 @@ export function ImageViewer({
         <button className="glass" onClick={save} disabled={!full}>
           {t("common.save")}
         </button>
-        {canShare && <button className="glass" onClick={() => void share()}>分享</button>}
-        <button className="glass" onClick={onClose}>回到消息</button>
+        {canShare && <button className="glass" onClick={() => void share()}>{i18n.t("image.share")}</button>}
+        <button className="glass" onClick={onClose}>{i18n.t("image.back_message")}</button>
         </>}
       </div>
     </div>
@@ -564,7 +564,7 @@ export function DraftImageViewer({ remote, tray, start, onClose }: { remote: Rem
     ref: create(ImageRefSchema, { imageId: item.key, path: item.file instanceof File ? item.file.name : "", width: item.prepared?.width, height: item.prepared?.height }),
     seq: 0n, time: 0, kind: "user",
   }));
-  return <ImageViewer remote={remote} sid="" images={images} start={start} agent="" title="待发送的图片" wide={matchMedia("(min-width: 900px)").matches} onClose={onClose} draft={tray} />;
+  return <ImageViewer remote={remote} sid="" images={images} start={start} agent="" title={i18n.t("image.draft")} wide={matchMedia("(min-width: 900px)").matches} onClose={onClose} draft={tray} />;
 }
 
 async function toPng(blob: Blob): Promise<Blob> {
@@ -575,7 +575,7 @@ async function toPng(blob: Blob): Promise<Blob> {
   c.getContext("2d")!.drawImage(bmp, 0, 0);
   bmp.close();
   return new Promise((res, rej) =>
-    c.toBlob((b) => (b ? res(b) : rej(new Error("转换失败"))), "image/png"),
+    c.toBlob((b) => (b ? res(b) : rej(new Error(i18n.t("image.convert_failed")))), "image/png"),
   );
 }
 
@@ -598,10 +598,10 @@ export function LocalThumbs({ blobs, sizes }: { blobs?: Blob[]; sizes?: { width:
       {urls.slice(0, 4).map((u, i) => (
         <span key={u} className="picwrap">
           <span className="pic local" style={previewGeometry(sizes?.[i]?.height ? sizes[i].width / sizes[i].height : 4 / 3)}>
-            <img src={u} alt={`图片 ${i + 1}`} />
+            <img src={u} alt={i18n.t("image.numbered", { index: i + 1 })} />
             <span className="n">{i + 1}</span>
           </span>
-          {i === 3 && urls.length > 4 && <span className="more" aria-label={`还有 ${urls.length - 4} 张`}>+{urls.length - 4}</span>}
+          {i === 3 && urls.length > 4 && <span className="more" aria-label={i18n.t("image.more", { count: urls.length - 4 })}>+{urls.length - 4}</span>}
         </span>
       ))}
     </span>

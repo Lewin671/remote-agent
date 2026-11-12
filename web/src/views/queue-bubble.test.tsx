@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // The bubble of a message this page sent is one element from sending until
 // the chat holds it, and takes the queue's look only when the message really
@@ -43,13 +44,13 @@ it("shows nothing of the queue for a message that is only on its way to the term
     open("s-idle", "空闲时发的一句", [InputStatus.QUEUED]);
     expect(bubbles("空闲时发的一句")).toHaveLength(1);
     expect(host.querySelector(".pending-bubble")).toBeNull();
-    expect(host.textContent).not.toContain("插入这一轮");
+    expect(host.textContent).not.toContain(message("queue.insert"));
     // Still waiting after a moment: now it says so, in the same bubble.
     const same = bubbles("空闲时发的一句")[0];
     await act(async () => void vi.advanceTimersByTime(1050));
     expect(bubbles("空闲时发的一句")[0]).toBe(same);
     expect(same.classList.contains("pending-bubble")).toBe(true);
-    expect(host.querySelector(".pending-meta > span")?.textContent).toBe("插入这一轮");
+    expect(host.querySelector(".pending-meta > span")?.textContent).toBe(message("queue.insert"));
   } finally {
     vi.useRealTimers();
   }
@@ -68,7 +69,7 @@ it("goes back to a plain bubble when the terminal takes it, without a new elemen
     });
     expect(bubbles("先排队再写入")[0]).toBe(same);
     expect(same.classList.contains("pending-bubble")).toBe(false);
-    expect(same.textContent).toContain("已送入终端");
+    expect(same.textContent).toContain(message("composer.await_record", { agent: "Codex" }));
   } finally {
     vi.useRealTimers();
   }
@@ -78,5 +79,5 @@ it("takes the queue's look at once while a turn runs, and is not drawn twice", (
   open("s-run", "运行中排队的一句", [InputStatus.QUEUED]);
   expect(bubbles("运行中排队的一句")).toHaveLength(1);
   expect(bubbles("运行中排队的一句")[0].classList.contains("pending-bubble")).toBe(true);
-  expect(host.querySelector(".pending-meta > span")?.textContent).toContain("插入这一轮");
+  expect(host.querySelector(".pending-meta > span")?.textContent).toContain(message("queue.insert"));
 });

@@ -1,3 +1,4 @@
+import * as i18n from "./i18n";
 // Sheets opened from a session's chips: the approval mode, and the
 // model, reasoning effort and context use.
 
@@ -23,10 +24,10 @@ function SheetHead({ name, s }: { name: string; s: SessionView }) {
 export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc: string; danger?: boolean }[] {
   const info = agentInfo(agent);
   return [
-    { mode: ApprovalMode.ASK, name: "询问", desc: info.askModeDesc },
-    { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(agent)} 自己判断，拿不准的在对话里问你` },
-    { mode: ApprovalMode.PLAN, name: "计划", desc: info.planModeDesc },
-    { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
+    { mode: ApprovalMode.ASK, name: i18n.t("modes.ask"), desc: info.askModeDesc },
+    { mode: ApprovalMode.AUTO, name: i18n.t("modes.auto"), desc: i18n.t("modes.auto_desc", { agent: agentName(agent) }) },
+    { mode: ApprovalMode.PLAN, name: i18n.t("modes.plan"), desc: info.planModeDesc },
+    { mode: ApprovalMode.FULL_ACCESS, name: i18n.t("modes.full_access"), desc: i18n.t("modes.skip_all"), danger: true },
   ];
 }
 
@@ -34,9 +35,9 @@ export function modeList(agent: Agent): { mode: ApprovalMode; name: string; desc
 export function FullAccessAlert({ onOk, onCancel, forNew }: { onOk: () => void; onCancel: () => void; forNew?: boolean }) {
   return (
     <Alert
-      title="切到完全放行？"
-      text={`之后所有操作都不会再问你，手机上也收不到审批。只对${forNew ? "这次新建的" : "这个"}会话生效。`}
-      ok="切换"
+      title={i18n.t("modes.full_title")}
+      text={forNew ? i18n.t("modes.full_new_note") : i18n.t("modes.full_current_note")}
+      ok={i18n.t("modes.switch")}
       danger
       onCancel={onCancel}
       onOk={onOk}
@@ -88,22 +89,20 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
         className="dialog rename"
         role="dialog"
         aria-modal="true"
-        aria-label="重命名会话"
+        aria-label={i18n.t("session.rename_title")}
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy) void save();
         }}
       >
-        <h5>重命名会话</h5>
-        <input ref={input} className="field" aria-label="会话标题" value={title} enterKeyHint="done" onChange={(e) => setTitle(clipTitle(e.target.value))} />
-        {error ? <p className="red">没能保存：{error}</p> : <p>留空保存会恢复自动标题</p>}
+        <h5>{i18n.t("session.rename_title")}</h5>
+        <input ref={input} className="field" aria-label={i18n.t("session.title_label")} value={title} enterKeyHint="done" onChange={(e) => setTitle(clipTitle(e.target.value))} />
+        {error ? <p className="red">{i18n.t("common.ios_save_failed", { reason: error })}</p> : <p>{i18n.t("session.auto_title_hint")}</p>}
         <div className="btns">
           <button type="button" className="btn" disabled={busy} onClick={onClose}>
-            取消
-          </button>
+            {i18n.t("common.cancel")}</button>
           <button type="submit" className="btn pri" disabled={busy}>
-            保存
-          </button>
+            {i18n.t("common.save")}</button>
         </div>
       </form>
     </div>
@@ -112,11 +111,11 @@ export function RenameDialog({ remote, s, onClose }: { remote: Remote; s: Sessio
 
 /** Why a session cannot switch to mode, or "" if it can. */
 export function unavailable(s: SessionView, mode: ApprovalMode, models?: ModelInfo[]): string {
-  if (s.info?.modeLocked) return "本会话以完全放行启动，不能切换审批模式";
-  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return "本会话启动时未启用；需要时新建会话选择";
+  if (s.info?.modeLocked) return i18n.t("modes.locked");
+  if (mode === ApprovalMode.FULL_ACCESS && s.info?.fullAccessUnavailable) return i18n.t("modes.full_unavailable");
   if (mode === ApprovalMode.AUTO) {
-    if (allAutoUnavailable(models)) return "当前账户不支持自动模式";
-    if (autoUnavailable(models, s.info?.model ?? "")) return "当前模型不支持";
+    if (allAutoUnavailable(models)) return i18n.t("modes.account_unsupported");
+    if (autoUnavailable(models, s.info?.model ?? "")) return i18n.t("modes.model_unsupported");
   }
   return "";
 }
@@ -156,8 +155,8 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
     );
   return (
     <Sheet onClose={onClose}>
-      <SheetHead name="审批模式" s={s} />
-      {!cur && mode && <div className="hint top">当前：{mode.text}（在终端设置）</div>}
+      <SheetHead name={i18n.t("modes.title")} s={s} />
+      {!cur && mode && <div className="hint top">{i18n.t("modes.current_terminal", { mode: mode.text })}</div>}
       <div className="list">
         {modeList(agentOf(s)).map((m) => {
           const why = unavailable(s, m.mode, models?.models);
@@ -179,16 +178,16 @@ export function ModeSheet({ remote, s, onClose }: { remote: Remote; s: SessionVi
       </div>
       {agentInfo(agentOf(s)).permissionModeNotice && <div className="hint">{agentInfo(agentOf(s)).permissionModeNotice}</div>}
       {error && (
-        <Banner kind="err" action="去终端" onAction={onClose}>
-          没能切换：{error}
+        <Banner kind="err" action={i18n.t("session.go_terminal")} onAction={onClose}>
+          {i18n.t("modes.switch_failed", { reason: error })}
         </Banner>
       )}
       <div className="hint">
         {busy
-          ? "正在切换…"
+          ? i18n.t("modes.switching")
           : s.info?.modeLocked
-            ? "以完全放行启动后本次会话内无法退回需审批的模式；要恢复审批请新建会话。"
-            : "只改当前会话"}
+            ? i18n.t("modes.locked_note")
+            : i18n.t("session.only_current")}
       </div>
     </Sheet>
   );
@@ -231,7 +230,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
     try {
       await remote.command(s.id, { case: "setModel", value: { sessionId: s.id, model: m.slug, effort: e } });
     } catch (err) {
-      setFailed(`没能切到 ${m.displayName || m.slug}：${errorText(err)}`);
+      setFailed(i18n.t("session.model_switch_failed", { model: m.displayName || m.slug, reason: errorText(err) }));
     } finally {
       setSwitching("");
     }
@@ -242,7 +241,7 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
       await remote.command(s.id, { case: "compact", value: { sessionId: s.id } });
       onClose();
     } catch (err) {
-      setFailed("没能压缩：" + errorText(err));
+      setFailed(i18n.t("session.compact_failed", { reason: errorText(err) }));
       setCompacting(false);
     }
   };
@@ -252,89 +251,87 @@ export function SessionSheet({ remote, s, running, onClose }: { remote: Remote; 
   const canSwitch = agentInfo(agent).switchesModelInSession;
   return (
     <Sheet onClose={onClose}>
-      <SheetHead name="会话设置" s={s} />
+      <SheetHead name={i18n.t("session.settings")} s={s} />
       {pct !== undefined && (
         <div className="ctxbox">
           <div className="ctxn">
-            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>已用 {pct}%</div>
+            <div className={"num" + (pct > CONTEXT_WARN ? " warn-text" : "")}>{i18n.t("session.context_used", { percent: pct! })}</div>
             <div className="muted small">
-              {compacting ? <><LoaderCircle /> 正在压缩…</> : `上下文 ${tokens(s.info!.contextTokens)} / ${tokens(s.info!.contextWindow)}`}
+              {compacting ? <><LoaderCircle />  {i18n.t("session.compacting")}</> : i18n.t("session.context_tokens", { used: tokens(s.info!.contextTokens), total: tokens(s.info!.contextWindow) })}
             </div>
             <div className={"bar" + (pct > CONTEXT_WARN ? " warn" : "")}><i style={{ width: `${Math.min(100, pct)}%` }} /></div>
           </div>
           <button className="btn sm" disabled={compacting || running || offline} onClick={() => void compact()}>
-            压缩
-          </button>
+            {i18n.t("session.compact")}</button>
         </div>
       )}
       {canSwitch ? (
         <>
-          <div className="fl">模型</div>
+          <div className="fl">{i18n.t("models.title")}</div>
           {error && (
-            <Banner kind="err" action="重试" onAction={() => setAttempt((a) => a + 1)}>
-              没能读取模型列表
-            </Banner>
+            <Banner kind="err" action={i18n.t("common.retry")} onAction={() => setAttempt((a) => a + 1)}>
+              {i18n.t("session.models_failed")}</Banner>
           )}
-          {!models && !error && <div className="hint">读取模型列表…</div>}
+          {!models && !error && <div className="hint">{i18n.t("session.reading_models")}</div>}
           <div className="list">
             {shown.map((m) => (
               <button key={m.slug} className={"mi" + (locked ? " dis" : "")} disabled={locked} onClick={() => m !== cur && void set(m, m.efforts.includes(effort) ? effort : m.defaultEffort)}>
                 <div className="mt">
                   {m.displayName || m.slug}
-                  {m.efforts.length === 0 ? <small>无推理强度</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>最高 {m.efforts[m.efforts.length - 1]}</small>}
+                  {m.efforts.length === 0 ? <small>{i18n.t("session.no_effort")}</small> : agentInfo(agent).showMaxEffort && m.efforts[m.efforts.length - 1] !== efforts[efforts.length - 1] && <small>{i18n.t("session.max_effort", { effort: m.efforts[m.efforts.length - 1] })}</small>}
                 </div>
                 {m === cur && <span className="ck"><Check /></span>}
               </button>
             ))}
             {models && !all && !few && (
               <button className="mi link-row" onClick={() => setAll(true)}>
-                全部模型<ChevronRight />
+                {i18n.t("models.all")}<ChevronRight />
               </button>
             )}
           </div>
-          <div className="fl">推理强度</div>
+          <div className="fl">{i18n.t("models.effort")}</div>
           {noEffort ? (
-            <div className="hint">{cur?.displayName || cur?.slug} 没有推理强度可调</div>
+            <div className="hint">{i18n.t("session.no_effort_adjustment", { model: cur?.displayName || cur?.slug || "" })}</div>
           ) : (
             <Segmented
               className="full wrap efforts"
-              label="推理强度"
+              label={i18n.t("models.effort")}
               value={effort}
               onChange={(e) => cur && void set(cur, e)}
               options={offered.map((e) => ({ value: e, label: e, disabled: locked || !cur }))}
             />
           )}
-          {switching && <Banner>正在切换到 {switching}…</Banner>}
+          {switching && <Banner>{i18n.t("session.switching_model", { model: switching })}</Banner>}
         </>
       ) : (
         <>
-          <div className="fl">模型</div>
+          <div className="fl">{i18n.t("models.title")}</div>
           <div className="list">
             <div className="mi dis" aria-disabled="true">
               <div className="mt">
-                <b>{cur?.displayName || modelLabel(models?.models, model, agent) || "默认模型"}</b>
-                <div className="md">运行中不能换模型，新建会话时可选</div>
+                <b>{cur?.displayName || modelLabel(models?.models, model, agent) || i18n.t("new_session.default_model")}</b>
+                <div className="md">{i18n.t("session.model_locked")}</div>
               </div>
             </div>
           </div>
-          <div className="fl">推理强度</div>
+          <div className="fl">{i18n.t("models.effort")}</div>
           <div className="list">
             <div className="mi dis" aria-disabled="true">
               <div className="mt">
-                <b>{effort || cur?.defaultEffort || "默认"}</b>
-                <div className="md">运行中不能换推理强度</div>
+                <b>{effort || cur?.defaultEffort || i18n.t("models.default")}</b>
+                <div className="md">{i18n.t("session.effort_locked")}</div>
               </div>
             </div>
           </div>
         </>
       )}
       {failed && (
-        <Banner kind="err" action="知道了" onAction={() => setFailed("")}>
+        <Banner kind="err" action={i18n.t("common.got_it")} onAction={() => setFailed("")}>
           {failed}
         </Banner>
       )}
       {canSwitch && (
-        <div className="hint">{running ? "这一轮在运行，结束后才能切换模型和推理强度" : offline ? "和服务器断线了，连上后才能切换" : "只在空闲时能切换，只改当前会话"}</div>
+        <div className="hint">{running ? i18n.t("session.switch_after_turn") : offline ? i18n.t("session.switch_connected") : i18n.t("session.switch_idle")}</div>
       )}
     </Sheet>
   );

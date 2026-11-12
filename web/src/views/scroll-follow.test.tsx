@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // A reader who has scrolled up is never pulled back to the end by what
 // arrives from the other side; near the end counts as being at the end.
@@ -137,7 +138,7 @@ describe("the chat of a session that is still talking", () => {
     await c.scrollTo(end() - 30, "wheel");
     expect(button()).toBeNull();
     await c.scrollTo(end() - 400, "wheel");
-    expect(button()?.textContent).toContain("回到最新");
+    expect(button()?.textContent).toContain(message("session.latest"));
     c.el.scrollTo = (options) => {
       if (typeof options === "object") c.el.scrollTop = options.top ?? 0;
       c.el.dispatchEvent(new Event("scroll", { bubbles: true }));
@@ -147,7 +148,7 @@ describe("the chat of a session that is still talking", () => {
     expect(button()).toBeNull();
     await c.scrollTo(end() - 400, "wheel");
     await c.theyWrite("another reply");
-    expect(button()?.textContent).toContain("1 条新消息");
+    expect(button()?.textContent).toContain(message("session.new_messages", {"count":1}));
     await c.scrollTo(end());
     expect(button()).toBeNull();
   });
@@ -237,7 +238,7 @@ describe("sending from far up", () => {
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "one more thing");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await act(async () => { host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.click(); });
+    await act(async () => { host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!.click(); });
     expect(top).toBe(2200);
   });
 });

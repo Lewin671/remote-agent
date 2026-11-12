@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import { memo, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import type { HistoryPage, TerminalHistory } from "../terminal-history";
 import { isWide, parseSgrLine, widthSegments, type Run } from "../sgr";
@@ -65,11 +66,11 @@ const Line = memo(function Line({ runs, height }: { runs: Run[]; height: number 
 });
 
 function status(history: TerminalHistory, online: boolean, load: () => void) {
-  if (history.pending) return <>读取更早的记录…</>;
-  if (history.closed) return <>终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的</>;
-  if (history.error === "expired") return <>记录已过期，回到实时后重新往上滑</>;
-  if (history.error === "failed") return <>读取失败<button disabled={!online} onClick={load}>重试</button></>;
-  if (!history.cursor && history.pages.length) return <>已经是保留的最早记录</>;
+  if (history.pending) return <>{i18n.t("terminal.earlier")}</>;
+  if (history.closed) return <>{i18n.t("terminal.history_closed")}</>;
+  if (history.error === "expired") return <>{i18n.t("terminal.history_expired")}</>;
+  if (history.error === "failed") return <>{i18n.t("terminal.read_failed")}<button disabled={!online} onClick={load}>{i18n.t("common.retry")}</button></>;
+  if (!history.cursor && history.pages.length) return <>{i18n.t("terminal.history_start")}</>;
   return null;
 }
 
@@ -141,7 +142,7 @@ export function TerminalReader({ history, load, online, font, height, offset, le
       className="terminal-history"
       ref={box}
       role="region"
-      aria-label="终端记录"
+      aria-label={i18n.t("terminal.history")}
       style={{ fontFamily: TERM_FONT, fontSize: font, lineHeight: `${height}px`, color: DEFAULT_FG }}
       onScroll={() => { measure(); readEarlier(); }}
       onWheel={(e) => wheel(e) === "y" && e.deltaY > 0 && atBottom() && onLeave()}
@@ -170,8 +171,8 @@ export function TerminalReader({ history, load, online, font, height, offset, le
 /** The floating pill that leaves the reader. */
 export function BackToLive({ fresh, onLeave }: { fresh: boolean; onLeave: () => void }) {
   return (
-    <button className="tpill" onClick={onLeave} aria-label={fresh ? "有新输出，回到实时" : "回到实时"}>
-      {fresh ? <><i />有新输出<ArrowDown /></> : <><ArrowDown />回到实时</>}
+    <button className="tpill" onClick={onLeave} aria-label={fresh ? i18n.t("terminal.fresh_live") : i18n.t("terminal.live")}>
+      {fresh ? <><i />{i18n.t("terminal.fresh")}<ArrowDown /></> : <><ArrowDown />{i18n.t("terminal.live")}</>}
     </button>
   );
 }

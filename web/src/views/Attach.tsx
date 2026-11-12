@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 // Choosing images for a message: the ＋ button (the system's picker:
 // library, camera, files), dropping or pasting on wide screens, and the
 // tray of chosen images above the text with each one's upload. A computer
@@ -8,7 +9,7 @@ import { memo, useEffect, useRef, useState, type ClipboardEvent, type DragEvent,
 import { createPortal } from "react-dom";
 import { keepComposerFocus, useComposerMenuDismiss } from "./ComposerPicker";
 import { Tray, type TrayItem } from "../attach";
-import { imageFailureLine, imageProblem, ORIGINAL_IMAGE_HINT } from "../image-problem";
+import { imageFailureLine, imageProblem, originalImageHint } from "../image-problem";
 import { DraftImageViewer } from "./Images";
 import { clock, machineName } from "../model";
 import type { MachineView, Remote } from "../remote";
@@ -59,10 +60,10 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
 /** Why images cannot be added now, or "". */
 export function attachBlocked(remote: Remote, m: MachineView | undefined): string {
   const name = machineName(m);
-  if (!m?.online) return `${name} 离线，连上后才能添加图片`;
-  if (remote.conn !== "online") return "和服务器断线了，连上后才能添加图片";
-  if (!m.meta) return `还没读到 ${name} 的信息，稍后才能添加图片`;
-  if (!m.meta.capabilities?.imageUpload) return `${name} 上 remote-agent 的目录路径带空格，不能发图片`;
+  if (!m?.online) return i18n.t("attachment.computer_offline", { name });
+  if (remote.conn !== "online") return i18n.t("attachment.disconnected");
+  if (!m.meta) return i18n.t("attachment.computer_unread", { name });
+  if (!m.meta.capabilities?.imageUpload) return i18n.t("attachment.path_spaces", { name });
   return "";
 }
 
@@ -118,17 +119,17 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
     if (blocked) return onBlocked(blocked);
     const filesFull = tray.files().length >= tray.maxFiles;
     // The library is full only when neither another image nor a video fits.
-    if (file ? filesFull : tray.full() && (!tray.fileSupported || filesFull)) return onBlocked(file ? `一条消息最多 ${tray.maxFiles} 个文件` : `一条消息最多 ${tray.max} 张`);
+    if (file ? filesFull : tray.full() && (!tray.fileSupported || filesFull)) return onBlocked(file ? i18n.t("attachment.max_files", { count: tray.maxFiles }) : i18n.t("attachment.max_images", { count: tray.max }));
     (file ? files : input).current?.click();
   };
   return <span className="attach-wrap" ref={wrap}>
-    <button disabled={tray.restoring} className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
+    <button disabled={tray.restoring} className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? i18n.t("new_session.ios_attach") : i18n.t("image.add")} aria-expanded={tray.fileSupported ? open : undefined}
       onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
     {open && (
       <div className="attach-menu glass" role="menu">
-        <button role="menuitem" onClick={() => pick(false)}><ImageIcon />照片和视频</button>
-        <button role="menuitem" onClick={() => pick(true)}><FileIcon />文件</button>
-        <p>文件原样发送，包含其中的元数据。</p>
+        <button role="menuitem" onClick={() => pick(false)}><ImageIcon />{i18n.t("attachment.photos_videos")}</button>
+        <button role="menuitem" onClick={() => pick(true)}><FileIcon />{i18n.t("attachment.file")}</button>
+        <p>{i18n.t("attachment.metadata")}</p>
       </div>
     )}
     <FilePickers tray={tray} fileSupported={tray.fileSupported} media={input} files={files} />
@@ -155,24 +156,24 @@ function Thumb({ item, index, count, onOpen, onRemove }: { item: TrayItem; index
     return () => URL.revokeObjectURL(u);
   }, [item.thumb]);
   const busy = item.state === "preparing" || item.state === "uploading";
-  const state = item.state === "failed" ? "失败：" + imageProblem(item.error ?? "").message
-    : item.state === "preparing" ? "正在处理" : item.state === "uploading" ? "正在传到电脑" : "已传到电脑";
+  const state = item.state === "failed" ? i18n.t("attachment.failure", { reason: imageProblem(item.error ?? "").message })
+    : item.state === "preparing" ? i18n.t("image.preparing") : item.state === "uploading" ? i18n.t("image.uploading") : i18n.t("image.uploaded");
   return (
     <span className="draft-thumb">
-      <button className="pic tthumb draft-open" onClick={onOpen} aria-label={`图片 ${index}，共 ${count} 张，${state}`}>
+      <button className="pic tthumb draft-open" onClick={onOpen} aria-label={i18n.t("image.position_state", { index, count, state })}>
       {url && <img src={url} alt="" />}
       {busy && item.progress > 0 && item.progress < 1 ? (
         <span className="pct">
           <b style={{ width: `${Math.round(item.progress * 100)}%` }} />
         </span>
       ) : (
-        busy && <span className="ring spin" aria-label="上传中" />
+        busy && <span className="ring spin" aria-label={i18n.t("attachment.uploading")} />
       )}
       {item.state === "failed" && (
-        <span className="badge" aria-hidden="true">失败</span>
+        <span className="badge" aria-hidden="true">{i18n.t("attachment.failed")}</span>
       )}
       </button>
-      <button className="x" onClick={onRemove} aria-label={`移除图片 ${index}`}>
+      <button className="x" onClick={onRemove} aria-label={i18n.t("image.remove_index", { index })}>
         <span className="draft-remove-mark"><X /></span>
       </button>
     </span>
@@ -220,14 +221,13 @@ function VideoThumb({ item, onRemove, onRetry }: { item: TrayItem; onRemove: () 
           <b style={{ width: `${Math.round(item.progress * 100)}%` }} />
         </span>
       ) : (
-        busy && <span className="ring spin" aria-label="上传中" />
+        busy && <span className="ring spin" aria-label={i18n.t("attachment.uploading")} />
       )}
       {item.state === "failed" && (
         <button className="badge retry" onClick={onRetry} title={item.error}>
-          重试
-        </button>
+          {i18n.t("common.retry")}</button>
       )}
-      <button className="x" onClick={onRemove} aria-label={`移除视频 ${item.name ?? ""}`.trim()}>
+      <button className="x" onClick={onRemove} aria-label={i18n.t("attachment.remove_video", { name: item.name ?? "" }).trim()}>
         <X />
       </button>
     </span>
@@ -279,11 +279,11 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
               role="switch"
               aria-checked={tray.original}
               disabled={!tray.canSwitchOriginal()}
-              title={tray.canSwitchOriginal() ? undefined : "放回的图片没有原始文件，不能切换原图"}
+              title={tray.canSwitchOriginal() ? undefined : i18n.t("image.original_missing")}
               onClick={() => tray.setOriginal(!tray.original)}
             >
               <i>{tray.original && <Check />}</i>
-              原图{tray.original && tray.totalBytes() > 0 ? ` · 共 ${mb(tray.totalBytes())}` : ""}
+              {i18n.t("image.original")}{tray.original && tray.totalBytes() > 0 ? i18n.t("image.total_size", { size: mb(tray.totalBytes()) }) : ""}
             </button>
             <span>
               {images.length} / {tray.max}
@@ -291,10 +291,10 @@ function Attachments({ tray, note, remote }: { tray: Tray; note?: ReactNode; rem
           </div>
         </>
       )}
-      {tray.original && images.length > 0 && <div className="att-hint">{ORIGINAL_IMAGE_HINT}</div>}
+      {tray.original && images.length > 0 && <div className="att-hint">{originalImageHint()}</div>}
       {files.length > 0 && <div className="file-chips">{files.map((i) => <FileChip key={i.key} file={{ name: i.name!, sizeBytes: BigInt(i.bytes ?? 0) }} state={i.state} progress={i.progress} error={i.error} onRetry={() => tray.retry(i.key)} onRemove={() => tray.remove(i.key)} />)}</div>}
-      {tray.files().length > 0 && <div className="att-hint">文件原样发送，包含其中的元数据。</div>}
-      {failedFiles.length > 0 && <Banner kind="err">{failedFiles[0].error}。点「重试」或移除后才能发送</Banner>}
+      {tray.files().length > 0 && <div className="att-hint">{i18n.t("attachment.metadata")}</div>}
+      {failedFiles.length > 0 && <Banner kind="err">{i18n.t("attachment.failed_send_hint", { reason: failedFiles[0].error ?? "" })}</Banner>}
       {failed.length > 0 && (
         <Banner kind="err">
           {imageFailureLine(failed.map(i => i.error ?? ""))}
@@ -337,7 +337,7 @@ export function useDropPaste(tray: Tray, blocked: string, onBlocked: (why: strin
         const folders = items.filter((item) => item.kind === "file" && item.webkitGetAsEntry?.()?.isDirectory);
         if (folders.length) {
           e.preventDefault();
-          onBlocked("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+          onBlocked(i18n.t("attachment.zip_folder"));
           const files = items.filter((item) => !folders.includes(item));
           take(attachmentFiles(files as unknown as DataTransferItemList));
         } else if (take(attachmentFiles(e.dataTransfer.files))) e.preventDefault();

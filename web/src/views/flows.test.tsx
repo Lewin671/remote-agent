@@ -68,7 +68,7 @@ const button = (text: string | RegExp, within: ParentNode = host) =>
   [...within.querySelectorAll("button")].find((b) => (typeof text === "string" ? b.textContent === text : text.test(b.textContent ?? ""))) as HTMLButtonElement | undefined;
 
 /** The round button at the input's right: sends, or starts a new session. */
-const sendButton = () => host.querySelector<HTMLButtonElement>('button[aria-label="发送"], button[aria-label="开始新会话"]') ?? undefined;
+const sendButton = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"], button[aria-label="${message("new_session.start")}"]`) ?? undefined;
 
 async function click(b: HTMLElement | undefined) {
   expect(b).toBeTruthy();
@@ -110,10 +110,10 @@ it("keeps the context warning and the settings behind ⋯ on a narrow phone", as
     // ⋯ carries the high context as a dot, and its menu the reading; ＋
     // only adds images.
     expect(host.querySelector(".more.context-high")?.getAttribute("aria-label")).toContain("上下文 86%");
-    expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe("添加图片");
-    expect(host.querySelector('button[aria-label="发送"]')).toBeTruthy();
+    expect(host.querySelector(".cm-plus")?.getAttribute("aria-label")).toBe(message("image.add"));
+    expect(host.querySelector(`button[aria-label="${message("composer.send")}"]`)).toBeTruthy();
     await fromMenu("上下文已用 86%");
-    expect(host.textContent).toContain("会话设置");
+    expect(host.textContent).toContain(message("session.settings"));
   } finally {
     act(() => viewport.setViewport({ width: 1024, height: 768 }));
   }
@@ -125,13 +125,13 @@ it("lets the home card handle one approval after another", async () => {
   // s-appr waits on two approvals and is listed first: the dark card.
   const card = () => host.querySelector(".tc")!;
   expect(card().textContent).toContain("rm -rf gen/remoteagent");
-  await click(button("允许", card()));
+  await click(button(message("approval.allow"), card()));
   // Submitted, the card is one line of where it stands until the next comes up.
   await vi.waitFor(() => expect(card().textContent).toContain("/etc/hosts"), { timeout: 3000 });
   // The second approval's buttons start fresh, not locked as "允许中…".
-  const allow = button("允许", card());
+  const allow = button(message("approval.allow"), card());
   expect(allow?.disabled).toBe(false);
-  expect(button("不允许", card())?.disabled).toBe(false);
+  expect(button(message("approval.deny"), card())?.disabled).toBe(false);
 });
 
 it("names the computer on the home card only where the account has more than one", () => {
@@ -214,12 +214,12 @@ it("keeps a question's progress across collapsing the dock", async () => {
   const r = demo();
   mount(<AskDock r={r} />);
   await click(button(/^只升小版本/));
-  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2})), { timeout: 3000 });
   // The keyboard comes up and leaves no room, then goes away again.
   act(() => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")).toBeTruthy();
   act(() => root!.render(<AskDock r={r} />));
-  expect(host.textContent).toContain("第 2 题，共 2 题");
+  expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2}));
   expect(host.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
 });
 
@@ -236,7 +236,7 @@ it("moves to the next question when a retried answer goes through", async () => 
   await click(button(/^只升小版本/));
   await vi.waitFor(() => expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy(), { timeout: 3000 });
   await click(button(message("common.retry", {}, "zh-CN")));
-  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2})), { timeout: 3000 });
   expect(button(/^更新到 1.27/)?.disabled).toBe(false);
 });
 
@@ -366,12 +366,12 @@ it("answers a multi-select question with every ticked option", async () => {
     />,
   );
   expect(host.textContent).toContain(message("list_state.agent_asking", {"agent":"Claude Code"}, "zh-CN"));
-  expect(button("选好后提交")?.disabled).toBe(true);
+  expect(button(message("dock.select_then_submit"))?.disabled).toBe(true);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
   // Ticking sends nothing yet.
   expect(sent).toEqual([]);
-  await click(button("提交 2 项"));
+  await click(button(message("dock.submit_selected", {"count":2})));
   await vi.waitFor(() => expect(sent).toHaveLength(1));
   expect(sent[0]).toMatchObject({ questionId: "cq", questionIndex: 0, options: [1, 3] });
 });
@@ -380,19 +380,19 @@ it("greys out modes a Claude Code session cannot switch to, and effort for a mod
   const r = demo();
   const s = r.sessions.get("s-claude-idle")!;
   mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
-  expect(button(/^完全放行/)?.disabled).toBe(true);
-  expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
+  expect(button(new RegExp("^" + message("modes.full_access")))?.disabled).toBe(true);
+  expect(host.textContent).toContain(message("modes.full_unavailable"));
   // The model list says which models come without auto; until it has come,
   // nothing is greyed out.
-  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(true), { timeout: 3000 });
-  expect(host.textContent).toContain("当前模型不支持");
-  expect(button(/^询问/)?.disabled).toBe(false);
+  await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")))?.disabled).toBe(true), { timeout: 3000 });
+  expect(host.textContent).toContain(message("modes.model_unsupported"));
+  expect(button(new RegExp("^" + message("modes.ask")))?.disabled).toBe(false);
   // acceptEdits is none of the four: nothing is ticked, and it says so.
   expect(host.querySelector(".ck")).toBeNull();
-  expect(host.textContent).toContain("当前：accept edits（在终端设置）");
+  expect(host.textContent).toContain(message("modes.current_terminal", {"mode":"accept edits"}));
   expect(host.textContent).toContain("不提供切到 accept edits 的按钮");
   act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
-  await vi.waitFor(() => expect(host.textContent).toContain("Haiku 4.5 没有推理强度可调"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.textContent).toContain(message("session.no_effort_adjustment", {"model":"Haiku 4.5"})), { timeout: 3000 });
   expect(host.querySelector(".slider")).toBeNull();
 });
 
@@ -400,11 +400,11 @@ it("offers no clear-and-implement on a Claude Code plan", () => {
   const r = demo();
   const plan = create(PlanProposedSchema, { text: "1. do it" });
   mount(<PlanPage remote={r} sid="s-claude" plan={plan} title="t" onBack={() => undefined} />);
-  expect(button("批准")).toBeTruthy();
-  expect(button("修改计划…")).toBeTruthy();
-  expect(button("清空上下文后执行")).toBeUndefined();
+  expect(button(message("approval.approve"))).toBeTruthy();
+  expect(button(message("modes.plan_edit"))).toBeTruthy();
+  expect(button(message("dock.plan_clear"))).toBeUndefined();
   act(() => root!.render(<PlanPage remote={r} sid="s-plan" plan={plan} title="t" onBack={() => undefined} />));
-  expect(button("清空上下文后执行")).toBeTruthy();
+  expect(button(message("dock.plan_clear"))).toBeTruthy();
 });
 
 it("shows Antigravity session settings as read-only, locks full-access modes, and hides fork", async () => {
@@ -438,11 +438,11 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
     return DemoRemote.prototype.machineCommand.call(r, m, cmd);
   };
   mount(<ModeSheet remote={r} s={s} onClose={() => undefined} />);
-  await vi.waitFor(() => expect(button(/^自动/)?.disabled).toBe(false), { timeout: 3000 });
-  expect(host.textContent).not.toContain("当前账户不支持自动模式");
-  expect(button(/^完全放行/)?.disabled).toBe(true);
-  expect(host.textContent).toContain("本会话启动时未启用；需要时新建会话选择");
-  expect(button(/^询问/)?.disabled).toBe(false);
+  await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")))?.disabled).toBe(false), { timeout: 3000 });
+  expect(host.textContent).not.toContain(message("modes.account_unsupported"));
+  expect(button(new RegExp("^" + message("modes.full_access")))?.disabled).toBe(true);
+  expect(host.textContent).toContain(message("modes.full_unavailable"));
+  expect(button(new RegExp("^" + message("modes.ask")))?.disabled).toBe(false);
 
   // When started in full access, all four modes are locked.
   s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS, modeLocked: true, fullAccessUnavailable: false };
@@ -450,15 +450,15 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
   for (const label of [/^询问/, /^自动/, /^计划/, /^完全放行/]) {
     expect(button(label)?.disabled).toBe(true);
   }
-  expect(host.textContent).toContain("本会话以完全放行启动，不能切换审批模式");
+  expect(host.textContent).toContain(message("modes.locked"));
 
   // Session settings show context & compact, with read-only model and effort.
   act(() => root!.render(<SessionSheet remote={r} s={s} running={false} onClose={() => undefined} />));
   await vi.waitFor(() => expect(host.textContent).toContain("Gemini 3.1 Pro (High)"), { timeout: 3000 });
   expect(host.textContent).toContain("28%");
-  expect(button("压缩")).toBeTruthy();
-  expect(host.textContent).toContain("运行中不能换模型，新建会话时可选");
-  expect(host.textContent).toContain("运行中不能换推理强度");
+  expect(button(message("session.compact"))).toBeTruthy();
+  expect(host.textContent).toContain(message("session.model_locked"));
+  expect(host.textContent).toContain(message("session.effort_locked"));
   expect(host.querySelector(".efforts")).toBeNull();
 
   // Session ⋯ menu omits 分叉会话 for Antigravity, and plan dock shows Antigravity's note.
@@ -481,7 +481,7 @@ it("shows Antigravity session settings as read-only, locks full-access modes, an
       />,
     ),
   );
-  expect(host.textContent).toContain("批准后回到默认模式（询问）");
+  expect(host.textContent).toContain(message("dock.agy_plan_note"));
 });
 
 it("replaces the new-task page in the history with the session it started", async () => {
@@ -520,7 +520,7 @@ it("never sends one project's unknown start from another project's box", async (
   act(() => root!.render(<Box pkey="/Users/me/Code/shop" />));
   expect(ns!.frozen).toBe(false);
   await act(async () => void (await ns!.create("在 shop 里做")));
-  expect(sent[1]).toMatchObject({ cwd: "/Users/me/Code/shop", prompt: "在 shop 里做" });
+  expect(sent[1]).toMatchObject({ cwd: "/Users/me/Code/shop", prompt: message("new_session.location", {"project":" shop 里做"}) });
   expect(sent[1].requestId).not.toBe(sent[0].requestId);
   // Back in foo, the unknown start is still the one retried.
   act(() => root!.render(<Box pkey="/Users/me/Code/foo" />));
@@ -570,17 +570,17 @@ it("puts a card's command first, five whole lines of it, and allows only once it
   expect(order.indexOf("cmd clamp")).toBeLessThan(order.indexOf("y"));
   expect(order.indexOf("y")).toBeLessThan(order.indexOf("btns decide"));
   // No layout here: the count is the command's own 40 lines, five shown.
-  expect(card().querySelector(".ml")!.textContent).toBe("还有 35 行没显示");
+  expect(card().querySelector(".ml")!.textContent).toBe(message("markdown.ios_hidden_lines", {"count":35}));
   // Not seen whole, it cannot be allowed: 不允许 and 看完整命令.
-  expect(button("允许", card())).toBeUndefined();
-  expect(button("不允许", card())).toBeTruthy();
-  await click(button("看完整命令", card()));
+  expect(button(message("approval.allow"), card())).toBeUndefined();
+  expect(button(message("approval.deny"), card())).toBeTruthy();
+  await click(button(message("approval.full_command"), card()));
   expect(cmd.classList.contains("clamp")).toBe(false);
-  expect(card().querySelector(".ml")!.textContent).toContain("共 40 行");
-  expect(button("允许", card())?.disabled).toBe(false);
+  expect(card().querySelector(".ml")!.textContent).toContain(message("markdown.line_count", {"count":40}));
+  expect(button(message("approval.allow"), card())?.disabled).toBe(false);
   await click(button(message("markdown.collapse", {}, "zh-CN"), card()));
   expect(cmd.classList.contains("clamp")).toBe(true);
-  expect(button("允许", card())).toBeUndefined();
+  expect(button(message("approval.allow"), card())).toBeUndefined();
 });
 
 it("allows a card's command of five lines or fewer right away", () => {
@@ -591,8 +591,8 @@ it("allows a card's command of five lines or fewer right away", () => {
   expect(card.querySelector("pre.cmd")!.textContent).toContain("rm -rf gen/remoteagent");
   expect(card.querySelector("pre.cmd")!.classList.contains("clamp")).toBe(false);
   expect(card.textContent).not.toContain("没显示");
-  expect(button("看完整命令", card)).toBeUndefined();
-  expect(button("允许", card)).toBeTruthy();
+  expect(button(message("approval.full_command"), card)).toBeUndefined();
+  expect(button(message("approval.allow"), card)).toBeTruthy();
 });
 
 it("writes a reason in place on 不允许, then shrinks to a line once sent", async () => {
@@ -602,16 +602,16 @@ it("writes a reason in place on 不允许, then shrinks to a line once sent", as
   r.command = async (...args) => { await sent.wait; return command(...args); };
   mount(<Home remote={r} go={() => undefined} />);
   const card = () => host.querySelector(".tc")!;
-  await click(button("不允许", card()));
+  await click(button(message("approval.deny"), card()));
   const field = card().querySelector<HTMLTextAreaElement>("textarea.inp")!;
-  expect(field.placeholder).toBe("说说该怎么做，可以不填");
-  expect([...card().querySelectorAll(".btns button")].map((b) => b.textContent)).toEqual([message("common.cancel", {}, "zh-CN"), "不允许"]);
+  expect(field.placeholder).toBe(message("approval.reason_placeholder"));
+  expect([...card().querySelectorAll(".btns button")].map((b) => b.textContent)).toEqual([message("common.cancel", {}, "zh-CN"), message("approval.deny")]);
   await click(button(message("common.cancel", {}, "zh-CN"), card()));
   expect(card().querySelector("textarea")).toBeNull();
-  await click(button("不允许", card()));
-  await click(button("不允许", card().querySelector(".btns")!));
+  await click(button(message("approval.deny"), card()));
+  await click(button(message("approval.deny"), card().querySelector(".btns")!));
   expect(card().classList.contains("line")).toBe(true);
-  expect(card().textContent).toContain("已拒绝");
+  expect(card().textContent).toContain(message("approval.denied"));
   await act(async () => sent.release());
   await vi.waitFor(() => expect(card().textContent).toContain("/etc/hosts"), { timeout: 3000 });
 });
@@ -653,12 +653,12 @@ it("lets a multi-select answer be changed and sent again after a definite failur
   const { sent } = failingAnswers(r, new CommandError("failed_precondition", "问题已经变了"));
   mount(<ClaudeAsk r={r} />);
   await click(button(/^按 IP/));
-  await click(button("提交 1 项"));
+  await click(button(message("dock.submit_selected", {"count":1})));
   await vi.waitFor(() => expect(host.textContent).toContain("没能提交"));
   // Change the answer: the error goes and 提交 comes back.
   await click(button(/^按账户/));
   expect(host.textContent).not.toContain("没能提交");
-  await click(button("提交 2 项"));
+  await click(button(message("dock.submit_selected", {"count":2})));
   await vi.waitFor(() => expect(sent).toHaveLength(2));
   expect(sent[1]).toEqual([1, 2]);
 });
@@ -669,7 +669,7 @@ it("retries a multi-select answer of unknown outcome unchanged", async () => {
   mount(<ClaudeAsk r={r} />);
   await click(button(/^按 IP/));
   await click(button(/^按设备/));
-  await click(button("提交 2 项"));
+  await click(button(message("dock.submit_selected", {"count":2})));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
   // The ticks are locked to what was sent; only 重试 remains.
   expect(button(/^按账户/)?.disabled).toBe(true);
@@ -703,7 +703,7 @@ it("shows a dock with no room to open as one line that opens its page", async ()
   // No room: the card needs at least its margin.
   act(() => root!.render(dock(0)));
   const mini = host.querySelector(".pending:not(.open)")!;
-  expect(mini.textContent).toContain("请求执行");
+  expect(mini.textContent).toContain(message("list_state.android_request_command"));
   await click(mini.querySelector<HTMLButtonElement>(".pending-sum")!);
   expect(opened).toEqual(["detail:a1"]);
 });
@@ -713,9 +713,9 @@ it("keeps a question's progress between its page and the dock", async () => {
   const q = derive(r.events("s-ask")).questions.get("q1")!;
   mount(<QuestionPage remote={r} sid="s-ask" q={q} agent={Agent.CODEX} title="升级依赖" onBack={() => undefined} onTerminal={() => undefined} />);
   await click(button(/^只升小版本/));
-  await vi.waitFor(() => expect(host.textContent).toContain("第 2 题，共 2 题"), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2})), { timeout: 3000 });
   act(() => root!.render(<AskDock r={r} />));
-  expect(host.textContent).toContain("第 2 题，共 2 题");
+  expect(host.textContent).toContain(message("dock.question_progress", {"index":2,"count":2}));
   // The one-line form names the question now being asked.
   act(() => root!.render(<AskDock r={r} room={100} />));
   expect(host.querySelector(".pending:not(.open)")!.textContent).toContain("要顺便更新 go.mod 的 Go 版本吗？");
@@ -734,7 +734,7 @@ it("shortens paths in tool one-liners without showing output", () => {
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const row = [...host.querySelectorAll(".tool code")].find((c) => c.textContent?.startsWith("cat "))!;
   expect(row.textContent).toBe("cat go.mod ~/.zshrc");
-  expect(host.textContent).toContain("退出码 1");
+  expect(host.textContent).toContain(message("tools.exit_code", {"code":"1"}));
   expect(host.querySelector(".toolout")).toBeNull();
 });
 
@@ -753,8 +753,8 @@ it("keeps ticks and a pending answer between the dock and the question page", as
   expect(button(/按 IP/)?.getAttribute("aria-checked")).toBe("true");
   await click(button(/按设备/));
   act(() => root!.render(<ClaudeAsk r={r} />));
-  expect(button("提交 2 项")).toBeTruthy();
-  await click(button("提交 2 项"));
+  expect(button(message("dock.submit_selected", {"count":2}))).toBeTruthy();
+  await click(button(message("dock.submit_selected", {"count":2})));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
   // The unknown outcome follows to the page, and its retry is the same request.
   act(() => root!.render(<ClaudeQuestionPage r={r} />));
@@ -777,7 +777,7 @@ it("gives the next question call on the page fresh options", async () => {
   );
   mount(<ClaudeQuestionPage r={r} />);
   await click(button(/按 IP/));
-  await click(button("提交 1 项"));
+  await click(button(message("dock.submit_selected", {"count":1})));
   await vi.waitFor(() => expect(button(/按 IP/)?.disabled).toBe(true));
   act(() => root!.render(<ClaudeQuestionPage r={r} id="cq2" />));
   expect(button(/^要/)?.disabled).toBe(false);
@@ -796,8 +796,8 @@ it("keeps the message being typed when a page opens and closes", async () => {
   expect(input().value).toBe("顺便看下 lint");
   // The docked plan is open: to its page, then back.
   await click(button(message("markdown.expand", {}, "zh-CN")));
-  expect(host.querySelector(".navbar")!.textContent).toContain("计划");
-  expect(button("清空上下文后执行")).toBeTruthy();
+  expect(host.querySelector(".navbar")!.textContent).toContain(message("modes.plan"));
+  expect(button(message("dock.plan_clear"))).toBeTruthy();
   await click(host.querySelector<HTMLButtonElement>(".navbar .back")!);
   expect(input().value).toBe("顺便看下 lint");
 });
@@ -877,7 +877,7 @@ it("keeps an answer of unknown outcome unknown when its retry comes back expired
   };
   mount(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
-  await click(button("提交 1 项"));
+  await click(button(message("dock.submit_selected", {"count":1})));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
@@ -897,8 +897,8 @@ it("shortens a file edit's whole path, spaces and all", () => {
   push("/Users/me/Code/foo/sub dir/b.go");
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const titles = [...host.querySelectorAll(".tool code")].map((c) => c.textContent);
-  expect(titles).toContain("编辑 ~/Code/foo bar/a.go");
-  expect(titles).toContain("编辑 sub dir/b.go");
+  expect(titles).toContain(message("tools.edit_file", {"path":"~/Code/foo bar/a.go"}));
+  expect(titles).toContain(message("tools.edit_file", {"path":"sub dir/b.go"}));
 });
 
 it("shows a failed call's exit code beside its approval", () => {
@@ -911,8 +911,8 @@ it("shows a failed call's exit code beside its approval", () => {
   push({ case: "toolCall", value: { title: "make test", itemType: "Bash", kind: ToolKind.COMMAND, status: "failed", exitCode: 7, inputDigest: "d-make" } });
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const row = [...host.querySelectorAll(".tool")].find((t) => t.textContent?.includes("make test"))!;
-  expect(row.textContent).toContain("退出码 7");
-  expect(row.textContent).toContain("已允许");
+  expect(row.textContent).toContain(message("tools.exit_code", {"code":"7"}));
+  expect(row.textContent).toContain(message("approval.allowed"));
 });
 
 it("keeps an answer of unknown outcome unknown when its retry finds the machine offline", async () => {
@@ -929,7 +929,7 @@ it("keeps an answer of unknown outcome unknown when its retry finds the machine 
   };
   mount(<ClaudeAsk r={r} />);
   await click(button(/按 IP/));
-  await click(button("提交 1 项"));
+  await click(button(message("dock.submit_selected", {"count":1})));
   await vi.waitFor(() => expect(host.textContent).toContain("不确定提交了没有"));
   await click(button(message("common.retry", {}, "zh-CN")));
   await vi.waitFor(() => expect(slots).toHaveLength(2));
@@ -1230,7 +1230,7 @@ it("keeps a project's model and effort after the page remounts", async () => {
     return real(machine, cmd);
   };
   // An empty message is not sent; the first message starts the session.
-  const go = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
+  const go = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!;
   expect(go().disabled).toBe(true);
   await act(async () => {
     const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
@@ -1294,18 +1294,18 @@ it("keeps the effort in sight under a long model list", async () => {
   const project = "/Users/me/Code/foo";
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
   await fromMenu("新会话设置");
-  await vi.waitFor(() => expect(button(/^全部模型/, document)).toBeTruthy(), { timeout: 3000 });
+  await vi.waitFor(() => expect(button(new RegExp("^" + message("models.all")), document)).toBeTruthy(), { timeout: 3000 });
   // The default row, three models and the link: the effort follows right after.
   expect(document.querySelectorAll(".list .mi")).toHaveLength(5);
   expect(button("high", document)).toBeTruthy();
-  await click(button(/^全部模型/, document));
+  await click(button(new RegExp("^" + message("models.all")), document));
   expect(button("Old 7", document)).toBeTruthy();
   await click(button("Old 7", document));
   await click(button(message("common.done", {}, "zh-CN"), document));
   await fromMenu("新会话设置");
   // Collapsed again, the picked model is still listed and checked.
   const sheet = () => [...document.querySelectorAll<HTMLElement>(":is(.sheet, .composer-picker)")].at(-1)!;
-  await vi.waitFor(() => expect(button(/^全部模型/, sheet())).toBeTruthy());
+  await vi.waitFor(() => expect(button(new RegExp("^" + message("models.all")), sheet())).toBeTruthy());
   expect(button("Old 7", sheet())?.querySelector(".ck")).toBeTruthy();
 });
 
@@ -1317,7 +1317,7 @@ it("names a new project's default model as Codex does, even when /model hides it
   mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
   await fromMenu("新会话设置");
   await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toContain("GPT-6.1-Sol"), { timeout: 3000 });
-  expect(document.querySelector(".mi")?.textContent).toContain("默认（GPT-6.1-Sol）");
+  expect(document.querySelector(".mi")?.textContent).toContain(message("models.default_named", {"model":"GPT-6.1-Sol"}));
 });
 
 it("uses the machine selected for an existing path and excludes its missing Claude", async () => {
@@ -1350,8 +1350,8 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   mount(<NewFlow remote={r} go={(to) => opened.push(to)} start="new" onClose={() => undefined} />);
   await vi.waitFor(() => expect(button("Code", document)).toBeTruthy());
   await click(button("Code", document));
-  await vi.waitFor(() => expect(button("用 Code 这个目录", document)).toBeTruthy());
-  await click(button("用 Code 这个目录", document));
+  await vi.waitFor(() => expect(button(message("projects.use_directory", {"name":"Code"}), document)).toBeTruthy());
+  await click(button(message("projects.use_directory", {"name":"Code"}), document));
   const added = "/Users/me/Code";
   expect(opened).toEqual(["p/" + encodeURIComponent(added)]);
   // The machine the sheet had selected.
@@ -1377,8 +1377,8 @@ it("keeps a project added with 新项目… in the lists before its first sessio
   await click(button("Code", document));
   await vi.waitFor(() => expect(button("foo", document)).toBeTruthy());
   await click(button("foo", document));
-  await vi.waitFor(() => expect(button("用 foo 这个目录", document)).toBeTruthy());
-  await click(button("用 foo 这个目录", document));
+  await vi.waitFor(() => expect(button(message("projects.use_directory", {"name":"foo"}), document)).toBeTruthy());
+  await click(button(message("projects.use_directory", {"name":"foo"}), document));
   await act(async () => { await vi.waitFor(() => expect(r.prefs.pending.size).toBe(0)); });
   expect(r.projectPrefs().settings.find((s) => s.path === foo)).toEqual(before);
 });
@@ -1411,7 +1411,7 @@ it("tells how to trust a folder in Claude Code, whose prompt starts on No, exit"
     />
   );
   mount(popup(Agent.CLAUDE));
-  expect(host.textContent).toContain("默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎");
+  expect(host.textContent).toContain(message("dock.trust_folder"));
   act(() => root!.render(popup(Agent.CODEX)));
   expect(host.textContent).not.toContain("No, exit");
 });
@@ -1445,18 +1445,18 @@ describe("a message the session ended before sending", () => {
 
   it("says it was not sent, and can go back into the input after resuming", async () => {
     setup(false);
-    expect(host.querySelector(".me.fail small")!.textContent).toBe("没发出去：会话已结束放回输入框");
-    expect(host.textContent).not.toContain("取消了一条排队的消息");
+    expect(host.querySelector(".me.fail small")!.textContent).toBe(message("composer.send_failure", {"reason":"会话已结束放回输入框"}));
+    expect(host.textContent).not.toContain(message("queue.canceled_record"));
     expect(host.querySelector(".queued")).toBeNull();
-    await click(button("放回输入框"));
+    await click(button(message("composer.restore")));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("顺便补一个测试");
   });
 
   it("waits as the draft while the session is still ended", async () => {
     const r = setup(true);
-    expect(host.textContent).toContain("没发出去：会话已结束");
+    expect(host.textContent).toContain(message("session.ended_send_failed"));
     expect(host.querySelector(".queued")).toBeNull();
-    await click(button("放回输入框"));
+    await click(button(message("composer.restore")));
     // No input while ended: the text waits as the draft for after resuming.
     expect(r.drafts.get("s-idle")).toBe("顺便补一个测试");
   });
@@ -1493,8 +1493,8 @@ it("names models in switch records as the chips do", async () => {
   await r.listModels("mac", Agent.CLAUDE);
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   const lines = [...host.querySelectorAll(".sysline")].map((l) => l.textContent);
-  expect(lines).toContain("切换到 Sonnet 5.5 · medium");
-  expect(lines.some((l) => l?.includes("模型切到了 Opus 5.5 · medium"))).toBe(true);
+  expect(lines).toContain(message("session.model_changed", {"value":"Sonnet 5.5 · medium"}));
+  expect(lines.some((l) => l?.includes(message("session.terminal_model_change", {"value":"Opus 5.5 · medium"})))).toBe(true);
 });
 
 describe("a new-session draft", () => {
@@ -1564,7 +1564,7 @@ describe("a new-session draft", () => {
     r.draftMachines.set("/Users/me/Code/new", "mac");
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={() => undefined} onBack={() => undefined} />);
     await vi.waitFor(() => expect(host.querySelector(".project-summary")?.textContent).toMatch(/^GPT-6-Astra · 默认$/), { timeout: 3000 });
-    expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
+    expect(host.querySelector(".project-summary")?.textContent).not.toContain(message("modes.full_access"));
     expect(host.querySelector(".project-summary em")).toBeNull();
     await type("加限流");
     await click(sendButton());
@@ -1592,10 +1592,10 @@ describe("approvals whose answer was not confirmed (v2)", () => {
 
   it("locks both choices and retries only the one made, as the same request", async () => {
     const calls = setup(new CommandError("unknown", "连接超时"));
-    await click(button("允许", card()));
+    await click(button(message("approval.allow"), card()));
     await vi.waitFor(() => expect(card().textContent).toContain("没送到电脑"), { timeout: 3000 });
-    expect(button("不允许", card())).toBeUndefined();
-    expect(button("允许", card())).toBeUndefined();
+    expect(button(message("approval.deny"), card())).toBeUndefined();
+    expect(button(message("approval.allow"), card())).toBeUndefined();
     await click(button(message("common.retry", {}, "zh-CN"), card()));
     await vi.waitFor(() => expect(calls.length).toBe(2));
     expect(calls[1]).toEqual(calls[0]);
@@ -1604,10 +1604,10 @@ describe("approvals whose answer was not confirmed (v2)", () => {
 
   it("keeps a definite failure locked to retrying the same answer", async () => {
     setup(new CommandError("unavailable", "电脑不在线，指令没有发出"));
-    await click(button("允许", card()));
+    await click(button(message("approval.allow"), card()));
     await vi.waitFor(() => expect(card().textContent).toContain("没送到电脑"), { timeout: 3000 });
-    expect(button("不允许", card())).toBeUndefined();
-    expect(button("允许", card())).toBeUndefined();
+    expect(button(message("approval.deny"), card())).toBeUndefined();
+    expect(button(message("approval.allow"), card())).toBeUndefined();
     expect(button(message("common.retry", {}, "zh-CN"), card())).toBeTruthy();
   });
 });
@@ -1615,10 +1615,10 @@ describe("approvals whose answer was not confirmed (v2)", () => {
 describe("pending bubbles in the chat (v8)", () => {
   it("says what became of a cancel", async () => {
     const { cancelOutcome } = await import("./Queue");
-    expect(cancelOutcome(InputStatus.CANCELED, true)).toBe("已取消");
-    expect(cancelOutcome(InputStatus.CANCELED, false)).toBe("上一条已在另一客户端取消");
-    expect(cancelOutcome(InputStatus.SUBMITTED, true)).toBe("上一条已送入终端，不能取消");
-    expect(cancelOutcome(InputStatus.UNCONFIRMED, true)).toBe("上一条已送入终端，不能取消");
+    expect(cancelOutcome(InputStatus.CANCELED, true)).toBe(message("queue.canceled"));
+    expect(cancelOutcome(InputStatus.CANCELED, false)).toBe(message("queue.canceled_elsewhere"));
+    expect(cancelOutcome(InputStatus.SUBMITTED, true)).toBe(message("queue.already_submitted"));
+    expect(cancelOutcome(InputStatus.UNCONFIRMED, true)).toBe(message("queue.already_submitted"));
     expect(cancelOutcome(InputStatus.SUBMITTED, false)).toBe("");
   });
 
@@ -1635,13 +1635,13 @@ describe("pending bubbles in the chat (v8)", () => {
     const entries = () => [...host.querySelectorAll(".pending-bubble")];
     expect(entries().length).toBe(2);
     expect(entries()[0].textContent).toContain("顺便补一个测试");
-    expect(entries()[0].textContent).toContain("插入这一轮");
-    expect(entries()[1].textContent).toContain("另一客户端");
+    expect(entries()[0].textContent).toContain(message("queue.insert"));
+    expect(entries()[1].textContent).toContain(message("session.origin_other"));
     await click(button(message("common.cancel", {}, "zh-CN"), entries()[0]));
-    expect(entries()[0].textContent).toContain("正在取消…");
+    expect(entries()[0].textContent).toContain(message("queue.canceling"));
     await act(async () => cancel.release());
     await vi.waitFor(() => expect(entries().length).toBe(1), { timeout: 3000 });
-    expect(host.textContent).toContain("取消了一条排队的消息");
+    expect(host.textContent).toContain(message("queue.canceled_record"));
   });
 
   it("keeps a message whose cancel failed, and says so", async () => {
@@ -1652,7 +1652,7 @@ describe("pending bubbles in the chat (v8)", () => {
     };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     await click(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".pending-bubble")!));
-    await vi.waitFor(() => expect(host.querySelector(".pending-bubble")!.textContent).toContain("取消没成功，仍在排队"));
+    await vi.waitFor(() => expect(host.querySelector(".pending-bubble")!.textContent).toContain(message("queue.cancel_failed")));
   });
 });
 
@@ -1737,7 +1737,7 @@ describe("switching a new session's CLI (v2)", () => {
     // No tabs: the sheet is the model page of the one CLI the sentence names.
     expect(document.querySelector(".cli-tabs")).toBeNull();
     expect(document.querySelector(".sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
-    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toContain("审批");
+    expect(document.querySelector(":is(.sheet, .composer-picker)")!.textContent).not.toContain(message("approval.title"));
     await click(button("GPT-6-Luna", document));
     await click(button(message("common.done", {}, "zh-CN"), document));
     // The model is saved; the project's mode is not touched by it.
@@ -1764,7 +1764,7 @@ describe("switching a new session's CLI (v2)", () => {
     const r = demo();
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     // The project is the page's own, so the sentence names it as words.
-    expect(host.querySelector(".wstart .sent")?.textContent).toBe("在MacBook的foo用Codex");
+    expect(host.querySelector(".wstart .sent")?.textContent).toBe(message("new_session.location", {"project":"MacBook的foo用Codex"}));
     expect(host.querySelector(".wstart .sent .tok.p")).toBeNull();
     const ask = host.querySelector(".wstart textarea.ask")!;
     expect(ask.getAttribute("placeholder")).toBe(message("new_session.prompt", {}, "zh-CN"));
@@ -1772,7 +1772,7 @@ describe("switching a new session's CLI (v2)", () => {
     expect(ask.closest(".wbox")?.previousElementSibling?.className).toBe("sent");
     const row = host.querySelector(".wstart .acc")!;
     expect(row.querySelector(".project-summary")?.textContent).toMatch(/^gpt-6-astra$/i);
-    expect(row.querySelector('button[aria-label="开始新会话"]')).not.toBeNull();
+    expect(row.querySelector(`button[aria-label="${message("new_session.start")}"]`)).not.toBeNull();
   });
 
   it("shows what was read before at once when coming back to a CLI", async () => {
@@ -1795,14 +1795,14 @@ describe("switching a new session's CLI (v2)", () => {
     mount(<WideHome remote={r} go={() => undefined} project="/Users/me/Code/foo" />);
     const sentence = () => host.querySelector(".wstart .sent")!.textContent;
     const summary = () => host.querySelector(".acc .project-summary")!;
-    expect(host.querySelector(".tok.m")?.getAttribute("aria-label")).toBe("机器：MacBook");
-    expect(sentence()).toBe("在MacBook的foo用Codex");
+    expect(host.querySelector(".tok.m")?.getAttribute("aria-label")).toBe(message("new_session.machine_label", {"name":"MacBook"}));
+    expect(sentence()).toBe(message("new_session.location", {"project":"MacBook的foo用Codex"}));
     act(() => {
       for (const id of [...r.machines.keys()]) if (id !== "mac") r.machines.delete(id);
       (r as unknown as { changed(): void }).changed();
     });
     expect(host.querySelector(".tok.m")).toBeNull();
-    expect(sentence()).toBe("在foo用Codex");
+    expect(sentence()).toBe(message("new_session.location", {"project":"foo用Codex"}));
     // Before the model list arrives, no effort choice is known yet.
     expect(summary().textContent).toMatch(/^gpt-6-astra$/i);
     expect(summary().getAttribute("aria-label")).toBe(message("models.summary_label", { model: summary().textContent ?? "" }, "zh-CN"));
@@ -1824,7 +1824,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     // No list of one row first: no 机器, no 审批, no project block, no note.
     const sheet = document.querySelector(":is(.sheet, .composer-picker)")!;
     expect(sheet.querySelector(".sheet-head")?.textContent).toContain(message("models.title", {}, "zh-CN"));
-    expect(sheet.querySelector('.sheet-head button[aria-label="返回"]')).toBeNull();
+    expect(sheet.querySelector(`.sheet-head button[aria-label="${message("common.back")}"]`)).toBeNull();
     expect(sheet.textContent).toContain("默认（");
     expect(sheet.textContent).not.toMatch(/机器|审批|移除项目|常用|只影响之后新建/);
     // Choosing a model stores it, and 完成 closes the sheet.
@@ -1855,7 +1855,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
     await pickCli("Claude Code");
     await fromMenu("新会话设置");
-    await vi.waitFor(() => expect(document.querySelector(':is(.sheet, .composer-picker) [role="radiogroup"][aria-label="上下文窗口"], :is(.sheet, .composer-picker) [aria-label="上下文窗口"]')).not.toBeNull());
+    await vi.waitFor(() => expect(document.querySelector(`:is(.sheet, .composer-picker) [role="radiogroup"][aria-label="${message("models.context_window")}"], :is(.sheet, .composer-picker) [aria-label="${message("models.context_window")}"]`)).not.toBeNull());
     await click(button(message("models.standard_window", {}, "zh-CN"), document));
     await vi.waitFor(() => expect(savedSet(r, "/Users/me/Code/foo", Agent.CLAUDE)).toMatchObject({ standardContext: true }), { timeout: 3000 });
   });
@@ -1874,7 +1874,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     for (const s of r.sessions.values()) if (s.info?.cwd === "/Users/me/Code/foo") s.info.mode = ApprovalMode.FULL_ACCESS;
     savedSet(r, "/Users/me/Code/foo")!.mode = ApprovalMode.FULL_ACCESS;
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/foo" go={() => undefined} onBack={() => undefined} />);
-    expect(host.querySelector(".project-summary")?.textContent).not.toContain("完全放行");
+    expect(host.querySelector(".project-summary")?.textContent).not.toContain(message("modes.full_access"));
     await act(async () => {
       const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
       Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "加限流");
@@ -1933,7 +1933,7 @@ describe("a new task's settings have no approval mode (v2)", () => {
     const went: string[] = [];
     mount(<ProjectPage remote={r} pkey="/Users/me/Code/new" go={(to) => went.push(to)} onBack={() => undefined} />);
     await pickCli("Claude Code");
-    await vi.waitFor(() => expect(host.textContent).toContain("当前账户不支持自动模式"), { timeout: 3000 });
+    await vi.waitFor(() => expect(host.textContent).toContain(message("modes.account_unsupported")), { timeout: 3000 });
     expect(host.textContent).toContain("设置 › 这台电脑");
     await click(button(message("new_session.change_defaults", {}, "zh-CN")));
     expect(went).toEqual(["m/mac"]);
@@ -1950,7 +1950,7 @@ describe("project management (v2)", () => {
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
     await click(button(message("projects.remove_action", {}, "zh-CN")));
     // Nothing is removed until the dialog is confirmed.
-    expect(host.querySelector(".dialog")?.textContent).toContain("移除 shop？");
+    expect(host.querySelector(".dialog")?.textContent).toContain(message("projects.remove_title", {"name":"shop"}));
     await click(button(message("common.cancel", {}, "zh-CN")));
     expect(names(".plist .pi b")).toContain("shop");
     await click(host.querySelector<HTMLButtonElement>('[aria-label="管理 shop"]')!);
@@ -1980,8 +1980,8 @@ describe("project management (v2)", () => {
       await vi.waitFor(() => expect(button(dir, document)).toBeTruthy());
       await click(button(dir, document));
     }
-    await vi.waitFor(() => expect(button("用 shop 这个目录", document)).toBeTruthy());
-    await click(button("用 shop 这个目录", document));
+    await vi.waitFor(() => expect(button(message("projects.use_directory", {"name":"shop"}), document)).toBeTruthy());
+    await click(button(message("projects.use_directory", {"name":"shop"}), document));
     await vi.waitFor(() => expect(names(".plist .pi b")).toContain("shop"), { timeout: 3000 });
     expect(r.projectPrefs().hidden.map((h) => h.path)).not.toContain(shop);
   });
@@ -2002,7 +2002,7 @@ describe("project management (v2)", () => {
     await click(host.querySelector<HTMLButtonElement>(".tbar .scope")!);
     expect(seen()).toEqual(managed);
     // 全部项目 counts the same way, over every project.
-    const all = [...host.querySelectorAll(".plist .pi")].find((x) => x.querySelector("b")?.textContent === "全部项目")!;
+    const all = [...host.querySelectorAll(".plist .pi")].find((x) => x.querySelector("b")?.textContent === message("home.all_projects"))!;
     expect(all.querySelector("small")!.textContent).toMatch(/^\d+ 个待处理 · \d+ 个进行中$/);
   });
 
@@ -2081,9 +2081,9 @@ describe("who did what (v2)", () => {
       mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
       const notes = [...host.querySelectorAll(".me:not(.pending-bubble) small")].map((x) => x.textContent);
       // The first message is this client's own: it carries no name.
-      expect(notes).toEqual(["Android · Pixel 9", "VPS-dev 终端"]);
+      expect(notes).toEqual(["Android · Pixel 9", message("session.origin_terminal", {"name":"VPS-dev"})]);
       // A client that says nothing of itself, with no ID in its name.
-      expect(host.textContent).toContain("客户端 将模式切到 计划");
+      expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":"客户端","value":"计划"}));
       expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
       await click(button(/还有 2 条排队/));
       const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
@@ -2106,8 +2106,8 @@ describe("who did what (v2)", () => {
     }
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     const notes = [...host.querySelectorAll(".sysline")].map((x) => x.textContent);
-    expect(notes).toContain("Android · Pixel 9 将模型切到 other-model");
-    expect(notes).toContain("切换到 my-model");
+    expect(notes).toContain(message("session.model_changed_by", {"origin":"Android · Pixel 9","value":"other-model"}));
+    expect(notes).toContain(message("session.model_changed", {"value":"my-model"}));
   });
 
   it("offers a retry for a message that failed before Enter, and the terminal when it may be half written", async () => {
@@ -2115,7 +2115,7 @@ describe("who did what (v2)", () => {
     const s = r.sessions.get("s-msg")!;
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     // Surely not sent: red, with a retry. Maybe sent: orange, to the terminal.
-    expect(host.querySelector(".me.fail")!.textContent).toContain("没发出去：Codex 没认出图片");
+    expect(host.querySelector(".me.fail")!.textContent).toContain(message("composer.images_unrecognized", {"agent":"没发出去：Codex"}));
     const maybe = [...host.querySelectorAll(".me.warn small")].map((x) => x.textContent);
     expect(maybe.some((t) => t?.startsWith("可能没发出去："))).toBe(true);
     expect(host.textContent).not.toMatch(/没能发送|不会自动重发|终端里可能留着/);
@@ -2123,7 +2123,7 @@ describe("who did what (v2)", () => {
     const timedOut = [...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
     expect(timedOut.classList.contains("warn")).toBe(true);
     expect(timedOut.classList.contains("fail")).toBe(false);
-    expect(timedOut.querySelector("small")!.textContent).toBe("可能没发出去：连接超时放回输入框重试移除此提示");
+    expect(timedOut.querySelector("small")!.textContent).toBe(message("composer.maybe_failure", {"reason":"连接超时放回输入框重试移除此提示"}));
     const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
     await click(button(message("common.retry", {}, "zh-CN"), failed));
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
@@ -2144,7 +2144,7 @@ describe("a send that failed", () => {
       const bubble = [...host.querySelectorAll(cls)].find((x) => x.textContent?.includes("顺便补一个测试"))!;
       expect(bubble.querySelector("small")!.textContent).toMatch(new RegExp("^" + words));
       expect(button(message("common.retry", {}, "zh-CN"), bubble)).toBeTruthy();
-      expect(button("移除此提示", bubble)).toBeTruthy();
+      expect(button(message("session.dismiss_notice"), bubble)).toBeTruthy();
     });
 });
 
@@ -2176,18 +2176,18 @@ describe("pictures in a session (v2)", () => {
     };
     const note = () => host.querySelector(".viewer .vnote")?.textContent;
     await open("图片没有同步");
-    expect(note()).toBe("图片没有同步");
-    await click(button("回到消息"));
+    expect(note()).toBe(message("image.unsynced"));
+    await click(button(message("image.back_message")));
     await open("图片 wide.png");
-    expect(note()).toBe("只有预览，原图在电脑上");
-    await click(button("回到消息"));
+    expect(note()).toBe(message("image.original_on_computer"));
+    await click(button(message("image.back_message")));
     await open("图片 old.png");
-    await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
-    await click(button("回到消息"));
+    await vi.waitFor(() => expect(note()).toBe(message("image.original_expired")), { timeout: 3000 });
+    await click(button(message("image.back_message")));
     await open("图片 flaky.png");
-    await vi.waitFor(() => expect(note()).toBe("没能下载 · 点按重试"), { timeout: 3000 });
+    await vi.waitFor(() => expect(note()).toBe(message("image.download_retry")), { timeout: 3000 });
     await click(host.querySelector<HTMLButtonElement>(".viewer .vnote")!);
-    await vi.waitFor(() => expect(note()).not.toBe("没能下载 · 点按重试"), { timeout: 3000 });
+    await vi.waitFor(() => expect(note()).not.toBe(message("image.download_retry")), { timeout: 3000 });
   });
 });
 
@@ -2278,7 +2278,7 @@ describe("sending images (v2)", () => {
     const t = setup(() => false);
     await t.pick(...[1, 2, 3, 4, 5, 6, 7, 8].map((i) => `p${i}.png`));
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(6);
-    expect(host.textContent).toContain("一条消息最多 6 张，多选的 2 张没有加入");
+    expect(host.textContent).toContain(message("attachment.images_limit", {"limit":6,"count":2}));
     expect(host.querySelector(".cm-plus")!.classList.contains("off")).toBe(true);
   });
 
@@ -2291,7 +2291,7 @@ describe("sending images (v2)", () => {
     await t.pick("ok.png", "bad.heic", "large.png");
     await vi.waitFor(() => expect(host.textContent).toContain(message("image.attach_failed", {"count":2}, "zh-CN")));
     await click(host.querySelectorAll<HTMLButtonElement>(".draft-open")[1]);
-    const dialog = () => document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    const dialog = () => document.body.querySelector<HTMLElement>(`[role="dialog"][aria-label="${message("image.view")}"]`)!;
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
     expect(button(message("common.retry", {}, "zh-CN"), dialog())).toBeFalsy();
     act(() => dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
@@ -2299,7 +2299,7 @@ describe("sending images (v2)", () => {
     await click(button(message("common.remove", {}, "zh-CN"), dialog()));
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
-    await click(dialog().querySelector<HTMLElement>('button[aria-label="关闭"]')!);
+    await click(dialog().querySelector<HTMLElement>(`button[aria-label="${message("common.close")}"]`)!);
   });
 
   it("opens draft image details from a keyboard-preserving attachment menu", async () => {
@@ -2313,7 +2313,7 @@ describe("sending images (v2)", () => {
     await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
     const field = host.querySelector<HTMLTextAreaElement>(".draft")!;
     act(() => field.focus());
-    await click(host.querySelector<HTMLButtonElement>('[aria-label="添加附件"]')!);
+    await click(host.querySelector<HTMLButtonElement>(`[aria-label="${message("new_session.ios_attach")}"]`)!);
     expect(host.querySelector(".attach-menu")).not.toBeNull();
     expect(document.activeElement).toBe(field);
     const thumb = host.querySelector<HTMLButtonElement>(".draft-open")!;
@@ -2324,11 +2324,11 @@ describe("sending images (v2)", () => {
     }
     await click(thumb);
     expect(host.querySelector(".attach-menu")).toBeNull();
-    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    const dialog = document.body.querySelector<HTMLElement>(`[role="dialog"][aria-label="${message("image.view")}"]`)!;
     expect(dialog.textContent).toContain("图片没能传到电脑，连接恢复后重试");
     expect(button(message("common.retry", {}, "zh-CN"), dialog)).toBeTruthy();
     expect(button(message("common.remove", {}, "zh-CN"), dialog)).toBeTruthy();
-    await click(dialog.querySelector<HTMLElement>('[aria-label="关闭"]')!);
+    await click(dialog.querySelector<HTMLElement>(`[aria-label="${message("common.close")}"]`)!);
     expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
   });
 
@@ -2338,13 +2338,13 @@ describe("sending images (v2)", () => {
     await t.pick("photo.png");
     await vi.waitFor(() => expect(host.textContent).toContain("连接恢复后重试"));
     await click(host.querySelector<HTMLElement>(".draft-open")!);
-    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"][aria-label="查看图片"]')!;
+    const dialog = document.body.querySelector<HTMLElement>(`[role="dialog"][aria-label="${message("image.view")}"]`)!;
     expect(button(message("common.retry", {}, "zh-CN"), dialog)).toBeTruthy();
     offline = false;
     await click(button(message("common.retry", {}, "zh-CN"), dialog));
     await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
     expect(host.querySelectorAll(".draft-open")).toHaveLength(1);
-    await click(dialog.querySelector<HTMLElement>('button[aria-label="关闭"]')!);
+    await click(dialog.querySelector<HTMLElement>(`button[aria-label="${message("common.close")}"]`)!);
   });
 
   it("offers no ＋ on a computer whose daemon cannot take images", async () => {
@@ -2353,7 +2353,7 @@ describe("sending images (v2)", () => {
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     await click(host.querySelector<HTMLButtonElement>(".cm-plus")!);
     expect(host.querySelector("input[type=file]")).toBeTruthy();
-    expect(host.textContent).toContain("VPS-dev 上 remote-agent 的目录路径带空格，不能发图片");
+    expect(host.textContent).toContain(message("attachment.path_spaces", {"name":"VPS-dev"}));
   });
 });
 
@@ -2413,18 +2413,18 @@ describe("the first message of a session started here (review B5, B9)", () => {
       s.info = { ...s.info!, status: SessionStatus.STARTING };
       r.touch();
     });
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe("等 Codex 就绪后发出");
-    expect(host.textContent).not.toContain("插入这一轮");
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.agent_ready", {"agent":"Codex"}));
+    expect(host.textContent).not.toContain(message("queue.insert"));
     expect(host.textContent!.split("给登录接口加限流").length - 1).toBe(1);
   });
 
   it("shows its real state, not 已送达 after another client canceled it", () => {
     const { push } = setup();
     // The only one waiting: not numbered.
-    expect(host.querySelector(".pending-meta > span")!.textContent).toBe("插入这一轮");
+    expect(host.querySelector(".pending-meta > span")!.textContent).toBe(message("queue.insert"));
     push({ case: "inputState", value: { requestId: "p1", status: InputStatus.CANCELED } });
-    expect(host.textContent).not.toContain("插入这一轮");
-    expect(host.textContent).toContain("取消了一条排队的消息");
+    expect(host.textContent).not.toContain(message("queue.insert"));
+    expect(host.textContent).toContain(message("queue.canceled_record"));
   });
 
   it("is a pending bubble, where it can be canceled", async () => {
@@ -2464,7 +2464,7 @@ describe("a failed message with images (review B6)", () => {
     t.r.uploadImage = async () => ({ imageId: "again", expiresMs: Number.MAX_SAFE_INTEGER });
     const warning = host.querySelector<HTMLElement>(".me.warn")!;
     expect(warning.querySelectorAll(".pic.local")).toHaveLength(2);
-    await click(button("放回输入框", warning));
+    await click(button(message("composer.restore"), warning));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("没认出这两张");
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
   });
@@ -2477,7 +2477,7 @@ describe("a failed message with images (review B6)", () => {
     let done!: () => void;
     const gate = new Promise<void>(resolve => { done = resolve; });
     vi.spyOn(t.r, "restoreDraft").mockReturnValue(gate);
-    await click(button("放回输入框", host.querySelector<HTMLElement>(".me.warn")!));
+    await click(button(message("composer.restore"), host.querySelector<HTMLElement>(".me.warn")!));
     expect(tray.items).toHaveLength(0);
     expect(t.r.outbox("s-idle")).toHaveLength(1);
     await act(async () => {
@@ -2491,7 +2491,7 @@ describe("a failed message with images (review B6)", () => {
 
   it("does not offer uncertain attachment recovery without local sources", () => {
     setup("other source", InputStatus.NEEDS_TERMINAL);
-    expect(button("放回输入框", host.querySelector<HTMLElement>(".me.warn")!)).toBeFalsy();
+    expect(button(message("composer.restore"), host.querySelector<HTMLElement>(".me.warn")!)).toBeFalsy();
   });
 
   it("puts text and images back into the input, to send them again", async () => {
@@ -2499,18 +2499,18 @@ describe("a failed message with images (review B6)", () => {
     t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
     let uploads = 0;
     t.r.uploadImage = async () => ({ imageId: "restored-" + ++uploads, expiresMs: Number.MAX_SAFE_INTEGER });
-    await click(button("放回输入框", row()));
+    await click(button(message("composer.restore"), row()));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
     expect(host.querySelectorAll(".att-tray .pic").length).toBe(2);
-    await act(async () => { await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!.disabled).toBe(false)); });
-    await click(host.querySelector<HTMLButtonElement>('button[aria-label="发送"]')!);
+    await act(async () => { await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!.disabled).toBe(false)); });
+    await click(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("composer.send")}"]`)!);
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     expect(t.sent[0]).toEqual({ text: "看这两张", imageIds: ["restored-1", "restored-2"] });
   });
 
   it("can retry or restore a message of images only", async () => {
     const t = setup("");
-    expect(button("放回输入框", row())).toBeTruthy();
+    expect(button(message("composer.restore"), row())).toBeTruthy();
     await click(button(message("common.retry", {}, "zh-CN"), row()));
     await vi.waitFor(() => expect(t.sent).toHaveLength(1));
     expect(t.sent[0]).toEqual({ text: "", imageIds: ["i1", "i2"] });
@@ -2626,12 +2626,12 @@ it("loads a picture opened offline once the connection is back (review B11)", as
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
   await click(host.querySelector<HTMLButtonElement>('.pic[aria-label="图片 old.png"]')!);
   const note = () => host.querySelector(".viewer .vnote")?.textContent;
-  expect(note()).toBe("连上后加载");
+  expect(note()).toBe(message("image.load_connected"));
   act(() => {
     r.conn = "online";
     r.touch();
   });
-  await vi.waitFor(() => expect(note()).toBe("大图已过期，只剩预览"), { timeout: 3000 });
+  await vi.waitFor(() => expect(note()).toBe(message("image.original_expired")), { timeout: 3000 });
 });
 
 it("asks to add a project again when it is removed while its draft is on the wide home (review B12)", async () => {
@@ -2649,10 +2649,10 @@ it("asks to add a project again when it is removed while its draft is on the wid
     await r.changePrefs("hide", "/Users/me/Code/foo");
   });
   expect(host.textContent).toContain(message("projects.removed", {}, "zh-CN"));
-  expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(true);
+  expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!.disabled).toBe(true);
   expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!.value).toBe("加限流");
   await click(button(message("projects.add_again", {}, "zh-CN")));
-  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false), { timeout: 3000 });
+  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!.disabled).toBe(false), { timeout: 3000 });
 });
 
 it("marks a quota window as waiting for an update once its reset time passes (review B13)", async () => {
@@ -2689,8 +2689,8 @@ it("starts a new session with images and no words (Go 61c4bb2)", async () => {
     Object.defineProperty(input, "files", { value: [new File(["x"], "a.png", { type: "image/png" })], configurable: true });
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!.disabled).toBe(false));
-  await click(host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!);
+  await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!.disabled).toBe(false));
+  await click(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!);
   await vi.waitFor(() => expect(sent).toHaveLength(1));
   expect(sent[0]).toEqual({ prompt: "", imageIds: ["id-a"] });
 });
@@ -2785,9 +2785,9 @@ it("switches new-project defaults by CLI tab on multi-CLI machines and omits tab
   await vi.waitFor(() => expect(host.querySelector(".cli-tabs")).not.toBeNull());
   expect([...host.querySelectorAll(".cli-tabs button")].map((b) => b.textContent)).toEqual(["Codex", "Claude Code", "Antigravity"]);
   await click(button("Antigravity", host.querySelector(".cli-tabs")!));
-  await click(button(/^审批模式/));
-  await vi.waitFor(() => expect(button(/^自动/, document)?.disabled).toBe(true));
-  expect(document.body.textContent).toContain("当前账户不支持自动模式");
+  await click(button(new RegExp("^" + message("modes.title"))));
+  await vi.waitFor(() => expect(button(new RegExp("^" + message("modes.auto")), document)?.disabled).toBe(true));
+  expect(document.body.textContent).toContain(message("modes.account_unsupported"));
 
   // Single-CLI machine: no .cli-tabs, header says 新项目默认设置 · Codex.
   act(() => root!.render(<MachinePage remote={r} id="vps" go={() => undefined} onBack={() => undefined} />));
@@ -2835,7 +2835,7 @@ it("lists installed CLIs in machine picker subtitles and explains fallback when 
   await vi.waitFor(() => expect(document.querySelector(".sheet")).not.toBeNull());
   const items = [...document.querySelectorAll<HTMLButtonElement>(".sheet .list .mi")];
   const macBtn = items.find((b) => b.textContent?.includes("MacBook"));
-  expect(macBtn?.querySelector(".md")?.textContent).toBe("已装 Codex、Claude Code、Antigravity");
+  expect(macBtn?.querySelector(".md")?.textContent).toBe(message("new_session.installed", {"agents":"Codex、Claude Code、Antigravity"}));
   const vpsBtn = items.find((b) => b.textContent?.includes("VPS-dev"));
   expect(vpsBtn?.querySelector(".md")?.textContent).toBe(message("new_session.installed_fallback", {"agents":"Codex","missing":"Antigravity","agent":"Codex"}, "zh-CN"));
 });
@@ -2880,7 +2880,7 @@ it("does not put another client's images into this input (review W3)", async () 
   ] as const)
     r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: kind as never, origin: origin as never }));
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  await click(button("放回输入框", host.querySelector(".me.fail")!));
+  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
   expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("看这两张");
   expect(host.querySelector(".att-tray")).toBeNull();
   expect(host.textContent).toContain("图片是另一客户端上传的");
@@ -2905,13 +2905,13 @@ describe("the client-v7 conversation", () => {
     const dock = () => host.querySelector(".dock.pending")!;
     // What waits for the user is open on arrival, under one head line.
     expect(dock().classList.contains("open")).toBe(true);
-    expect(button("允许", dock())).toBeTruthy();
+    expect(button(message("approval.allow"), dock())).toBeTruthy();
     expect(dock().querySelectorAll(".pending-label")).toHaveLength(1);
     expect(dock().querySelector(".pending-brief")!.textContent).toMatch(/^还有 1 项 · 剩 \d+ 分钟$/);
     expect(dock().querySelector(".pending-brief")!.textContent).not.toContain("rm -rf");
     await click(dock().querySelector<HTMLButtonElement>(".pending-sum")!);
     expect(dock().classList.contains("open")).toBe(false);
-    expect(button("允许", dock())).toBeUndefined();
+    expect(button(message("approval.allow"), dock())).toBeUndefined();
     // Closed, the line says what it is again.
     expect(dock().querySelector(".pending-brief")!.textContent).toContain("rm -rf");
     // It stays closed when the session is opened again.
@@ -2952,7 +2952,7 @@ describe("the client-v7 conversation", () => {
   it("says how long a turn took between turns", () => {
     const r = demo();
     mount(<SessionPage remote={r} session={r.sessions.get("s-ctx")!} onBack={() => undefined} wide={false} />);
-    expect([...host.querySelectorAll(".sep:not(.fork)")].map((x) => x.textContent)).toContain("本轮用时 4 分 12 秒");
+    expect([...host.querySelectorAll(".sep:not(.fork)")].map((x) => x.textContent)).toContain(message("session.turn_duration", {"duration":"4 分 12 秒"}));
   });
 
   it("shows full access in the navbar and the other settings behind ⋯", async () => {
@@ -2961,18 +2961,18 @@ describe("the client-v7 conversation", () => {
     s.info = { ...s.info!, mode: ApprovalMode.FULL_ACCESS };
     mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
     expect(host.querySelector(".cbar .access-warning")).toBeNull();
-    expect(host.querySelector(".navbar .title")?.textContent).toContain("完全放行");
+    expect(host.querySelector(".navbar .title")?.textContent).toContain(message("modes.full_access"));
     await click(host.querySelector<HTMLButtonElement>(".navbar .more")!);
     // A list sheet: settings read 「名称 …… 值 ›」, with no session ID and no 取消 card.
     const rows = [...host.querySelectorAll(".menu .mi")];
-    const mode = rows.find((x) => x.querySelector(".mt")?.textContent === "审批模式")!;
-    expect(mode.querySelector(".mv.red")!.textContent).toBe("完全放行");
+    const mode = rows.find((x) => x.querySelector(".mt")?.textContent === message("modes.title"))!;
+    expect(mode.querySelector(".mv.red")!.textContent).toBe(message("modes.full_access"));
     expect(mode.querySelector(".chev")).toBeTruthy();
     expect(rows.find((x) => x.querySelector(".mt")?.textContent === message("models.title", {}, "zh-CN"))?.querySelector(".mv")?.textContent).toBeTruthy();
     expect(host.querySelector(".menu-info")!.textContent).not.toContain(message("home.sessions_tab", {}, "zh-CN"));
     expect(host.querySelector(".menu")!.textContent).not.toContain(s.id);
     expect(button(message("common.cancel", {}, "zh-CN"), host.querySelector(".menu")!)).toBeUndefined();
-    expect(rows.find((x) => x.textContent === "结束会话…")?.classList.contains("danger")).toBe(true);
+    expect(rows.find((x) => x.textContent === message("session.end_action"))?.classList.contains("danger")).toBe(true);
   });
 
   it("starts sessions only with a first message, in a sheet that stays as it is while typing", async () => {
@@ -3179,26 +3179,26 @@ describe("the session view", () => {
   it("opens every session in the view last picked on this device", async () => {
     const r = demo();
     open(r, "s-idle");
-    expect(picked()).toBe("聊天");
-    await click(button("终端"));
-    expect(picked()).toBe("终端");
+    expect(picked()).toBe(message("session.chat"));
+    await click(button(message("session.terminal")));
+    expect(picked()).toBe(message("session.terminal"));
     close();
     open(r, "s-ctx");
-    expect(picked()).toBe("终端");
-    await click(button("聊天"));
+    expect(picked()).toBe(message("session.terminal"));
+    await click(button(message("session.chat")));
     close();
     open(r, "s-idle");
-    expect(picked()).toBe("聊天");
+    expect(picked()).toBe(message("session.chat"));
   });
 
   it("does not take a new session's first terminal for a pick", () => {
     const r = demo();
     r.termFirst.add("s-idle");
     open(r, "s-idle");
-    expect(picked()).toBe("终端");
+    expect(picked()).toBe(message("session.terminal"));
     close();
     open(r, "s-ctx");
-    expect(picked()).toBe("聊天");
+    expect(picked()).toBe(message("session.chat"));
   });
 
   it("shows the chat of an ended session and keeps the pick", () => {
@@ -3206,7 +3206,7 @@ describe("the session view", () => {
     localStorage.setItem("ra-view", "term");
     const ended = [...r.sessions.values()].find((s) => s.info?.status === SessionStatus.EXITED)!;
     open(r, ended.id);
-    expect(picked()).toBe("聊天");
+    expect(picked()).toBe(message("session.chat"));
     expect(localStorage.getItem("ra-view")).toBe("term");
   });
 
@@ -3274,7 +3274,7 @@ it("renames a session from ⋯, keeps what was typed when saving fails, and goes
   const command = vi.spyOn(r, "command");
   command.mockRejectedValueOnce(new CommandError("unavailable", "MacBook 不在线"));
   await click(button(message("common.save", {}, "zh-CN")));
-  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")?.textContent).toContain(message("new_session.machine_offline", {"name":"没能保存：MacBook"}, "zh-CN")));
+  await vi.waitFor(() => expect(host.querySelector(".dialog.rename")?.textContent).toContain(message("new_session.machine_offline", {"name":message("common.ios_save_failed", {"reason":"MacBook"})}, "zh-CN")));
   expect(input().value).toBe("  登录超时：限流和重试 ");
 
   await click(button(message("common.save", {}, "zh-CN")));
@@ -3321,7 +3321,7 @@ it("sends a fork whose answer was lost again as the same request, and gives it u
   expect(command.mock.calls[1][2]).toBe(slot);
   await click(row());
   expect(command).toHaveBeenCalledTimes(2);
-  expect(row().textContent).toBe("分叉会话");
+  expect(row().textContent).toBe(message("session.fork"));
 
   // Given up: the next fork is a new request.
   location.hash = "";
@@ -3386,8 +3386,8 @@ it("forks a session from ⋯: says why it cannot yet, reports a failure in the m
   command.mockImplementationOnce((...args) => (reply = forkGate.wait.then(() => forkCommand(...args))));
   await click(row());
   expect(command).toHaveBeenLastCalledWith(s.id, { case: "forkSession", value: { sessionId: s.id } }, expect.anything());
-  expect(row().textContent).toBe("正在分叉…");
-  expect(button("重命名")!.disabled).toBe(true);
+  expect(row().textContent).toBe(message("session.forking"));
+  expect(button(message("session.rename"))!.disabled).toBe(true);
   // The hash changes synchronously in the command continuation; React
   // commits setMenu(false) separately. Await the reply inside act so the
   // complete UI outcome is committed before either assertion.
@@ -3433,7 +3433,7 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(false);
     // No tab for settings: the gear on the top right.
     expect([...host.querySelectorAll(".tabs button")].map((b) => b.textContent)).toEqual([`会话${n}`, message("home.schedules_tab", {}, "zh-CN")]);
-    expect(host.querySelector('.tbar [aria-label="设置"]')).toBeTruthy();
+    expect(host.querySelector(`.tbar [aria-label="${message("common.settings")}"]`)).toBeTruthy();
   });
 
   it("says what runs once nothing waits, then that nothing waits, then that there is no session", () => {
@@ -3461,8 +3461,8 @@ describe("the home's one sentence and its bottom row (client-v58)", () => {
     // What waits stays on top, with its count on the tab, but cannot be handled now.
     const card = host.querySelector(".tc")!;
     expect(card.querySelector(".k span")?.textContent).toBe(message("list_state.unlinked", {}, "zh-CN"));
-    expect(button("不允许", card)?.disabled).toBe(true);
-    expect(button("允许", card)?.disabled).toBe(true);
+    expect(button(message("approval.deny"), card)?.disabled).toBe(true);
+    expect(button(message("approval.allow"), card)?.disabled).toBe(true);
     expect(host.querySelector(".tabs .count")?.textContent).toBe(String(todoList(r).length));
     expect(host.querySelector<HTMLButtonElement>(".bbar .fab")?.disabled).toBe(true);
     // Sessions not ended are not said to run: a faint dot and 未连接.
@@ -3546,7 +3546,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     const r = demo();
     saveScope(ALL);
     mount(<Home remote={r} go={() => undefined} />);
-    const box = host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!;
+    const box = host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!;
     expect(box).toBeTruthy();
     await type(box, "readme");
     expect(texts(".old .sm > span:first-child")).toEqual(["补充 README"]);
@@ -3554,7 +3554,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     expect(host.querySelector(".tail")?.textContent).toBe(message("home.matches", {"count":1,"query":"readme"}, "zh-CN"));
     await type(box, "没有这个标题");
     expect(host.querySelector(".tail")?.textContent).toBe(message("home.no_matches", {"query":"没有这个标题"}, "zh-CN"));
-    await click(host.querySelector<HTMLButtonElement>('button[aria-label="清空筛选"]')!);
+    await click(host.querySelector<HTMLButtonElement>(`button[aria-label="${message("home.clear_filter")}"]`)!);
     expect(texts(".sess .row1 b")).toContain("修复登录超时");
   });
 
@@ -3594,7 +3594,7 @@ describe("the home timeline and its scope (client-v27)", () => {
     act(() => (r as unknown as { changed(): void }).changed());
     expect(pages).toBeGreaterThan(0);
     expect(host.querySelector(".tail")?.textContent).toMatch(/^共 \d+ 个，滚到底加载更早的$/);
-    await type(host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!, "readme");
+    await type(host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!, "readme");
     expect(all).toBeGreaterThan(0);
     expect(host.querySelector(".tail")?.textContent).toBe(message("home.loading_earlier", {}, "zh-CN"));
     r.moreSessions = false;
@@ -3635,7 +3635,7 @@ it("fetches a CLI's earlier sessions before a session starts on it, and before i
   r.moreSessions = true;
   r.loadMoreSessions = async () => (pages++, false);
   mount(<WideHome remote={r} go={() => undefined} project={project} />);
-  const start = () => host.querySelector<HTMLButtonElement>('button[aria-label="开始新会话"]')!;
+  const start = () => host.querySelector<HTMLButtonElement>(`button[aria-label="${message("new_session.start")}"]`)!;
   const input = host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("new_session.first_message", {}, "zh-CN")}"]`)!;
   await act(async () => {
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, "对一下三月的账");
@@ -3719,8 +3719,8 @@ it("appends a restored message to the current draft", async () => {
   r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.QUEUED, text: "restore" } } }));
   r.events("s-idle").push(create(EventSchema, { seq: BigInt(r.events("s-idle").length + 1), kind: { case: "inputState", value: { requestId: "restore", status: InputStatus.FAILED, reason: "image_not_recognized" } } }));
   mount(<SessionPage remote={r} session={r.sessions.get("s-idle")!} onBack={() => undefined} wide={false} />);
-  await click(button("放回输入框"));
-  expect(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!.value).toBe("draft\n\nrestore");
+  await click(button(message("composer.restore")));
+  expect(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!.value).toBe("draft\n\nrestore");
 });
 
 it("keeps an approval reason across dock and detail mounts", async () => {
@@ -3729,11 +3729,11 @@ it("keeps an approval reason across dock and detail mounts", async () => {
   const { ApprovalCard } = await import("./ApprovalCard");
   const actions = <ApprovalCard remote={r} sid="s-appr" a={a} docked />;
   mount(actions);
-  await click(button("不允许"));
+  await click(button(message("approval.deny")));
   await reviewType(host.querySelector("textarea")!, "reason");
   act(() => root!.render(null));
   act(() => root!.render(actions));
-  await click(button("不允许"));
+  await click(button(message("approval.deny")));
   expect(host.querySelector<HTMLTextAreaElement>("textarea")!.value).toBe("reason");
 });
 
@@ -3744,8 +3744,8 @@ it("shows failure and retry when resuming a paused message", async () => {
   r.command = async () => { throw new CommandError("unavailable", "电脑不在线"); };
   function Page() { useRemote(r); return <PendingBubbles remote={r} session={r.sessions.get("s-idle")!} d={d} />; }
   mount(<Page />);
-  await click(button("发送"));
-  expect(host.textContent).toContain("发送没成功，仍已暂停");
+  await click(button(message("composer.send")));
+  expect(host.textContent).toContain(message("queue.resume_failed"));
   expect(button(message("common.retry", {}, "zh-CN"))).toBeTruthy();
 });
 
@@ -3755,7 +3755,7 @@ it("offers more ended matches while filtering titles", async () => {
   r.sessions.clear();
   for (let i = 0; i < 40; i++) r.sessions.set("match" + i, { ...ended, id: "match" + i, info: { ...ended.info!, title: "match " + i } });
   mount(<Home remote={r} go={() => undefined} />);
-  await reviewType(host.querySelector<HTMLInputElement>('input[aria-label="按标题筛选"]')!, "match");
+  await reviewType(host.querySelector<HTMLInputElement>(`input[aria-label="${message("home.filter_title")}"]`)!, "match");
   expect(host.querySelectorAll(".old").length).toBe(30);
   await click(host.querySelector<HTMLButtonElement>("button.tail")!);
   expect(host.querySelectorAll(".old").length).toBe(40);
@@ -3803,7 +3803,7 @@ it("offers a retained refusal reason for copying after another client resolves t
   const a = derive(r.events("s-appr")).approvals.values().next().value!;
   const { ApprovalCard } = await import("./ApprovalCard");
   mount(<ApprovalCard remote={r} sid="s-appr" a={a} docked />);
-  await click(button("不允许"));
+  await click(button(message("approval.deny")));
   await reviewType(host.querySelector<HTMLTextAreaElement>("textarea.inp")!, "retained reason");
   const writeText = vi.fn(async () => undefined);
   vi.spyOn(navigator.clipboard, "writeText").mockImplementation(writeText);
@@ -3909,7 +3909,7 @@ it("shows async questions as ordinary chat with options and accepts a typed repl
   expect(messages).toContain("还有什么要求？");
   expect(derive(es).questions.size).toBe(0);
   expect(host.querySelector(".dock")).toBeNull();
-  await reviewType(host.querySelector<HTMLTextAreaElement>('textarea[aria-label="消息"]')!, "选择 A");
+  await reviewType(host.querySelector<HTMLTextAreaElement>(`textarea[aria-label="${message("composer.message")}"]`)!, "选择 A");
   await click(sendButton());
   await vi.waitFor(() => expect(command).toHaveBeenCalled());
   expect(command.mock.calls[0][1]).toMatchObject({ case: "send", value: { text: "选择 A" } });
@@ -3937,7 +3937,7 @@ it("puts a daemon-rejected image message back with its text, original option and
   await click(sendButton());
   await vi.waitFor(() => expect(host.textContent).toContain("图片不在电脑上"));
   expect(host.querySelector(".me.fail")!.textContent).not.toContain(message("common.retry", {}, "zh-CN"));
-  await click(button("放回输入框"));
+  await click(button(message("composer.restore")));
   const tray = r.trays.get("s-idle")!;
   expect(r.drafts.get("s-idle")).toBe("看原图");
   expect(tray.original).toBe(true);
@@ -4000,7 +4000,7 @@ describe("devices in settings", () => {
     const named = (name: string) => rows.find((x) => x.querySelector(".row-name")?.firstChild?.textContent === name)!;
     // A computer is a card: its name, then 在线 under it, then a quota line for each CLI.
     const mac = [...host.querySelectorAll(".mach-card")].find((x) => x.querySelector(".mach-name b")?.textContent === "MacBook")!;
-    expect(mac.querySelector(".s")!.textContent).toBe("在线");
+    expect(mac.querySelector(".s")!.textContent).toBe(message("new_session.location", {"project":"线"}));
     const codex = [...mac.querySelectorAll(".qt")].find((x) => x.querySelector("b")?.textContent === "Codex")!;
     expect(codex.querySelector(".n")!.textContent).toMatch(/^剩 \d+%$|^已用尽$|^暂未获取额度$/);
     expect(named("Chrome · macOS").querySelector(".ico svg")).toBeTruthy();
@@ -4037,7 +4037,7 @@ it("sends files-only messages and restores a missing file from its original File
   await vi.waitFor(() => expect(host.textContent).toContain("附件不在电脑上"));
   expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
   expect(host.querySelector(".me.fail .file-chip")?.textContent).toContain("data.csv");
-  await click(button("放回输入框"));
+  await click(button(message("composer.restore")));
   const tray = r.trays.get(s.id)!;
   await vi.waitFor(() => expect(tray.fileIds()).toEqual(["data.csv2"]));
   expect(tray.files()[0].file).toBe(source);
@@ -4083,11 +4083,11 @@ it("requires reselecting a new-session first file when its local source has been
   ]) r.events(s.id).push(create(EventSchema, { seq: BigInt(r.events(s.id).length + 1), origin: { kind: OriginKind.CLIENT, deviceId: r.account.deviceId }, kind: kind as never }));
   const upload = vi.spyOn(r, "uploadImage");
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  await click(button("放回输入框", host.querySelector(".me.fail")!));
+  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
   const tray = r.trays.get(s.id)!;
   expect(tray.files()[0].state).toBe("failed");
   expect(tray.files()[0].remoteOnly).toBe(true);
-  expect(host.textContent).toContain("这个文件没有本机副本，请移除后重新选择");
+  expect(host.textContent).toContain(message("attachment.file_missing"));
   expect(sendButton()?.disabled).toBe(true);
   expect(upload).not.toHaveBeenCalled();
 });
@@ -4100,7 +4100,7 @@ it("shows a folder-only rejection in an empty new-session tray", async () => {
   const drop = new Event("drop", { bubbles: true, cancelable: true });
   Object.defineProperty(drop, "dataTransfer", { value: { files: [folder], items: [{ kind: "file", webkitGetAsEntry: () => ({ isDirectory: true }), getAsFile: () => folder }] } });
   await act(async () => input.dispatchEvent(drop));
-  expect(host.textContent).toContain("不能直接发送文件夹，请先压缩成 ZIP 再选择文件");
+  expect(host.textContent).toContain(message("attachment.zip_folder"));
   expect(host.querySelectorAll(".file-chip, .tthumb")).toHaveLength(0);
 });
 
@@ -4115,8 +4115,8 @@ it("rejects restoring a failed file message before changing draft or dismissing 
   machine.meta!.capabilities!.fileUpload = false;
   const upload = vi.spyOn(r, "uploadImage");
   mount(<SessionPage remote={r} session={s} onBack={() => undefined} wide={false} />);
-  await click(button("放回输入框", host.querySelector(".me.fail")!));
-  expect(host.textContent).toContain("请更新电脑上的 remote-agent");
+  await click(button(message("composer.restore"), host.querySelector(".me.fail")!));
+  expect(host.textContent).toContain(message("session.update_computer"));
   expect(r.drafts.get(s.id)).toBe("existing draft");
   expect(r.outbox(s.id).some(o => o.sendId === id)).toBe(true);
   expect(r.trays.get(s.id)?.items).toHaveLength(0);
@@ -4221,7 +4221,7 @@ it("keeps a named quota warning next to its card before the received time", asyn
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const text = host.textContent!;
-  expect(text).toContain("Claude Code · 7 天额度即将用尽，不会自动切换 CLI 或模型");
+  expect(text).toContain(message("quota.warning", {"name":"Claude Code","window":"7 天"}));
   expect(text.indexOf("Claude Code · 7 天额度即将用尽")).toBeLessThan(text.indexOf("最近收到"));
   expect(host.querySelector(".qrow.warn .bar i")?.getAttribute("style")).toContain("3%");
 });

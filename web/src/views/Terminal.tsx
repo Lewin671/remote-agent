@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 import { TerminalHistory } from "../terminal-history";
 import { wheelAxis } from "../wheel";
 import { BackToLive, TerminalReader, TERM_FONT } from "./TerminalHistory";
@@ -27,14 +28,14 @@ function cellHeight(t: XTerm): number {
 
 // Special keys for phones, in two rows as in the mockup: the arrows and
 // Enter first, then Tab, Ctrl+C and the keyboard. None hides in a scroll.
-const keys: [ReactNode, string, string][] = [
+function keys(): [ReactNode, string, string][] { return [
   ["Esc", "\x1b", "Esc"],
-  [<ArrowLeft />, "\x1b[D", "左"],
-  [<ArrowUp />, "\x1b[A", "上"],
-  [<ArrowDown />, "\x1b[B", "下"],
-  [<ArrowRight />, "\x1b[C", "右"],
-  [<CornerDownLeft />, "\r", "回车"],
-];
+  [<ArrowLeft />, "\x1b[D", i18n.t("terminal.left")],
+  [<ArrowUp />, "\x1b[A", i18n.t("terminal.up")],
+  [<ArrowDown />, "\x1b[B", i18n.t("terminal.down")],
+  [<ArrowRight />, "\x1b[C", i18n.t("terminal.right")],
+  [<CornerDownLeft />, "\r", i18n.t("terminal.enter")],
+]; }
 const keys2: [ReactNode, string, string][] = [
   ["Tab", "\t", "Tab"],
   ["Ctrl+C", "\x03", "Ctrl+C"],
@@ -406,45 +407,42 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       <div className="ttool">
         <div className="tchip glass">
           <span>
-            {reading ? "回看中 · 只读" : !live ? (state === "connecting" ? "连接终端…" : "终端已断开") : fitted ? `已适配这块屏幕 · ${dims?.cols}×${dims?.rows}` : `${changed ? "远端" : "电脑上"} ${dims?.cols}×${dims?.rows}`}
+            {reading ? i18n.t("terminal.readonly") : !live ? (state === "connecting" ? i18n.t("terminal.connecting") : i18n.t("terminal.disconnected")) : fitted ? i18n.t("terminal.fitted_size", { cols: dims!.cols, rows: dims!.rows }) : changed ? i18n.t("terminal.remote_dimensions", { cols: dims!.cols, rows: dims!.rows }) : i18n.t("terminal.computer_dimensions", { cols: dims!.cols, rows: dims!.rows })}
           </span>
-          {live && !reading && <button onClick={toggleFit}>{fitted ? "还原" : <><Maximize2 /> {wide ? "适配" : "适配我的屏幕"}</>}</button>}
+          {live && !reading && <button onClick={toggleFit}>{fitted ? i18n.t("terminal.restore") : <><Maximize2 /> {wide ? i18n.t("terminal.fit_short") : i18n.t("terminal.fit")}</>}</button>}
         </div>
       </div>
       <div className={"term" + (reading ? " reading" : "")} ref={box} onClick={() => !reading && term.current?.focus()}>
         <div className={"tpan" + (shown || state === "closed" ? "" : " unfit")} ref={pan}>
           <div ref={host} className={state === "closed" ? "stale" : ""} />
         </div>
-        {history.phase === "loading" && <div className="thint">{history.error ? <>读取失败<button onClick={() => beginRef.current(0)}>重试</button></> : "读取记录…"}</div>}
+        {history.phase === "loading" && <div className="thint">{history.error ? <>{i18n.t("terminal.read_failed")}<button onClick={() => beginRef.current(0)}>{i18n.t("common.retry")}</button></> : i18n.t("terminal.reading")}</div>}
         {reading && reader && <TerminalReader history={history} load={() => loadHistory()} online={live} font={reader.font} height={reader.height} offset={Math.max(reader.offset, reader.height * 3)} left={reader.left} grid={reader.grid} onLeave={leaveReading} />}
         {reading && <BackToLive fresh={newOutput} onLeave={leaveReading} />}
         {changed && state === "live" && !reading && (
           <div className="tstate glass">
-            <b>远端尺寸已变化</b>
-            <p>窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。</p>
+            <b>{i18n.t("terminal.size_changed")}</b>
+            <p>{i18n.t("terminal.size_note")}</p>
             <div className="btns">
               <button className="btn" onClick={() => setChanged(false)}>
-                知道了
-              </button>
+                {i18n.t("common.got_it")}</button>
             </div>
           </div>
         )}
         {state === "closed" && (
           <div className="tstate glass">
-            <b>终端连接断开了</b>
-            <p>下面是断开前的画面。{running ? "会话还在运行，聊天照常更新。" : "会话已经结束。"}</p>
+            <b>{i18n.t("terminal.closed")}</b>
+            <p>{running ? i18n.t("terminal.closed_running_note") : i18n.t("terminal.closed_ended_note")}</p>
             <div className="btns">
               <button className="btn pri" onClick={() => setAttempt((a) => a + 1)}>
-                重新连接
-              </button>
+                {i18n.t("terminal.reconnect")}</button>
             </div>
             {reason &&
               (details ? (
                 <span className="det mono">{reason}</span>
               ) : (
                 <button className="det" onClick={() => setDetails(true)}>
-                  查看详情
-                </button>
+                  {i18n.t("terminal.view_details")}</button>
               ))}
           </div>
         )}
@@ -453,7 +451,7 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
       {!compact && !(wide && fine) && (
         <div className={"keys glass" + (live ? "" : " off")}>
           <div className="keyrow">
-            {keys.map(([label, seq, name]) => (
+            {keys().map(([label, seq, name]) => (
               <button key={name} onClick={() => press(seq)} disabled={!live} aria-label={name}>
                 {label}
               </button>
@@ -465,9 +463,8 @@ export function TerminalView({ remote, session, compact, wide, running }: { remo
                 {label}
               </button>
             ))}
-            <button className="kb" onClick={openKeyboard} disabled={!live} aria-label="键盘">
-              <Keyboard /> 键盘
-            </button>
+            <button className="kb" onClick={openKeyboard} disabled={!live} aria-label={i18n.t("terminal.keyboard")}>
+              <Keyboard /> {i18n.t("terminal.keyboard")}</button>
           </div>
         </div>
       )}

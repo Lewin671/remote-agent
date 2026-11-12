@@ -74,6 +74,27 @@
     }
   },
   {
+    "key": "models.context_size",
+    "zh-CN": "{size} 上下文",
+    "en": "{size} context",
+    "notes": "会话页面。模型上下文窗口短标签；size 为紧凑 token 数字加 k/M 单位。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：size 为原有格式的字节大小或紧凑 token 数。",
+    "params": {
+      "size": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "models.context_window",
     "zh-CN": "上下文窗口",
     "en": "Context window",

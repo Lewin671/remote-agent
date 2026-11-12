@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // Nothing is said of the connection until the lists are in: the last state
 // heard shows, where 未连接 and 电脑离线 for a moment and then the state would
@@ -34,19 +35,19 @@ const status = () => host.querySelector(".dh .st")?.textContent ?? "";
 
 it("shows the last state heard, and no connection word, before the lists are in", () => {
   open((r) => Object.assign(r, { conn: "connecting", listed: false, network: true, begun: true, waited: false }));
-  expect(status()).not.toContain("未连接");
-  expect(status()).not.toContain("电脑离线");
-  expect(status()).toContain("空闲");
+  expect(status()).not.toContain(message("list_state.unlinked"));
+  expect(status()).not.toContain(message("list_state.offline"));
+  expect(status()).toContain(message("list_state.idle"));
 });
 
 it("shows the state once the lists are in", () => {
   open((r) => Object.assign(r, { conn: "online", listed: true }));
-  expect(status()).toContain("空闲");
+  expect(status()).toContain(message("list_state.idle"));
 });
 
 it("still says 未连接 when the server cannot be reached", () => {
   open((r) => Object.assign(r, { conn: "offline", listed: false, network: true, begun: true, waited: true }));
-  expect(status()).toContain("未连接");
+  expect(status()).toContain(message("list_state.unlinked"));
 });
 
 describe("a list row", () => {
@@ -64,17 +65,17 @@ describe("a list row", () => {
 
   it("shows the last state heard, not 未连接 or 电脑离线, while the lists are on their way", () => {
     const text = row((r) => Object.assign(r, { conn: "connecting", listed: false, network: true, begun: true, waited: false }));
-    expect(text).not.toContain("未连接");
-    expect(text).not.toContain("电脑离线");
-    expect(text).toContain("空闲");
+    expect(text).not.toContain(message("list_state.unlinked"));
+    expect(text).not.toContain(message("list_state.offline"));
+    expect(text).toContain(message("list_state.idle"));
   });
 
   it("says 电脑离线 once the lists are in and the computer is not", () => {
-    expect(row((r) => Object.assign(r, { conn: "online", listed: true }))).toContain("电脑离线");
+    expect(row((r) => Object.assign(r, { conn: "online", listed: true }))).toContain(message("list_state.offline"));
   });
 
   it("says 未连接 when the server cannot be reached", () => {
-    expect(row((r) => Object.assign(r, { conn: "offline", listed: false, network: true, begun: true, waited: true }))).toContain("未连接");
+    expect(row((r) => Object.assign(r, { conn: "offline", listed: false, network: true, begun: true, waited: true }))).toContain(message("list_state.unlinked"));
   });
 });
 

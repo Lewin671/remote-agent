@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import { clientDetail, clientName, clientUsed, defaultClientName, sortClients, describeBrowser, elsewhereLabel, originLabel, platformName, type DeviceInfo } from "./devices";
@@ -91,23 +92,23 @@ describe("device names", () => {
 describe("where an action came from", () => {
   it("names the device that sent it", () => {
     expect(originLabel(origin(OriginKind.CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("Android · b71c");
-    expect(originLabel(origin(OriginKind.CLIENT, ctx.me), ctx)).toBe("本客户端");
+    expect(originLabel(origin(OriginKind.CLIENT, ctx.me), ctx)).toBe(message("session.origin_self"));
   });
 
   it("calls a removed device so, without its ID", () => {
-    expect(originLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("已移除的设备");
+    expect(originLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe(message("session.origin_removed"));
   });
 
   it("waits for the directory before calling a device removed", () => {
     const unknown = origin(OriginKind.CLIENT, "gone9999");
-    expect(originLabel(unknown, { ...ctx, devices: new Map() })).toBe("另一客户端");
-    expect(originLabel(unknown, ctx)).toBe("已移除的设备");
-    expect(originLabel(origin(OriginKind.CLIENT), ctx)).toBe("另一客户端");
-    expect(originLabel(origin(OriginKind.CLIENT, ctx.me), { ...ctx, devices: new Map() })).toBe("本客户端");
+    expect(originLabel(unknown, { ...ctx, devices: new Map() })).toBe(message("session.origin_other"));
+    expect(originLabel(unknown, ctx)).toBe(message("session.origin_removed"));
+    expect(originLabel(origin(OriginKind.CLIENT), ctx)).toBe(message("session.origin_other"));
+    expect(originLabel(origin(OriginKind.CLIENT, ctx.me), { ...ctx, devices: new Map() })).toBe(message("session.origin_self"));
   });
 
   it("says the computer's terminal, and nothing for the CLI itself", () => {
-    expect(originLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 终端");
+    expect(originLabel(origin(OriginKind.LOCAL), ctx)).toBe(message("session.origin_terminal", {"name":"VPS-dev"}));
     expect(originLabel(origin(OriginKind.SYSTEM), ctx)).toBe("");
   });
 
@@ -117,9 +118,9 @@ describe("where an action came from", () => {
   });
 
   it("falls back to 另一端 for something settled elsewhere", () => {
-    expect(elsewhereLabel(undefined, ctx)).toBe("另一端");
-    expect(elsewhereLabel(origin(OriginKind.LOCAL), ctx)).toBe("VPS-dev 终端");
-    expect(elsewhereLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe("已移除的设备");
+    expect(elsewhereLabel(undefined, ctx)).toBe(message("session.origin_elsewhere"));
+    expect(elsewhereLabel(origin(OriginKind.LOCAL), ctx)).toBe(message("session.origin_terminal", {"name":"VPS-dev"}));
+    expect(elsewhereLabel(origin(OriginKind.CLIENT, "eeee0000eeee0000eeee0000eeee5a5a"), ctx)).toBe(message("session.origin_removed"));
     expect(elsewhereLabel(origin(OriginKind.CLIENT, "bbbb0000bbbb0000bbbb0000bbbbb71c"), ctx)).toBe("Android · b71c");
   });
 });

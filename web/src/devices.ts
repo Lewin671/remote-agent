@@ -1,3 +1,4 @@
+import * as i18n from "./i18n";
 // The account's devices as clients name them, and where an action came
 // from (architecture §9 多客户端的界面状态). A device is named only when
 // the daemon verified its signature; anything unsure is "another client"
@@ -125,11 +126,11 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
   if (!o || o.kind === OriginKind.UNSPECIFIED) return undefined;
   switch (o.kind) {
     case OriginKind.CLIENT: {
-      if (o.deviceId === ctx.me) return "本客户端";
+      if (o.deviceId === ctx.me) return i18n.t("session.origin_self");
       // A loaded account directory includes this client; empty means unread.
-      if (!o.deviceId || ctx.devices.size === 0) return "另一客户端";
+      if (!o.deviceId || ctx.devices.size === 0) return i18n.t("session.origin_other");
       const d = ctx.devices.get(o.deviceId);
-      return d ? clientName(d, ctx.devices) : "已移除的设备";
+      return d ? clientName(d, ctx.devices) : i18n.t("session.origin_removed");
     }
     case OriginKind.LOCAL:
       return terminalLabel(ctx.machine);
@@ -141,12 +142,12 @@ export function originLabel(o: Origin | undefined, ctx: OriginContext): string |
 
 /** Input typed in the computer's own terminal: 「MacBook 终端」. */
 export function terminalLabel(machine: string): string {
-  return `${machine} 终端`;
+  return i18n.t("session.origin_terminal", { name: machine });
 }
 
 /** Who settled something shown on this page as waiting (an approval, a
  * question, a plan) when it was not this client: "另一端" unless the
  * daemon said who. */
 export function elsewhereLabel(o: Origin | undefined, ctx: OriginContext): string {
-  return originLabel(o, ctx) ?? "另一端";
+  return originLabel(o, ctx) ?? i18n.t("session.origin_elsewhere");
 }

@@ -1,0 +1,541 @@
+[
+  {
+    "key": "terminal.closed",
+    "zh-CN": "终端连接断开了",
+    "en": "Terminal connection lost",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.closed_ended_note",
+    "zh-CN": "下面是断开前的画面。会话已经结束。",
+    "en": "The last frame before disconnection is shown below. The session has ended.",
+    "notes": "会话终端视图与记录阅读器。终端连接断开说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.closed_running_note",
+    "zh-CN": "下面是断开前的画面。会话还在运行，聊天照常更新。",
+    "en": "The last frame before disconnection is shown below. The session is still running; chat updates continue.",
+    "notes": "会话终端视图与记录阅读器。终端连接断开说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.computer_dimensions",
+    "zh-CN": "电脑上 {cols}×{rows}",
+    "en": "On computer {cols}×{rows}",
+    "notes": "会话终端视图与记录阅读器。终端顶栏电脑列数和行数。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：cols 为终端列数；rows 为终端行数。",
+    "params": {
+      "rows": {
+        "type": "integer",
+        "example": 2
+      },
+      "cols": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.connecting",
+    "zh-CN": "连接终端…",
+    "en": "Connecting to terminal…",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.disconnected",
+    "zh-CN": "终端已断开",
+    "en": "Terminal disconnected",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.down",
+    "zh-CN": "下",
+    "en": "Down",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.earlier",
+    "zh-CN": "读取更早的记录…",
+    "en": "Loading earlier history…",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.enter",
+    "zh-CN": "回车",
+    "en": "Enter",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.fit",
+    "zh-CN": "适配我的屏幕",
+    "en": "Fit my screen",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.fit_short",
+    "zh-CN": "适配",
+    "en": "Fit",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.fitted_size",
+    "zh-CN": "已适配这块屏幕 · {cols}×{rows}",
+    "en": "Fitted to this screen · {cols}×{rows}",
+    "notes": "会话终端视图与记录阅读器。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：cols 为终端列数；rows 为终端行数。",
+    "params": {
+      "rows": {
+        "type": "integer",
+        "example": 2
+      },
+      "cols": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.fresh",
+    "zh-CN": "有新输出",
+    "en": "New output",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.fresh_live",
+    "zh-CN": "有新输出，回到实时",
+    "en": "New output; return to live",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.history",
+    "zh-CN": "终端记录",
+    "en": "Terminal history",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.history_closed",
+    "zh-CN": "终端断开了，已读到的内容还能看；重新连接后再往上滑读取更早的",
+    "en": "Terminal disconnected. Loaded history is still available; reconnect, then scroll up for earlier history.",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.history_expired",
+    "zh-CN": "记录已过期，回到实时后重新往上滑",
+    "en": "History expired. Return to live, then scroll up again.",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.history_start",
+    "zh-CN": "已经是保留的最早记录",
+    "en": "This is the earliest retained history",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.keyboard",
+    "zh-CN": "键盘",
+    "en": "Keyboard",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.left",
+    "zh-CN": "左",
+    "en": "Left",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.live",
+    "zh-CN": "回到实时",
+    "en": "Back to live",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.read_failed",
+    "zh-CN": "读取失败",
+    "en": "Could not load",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.reading",
+    "zh-CN": "读取记录…",
+    "en": "Loading history…",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.readonly",
+    "zh-CN": "回看中 · 只读",
+    "en": "Reviewing history · Read only",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.reconnect",
+    "zh-CN": "重新连接",
+    "en": "Reconnect",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.remote_dimensions",
+    "zh-CN": "远端 {cols}×{rows}",
+    "en": "Remote {cols}×{rows}",
+    "notes": "会话终端视图与记录阅读器。终端顶栏远端列数和行数。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：cols 为终端列数；rows 为终端行数。",
+    "params": {
+      "rows": {
+        "type": "integer",
+        "example": 2
+      },
+      "cols": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.restore",
+    "zh-CN": "还原",
+    "en": "Restore",
+    "notes": "终端视图或记录阅读器的状态/操作文字。按钮/菜单项，描述该操作。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.right",
+    "zh-CN": "右",
+    "en": "Right",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.size_changed",
+    "zh-CN": "远端尺寸已变化",
+    "en": "Remote size changed",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.size_note",
+    "zh-CN": "窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。",
+    "en": "The window size changed, possibly from the computer or another client. The latest size is shown here; opening the keyboard does not resize the remote terminal.",
+    "notes": "终端视图或记录阅读器的状态/操作文字。说明/反馈正文，允许多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.up",
+    "zh-CN": "上",
+    "en": "Up",
+    "notes": "终端视图或记录阅读器的状态/操作文字。读屏标签；在对应控件或图片上使用。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "terminal.view_details",
+    "zh-CN": "查看详情",
+    "en": "View details",
+    "notes": "终端视图或记录阅读器的状态/操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

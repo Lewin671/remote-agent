@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 // The dark card (design-system §6 终端卡): a command waiting to be allowed,
 // dark in both themes, the same on the home, in a session's dock and on the
 // approval page. What would run comes first, then why, then the buttons. On
@@ -17,7 +18,7 @@ import { ChevronRight } from "../icons";
 import { deadlineOf, useApproval } from "./actions";
 
 export function approvalTitle(a: ApprovalRequested): string {
-  return a.command ? "请求执行" : "请求权限 · " + approvalDisplay(a.toolName);
+  return a.command ? i18n.t("list_state.android_request_command") : i18n.t("list_state.request_permission", { tool: approvalDisplay(a.toolName) });
 }
 
 export function approvalText(a: ApprovalRequested): string {
@@ -118,7 +119,7 @@ export function ApprovalCard({
     return (
       <div className="tc">
         {head("")}
-        <div className="y">{skeletonMessage}</div>
+        <div className="y">{skeletonMessage()}</div>
       </div>
     );
   // Submitted: one line of where it stands; the next item comes up when
@@ -131,17 +132,17 @@ export function ApprovalCard({
           <i />
           {kind}
           {ap.error ? (
-            <span className="red">没送到电脑：{ap.error}</span>
+            <span className="red">{i18n.t("approval.delivery_failed", { reason: ap.error })}</span>
           ) : (
-            <span>{allow ? "已允许" : "已拒绝"}</span>
+            <span>{allow ? i18n.t("approval.allowed") : i18n.t("approval.denied")}</span>
           )}
         </div>
-        {ap.error && <button onClick={ap.retry}>重试</button>}
+        {ap.error && <button onClick={ap.retry}>{i18n.t("common.retry")}</button>}
       </div>
     );
   }
   const left = deadline - now;
-  const time = unlinked ? "未连接" : deadline ? minutesLeft(deadline, now) + (timeoutNote && left > 0 ? "，超时拒绝" : "") : "";
+  const time = unlinked ? i18n.t("list_state.unlinked") : deadline ? timeoutNote && left > 0 ? i18n.t("approval.timeout_note", { remaining: minutesLeft(deadline, now) }) : minutesLeft(deadline, now) : "";
   const more = docked ? 0 : lines - CARD_LINES;
   const cut = more > 0 && !full;
   const clamp = docked ? 0 : denying ? REASON_LINES : cut ? CARD_LINES : 0;
@@ -153,14 +154,14 @@ export function ApprovalCard({
         {text}
       </pre>
       {!denying && (cut ? (
-        <div className="ml">还有 {more} 行没显示</div>
+        <div className="ml">{i18n.t("markdown.ios_hidden_lines", { count: more })}</div>
       ) : full && more > 0 ? (
         <div className="ml">
-          共 {lines} 行
-          <button aria-expanded onClick={() => setFull(false)}>收起</button>
+          {i18n.t("markdown.line_count", { count: lines })}
+          <button aria-expanded onClick={() => setFull(false)}>{i18n.t("markdown.collapse")}</button>
         </div>
       ) : null)}
-      {truncated && <div className="ml red">{approvalTruncatedMessage}</div>}
+      {truncated && <div className="ml red">{approvalTruncatedMessage()}</div>}
       {!denying && a.description && <div className="y">{approvalDisplay(a.description)}</div>}
     </>
   );
@@ -172,29 +173,29 @@ export function ApprovalCard({
             className="inp"
             autoFocus
             rows={1}
-            aria-label="不允许的理由"
-            placeholder="说说该怎么做，可以不填"
+            aria-label={i18n.t("approval.denial_reason")}
+            placeholder={i18n.t("approval.reason_placeholder")}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
           <div className="btns decide">
-            <button className="btn" onClick={() => setDenying(false)}>取消</button>
-            <button className="btn pri" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>不允许</button>
+            <button className="btn" onClick={() => setDenying(false)}>{i18n.t("common.cancel")}</button>
+            <button className="btn pri" disabled={locked} onClick={() => void ap.resolve(false, reason.trim())}>{i18n.t("approval.deny")}</button>
           </div>
         </>
       ) : (
         <div className="btns decide">
-          <button className="btn" disabled={locked} onClick={() => setDenying(true)}>不允许</button>
+          <button className="btn" disabled={locked} onClick={() => setDenying(true)}>{i18n.t("approval.deny")}</button>
           {cut ? (
-            <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>看完整命令</button>
+            <button className="btn pri" aria-expanded={false} onClick={() => setFull(true)}>{i18n.t("approval.full_command")}</button>
           ) : (
-            <button className="btn pri" disabled={locked || truncated} onClick={() => void ap.resolve(true)}>允许</button>
+            <button className="btn pri" disabled={locked || truncated} onClick={() => void ap.resolve(true)}>{i18n.t("approval.allow")}</button>
           )}
         </div>
       )}
       {always && !denying && !cut && (
         <div className="ml">
-          <button disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>允许，这类请求以后不再问</button>
+          <button disabled={locked || truncated} onClick={() => void ap.resolve(true, "", true)}>{i18n.t("approval.always_allow")}</button>
         </div>
       )}
     </>

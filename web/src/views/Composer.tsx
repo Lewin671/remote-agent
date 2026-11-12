@@ -1,3 +1,4 @@
+import * as i18n from "../i18n";
 // The session composer (design-system §6 输入框): a glass capsule floating
 // at the bottom, ＋ on the left, the draft growing from one line to about
 // six, and on the right one ink button that sends, or interrupts a running
@@ -147,11 +148,11 @@ export function Composer({
   const i = session.info;
   const keys = sendKeys(fine);
   // Not by whether a tool is running: that changes every few seconds of a turn, and the field would blink.
-  const placeholder = d.questions.size > 0 ? "排队发送，回答后继续" : i?.planOpen ? "补充你对计划的要求…" : keys ? `消息 · ${keys} 发送` : "消息";
+  const placeholder = d.questions.size > 0 ? i18n.t("composer.queue_after_answer") : i?.planOpen ? i18n.t("composer.plan_placeholder") : keys ? i18n.t("composer.shortcut", { keys }) : i18n.t("composer.message");
   const canQueue = d.running;
   const stopping = d.running && !t && !images;
   const send = stopping ? (
-    <button className="snd stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label="中断本轮">
+    <button className="snd stop" disabled={!online} onMouseDown={(e) => e.preventDefault()} onClick={onInterrupt} aria-label={i18n.t("session.interrupt_turn")}>
       <Square />
     </button>
   ) : (
@@ -166,14 +167,14 @@ export function Composer({
         onPointerCancel={() => clearTimeout(hold.current)}
         onContextMenu={(e) => { if (canQueue) { e.preventDefault(); setSendMenu(true); held.current = true; } }}
         onClick={() => { if (held.current) { held.current = false; return; } if (sendMenu) setSendMenu(false); else submit(); }}
-        aria-label="发送"
+        aria-label={i18n.t("composer.send")}
       >
         <ArrowUp />
       </button>
       {sendMenu && (
         <div className="send-menu">
-          <button onClick={() => submit()}><b>现在插入这一轮</b><small>点 ↑ 就是这个</small></button>
-          <button onClick={() => submit(false, SendMode.QUEUE)}><b>这一轮结束后再发</b><small>先排队，结束后按顺序发出</small></button>
+          <button onClick={() => submit()}><b>{i18n.t("composer.insert_now")}</b><small>{i18n.t("composer.insert_hint")}</small></button>
+          <button onClick={() => submit(false, SendMode.QUEUE)}><b>{i18n.t("composer.after_turn")}</b><small>{i18n.t("composer.queue_hint")}</small></button>
         </div>
       )}
     </div>
@@ -201,7 +202,7 @@ export function Composer({
               submit(false, SendMode.QUEUE);
             }
           }}
-          aria-label="消息"
+          aria-label={i18n.t("composer.message")}
         />
         {/* ↑ and ■ swap by crossfade; the two are the same ink circle. */}
         <Swap k={stopping ? "stop" : "send"} className="mo-send" hold>
@@ -210,9 +211,9 @@ export function Composer({
       </div>
       {slash !== undefined && (
         <Alert
-          title="作为普通消息发送？"
-          text="以 / 开头的内容会作为普通消息发给模型，而不是执行斜杠命令。"
-          ok="发送"
+          title={i18n.t("composer.slash_title")}
+          text={i18n.t("composer.slash_note")}
+          ok={i18n.t("composer.send")}
           onCancel={() => setSlash(undefined)}
           onOk={() => {
             const choice = slash;

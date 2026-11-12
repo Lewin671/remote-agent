@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Tray, type Prepared } from "./attach";
 
@@ -32,7 +33,7 @@ describe("images waiting to be sent", () => {
     tray.add([1, 2, 3, 4].map((i) => file("a" + i)));
     tray.add([5, 6, 7, 8].map((i) => file("b" + i)));
     expect(tray.items.length).toBe(6);
-    expect(tray.note).toBe("一条消息最多 6 张，多选的 2 张没有加入");
+    expect(tray.note).toBe(message("attachment.images_limit", {"limit":6,"count":2}));
     await vi.waitFor(() => expect(tray.ready()).toBe(true));
     expect(tray.imageIds()).toEqual(["id1", "id2", "id3", "id4", "id5", "id6"]);
     expect(tray.full()).toBe(true);
@@ -262,7 +263,7 @@ it("sends files as-is, keeps image and file limits independent, and frees upload
   tray.addFiles([raw, ...Array.from({ length: 6 }, (_, i) => new File(["x"], `data${i}.csv`))]);
   await vi.waitFor(() => expect(tray.ready()).toBe(true));
   expect(tray.images()).toHaveLength(6); expect(tray.files()).toHaveLength(6);
-  expect(tray.note).toContain("最多 6 个文件"); expect(prepare).toHaveBeenCalledTimes(6);
+  expect(tray.note).toBe(message("attachment.max_files", { count: 6 })); expect(prepare).toHaveBeenCalledTimes(6);
   const p = seen.find((p) => p.fileName === "photo.png")!;
   expect(p.format).toBe("file"); expect(new TextDecoder().decode(p.bytes)).toBe("EXIF\x00data");
   expect(tray.files().every((f) => !f.prepared)).toBe(true);
@@ -276,10 +277,10 @@ it("rejects unsupported, oversized and long-named files before reading any bytes
   const { tray, upload } = setup();
   const source = new File(["data"], "x.csv");
   const read = vi.spyOn(source, "arrayBuffer");
-  tray.addFiles([source]); expect(tray.note).toContain("不支持发送文件");
+  tray.addFiles([source]); expect(tray.note).toBe(message("attachment.update_required"));
   tray.fileSupported = true; tray.maxFileBytes = 3;
   tray.addFiles([source]); expect(tray.note).toContain("超过单个文件");
-  tray.addFiles([new File([], "中".repeat(86))]); expect(tray.note).toContain("255 字节");
+  tray.addFiles([new File([], "中".repeat(86))]); expect(tray.note).toBe(message("attachment.filename_limit"));
   expect(tray.items).toHaveLength(0); expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
 });
 
@@ -310,7 +311,7 @@ it("explains unreadable dropped file entries and never uploads substituted empty
   const { tray, upload } = setup(); tray.fileSupported = true;
   tray.addFiles([source]);
   await vi.waitFor(() => expect(tray.failed()).toBe(true));
-  expect(tray.items[0].error).toContain("文件夹不能直接发送");
+  expect(tray.items[0].error).toBe(message("attachment.read_failed"));
   expect(upload).not.toHaveBeenCalled();
 });
 
@@ -356,7 +357,7 @@ it("rejects file restoration synchronously when the refreshed capability is off"
   const source = new File(["bytes"], "file.csv");
   const read = vi.spyOn(source, "arrayBuffer");
   expect(tray.restoreFiles([{ fileId: "old", name: "file.csv", size: source.size, file: source }])).toBe(false);
-  expect(tray.note).toContain("请更新电脑上的 remote-agent");
+  expect(tray.note).toContain(message("session.update_computer"));
   expect(tray.items).toHaveLength(0);
   expect(read).not.toHaveBeenCalled(); expect(upload).not.toHaveBeenCalled();
 });

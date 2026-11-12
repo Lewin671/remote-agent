@@ -1,0 +1,326 @@
+[
+  {
+    "key": "tools.background",
+    "zh-CN": "后台运行",
+    "en": "Running in background",
+    "notes": "聊天工具调用行的可视状态/摘要。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.background_agent",
+    "zh-CN": "按模型的要求在后台运行；它什么时候结束这里不知道，请到终端确认。",
+    "en": "Running in the background at the model’s request. Its completion time is unknown here; check the terminal.",
+    "notes": "会话历史工具调用行。后台工具历史说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.background_returned",
+    "zh-CN": "调用已返回，命令转到了后台；它什么时候结束这里不知道，请到终端确认。",
+    "en": "The call returned and the command moved to the background. Its completion time is unknown here; check the terminal.",
+    "notes": "会话历史工具调用行。后台工具历史说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.background_terminal",
+    "zh-CN": "在电脑终端里被移到后台（Ctrl+B）；它什么时候结束这里不知道，请到终端确认。",
+    "en": "Moved to the background in the computer’s terminal (Ctrl+B). Its completion time is unknown here; check the terminal.",
+    "notes": "会话历史工具调用行。后台工具历史说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.background_timeout",
+    "zh-CN": "运行超时后被移到后台继续运行；它什么时候结束这里不知道，请到终端确认。",
+    "en": "Moved to the background after a timeout. Its completion time is unknown here; check the terminal.",
+    "notes": "会话历史工具调用行。后台工具历史说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.background_turn",
+    "zh-CN": "这一轮结束时它仍在运行；它什么时候结束这里不知道，请到终端确认。",
+    "en": "Still running when this turn ended. Its completion time is unknown here; check the terminal.",
+    "notes": "会话历史工具调用行。后台工具历史说明正文，可多行。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.command",
+    "zh-CN": "命令",
+    "en": "Command",
+    "notes": "聊天工具调用行的可视状态/摘要。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.completed_calls",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "完成了 {count} 个工具调用"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Completed {count} tool call",
+        "other": "Completed {count} tool calls"
+      }
+    },
+    "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.completed_commands",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "运行了 {count} 条命令"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Ran {count} command",
+        "other": "Ran {count} commands"
+      }
+    },
+    "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.completed_files",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "编辑了 {count} 个文件"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Edited {count} file",
+        "other": "Edited {count} files"
+      }
+    },
+    "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：count 为非负数量（控制复数规则）。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.edit_file",
+    "zh-CN": "编辑 {path}",
+    "en": "Edit {path}",
+    "notes": "会话历史工具调用行。工具行短标题；path 为按当前目录缩短的原始路径。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：path 为原始目录/文件路径，保持原文。",
+    "params": {
+      "path": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.elapsed",
+    "zh-CN": "已运行 {duration}",
+    "en": "Running for {duration}",
+    "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：duration 为已本地化的时长或 m:ss 计时钟。",
+    "params": {
+      "duration": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.elapsed_sync",
+    "zh-CN": "{elapsed}等待同步",
+    "en": "{elapsed}Waiting to sync",
+    "notes": "会话历史工具调用行。完整句，保持变量位置和原有标点。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：elapsed 为已本地化的运行时长及元信息分隔符，可空。",
+    "params": {
+      "elapsed": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.exit_code",
+    "zh-CN": "退出码 {code}",
+    "en": "Exit code {code}",
+    "notes": "会话历史工具调用行。完整提示/历史行；参数可重排，不翻译用户内容。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 参数：code 为CLI 退出码的十进制表示。",
+    "params": {
+      "code": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.tool",
+    "zh-CN": "工具",
+    "en": "Tool",
+    "notes": "聊天工具调用行的可视状态/摘要。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "tools.waiting_sync",
+    "zh-CN": "等待同步",
+    "en": "Waiting to sync",
+    "notes": "聊天工具调用行的可视状态/摘要。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

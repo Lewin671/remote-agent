@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -17,7 +18,7 @@ it("keeps all 20 skeleton kinds visible and reducible", () => {
   const events = corpus.events.map(e => fromJson(EventSchema, e as unknown as JsonValue));
   expect(events).toHaveLength(20);
   expect(corpus.note).toBe(skeletonNote);
-  expect(corpus.message).toBe(skeletonMessage);
+  expect(corpus.message).toBe(skeletonMessage());
   for (const agent of [Agent.CODEX, Agent.CLAUDE]) {
     const rows = timeline(events, derive(events, agent));
     expect(rows).toHaveLength(20);
@@ -35,8 +36,8 @@ it.each(["approval", "question", "empty-question", "plan"])("a %s skeleton offer
       : kind === "plan" ? <PlanPage {...props} plan={create(PlanProposedSchema, { text: skeletonNote, callId: "plan" })} />
       : <QuestionPage {...props} agent={Agent.CODEX} onTerminal={() => undefined} q={create(QuestionAskedSchema, { questionId: kind === "empty-question" ? "prefix…#0123456789abcdef" + skeletonNote : "q", questions: kind === "empty-question" ? [] : [{ id: "body", text: skeletonNote, options: [{ label: "unsafe choice" }] }] })} />;
     act(() => root.render(view));
-    expect(host.textContent).toContain(skeletonMessage);
-    for (const label of ["允许", "不允许", "批准执行", "继续规划", "unsafe choice", "清空上下文后执行"]) expect([...host.querySelectorAll("button")].some(b => b.textContent === label)).toBe(false);
+    expect(host.textContent).toContain(skeletonMessage());
+    for (const label of [message("approval.allow"), message("approval.deny"), message("approval.approve_execute"), message("dock.plan_keep"), "unsafe choice", message("dock.plan_clear")]) expect([...host.querySelectorAll("button")].some(b => b.textContent === label)).toBe(false);
     expect(command).not.toHaveBeenCalled();
   } finally { act(() => root.unmount()); host.remove(); remote.stop(); }
 });
