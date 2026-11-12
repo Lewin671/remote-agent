@@ -1,10 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
-import android.content.Context
-import android.content.ContextWrapper
-import io.github.lewin671.remoteagent.RaApp
-import org.robolectric.RuntimeEnvironment
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.Box
@@ -30,7 +26,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class NewTaskPageTest {
-    @get:Rule val ui = createComposeRule()
+    @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
+    @get:Rule(order = 1) val ui = createComposeRule()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "test-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val path = "/example/demo"
@@ -60,14 +57,6 @@ class NewTaskPageTest {
         }
     }
 
-    @Before fun imageStore() {
-        // The composer owns an image draft even with no attachments. Set up its store here so
-        // this screen's tests also run alone, without relying on another test creating RaApp.
-        val app = RaApp()
-        ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java)
-            .apply { isAccessible = true }.invoke(app, RuntimeEnvironment.getApplication())
-        RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
-    }
     @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); PrefsChanges.clear() }
 
     @Test fun theTitleSaysWhereAndTheBoxHoldsTheRest() {

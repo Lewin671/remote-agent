@@ -7,7 +7,7 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class TerminalReadingTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private fun reading(visible: Boolean = true, entered: Boolean = false, cursor: String = "", pending: String = "", failed: Boolean = false) =
         TerminalHistory.State(visible = visible, entered = entered, cursor = cursor, pending = pending, failed = failed)
 

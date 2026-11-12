@@ -1,8 +1,6 @@
 package io.github.lewin671.remoteagent.ui
 
 import android.app.Application
-import android.content.Context
-import android.content.ContextWrapper
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.view.inspector.WindowInspector
@@ -12,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import com.google.protobuf.Timestamp
-import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.core.*
 import io.github.lewin671.remoteagent.data.ThemeMode
 import io.github.lewin671.remoteagent.proto.*
@@ -33,7 +30,8 @@ class I18nBatchATest(private val locale: String) {
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun locales() = listOf(arrayOf("zh-CN"), arrayOf("en"))
     }
-    @get:Rule val ui = createComposeRule()
+    @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
+    @get:Rule(order = 1) val ui = createComposeRule()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private val path = "/example/demo"
@@ -55,9 +53,6 @@ class I18nBatchATest(private val locale: String) {
         prefs = PrefsObject.EMPTY, machines = listOf("a", "b").associateWith(::machine),
         sessions = listOf(session("question", pending = true), session("running"), session("ended", ended = true), session("other", "/example/notes")).associateBy { it.id })
     @Before fun prepare() {
-        val app = RaApp()
-        ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java).apply { isAccessible = true }.invoke(app, RuntimeEnvironment.getApplication())
-        RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
         remote.showForTest(state, modelLists = listOf("a", "b").flatMap { id -> listOf(Agent.AGENT_CODEX, Agent.AGENT_CLAUDE).map { (id to it) to models } }.toMap())
     }
     @After fun close() { remote.close(); Drafts.clear(); ImageDrafts.clear(); PrefsChanges.clear(); HomeScopes.clear(RuntimeEnvironment.getApplication()) }

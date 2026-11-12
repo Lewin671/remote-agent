@@ -20,7 +20,8 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ScheduleDetailEditsTest {
-    @get:Rule val ui = createComposeRule()
+    @get:Rule(order = 0) val sessionMessages = SessionMessageContextRule()
+    @get:Rule(order = 1) val ui = createComposeRule()
     private val remote = Remote(Account("http://127.0.0.1:1",ByteArray(32),ByteArray(32),"test-client"),Api.defaultHttp())
     private val scope=CoroutineScope(SupervisorJob()+Dispatchers.Unconfined)
     private val original=ScheduledTask("computer",Json.parseToJsonElement("""{"id":"task","revision":3,"status":"scheduled","source":"client","created_at":"2026-10-24T10:00:00Z","spec":{"title":"打开时的名字","message":"打开时的消息","trigger":{"type":"interval","interval_seconds":3600,"delay_seconds":29},"target":{"type":"new_session","cwd":"/example/project","agent":"claude","mode":"auto"}}}""").jsonObject)

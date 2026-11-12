@@ -10,7 +10,7 @@ import java.io.ByteArrayInputStream
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class FileUploadLifecycleTest {
-    @org.junit.Before fun sessionMessageContext() = installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private open class Channel : UploadChannel {
         val begins = mutableListOf<String>()
         val aborted = mutableListOf<String>()

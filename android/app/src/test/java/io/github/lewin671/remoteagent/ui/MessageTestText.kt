@@ -18,7 +18,16 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
     org.junit.Assert.assertEquals(rendered(expected), rendered(actual))
 }
 
-/** Install only a resource context; previews/tests never start the application engine. */
-fun installSessionMessageContext() {
-    sessionMessageContextForTesting = org.robolectric.RuntimeEnvironment.getApplication()
+/** Resource-only fixtures must not enable RaApp's asynchronous disk-work scope. */
+class SessionMessageContextRule : org.junit.rules.ExternalResource() {
+    private var previous: android.content.Context? = null
+
+    override fun before() {
+        previous = sessionMessageContextForTesting
+        sessionMessageContextForTesting = org.robolectric.RuntimeEnvironment.getApplication()
+    }
+
+    override fun after() {
+        sessionMessageContextForTesting = previous
+    }
 }

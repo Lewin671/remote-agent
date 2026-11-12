@@ -10,7 +10,7 @@ import java.io.ByteArrayInputStream
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class AttachmentInvalidationTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private fun ready(id: String = "file", image: Boolean = false) = PendingImage(id, "content://documents/$id", if (image) null else "$id.txt", 1).apply {
         if (image) processed = Processed(byteArrayOf(1), ImageFormat.IMAGE_FORMAT_PNG, 1, 1)
         machineId = "A"; transferId = "old-$id"

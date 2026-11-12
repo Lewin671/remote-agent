@@ -28,8 +28,8 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], application = Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class HistoryJoinTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
-    @get:Rule val ui = createComposeRule()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
+    @get:Rule(order = 1) val ui = createComposeRule()
 
     private fun message(seq: Long) =
         Event.newBuilder().setSeq(seq).setAgentMessage(AgentMessage.newBuilder().setText("reply $seq")).build()

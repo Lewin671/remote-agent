@@ -12,7 +12,7 @@ import org.junit.Assert.*
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class TerminalHistoryTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private fun plain(page: TerminalHistory.Page) = page.lines.map { line -> line.joinToString("") { it.text } }
 
     @Test fun emptyCaptureDoesNotCreateABlankPageAndDoesNotEnter() = runTest {

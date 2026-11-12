@@ -22,7 +22,6 @@ import io.github.lewin671.remoteagent.term.*
 import org.junit.*
 import org.junit.runner.RunWith
 import org.robolectric.ParameterizedRobolectricTestRunner
-import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.io.File
@@ -36,7 +35,8 @@ class I18nBatchBTest(private val locale: String) {
         @JvmStatic @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
         fun locales() = listOf(arrayOf("zh-CN"), arrayOf("en"))
     }
-    @get:Rule val ui = createComposeRule()
+    @get:Rule(order = 0) val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
+    @get:Rule(order = 1) val ui = createComposeRule()
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "preview-client"), Api.defaultHttp())
     private val nav = Nav({}, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {})
     private var language by mutableStateOf(locale)
@@ -64,11 +64,6 @@ class I18nBatchBTest(private val locale: String) {
         event(5) { turnEnded = TurnEnded.newBuilder().setOutcome(TurnOutcome.TURN_OUTCOME_COMPLETED).setDurationMs(72_000).build() },
     )
     @Before fun prepare() {
-        installSessionMessageContext()
-        val app = io.github.lewin671.remoteagent.RaApp()
-        android.content.ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", android.content.Context::class.java)
-            .apply { isAccessible = true }.invoke(app, RuntimeEnvironment.getApplication())
-        io.github.lewin671.remoteagent.RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
         remote.showForTest(state, events = mapOf("s" to history), modelLists = mapOf(("m" to Agent.AGENT_CLAUDE) to
             ListModelsResponse.newBuilder().setDefaultModel("example-model").addModels(ModelInfo.newBuilder().setSlug("example-model").setDisplayName("Example model").addEfforts("high")).build()))
     }

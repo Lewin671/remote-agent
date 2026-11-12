@@ -11,7 +11,7 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class PlansTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private val lost = CommandException(CommandException.UNKNOWN, "lost response")
 
     @Test fun aLostReplyKeepsItsChoiceEnvelopeAndDeadlineAcrossPages() = runBlocking {

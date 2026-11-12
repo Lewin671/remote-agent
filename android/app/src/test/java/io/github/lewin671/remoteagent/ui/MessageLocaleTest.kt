@@ -20,7 +20,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.io.File
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = android.app.Application::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class MessageLocaleTest {
     private val context: Context get() = RuntimeEnvironment.getApplication()

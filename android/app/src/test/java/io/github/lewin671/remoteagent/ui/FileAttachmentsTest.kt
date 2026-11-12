@@ -9,7 +9,7 @@ import org.junit.Test
 @org.junit.runner.RunWith(org.robolectric.RobolectricTestRunner::class)
 @org.robolectric.annotation.Config(sdk = [35], application = android.app.Application::class)
 class FileAttachmentsTest {
-    @org.junit.Before fun sessionMessageContext() = io.github.lewin671.remoteagent.ui.installSessionMessageContext()
+    @get:org.junit.Rule(order = 0) val sessionMessages = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     private fun file(id: String = "file") = PendingImage(id, "content://documents/$id", "季度\n说明😀.zip", 100L * 1024 * 1024).apply {
         machineId = "computer"
         fileId = "uploaded-$id"

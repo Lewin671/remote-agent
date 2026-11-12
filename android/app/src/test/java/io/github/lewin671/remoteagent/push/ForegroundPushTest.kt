@@ -2,14 +2,11 @@ package io.github.lewin671.remoteagent.push
 
 import android.app.Application
 import android.app.NotificationManager
-import android.content.Context
-import android.content.ContextWrapper
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.google.firebase.messaging.RemoteMessage
 import io.github.lewin671.remoteagent.MainActivity
-import io.github.lewin671.remoteagent.RaApp
 import io.github.lewin671.remoteagent.proto.NotifyKind
 import java.io.File
 import kotlinx.coroutines.runBlocking
@@ -25,13 +22,11 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class)
 class ForegroundPushTest {
+    @get:org.junit.Rule val appFixture = io.github.lewin671.remoteagent.RaAppTestRule()
     @Test
     fun scheduledPushBypassesForegroundUnlessItsSessionIsVisible() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
-        val app = RaApp()
-        ContextWrapper::class.java.getDeclaredMethod("attachBaseContext", Context::class.java)
-            .apply { isAccessible = true }.invoke(app, context)
-        RaApp::class.java.getDeclaredField("instance").apply { isAccessible = true }.set(null, app)
+        val app = appFixture.app
         // Only account presence is needed for a generic push, not any account keys.
         val account = File(context.noBackupFilesDir, "account-v2.bin")
         account.writeBytes(byteArrayOf(0))
