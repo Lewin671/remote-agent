@@ -368,7 +368,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
             $0.agents = [.with { $0.agent = .codex }]
             $0.quotas = [.with {
                 $0.agent = .codex
-                $0.state = .ok
+                $0.state = .ok; $0.observedMs = now - 60_000
                 $0.windows = [
                     .with { $0.name = "primary"; $0.windowMinutes = 300; $0.usedPercent = 62; $0.resetsAtMs = now + 3_600_000 },
                     .with { $0.name = "secondary"; $0.windowMinutes = 10080; $0.usedPercent = 34; $0.resetsAtMs = now + 86_400_000 },
