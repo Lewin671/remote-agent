@@ -142,9 +142,10 @@ class MainActivity : ComponentActivity() {
     private fun Main(remote: Remote) {
         val nav = rememberNavController()
         val focus = LocalFocusManager.current
+        val keyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
         // Every page change drops the keyboard first, so the page that leaves
         // does not shrink back under it halfway through the slide.
-        val actions = remember(nav, remote) { focus.clearFocus() }
+        val actions = remember(nav, remote) { io.github.lewin671.remoteagent.ui.dismissPageInput(focus, keyboard) }
         val notificationScope = rememberCoroutineScope()
         val target by openSession
         LaunchedEffect(openDevices.value) {

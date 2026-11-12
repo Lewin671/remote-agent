@@ -159,7 +159,7 @@ fun SessionScreen(sid: String) {
     val wide = wideWindow()
     val term = tab == 1 && hasTerminal
     val both = tab == 2 && wide && hasTerminal
-    BackHandler(enabled = term) { tab = 0 }
+    BackHandler { if (term) tab = 0 else nav.back() }
     // The terminal is dark in both themes, up to the screen's edges (design-system §6).
     LightSystemBarIcons(term && !p.dark)
     Column(

@@ -522,6 +522,7 @@ fun NewSessionBox(
     val p = pal
     val remote = LocalRemote.current
     val nav = LocalNav.current
+    androidx.activity.compose.BackHandler { nav.back() }
     val key = initial?.cwd ?: name
     // Text and configuration live and come back together, so a draft
     // reopened later still goes where it was going.
