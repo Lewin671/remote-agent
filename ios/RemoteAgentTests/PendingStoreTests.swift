@@ -26,12 +26,63 @@ import Testing
         return walk.compactMap { $0 as? URL }.filter { (try? $0.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true }
     }
 
+    @Test @MainActor func unreadableIndexCannotBeReplacedByANewMessage() throws {
+        defer { cleanUp() }
+        let files = store()
+        let records = OutgoingRecords(files: files)
+        let old = Outgoing(requestId: "old", text: "keep", original: false)
+        try records.save(sid: "s", old.record, original: false)
+        let index = try #require(filesOnDisk().first { $0.lastPathComponent == "index" })
+        let sealed = try Data(contentsOf: index)
+        let damaged = Data("unreadable ciphertext".utf8)
+        try damaged.write(to: index)
+        #expect(throws: (any Error).self) { try records.loadRecords(sid: "s") }
+        let next = Outgoing(requestId: "next", text: "new", original: false)
+        #expect(throws: (any Error).self) { try records.save(sid: "s", next.record, original: false) }
+        #expect(throws: (any Error).self) { try records.remove(sid: "s", requestId: "old") }
+        #expect(try Data(contentsOf: index) == damaged)
+        try sealed.write(to: index)
+        #expect(try records.loadRecords(sid: "s").map(\.requestId) == ["old"])
+    }
+
+    @Test @MainActor func unreadableDraftOrderCanBeRetriedWithoutAnEmptyRewrite() throws {
+        defer { cleanUp() }
+        let files = store()
+        let first = ImageDraft(key: "draft", files: files, saves: nil)
+        let image = PendingImage(id: "photo", uri: nil)
+        image.processed = Processed(bytes: Data([1, 2]), format: .png, width: 1, height: 1)
+        first.append([image])
+        let order = try #require(filesOnDisk().first { $0.lastPathComponent == "order" })
+        let sealed = try Data(contentsOf: order)
+        let damaged = Data("unreadable order".utf8)
+        try damaged.write(to: order)
+        let restored = ImageDraft(key: "draft", files: files, saves: nil)
+        #expect(throws: (any Error).self) { try restored.restore() }
+        restored.persist()
+        restored.clear()
+        #expect(try Data(contentsOf: order) == damaged)
+        try sealed.write(to: order)
+        try restored.restore()
+        #expect(restored.images.map(\.id) == ["photo"])
+    }
+
+    @Test func onlyMissingFilesReturnNil() throws {
+        defer { cleanUp() }
+        let files = store()
+        #expect(try files.get(folder: "draft", name: "missing") == nil)
+        try files.put(folder: "draft", name: "order", data: Data([1]))
+        let order = try #require(filesOnDisk().first)
+        try FileManager.default.removeItem(at: order)
+        try FileManager.default.createDirectory(at: order, withIntermediateDirectories: false)
+        #expect(throws: (any Error).self) { try files.get(folder: "draft", name: "order") }
+    }
+
     @Test func whatAnAccountWasStillWritingIsNotThereForTheNextOne() throws {
         defer { cleanUp() }
         let s = store()
         let first = s.scoped()
         try first.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("one".utf8))
-        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("one".utf8))
+        #expect(try first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("one".utf8))
         try s.clearAll()
         // Work the first account left on its way arrives after it was logged out.
         #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
@@ -39,12 +90,12 @@ import Testing
         #expect(try vault.read(.pendingKey) == nil)
         // The next account's drafts are its own, also for the same project path.
         let second = s.scoped()
-        #expect(second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        #expect(try second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
         try second.put(folder: "project:/Users/me/Code/foo", name: "1.jpg", data: Data("new".utf8))
-        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        #expect(try first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
         first.remove(folder: "project:/Users/me/Code/foo", name: "1.jpg")
         first.clearFolder("project:/Users/me/Code/foo")
-        #expect(second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("new".utf8))
+        #expect(try second.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == Data("new".utf8))
     }
 
     @Test @MainActor func projectDraftPathsAreSafeFilesAndSurviveReopening() throws {
@@ -74,9 +125,9 @@ import Testing
         let s = store()
         let plain = Data("PLAINTEXT-IMAGE-BYTES-PLAINTEXT-IMAGE-BYTES".utf8)
         try s.put(folder: "draft:/Users/me/Code/foo", name: "1.jpg", data: plain)
-        #expect(s.get(folder: "draft:/Users/me/Code/foo", name: "1.jpg") == plain)
-        #expect(s.get(folder: "draft:/Users/me/Code/foo", name: "2.jpg") == nil)
-        #expect(s.get(folder: "another", name: "1.jpg") == nil)
+        #expect(try s.get(folder: "draft:/Users/me/Code/foo", name: "1.jpg") == plain)
+        #expect(try s.get(folder: "draft:/Users/me/Code/foo", name: "2.jpg") == nil)
+        #expect(try s.get(folder: "another", name: "1.jpg") == nil)
 
         let files = filesOnDisk()
         #expect(files.count == 1)
@@ -92,7 +143,7 @@ import Testing
         #expect(s.used == Int64(plain.count + 28))
         // The key is in the Keychain, and a store made later opens what this one sealed.
         #expect(try vault.read(.pendingKey)?.count == 32)
-        #expect(store().get(folder: "draft:/Users/me/Code/foo", name: "1.jpg") == plain)
+        #expect(try store().get(folder: "draft:/Users/me/Code/foo", name: "1.jpg") == plain)
     }
 
     @Test func filesAreRemovedOneByOneAndByFolder() throws {
@@ -102,11 +153,11 @@ import Testing
         try s.put(folder: "a", name: "2", data: Data([2]))
         try s.put(folder: "b", name: "1", data: Data([3]))
         s.remove(folder: "a", name: "1")
-        #expect(s.get(folder: "a", name: "1") == nil)
-        #expect(s.get(folder: "a", name: "2") == Data([2]))
+        #expect(try s.get(folder: "a", name: "1") == nil)
+        #expect(try s.get(folder: "a", name: "2") == Data([2]))
         s.clearFolder("a")
-        #expect(s.get(folder: "a", name: "2") == nil)
-        #expect(s.get(folder: "b", name: "1") == Data([3]))
+        #expect(try s.get(folder: "a", name: "2") == nil)
+        #expect(try s.get(folder: "b", name: "1") == Data([3]))
         // Removing what is not there does nothing.
         s.remove(folder: "none", name: "1")
         s.clearFolder("none")
@@ -117,11 +168,11 @@ import Testing
         let s = store(limit: 200)
         try s.put(folder: "a", name: "1", data: Data(repeating: 1, count: 100))
         #expect(throws: UserError.self) { try s.put(folder: "a", name: "2", data: Data(repeating: 2, count: 100)) }
-        #expect(s.get(folder: "a", name: "1") == Data(repeating: 1, count: 100))
-        #expect(s.get(folder: "a", name: "2") == nil)
+        #expect(try s.get(folder: "a", name: "1") == Data(repeating: 1, count: 100))
+        #expect(try s.get(folder: "a", name: "2") == nil)
         // Replacing a file counts only the difference.
         try s.put(folder: "a", name: "1", data: Data(repeating: 3, count: 120))
-        #expect(s.get(folder: "a", name: "1") == Data(repeating: 3, count: 120))
+        #expect(try s.get(folder: "a", name: "1") == Data(repeating: 3, count: 120))
     }
 
     @Test func draftsNothingTouchedForAWeekExpireAndAreCounted() throws {
@@ -133,7 +184,7 @@ import Testing
         clock.advance(PendingPolicy.draftTTL - 60)
         #expect(s.expire() == 0)
         // Reading a draft is touching it.
-        #expect(s.get(folder: "old", name: "1.jpg") == Data([1]))
+        #expect(try s.get(folder: "old", name: "1.jpg") == Data([1]))
         clock.advance(120)
         #expect(s.expire() == 0)
         try s.put(folder: "fresh", name: "1.meta", data: Data([2]))
@@ -141,8 +192,8 @@ import Testing
         // One image is one .meta file: two expired.
         #expect(s.expire() == 2)
         #expect(s.expired == 2)
-        #expect(s.get(folder: "old", name: "1.jpg") == nil)
-        #expect(s.get(folder: "fresh", name: "1.meta") == Data([2]))
+        #expect(try s.get(folder: "old", name: "1.jpg") == nil)
+        #expect(try s.get(folder: "fresh", name: "1.meta") == Data([2]))
         s.clearExpiredCount()
         #expect(s.expired == 0)
     }
@@ -155,14 +206,14 @@ import Testing
         try s.put(folder: "outbox", name: "index", data: Data("session-1\treq-1\n".utf8))
         clock.advance(PendingPolicy.draftTTL + 60)
         #expect(s.expire() == 1)
-        #expect(s.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
-        #expect(s.get(folder: "out:session-1:req-2", name: "1.meta") == nil)
-        #expect(s.get(folder: "outbox", name: "index") == Data("session-1\treq-1\n".utf8))
+        #expect(try s.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
+        #expect(try s.get(folder: "out:session-1:req-2", name: "1.meta") == nil)
+        #expect(try s.get(folder: "outbox", name: "index") == Data("session-1\treq-1\n".utf8))
         // Once the index no longer names it, it expires like any draft.
         try s.put(folder: "outbox", name: "index", data: Data())
         clock.advance(PendingPolicy.draftTTL + 60)
         #expect(s.expire() == 1)
-        #expect(s.get(folder: "out:session-1:req-1", name: "1.meta") == nil)
+        #expect(try s.get(folder: "out:session-1:req-1", name: "1.meta") == nil)
     }
 
     @Test func aWaitingMessageIsKeptByTheIndexAloneWhateverElseIsOnDisk() throws {
@@ -176,8 +227,8 @@ import Testing
         // Another run of the app: nothing is remembered but what is on disk.
         let later = store()
         #expect(later.expire() == 0)
-        #expect(later.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
-        #expect(later.get(folder: "outbox", name: "index") == Data("session-1\treq-1\n".utf8))
+        #expect(try later.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
+        #expect(try later.get(folder: "outbox", name: "index") == Data("session-1\treq-1\n".utf8))
     }
 
     @Test func nothingExpiresWhileTheIndexDoesNotOpen() throws {
@@ -191,8 +242,8 @@ import Testing
         clock.advance(PendingPolicy.draftTTL + 60)
         // What it named cannot be told from a draft: neither goes.
         #expect(s.expire() == 0)
-        #expect(s.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
-        #expect(s.get(folder: "draft", name: "1.meta") == Data([2]))
+        #expect(try s.get(folder: "out:session-1:req-1", name: "1.meta") == Data([1]))
+        #expect(try s.get(folder: "draft", name: "1.meta") == Data([2]))
     }
 
     @Test func loggingOutRemovesTheFilesAndTheirKey() throws {
@@ -203,23 +254,23 @@ import Testing
         try s.clearAll()
         #expect(!FileManager.default.fileExists(atPath: dir.path))
         #expect(try vault.read(.pendingKey) == nil)
-        #expect(s.get(folder: "a", name: "1") == nil)
+        #expect(try s.get(folder: "a", name: "1") == nil)
         // The next account's images are sealed under a new key.
         try s.put(folder: "a", name: "1", data: Data([2]))
         #expect(try vault.read(.pendingKey) != key)
-        #expect(s.get(folder: "a", name: "1") == Data([2]))
+        #expect(try s.get(folder: "a", name: "1") == Data([2]))
     }
 
-    @Test func withoutItsKeyWhatWasStoredIsGone() throws {
+    @Test func anUnavailableKeyPreservesCiphertextAndRefusesReplacementWrites() throws {
         defer { cleanUp() }
         try store().put(folder: "a", name: "1", data: Data([1]))
         try vault.delete(.pendingKey)
         let s = store()
-        #expect(s.get(folder: "a", name: "1") == nil)
-        try s.put(folder: "b", name: "1", data: Data([2]))
-        // Making the new key cleared what the lost one sealed.
+        let before = try Data(contentsOf: #require(filesOnDisk().first))
+        #expect(throws: (any Error).self) { try s.get(folder: "a", name: "1") }
+        #expect(throws: (any Error).self) { try s.put(folder: "b", name: "1", data: Data([2])) }
         #expect(filesOnDisk().count == 1)
-        #expect(s.get(folder: "b", name: "1") == Data([2]))
+        #expect(try Data(contentsOf: #require(filesOnDisk().first)) == before)
     }
 
     @Test func loggingOutErasesKeysCacheAndPendingImages() async throws {
@@ -264,7 +315,7 @@ import Testing
         #expect(try vault.read(.pendingKey) == nil)
         #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
         // The next account joined on this run finds none of it under the same project path.
-        #expect(s.scoped().get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        #expect(try s.scoped().get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
         // Erasing again, with the cache free to go, finishes it.
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: locked.path)
         try LocalAccountData.erase(vault: vault, cacheRoot: cacheRoot, pending: s)
@@ -283,7 +334,7 @@ import Testing
         #expect(throws: (any Error).self) { try s.clearAll() }
         // The key went though the files did not, and the scope ended.
         #expect(try vault.read(.pendingKey) == nil)
-        #expect(first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
+        #expect(try first.get(folder: "project:/Users/me/Code/foo", name: "1.jpg") == nil)
         #expect(throws: (any Error).self) { try first.put(folder: "project:/Users/me/Code/foo", name: "2.jpg", data: Data("two".utf8)) }
     }
 }

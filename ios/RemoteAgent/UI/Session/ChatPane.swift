@@ -525,6 +525,13 @@ struct ChatPane: View {
                     .font(.subheadline).ink(DS.ink2).padding(.horizontal, 16)
             })
         }
+        if let message = ImageCenter.of(context.remote).outgoingRestoreErrors[sid] {
+            items.append(ChatCollectionItem("chat-outgoing-restore-error") {
+                Banner(message, tone: .error, action: "重试") {
+                    ImageCenter.of(context.remote).restoreOutgoing(sid, store: context.sessionStore)
+                }.padding(.horizontal, chatMargin)
+            })
+        }
         if let message = chat.liveError {
             items.append(ChatCollectionItem("chat-live-error") {
                 Banner(message, tone: .error, action: "重试") { context.remote.retryEvents(sid) }

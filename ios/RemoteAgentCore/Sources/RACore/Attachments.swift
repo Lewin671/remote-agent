@@ -302,6 +302,7 @@ public final class ImageDraft {
     public var photos: [PendingImage] { images.filter { !$0.isFile } }
     public var documents: [PendingImage] { images.filter(\.isFile) }
     public var restoring = false
+    public private(set) var restoreError: String?
     public private(set) var original = false
 
     /// Said once after a pick or a put back: how many did not fit.
@@ -326,7 +327,6 @@ public final class ImageDraft {
 
     /// Adds images just picked, still to be prepared, and keeps their order.
     public func append(_ picked: [PendingImage]) {
-        restoring = false
         images.append(contentsOf: picked)
         persist()
     }
@@ -334,6 +334,7 @@ public final class ImageDraft {
     /// Saves the draft as it is now: every prepared image not yet on disk and
     /// the order of the whole selection.
     public func persist() {
+        guard !restoring, restoreError == nil else { return }
         let now = images
         let fresh = now.filter { saved[$0.id] == nil && !stale.contains($0.id) && $0.hasSource }
         let write = fresh.map { StoredImage(id: $0.id, uri: $0.uri, processed: $0.processed, file: $0.file, needsProcessing: $0.needsProcessing) }
@@ -356,6 +357,7 @@ public final class ImageDraft {
     /// A transfer ID must reach disk before Begin can reserve quota on the machine.
     public func persistFile(_ img: PendingImage) async throws {
         try Task.checkCancellation()
+        guard !restoring, restoreError == nil else { throw UserError("待发附件尚未恢复，请重试") }
         guard images.contains(where: { $0 === img }), let file = img.file, file.hasSource else { throw CancellationError() }
         let data = try JSONEncoder().encode(file)
         let (files, key, id) = (files, key, img.id)
@@ -454,6 +456,7 @@ public final class ImageDraft {
     }
 
     public func remove(_ img: PendingImage) {
+        guard !restoring, restoreError == nil else { return }
         images.removeAll { $0 === img }
         img.release()
         forget(img)
@@ -484,7 +487,7 @@ public final class ImageDraft {
 
     public func ready(machineId: String?) -> Bool {
         guard let machineId else { return false }
-        return !restoring && !images.isEmpty && images.allSatisfy { $0.readyFor(machineId) }
+        return !restoring && restoreError == nil && !images.isEmpty && images.allSatisfy { $0.readyFor(machineId) }
     }
 
     public func fileIds(machineId: String) -> [String] { documents.compactMap { $0.readyFor(machineId) ? $0.imageId : nil } }
@@ -502,6 +505,7 @@ public final class ImageDraft {
     /// picked since stay. 原图 goes back to unticked: it is for one message.
     /// The caller keeps the images until the CLI has them.
     public func detach(_ taken: [PendingImage]) {
+        guard !restoring, restoreError == nil else { return }
         images.removeAll { img in taken.contains { $0 === img } }
         for img in taken { img.invalidate(cancelUpload: !img.currentUploadIsProtected); forget(img) }
         if images.isEmpty { original = false }
@@ -516,7 +520,7 @@ public final class ImageDraft {
     @discardableResult
     public func attach(_ back: [PendingImage], max: Int, maxFiles: Int = 6, wereOriginal: Bool? = nil) -> Bool {
         if back.isEmpty { return true }
-        guard !restoring else { notice = "正在恢复待发附件，请稍后再放回"; return false }
+        guard !restoring, restoreError == nil else { notice = "待发附件尚未恢复，请重试后再放回"; return false }
         let backPhotos = back.filter { !$0.isFile }.count
         if photos.count + backPhotos > max {
             notice = "输入框里已有 \(photos.count) 张图，放回这 \(backPhotos) 张会超过 \(max) 张。先移除一些再放回"
@@ -539,6 +543,7 @@ public final class ImageDraft {
 
     /// Forgets every image, e.g. when the draft is dropped.
     public func clear() {
+        guard !restoring, restoreError == nil else { return }
         for img in images { remove(img) }
         notice = ""
         original = false
@@ -547,27 +552,44 @@ public final class ImageDraft {
         enqueue { try? files.clearFolder(key) }
     }
 
-    /// Images kept from before the process was reclaimed, in the order they were picked; they go to the machine again.
+    /// A failed read keeps disk ownership until a successful retry.
     public func restore() throws {
-        apply(try loadStored(files, folder: key))
+        restoring = true
+        defer { restoring = false }
+        do { finishRestore(try loadStored(files, folder: key)) }
+        catch { restoreError = "待发附件没能恢复，请重试"; throw error }
     }
 
-    /// Reads and decrypts off the main actor; edits made while loading win.
+    /// Reads and decrypts off the main actor, preserving edits made while loading.
     public func restoreAsync() async throws {
+        restoring = true
+        defer { restoring = false }
         let (files, key) = (files, key)
-        let stored = try await Task.detached { try loadStored(files, folder: key) }.value
-        guard !Task.isCancelled, images.isEmpty, lastSave == 0 else { return }
-        apply(stored)
+        do {
+            let stored = try await Task.detached { try loadStored(files, folder: key) }.value
+            try Task.checkCancellation()
+            finishRestore(stored)
+        } catch {
+            restoreError = "待发附件没能恢复，请重试"
+            throw error
+        }
     }
 
-    private func apply(_ stored: (images: [StoredImage], original: Bool)) {
+    private func finishRestore(_ stored: (images: [StoredImage], original: Bool)) {
+        restoreError = nil
         let (list, orig) = stored
-        original = orig
-        images.append(contentsOf: reviveStored(list))
-        for img in list {
+        let edited = !images.isEmpty
+        if !edited { original = orig }
+        let existing = Set(images.map(\.id))
+        let recovered = list.filter { !existing.contains($0.id) }
+        images.insert(contentsOf: reviveStored(recovered), at: 0)
+        for img in recovered {
             saved[img.id] = lastSave
             landed.insert(img.id)
         }
+        // Changes made during recovery were held off disk until it could be read.
+        restoring = false
+        if edited { persist() }
     }
 }
 
@@ -673,23 +695,23 @@ public struct OutgoingRecords: Sendable {
 
     /// Keeps a message; it may run off the main thread.
     public func save(sid: String, _ o: OutgoingRecord, original: Bool) throws {
-        let f = folder(sid, o.requestId)
-        do {
-            try saveImages(files, folder: f, images: o.images, original: original)
-            try saveOrder(files, folder: f, ids: o.images.map(\.id), original: original)
-            try files.put(folder: f, name: "text", data: utf8(o.text))
-            try files.put(folder: f, name: "file-ids", data: utf8(o.fileIds.joined(separator: "\n")))
-            try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
-            try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
+        try Self.indexLock.withLock {
+            // Read before touching records: an unreadable index cannot become an empty one.
+            let idx = try index()
             let line = "\(sid)\t\(o.requestId)"
-            try Self.indexLock.withLock {
-                let idx = try index()
+            let f = folder(sid, o.requestId)
+            do {
+                try saveImages(files, folder: f, images: o.images, original: original)
+                try saveOrder(files, folder: f, ids: o.images.map(\.id), original: original)
+                try files.put(folder: f, name: "text", data: utf8(o.text))
+                try files.put(folder: f, name: "file-ids", data: utf8(o.fileIds.joined(separator: "\n")))
+                try files.put(folder: f, name: "ids", data: utf8(o.imageIds.joined(separator: "\n")))
+                try files.put(folder: f, name: "mode", data: utf8(modeName(o.mode)))
                 if !idx.contains(line) { try writeIndex(idx + [line]) }
+            } catch {
+                if !idx.contains(line) { try? files.clearFolder(f) }
+                throw error
             }
-        } catch {
-            // Not in the index: nothing would find what was written, and it would take up room unseen.
-            try? files.clearFolder(f)
-            throw error
         }
     }
 
@@ -731,9 +753,10 @@ public struct OutgoingRecords: Sendable {
     }
 
     public func remove(sid: String, requestId: String) throws {
-        try files.clearFolder(folder(sid, requestId))
         try Self.indexLock.withLock {
-            try writeIndex(try index().filter { $0 != "\(sid)\t\(requestId)" })
+            let all = try index()
+            try files.clearFolder(folder(sid, requestId))
+            try writeIndex(all.filter { $0 != "\(sid)\t\(requestId)" })
         }
     }
 }

@@ -36,7 +36,8 @@ import UIKit
     }
 
     private func send(_ c: ImageCenter, _ text: String, keep: (@Sendable (String, OutgoingRecord, Bool) throws -> Void)? = nil) async -> Result<Void, Error>? {
-        await withCheckedContinuation { done in
+        await c.restoredDraft(ImageCenter.sessionKey(sid))
+        return await withCheckedContinuation { done in
             let taken = c.send(sid: sid, machineId: "mac", store: store, text: text, mode: .steer, commands: computer, keep: keep) {
                 done.resume(returning: $0)
             }
@@ -188,6 +189,7 @@ import UIKit
     @Test func aSecondSendWhileTheImagesAreBeingKeptSendsNothing() async throws {
         let c = center()
         let draft = c.draft(ImageCenter.sessionKey(sid))
+        await c.restoredDraft(ImageCenter.sessionKey(sid))
         draft.append([ready("a")])
         let disk = DispatchSemaphore(value: 0)
         var outcomes = 0
@@ -563,6 +565,8 @@ private final class RestoreFiles: RACore.SealedFiles, @unchecked Sendable {
     let release = DispatchSemaphore(value: 0)
     private let lock = NSLock()
     private var held = false
+    private var failing = false
+    func failReads(_ value: Bool) { lock.withLock { failing = value } }
     private(set) var mainRead = false
     func hold() { lock.withLock { held = true } }
     func put(folder: String, name: String, data: Data) throws { base.put(folder: folder, name: name, data: data) }
@@ -574,6 +578,7 @@ private final class RestoreFiles: RACore.SealedFiles, @unchecked Sendable {
             return true
         }
         if stop { entered.signal(); if !Thread.isMainThread { release.wait() } }
+        if lock.withLock({ failing }) { throw UserError("read failed") }
         return base.get(folder: folder, name: name)
     }
     func remove(folder: String, name: String) throws { base.remove(folder: folder, name: name) }
@@ -581,6 +586,48 @@ private final class RestoreFiles: RACore.SealedFiles, @unchecked Sendable {
 }
 
 extension SessionImagesTests {
+    @Test func failedRestorationKeepsDraftAndOutgoingRecordsAndCanRetryInPlace() async throws {
+        let disk = RestoreFiles()
+        let first = ImageDraft(key: "session:s1", files: disk, saves: nil)
+        first.append([ready("draft")])
+        let record = Outgoing(requestId: "old", text: "keep", images: [ready("outgoing")])
+        try OutgoingRecords(files: disk).save(sid: sid, record.record, original: false)
+        disk.failReads(true)
+        ImageCenter.install(remote: remote, files: disk)
+        defer { ImageCenter.remove(remote) }
+        let c = ImageCenter.of(remote)
+        let d = c.draft("session:s1")
+        c.restoreOutgoing(sid, store: store)
+        await c.restoredDraft("session:s1")
+        await c.restoredOutgoing(sid)
+        #expect(d.restoreError != nil && c.outgoingRestoreErrors[sid] != nil)
+        d.persist()
+        #expect(store.outgoing(sid).isEmpty)
+        disk.failReads(false)
+        c.retryDraft("session:s1")
+        c.restoreOutgoing(sid, store: store)
+        await c.restoredDraft("session:s1")
+        await c.restoredOutgoing(sid)
+        #expect(d.restoreError == nil && c.outgoingRestoreErrors[sid] == nil)
+        #expect(d.images.map(\.id) == ["draft"])
+        #expect(store.outgoing(sid).map(\.requestId) == ["old"])
+    }
+
+    @Test func textDraftReadFailureBlocksReplacementAndRetriesWithoutLosingEdits() {
+        let disk = RestoreFiles()
+        let first = SessionStore(draftFiles: disk, draftQueue: nil)
+        first.setDraft(sid, "old text")
+        disk.failReads(true)
+        let next = SessionStore(draftFiles: disk, draftQueue: nil)
+        #expect(next.draft(sid).isEmpty)
+        next.setDraft(sid, "typed during failure")
+        #expect(next.draftErrors[sid] != nil)
+        disk.failReads(false)
+        #expect(SessionStore(draftFiles: disk, draftQueue: nil).draft(sid) == "old text")
+        #expect(next.draft(sid) == "typed during failure")
+        #expect(SessionStore(draftFiles: disk, draftQueue: nil).draft(sid) == "typed during failure")
+    }
+
     @Test func restoringDraftsReadsOffMainAndCannotRefillAnAccountAfterItWasClosed() async throws {
         let disk = RestoreFiles()
         let first = ImageDraft(key: "session:s1", files: disk, saves: nil)

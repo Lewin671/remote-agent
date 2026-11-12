@@ -539,7 +539,7 @@ private final class Mail<T: Sendable>: @unchecked Sendable {
         await model.clear()
         #expect(model.cache == 0)
         #expect(model.pending == pendingBefore)
-        #expect(waiting.get(folder: "session:s1", name: "image")?.count == 1234)
+        #expect(try waiting.get(folder: "session:s1", name: "image")?.count == 1234)
         try store.close()
     }
 

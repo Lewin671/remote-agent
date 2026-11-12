@@ -150,6 +150,7 @@ final class ImageCenter {
 
     private var thumbs: [String: UIImage] = [:]
     private(set) var notices: [String: String] = [:]
+    private(set) var outgoingRestoreErrors: [String: String] = [:]
     var picking: [String: Pick] = [:]
 
     private init(remote: Remote, files: any RACore.SealedFiles, live: Bool) {
@@ -248,14 +249,25 @@ final class ImageCenter {
         if let d = drafts[key] { return d }
         let d = ImageDraft(key: key, files: files)
         drafts[key] = d
+        restoreDraft(d)
+        return d
+    }
+
+    func retryDraft(_ key: String) {
+        let d = draft(key)
+        guard !d.restoring else { return }
+        restoreDraft(d)
+    }
+
+    private func restoreDraft(_ d: ImageDraft) {
+        let key = d.key
         d.restoring = true
         restorations[key] = Task { [weak self] in
-            try? await d.restoreAsync()
-            d.restoring = false
+            do { try await d.restoreAsync() }
+            catch { return } // ImageDraft retains the failure and blocks disk writes until retry.
             guard let self, !closed, !Task.isCancelled else { return }
             for img in d.images { makeThumb(img) }
         }
-        return d
     }
 
     func restoredDraft(_ key: String) async {
@@ -626,13 +638,20 @@ final class ImageCenter {
         guard restored.insert(sid).inserted else { return }
         let records = records
         restorations["out:" + sid] = Task { [weak self] in
-            let list = (try? await Task.detached { try records.loadRecords(sid: sid) }.value) ?? []
-            guard let self, !closed, !Task.isCancelled else { return }
-            for record in list where store.find(sid, requestId: record.requestId) == nil {
-                let o = OutgoingRecords.revive(record)
-                store.add(sid, o)
-                for img in o.images { makeThumb(img) }
-                hold(sid, o, store)
+            do {
+                let list = try await Task.detached { try records.loadRecords(sid: sid) }.value
+                guard let self, !closed, !Task.isCancelled else { return }
+                outgoingRestoreErrors[sid] = nil
+                for record in list where store.find(sid, requestId: record.requestId) == nil {
+                    let o = OutgoingRecords.revive(record)
+                    store.add(sid, o)
+                    for img in o.images { makeThumb(img) }
+                    hold(sid, o, store)
+                }
+            } catch {
+                guard let self, !closed, !Task.isCancelled else { return }
+                restored.remove(sid)
+                outgoingRestoreErrors[sid] = "待发记录没能恢复，请重试"
             }
         }
     }

@@ -91,7 +91,7 @@ import Testing
         #expect(h.model.context !== before && h.model.stage == .ready)
         #expect(try h.vault.load() == h.account)
         #expect(h.defaults.string(forKey: AccountDefaults.key("home-scope")) == "project")
-        #expect(h.pending.get(folder: "session", name: "draft") == Data([1, 2, 3]))
+        #expect(try h.pending.get(folder: "session", name: "draft") == Data([1, 2, 3]))
     }
 
 }

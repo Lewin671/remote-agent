@@ -40,6 +40,9 @@ struct ImageStrip: View {
         let draft = center.draft(key)
         let notice = center.notices[key]
         VStack(alignment: .leading, spacing: 0) {
+            if let error = draft.restoreError {
+                Banner(error, tone: .error, action: "重试") { center.retryDraft(key) }
+            }
             if draft.photos.isEmpty {
                 if let text = notice ?? (draft.notice.isEmpty ? nil : draft.notice) { line(text, DS.orangeInk).padding(.horizontal, 2).padding(.vertical, 2) }
             } else {

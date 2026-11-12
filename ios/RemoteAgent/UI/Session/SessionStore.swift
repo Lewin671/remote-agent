@@ -42,6 +42,7 @@ final class SessionStore {
     @ObservationIgnored private let draftFiles: (any RACore.SealedFiles)?
     @ObservationIgnored private let draftQueue: DispatchQueue?
     @ObservationIgnored private var loadedDrafts = Set<String>()
+    @ObservationIgnored private var pendingDraftEdits = Set<String>()
     @ObservationIgnored private var forgottenDrafts = Set<String>()
     private(set) var draftErrors: [String: String] = [:]
 
@@ -120,9 +121,17 @@ final class SessionStore {
     /// What is being typed in a session's message box.
     func draft(_ sid: String) -> String {
         if forgottenDrafts.contains(sid) { return "" }
-        if !sid.hasPrefix("schedule:"), loadedDrafts.insert(sid).inserted, let draftFiles {
-            do { drafts[sid] = try draftFiles.get(folder: "composer-text", name: draftName(sid)).flatMap { String(data: $0, encoding: .utf8) } }
-            catch { draftErrors[sid] = "草稿没能恢复，请重新打开后重试" }
+        if !sid.hasPrefix("schedule:"), !loadedDrafts.contains(sid), let draftFiles {
+            do {
+                let saved = try draftFiles.get(folder: "composer-text", name: draftName(sid)).flatMap { String(data: $0, encoding: .utf8) }
+                loadedDrafts.insert(sid)
+                draftErrors[sid] = nil
+                if pendingDraftEdits.remove(sid) != nil { persistDraftText(sid, drafts[sid] ?? "") }
+                else { drafts[sid] = saved }
+            } catch {
+                let message = "草稿没能恢复，下次打开或编辑时重试"
+                if draftErrors[sid] != message { draftErrors[sid] = message }
+            }
         }
         return drafts[sid] ?? ""
     }
@@ -131,7 +140,13 @@ final class SessionStore {
         guard !forgottenDrafts.contains(sid) else { return }
         guard draft(sid) != text else { return }
         drafts[sid] = text.isEmpty ? nil : text
-        guard !sid.hasPrefix("schedule:"), let draftFiles else { return }
+        guard !sid.hasPrefix("schedule:"), draftFiles != nil else { return }
+        guard loadedDrafts.contains(sid) else { pendingDraftEdits.insert(sid); return }
+        persistDraftText(sid, text)
+    }
+
+    private func persistDraftText(_ sid: String, _ text: String) {
+        guard let draftFiles else { return }
         let name = draftName(sid)
         let bytes = Data(text.utf8)
         let write: @Sendable () -> Bool = {

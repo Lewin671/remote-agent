@@ -90,7 +90,7 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     func put(folder: String, name: String, data: Data) throws {
         try lock.withLock {
             expire()
-            // Sealed first: the first use of the key may clear what it cannot open.
+            // Seal before creating folders, so a key failure leaves the draft untouched.
             let sealed = try seal(data)
             let dir = try self.folder(folder, create: true)
             let file = dir.appending(path: name)
@@ -107,14 +107,24 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         }
     }
 
-    func get(folder: String, name: String) -> Data? {
-        lock.withLock {
+    func get(folder: String, name: String) throws -> Data? {
+        try lock.withLock {
             expire()
-            guard let dir = try? self.folder(folder, create: false),
-                  let sealed = try? Data(contentsOf: dir.appending(path: name)) else { return nil }
+            let dir = try self.folder(folder, create: false)
+            let sealed: Data
+            do { sealed = try Data(contentsOf: dir.appending(path: name)) }
+            catch where Self.isMissing(error) { return nil }
+            // Reading must never create a replacement key or erase old ciphertext.
+            guard let key = try storedKey() else { throw UserError("待发附件密钥不可用，请稍后重试") }
+            let plain = try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
             touch(dir)
-            return try? open(sealed)
+            return plain
         }
+    }
+
+    private static func isMissing(_ error: any Error) -> Bool {
+        let error = error as NSError
+        return error.domain == NSCocoaErrorDomain && error.code == NSFileReadNoSuchFileError
     }
 
     func remove(folder: String, name: String) {
@@ -171,8 +181,10 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
     private func outboxFolders() -> Set<String>? {
         let outbox = Self.folderName("outbox")
         let file = directory.appending(path: outbox, directoryHint: .isDirectory).appending(path: "index")
-        guard FileManager.default.fileExists(atPath: file.path) else { return [] }
-        guard let sealed = try? Data(contentsOf: file), let key = try? storedKey(),
+        let sealed: Data
+        do { sealed = try Data(contentsOf: file) }
+        catch { return Self.isMissing(error) ? [] : nil }
+        guard let key = try? storedKey(),
               let index = try? AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key)
         else { return nil }
         return Set(ImageDiskPolicy.outboxKeys(String(decoding: index, as: UTF8.self)).map(Self.folderName)).union([outbox])
@@ -199,10 +211,6 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
         return combined
     }
 
-    private func open(_ sealed: Data) throws -> Data {
-        try AES.GCM.open(AES.GCM.SealedBox(combined: sealed), using: key())
-    }
-
     /// The key there is, without making one.
     private func storedKey() throws -> SymmetricKey? {
         if let cachedKey { return cachedKey }
@@ -214,8 +222,12 @@ final class PendingStore: SealedFiles, @unchecked Sendable {
 
     private func key() throws -> SymmetricKey {
         if let stored = try storedKey() { return stored }
-        // No key: what was stored under the one before is lost.
-        if FileManager.default.fileExists(atPath: directory.path) { try? FileManager.default.removeItem(at: directory) }
+        // An unavailable key is a recovery failure, not permission to erase drafts.
+        do {
+            guard try FileManager.default.contentsOfDirectory(atPath: directory.path).isEmpty else {
+                throw UserError("待发附件密钥不可用，请稍后重试")
+            }
+        } catch where Self.isMissing(error) {}
         let fresh = randomBytes(keySize)
         try vault.write(.pendingKey, fresh)
         let k = SymmetricKey(data: fresh)
@@ -235,8 +247,8 @@ struct PendingScope: SealedFiles {
         if stored == nil { throw UserError("已退出账户") }
     }
 
-    func get(folder: String, name: String) -> Data? {
-        store.current(epoch) { store.get(folder: folder, name: name) } ?? nil
+    func get(folder: String, name: String) throws -> Data? {
+        try store.current(epoch) { try store.get(folder: folder, name: name) } ?? nil
     }
 
     func remove(folder: String, name: String) {
