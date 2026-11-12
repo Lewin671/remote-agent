@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { futureTime } from "../model";
 import { clientName } from "../devices";
 import type { Remote } from "../remote";
@@ -25,12 +26,11 @@ export function RecoveryNotice({
   return (
     <Banner
       kind="warn"
-      action="处理"
+      action={l10n.t("dock.handle")}
       onAction={() => go("settings/security")}
     >
-      恢复申请待处理
-      {remote.recoveryReadyMs > 0n
-        ? ` · 可生效时间：${futureTime(remote.recoveryReadyMs)}`
+      {l10n.t("security.recovery_request_pending")}{remote.recoveryReadyMs > 0n
+        ? l10n.t("security.eligible_at", { value: String(futureTime(remote.recoveryReadyMs)) })
         : ""}
     </Banner>
   );

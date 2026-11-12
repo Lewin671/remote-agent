@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -20,7 +21,7 @@ it("loads QR generation on demand and reuses the result on unrelated updates", a
   try {
     await act(async () => root.render(<PairCodePage remote={remote} onBack={() => {}} />));
     expect(qr.generate).not.toHaveBeenCalled();
-    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === "生成配对码")!.click());
+    await act(async () => [...host.querySelectorAll("button")].find(b => b.textContent === message("security.generate_pairing_code"))!.click());
     expect(qr.generate).toHaveBeenCalledExactlyOnceWith("https://app.example.com/#/pair?code=12345678");
     expect(host.querySelector(".security-qr")).toBeNull();
     await act(async () => remote.touch());

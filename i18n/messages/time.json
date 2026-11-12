@@ -1,5 +1,46 @@
 [
   {
+    "key": "time.tomorrow",
+    "zh-CN": "明天",
+    "en": "Tomorrow",
+    "notes": "model 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.today_clock",
+    "zh-CN": "今天 {value}:{detail}",
+    "en": "Today {value}:{detail}",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = then.getHours()；detail = String(then.getMinutes()).padStart(2, \"0\")；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "time.duration_hours_minutes",
     "zh-CN": "{hours} 小时 {minutes} 分",
     "en": "{hours} hr {minutes} min",
@@ -343,6 +384,35 @@
     "en": "Yesterday",
     "notes": "会话列表时间及结束记录分组标题。 无变量。",
     "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "time.calendar_date_year",
+    "zh-CN": "{year}年{month}月{day}日",
+    "en": "{year}/{month}/{day}",
+    "params": {
+      "year": {
+        "type": "integer",
+        "example": 2
+      },
+      "month": {
+        "type": "integer",
+        "example": 2
+      },
+      "day": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "设备与定时列表的非当年日期；year/month/day 为本地日历整数，非数量，不用复数。紧凑单行，中文顺序不变。",
     "platforms": [
       "web",
       "android",

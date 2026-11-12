@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 // The account's devices as clients name them, and where an action came
 // from (architecture §9 多客户端的界面状态). A device is named only when
@@ -38,14 +39,14 @@ export function platformName(meta?: Pick<DeviceMeta, "platform" | "description">
   switch (meta?.platform) {
     case "web": {
       const [browser, os] = desc.split(" on ").map((x) => x.trim());
-      return browser ? [browser, os].filter(Boolean).join(" · ") : "浏览器";
+      return browser ? [browser, os].filter(Boolean).join(" · ") : l10n.t("security.browser");
     }
     case "android":
       return model ? `Android · ${model}` : "Android";
     case "ios":
       return model || "iOS";
   }
-  return "客户端";
+  return l10n.t("security.client");
 }
 
 /** A client's name: the one the user gave it, else its default name. */
@@ -65,14 +66,16 @@ export function defaultClientName(d: Pick<DeviceInfo, "id" | "meta"> | undefined
 /** What a client is, under its name in the list: an app or a browser, and
  * what it says it runs on. */
 export function clientDetail(d: Partial<Pick<DeviceInfo, "meta">> | undefined): string {
-  const kind = d?.meta?.platform === "android" || d?.meta?.platform === "ios" ? "App" : d?.meta?.platform === "web" ? "浏览器" : "";
-  return [kind, d?.meta?.description.trim()].filter(Boolean).join(" · ") || "种类未知";
+  const kind = d?.meta?.platform === "android" || d?.meta?.platform === "ios" ? "App" : d?.meta?.platform === "web" ? l10n.t("security.browser") : "";
+  return [kind, d?.meta?.description.trim()].filter(Boolean).join(" · ") || l10n.t("security.unknown_type");
 }
 
 /** A day as lists write it: 9月27日, with the year when it is not this one. */
 export function dayText(ms: number | bigint, now = Date.now()): string {
   const day = new Date(Number(ms));
-  return `${day.getFullYear() === new Date(now).getFullYear() ? "" : `${day.getFullYear()}年`}${day.getMonth() + 1}月${day.getDate()}日`;
+  return day.getFullYear() === new Date(now).getFullYear()
+    ? l10n.t("time.month_day", { month: day.getMonth() + 1, day: day.getDate() })
+    : l10n.t("time.calendar_date_year", { year: day.getFullYear(), month: day.getMonth() + 1, day: day.getDate() });
 }
 
 /** When a client was last used: 刚刚, 3 分钟前, 今天 9:12, 昨天, 9月27日;
@@ -81,11 +84,11 @@ export function lastUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs">> | undefined,
   const t = Number(d?.lastSeenMs ?? 0);
   if (!t) return "";
   const ago = now - t;
-  if (ago < 60_000) return "刚刚";
-  if (ago < 3_600_000) return `${Math.floor(ago / 60_000)} 分钟前`;
+  if (ago < 60_000) return l10n.t("time.just_now");
+  if (ago < 3_600_000) return l10n.t("time.minutes_ago", { count: Math.floor(ago / 60_000) });
   const then = new Date(t);
-  if (then.toDateString() === new Date(now).toDateString()) return `今天 ${then.getHours()}:${String(then.getMinutes()).padStart(2, "0")}`;
-  if (then.toDateString() === new Date(now - 86_400_000).toDateString()) return "昨天";
+  if (then.toDateString() === new Date(now).toDateString()) return l10n.t("time.today_clock", { value: String(then.getHours()), detail: String(String(then.getMinutes()).padStart(2, "0")) });
+  if (then.toDateString() === new Date(now - 86_400_000).toDateString()) return l10n.t("time.yesterday");
   return dayText(t, now);
 }
 
@@ -93,8 +96,8 @@ export function lastUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs">> | undefined,
  * day it was added. */
 export function clientUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs" | "createdMs">> | undefined, now = Date.now()): string {
   const used = lastUsed(d, now);
-  if (used) return `${used}${now - Number(d?.lastSeenMs ?? 0) >= 3_600_000 && new Date(Number(d?.lastSeenMs ?? 0)).toDateString() === new Date(now).toDateString() ? " " : ""}使用`;
-  return Number(d?.createdMs ?? 0) ? `${dayText(d!.createdMs!, now)}添加` : "已配对";
+  if (used) return l10n.t("security.used", { value: String(used), detail: String(now - Number(d?.lastSeenMs ?? 0) >= 3_600_000 && new Date(Number(d?.lastSeenMs ?? 0)).toDateString() === new Date(now).toDateString() ? " " : "") });
+  return Number(d?.createdMs ?? 0) ? l10n.t("security.added", { value: String(dayText(d!.createdMs!, now)) }) : l10n.t("security.paired");
 }
 
 /** Clients as the list orders them: this one, then the most recently used
@@ -105,7 +108,7 @@ export function sortClients<T extends Pick<DeviceInfo, "id" | "createdMs" | "las
 
 /** What this browser says about itself in its device metadata. */
 export function describeBrowser(ua: string): string {
-  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "浏览器";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : l10n.t("security.browser", {}, "zh-CN");
   const os = /iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : /Mac OS X/.test(ua) ? "macOS" : /Windows/.test(ua) ? "Windows" : /Linux/.test(ua) ? "Linux" : "";
   return os ? `${browser} on ${os}` : browser;
 }

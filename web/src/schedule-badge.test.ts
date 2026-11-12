@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { ScheduleSeen } from "./schedules";
@@ -103,11 +104,11 @@ it("uses the explicit latest exit event, retaining manual stop wording after a r
     seq, kind: { case: "sessionState", value: { status, detail: "stopped", scheduledClosed } },
   });
   const automatic = state(1n, SessionStatus.EXITED, true);
-  expect(exitReason("stopped", derive([automatic]).scheduledClosed)).toBe("定时任务运行已结束，会话自动关闭了。");
-  expect(exitReason("stopped", derive([state(1n, SessionStatus.EXITED, false)]).scheduledClosed)).toBe("会话是被手动结束的。");
+  expect(exitReason("stopped", derive([automatic]).scheduledClosed)).toBe(message("session.scheduled_closed"));
+  expect(exitReason("stopped", derive([state(1n, SessionStatus.EXITED, false)]).scheduledClosed)).toBe(message("session.manually_closed"));
   expect(derive([automatic, state(2n, SessionStatus.STARTING, false)]).scheduledClosed).toBe(false);
-  expect(exitReason("stopped", derive([automatic, state(2n, SessionStatus.EXITED, false)]).scheduledClosed)).toBe("会话是被手动结束的。");
-  expect(exitReason("tmux session gone", true)).toBe("tmux 会话已经不在了。");
+  expect(exitReason("stopped", derive([automatic, state(2n, SessionStatus.EXITED, false)]).scheduledClosed)).toBe(message("session.manually_closed"));
+  expect(exitReason("tmux session gone", true)).toBe(message("session.tmux_missing"));
 });
 it("says a session closed for being idle was ended automatically, until it runs again", () => {
   const state = (seq: bigint, status: SessionStatus, idleClosed: boolean) => create(EventSchema, {
@@ -117,11 +118,11 @@ it("says a session closed for being idle was ended automatically, until it runs 
   const d = derive([idle]);
   expect(d.idleClosed).toBe(true);
   expect(d.scheduledClosed).toBe(false);
-  expect(exitReason("stopped", d.scheduledClosed, d.idleClosed)).toBe("会话长时间没有活动，已自动结束。");
+  expect(exitReason("stopped", d.scheduledClosed, d.idleClosed)).toBe(message("session.idle_closed"));
   expect(derive([idle, state(2n, SessionStatus.STARTING, false)]).idleClosed).toBe(false);
   const manual = derive([idle, state(2n, SessionStatus.EXITED, false)]);
-  expect(exitReason("stopped", manual.scheduledClosed, manual.idleClosed)).toBe("会话是被手动结束的。");
-  expect(exitReason("tmux session gone", false, true)).toBe("tmux 会话已经不在了。");
+  expect(exitReason("stopped", manual.scheduledClosed, manual.idleClosed)).toBe(message("session.manually_closed"));
+  expect(exitReason("tmux session gone", false, true)).toBe(message("session.tmux_missing"));
 });
 
 it("does not make a read run unread again when it notifies repeatedly, and isolates matching task IDs on different machines", () => {

@@ -162,6 +162,22 @@
 			<string>The input already has %2$lld image(s) and cannot fit this message’s %1$lld images. Remove some first.</string>
 		</dict>
 	</dict>
+	<key>connection_sec_elapsed</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%4$@: %2$@, %1$lld sec elapsed. %3$@</string>
+			<key>other</key>
+			<string>%4$@: %2$@, %1$lld sec elapsed. %3$@</string>
+		</dict>
+	</dict>
 	<key>dock_more</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -786,6 +802,86 @@
 			<string>%1$lld more queued messages · Expand</string>
 		</dict>
 	</dict>
+	<key>quota_days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld day</string>
+			<key>other</key>
+			<string>%1$lld days</string>
+		</dict>
+	</dict>
+	<key>quota_hr</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld hr</string>
+			<key>other</key>
+			<string>%1$lld hr</string>
+		</dict>
+	</dict>
+	<key>quota_min</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld min</string>
+			<key>other</key>
+			<string>%1$lld min</string>
+		</dict>
+	</dict>
+	<key>quota_named_days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ · %1$lld day</string>
+			<key>other</key>
+			<string>%2$@ · %1$lld days</string>
+		</dict>
+	</dict>
+	<key>quota_named_hours</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ · %1$lld hr</string>
+			<key>other</key>
+			<string>%2$@ · %1$lld hr</string>
+		</dict>
+	</dict>
 	<key>quota_old_hours</key>
 	<dict>
 		<key>NSStringLocalizedFormatKey</key>
@@ -816,6 +912,310 @@
 			<string>Data from %1$lld minute ago; may have changed</string>
 			<key>other</key>
 			<string>Data from %1$lld minutes ago; may have changed</string>
+		</dict>
+	</dict>
+	<key>quota_resets_in_days_hr</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Resets in %1$lld day %2$lld hr</string>
+			<key>other</key>
+			<string>Resets in %1$lld days %2$lld hr</string>
+		</dict>
+	</dict>
+	<key>quota_resets_in_hr_min</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Resets in %1$lld hr %2$@ min</string>
+			<key>other</key>
+			<string>Resets in %1$lld hr %2$@ min</string>
+		</dict>
+	</dict>
+	<key>quota_resets_in_min</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Resets in %1$lld min</string>
+			<key>other</key>
+			<string>Resets in %1$lld min</string>
+		</dict>
+	</dict>
+	<key>schedule_after_current_turn</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld sec after the current turn ends</string>
+			<key>other</key>
+			<string>%1$lld sec after the current turn ends</string>
+		</dict>
+	</dict>
+	<key>schedule_after_each_turn</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld sec after each turn ends</string>
+			<key>other</key>
+			<string>%1$lld sec after each turn ends</string>
+		</dict>
+	</dict>
+	<key>schedule_every_days</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %1$lld day</string>
+			<key>other</key>
+			<string>Every %1$lld days</string>
+		</dict>
+	</dict>
+	<key>schedule_every_hr</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %1$lld hr</string>
+			<key>other</key>
+			<string>Every %1$lld hr</string>
+		</dict>
+	</dict>
+	<key>schedule_every_min</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %1$lld min</string>
+			<key>other</key>
+			<string>Every %1$lld min</string>
+		</dict>
+	</dict>
+	<key>schedule_every_sec</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>Every %1$lld sec</string>
+			<key>other</key>
+			<string>Every %1$lld sec</string>
+		</dict>
+	</dict>
+	<key>schedule_limits_both</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld run total, or until %2$@</string>
+			<key>other</key>
+			<string>%1$lld runs total, or until %2$@</string>
+		</dict>
+	</dict>
+	<key>schedule_more_new_results</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld more new result</string>
+			<key>other</key>
+			<string>%1$lld more new results</string>
+		</dict>
+	</dict>
+	<key>schedule_new_results</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld new result</string>
+			<key>other</key>
+			<string>%1$lld new results</string>
+		</dict>
+	</dict>
+	<key>schedule_quiet_runs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ · %1$lld run, none notified you</string>
+			<key>other</key>
+			<string>%2$@ · %1$lld runs, none notified you</string>
+		</dict>
+	</dict>
+	<key>schedule_runs_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld run</string>
+			<key>other</key>
+			<string>%1$lld runs</string>
+		</dict>
+	</dict>
+	<key>schedule_runs_today_none_notified_you</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld run today, none notified you</string>
+			<key>other</key>
+			<string>%1$lld runs today, none notified you</string>
+		</dict>
+	</dict>
+	<key>schedule_runs_total</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld run total</string>
+			<key>other</key>
+			<string>%1$lld runs total</string>
+		</dict>
+	</dict>
+	<key>schedule_stopped_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%2$@ task stopped</string>
+			<key>other</key>
+			<string>%2$@ tasks stopped</string>
+		</dict>
+	</dict>
+	<key>schedule_strip_count</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>%1$lld schedule · %2$@</string>
+			<key>other</key>
+			<string>%1$lld schedules · %2$@</string>
+		</dict>
+	</dict>
+	<key>schedule_view_all_runs</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%1$#@count@</string>
+		<key>count</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>lld</string>
+			<key>one</key>
+			<string>View all %1$lld run</string>
+			<key>other</key>
+			<string>View all %1$lld runs</string>
 		</dict>
 	</dict>
 	<key>session_history_unavailable</key>

@@ -137,8 +137,8 @@ def load(root):
                     if not isinstance(text, str) or not text.strip():
                         fail(f'{key}: empty translation')
                     refs = set(PARAM.findall(text))
-                    # A select chooses a branch; it need not appear in the visible text.
-                    required = set(row['params']) - ({value['select']} if isinstance(value, dict) and 'select' in value else set())
+                    # A selector chooses a branch; a rich slot can carry its visible count.
+                    required = set(row['params']) - ({value.get('select', value.get('plural'))} if isinstance(value, dict) else set())
                     if not required <= refs <= set(row['params']) or re.search('[{}]', PARAM.sub('', text)) or re.search(r'<[^>]+>|%[0-9$]*[sd@fg]', text):
                         fail(f'{key}: parameters/format disagree')
             messages[key] = row
@@ -199,6 +199,21 @@ def build(root):
     ts += '}\nexport type MessageKey = keyof MessageArgs;\nexport const messages = '+dump({l:{k:r[l] for k,r in messages.items() if 'web' in r['platforms']} for l in metadata}).strip()+' as const;\n'
     put('web/src/i18n/generated.ts', ts)
     put('web/src/i18n/locale-vectors.json', dump(read(root / 'i18n/locale-vectors.json')))
+    # The launch path must remain readable when the main app cannot download.
+    startup_keys = [k for k in messages if k.startswith('startup.') or k == 'common.reload']
+    startup = {lang: {k: messages[k][lang] for k in startup_keys} for lang in metadata}
+    put('web/src/i18n/startup.generated.ts', f'// {HEADER}\nexport const startupMessages = '+dump(startup).strip()+' as const;\n')
+    # Templates are inputs in full checkouts; compiler fixtures can omit surfaces.
+    import html
+    for source, target, escape_text in [('web-shell.html', 'web/index.html', True), ('web-manifest.json', 'web/public/manifest.webmanifest', False)]:
+        path = root / 'scripts/i18n_templates' / source
+        if not path.exists(): continue
+        def render(match):
+            value = messages[match[1]][locales['default']]
+            if not isinstance(value, str): fail('launch text must be plain: '+match[1])
+            return html.escape(value, quote=True) if escape_text else value
+        put(target, re.sub(r'\{\{([a-z][a-z0-9_.]+)\}\}', render, path.read_text()))
+
 
     pkg = 'io.github.lewin671.remoteagent'
     core = f'// {HEADER}\npackage {pkg}.core\n\n'

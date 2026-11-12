@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { afterEach, expect, it, vi } from "vitest";
 import { create } from "@bufbuild/protobuf";
 import { Remote, CommandError } from "./remote";
@@ -54,7 +55,7 @@ it("keeps the text draft until the pending write succeeds and retains it when wr
   await vi.waitFor(() => expect(t.save).toHaveBeenCalledWith("s", "", expect.anything()));
   t.r.drafts.set("s", "next message"); t.save.mockClear(); t.saveOutbox.mockRejectedValue(new Error("disk full"));
   t.r.send("s", "next message"); t.r.drafts.set("s", "");
-  await vi.waitFor(() => expect(t.tray.note).toContain("本机")); expect(t.save).not.toHaveBeenCalled();
+  await vi.waitFor(() => expect(t.tray.note).toContain(message("security.this_device"))); expect(t.save).not.toHaveBeenCalled();
   t.saveOutbox.mockResolvedValue();
   t.r.drafts.set("s", "editing after storage recovers");
   await vi.waitFor(() => expect(t.save).toHaveBeenCalledWith("s", "editing after storage recovers", expect.anything()));

@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // Creation and emergency recovery share the same foreground lock and pending
 // slot as normal authority changes. Recovery seeds/codes are NEVER persisted.
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
@@ -82,7 +83,7 @@ export class AuthoritySetup {
     return this.lifecycle.run(async (check) => {
       const existing = await readSecurityOperation<CreationDraft>();
       if (existing) {
-        if (existing.kind !== "create" || existing.server !== server) throw new Error("请先完成原安全操作");
+        if (existing.kind !== "create" || existing.server !== server) throw new Error(l10n.t("security.finish_the_original_security_operation_first"));
         return { code: undefined, resumed: true, storagePersisted: existing.local.storagePersisted };
       }
       if (await loadAccount() || await loadRegistration() || await securitySetupStatus() !== "missing") throw new SecurityError("conflict");
@@ -201,7 +202,7 @@ export class AuthoritySetup {
     return this.lifecycle.run(async (check) => {
       const local = await loadSecurity();
       const decoded = RecoveryCode.decode(code);
-      if (!decoded) throw new Error("恢复码无效");
+      if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
         const { ed25519 } = await import("@noble/curves/ed25519.js");
         const pub = new Uint8Array(ed25519.getPublicKey(decoded.seed));
@@ -228,10 +229,10 @@ export class AuthoritySetup {
   async prepareEmergencyRecovery(server: string, code: string) {
     server = checkServer(server);
     return this.lifecycle.run(async (check) => {
-      if (await readSecurityOperation()) throw new Error("请先继续原恢复或明确放弃已否决的恢复");
-      if (await loadRegistration()) throw new Error("请先完成设备注册");
+      if (await readSecurityOperation()) throw new Error(l10n.t("security.continue_the_original_recovery_or_explicitly_abandon_the_rejected"));
+      if (await loadRegistration()) throw new Error(l10n.t("security.finish_device_registration_first"));
       const decoded = RecoveryCode.decode(code);
-      if (!decoded) throw new Error("恢复码无效");
+      if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
         const { ed25519 } = await import("@noble/curves/ed25519.js");
         const publicKey = new Uint8Array(ed25519.getPublicKey(decoded.seed));
@@ -243,7 +244,7 @@ export class AuthoritySetup {
           local = await loadSecurity();
         } else if (status !== "missing") throw new SecurityError("storage");
         const chain = await this.context(server, publicKey, (b) => Promise.resolve(new Uint8Array(ed25519.sign(b, decoded.seed))), "", decoded.genesis, check, local);
-        if (![RecoveryPhase.UNSPECIFIED, RecoveryPhase.PENDING, RecoveryPhase.READY].includes(chain.phase)) throw new Error("请使用当前恢复码重新申请");
+        if (![RecoveryPhase.UNSPECIFIED, RecoveryPhase.PENDING, RecoveryPhase.READY].includes(chain.phase)) throw new Error(l10n.t("security.apply_again_with_the_current_recovery_code"));
         const device = await newDeviceKey(), x = await newSecurityKey(), fresh = await Authority.newRecovery();
         try {
           const member = await Authority.newMember(device.publicKey, x.publicKey, DeviceKind.CLIENT);
@@ -298,7 +299,7 @@ export class AuthoritySetup {
       const op = await readSecurityOperation<UnsignedRecoveryDraft>();
       if (!op || op.kind !== "recovery" || op.signed) throw new SecurityError("conflict");
       const decoded = RecoveryCode.decode(code);
-      if (!decoded) throw new Error("恢复码无效");
+      if (!decoded) throw new Error(l10n.t("security.invalid_recovery_code"));
       try {
         if (!equal(decoded.genesis, op.local.pin.genesis.slice(0, 10))) throw new SecurityError("untrusted");
         const { ed25519 } = await import("@noble/curves/ed25519.js");
@@ -323,7 +324,7 @@ export class AuthoritySetup {
     return this.lifecycle.run(async (check) => {
       let op = await readSecurityOperation<RecoveryDraft>();
       if (!op || op.kind !== "recovery") throw new SecurityError("conflict");
-      if (!op.signed) throw new RecoverySignatureMissing("恢复签名尚未保存，请重新输入原恢复码继续原草稿");
+      if (!op.signed) throw new RecoverySignatureMissing(l10n.t("security.the_recovery_signature_has_not_been_saved_re_enter"));
       if (!op.local.recoveryId) {
         check();
         const reply = await this.services(op.server).recovery.submitRecovery(fromBinary(SubmitRecoveryRequestSchema, op.signed));
@@ -354,8 +355,8 @@ export class AuthoritySetup {
       let op = await readSecurityOperation<RecoveryDraft>();
       if (!op || op.kind !== "recovery" || !op.local.recoveryId) throw new SecurityError("conflict");
       const context = await this.recoveryContext(op, check), l = op.local;
-      if (context.phase === RecoveryPhase.REJECTED) throw new Error("恢复已被否决，请明确重新申请");
-      if (context.phase !== RecoveryPhase.PUBLISHED && context.phase !== RecoveryPhase.READY) throw new Error("48 小时等待尚未结束");
+      if (context.phase === RecoveryPhase.REJECTED) throw new Error(l10n.t("security.recovery_was_rejected_explicitly_apply_again"));
+      if (context.phase !== RecoveryPhase.PUBLISHED && context.phase !== RecoveryPhase.READY) throw new Error(l10n.t("security.the_48_hour_wait_has_not_ended"));
       if (!l.completeRequest) {
         const signature = new Uint8Array(await crypto.subtle.sign("Ed25519", l.account.devicePrivate, concat(utf8("ra3/recovery-complete\0"), utf8(l.recoveryId))));
         check();
@@ -447,7 +448,7 @@ export class AuthoritySetup {
       const op = await readSecurityOperation<RecoveryDraft>();
       if (!op || op.kind !== "recovery" || !op.local.recoveryId) throw new SecurityError("conflict");
       const context = await this.recoveryContext(op, check);
-      if (context.phase !== RecoveryPhase.REJECTED) throw new Error("恢复仍待处理或结果未明，不能放弃");
+      if (context.phase !== RecoveryPhase.REJECTED) throw new Error(l10n.t("security.recovery_is_pending_or_its_outcome_is_unknown_and"));
       check();
       await clearSecurityOperation(op);
     });
@@ -467,13 +468,13 @@ async function solveSignup(auth: Client<typeof AuthService>, check: () => void):
   check();
   const challenge = await auth.getSignupChallenge({});
   check();
-  if (!challenge.challenge.length || challenge.difficultyBits > 24 || challenge.expiresMs <= BigInt(Date.now())) throw new Error("注册工作量证明无效或已过期");
+  if (!challenge.challenge.length || challenge.difficultyBits > 24 || challenge.expiresMs <= BigInt(Date.now())) throw new Error(l10n.t("security.registration_proof_of_work_is_invalid_or_expired"));
   const nonce = new Uint8Array(8);
   for (let n = 0; ; n++) {
     new DataView(nonce.buffer).setBigUint64(0, BigInt(n));
     const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", concat(challenge.challenge, nonce)));
     check();
-    if (challenge.expiresMs <= BigInt(Date.now())) throw new Error("注册工作量证明已过期，请重试原草稿");
+    if (challenge.expiresMs <= BigInt(Date.now())) throw new Error(l10n.t("security.registration_proof_of_work_expired_retry_the_original_draft"));
     if (Array.from({ length: challenge.difficultyBits }, (_, bit) => (digest[bit >> 3] & (128 >> (bit & 7))) === 0).every(Boolean))
       return { $typeName: "remoteagent.v1.SignupProof", challenge: challenge.challenge, nonce };
   }

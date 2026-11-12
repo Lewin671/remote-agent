@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -34,15 +35,15 @@ it.each([Code.PermissionDenied, Code.FailedPrecondition, Code.Unavailable])(
         [...host.querySelectorAll("button")].find(
           (x) => x.textContent === text,
         )!;
-      await act(async () => button("重试").click());
+      await act(async () => button(message("common.retry")).click());
       expect(resume).toHaveBeenCalledTimes(2);
-      expect(button("退出并重新开始")).toBeTruthy();
-      await act(async () => button("退出并重新开始").click());
+      expect(button(message("security.exit_and_start_over"))).toBeTruthy();
+      await act(async () => button(message("security.exit_and_start_over")).click());
       expect(forget).not.toHaveBeenCalled();
       resume.mockResolvedValue(undefined);
-      await act(async () => button("确认退出").click());
+      await act(async () => button(message("security.confirm_exit")).click());
       expect(forget).toHaveBeenCalledTimes(1);
-      expect(host.textContent).toContain("加入已有账户");
+      expect(host.textContent).toContain(message("security.join_an_existing_account"));
     } finally {
       await act(async () => root.unmount());
       host.remove();

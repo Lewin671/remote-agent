@@ -12,6 +12,9 @@
   "ios/RemoteAgentCore/Sources/RACore/Resources/en.lproj/Localizable.stringsdict",
   "ios/RemoteAgentCore/Sources/RACore/Resources/zh-Hans.lproj/Localizable.strings",
   "ios/RemoteAgentCore/Sources/RACore/Resources/zh-Hans.lproj/Localizable.stringsdict",
+  "web/index.html",
+  "web/public/manifest.webmanifest",
   "web/src/i18n/generated.ts",
-  "web/src/i18n/locale-vectors.json"
+  "web/src/i18n/locale-vectors.json",
+  "web/src/i18n/startup.generated.ts"
 ]

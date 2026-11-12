@@ -1619,5 +1619,197 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "image.image_exceeds_20_mb_turn_off_original_and_send",
+    "zh-CN": "图片超过 20 MB，关掉原图再发",
+    "en": "Image exceeds 20 MB. Turn off Original and send again.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.image_dimensions_are_too_large_resize_it_and_retry",
+    "zh-CN": "图片尺寸太大，缩小后再试",
+    "en": "Image dimensions are too large. Resize it and retry.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.this_image_has_no_local_copy_remove_it_and",
+    "zh-CN": "这张图片没有本机副本，请移除后重新选择",
+    "en": "This image has no local copy. Remove it and select it again.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.cannot_read_this_image_try_jpeg_or_png_instead",
+    "zh-CN": "读不出这张图片，换成 JPEG 或 PNG 再试",
+    "en": "Cannot read this image. Try JPEG or PNG instead.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.the_computer_s_attachment_storage_is_full_clear_space",
+    "zh-CN": "电脑附件空间不足，清理后重试",
+    "en": "The computer’s attachment storage is full. Clear space and retry.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.the_image_could_not_reach_the_computer_retry_when",
+    "zh-CN": "图片没能传到电脑，连接恢复后重试",
+    "en": "The image could not reach the computer. Retry when connected.",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.this_image_could_not_be_processed",
+    "zh-CN": "这张图片处理失败",
+    "en": "This image could not be processed",
+    "notes": "image-problem 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.image_exceeds_20_mb",
+    "zh-CN": "图片超过 20 MB",
+    "en": "Image exceeds 20 MB",
+    "notes": "error 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.this_image_format_is_not_supported",
+    "zh-CN": "不支持这种图片格式",
+    "en": "This image format is not supported",
+    "notes": "error 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.cannot_read_this_image",
+    "zh-CN": "读不出这张图片",
+    "en": "Cannot read this image",
+    "notes": "error 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.image_dimensions_are_too_large",
+    "zh-CN": "图片尺寸太大",
+    "en": "Image dimensions are too large",
+    "notes": "jpeg 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "image.image_dimensions_are_too_large_send_a_compressed_version",
+    "zh-CN": "图片尺寸太大，请用压缩方式发送",
+    "en": "Image dimensions are too large. Send a compressed version.",
+    "notes": "images 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

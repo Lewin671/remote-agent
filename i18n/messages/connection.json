@@ -431,5 +431,379 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "connection.connected",
+    "zh-CN": "已连接",
+    "en": "Connected",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.reconnecting_conn_check",
+    "zh-CN": "重连中",
+    "en": "Reconnecting",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.unreachable",
+    "zh-CN": "连不上",
+    "en": "Unreachable",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.connecting_conn_check",
+    "zh-CN": "连接中",
+    "en": "Connecting",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.checking",
+    "zh-CN": "检测中…",
+    "en": "Checking…",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.not_checked",
+    "zh-CN": "未检测",
+    "en": "Not checked",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.slow",
+    "zh-CN": " · 较慢",
+    "en": " · Slow",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.sec_elapsed",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "正在{value}：{detail}，已 {count} 秒。{previousFailure}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{value}: {detail}, {count} sec elapsed. {previousFailure}",
+        "other": "{value}: {detail}, {count} sec elapsed. {previousFailure}"
+      }
+    },
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = remote.everOnline ? \"重连\" : \"连接\"；detail = remote.connStep；count = Math.max(0, Math.floor((now - startedAt!) / 1000))；context = remote.connError && `上一次失败：${remote.connError}`；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "previousFailure": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.reconnecting_conn_check_label",
+    "zh-CN": "重连",
+    "en": "Reconnecting",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.connecting_conn_check_label",
+    "zh-CN": "连接",
+    "en": "Connecting",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.last_failure",
+    "zh-CN": "上一次失败：{value}",
+    "en": "Last failure: {value}",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = remote.connError；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.live_push_is_not_connected_session_changes_may_be",
+    "zh-CN": "实时推送未连接，会话变化可能延迟。最近一次失败：{value}",
+    "en": "Live push is not connected; session changes may be delayed. Last failure: {value}",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = remote.connError；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.live_push_is_not_connected",
+    "zh-CN": "实时推送未连接。",
+    "en": "Live push is not connected.",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.this_device_has_no_network_it_will_reconnect_when",
+    "zh-CN": "本机网络不通，联网后会重新连接。",
+    "en": "This device has no network. It will reconnect when online.",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.live_push",
+    "zh-CN": "实时推送",
+    "en": "Live push",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.local_network",
+    "zh-CN": "本机网络",
+    "en": "Local network",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.working",
+    "zh-CN": "正常",
+    "en": "Working",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.unavailable",
+    "zh-CN": "不通",
+    "en": "Unavailable",
+    "notes": "ConnCheck 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.latency_is_one_round_trip_the_server_row_measures",
+    "zh-CN": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。",
+    "en": "Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.reconnect_now",
+    "zh-CN": "立即重连",
+    "en": "Reconnect now",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "connection.test_again",
+    "zh-CN": "再测一次",
+    "en": "Test again",
+    "notes": "ConnCheck 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

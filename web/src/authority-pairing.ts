@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import type { Client } from "@connectrpc/connect";
 import { AuthorityClient } from "./authority-client";
 import { Authority } from "./authority";
@@ -30,15 +31,15 @@ export class AuthorityPairing {
   static async start(authority: AuthorityClient, api: Client<typeof PairingService>, web: string, replacesDeviceId = "") {
     await authority.resumeSecurityOperation();
     return authority.lifecycle.run(async (check) => {
-      if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
+      if (await readSecurityOperation()) throw new Error(l10n.t("security.finish_the_current_security_operation_first"));
       const record = await authority.security.sync();
       check();
       if (!isAuthority(record)) throw new SecurityError("untrusted");
       if (replacesDeviceId && (record.states.at(-1)!.core.members.some((m) => m.id === replacesDeviceId) ||
           !record.states.at(-1)!.core.removed.includes(replacesDeviceId) ||
           !record.states.some((s) => s.core.members.some((m) => m.id === replacesDeviceId && m.kind === DeviceKind.MACHINE))))
-        throw new Error("只能从已移除电脑的档案重新加入");
-      if (replacesDeviceId && !await authority.hasMachineArchive(replacesDeviceId)) throw new Error("电脑档案已删除，请按新设备加入");
+        throw new Error(l10n.t("security.only_a_removed_computer_s_archive_can_be_rejoined"));
+      if (replacesDeviceId && !await authority.hasMachineArchive(replacesDeviceId)) throw new Error(l10n.t("security.the_computer_s_archive_was_deleted_join_as_a"));
       check();
       const key = newPairKey(), trust = pairTrustDescriptor(record.pin, record.memberID);
       const commit = await pairDomainCommit(new Uint8Array(key.pub), trust);
@@ -51,7 +52,7 @@ export class AuthorityPairing {
     });
   }
   private active() {
-    if (this.stopped || BigInt(Date.now()) >= this.expires) throw new Error("配对已取消或过期");
+    if (this.stopped || BigInt(Date.now()) >= this.expires) throw new Error(l10n.t("security.pairing_was_canceled_or_expired"));
   }
   /** Call again while waiting; no hidden-page timer and no background signing. */
   async joined(): Promise<{ emoji: string[]; kind: DeviceKind } | undefined> {
@@ -63,7 +64,7 @@ export class AuthorityPairing {
       if (!isAuthority(r)) throw new SecurityError("untrusted");
       const status = await this.api.getPairing({ pairingId: this.pairingId });
       check(); this.active();
-      if (status.state === PairingState.CANCELED) throw new Error("配对已取消");
+      if (status.state === PairingState.CANCELED) throw new Error(l10n.t("security.pairing_canceled"));
       if (status.state === PairingState.OPEN) return;
       if (status.devicePublicKey.length !== 32 || status.deviceHpkePublicKey.length !== 32 || status.joinerPublic.length !== 32 ||
           ![DeviceKind.CLIENT, DeviceKind.MACHINE].includes(status.joinerKind) ||
@@ -86,7 +87,7 @@ export class AuthorityPairing {
     this.active();
     if (this.approved) { await this.authority.resumeSecurityOperation(); return; }
     const c = this.candidate, s = this.secrets;
-    if (!sasConfirmed || !c || !s) throw new Error("请先由新设备确认图案，再在管理端批准");
+    if (!sasConfirmed || !c || !s) throw new Error(l10n.t("security.confirm_the_patterns_on_the_new_device_before_approving"));
     await this.authority.approvePairing({ pairingId: this.pairingId,
       candidate: await Authority.newMember(
         await crypto.subtle.importKey("raw", new Uint8Array(c.devicePublicKey), "Ed25519", true, ["verify"]),

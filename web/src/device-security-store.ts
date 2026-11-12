@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import {
   MAX_CLOCK_SKEW,
   immutableState,
@@ -640,7 +641,7 @@ export async function savePairingIdentity(
     req.onsuccess = () => {
       if (req.result && req.result.tag !== tag) {
         fail(
-          new Error("另一个配对草稿未完成，请先完成本次配对或明确退出后重试"),
+          new Error(l10n.t("security.another_pairing_draft_is_unfinished_complete_this_pairing_or")),
         );
         return;
       }

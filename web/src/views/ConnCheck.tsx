@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 // 连接检测 (client-v34): how long a round trip takes now on each stretch of
 // the way, the nearest first: this device's network, the server, then
 // each computer through the server. Opened by hand when things feel slow
@@ -25,20 +26,20 @@ export function median(samples: number[]): number {
 /** The link to the server in a word, with its dot: what the sidebar's foot
  * and 设置 say before anything is measured. */
 export function connWord(remote: Remote, showWaiting = remote.showWaiting): { tone: Mark; text: string } {
-  if (remote.conn === "online") return { tone: "online", text: "已连接" };
+  if (remote.conn === "online") return { tone: "online", text: l10n.t("connection.connected") };
   if (remote.link === "waiting" && !showWaiting) return { tone: "off", text: "" };
-  if (remote.everOnline) return { tone: "run", text: "重连中" };
-  return { tone: "off", text: remote.failures >= 2 ? "连不上" : "连接中" };
+  if (remote.everOnline) return { tone: "run", text: l10n.t("connection.reconnecting_conn_check") };
+  return { tone: "off", text: remote.failures >= 2 ? l10n.t("connection.unreachable") : l10n.t("connection.connecting_conn_check") };
 }
 
 function Result({ p, slow }: { p?: Ping; slow: number }) {
-  if (!p || p.state === "wait") return <span className="mv"><LoaderCircle /><em>检测中…</em></span>;
-  if (p.state === "skip") return <span className="mv">未检测</span>;
+  if (!p || p.state === "wait") return <span className="mv"><LoaderCircle /><em>{l10n.t("connection.checking")}</em></span>;
+  if (p.state === "skip") return <span className="mv">{l10n.t("connection.not_checked")}</span>;
   if (p.state === "fail") return <span className="mv red">{p.error}</span>;
   return (
     <span className="mv">
       <StateMark kind={p.ms >= slow ? "off" : "online"} />
-      <em>{p.ms} ms{p.ms >= slow && " · 较慢"}</em>
+      <em>{p.ms} ms{p.ms >= slow && l10n.t("connection.slow")}</em>
     </span>
   );
 }
@@ -75,7 +76,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
     } catch (e) {
       if (mine !== run.current) return;
       reached = false;
-      setServer({ state: "fail", error: errorText(e) || "没有回应" });
+      setServer({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") });
       setMachines(new Map(online.map((id) => [id, { state: "skip" }])));
     }
     if (reached)
@@ -83,7 +84,7 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
         online.map(async (id) => {
           const p: Ping = await remote.pingMachine(id).then(
             (ms) => ({ state: "ok", ms }),
-            (e) => ({ state: "fail", error: errorText(e) || "没有回应" }),
+            (e) => ({ state: "fail", error: errorText(e) || l10n.t("connection.no_response") }),
           );
           if (mine === run.current) setMachines((m) => new Map(m).set(id, p));
         }),
@@ -96,50 +97,49 @@ export function ConnCheck({ remote, onClose }: { remote: Remote; onClose: () => 
   }, [check]);
   const down = remote.conn !== "online";
   return (
-    <Sheet onClose={onClose} title="连接检测" action={{ label: "完成", onClick: onClose }}>
+    <Sheet onClose={onClose} title={l10n.t("home.connection_check")} action={{ label: l10n.t("common.done"), onClick: onClose }}>
       {down && (
         <div className="set-banners">
           <Banner>
             {connecting && <LoaderCircle />}
             {connecting
-              ? `正在${remote.everOnline ? "重连" : "连接"}：${remote.connStep}，已 ${Math.max(0, Math.floor((now - startedAt!) / 1000))} 秒。${remote.connError && `上一次失败：${remote.connError}`}`
+              ? l10n.t("connection.sec_elapsed", { value: String(remote.everOnline ? l10n.t("connection.reconnecting_conn_check_label") : l10n.t("connection.connecting_conn_check_label")), detail: String(remote.connStep), count: Math.max(0, Math.floor((now - startedAt!) / 1000)), previousFailure: String(remote.connError && l10n.t("connection.last_failure", { value: String(remote.connError) })) })
               : remote.connError
-                ? `实时推送未连接，会话变化可能延迟。最近一次失败：${remote.connError}`
-                : remote.network ? "实时推送未连接。" : "本机网络不通，联网后会重新连接。"}
+                ? l10n.t("connection.live_push_is_not_connected_session_changes_may_be", { value: String(remote.connError) })
+                : remote.network ? l10n.t("connection.live_push_is_not_connected") : l10n.t("connection.this_device_has_no_network_it_will_reconnect_when")}
           </Banner>
         </div>
       )}
       <div className="list conn-check">
         <div className="mi">
-          <span className="mt">实时推送</span>
+          <span className="mt">{l10n.t("connection.live_push")}</span>
           <span className="mv"><StateMark kind={stream.tone} /><em>{stream.text}</em></span>
         </div>
         <div className="mi">
-          <span className="mt">本机网络</span>
+          <span className="mt">{l10n.t("connection.local_network")}</span>
           <span className="mv">
             <StateMark kind={remote.network ? "online" : "off"} />
-            <em>{remote.network ? "正常" : "不通"}</em>
+            <em>{remote.network ? l10n.t("connection.working") : l10n.t("connection.unavailable")}</em>
           </span>
         </div>
         <div className="mi">
           <span className="mt">
-            服务器<small>{new URL(remote.account.server).host}</small>
+            {l10n.t("security.server")}<small>{new URL(remote.account.server).host}</small>
           </span>
           <Result p={server} slow={SLOW_SERVER_MS} />
         </div>
         {list.map((m) => (
           <div key={m.id} className="mi">
             <span className="mt">{machineName(m)}</span>
-            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>不在线</em></span>}
+            {m.online ? <Result p={machines.get(m.id)} slow={SLOW_MACHINE_MS} /> : <span className="mv"><StateMark kind="off" /><em>{l10n.t("common.ios_offline")}</em></span>}
           </div>
         ))}
       </div>
-      <p className="gf">延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。</p>
+      <p className="gf">{l10n.t("connection.latency_is_one_round_trip_the_server_row_measures")}</p>
       <div className="btns conn-again">
-        {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>立即重连</button>}
+        {down && <button className="btn pri" onClick={() => remote.reconnectNow(true)}>{l10n.t("connection.reconnect_now")}</button>}
         <button className={down ? "btn" : "btn pri"} disabled={busy} onClick={() => void check()}>
-          再测一次
-        </button>
+          {l10n.t("connection.test_again")}</button>
       </div>
     </Sheet>
   );

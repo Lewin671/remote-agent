@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
@@ -11,9 +12,8 @@ const spaced = (code: string) => `${code.slice(0, 4)} ${code.slice(4)}`;
 /** How this browser joins: the phone that has joined shows a code, and it
  * is typed in here. A browser cannot scan, so the QR code goes unmentioned.
  * The path is the Android app's; the wording matches the other clients'. */
-export const joinLead = "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。";
-export const joinExistingLead =
-  "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。";
+export const joinLead = () => l10n.t("security.on_the_managing_client_open_settings_add_device_and");
+export const joinExistingLead = () => l10n.t("security.the_original_device_identity_keys_and_history_are_preserved");
 
 const defaultServer = () =>
   localStorage.getItem("ra-server") ||
@@ -32,13 +32,13 @@ export function joinBanner(e: unknown): {
   if (/security: clock/.test(text))
     return {
       kind: "warn",
-      text: "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+      text: l10n.t("security.this_device_s_clock_is_behind_the_managing_client"),
       action: "retry",
     };
   if (e instanceof Error && /security chain is too large/.test(e.message))
     return {
       kind: "err",
-      text: "账户的状态链太长，无法加入；请在管理端重建账户。",
+      text: l10n.t("security.the_account_s_state_chain_is_too_long_to"),
       action: "",
     };
   // The relay or the device that made the code is of another release.
@@ -49,7 +49,7 @@ export function joinBanner(e: unknown): {
   )
     return {
       kind: "err",
-      text: "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
+      text: l10n.t("security.this_page_and_the_server_or_pairing_device_use"),
       action: "refill",
     };
   if (
@@ -61,18 +61,18 @@ export function joinBanner(e: unknown): {
       Code.FailedPrecondition,
     ].includes(e.code)
   )
-    return { kind: "err", text: "配对码不对，或者已经用过了", action: "refill" };
+    return { kind: "err", text: l10n.t("security.the_pairing_code_is_wrong_or_has_already_been"), action: "refill" };
   if (e instanceof ConnectError && e.code === Code.ResourceExhausted)
-    return { kind: "err", text: "试得太多了，等一分钟再试", action: "refill" };
+    return { kind: "err", text: l10n.t("security.too_many_attempts_wait_a_minute_and_retry"), action: "refill" };
   if (e instanceof PairingStatusError && e.code === "expired_or_canceled")
-    return { kind: "err", text: "这次配对已失效，请在管理端重新生成配对码", action: "refill" };
+    return { kind: "err", text: l10n.t("security.this_pairing_expired_generate_a_new_code_on_the"), action: "refill" };
   if (e instanceof PairingStatusError && e.code === "refused")
-    return { kind: "err", text: "对方拒绝了这次加入", action: "restart" };
+    return { kind: "err", text: l10n.t("security.the_other_device_refused_this_join_request"), action: "restart" };
   if (
     (e instanceof ConnectError && e.code === Code.Unavailable) ||
     e instanceof TypeError
   )
-    return { kind: "warn", text: "不确定是否成功：网络断了", action: "retry" };
+    return { kind: "warn", text: l10n.t("security.success_is_uncertain_connection_lost"), action: "retry" };
   return { kind: "err", text, action: "restart" };
 }
 
@@ -168,7 +168,7 @@ export function Setup({
     setCode("");
     setError({
       kind: "warn",
-      text: "已停止这次等待。请在管理端拒绝旧请求，再生成新的配对码。",
+      text: l10n.t("security.stopped_waiting_reject_the_old_request_on_the_managing"),
       action: "",
     });
     if (location.hash.startsWith("#/pair?")) location.hash = "";
@@ -185,7 +185,7 @@ export function Setup({
     <div className="pad">
       <Banner
         kind={error.kind}
-        action={error.action ? { restart: "重新开始", retry: "重试", refill: "重填" }[error.action] : undefined}
+        action={error.action ? { restart: l10n.t("security.start_over"), retry: l10n.t("common.retry"), refill: l10n.t("security.re_enter") }[error.action] : undefined}
         onAction={() => {
           if (error.action === "refill") {
             setCode("");
@@ -202,11 +202,10 @@ export function Setup({
   if (emoji)
     return (
       <div className="setup">
-        <h3 className="hl">核对图案</h3>
+        <h3 className="hl">{l10n.t("security.compare_patterns")}</h3>
         <div className="emoji">{emoji.join(" ")}</div>
         <p className="txt center-text">
-          核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。
-        </p>
+          {l10n.t("security.compare_the_managing_client_s_4_patterns_if_they")}</p>
         {comparisonPending && (
           <button
             className="btn pri"
@@ -218,36 +217,33 @@ export function Setup({
               finish?.(true);
             }}
           >
-            图案一致，信任并继续
-          </button>
+            {l10n.t("security.patterns_match_trust_and_continue")}</button>
         )}
         <p className="wait-line">
           <LoaderCircle />
           {comparisonPending
-            ? "请先在本机确认图案"
+            ? l10n.t("security.confirm_the_patterns_on_this_device_first")
             : registering
-              ? "本机已确认，等待管理端批准并完成绑定…"
-              : "等待核对…"}
+              ? l10n.t("security.confirmed_here_waiting_for_managing_client_approval_and_binding")
+              : l10n.t("security.waiting_for_comparison")}
         </p>
         <div className="pair-wait-actions">
           <button className="btn" disabled={registering} onClick={giveUp}>
-            图案不一致，返回填码
-          </button>
+            {l10n.t("security.patterns_differ_return_to_code_entry")}</button>
           <p className="gf center-text">
-            返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。
-          </p>
+            {l10n.t("security.returning_stops_this_wait_reject_the_old_request_on")}</p>
         </div>
       </div>
     );
 
   return (
     <div className="setup">
-      <h3 className="hl">{existing ? "一次性安全设置" : "加入账户"}</h3>
+      <h3 className="hl">{existing ? l10n.t("security.one_time_security_setup") : l10n.t("security.join_account")}</h3>
       <>
         <p className="txt lead">
           {existing
-            ? joinExistingLead
-            : joinLead}
+            ? joinExistingLead()
+            : joinLead()}
         </p>
         <input
           className="field code-in"
@@ -259,15 +255,15 @@ export function Setup({
             const d = e.target.value.replace(/\D/g, "").slice(0, 8);
             setCode(d.length > 4 ? spaced(d) : d);
           }}
-          aria-label="配对码"
+          aria-label={l10n.t("security.pairing_code")}
         />
         <label className="field">
-          <small>服务器</small>
+          <small>{l10n.t("security.server")}</small>
           <input
             placeholder="https://ra.example.com"
             value={server}
             onChange={(e) => setServer(e.target.value.trim())}
-            aria-label="服务器"
+            aria-label={l10n.t("security.server")}
           />
         </label>
         {banner}
@@ -277,7 +273,7 @@ export function Setup({
             disabled={busy || code.replace(/\s/g, "").length !== 8 || !server}
             onClick={() => void pair({ code, server })}
           >
-            {busy ? "连接中…" : "加入"}
+            {busy ? l10n.t("connection.connecting") : l10n.t("security.join")}
           </button>
         </div>
       </>

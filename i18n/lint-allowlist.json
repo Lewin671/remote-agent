@@ -283,5 +283,145 @@
     "path": "ios/RemoteAgent/UI/Session/SessionComposer.swift",
     "literal": "session-send",
     "reason": "Accessibility identifier for the visible send control, distinct from the hidden keyboard shortcut; never displayed to users."
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "recent",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "ended",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "sun",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "mon",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "tue",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "wed",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "thu",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/schedules.ts",
+    "literal": "fri",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/pairing.ts",
+    "literal": "expired_or_canceled",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/pairing.ts",
+    "literal": "refused",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/images.ts",
+    "literal": "dimensions",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "draft",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/remote.ts",
+    "literal": "outbox_save",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/imagecodec/error.ts",
+    "literal": "original_too_large",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/imagecodec/error.ts",
+    "literal": "dimensions",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "${machineName(m)} · ${m.online ? l10n.t(\"common.ios_online\") : l10n.t(\"settings.offline\")}",
+    "reason": "纯标点模板，只组合设备原名与已本地化在线状态，没有待翻译的固定文字。"
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "ended",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "active",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "after",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "interval",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Schedules.tsx",
+    "literal": "agent_schedule_permissions_changed",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "restart",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "retry",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/views/Pairing.tsx",
+    "literal": "refill",
+    "reason": "语言无关的内部状态/错误类别/星期选择值；用于业务判别或字典分支，不向用户直接显示。"
+  },
+  {
+    "path": "web/src/agents.ts",
+    "literal": "Gemini 4 Argon",
+    "reason": "外部模型系列名称，按原名显示，不翻译。"
+  },
+  {
+    "path": "web/src/views/Settings.tsx",
+    "literal": "(getTheme); const opts: [Theme, string][] = [ [\"auto\", l10n.t(\"settings.theme_auto\")], [\"light\", l10n.t(\"settings.light\")], [\"dark\", l10n.t(\"settings.dark\")], ]; return (",
+    "reason": "JSX 词法扫描误把 TypeScript 泛型后的主题枚举/已本地化选项与 return 当成标签内文字；没有硬编码显示文案。"
+  },
+  {
+    "path": "web/src/views/Security.tsx",
+    "literal": "(); const [lease, setLease] = useState",
+    "reason": "JSX 词法扫描把相邻 TypeScript useState 泛型之间的声明误认为显示文字；纯状态声明，不向用户显示。"
+  },
+  {
+    "path": "web/src/views/Security.tsx",
+    "literal": "(); const [pending, setPending] = useState",
+    "reason": "JSX 词法扫描把相邻 TypeScript useState 泛型之间的声明误认为显示文字；纯状态声明，不向用户显示。"
   }
 ]

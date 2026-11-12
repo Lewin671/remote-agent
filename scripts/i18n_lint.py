@@ -96,6 +96,12 @@ def references(root):
             if key not in messages: raise ValueError(f'{name}: undefined key {key}')
             if platform not in messages[key]['platforms']:raise ValueError(f'{name}: {key} not available on {platform}')
             usage[key].add(platform)
+    # Static launch HTML and install metadata are generated from these inputs.
+    for path in (root/'scripts/i18n_templates').glob('web-*'):
+        for key in re.findall(r'\{\{([a-z][a-z0-9_.]+)\}\}', path.read_text()):
+            if key not in messages: raise ValueError(f'{path.name}: undefined key {key}')
+            if 'web' not in messages[key]['platforms']: raise ValueError(f'{path.name}: {key} not available on web')
+            usage[key].add('web')
     orphan=[k for k,users in usage.items() if not users]
     if orphan:raise ValueError('orphan keys: '+', '.join(orphan))
 

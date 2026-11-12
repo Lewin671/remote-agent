@@ -20,7 +20,7 @@ it("renders reviewed-source Chinese byte for byte and draft English only with an
   expect(t("common.copy")).toBe("Copy");
   expect(imageFailureLine(["pixels", "decode"])).toBe("2 images could not be attached. Tap an image for details.");
   // Error interpretation and retryability stay independent of language.
-  expect(imageFailureLine(["pixels", "pixels"])).toBe("图片尺寸太大，缩小后再试");
+  expect(imageFailureLine(["pixels", "pixels"])).toBe(t("image.image_dimensions_are_too_large_resize_it_and_retry"));
 });
 it("selects native plural categories for zero, one, two and a large count", () => {
   expect(t("image.attach_failed", { count: 1 }, "en")).toBe("1 image could not be attached. Tap it for details.");

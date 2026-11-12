@@ -180,7 +180,7 @@ export function Composer({
     </div>
   );
   return (
-    <div className={"cbar glass" + (dropping ? " drop" : "")} {...cardProps}>
+    <div className={"cbar glass" + (dropping ? " drop" : "")} data-drop-label={i18n.t("attachment.release_to_add")} {...cardProps}>
       {trayView}
       <div className="cline">
         {attach}

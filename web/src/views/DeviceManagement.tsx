@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { t } from "../i18n";
 import { pairingQRCode } from "../qr-code";
 import { LoaderCircle, Plus } from "../icons";
@@ -23,13 +24,10 @@ export function ManagementEntry({
   return remote.isAuthority ? (
     <button className={row ? "row add" : "addrow"} onClick={() => go("settings/add-device")}>
       <Plus />
-      添加设备
-    </button>
+      {l10n.t("home.add_device")}</button>
   ) : (
     <p className="gf">
-      要添加电脑或客户端，在管理端（{authorityName(remote)}）上打开「设置 ›
-      添加设备」。
-    </p>
+      {l10n.t("security.add_on_authority", { name: authorityName(remote) })}</p>
   );
 }
 export function DeviceActions({
@@ -54,12 +52,11 @@ export function DeviceActions({
   if (!remote.isAuthority)
     return (
       <p className="gf">
-        设备管理请在管理端（{authorityName(remote)}）上操作。
-      </p>
+        {l10n.t("security.manage_on_authority", { name: authorityName(remote) })}</p>
     );
   if (id === remote.authorityDeviceId)
     return (
-      <p className="gf">管理端不能直接移除，请先交接管理权。</p>
+      <p className="gf">{l10n.t("security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management")}</p>
     );
   return (
     <>
@@ -70,7 +67,7 @@ export function DeviceActions({
             disabled={busy}
             onClick={() => setConfirm("remove")}
           >
-            {incomplete ? "移除未完成的配对…" : "移除设备…"}
+            {incomplete ? l10n.t("security.remove_unfinished_pairing") : l10n.t("security.remove_device")}
           </button>
         ) : (
           machine && (
@@ -80,15 +77,13 @@ export function DeviceActions({
                 disabled={busy}
                 onClick={() => go?.("settings/add-device/" + id)}
               >
-                重新加入并接续会话
-              </button>
+                {l10n.t("security.rejoin_and_resume_sessions")}</button>
               <button
                 className="row danger"
                 disabled={busy}
                 onClick={() => setConfirm("delete")}
               >
-                删除这台电脑的记录…
-              </button>
+                {l10n.t("security.delete_this_computer_s_records")}</button>
             </>
           )
         )}
@@ -96,13 +91,13 @@ export function DeviceActions({
       {error && <div className="set-banners"><Banner kind="err">{error}</Banner></div>}
       {confirm && (
         <Alert
-          title={confirm === "remove" ? "移除设备？" : "删除这台电脑的记录"}
+          title={confirm === "remove" ? l10n.t("security.remove_device_device_management") : l10n.t("security.delete_this_computer_s_records_device_management")}
           text={
             confirm === "remove"
-              ? incomplete ? "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。" : "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。"
-              : "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。"
+              ? incomplete ? l10n.t("security.after_removing_this_unfinished_pairing_generate_a_new_code") : l10n.t("security.removal_immediately_stops_remote_access_from_this_device_the")
+              : l10n.t("security.this_permanently_deletes_sessions_events_and_images_on_the")
           }
-          ok={confirm === "remove" ? t("common.remove") : "删除记录"}
+          ok={confirm === "remove" ? t("common.remove") : l10n.t("security.delete_records")}
           danger
           onCancel={() => setConfirm(undefined)}
           onOk={() => {
@@ -206,7 +201,7 @@ export function PairCodePage({
   if (!remote.isAuthority)
     return (
       <div className="page set">
-        <NavBar title="添加设备" onBack={onBack} />
+        <NavBar title={l10n.t("home.add_device")} onBack={onBack} />
         <div className="body">
           <ManagementEntry remote={remote} go={() => {}} />
         </div>
@@ -215,19 +210,18 @@ export function PairCodePage({
   return (
     <div className="page set">
       <NavBar
-        title={replaces ? "重新加入并接续会话" : "添加设备"}
+        title={replaces ? l10n.t("security.rejoin_and_resume_sessions") : l10n.t("home.add_device")}
         onBack={onBack}
       />
       <div className="body security-body">
-        <p className="txt">电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。</p>
+        <p className="txt">{l10n.t("security.computer_run_remote_agent_account_join_and_enter_the")}</p>
         {done ? (
-          <Banner kind="">设备已加入</Banner>
+          <Banner kind="">{l10n.t("security.device_joined")}</Banner>
         ) : !pair ? (
           <>
             {replaces && (
               <p className="txt">
-                只允许这台电脑以新身份接回原档案，保留原会话和历史。
-              </p>
+                {l10n.t("security.only_this_computer_can_rejoin_its_original_archive_with")}</p>
             )}
             <button
               className="btn pri"
@@ -248,24 +242,23 @@ export function PairCodePage({
                 })
               }
             >
-              {busy ? "生成中…" : "生成配对码"}
+              {busy ? l10n.t("security.generating") : l10n.t("security.generate_pairing_code")}
             </button>
           </>
         ) : (
           <>
-            {qr?.url === pair.url && <img className="security-qr" src={qr.src} alt="添加设备的配对二维码" />}
+            {qr?.url === pair.url && <img className="security-qr" src={qr.src} alt={l10n.t("security.qr_code_for_adding_a_device")} />}
             <div className="pair-code">
               {pair.code.slice(0, 4)} {pair.code.slice(4)}
             </div>
             <p className="pcs">
-              有效期至 {futureTime(pair.expires, Date.now(), "time")}
+              {l10n.t("security.pair_valid_until", { time: futureTime(pair.expires, Date.now(), "time") })}
             </p>
             {emoji ? (
               <>
                 <div className="emoji">{emoji.join(" ")}</div>
                 <p className="txt center-text">
-                  核对新设备上的 4 个图案。先在新设备确认，再在这里允许。
-                </p>
+                  {l10n.t("security.compare_the_4_patterns_on_the_new_device_confirm")}</p>
                 {!approved && (
                   <>
                     <div className="grp">
@@ -275,8 +268,7 @@ export function PairCodePage({
                           checked={confirmed}
                           onChange={(e) => setConfirmed(e.target.checked)}
                         />
-                        图案一致，新设备已先确认
-                      </label>
+                        {l10n.t("security.patterns_match_the_new_device_confirmed_first")}</label>
                     </div>
                     <button
                       className="btn pri"
@@ -291,22 +283,19 @@ export function PairCodePage({
                         })
                       }
                     >
-                      允许加入
-                    </button>
+                      {l10n.t("security.allow_to_join")}</button>
                   </>
                 )}
                 {approved && (
                   <p role="status" className="wait-line">
                     <LoaderCircle />
-                    已批准，等待新设备完成绑定…
-                  </p>
+                    {l10n.t("security.approved_waiting_for_the_new_device_to_finish_binding")}</p>
                 )}
               </>
             ) : (
               <p role="status" className="wait-line">
                 <LoaderCircle />
-                等待新设备输入配对码…
-              </p>
+                {l10n.t("security.waiting_for_the_new_device_to_enter_the_pairing")}</p>
             )}
             {!approved && (
               <button
@@ -328,8 +317,7 @@ export function PairCodePage({
                   })
                 }
               >
-                取消配对
-              </button>
+                {l10n.t("security.cancel_pairing")}</button>
             )}
           </>
         )}

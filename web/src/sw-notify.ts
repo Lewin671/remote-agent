@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { fromBinary } from "@bufbuild/protobuf";
 import { EnvelopeSchema } from "./gen/remoteagent/v1/envelope_pb";
 import { NotifyContentSchema } from "./gen/remoteagent/v1/remote_pb";
@@ -15,7 +16,7 @@ type PushData = { title?: string; body?: string; tag?: string; session?: string;
 export async function scheduledPushContent(d: PushData): Promise<{ title: string; body: string }> {
   const generic = { title: "remote-agent", body: typeof d.body === "string" ? d.body : "" };
   if (typeof d.tag !== "string" || !d.tag.endsWith("/NOTIFY_KIND_SCHEDULED")) return generic;
-  generic.body = "定时任务有新结果";
+  generic.body = l10n.t("notifications.scheduled_tasks_have_new_results");
   try {
     if (typeof d.content !== "string" || !d.content.length ||
         new TextEncoder().encode(JSON.stringify(d)).length > MAX_PAYLOAD) return generic;

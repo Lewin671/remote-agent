@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { loadRegistration, loadAccount } from "./storage";
 import { parseLease } from "./device-security";
 import { PROTOCOL_VERSION } from "./protocol";
@@ -132,13 +133,13 @@ type Poll = (want: PairingState) => Promise<GetPairingResponse>;
 /** The user stopped waiting on this device (not a refusal by the other). */
 export class PairingStatusError extends Error {
   constructor(readonly code: "expired_or_canceled" | "refused") {
-    super(code === "refused" ? "管理端取消了配对" : "配对已过期或被取消");
+    super(code === "refused" ? l10n.t("security.the_managing_client_canceled_pairing") : l10n.t("security.pairing_expired_or_was_canceled"));
   }
 }
 
 export class PairCanceled extends Error {
   constructor() {
-    super("已取消");
+    super(l10n.t("queue.canceled"));
   }
 }
 
@@ -179,7 +180,7 @@ export async function joinByPairing(
   const pending = await loadRegistration();
   if (pending) {
     if (pending.account.server !== link.server)
-      throw new Error("另一个服务器的注册尚未完成，请先重试或退出并重新开始");
+      throw new Error(l10n.t("security.registration_on_another_server_is_unfinished_retry_it_or"));
     onRegistering();
     await resumeRegistration();
     return (await loadAccount())!;
@@ -187,7 +188,7 @@ export async function joinByPairing(
   const pc = client(link.server);
   const key = newPairKey();
   if (existing && existing.server !== link.server)
-    throw new Error("安全设置必须使用原账户的服务器");
+    throw new Error(l10n.t("security.security_setup_must_use_the_original_account_s_server"));
   const peek = await pc.peekPairing({
     code: link.code.replace(/\s/g, ""),
     protocolVersion: PROTOCOL_VERSION,
@@ -197,13 +198,13 @@ export async function joinByPairing(
     !peek.pairingId ||
     (link.commit && !eq(link.commit, peek.commit))
   )
-    throw new Error("配对承诺不匹配，已停止配对");
+    throw new Error(l10n.t("security.pairing_commitment_mismatch_pairing_stopped"));
   const identity = await loadPairingIdentity(link.server, peek.pairingId);
   if (
     identity &&
     (identity.server !== link.server || identity.pairingId !== peek.pairingId)
   )
-    throw new Error("另一个配对草稿仍待完成");
+    throw new Error(l10n.t("security.another_pairing_draft_is_unfinished"));
   const device =
     identity?.device ??
     (existing ? await retainedDeviceKey(existing) : await newDeviceKey());
@@ -213,7 +214,7 @@ export async function joinByPairing(
       new Uint8Array(await crypto.subtle.exportKey("raw", device.publicKey)),
     )) !== existing.deviceId
   )
-    throw new Error("配对草稿与当前身份冲突");
+    throw new Error(l10n.t("security.the_pairing_draft_conflicts_with_the_current_identity"));
   const devicePublic = new Uint8Array(
     await crypto.subtle.exportKey("raw", device.publicKey),
   );
@@ -236,11 +237,11 @@ export async function joinByPairing(
     joinerKind: DeviceKind.CLIENT,
   });
   if (joined.pairingId !== peek.pairingId || !eq(joined.commit, peek.commit))
-    throw new Error("服务器在获得临时公钥后替换了配对承诺，已停止配对");
+    throw new Error(l10n.t("security.the_server_replaced_the_pairing_commitment_after_receiving_the"));
   const id = joined.pairingId;
   const token = joined.candidateToken;
   if (link.commit && !eq(link.commit, joined.commit))
-    throw new Error("服务器返回的不是发起配对那台设备的信息，已停止配对");
+    throw new Error(l10n.t("security.the_server_returned_information_for_a_different_device_from"));
   const poll = poller(
     () => pc.getPairing({ pairingId: id, candidateToken: token }),
     stopped,
@@ -258,25 +259,25 @@ export async function joinByPairing(
       peek.commit,
     )
   )
-    throw new Error("管理端的信任信息与配对承诺不匹配");
+    throw new Error(l10n.t("security.the_managing_client_s_trust_information_does_not_match"));
   let replace = false;
   if (existing) {
     const status = await securitySetupStatus();
     if (status === "clock") throw new Error("security: clock");
     if (status === "invalid")
       throw new Error(
-        "本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试",
+        l10n.t("security.the_local_security_state_is_damaged_and_cannot_be"),
       );
     if (status === "ready") {
       const current = await securityPin();
       if (!current || !pinEqual(current, trust.pin))
-        throw new Error("配对码属于另一个安全域，原密钥已保留");
+        throw new Error(l10n.t("security.the_pairing_code_belongs_to_another_security_domain_original"));
       replace = true;
     }
   }
   const descriptor = pairTrustDescriptor(trust.pin, trust.approver);
   if (!eq(descriptor, new Uint8Array(st.trust)))
-    throw new Error("无效的配对信任信息");
+    throw new Error(l10n.t("security.invalid_pairing_trust_information"));
   const tr = await pairDomainTranscript(
     id,
     st.initiatorPublic,
@@ -297,7 +298,7 @@ export async function joinByPairing(
     { kind: PayloadKind.PAIRING, requestId: id },
     PairingPayloadSchema,
   );
-  if (msg.server !== link.server) throw new Error("账户属于另一个服务器");
+  if (msg.server !== link.server) throw new Error(l10n.t("security.the_account_belongs_to_another_server"));
   // Canceled while the phone allowed it: the payload is dropped unused.
   // Past this point this device registers, and a cancel can no longer
   // undo it; the page then waits for the outcome instead.
@@ -307,7 +308,7 @@ export async function joinByPairing(
     accountPublicKey.length !== 32 ||
     (await deviceID(accountPublicKey)) !== trust.pin.account
   )
-    throw new Error("账户与管理端的信任信息不匹配");
+    throw new Error(l10n.t("security.the_account_does_not_match_the_managing_client_s"));
   const approval = new Uint8Array(msg.approval);
   if (
     !(await verifyApproval(
@@ -319,13 +320,13 @@ export async function joinByPairing(
       devicePublic,
     ))
   )
-    throw new Error("配对批准与这台设备不匹配或已过期");
+    throw new Error(l10n.t("security.pairing_approval_does_not_match_this_device_or_has"));
   checkPairChainSize(msg.securityStates);
   const { states, proofs } = await parseChain(msg.securityStates);
   await verifyChain(trust.pin, states, proofs);
   const head = states[states.length - 1];
   if (head.core.authorityID !== trust.approver)
-    throw new Error("配对回执的批准设备不是当前管理端");
+    throw new Error(l10n.t("security.the_pairing_receipt_was_approved_by_a_device_other"));
   const candidateID = await deviceID(devicePublic);
   const candidate = head.core.members.find((m) => m.id === candidateID);
   if (
@@ -334,7 +335,7 @@ export async function joinByPairing(
     !eq(candidate.x, xPublic) ||
     candidate.kind !== DeviceKind.CLIENT
   )
-    throw new Error("加入回执没有本机的正确身份");
+    throw new Error(l10n.t("security.the_join_receipt_does_not_contain_the_correct_identity"));
   await openGrant(trust.pin, head, candidate.id, x.privateKey);
   const record = await buildRecord(
     trust.pin,
@@ -436,7 +437,7 @@ async function retainedDeviceKey(
     publicBytes.length !== 32 ||
     (await deviceID(publicBytes)) !== account.deviceId
   )
-    throw new Error("无法核实这台浏览器原来的公钥，原密钥已保留");
+    throw new Error(l10n.t("security.this_browser_s_original_public_key_could_not_be"));
   const publicKey = await crypto.subtle.importKey(
     "raw",
     publicBytes,
@@ -451,7 +452,7 @@ async function retainedDeviceKey(
     probe,
   );
   if (!(await crypto.subtle.verify("Ed25519", publicKey, signature, probe)))
-    throw new Error("原设备公钥与本机签名密钥不匹配");
+    throw new Error(l10n.t("security.the_original_device_public_key_does_not_match_the"));
   return { privateKey: account.devicePrivate, publicKey };
 }
 

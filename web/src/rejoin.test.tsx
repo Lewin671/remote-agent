@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -58,7 +59,7 @@ it.each([false, true])("rejoin clears data and goes directly to pairing; pending
   if (pending) {
     expect(erase).not.toHaveBeenCalled();
     expect(host.textContent).toContain("电脑上的会话不受影响");
-    const confirm = [...host.querySelectorAll("button")].find(b => b.textContent === "重新加入")!;
+    const confirm = [...host.querySelectorAll("button")].find(b => b.textContent === message("security.rejoin"))!;
     await act(async () => confirm.click());
   }
   expect(erase).toHaveBeenCalledOnce();
@@ -84,13 +85,13 @@ it.each([false, true])("startup decides before code entry and discards retained 
   vi.spyOn(storage, "forgetAccount").mockImplementation(async () => { account = undefined; });
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root.render(<App />));
-  await vi.waitFor(async () => { await act(async () => {}); expect(host.textContent).toContain(denied ? "服务器不认识这台设备" : "一次性安全设置"); });
+  await vi.waitFor(async () => { await act(async () => {}); expect(host.textContent).toContain(denied ? message("security.the_server_does_not_recognize_this_device") : message("security.one_time_security_setup")); });
   expect(probe).toHaveBeenCalledOnce();
-  if (!denied) { expect(host.textContent).not.toContain("用配对码重新加入"); return; }
+  if (!denied) { expect(host.textContent).not.toContain(message("security.rejoin_with_a_pairing_code")); return; }
   expect(host.querySelector('input[aria-label="配对码"]')).toBeNull();
   await act(async () => host.querySelector("button")!.click());
   await vi.waitFor(async () => { await act(async () => {}); expect(host.querySelector('input[aria-label="配对码"]')).not.toBeNull(); });
-  expect(host.textContent).not.toContain("一次性安全设置");
+  expect(host.textContent).not.toContain(message("security.one_time_security_setup"));
   expect(host.querySelector<HTMLInputElement>('input[aria-label="服务器"]')?.value).toBe("https://relay.example.com");
   expect(account).toBeUndefined();
 });

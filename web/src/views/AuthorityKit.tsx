@@ -1,7 +1,8 @@
+import * as l10n from "../i18n";
 export function PersistenceResult({ persisted }: { persisted: boolean }) {
   return (
     <p className="txt" role="status">
-      {persisted ? "已请求浏览器保留数据" : "浏览器没有承诺保留数据"}
+      {persisted ? l10n.t("security.asked_the_browser_to_retain_data") : l10n.t("security.the_browser_did_not_promise_to_retain_data")}
     </p>
   );
 }
@@ -16,11 +17,11 @@ export function CodeBackup({
 }) {
   return (
     <>
-      <div className="label">新的恢复码 · 只显示这一次</div>
-      <pre className="recovery-code" aria-label="新的恢复码">
+      <div className="label">{l10n.t("security.new_recovery_code_shown_only_once")}</div>
+      <pre className="recovery-code" aria-label={l10n.t("security.new_recovery_code")}>
         {code}
       </pre>
-      <p className="gf">请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。</p>
+      <p className="gf">{l10n.t("security.save_the_recovery_code_offline_anyone_with_it_can")}</p>
       <div className="grp">
         <label className="row backup-check">
           <input
@@ -28,8 +29,7 @@ export function CodeBackup({
             checked={saved}
             onChange={(e) => onSaved(e.target.checked)}
           />
-          我已离线保存新的恢复码
-        </label>
+          {l10n.t("security.i_saved_the_new_recovery_code_offline")}</label>
       </div>
     </>
   );

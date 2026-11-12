@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 import { t } from "./i18n";
 import { isSkeleton } from "./skeleton";
@@ -504,9 +505,9 @@ export function futureTime(ms: number | bigint, now = Date.now(), format: "date-
   const today = new Date(now);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  const label = date.toDateString() === today.toDateString() ? "今天"
-    : date.toDateString() === tomorrow.toDateString() ? "明天"
-    : `${date.getMonth() + 1}月${date.getDate()}日`;
+  const label = date.toDateString() === today.toDateString() ? l10n.t("time.today")
+    : date.toDateString() === tomorrow.toDateString() ? l10n.t("time.tomorrow")
+    : l10n.t("time.month_day", { month: date.getMonth() + 1, day: date.getDate() });
   return `${label} ${clock}`;
 }
 
@@ -920,13 +921,14 @@ export function modeLabel(
   chosen: ApprovalMode,
   d: DefaultMode,
   agent: Agent,
+  includeDefault = true,
 ): string {
   if (chosen) return modeName(chosen);
   const base = !d.known
     ? i18n.t("new_session.follow_cli")
     : d.mode
-      ? i18n.t("modes.default_named", { mode: modeName(d.mode) })
-      : i18n.t("modes.default_agent", { agent: agentName(agent) });
+      ? includeDefault ? i18n.t("modes.default_named", { mode: modeName(d.mode) }) : modeName(d.mode)
+      : includeDefault ? i18n.t("modes.default_agent", { agent: agentName(agent) }) : i18n.t("modes.agent_own", { agent: agentName(agent) });
   return d.varies ? i18n.t("modes.default_varies", { mode: base }) : base;
 }
 

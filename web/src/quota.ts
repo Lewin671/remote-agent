@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // Account quota windows as the device pages show them (architecture 账户
 // 额度): what is left (剩 N%, design-system §6 电脑卡与额度), reset time,
 // and whether the reading can still be
@@ -21,16 +22,16 @@ export interface QuotaRow {
   note: string; // why the reading may be old
 }
 
-const days = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const days = () => ["sun", "mon", "tue", "wed", "thu", "fri", "sat"].map(day => l10n.t("time.weekday", { day }));
 
 /** How long until a reset, rounded down: to the hour from a day on, to
  * the minute below that. */
 function untilReset(ms: number): string {
   const m = Math.floor(ms / 60_000);
-  if (m < 1) return "即将重置";
-  if (m < 60) return `${m} 分钟后重置`;
-  if (m < 24 * 60) return `${Math.floor(m / 60)} 小时 ${m % 60} 分后重置`;
-  return `${Math.floor(m / (24 * 60))} 天 ${Math.floor((m % (24 * 60)) / 60)} 小时后重置`;
+  if (m < 1) return l10n.t("quota.resetting_soon");
+  if (m < 60) return l10n.t("quota.resets_in_min", { count: m });
+  if (m < 24 * 60) return l10n.t("quota.resets_in_hr_min", { count: Math.floor(m / 60), detail: String(m % 60) });
+  return l10n.t("quota.resets_in_days_hr", { count: Math.floor(m / (24 * 60)), detail: Math.floor((m % (24 * 60)) / 60) });
 }
 
 // Shanghai is UTC+8 without DST: read the result with the getUTC* methods.
@@ -43,25 +44,25 @@ const clock = (d: Date) => `${d.getUTCHours()}:${String(d.getUTCMinutes()).padSt
 function resetTime(ms: number, now: number): string {
   const d = beijing(ms);
   const today = beijing(now);
-  const day = dayOf(d) === dayOf(today) ? "今天" : `${d.getUTCMonth() + 1}月${d.getUTCDate()}日 ${days[d.getUTCDay()]}`;
+  const day = dayOf(d) === dayOf(today) ? l10n.t("time.today") : l10n.t("time.ios_date_time", { month: d.getUTCMonth() + 1, day: d.getUTCDate(), time: String(days()[d.getUTCDay()]) });
   return `${untilReset(ms - now)} · ${day} ${clock(d)}`;
 }
 
 /** What is left of a window used pct: 剩 38%, or 已用尽. */
 function leftText(pct: number): string {
-  return pct >= 100 ? "已用尽" : `剩 ${100 - Math.floor(pct)}%`;
+  return pct >= 100 ? l10n.t("quota.exhausted_quota") : l10n.t("quota.left", { value: String(100 - Math.floor(pct)) });
 }
 
 export function windowLabel(minutes: number): string {
-  if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return `${minutes / (24 * 60)} 天`;
-  if (minutes >= 60) return `${Math.round(minutes / 60)} 小时`;
-  return `${minutes} 分钟`;
+  if (minutes >= 24 * 60 && minutes % (24 * 60) === 0) return l10n.t("quota.days", { count: minutes / (24 * 60) });
+  if (minutes >= 60) return l10n.t("quota.hr", { count: Math.round(minutes / 60) });
+  return l10n.t("quota.min", { count: minutes });
 }
 
 /** One window of a CLI account's quota. online: the machine that reported
  * it is connected now. */
 export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: number, online: boolean): QuotaRow {
-  if (!l) return { label: fallbackLabel, left: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
+  if (!l) return { label: fallbackLabel, left: l10n.t("quota.unavailable"), reset: "", tone: "", note: l10n.t("quota.no_data_received_for_this_quota") };
   const label = l.windowMinutes > 0n ? windowLabel(Number(l.windowMinutes)) : fallbackLabel;
   const pct = l.usedPercent;
   const resetMs = Number(l.resetsAt) * 1000;
@@ -71,8 +72,8 @@ export function quotaRow(l: RateLimit | undefined, fallbackLabel: string, now: n
     reset = resetTime(resetMs, now);
   }
   const left = leftText(pct);
-  if (passed) return { label, left: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次记录 ${left}；重置时间已过，不能据此确认额度已经恢复` };
-  if (!online) return { label, left, percent: pct, reset, tone: "stale", note: "上次记录：电脑离线，可能已变化" };
+  if (passed) return { label, left: l10n.t("quota.awaiting_update"), percent: pct, reset: "", tone: "stale", note: l10n.t("quota.last_reading_reset_time_passed_but_quota_recovery_is", { value: String(left) }) };
+  if (!online) return { label, left, percent: pct, reset, tone: "stale", note: l10n.t("quota.last_reading_computer_offline_may_have_changed") };
   return { label, left, percent: pct, reset, tone: pct >= 100 ? "full" : pct >= 80 ? "warn" : "", note: "" };
 }
 
@@ -130,19 +131,19 @@ function windowRow(
   const key = w.name;
   const windowName = w.windowMinutes > 0n ? windowLabel(Number(w.windowMinutes)) : label;
   if (useWindowMinutes && w.windowMinutes > 0n) label = windowName;
-  if (w.usedPercent === undefined) return { key, label, windowName, left: "未获取", reset: "", tone: "", note: "没有收到这项额度数据" };
+  if (w.usedPercent === undefined) return { key, label, windowName, left: l10n.t("quota.unavailable"), reset: "", tone: "", note: l10n.t("quota.no_data_received_for_this_quota") };
   const pct = w.usedPercent;
   const left = leftText(pct);
   const resetMs = Number(w.resetsAtMs);
   if (resetMs > 0 && resetMs <= now)
-    return { key, label, windowName, left: "等待更新", percent: pct, reset: "", tone: "stale", note: `上次${left}；重置时间已过，不能据此确认额度已经恢复` };
+    return { key, label, windowName, left: l10n.t("quota.awaiting_update"), percent: pct, reset: "", tone: "stale", note: l10n.t("quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed", { value: String(left) }) };
   let reset = "";
   if (resetMs > 0) reset = resetTime(resetMs, now);
   return {
     key,
     label,
     windowName,
-    left: stale ? `上次${left}` : left,
+    left: stale ? l10n.t("quota.previously", { value: String(left) }) : left,
     percent: pct,
     reset,
     tone: stale ? "stale" : pct >= 100 ? "full" : pct >= 80 ? "warn" : "",
@@ -163,17 +164,17 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
     const mine = quotas.filter((q) => norm(q.agent) === agent);
     const base = { agent, head: "", detail: "", error: "", rows: [], groups: [], banner: "", seen: "", stale: false, freshness: "" };
     if (!mine.length) {
-      out.push({ ...base, title: name, kind: "unsupported", head: "暂不支持读取额度" });
+      out.push({ ...base, title: name, kind: "unsupported", head: l10n.t("quota.quota_lookup_is_not_supported_yet") });
       continue;
     }
     for (const q of mine) {
-      const who = mine.length > 1 ? (q.account ? ` · 账户 ${q.account}` : q.sourceSessionId ? ` · 会话 ${q.sourceSessionId.slice(-4)}` : "") : "";
+      const who = mine.length > 1 ? (q.account ? l10n.t("quota.account", { value: String(q.account) }) : q.sourceSessionId ? l10n.t("quota.session", { value: String(q.sourceSessionId.slice(-4)) }) : "") : "";
       if (q.state === QuotaState.WAITING || (q.state === QuotaState.UNSPECIFIED && !q.windows.length)) {
-        out.push({ ...base, title: name + who, kind: "waiting", head: "暂未获取额度", detail: q.detail || t("quota.waiting", { name }) });
+        out.push({ ...base, title: name + who, kind: "waiting", head: l10n.t("quota.quota_not_available_yet"), detail: q.detail || t("quota.waiting", { name }) });
         continue;
       }
       if (q.state === QuotaState.UNSUPPORTED) {
-        out.push({ ...base, title: name + who, kind: "unsupported", head: "暂不支持读取额度", detail: q.detail });
+        out.push({ ...base, title: name + who, kind: "unsupported", head: l10n.t("quota.quota_lookup_is_not_supported_yet"), detail: q.detail });
         continue;
       }
       const failed = q.state === QuotaState.FAILED;
@@ -202,14 +203,14 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
         }
       }
       if (failed && !q.windows.length) {
-        out.push({ ...base, title: name + who, kind: "failed", error: q.detail ? t("quota.failure", { name, detail: q.detail }) : t("quota.failure_no_reason", { name }), head: "暂未获取额度" });
+        out.push({ ...base, title: name + who, kind: "failed", error: q.detail ? t("quota.failure", { name, detail: q.detail }) : t("quota.failure_no_reason", { name }), head: l10n.t("quota.quota_not_available_yet") });
         continue;
       }
       const got = rows.filter((r) => r.percent !== undefined && r.tone !== "stale");
       const full = got.find((r) => r.tone === "full");
       const warn = got.find((r) => r.tone === "warn");
       const prefix = name + (q.plan ? ` · ${agentInfo(q.agent).planName(q.plan)}` : "") + who;
-      const staleSuffix = stale ? " · 上次记录" : "";
+      const staleSuffix = stale ? l10n.t("quota.last_reading") : "";
       const title = prefix + staleSuffix;
       const groups: QuotaGroup[] =
         groupMap.size > 0
@@ -224,7 +225,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
         ...base,
         title,
         kind: failed ? "failed" : "ok",
-        head: "暂未获取额度",
+        head: l10n.t("quota.quota_not_available_yet"),
         seen: observed,
         freshness,
         error: failed ? q.detail ? t("quota.failure", { name, detail: q.detail }) : t("quota.failure_no_reason", { name }) : "",
@@ -242,9 +243,9 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
 export function quotaSummary(views: QuotaView[]): string {
   return views
     .map((v) => {
-      if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || "暂未获取额度";
+      if (v.kind === "waiting" || v.kind === "unsupported" || !v.rows.length) return v.head || l10n.t("quota.quota_not_available_yet");
       const got = v.rows.filter((r) => r.percent !== undefined);
-      if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
+      if (!got.length) return v.stale ? l10n.t("quota.unavailable_previous") : l10n.t("quota.quota_not_available_yet");
       const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
       // A CLI with several pools (Gemini, 第三方模型) names the pool; the window is on the quota page.
       const pool = tightest.poolName ?? "";

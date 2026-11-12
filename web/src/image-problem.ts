@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 import { t } from "./i18n";
 /** User-facing image errors. Never echo a codec, RPC or OS error verbatim. */
@@ -18,13 +19,13 @@ export function imageProblemKind(error: string) {
 }
 export function imageProblem(error: string): ImageProblem {
   switch (imageProblemKind(error)) {
-    case "original_too_large": return { message: "图片超过 20 MB，关掉原图再发", retryable: false };
-    case "dimensions": return { message: "图片尺寸太大，缩小后再试", retryable: false };
-    case "source_missing": return { message: "这张图片没有本机副本，请移除后重新选择", retryable: false };
-    case "decode": return { message: "读不出这张图片，换成 JPEG 或 PNG 再试", retryable: false };
-    case "storage_full": return { message: "电脑附件空间不足，清理后重试", retryable: true };
-    case "upload_failed": return { message: "图片没能传到电脑，连接恢复后重试", retryable: true };
-    default: return { message: "这张图片处理失败", retryable: false };
+    case "original_too_large": return { message: l10n.t("image.image_exceeds_20_mb_turn_off_original_and_send"), retryable: false };
+    case "dimensions": return { message: l10n.t("image.image_dimensions_are_too_large_resize_it_and_retry"), retryable: false };
+    case "source_missing": return { message: l10n.t("image.this_image_has_no_local_copy_remove_it_and"), retryable: false };
+    case "decode": return { message: l10n.t("image.cannot_read_this_image_try_jpeg_or_png_instead"), retryable: false };
+    case "storage_full": return { message: l10n.t("image.the_computer_s_attachment_storage_is_full_clear_space"), retryable: true };
+    case "upload_failed": return { message: l10n.t("image.the_image_could_not_reach_the_computer_retry_when"), retryable: true };
+    default: return { message: l10n.t("image.this_image_could_not_be_processed"), retryable: false };
   }
 }
 export function imageFailureLine(errors: string[]): string {

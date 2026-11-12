@@ -250,7 +250,8 @@
     "notes": "Android 批次 B：Delivery.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

@@ -16,8 +16,8 @@ it("keeps an old session visible with the explicit retirement error", async () =
   const row = await r.sessionRow("old");
   row.key = retired(PayloadKind.SESSION_KEY);
   await (r as any).putSession(row);
-  expect(r.sessions.get("old")?.historyError).toBe(RETIRED_HISTORY_ERROR);
-  expect(r.history("old")).toMatchObject({ error: RETIRED_HISTORY_ERROR, broken: true });
+  expect(r.sessions.get("old")?.historyError).toBe(RETIRED_HISTORY_ERROR());
+  expect(r.history("old")).toMatchObject({ error: RETIRED_HISTORY_ERROR(), broken: true });
   expect(r.events("old")).toHaveLength(0);
   // A current record can replace the refused row without keeping its error.
   await (r as any).putSession(await r.sessionRow("old"));
@@ -33,9 +33,9 @@ it("reports the same error for an old event and image", async () => {
     if (r.history("s").error) return resolve();
     const off = r.subscribe(() => { if (r.history("s").error) { off(); resolve(); } });
   });
-  expect(r.history("s")).toMatchObject({ error: RETIRED_HISTORY_ERROR, broken: true });
+  expect(r.history("s")).toMatchObject({ error: RETIRED_HISTORY_ERROR(), broken: true });
   expect(r.events("s")).toHaveLength(0);
-  expect(await r.getImage("s", "old")).toEqual({ kind: "bad", why: RETIRED_HISTORY_ERROR });
+  expect(await r.getImage("s", "old")).toEqual({ kind: "bad", why: RETIRED_HISTORY_ERROR() });
 });
 
 it("a retired header cannot erase a verified revision or allow metadata replay", async () => {
@@ -48,7 +48,7 @@ it("a retired header cannot erase a verified revision or allow metadata replay",
   const verified = structuredClone(r.sessions.get("known"));
   for (const field of ["key", "meta"] as const) {
     await (r as any).putSession({ ...older, [field]: retired(field === "key" ? PayloadKind.SESSION_KEY : PayloadKind.SESSION_META) });
-    expect(r.error).toBe(RETIRED_HISTORY_ERROR);
+    expect(r.error).toBe(RETIRED_HISTORY_ERROR());
     expect(r.sessions.get("known")).toEqual(verified);
     await (r as any).putSession(older);
     expect(r.sessions.get("known")?.metaRev).toBe(2n);

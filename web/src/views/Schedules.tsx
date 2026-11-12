@@ -1,3 +1,5 @@
+import { rich } from "../i18n/rich";
+import * as l10n from "../i18n";
 import { ScheduleRevisionError } from "../remote";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
@@ -54,7 +56,7 @@ import {
   oneShot,
   reasonText,
   runResult,
-  taskGroup,
+  taskGroup, weekdayLabel,
   taskRoute,
   scheduleTime, stoppedTime, finalRunText,
   zonedISO,
@@ -85,7 +87,7 @@ function TaskOffline({ remote, id }: { remote: Remote; id?: string }) {
     <>
       {remote.conn === "online" && offline.length > 0 && (
         <Banner>
-          {offline.map((m) => machineName(m)).join("、")} {scheduleOffline}
+          {offline.map((m) => machineName(m)).join("、")} {scheduleOffline()}
         </Banner>
       )}
     </>
@@ -136,14 +138,14 @@ export function ScheduleRow({
   const [menu, setMenu] = useState(false);
   const mark = () => { if (fresh) remote.markScheduleRead(machineId, task); else { remote.markScheduleUnread(machineId, task, selected); if (selected) go("tasks"); } };
   const card = layout === "card" && (attention || fresh);
-  const dot = (attention || fresh) && <i className={"mark schedule-unread-dot " + (attention ? "wait attention-dot" : "unread")} role="img" aria-label={attention ? "需要你处理" : "有新结果"} />;
+  const dot = (attention || fresh) && <i className={"mark schedule-unread-dot " + (attention ? "wait attention-dot" : "unread")} role="img" aria-label={attention ? l10n.t("schedule.needs_your_attention") : l10n.t("home.ios_new_results")} />;
   const row1 = <span className="row1">{card && dot}<b>{task.spec.title}</b><span>{at ? scheduleTime(at, now) : ""}</span></span>;
-  const pv = <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? "没能运行" : "已停下"}</strong> · {reasonText(task.reason, true)}</> : notification ? runSummary(notification) || runResult(notification) : running ? <span className="none">还没有结果</span> : allRuns(task).length ? lastResult(task, now) : `还没有运行${task.next_run_at ? " · 下次 " + dateTime(task.next_run_at, now) : ""}`}</span>;
-  const mc = <span className="mc">{running && <><LoaderCircle className="spin" />正在运行 · </>}{[
+  const pv = <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? l10n.t("schedule.could_not_run") : l10n.t("schedule.stopped")}</strong> · {reasonText(task.reason, true)}</> : notification ? runSummary(notification) || runResult(notification) : running ? <span className="none">{l10n.t("schedule.no_results_yet")}</span> : allRuns(task).length ? lastResult(task, now) : task.next_run_at ? l10n.t("schedule.no_runs_next", { time: dateTime(task.next_run_at, now) }) : l10n.t("schedule.has_not_run_yet")}</span>;
+  const mc = <span className="mc">{running && <><LoaderCircle className="spin" />{l10n.t("schedule.running_schedules")}</>}{[
     timingText(task.spec.trigger), multiple(location) ? projectName(location(task)) : "", multiple(agent) ? agent(task) : "",
     new Set(entries.map(e => e.machineId)).size > 1 ? machineName(m) : "",
-    target.type === "resume_session" ? targetSession?.info ? `在「${titleOf(targetSession)}」里` : "在对话里" : "",
-    task.status === "paused" ? "已暂停" : "", offline ? scheduleOfflineRow : "",
+    target.type === "resume_session" ? targetSession?.info ? l10n.t("schedule.in", { value: String(titleOf(targetSession)) }) : l10n.t("schedule.in_conversation") : "",
+    task.status === "paused" ? l10n.t("queue.paused") : "", offline ? scheduleOfflineRow() : "",
   ].filter(Boolean).join(" · ")}</span>;
   const flags = (fresh ? " unread" : "") + (attention ? " attention" : "") + (task.status === "paused" ? " paused" : "") + (offline ? " off" : "") + (selected ? " sel" : "");
   const wrap = useRef<HTMLDivElement>(null);
@@ -156,7 +158,7 @@ export function ScheduleRow({
       <button className={"rc schedule-line" + (attention ? " warn" : "") + flags} {...props}>
         {row1}
         {pv}
-        <span className="f">{mc}<span className="go">{attention ? "去处理" : "看全文"}<ChevronRight /></span></span>
+        <span className="f">{mc}<span className="go">{attention ? l10n.t("schedule.take_action") : l10n.t("schedule.read_full_text")}<ChevronRight /></span></span>
       </button>
     ) : (
       <button className={"sess schedule-line" + flags} {...props}>
@@ -164,7 +166,7 @@ export function ScheduleRow({
         <span className="sm">{row1}{pv}{mc}</span>
       </button>
     )}
-    {notification && <button className="schedule-read-action" aria-label={fresh ? "标为已读" : "标为未读"} onClick={mark}>{fresh ? "标为已读" : "标为未读"}</button>}
+    {notification && <button className="schedule-read-action" aria-label={fresh ? l10n.t("schedule.mark_as_read") : l10n.t("schedule.mark_as_unread")} onClick={mark}>{fresh ? l10n.t("schedule.mark_as_read") : l10n.t("schedule.mark_as_unread")}</button>}
     {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} contextMenu anchor={wrap} onClose={() => setMenu(false)} onUnread={selected ? () => go("tasks") : undefined} onDeleted={selected ? () => go("tasks") : undefined} />}
   </div>;
 }
@@ -198,20 +200,20 @@ function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, o
       if (contextMenu && fresh) remote.markScheduleRead(machineId, task);
       else { remote.markScheduleUnread(machineId, task, !!onUnread); onUnread?.(); }
       onClose();
-    }}><span className="mt">{contextMenu && fresh ? "标为已读" : "标为未读"}</span></button>;
+    }}><span className="mt">{contextMenu && fresh ? l10n.t("schedule.mark_as_read") : l10n.t("schedule.mark_as_unread")}</span></button>;
   return <Sheet onClose={() => !busy && onClose()} className="menu schedule-menu" anchor={anchor}>
-    <div className="menu-info"><b>{task.spec.title}</b>{[menuProject ? projectName(menuProject) : "", menuAgent, task.source === "agent" ? "Agent 在对话里创建" : "你创建", dayText(task.created_at)].filter(Boolean).join(" · ")}</div>
+    <div className="menu-info"><b>{task.spec.title}</b>{[menuProject ? projectName(menuProject) : "", menuAgent, task.source === "agent" ? l10n.t("schedule.created_by_the_agent_in_a_conversation") : l10n.t("schedule.created_by_you"), dayText(task.created_at)].filter(Boolean).join(" · ")}</div>
     <div className="list" role="menu">
       {contextMenu && readAction}
-      <button className="mi" role="menuitem" disabled={!online || busy || !!frozen || !!task.active_run || !!task.manual_request || ended} onClick={() => void perform("run")}><span className="mt">立即运行一次</span></button>
+      <button className="mi" role="menuitem" disabled={!online || busy || !!frozen || !!task.active_run || !!task.manual_request || ended} onClick={() => void perform("run")}><span className="mt">{l10n.t("schedule.run_once_now")}</span></button>
       {!contextMenu && readAction}
-      {!ended && <button className="mi" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => { if (paused && onRecover) onRecover(); else if (task.status === "cancelled" && oneShot(task)) setRearming(task); else void perform(paused ? task.status === "cancelled" ? "update" : task.status === "failed" && oneShot(task) ? "run" : "resume" : "pause"); }}><span className="mt">{paused ? "恢复" : "暂停"}</span></button>}
+      {!ended && <button className="mi" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => { if (paused && onRecover) onRecover(); else if (task.status === "cancelled" && oneShot(task)) setRearming(task); else void perform(paused ? task.status === "cancelled" ? "update" : task.status === "failed" && oneShot(task) ? "run" : "resume" : "pause"); }}><span className="mt">{paused ? l10n.t("schedule.resume") : l10n.t("schedule.pause")}</span></button>}
     </div>
     <div className="list" role="menu">
-      <button className="mi danger" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => setDeleting(true)}><span className="mt">删除任务…</span></button>
+      <button className="mi danger" role="menuitem" disabled={!online || busy || !!frozen} onClick={() => setDeleting(true)}><span className="mt">{l10n.t("schedule.delete_task")}</span></button>
     </div>
     {error && <Banner kind="err">{error}</Banner>}
-    {deleting && <Alert title="删除任务？" text="不再自动运行，已开出的对话保留。" ok="删除" danger onCancel={() => setDeleting(false)} onOk={() => { setDeleting(false); void perform("cancel"); }} />}
+    {deleting && <Alert title={l10n.t("schedule.delete_task_schedules")} text={l10n.t("schedule.stops_automatic_runs_existing_conversations_remain")} ok={l10n.t("schedule.delete")} danger onCancel={() => setDeleting(false)} onOk={() => { setDeleting(false); void perform("cancel"); }} />}
   </Sheet>;
 }
 
@@ -239,10 +241,10 @@ export function SchedulesPage({ remote, go, sidebar = false, selected }: { remot
   const others = recent.filter((e) => !hasNew(e));
   const ended = groups.get("ended") ?? [];
   const visible = stopped.length + recent.length + ended.length;
-  const title = !visible ? (loading ? "正在读取任务…" : "还没有定时任务")
-    : stopped.length ? <><em>{stopped.length}</em> 个任务停下了</>
-    : fresh.length ? `${fresh.length} 个新结果` : "没有新结果";
-  const sub = stopped.length > 0 && fresh.length > 0 ? `另有 ${fresh.length} 个新结果` : "";
+  const title = !visible ? (loading ? l10n.t("schedule.reading_tasks") : l10n.t("schedule.no_scheduled_tasks_yet"))
+    : stopped.length ? rich(l10n.t("schedule.stopped_count", { count: stopped.length, total: "{total}" }), { total: <em>{stopped.length}</em> })
+    : fresh.length ? l10n.t("schedule.new_results", { count: fresh.length }) : l10n.t("schedule.no_new_results");
+  const sub = stopped.length > 0 && fresh.length > 0 ? l10n.t("schedule.more_new_results", { count: fresh.length }) : "";
   const rows = (list: typeof entries, layout: "card" | "row") => list.map((e) => (
     <ScheduleRow
       key={e.machineId + e.task.id}
@@ -262,37 +264,35 @@ export function SchedulesPage({ remote, go, sidebar = false, selected }: { remot
         <Banner
           key={id}
           kind="err"
-          action="重试"
+          action={l10n.t("common.retry")}
           onAction={() => void remote.refreshSchedules(id)}
         >
-          {machineName(remote.machines.get(id))} 的任务没能读取：
-          {remote.schedules.get(id)?.error}
+          {l10n.t("schedule.list_failed", { name: machineName(remote.machines.get(id)), reason: remote.schedules.get(id)?.error ?? "" })}
         </Banner>
       ))}
       {supported.length === 0 && (
-        <Banner>需要更新电脑上的 remote-agent 才能使用定时任务。</Banner>
+        <Banner>{l10n.t("schedule.update_remote_agent_on_the_computer_to_use_scheduled")}</Banner>
       )}
-      {!visible && !loading && <p className="home-note">{scheduleEmpty}</p>}
+      {!visible && !loading && <p className="home-note">{scheduleEmpty()}</p>}
       {stopped.length > 0 && <section className="schedule-group attention-group">{rows(stopped, "card")}</section>}
       {fresh.length > 0 && (
         <section className="schedule-group">
           <div className="sec">
-            新结果
-            {fresh.length > 1 && <button className="sec-act" onClick={() => fresh.forEach((e) => remote.markScheduleRead(e.machineId, e.task))}>全部标为已读</button>}
+            {l10n.t("schedule.new_results_schedules")}{fresh.length > 1 && <button className="sec-act" onClick={() => fresh.forEach((e) => remote.markScheduleRead(e.machineId, e.task))}>{l10n.t("schedule.mark_all_as_read")}</button>}
           </div>
           {rows(fresh, "card")}
         </section>
       )}
       {others.length > 0 && (
         <section className="schedule-group">
-          <div className="sec">其他任务</div>
+          <div className="sec">{l10n.t("schedule.other_tasks")}</div>
           {rows(others, "row")}
         </section>
       )}
       {ended.length > 0 && (
         <section className="schedule-group">
           <button className="tail schedule-ended" aria-expanded={endedOpen} onClick={() => setEndedOpen((old) => { localStorage.setItem("schedule-ended-open", String(!old)); return !old; })}>
-            已结束 {ended.length}
+            {l10n.t("schedule.ended")}{ended.length}
             <Exp up={endedOpen} />
           </button>
           {endedOpen && rows(ended, "row")}
@@ -414,8 +414,8 @@ export function TimingSheet({
       if (kind === "at") next = { type: "at", at: zonedISO(at, zone) };
       else if (kind === "daily" || kind === "weekly") {
         if (kind === "weekly" && !days.length)
-          throw new Error("请至少选择一天");
-        if (!/^\d\d:\d\d$/.test(time)) throw new Error("请选择时间");
+          throw new Error(l10n.t("schedule.select_at_least_one_day"));
+        if (!/^\d\d:\d\d$/.test(time)) throw new Error(l10n.t("schedule.select_a_time"));
         next = {
           type: "calendar",
           time,
@@ -435,7 +435,7 @@ export function TimingSheet({
           ? trigger.interval_seconds!
           : Math.abs(rawSeconds - rounded) <= Number.EPSILON * Math.max(1, Math.abs(rawSeconds)) * 2 ? rounded : rawSeconds;
         if (!Number.isSafeInteger(seconds) || seconds < 1)
-          throw new Error("间隔至少为 1 秒");
+          throw new Error(l10n.t("schedule.the_interval_must_be_at_least_1_second"));
         next = {
           type: "interval",
           interval_seconds: seconds,
@@ -451,7 +451,7 @@ export function TimingSheet({
       else { next.max_runs = trigger.max_runs; next.until = trigger.until; }
       if (kind !== "at" && end === "count") {
         if (!Number.isSafeInteger(Number(count)) || Number(count) < 1)
-          throw new Error("运行次数必须是正整数");
+          throw new Error(l10n.t("schedule.the_run_count_must_be_a_positive_integer"));
         next.max_runs = Number(count);
       }
       // The tracked instant survives zone changes; re-resolving the displayed wall time can shift it in a DST overlap.
@@ -460,32 +460,31 @@ export function TimingSheet({
         (next.at && Date.parse(next.at) <= Date.now() && kind === "at") ||
         (next.until && Date.parse(next.until) <= Date.now())
       )
-        throw new Error("请选择未来的时间");
+        throw new Error(l10n.t("schedule.select_a_future_time"));
       onSave(next);
     } catch (e) {
       setError(errorText(e));
     }
   };
   return (
-    <Sheet onClose={onClose} className="timing-sheet" title="什么时候" action={{ label: "完成", onClick: save, disabled: kind === "weekly" && !days.length }}>
+    <Sheet onClose={onClose} className="timing-sheet" title={l10n.t("schedule.when")} action={{ label: l10n.t("common.done"), onClick: save, disabled: kind === "weekly" && !days.length }}>
       <Segmented
         className="full"
-        label="频率"
+        label={l10n.t("schedule.frequency")}
         value={kind}
         onChange={setKind}
         options={[
-          ["at", "一次"],
-          ["daily", "每天"],
-          ["weekly", "每周"],
-          ["interval", "每隔"],
-          ...(kind === "after" ? [["after", "轮结束后"]] : []),
+          ["at", l10n.t("schedule.once_schedules")],
+          ["daily", l10n.t("schedule.daily")],
+          ["weekly", l10n.t("schedule.weekly_on")],
+          ["interval", l10n.t("schedule.every")],
+          ...(kind === "after" ? [["after", l10n.t("schedule.after_turn_ends")]] : []),
         ].map(([value, label]) => ({ value, label }))}
       />
       <div className="schedule-inputs">
         {kind === "at" && (
           <label>
-            日期和时间
-            <input
+            {l10n.t("schedule.date_and_time")}<input
               type="datetime-local"
               value={at}
               onChange={(e) => setAt(e.target.value)}
@@ -494,8 +493,7 @@ export function TimingSheet({
         )}
         {(kind === "daily" || kind === "weekly") && (
           <label>
-            时间
-            <input
+            {l10n.t("schedule.time")}<input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
@@ -504,8 +502,7 @@ export function TimingSheet({
         )}
         {kind === "daily" && (
           <label className="check-field">
-            只在工作日
-            <input
+            {l10n.t("schedule.weekdays_only")}<input
               type="checkbox"
               checked={workdays}
               onChange={(e) => setWorkdays(e.target.checked)}
@@ -514,7 +511,7 @@ export function TimingSheet({
         )}
         {kind === "weekly" && (
           <div className="weekdays">
-            {[1, 2, 3, 4, 5, 6, 7].map((d, i) => (
+            {[1, 2, 3, 4, 5, 6, 7].map((d) => (
               <button
                 key={d}
                 aria-pressed={days.includes(d)}
@@ -525,7 +522,7 @@ export function TimingSheet({
                   )
                 }
               >
-                周{["一", "二", "三", "四", "五", "六", "日"][i]}
+                {weekdayLabel(d % 7)}
               </button>
             ))}
           </div>
@@ -533,8 +530,7 @@ export function TimingSheet({
         {kind === "interval" && (
           <>
             <label>
-              间隔（分钟）
-              <input
+              {l10n.t("schedule.interval_minutes")}<input
                 type="number"
                 min="0.0166666667"
                 step="any"
@@ -542,26 +538,24 @@ export function TimingSheet({
                 onChange={(e) => setMinutes(e.target.value)}
               />
             </label>
-            <p className="hint">{scheduleIntervalHint}</p>
+            <p className="hint">{scheduleIntervalHint()}</p>
           </>
         )}
         {kind === "after" && (
-          <p>{frequency(trigger)}。选择上方其他频率可替换。</p>
+          <p>{l10n.t("schedule.after_turn_replace", { frequency: frequency(trigger) })}</p>
         )}
         {kind !== "at" && (
           <>
             <label>
-              结束
-              <select value={end} onChange={(e) => setEnd(e.target.value)}>
-                <option value="none">不结束</option>
-                <option value="count">运行指定次数</option>
-                <option value="date">截止日期</option>
+              {l10n.t("session.end")}<select value={end} onChange={(e) => setEnd(e.target.value)}>
+                <option value="none">{l10n.t("schedule.never")}</option>
+                <option value="count">{l10n.t("schedule.after_a_run_count")}</option>
+                <option value="date">{l10n.t("schedule.end_date")}</option>
               </select>
             </label>
             {end === "count" && (
               <label>
-                次数
-                <input
+                {l10n.t("schedule.count")}<input
                   type="number"
                   min="1"
                   value={count}
@@ -571,8 +565,7 @@ export function TimingSheet({
             )}
             {end === "date" && (
               <label>
-                截止时间
-                <input
+                {l10n.t("schedule.end_time")}<input
                   type="datetime-local"
                   value={until}
                   onChange={(e) => {
@@ -586,9 +579,8 @@ export function TimingSheet({
           </>
         )}
         {kind !== "interval" && <label>
-          时区
-          <input
-            aria-label="时区"
+          {l10n.t("schedule.time_zone")}<input
+            aria-label={l10n.t("schedule.time_zone")}
             value={zone}
             onChange={(e) => changeZone(e.target.value)}
             placeholder="Asia/Shanghai"
@@ -597,9 +589,7 @@ export function TimingSheet({
       </div>
       {error && <Banner kind="err">{error}</Banner>}
       <div className="hint">
-        电脑睡眠或关机时不会运行；醒来后默认在 24
-        小时内补跑最近一次，再晚就跳过。立即运行一次不占自动计划的次数。
-      </div>
+        {l10n.t("schedule.tasks_do_not_run_while_the_computer_sleeps_or")}</div>
     </Sheet>
   );
 }
@@ -645,10 +635,10 @@ function ScheduleResult({ remote, run, unread, now, open }: { remote: Remote; ru
     return () => observer.disconnect();
   }, [text, expanded]);
   return <section className="schedule-result">
-    <div className="schedule-result-head">{unread && <i className="mark unread schedule-unread-dot" role="img" aria-label="进入时未读" />}<span>{dateTime(notificationTime(run), now)}</span>{run.session_id && open && <button onClick={open}>对话<ChevronRight /></button>}</div>
+    <div className="schedule-result-head">{unread && <i className="mark unread schedule-unread-dot" role="img" aria-label={l10n.t("schedule.unread_on_entry")} />}<span>{dateTime(notificationTime(run), now)}</span>{run.session_id && open && <button onClick={open}>{l10n.t("schedule.conversation")}<ChevronRight /></button>}</div>
     {title && <h4>{title}</h4>}
     <div className="ai" ref={body}><Markdown text={text} /></div>
-    {long && !expanded && <button className="schedule-expand" onClick={() => setExpanded(true)}>展开全文<ChevronDown /></button>}
+    {long && !expanded && <button className="schedule-expand" onClick={() => setExpanded(true)}>{l10n.t("markdown.expand")}<ChevronDown /></button>}
   </section>;
 }
 
@@ -715,7 +705,7 @@ export function ScheduleDetail({
       setEdit("");
       if (operation === "cancel") navigate("tasks");
       else if (operation === "run")
-        setNotice("已请求立即运行一次，不改变自动计划。");
+        setNotice(l10n.t("schedule.requested_a_run_now_the_automatic_schedule_is_unchanged"));
     } catch (e) {
       setError(errorText(e));
       if (e instanceof ScheduleRevisionError) {
@@ -729,12 +719,12 @@ export function ScheduleDetail({
   if (!task || !remote.supportsSchedules(machineId))
     return (
       <div className="page">
-        <NavBar title="定时任务" onBack={onBack} />
+        <NavBar title={l10n.t("queue.android_scheduled")} onBack={onBack} />
         <div className="center muted">
           {state?.loading
-            ? "正在读取任务…"
+            ? l10n.t("schedule.reading_tasks")
             : state?.error ||
-              "找不到这个任务。电脑离线且没有缓存时，请连上电脑后重试。"}
+              l10n.t("schedule.this_task_could_not_be_found_if_the_computer")}
         </div>
       </div>
     );
@@ -746,14 +736,14 @@ export function ScheduleDetail({
   const permission =
     target.type === "new_session"
       ? (
-          { ask: "询问", auto: "自动", full: "完全放行" } as Record<
+          { ask: l10n.t("modes.ask"), auto: l10n.t("modes.auto"), full: l10n.t("modes.full_access") } as Record<
             string,
             string
           >
-        )[target.mode ?? ""] || "跟随 CLI 设置"
+        )[target.mode ?? ""] || l10n.t("new_session.follow_cli")
       : targetSession
-        ? (modeOf(targetSession)?.text ?? "请在对话里核实当前权限")
-        : "请在对话里核实当前权限";
+        ? (modeOf(targetSession)?.text ?? l10n.t("schedule.verify_current_permissions_in_the_conversation"))
+        : l10n.t("schedule.verify_current_permissions_in_the_conversation");
   const openRun = (r: ScheduleRun) => {
     void remote
       .openScheduleRun(machineId, r)
@@ -766,7 +756,7 @@ export function ScheduleDetail({
       disabled={!r.session_id}
       onClick={() => openRun(r)}
     >
-      <span className="schedule-lead">{captured && visit.unread?.has(r.id) && <i className="mark unread schedule-unread-dot" role="img" aria-label="进入时未读" />}</span><span className="schedule-run-text">
+      <span className="schedule-lead">{captured && visit.unread?.has(r.id) && <i className="mark unread schedule-unread-dot" role="img" aria-label={l10n.t("schedule.unread_on_entry")} />}</span><span className="schedule-run-text">
         <time>{dateTime(notificationTime(r), now)}</time>
         <small>{runSummary(r) || runResult(r)}</small>
       </span>
@@ -788,8 +778,8 @@ export function ScheduleDetail({
     <div className="page schedules-page schedule-detail">
       <NavBar
         title={task.spec.title}
-        sub={attention ? "已停下" : target.type === "resume_session" ? `${timingText(task.spec.trigger)} · 发到「${targetSession?.info ? titleOf(targetSession) : "对话"}」` : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "active" ? task.next_run_at ? "下次 " + dateTime(task.next_run_at, now) : "下次待定" : nextText(task, now)}`}
-        right={<button ref={moreRef} className="more" aria-label="更多" onClick={() => setMenu(true)}><Ellipsis /></button>}
+        sub={attention ? l10n.t("schedule.stopped") : target.type === "resume_session" ? l10n.t("schedule.send_to", { value: String(timingText(task.spec.trigger)), detail: String(targetSession?.info ? titleOf(targetSession) : l10n.t("schedule.conversation")) }) : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "active" ? task.next_run_at ? l10n.t("schedule.next", { value: dateTime(task.next_run_at, now) }) : l10n.t("schedule.next_run_pending") : nextText(task, now)}`}
+        right={<button ref={moreRef} className="more" aria-label={l10n.t("common.ios_more")} onClick={() => setMenu(true)}><Ellipsis /></button>}
         onBack={onBack}
       />
       <ConnBar remote={remote} />
@@ -799,7 +789,7 @@ export function ScheduleDetail({
         {state?.error && (
           <Banner
             kind="err"
-            action="重试"
+            action={l10n.t("common.retry")}
             onAction={() => void remote.refreshSchedules(machineId)}
           >
             {state.error}
@@ -808,26 +798,20 @@ export function ScheduleDetail({
         {attention && (
           <div className="schedule-attention"><Banner kind="warn"><Info className="lead" />
             {missingTarget ? <>
-              {missingTargetRun && `${dateTime(missingTargetRun.started_at, now)} 的运行失败，`}任务已停下：{reasonText(task.reason)}。这个任务只发到原来的对话，恢复后还会失败。
+              {missingTargetRun ? l10n.t("schedule.missing_target_run", { time: dateTime(missingTargetRun.started_at, now), reason: reasonText(task.reason) }) : l10n.t("schedule.missing_target", { reason: reasonText(task.reason) })}
             </> : <>
-              {reasonText(task.reason)}。
-              {task.status === "uncertain"
-                ? "继续可能重复执行上次的消息，请先打开运行记录核实。"
-                : failedOnce
-                  ? "可改时间重排。"
-                  : "恢复或重新安排后从下一次自动时间开始，不重发上次消息。"}
-              {task.reason === "agent_schedule_permissions_changed" &&
-                "继续会由你接管任务，按任务中显示的权限运行。"}
+              {task.status === "uncertain" ? l10n.t("schedule.attention_uncertain", { reason: reasonText(task.reason) }) : failedOnce ? l10n.t("schedule.attention_once", { reason: reasonText(task.reason) }) : l10n.t("schedule.attention_resume", { reason: reasonText(task.reason) })}
+              {task.reason === "agent_schedule_permissions_changed" && l10n.t("schedule.continuing_takes_over_the_task_and_runs_it_with")}
             </>}
           </Banner></div>
         )}
-        {attention && <div className="schedule-recovery"><button className="btn pri" disabled={!online || busy || !!pending?.frozen || !!task.active_run || !!task.manual_request} onClick={recover}>{failedOnce ? "立即运行一次" : "恢复"}</button></div>}
+        {attention && <div className="schedule-recovery"><button className="btn pri" disabled={!online || busy || !!pending?.frozen || !!task.active_run || !!task.manual_request} onClick={recover}>{failedOnce ? l10n.t("schedule.run_once_now") : l10n.t("schedule.resume")}</button></div>}
         {error && <Banner kind="err">{error}</Banner>}
         {notice && <Banner>{notice}</Banner>}
         {pending?.frozen && (
           <Banner
             kind="warn"
-            action={pending.expired ? "已核实，放弃请求" : "重试同一请求"}
+            action={pending.expired ? l10n.t("schedule.verified_abandon_request") : l10n.t("schedule.retry_same_request")}
             onAction={() => {
               if (pending.expired) {
                 pending.abandon();
@@ -837,16 +821,15 @@ export function ScheduleDetail({
                 void perform(pending.payload!.operation, pending.payload?.spec);
             }}
           >
-            上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。
-          </Banner>
+            {l10n.t("schedule.the_previous_operation_s_result_is_unconfirmed_verify_the")}</Banner>
         )}
-        {latest?.id !== result?.id && <button className="schedule-more" onClick={() => setSnapshot({ task: machineId + "/" + id, runId: latest?.id })}>有新结果</button>}
-        {task.active_run && <div className="schedule-result schedule-running"><div className="schedule-result-head"><LoaderCircle className="spin" /><span>正在运行 · {clockTime(task.active_run.started_at)} 开始</span>{task.active_run.session_id && <button onClick={() => openRun(task.active_run!)}>对话<ChevronRight /></button>}</div></div>}
+        {latest?.id !== result?.id && <button className="schedule-more" onClick={() => setSnapshot({ task: machineId + "/" + id, runId: latest?.id })}>{l10n.t("home.ios_new_results")}</button>}
+        {task.active_run && <div className="schedule-result schedule-running"><div className="schedule-result-head"><LoaderCircle className="spin" /><span>{l10n.t("schedule.running_since", { time: clockTime(task.active_run.started_at) })}</span>{task.active_run.session_id && <button onClick={() => openRun(task.active_run!)}>{l10n.t("schedule.conversation")}<ChevronRight /></button>}</div></div>}
         {result && <ScheduleResult key={result.id} remote={remote} run={result} unread={captured && !!visit.unread?.has(result.id)} now={now} open={target.type === "resume_session" && !!task.active_run ? undefined : () => openRun(result)} />}
-        {!runs.length && <p className="gf">还没有运行</p>}
+        {!runs.length && <p className="gf">{l10n.t("schedule.has_not_run_yet")}</p>}
         {earlier.length > 0 && <section className="schedule-history">
         <div className="label">
-          更早<span>{earlier.length} 次</span>
+          {l10n.t("schedule.earlier")}<span>{l10n.t("schedule.runs_count", { count: earlier.length })}</span>
         </div>
         <div className="grp">
           {history.map((g) =>
@@ -866,12 +849,9 @@ export function ScheduleDetail({
                   <span className="schedule-lead" />
                   <span className="schedule-run-text">
                     <span className="quiet">
-                      {dayText(notificationTime(g.runs[0]), now)} · {g.runs.length}{" "}
-                      次，都没有通知
-                    </span>
+                      {l10n.t("schedule.quiet_runs", { day: dayText(notificationTime(g.runs[0]), now), count: g.runs.length })}</span>
                     <small>
-                      最近一次 {clockTime(notificationTime(g.runs[0]))}：
-                      {g.runs[0].final_summary || "没有通知"}
+                      {l10n.t("schedule.latest_summary", { time: clockTime(notificationTime(g.runs[0])), summary: g.runs[0].final_summary || l10n.t("schedule.no_notification") })}
                     </small>
                   </span>
                   <Exp up={expanded.has(g.key)} />
@@ -882,17 +862,17 @@ export function ScheduleDetail({
               g.runs.map(row)
             ),
           )}
-          {!allHistory && earlier.length > 5 && <button className="row act schedule-more" onClick={() => setAllHistory(true)}>查看全部 {earlier.length} 次</button>}
+          {!allHistory && earlier.length > 5 && <button className="row act schedule-more" onClick={() => setAllHistory(true)}>{l10n.t("schedule.view_all_runs", { count: earlier.length })}</button>}
         </div>
         </section>}
-        <div className="label">让 agent 做什么<button className="link" disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>编辑</button></div>
+        <div className="label">{l10n.t("schedule.what_should_the_agent_do")}<button className="link" disabled={!online || busy || !!task.active_run || !!pending?.frozen} onClick={() => { setEditBase(task); setEdit("message"); }}>{l10n.t("tools.android_edit")}</button></div>
         <section className="schedule-description">
           <ScheduleText key={task.spec.message} text={task.spec.message} lines={3} />
         </section>
-        <div className="label">设置</div>
+        <div className="label">{l10n.t("common.settings")}</div>
         <div className="grp">
           <Field
-            name="什么时候"
+            name={l10n.t("schedule.when")}
             value={timingText(task.spec.trigger)}
             disabled={!online || busy || !!task.active_run || !!pending?.frozen}
             onClick={() => {
@@ -900,13 +880,13 @@ export function ScheduleDetail({
               setEdit("time");
             }}
           />
-          <Field name="完成后通知" value={<Switch label="完成后通知" on={task.spec.notify !== "agent_only"} disabled={!online || busy || !!pending?.frozen} onChange={on => void perform("update", { ...task.spec, notify: on ? "finish" : "agent_only" }, task)} />} />
-          {scheduleLimits(task.spec.trigger, now) && <Field name="结束" value={scheduleLimits(task.spec.trigger, now)} />}
+          <Field name={l10n.t("schedule.notify_on_completion")} value={<Switch label={l10n.t("schedule.notify_on_completion")} on={task.spec.notify !== "agent_only"} disabled={!online || busy || !!pending?.frozen} onChange={on => void perform("update", { ...task.spec, notify: on ? "finish" : "agent_only" }, task)} />} />
+          {scheduleLimits(task.spec.trigger, now) && <Field name={l10n.t("session.end")} value={scheduleLimits(task.spec.trigger, now)} />}
           <Field
-            name={target.type === "resume_session" ? "发到" : "在哪运行"}
+            name={target.type === "resume_session" ? l10n.t("schedule.send_to_schedules") : l10n.t("schedule.run_in")}
             value={
               target.type === "resume_session"
-                ? (targetSession?.info ? titleOf(targetSession) : "对话")
+                ? (targetSession?.info ? titleOf(targetSession) : l10n.t("schedule.conversation"))
                 : [
                     projectName(target.cwd ?? ""),
                     target.agent ? agentById(target.agent).name : agentInfo().name,
@@ -929,7 +909,7 @@ export function ScheduleDetail({
             }
           />
           <Field
-            name="权限"
+            name={l10n.t("new_session.permissions")}
             value={
               <span className={(target.type === "new_session" ? target.mode === "full" : !!targetSession && modeOf(targetSession)?.mode === ApprovalMode.FULL_ACCESS) ? "red" : ""}>
                 {permission}
@@ -946,7 +926,7 @@ export function ScheduleDetail({
             }
           />
           <Field
-            name="任务名"
+            name={l10n.t("schedule.task_name")}
             value={<span className="task-title">{task.spec.title}</span>}
             disabled={!online || busy || !!pending?.frozen}
             onClick={() => {
@@ -957,12 +937,12 @@ export function ScheduleDetail({
         </div>
         <p className="foot">
           {target.type === "new_session"
-            ? "每次新开一个对话，归在这个任务下面。"
-            : "消息发到当前对话，等待当前轮结束。"}{" "}
-          {task.source === "agent" ? "Agent 在对话里创建" : "你创建"} ·{" "}
+            ? l10n.t("schedule.each_run_opens_a_new_conversation_grouped_under_this")
+            : l10n.t("schedule.messages_go_to_the_current_conversation_and_wait_for")}{" "}
+          {task.source === "agent" ? l10n.t("schedule.created_by_the_agent_in_a_conversation") : l10n.t("schedule.created_by_you")} ·{" "}
           {dateTime(task.created_at, now)}
         </p>
-        {!online && <p className="foot">{machineName(m)} 连上后才能修改、运行或删除。</p>}
+        {!online && <p className="foot">{machineName(m)}{l10n.t("schedule.connect_to_edit_run_or_delete")}</p>}
         </div>
       </div>
       {menu && <ScheduleMenu remote={remote} machineId={machineId} task={task} onClose={() => setMenu(false)} onUnread={() => go("tasks")} onDeleted={() => go("tasks")} onRecover={() => { setMenu(false); recover(); }} anchor={moreRef} />}
@@ -1041,7 +1021,7 @@ function TaskNameDialog({
         className="dialog rename"
         role="dialog"
         aria-modal="true"
-        aria-label="重命名任务"
+        aria-label={l10n.t("schedule.rename_task")}
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy) {
@@ -1051,20 +1031,20 @@ function TaskNameDialog({
           }
         }}
       >
-        <h5>重命名任务</h5>
+        <h5>{l10n.t("schedule.rename_task")}</h5>
         <input
           ref={input}
           className="field"
-          aria-label="任务名"
-          placeholder="留空就用消息的第一句"
+          aria-label={l10n.t("schedule.task_name")}
+          placeholder={l10n.t("schedule.leave_blank_to_use_the_message_s_first_sentence")}
           enterKeyHint="done"
           value={name}
           onChange={(e) => setName(clipTaskName(e.target.value))}
         />
         {error ? (
-          <p className="red">没能保存：{error}</p>
+          <p className="red">{l10n.t("settings.save_error", { reason: error })}</p>
         ) : (
-          <p>留空保存会用消息的第一句</p>
+          <p>{l10n.t("schedule.saving_blank_uses_the_message_s_first_sentence")}</p>
         )}
         <div className="btns">
           <button
@@ -1073,11 +1053,9 @@ function TaskNameDialog({
             disabled={busy}
             onClick={onClose}
           >
-            取消
-          </button>
+            {l10n.t("common.cancel")}</button>
           <button type="submit" className="btn pri" disabled={busy}>
-            保存
-          </button>
+            {l10n.t("common.save")}</button>
         </div>
       </form>
     </div>
@@ -1153,16 +1131,16 @@ function TaskTargetEditor({
   return (
     <Sheet
       onClose={onClose}
-      title="在哪运行"
+      title={l10n.t("schedule.run_in")}
       action={{
-        label: "保存",
+        label: l10n.t("common.save"),
         disabled: busy || !effectiveMode || effectiveMode === ApprovalMode.PLAN,
         onClick: () => (effectiveMode === ApprovalMode.FULL_ACCESS ? setConfirm(true) : save()),
       }}
     >
       <div className="grp">
         <Field
-          name="项目"
+          name={l10n.t("schedule.project")}
           value={projectName(cfg.cwd)}
           onClick={() => setProject(true)}
         />
@@ -1185,26 +1163,25 @@ function TaskTargetEditor({
           }
         />
         <Field
-          name="模型和权限"
+          name={l10n.t("schedule.model_and_permissions")}
           value={[
-            cfg.model || "默认模型",
+            cfg.model || l10n.t("new_session.default_model"),
             effectiveMode
               ? (
                   {
-                    [ApprovalMode.ASK]: "询问",
-                    [ApprovalMode.AUTO]: "自动",
-                    [ApprovalMode.PLAN]: "计划",
-                    [ApprovalMode.FULL_ACCESS]: "完全放行",
+                    [ApprovalMode.ASK]: l10n.t("modes.ask"),
+                    [ApprovalMode.AUTO]: l10n.t("modes.auto"),
+                    [ApprovalMode.PLAN]: l10n.t("modes.plan"),
+                    [ApprovalMode.FULL_ACCESS]: l10n.t("modes.full_access"),
                   } as Record<number, string>
                 )[effectiveMode]
-              : "请选择权限",
+              : l10n.t("schedule.select_permissions"),
           ].join(" · ")}
           onClick={() => setConfig(true)}
         />
       </div>
       <p className="hint">
-        只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。
-      </p>
+        {l10n.t("schedule.only_changes_this_task_it_still_runs_on_the")}</p>
       {error && <Banner kind="err">{error}</Banner>}
       {config && (
         <ConfigSheet
@@ -1227,9 +1204,9 @@ function TaskTargetEditor({
       )}
       {confirm && (
         <Alert
-          title="以完全放行运行？"
-          text="以后每次运行都不审批。已开出的对话不变。"
-          ok="完全放行"
+          title={l10n.t("schedule.run_with_full_access")}
+          text={l10n.t("schedule.no_approval_will_be_required_for_future_runs_existing")}
+          ok={l10n.t("modes.full_access")}
           danger
           onCancel={() => setConfirm(false)}
           onOk={() => {
@@ -1312,32 +1289,32 @@ export function ScheduleCreate({
   const fields = (
     <>
       <label className="field big schedule-prompt">
-        <small>{session ? "消息" : "让 agent 做什么"}</small>
+        <small>{session ? l10n.t("composer.message") : l10n.t("schedule.what_should_the_agent_do")}</small>
         <ScheduleTextarea
-          aria-label="让 agent 做什么"
-          placeholder="描述要定时做的事，有结果时让 agent 通知你"
+          aria-label={l10n.t("schedule.what_should_the_agent_do")}
+          placeholder={l10n.t("schedule.describe_the_scheduled_work_and_ask_the_agent_to")}
           value={message}
           onChange={(e) => setText(e.target.value)}
         />
       </label>
-      {new TextEncoder().encode(message).length > scheduleMessageLimit && <p className="gf red">太长了，最多 32 KB</p>}
+      {new TextEncoder().encode(message).length > scheduleMessageLimit && <p className="gf red">{l10n.t("schedule.too_long_maximum_32_kb")}</p>}
       <label className="field schedule-name">
-        <small>任务名</small>
+        <small>{l10n.t("schedule.task_name")}</small>
         <input
-          aria-label="任务名"
-          placeholder={message.trim() ? `留空会用：${taskName("", message)}` : "留空就用消息的第一句"}
+          aria-label={l10n.t("schedule.task_name")}
+          placeholder={message.trim() ? l10n.t("schedule.if_blank_uses", { value: String(taskName("", message)) }) : l10n.t("schedule.leave_blank_to_use_the_message_s_first_sentence")}
           value={name}
           onChange={(e) => setName(e.target.value)}
         />
       </label>
       <div className="grp">
-        {!session && <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />}
+        {!session && <Field name={l10n.t("schedule.notify_on_completion")} value={<Switch label={l10n.t("schedule.notify_on_completion")} on={notifyFinish} onChange={setNotifyFinish} />} />}
         <Field
-          name="什么时候"
+          name={l10n.t("schedule.when")}
           value={timingText(trigger)}
           onClick={() => setTiming(true)}
         />
-        {session && <Field name="完成后通知" value={<Switch label="完成后通知" on={notifyFinish} onChange={setNotifyFinish} />} />}
+        {session && <Field name={l10n.t("schedule.notify_on_completion")} value={<Switch label={l10n.t("schedule.notify_on_completion")} on={notifyFinish} onChange={setNotifyFinish} />} />}
       </div>
     </>
   );
@@ -1391,8 +1368,8 @@ export function ScheduleCreate({
           <div className="schedule-session-form">
             <div className="sheet-head">
               <span className="side-act" />
-              <b>定时发到这个对话</b>
-              <button className="side-act" onClick={onBack}>取消</button>
+              <b>{l10n.t("schedule.schedule_messages_to_this_conversation")}</b>
+              <button className="side-act" onClick={onBack}>{l10n.t("common.cancel")}</button>
             </div>
             <ConnBar remote={remote} />
             <div className="schedule-body">
@@ -1408,10 +1385,10 @@ export function ScheduleCreate({
           // ink 创建 at the top right.
           <div className="page rise schedules-page schedule-create">
             <header className="nt-hd">
-              <button className="fbtn" aria-label="关闭" onClick={onBack}>
+              <button className="fbtn" aria-label={l10n.t("common.close")} onClick={onBack}>
                 <X />
               </button>
-              <b>新定时</b>
+              <b>{l10n.t("home.new_schedule")}</b>
               {c.button}
             </header>
             <ConnBar remote={remote} />
@@ -1468,7 +1445,7 @@ function ScheduleCreateConfig({
   const createTask = async () => {
     if (!validScheduleMessage(message) || busy) return;
     if (!session && (!mode || mode === ApprovalMode.PLAN)) {
-      setError("请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。");
+      setError(l10n.t("schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot"));
       return;
     }
     setBusy(true);
@@ -1518,8 +1495,8 @@ function ScheduleCreateConfig({
   const rows = !session && (
     <div className="grp">
       <Field
-        name="项目"
-        value={project ? projectName(project) : "选项目"}
+        name={l10n.t("schedule.project")}
+        value={project ? projectName(project) : l10n.t("projects.choose")}
         onClick={onPickProject}
       />
       <Field
@@ -1538,13 +1515,13 @@ function ScheduleCreateConfig({
         }
       />
       <Field
-        name="权限"
+        name={l10n.t("new_session.permissions")}
         value={<span className={mode === ApprovalMode.FULL_ACCESS ? "red" : ""}>{ns.modeText}</span>}
         disabled={!!pending?.frozen}
         onClick={() => setConfig(true)}
       />
       <Field
-        name={remote.machines.size > 1 ? "机器和模型" : "模型"}
+        name={remote.machines.size > 1 ? l10n.t("schedule.computer_and_model") : l10n.t("models.title")}
         value={
           remote.machines.size > 1
             ? [ns.parts.machine, ns.parts.model].join(" · ")
@@ -1558,14 +1535,14 @@ function ScheduleCreateConfig({
   const notes = (
     <>
       {!supported && (
-        <Banner>需要更新这台电脑上的 remote-agent 才能使用定时任务。</Banner>
+        <Banner>{l10n.t("schedule.update_remote_agent_on_this_computer_to_use_scheduled")}</Banner>
       )}
-      {!online && <Banner>电脑不在线，连上后才能创建任务。</Banner>}
+      {!online && <Banner>{l10n.t("schedule.the_computer_is_offline_connect_to_create_tasks")}</Banner>}
       {error && <Banner kind="err">{error}</Banner>}
       {pending?.frozen && (
         <Banner
           kind="warn"
-          action={pending.expired ? "已核实，放弃请求" : undefined}
+          action={pending.expired ? l10n.t("schedule.verified_abandon_request") : undefined}
           onAction={
             pending.expired
               ? () => {
@@ -1576,18 +1553,16 @@ function ScheduleCreateConfig({
               : undefined
           }
         >
-          上次创建结果还没有确认。重试会使用原来的任务名、消息、时间和请求键，不会重复创建。
-        </Banner>
+          {l10n.t("schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the")}</Banner>
       )}
       {!session && ns.issue && <Banner kind="warn">{ns.issue}</Banner>}
-      {!session && mode === ApprovalMode.PLAN && <Banner kind="warn">计划模式不能创建执行任务，请先选择其他权限</Banner>}
-      {!session && !mode && <p className="gf">请选择明确的权限，再创建定时任务。</p>}
+      {!session && mode === ApprovalMode.PLAN && <Banner kind="warn">{l10n.t("schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions")}</Banner>}
+      {!session && !mode && <p className="gf">{l10n.t("schedule.select_explicit_permissions_before_creating_a_scheduled_task")}</p>}
       <p className="gf">
         {session
-          ? "消息会发到当前对话，等待正在运行的一轮结束。"
-          : "每次运行新开一个对话，归在这个任务下面，不进会话列表。"}
-        完成后默认通知；关闭后仅由 agent 主动通知。
-      </p>
+          ? l10n.t("schedule.messages_will_go_to_the_current_conversation_and_wait")
+          : l10n.t("schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules")}
+        {l10n.t("schedule.notify_on_completion_by_default_when_off_only_the")}</p>
     </>
   );
   const button = (
@@ -1599,7 +1574,7 @@ function ScheduleCreateConfig({
         else void createTask();
       }}
     >
-      {busy ? "正在创建…" : pending?.frozen ? "重试创建" : "创建"}
+      {busy ? l10n.t("schedule.creating") : pending?.frozen ? l10n.t("schedule.retry_creation") : l10n.t("schedule.create")}
     </button>
   );
   const layers = (
@@ -1609,9 +1584,9 @@ function ScheduleCreateConfig({
       )}
       {full && (
         <Alert
-          title="以完全放行运行？"
-          text="任务每次运行时，所有操作都不审批。"
-          ok="完全放行"
+          title={l10n.t("schedule.run_with_full_access")}
+          text={l10n.t("schedule.no_approval_is_required_for_any_operation_whenever_this")}
+          ok={l10n.t("modes.full_access")}
           danger
           onCancel={() => setFull(false)}
           onOk={() => {
@@ -1655,19 +1630,15 @@ export function ScheduleStrip({
         <Clock />
         <span>
           {tasks.length > 1
-            ? `${tasks.length} 个定时 · `
-            : `定时 · ${frequency(nearest.task.spec.trigger)}，`}
-          {remote.machines.get(session.machineId)?.online &&
-          remote.conn === "online"
-            ? nextText(nearest.task, now)
-            : scheduleOffline}
+            ? l10n.t("schedule.strip_count", { count: tasks.length, state: remote.machines.get(session.machineId)?.online && remote.conn === "online" ? nextText(nearest.task, now) : scheduleOffline() })
+            : l10n.t("schedule.strip_single", { frequency: frequency(nearest.task.spec.trigger), state: remote.machines.get(session.machineId)?.online && remote.conn === "online" ? nextText(nearest.task, now) : scheduleOffline() })}
         </span>
         <span className="act">
-          管理<ChevronRight />
+          {l10n.t("schedule.manage")}<ChevronRight />
         </span>
       </button>
       {choosing && (
-        <Sheet onClose={() => setChoosing(false)} title="这个对话的定时任务">
+        <Sheet onClose={() => setChoosing(false)} title={l10n.t("schedule.this_conversation_s_scheduled_tasks")}>
           <div className="list schedule-choices">
             {tasks.map((e) => (
               <ScheduleRow key={e.task.id} remote={remote} go={go} gut {...e} />

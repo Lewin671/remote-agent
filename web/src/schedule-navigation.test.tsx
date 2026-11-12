@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { create } from "@bufbuild/protobuf";
 import { act } from "react";
@@ -71,8 +72,8 @@ async function open(hash: string) {
 it("makes a task from the phone's bottom row", async () => {
   await mount();
   const make = [...host.querySelectorAll<HTMLButtonElement>(".bbar .fab")];
-  expect(make.map((b) => b.textContent)).toEqual(["新定时"]);
-  expect(host.querySelector(".tabs .on")?.textContent).toContain("定时");
+  expect(make.map((b) => b.textContent)).toEqual([message("home.new_schedule")]);
+  expect(host.querySelector(".tabs .on")?.textContent).toContain(message("home.schedules_tab"));
   await act(async () => make[0].click());
   expect(location.hash).toBe("#/tasks/new");
 });
@@ -90,7 +91,7 @@ it("keeps tab unread, shares the badge across widths, and reads only the selecte
   expect(remote.scheduleNewResults()).toBe(true);
   expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
   await open("#/tasks/mac/first");
-  expect(host.querySelector(".dm .schedules-page .navbar .title b")?.textContent).toBe("检查更新");
+  expect(host.querySelector(".dm .schedules-page .navbar .title b")?.textContent).toBe(message("settings.check_for_updates"));
   expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[0]).size).toBe(0);
   expect(remote.scheduleUnread("mac", remote.schedules.get("mac")!.tasks[1]).size).toBe(1);
   expect(host.querySelector('.sfoot [aria-label="有新结果"]')).not.toBeNull();
@@ -145,7 +146,7 @@ it("clears the wide selection when marking the open detail unread", async () => 
   const { remote } = await mount();
   await open("#/tasks/mac/first");
   await act(async () => host.querySelector<HTMLButtonElement>('.dm [aria-label="更多"]')!.click());
-  const unread = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu button")].find(b => b.textContent === "标为未读")!;
+  const unread = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu button")].find(b => b.textContent === message("schedule.mark_as_unread"))!;
   await act(async () => unread.click());
   await open(location.hash);
   expect(host.querySelector(".side .schedule-selected")).toBeNull();
@@ -162,8 +163,8 @@ it.each(["context", "keyboard"])("marking another task unread via %s preserves t
   if (action === "context") {
     await act(async () => other.querySelector(".schedule-line")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
     const buttons = host.querySelectorAll<HTMLButtonElement>(".schedule-menu .mi");
-    expect(buttons[0].textContent).toBe("标为未读");
-    expect(buttons[1].textContent).toBe("立即运行一次");
+    expect(buttons[0].textContent).toBe(message("schedule.mark_as_unread"));
+    expect(buttons[1].textContent).toBe(message("schedule.run_once_now"));
     await act(async () => buttons[0].click());
   } else await act(async () => other.querySelector<HTMLButtonElement>('.schedule-read-action[aria-label="标为未读"]')!.click());
   expect(location.hash).toBe("#/tasks/mac/first");

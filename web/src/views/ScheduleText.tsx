@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { useEffect, useRef, useState, type TextareaHTMLAttributes } from "react";
 import { ChevronDown, ChevronUp } from "../icons";
 import { scheduleMessageLimit, validScheduleMessage } from "../schedules";
@@ -21,7 +22,7 @@ export function ScheduleText({ text, meta, lines = 6 }: { text: string; meta?: s
   }, [text, lines]);
   return <>
     <div className={"schedule-text" + (expanded ? " expanded" : "")}><div ref={ref} className="schedule-text-content" style={{ WebkitLineClamp: lines }}>{text}</div></div>
-    {long ? <button className={meta ? "schedule-text-meta" : "schedule-expand"} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{meta && `${meta} · `}{expanded ? "收起" : "展开全文"}{expanded ? <ChevronUp /> : <ChevronDown />}</button> : meta && <small>{meta}</small>}
+    {long ? <button className={meta ? "schedule-text-meta" : "schedule-expand"} aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{meta && `${meta} · `}{expanded ? l10n.t("markdown.collapse") : l10n.t("markdown.expand")}{expanded ? <ChevronUp /> : <ChevronDown />}</button> : meta && <small>{meta}</small>}
   </>;
 }
 
@@ -42,11 +43,11 @@ export function ScheduleMessageEditor({ initial, busy, disabled, error, onClose,
   const [discard, setDiscard] = useState(false);
   const cancel = () => { if (!busy) { if (draft !== initial) setDiscard(true); else onClose(); } };
   useEscape(cancel);
-  return <div className="schedule-editor" role="dialog" aria-modal="true" aria-label="让 agent 做什么">
-    <header className="schedule-editor-nav"><button disabled={busy} onClick={cancel}>取消</button><b>让 agent 做什么</b><button disabled={disabled || busy || !validScheduleMessage(draft)} onClick={() => draft === initial ? onClose() : onSave(draft)}>保存</button></header>
-    <textarea autoFocus aria-label="让 agent 做什么" value={draft} onChange={e => setDraft(e.target.value)} />
-    {new TextEncoder().encode(draft).length > scheduleMessageLimit && <p className="hint red">太长了，最多 32 KB</p>}
+  return <div className="schedule-editor" role="dialog" aria-modal="true" aria-label={l10n.t("schedule.what_should_the_agent_do")}>
+    <header className="schedule-editor-nav"><button disabled={busy} onClick={cancel}>{l10n.t("common.cancel")}</button><b>{l10n.t("schedule.what_should_the_agent_do")}</b><button disabled={disabled || busy || !validScheduleMessage(draft)} onClick={() => draft === initial ? onClose() : onSave(draft)}>{l10n.t("common.save")}</button></header>
+    <textarea autoFocus aria-label={l10n.t("schedule.what_should_the_agent_do")} value={draft} onChange={e => setDraft(e.target.value)} />
+    {new TextEncoder().encode(draft).length > scheduleMessageLimit && <p className="hint red">{l10n.t("schedule.too_long_maximum_32_kb")}</p>}
     {error && <Banner kind="err">{error}</Banner>}
-    {discard && <Alert title="放弃修改？" text="这次修改不会保存。" ok="放弃修改" danger onCancel={() => setDiscard(false)} onOk={onClose} />}
+    {discard && <Alert title={l10n.t("schedule.discard_changes")} text={l10n.t("schedule.these_changes_will_not_be_saved")} ok={l10n.t("schedule.discard_changes_schedule_text")} danger onCancel={() => setDiscard(false)} onOk={onClose} />}
   </div>;
 }

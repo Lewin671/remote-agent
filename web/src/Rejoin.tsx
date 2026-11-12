@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { authorityExitAdvice } from "./security-operation";
@@ -18,8 +19,8 @@ export function RejoinButton({ server, children, onDone }: {
       const status = await authorityExitAdvice();
       const pending = !!await loadRegistration();
       const warning = status.authority || status.unresolved || pending
-        ? (pending ? "这台设备还有未完成的加入请求，删除后将无法继续原请求。" : status.message)
-          + "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。" : undefined;
+        ? (pending ? l10n.t("security.this_device_has_an_unfinished_join_request_deleting_it") : status.message)
+          + l10n.t("security.this_deletes_the_account_keys_and_cache_on_this") : undefined;
       if (warning && (!confirmed || warning !== advice)) { setAdvice(warning); return; }
       localStorage.setItem("ra-server", server);
       await forgetAccount();
@@ -31,16 +32,16 @@ export function RejoinButton({ server, children, onDone }: {
   return <>
     <button className="btn pri" disabled={busy} onClick={() => void leave()}>{children}</button>
     {error && <Banner kind="err">{error}</Banner>}
-    {advice && <Alert title="删除本机密钥并重新加入？" text={advice} ok="重新加入" danger
+    {advice && <Alert title={l10n.t("security.delete_local_keys_and_rejoin")} text={advice} ok={l10n.t("security.rejoin")} danger
       onCancel={() => setAdvice(undefined)} onOk={() => void leave(true)} />}
   </>;
 }
 
 export function RetainedIdentityDeniedScreen({ server, onDone }: { server: string; onDone: () => void }) {
   return <div className="center"><div className="gone">
-    <div className="et">服务器不认识这台设备</div>
-    <p className="muted small">可能已被移除，或服务已重建。电脑上的会话不受影响。</p>
-    <RejoinButton server={server} onDone={onDone}>用配对码重新加入</RejoinButton>
-    <p className="muted small">会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。</p>
+    <div className="et">{l10n.t("security.the_server_does_not_recognize_this_device")}</div>
+    <p className="muted small">{l10n.t("security.it_may_have_been_removed_or_the_service_may")}</p>
+    <RejoinButton server={server} onDone={onDone}>{l10n.t("security.rejoin_with_a_pairing_code")}</RejoinButton>
+    <p className="muted small">{l10n.t("security.the_account_keys_and_cache_in_this_browser_will")}</p>
   </div></div>;
 }

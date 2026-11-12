@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // Pairing crypto, matching internal/e2e/pair.go: X25519 keys, the
 // initiator's commitment, the transcript, and the four-emoji SAS.
 
@@ -311,7 +312,7 @@ export async function derivePair(
   transcript: Uint8Array,
 ): Promise<PairSecrets> {
   const shared = x25519.getSharedSecret(k.priv, otherPublic);
-  if (shared.every((b) => b === 0)) throw new Error("配对密钥无效");
+  if (shared.every((b) => b === 0)) throw new Error(l10n.t("security.invalid_pairing_key"));
   const base = await crypto.subtle.importKey(
     "raw",
     shared as Uint8Array<ArrayBuffer>,

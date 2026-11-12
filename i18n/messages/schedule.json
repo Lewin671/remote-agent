@@ -1,0 +1,3449 @@
+[
+  {
+    "key": "schedule.once_schedules",
+    "zh-CN": "一次",
+    "en": "Once",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.mon",
+    "zh-CN": "一",
+    "en": "Mon",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.tue",
+    "zh-CN": "二",
+    "en": "Tue",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.wed",
+    "zh-CN": "三",
+    "en": "Wed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.thu",
+    "zh-CN": "四",
+    "en": "Thu",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.fri",
+    "zh-CN": "五",
+    "en": "Fri",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.sat",
+    "zh-CN": "六",
+    "en": "Sat",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.sun",
+    "zh-CN": "日",
+    "en": "Sun",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.daily",
+    "zh-CN": "每天",
+    "en": "Daily",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.weekly_on",
+    "zh-CN": "每周",
+    "en": "Weekly",
+    "notes": "定时频率选择器的“每周”选项；不是拼接星期名的前缀。短分段按钮，无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.hourly",
+    "zh-CN": "每小时",
+    "en": "Hourly",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.every_days",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "每 {count} 天"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Every {count} day",
+        "other": "Every {count} days"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = s / 86400；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.every_hr",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "每 {count} 小时"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Every {count} hr",
+        "other": "Every {count} hr"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = s / 3600；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.every_min",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "每 {count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Every {count} min",
+        "other": "Every {count} min"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = s / 60；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.every_sec",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "每 {count} 秒"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Every {count} sec",
+        "other": "Every {count} sec"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = s；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.beijing_time",
+    "zh-CN": "北京时间",
+    "en": "Beijing time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.hong_kong_time",
+    "zh-CN": "香港时间",
+    "en": "Hong Kong time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.tokyo_time",
+    "zh-CN": "东京时间",
+    "en": "Tokyo time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.los_angeles_time",
+    "zh-CN": "洛杉矶时间",
+    "en": "Los Angeles time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.new_york_time",
+    "zh-CN": "纽约时间",
+    "en": "New York time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.london_time",
+    "zh-CN": "伦敦时间",
+    "en": "London time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.singapore_time",
+    "zh-CN": "新加坡时间",
+    "en": "Singapore time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.stopped",
+    "zh-CN": "已停下",
+    "en": "Stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.next",
+    "zh-CN": "下次 {value}",
+    "en": "Next {value}",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = dateTime(t.next_run_at, now)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.next_run_pending",
+    "zh-CN": "下次待定",
+    "en": "Next run pending",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.not_connected_showing_the_previous_state",
+    "zh-CN": "未连接，显示的是上次的状态",
+    "en": "Not connected. Showing the previous state.",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.tell_the_agent_in_a_conversation_check_for_me",
+    "zh-CN": "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。",
+    "en": "Tell the agent in a conversation, “Check for me every day at 8…”, and it will create a schedule. You can also create one yourself.",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_first_run_is_after_a_full_interval_to",
+    "zh-CN": "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。",
+    "en": "The first run is after a full interval. To run now, create the task and select “Run once now”.",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.runs_total",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "共 {count} 次"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} run total",
+        "other": "{count} runs total"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = tr.max_runs；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.until",
+    "zh-CN": "到 {value}",
+    "en": "Until {value}",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = dateTime(tr.until, now)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_relay_s_session_limit_has_been_reached",
+    "zh-CN": "中继上的会话数已满",
+    "en": "The relay’s session limit has been reached",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.task_creation_permissions_changed_the_task_stopped",
+    "zh-CN": "创建任务时的权限已改变，任务已停下",
+    "en": "Task creation permissions changed. The task stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_agent_created_task_interval_is_too_short_the",
+    "zh-CN": "Agent 创建的任务间隔过短，任务已停下",
+    "en": "The agent-created task interval is too short. The task stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.execution_failed_the_task_stopped",
+    "zh-CN": "运行失败，任务已停下",
+    "en": "Execution failed. The task stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.execution_interrupted_the_task_stopped",
+    "zh-CN": "运行被中断，任务已停下",
+    "en": "Execution interrupted. The task stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_running_conversation_ended",
+    "zh-CN": "运行中的对话已结束",
+    "en": "The running conversation ended",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_running_conversation_could_not_be_found",
+    "zh-CN": "找不到运行的对话",
+    "en": "The running conversation could not be found",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_scheduled_message_was_canceled_before_delivery_the_task",
+    "zh-CN": "定时消息在送达前被取消，任务已停下",
+    "en": "The scheduled message was canceled before delivery. The task stopped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_message_was_not_delivered_to_the_cli",
+    "zh-CN": "消息没有送达 CLI",
+    "en": "The message was not delivered to the CLI",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_message_could_not_be_queued",
+    "zh-CN": "消息没能加入待发队列",
+    "en": "The message could not be queued",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_scheduled_message_is_paused_resume_or_cancel_it",
+    "zh-CN": "定时消息已暂停，请先在对话里恢复或取消这条消息",
+    "en": "The scheduled message is paused. Resume or cancel it in the conversation first",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed",
+    "zh-CN": "电脑重启前的发送结果无法确认",
+    "en": "Delivery before the computer restarted could not be confirmed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_catch_up_window_expired_this_run_was_skipped",
+    "zh-CN": "已超过补跑时间，本次跳过",
+    "en": "The catch-up window expired. This run was skipped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 原因是可嵌入完整句的短语，英文末尾不加句点。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.paused_the_schedule_expired_in_the_meantime",
+    "zh-CN": "已暂停：期间计划已到期",
+    "en": "Paused: the schedule expired in the meantime",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.deleted",
+    "zh-CN": "已删除",
+    "en": "Deleted",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.task_creation_permissions_changed",
+    "zh-CN": "创建任务时的权限已改变",
+    "en": "Task creation permissions changed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_agent_created_task_interval_is_too_short",
+    "zh-CN": "Agent 创建的任务间隔过短",
+    "en": "The agent-created task interval is too short",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.execution_failed",
+    "zh-CN": "运行失败",
+    "en": "Execution failed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.execution_interrupted",
+    "zh-CN": "运行被中断",
+    "en": "Execution interrupted",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_scheduled_message_was_canceled_before_delivery",
+    "zh-CN": "定时消息在送达前被取消",
+    "en": "The scheduled message was canceled before delivery",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.reason_returned_by_the_computer",
+    "zh-CN": "电脑返回的原因：{value}",
+    "en": "Reason returned by the computer: {value}",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = reason；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.execution_outcome_is_unconfirmed",
+    "zh-CN": "运行结果无法确认",
+    "en": "Execution outcome is unconfirmed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.unconfirmed",
+    "zh-CN": "无法确认",
+    "en": "Unconfirmed",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.skipped",
+    "zh-CN": "跳过",
+    "en": "Skipped",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.notified_you",
+    "zh-CN": "通知了你",
+    "en": "Notified you",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_notification",
+    "zh-CN": "没有通知",
+    "en": "No notification",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.starting",
+    "zh-CN": "正在启动",
+    "en": "Starting",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.waiting_for_the_current_turn_to_end",
+    "zh-CN": "等待当前轮结束",
+    "en": "Waiting for the current turn to end",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.running",
+    "zh-CN": "正在运行",
+    "en": "Running",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.waiting_for_results",
+    "zh-CN": "等待结果",
+    "en": "Waiting for results",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.has_not_run_yet",
+    "zh-CN": "还没有运行",
+    "en": "Has not run yet",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_results_yet",
+    "zh-CN": "还没有结果",
+    "en": "No results yet",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.runs_today_none_notified_you",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "今天 {count} 次，都没有通知"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} run today, none notified you",
+        "other": "{count} runs today, none notified you"
+      }
+    },
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = today.length；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.choose_a_valid_date_and_time",
+    "zh-CN": "请选择有效的日期和时间",
+    "en": "Choose a valid date and time",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.daylight_saving_time_skips_this_time_in_the_selected",
+    "zh-CN": "这个时区在该时刻发生夏令时跳转，请换一个时间",
+    "en": "Daylight saving time skips this time in the selected zone. Choose another time.",
+    "notes": "schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.what_should_the_agent_do",
+    "zh-CN": "让 agent 做什么",
+    "en": "What should the agent do",
+    "notes": "ScheduleText 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.too_long_maximum_32_kb",
+    "zh-CN": "太长了，最多 32 KB",
+    "en": "Too long. Maximum 32 KB.",
+    "notes": "ScheduleText 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.discard_changes",
+    "zh-CN": "放弃修改？",
+    "en": "Discard changes?",
+    "notes": "ScheduleText 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.these_changes_will_not_be_saved",
+    "zh-CN": "这次修改不会保存。",
+    "en": "These changes will not be saved.",
+    "notes": "ScheduleText 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.discard_changes_schedule_text",
+    "zh-CN": "放弃修改",
+    "en": "Discard changes",
+    "notes": "ScheduleText 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.needs_your_attention",
+    "zh-CN": "需要你处理",
+    "en": "Needs your attention",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.could_not_run",
+    "zh-CN": "没能运行",
+    "en": "Could not run",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.running_schedules",
+    "zh-CN": "正在运行 · ",
+    "en": "Running · ",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.in",
+    "zh-CN": "在「{value}」里",
+    "en": "In “{value}”",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = titleOf(targetSession)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.in_conversation",
+    "zh-CN": "在对话里",
+    "en": "In conversation",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.take_action",
+    "zh-CN": "去处理",
+    "en": "Take action",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.read_full_text",
+    "zh-CN": "看全文",
+    "en": "Read full text",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.mark_as_read",
+    "zh-CN": "标为已读",
+    "en": "Mark as read",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.mark_as_unread",
+    "zh-CN": "标为未读",
+    "en": "Mark as unread",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.created_by_the_agent_in_a_conversation",
+    "zh-CN": "Agent 在对话里创建",
+    "en": "Created by the agent in a conversation",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.created_by_you",
+    "zh-CN": "你创建",
+    "en": "Created by you",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.run_once_now",
+    "zh-CN": "立即运行一次",
+    "en": "Run once now",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.resume",
+    "zh-CN": "恢复",
+    "en": "Resume",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.pause",
+    "zh-CN": "暂停",
+    "en": "Pause",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.delete_task",
+    "zh-CN": "删除任务…",
+    "en": "Delete task…",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.delete_task_schedules",
+    "zh-CN": "删除任务？",
+    "en": "Delete task?",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.stops_automatic_runs_existing_conversations_remain",
+    "zh-CN": "不再自动运行，已开出的对话保留。",
+    "en": "Stops automatic runs. Existing conversations remain.",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.delete",
+    "zh-CN": "删除",
+    "en": "Delete",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.reading_tasks",
+    "zh-CN": "正在读取任务…",
+    "en": "Reading tasks…",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_scheduled_tasks_yet",
+    "zh-CN": "还没有定时任务",
+    "en": "No scheduled tasks yet",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.new_results",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个新结果"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} new result",
+        "other": "{count} new results"
+      }
+    },
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = fresh.length；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_new_results",
+    "zh-CN": "没有新结果",
+    "en": "No new results",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.more_new_results",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "另有 {count} 个新结果"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} more new result",
+        "other": "{count} more new results"
+      }
+    },
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = fresh.length；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.update_remote_agent_on_the_computer_to_use_scheduled",
+    "zh-CN": "需要更新电脑上的 remote-agent 才能使用定时任务。",
+    "en": "Update remote-agent on the computer to use scheduled tasks.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.new_results_schedules",
+    "zh-CN": "新结果",
+    "en": "New results",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.mark_all_as_read",
+    "zh-CN": "全部标为已读",
+    "en": "Mark all as read",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.other_tasks",
+    "zh-CN": "其他任务",
+    "en": "Other tasks",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.ended",
+    "zh-CN": "已结束 ",
+    "en": "Ended ",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.select_at_least_one_day",
+    "zh-CN": "请至少选择一天",
+    "en": "Select at least one day",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.select_a_time",
+    "zh-CN": "请选择时间",
+    "en": "Select a time",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_interval_must_be_at_least_1_second",
+    "zh-CN": "间隔至少为 1 秒",
+    "en": "The interval must be at least 1 second",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_run_count_must_be_a_positive_integer",
+    "zh-CN": "运行次数必须是正整数",
+    "en": "The run count must be a positive integer",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.select_a_future_time",
+    "zh-CN": "请选择未来的时间",
+    "en": "Select a future time",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.when",
+    "zh-CN": "什么时候",
+    "en": "When",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.frequency",
+    "zh-CN": "频率",
+    "en": "Frequency",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.every",
+    "zh-CN": "每隔",
+    "en": "Every",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.after_turn_ends",
+    "zh-CN": "轮结束后",
+    "en": "After turn ends",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.date_and_time",
+    "zh-CN": "日期和时间",
+    "en": "Date and time",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.time",
+    "zh-CN": "时间",
+    "en": "Time",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.weekdays_only",
+    "zh-CN": "只在工作日",
+    "en": "Weekdays only",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.interval_minutes",
+    "zh-CN": "间隔（分钟）",
+    "en": "Interval (minutes)",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.never",
+    "zh-CN": "不结束",
+    "en": "Never",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.after_a_run_count",
+    "zh-CN": "运行指定次数",
+    "en": "After a run count",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.end_date",
+    "zh-CN": "截止日期",
+    "en": "End date",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.count",
+    "zh-CN": "次数",
+    "en": "Count",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.end_time",
+    "zh-CN": "截止时间",
+    "en": "End time",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.time_zone",
+    "zh-CN": "时区",
+    "en": "Time zone",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.tasks_do_not_run_while_the_computer_sleeps_or",
+    "zh-CN": "电脑睡眠或关机时不会运行；醒来后默认在 24 小时内补跑最近一次，再晚就跳过。立即运行一次不占自动计划的次数。",
+    "en": "Tasks do not run while the computer sleeps or is off. After waking, the latest run is caught up within 24 hours by default; later runs are skipped. Run once now does not count toward the automatic schedule.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.unread_on_entry",
+    "zh-CN": "进入时未读",
+    "en": "Unread on entry",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.conversation",
+    "zh-CN": "对话",
+    "en": "Conversation",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.requested_a_run_now_the_automatic_schedule_is_unchanged",
+    "zh-CN": "已请求立即运行一次，不改变自动计划。",
+    "en": "Requested a run now. The automatic schedule is unchanged.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.this_task_could_not_be_found_if_the_computer",
+    "zh-CN": "找不到这个任务。电脑离线且没有缓存时，请连上电脑后重试。",
+    "en": "This task could not be found. If the computer is offline with no cache, connect and retry.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.verify_current_permissions_in_the_conversation",
+    "zh-CN": "请在对话里核实当前权限",
+    "en": "Verify current permissions in the conversation",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.send_to",
+    "zh-CN": "{value} · 发到「{detail}」",
+    "en": "{value} · Send to “{detail}”",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = timingText(task.spec.trigger)；detail = targetSession?.info ? titleOf(targetSession) : \"对话\"；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.continuing_takes_over_the_task_and_runs_it_with",
+    "zh-CN": "继续会由你接管任务，按任务中显示的权限运行。",
+    "en": " Continuing takes over the task and runs it with the permissions shown.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 本句紧接同段前一句，英文保留句前空格；中文不加空格。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.verified_abandon_request",
+    "zh-CN": "已核实，放弃请求",
+    "en": "Verified, abandon request",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.retry_same_request",
+    "zh-CN": "重试同一请求",
+    "en": "Retry same request",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the",
+    "zh-CN": "上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。",
+    "en": "The previous operation’s result is unconfirmed. Verify the task and records; retrying uses the same request.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.earlier",
+    "zh-CN": "更早",
+    "en": "Earlier",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.notify_on_completion",
+    "zh-CN": "完成后通知",
+    "en": "Notify on completion",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.send_to_schedules",
+    "zh-CN": "发到",
+    "en": "Send to",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.run_in",
+    "zh-CN": "在哪运行",
+    "en": "Run in",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.task_name",
+    "zh-CN": "任务名",
+    "en": "Task name",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.each_run_opens_a_new_conversation_grouped_under_this",
+    "zh-CN": "每次新开一个对话，归在这个任务下面。",
+    "en": "Each run opens a new conversation grouped under this task.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.messages_go_to_the_current_conversation_and_wait_for",
+    "zh-CN": "消息发到当前对话，等待当前轮结束。",
+    "en": "Messages go to the current conversation and wait for the current turn to end.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.connect_to_edit_run_or_delete",
+    "zh-CN": " 连上后才能修改、运行或删除。",
+    "en": " Connect to edit, run, or delete.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.rename_task",
+    "zh-CN": "重命名任务",
+    "en": "Rename task",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.leave_blank_to_use_the_message_s_first_sentence",
+    "zh-CN": "留空就用消息的第一句",
+    "en": "Leave blank to use the message’s first sentence",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.saving_blank_uses_the_message_s_first_sentence",
+    "zh-CN": "留空保存会用消息的第一句",
+    "en": "Saving blank uses the message’s first sentence",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.project",
+    "zh-CN": "项目",
+    "en": "Project",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.model_and_permissions",
+    "zh-CN": "模型和权限",
+    "en": "Model and permissions",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.select_permissions",
+    "zh-CN": "请选择权限",
+    "en": "Select permissions",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.only_changes_this_task_it_still_runs_on_the",
+    "zh-CN": "只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。",
+    "en": "Only changes this task. It still runs on the original computer; existing conversations keep their settings.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.run_with_full_access",
+    "zh-CN": "以完全放行运行？",
+    "en": "Run with full access?",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_approval_will_be_required_for_future_runs_existing",
+    "zh-CN": "以后每次运行都不审批。已开出的对话不变。",
+    "en": "No approval will be required for future runs. Existing conversations stay unchanged.",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.describe_the_scheduled_work_and_ask_the_agent_to",
+    "zh-CN": "描述要定时做的事，有结果时让 agent 通知你",
+    "en": "Describe the scheduled work and ask the agent to notify you of results",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.if_blank_uses",
+    "zh-CN": "留空会用：{value}",
+    "en": "If blank, uses: {value}",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = taskName(\"\", message)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.schedule_messages_to_this_conversation",
+    "zh-CN": "定时发到这个对话",
+    "en": "Schedule messages to this conversation",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot",
+    "zh-CN": "请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。",
+    "en": "Choose Ask, Auto, or Full access. Scheduled tasks cannot open conversations in Plan mode.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.computer_and_model",
+    "zh-CN": "机器和模型",
+    "en": "Computer and model",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.update_remote_agent_on_this_computer_to_use_scheduled",
+    "zh-CN": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
+    "en": "Update remote-agent on this computer to use scheduled tasks.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_computer_is_offline_connect_to_create_tasks",
+    "zh-CN": "电脑不在线，连上后才能创建任务。",
+    "en": "The computer is offline. Connect to create tasks.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the",
+    "zh-CN": "上次创建结果还没有确认。重试会使用原来的任务名、消息、时间和请求键，不会重复创建。",
+    "en": "The previous creation result is unconfirmed. Retrying uses the original task name, message, time, and request key without creating duplicates.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions",
+    "zh-CN": "计划模式不能创建执行任务，请先选择其他权限",
+    "en": "Plan mode cannot create execution tasks. Choose other permissions first.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.select_explicit_permissions_before_creating_a_scheduled_task",
+    "zh-CN": "请选择明确的权限，再创建定时任务。",
+    "en": "Select explicit permissions before creating a scheduled task.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.messages_will_go_to_the_current_conversation_and_wait",
+    "zh-CN": "消息会发到当前对话，等待正在运行的一轮结束。",
+    "en": "Messages will go to the current conversation and wait for the running turn to end.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules",
+    "zh-CN": "每次运行新开一个对话，归在这个任务下面，不进会话列表。",
+    "en": "Each run opens a new conversation grouped under this task, outside the session list.",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.notify_on_completion_by_default_when_off_only_the",
+    "zh-CN": "完成后默认通知；关闭后仅由 agent 主动通知。",
+    "en": " Notify on completion by default. When off, only the agent can send notifications.",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 本句紧接同段前一句，英文保留句前空格；中文不加空格。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.creating",
+    "zh-CN": "正在创建…",
+    "en": "Creating…",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.retry_creation",
+    "zh-CN": "重试创建",
+    "en": "Retry creation",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.create",
+    "zh-CN": "创建",
+    "en": "Create",
+    "notes": "Schedules 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_approval_is_required_for_any_operation_whenever_this",
+    "zh-CN": "任务每次运行时，所有操作都不审批。",
+    "en": "No approval is required for any operation whenever this task runs.",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.manage",
+    "zh-CN": "管理",
+    "en": "Manage",
+    "notes": "Schedules 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.this_conversation_s_scheduled_tasks",
+    "zh-CN": "这个对话的定时任务",
+    "en": "This conversation’s scheduled tasks",
+    "notes": "Schedules 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.once_at",
+    "zh-CN": "{time}，一次",
+    "en": "{time}, once",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时详情频率；time 为本地化日期时间。紧凑行，完整句允许译文重排。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.daily_at",
+    "zh-CN": "每天 {time}",
+    "en": "Daily {time}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.workdays_at",
+    "zh-CN": "工作日 {time}",
+    "en": "Weekdays {time}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.weekly_at",
+    "zh-CN": "每周{days} {time}",
+    "en": "Weekly on {days} at {time}",
+    "params": {
+      "days": {
+        "type": "string",
+        "example": "Example"
+      },
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时频率；days 是选中星期的本地化列表（中文保留一、二…），time 为已保存的墙钟时间，不随语言改调度。紧凑行可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.after_each_turn",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "每轮结束 {count} 秒后"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} sec after each turn ends",
+        "other": "{count} sec after each turn ends"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.after_current_turn",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "当前轮结束 {count} 秒后"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} sec after the current turn ends",
+        "other": "{count} sec after the current turn ends"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.stopped_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{total} 个任务停下了"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{total} task stopped",
+        "other": "{total} tasks stopped"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "total": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时列表主标题；count 是任务数量用于复数，total 是同一数量的加粗槽位，调用端保留 em。紧凑大标题。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.runs_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 次"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} run",
+        "other": "{count} runs"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "定时结果历史数量；count 是运行记录数。紧凑单行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.view_all_runs",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "查看全部 {count} 次"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "View all {count} run",
+        "other": "View all {count} runs"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.quiet_runs",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{day} · {count} 次，都没有通知"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{day} · {count} run, none notified you",
+        "other": "{day} · {count} runs, none notified you"
+      }
+    },
+    "params": {
+      "day": {
+        "type": "string",
+        "example": "Example"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "定时历史折叠组标题；day 是本地化日期、count 是同组运行数。可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.latest_summary",
+    "zh-CN": "最近一次 {time}：{summary}",
+    "en": "Latest {time}: {summary}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "summary": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时历史摘要；time 是已格式化时刻、summary 是 agent/daemon 原文或本地空结果提示，原文不翻译。可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.running_since",
+    "zh-CN": "正在运行 · {time} 开始",
+    "en": "Running · Started {time}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.list_failed",
+    "zh-CN": "{name} 的任务没能读取：{reason}",
+    "en": "Could not read tasks on {name}: {reason}",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.no_runs_next",
+    "zh-CN": "还没有运行 · 下次 {time}",
+    "en": "Has not run yet · Next {time}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.limits_both",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "共 {count} 次，或到 {time}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} run total, or until {time}",
+        "other": "{count} runs total, or until {time}"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时结束条件；count 是最大运行次数、time 是按现有时区格式化的截止时间。完整一行可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.after_turn_replace",
+    "zh-CN": "{frequency}。选择上方其他频率可替换。",
+    "en": "{frequency}. Choose another frequency above to replace it.",
+    "params": {
+      "frequency": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.missing_target",
+    "zh-CN": "任务已停下：{reason}。这个任务只发到原来的对话，恢复后还会失败。",
+    "en": "Task stopped: {reason}. This task only sends to the original conversation and will fail again if resumed.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.missing_target_run",
+    "zh-CN": "{time} 的运行失败，任务已停下：{reason}。这个任务只发到原来的对话，恢复后还会失败。",
+    "en": "The run at {time} failed. Task stopped: {reason}. This task only sends to the original conversation and will fail again if resumed.",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.strip_count",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 个定时 · {state}"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} schedule · {state}",
+        "other": "{count} schedules · {state}"
+      }
+    },
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "state": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.strip_single",
+    "zh-CN": "定时 · {frequency}，{state}",
+    "en": "Scheduled · {frequency}, {state}",
+    "params": {
+      "frequency": {
+        "type": "string",
+        "example": "Example"
+      },
+      "state": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.attention_uncertain",
+    "zh-CN": "{reason}。继续可能重复执行上次的消息，请先打开运行记录核实。",
+    "en": "{reason}. Continuing may repeat the last message. Open the run records to verify first.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.attention_once",
+    "zh-CN": "{reason}。可改时间重排。",
+    "en": "{reason}. Change the time to reschedule.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.attention_resume",
+    "zh-CN": "{reason}。恢复或重新安排后从下一次自动时间开始，不重发上次消息。",
+    "en": "{reason}. Resuming or rescheduling starts at the next automatic time and does not resend the last message.",
+    "params": {
+      "reason": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.last_result",
+    "zh-CN": "{time} {result}",
+    "en": "{time} {result}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "result": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "schedule.last_result_detail",
+    "zh-CN": "{time} {result}：{detail}",
+    "en": "{time} {result}: {detail}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      },
+      "result": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时列表最近结果；time 为本地化日期时间、result 为本地状态短语、detail 为 agent/daemon 原始摘要。详情不可翻译，最多列表可用空间。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

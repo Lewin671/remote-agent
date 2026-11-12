@@ -103,12 +103,12 @@ it.each(["zh-CN", "en"] as const)("resumes the same paused queue item in %s", as
   expect(command.mock.calls[0]?.slice(0, 2)).toEqual(["s-multi", { case: "resumeInput", value: { sessionId: "s-multi", requestId: "q-paused" } }]);
 });
 
-it("aggregates image failures by stable category and leaves individual error mapping to the next batch", () => {
+it("aggregates image failures by stable category and localizes the matching single cause", () => {
   const format = vi.spyOn(i18n, "t").mockReturnValue("same translation");
   imageFailureLine(["decode error", "offline"]);
   expect(format).toHaveBeenLastCalledWith("image.attach_failed", { count: 2 });
   format.mockClear(); imageFailureLine(["decode error", "unsupported PNG"]);
-  expect(format).not.toHaveBeenCalled();
+  expect(format).toHaveBeenLastCalledWith("image.cannot_read_this_image_try_jpeg_or_png_instead");
   expect(imageProblemKind("decode error")).toBe(imageProblemKind("unsupported PNG"));
   expect(imageProblemKind("decode error")).not.toBe(imageProblemKind("offline"));
 });

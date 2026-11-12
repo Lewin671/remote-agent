@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // The account's project list preferences: pinned projects in the order
 // they were pinned, and projects removed from the list (architecture §8
 // 项目列表偏好). They live in one sealed object on the server, replaced
@@ -124,7 +125,7 @@ export async function commitOp(store: PrefsStore, op: PrefOp, from?: PrefsSnapsh
     if (r.applied) return r.current;
     cur = r.current;
   }
-  throw new PrefsConflict("项目列表一直在被别的客户端修改，没能保存");
+  throw new PrefsConflict(l10n.t("errors.other_clients_kept_changing_the_project_list_changes_could"));
 }
 
 /** Projects as the lists group them: pinned first, in the order pinned;

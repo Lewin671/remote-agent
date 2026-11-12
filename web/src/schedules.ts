@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // JSON contract owned by internal/schedule. Only encrypted machine commands
 // carry these definitions; the relay never receives task content in plaintext.
 import { derive, isBackground, toolOk, type Item } from "./model";
@@ -113,10 +114,10 @@ export function scheduleTime(at: string, now = Date.now()): string {
   const d = new Date(at), today = new Date(now);
   const days = (Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) - Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())) / 86400_000;
   if (!days) return clockTime(at);
-  if (days === 1) return "昨天";
-  if (days > 1 && days < 7) return "周" + "日一二三四五六"[d.getDay()];
-  if (d.getFullYear() !== today.getFullYear()) return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
+  if (days === 1) return l10n.t("time.yesterday");
+  if (days > 1 && days < 7) return weekdayLabel(d.getDay());
+  if (d.getFullYear() !== today.getFullYear()) return l10n.t("time.calendar_date_year", { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() });
+  return l10n.t("time.month_day", { month: d.getMonth() + 1, day: d.getDate() });
 }
 /** Same ownership fences as the daemon's scheduled follow-up watcher. */
 export function finalRunText(events: Event[], runId: string): string {
@@ -137,7 +138,7 @@ export function finalRunText(events: Event[], runId: string): string {
   return text;
 }
 export function clockTime(at: string | number): string {
-  return new Date(at).toLocaleTimeString("zh-CN", {
+  return new Date(at).toLocaleTimeString(l10n.localeStore.snapshot(), {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
@@ -148,48 +149,53 @@ export function dayKey(at: string | number): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
 }
 export function dayText(at: string | number, now = Date.now()): string {
-  if (dayKey(at) === dayKey(now)) return "今天";
+  if (dayKey(at) === dayKey(now)) return l10n.t("time.today");
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (dayKey(at) === dayKey(tomorrow.getTime())) return "明天";
+  if (dayKey(at) === dayKey(tomorrow.getTime())) return l10n.t("time.tomorrow");
   const previous = new Date(now);
   previous.setDate(previous.getDate() - 1);
-  if (dayKey(at) === dayKey(previous.getTime())) return "昨天";
+  if (dayKey(at) === dayKey(previous.getTime())) return l10n.t("time.yesterday");
   const d = new Date(at);
-  return `${d.getFullYear() === new Date(now).getFullYear() ? "" : d.getFullYear() + "年"}${d.getMonth() + 1}月${d.getDate()}日`;
+  return d.getFullYear() === new Date(now).getFullYear()
+    ? l10n.t("time.month_day", { month: d.getMonth() + 1, day: d.getDate() })
+    : l10n.t("time.calendar_date_year", { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() });
 }
 export function dateTime(at: string, now = Date.now()): string {
   return `${dayText(at, now)} ${clockTime(at)}`;
 }
+export function weekdayLabel(day: number): string {
+  return l10n.t("time.weekday", { day: ["sun", "mon", "tue", "wed", "thu", "fri", "sat"][day] });
+}
 export function frequency(tr: ScheduleTrigger): string {
   switch (tr.type) {
     case "at":
-      return tr.at ? dateTime(tr.at) + "，一次" : "一次";
+      return tr.at ? l10n.t("schedule.once_at", { time: dateTime(tr.at) }) : l10n.t("schedule.once_schedules");
     case "calendar": {
       const days = tr.weekdays ?? [];
-      const names = ["", "一", "二", "三", "四", "五", "六", "日"];
+      const names = ["", l10n.t("schedule.mon"), l10n.t("schedule.tue"), l10n.t("schedule.wed"), l10n.t("schedule.thu"), l10n.t("schedule.fri"), l10n.t("schedule.sat"), l10n.t("schedule.sun")];
       const daily = !days.length || days.length === 7;
       const workdays = days.join() === "1,2,3,4,5";
-      return `${daily ? "每天" : workdays ? "工作日" : "每周" + days.map((d) => names[d]).join("、")} ${tr.time}`;
+      return daily ? l10n.t("schedule.daily_at", { time: tr.time ?? "" }) : workdays ? l10n.t("schedule.workdays_at", { time: tr.time ?? "" }) : l10n.t("schedule.weekly_at", { days: days.map((d) => names[d]).join(l10n.localeStore.snapshot() === "zh-CN" ? "、" : ", "), time: tr.time ?? "" });
     }
     case "interval": {
       const s = tr.interval_seconds ?? 0;
       return s === 3600
-        ? "每小时"
+        ? l10n.t("schedule.hourly")
         : s % 86400 === 0
-          ? `每 ${s / 86400} 天`
+          ? l10n.t("schedule.every_days", { count: s / 86400 })
           : s % 3600 === 0
-            ? `每 ${s / 3600} 小时`
+            ? l10n.t("schedule.every_hr", { count: s / 3600 })
             : s % 60 === 0
-              ? `每 ${s / 60} 分钟`
-              : `每 ${s} 秒`;
+              ? l10n.t("schedule.every_min", { count: s / 60 })
+              : l10n.t("schedule.every_sec", { count: s });
     }
     case "after_turn":
-      return `${tr.repeat ? "每轮" : "当前轮"}结束 ${tr.delay_seconds ?? 0} 秒后`;
+      return tr.repeat ? l10n.t("schedule.after_each_turn", { count: tr.delay_seconds ?? 0 }) : l10n.t("schedule.after_current_turn", { count: tr.delay_seconds ?? 0 });
   }
 }
 function zoneName(zone: string): string {
-  return ({ "Asia/Shanghai": "北京时间", "Asia/Hong_Kong": "香港时间", "Asia/Tokyo": "东京时间", "America/Los_Angeles": "洛杉矶时间", "America/New_York": "纽约时间", "Europe/London": "伦敦时间", "Asia/Singapore": "新加坡时间" } as Record<string, string>)[zone] ?? zone.split("/").at(-1)!.replaceAll("_", " ");
+  return ({ "Asia/Shanghai": l10n.t("schedule.beijing_time"), "Asia/Hong_Kong": l10n.t("schedule.hong_kong_time"), "Asia/Tokyo": l10n.t("schedule.tokyo_time"), "America/Los_Angeles": l10n.t("schedule.los_angeles_time"), "America/New_York": l10n.t("schedule.new_york_time"), "Europe/London": l10n.t("schedule.london_time"), "Asia/Singapore": l10n.t("schedule.singapore_time") } as Record<string, string>)[zone] ?? zone.split("/").at(-1)!.replaceAll("_", " ");
 }
 /** The same explicit zone label on every client; local calendar zones stay implicit. */
 export function timingText(
@@ -225,52 +231,53 @@ export function taskName(name: string, message: string): string {
   );
 }
 export function nextText(t: ScheduleTask, now = Date.now()): string {
-  if (t.active_run && ["dispatching", "queued", "running"].includes(t.active_run.status)) return "运行中";
+  if (t.active_run && ["dispatching", "queued", "running"].includes(t.active_run.status)) return l10n.t("list_state.running");
   const g = taskGroup(t);
-  if (g !== "active") return g === "attention" ? "已停下" : g === "paused" ? "已暂停" : "已结束";
-  return t.next_run_at ? `下次 ${dateTime(t.next_run_at, now)}` : "下次待定";
+  if (g !== "active") return g === "attention" ? l10n.t("schedule.stopped") : g === "paused" ? l10n.t("queue.paused") : l10n.t("list_state.ended");
+  return t.next_run_at ? l10n.t("schedule.next", { value: String(dateTime(t.next_run_at, now)) }) : l10n.t("schedule.next_run_pending");
 }
-export const scheduleOfflineRow = "未连接";
+export const scheduleOfflineRow = () => l10n.t("list_state.unlinked");
 export const scheduleMessageLimit = 32 * 1024;
 export function validScheduleMessage(message: string): boolean {
   return !!message.trim() && new TextEncoder().encode(message).length <= scheduleMessageLimit;
 }
-export const scheduleOffline = "未连接，显示的是上次的状态";
-export const scheduleEmpty = "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。";
-export const scheduleIntervalHint = "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。";
+export const scheduleOffline = () => l10n.t("schedule.not_connected_showing_the_previous_state");
+export const scheduleEmpty = () => l10n.t("schedule.tell_the_agent_in_a_conversation_check_for_me");
+export const scheduleIntervalHint = () => l10n.t("schedule.the_first_run_is_after_a_full_interval_to");
 export function scheduleLimits(tr: ScheduleTrigger, now = Date.now()): string {
-  return [tr.max_runs ? `共 ${tr.max_runs} 次` : "", tr.until ? `到 ${dateTime(tr.until, now)}` : ""].filter(Boolean).join("，或");
+  if (tr.max_runs && tr.until) return l10n.t("schedule.limits_both", { count: tr.max_runs, time: dateTime(tr.until, now) });
+  return tr.max_runs ? l10n.t("schedule.runs_total", { count: tr.max_runs }) : tr.until ? l10n.t("schedule.until", { value: dateTime(tr.until, now) }) : "";
 }
 
-const reasons: Record<string, string> = {
-  relay_session_limit: "中继上的会话数已满",
-  agent_schedule_permissions_changed: "创建任务时的权限已改变，任务已停下",
-  agent_schedule_interval_below_minimum: "Agent 创建的任务间隔过短，任务已停下",
-  execution_failed: "运行失败，任务已停下",
-  execution_interrupted: "运行被中断，任务已停下",
-  execution_session_exited: "运行中的对话已结束",
-  execution_session_missing: "找不到运行的对话",
-  message_cancelled: "定时消息在送达前被取消，任务已停下",
-  message_delivery_failed: "消息没有送达 CLI",
-  could_not_queue_message: "消息没能加入待发队列",
-  execution_input_paused: "定时消息已暂停，请先在对话里恢复或取消这条消息",
-  restart_dispatching: "电脑重启前的发送结果无法确认",
-  catch_up_window_expired: "已超过补跑时间，本次跳过",
-  completed_while_paused: "已暂停：期间计划已到期",
-  user_paused: "已暂停",
-  user_cancelled: "已删除",
+const reasons: Record<string, () => string> = {
+  relay_session_limit: () => l10n.t("schedule.the_relay_s_session_limit_has_been_reached"),
+  agent_schedule_permissions_changed: () => l10n.t("schedule.task_creation_permissions_changed_the_task_stopped"),
+  agent_schedule_interval_below_minimum: () => l10n.t("schedule.the_agent_created_task_interval_is_too_short_the"),
+  execution_failed: () => l10n.t("schedule.execution_failed_the_task_stopped"),
+  execution_interrupted: () => l10n.t("schedule.execution_interrupted_the_task_stopped"),
+  execution_session_exited: () => l10n.t("schedule.the_running_conversation_ended"),
+  execution_session_missing: () => l10n.t("schedule.the_running_conversation_could_not_be_found"),
+  message_cancelled: () => l10n.t("schedule.the_scheduled_message_was_canceled_before_delivery_the_task"),
+  message_delivery_failed: () => l10n.t("schedule.the_message_was_not_delivered_to_the_cli"),
+  could_not_queue_message: () => l10n.t("schedule.the_message_could_not_be_queued"),
+  execution_input_paused: () => l10n.t("schedule.the_scheduled_message_is_paused_resume_or_cancel_it"),
+  restart_dispatching: () => l10n.t("schedule.delivery_before_the_computer_restarted_could_not_be_confirmed"),
+  catch_up_window_expired: () => l10n.t("schedule.the_catch_up_window_expired_this_run_was_skipped"),
+  completed_while_paused: () => l10n.t("schedule.paused_the_schedule_expired_in_the_meantime"),
+  user_paused: () => l10n.t("queue.paused"),
+  user_cancelled: () => l10n.t("schedule.deleted"),
 };
-const compactReasons: Record<string, string> = {
-  "agent_schedule_permissions_changed": "创建任务时的权限已改变",
-  "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短",
-  "execution_failed": "运行失败",
-  "execution_interrupted": "运行被中断",
-  "message_cancelled": "定时消息在送达前被取消"
+const compactReasons: Record<string, () => string> = {
+  "agent_schedule_permissions_changed": () => l10n.t("schedule.task_creation_permissions_changed"),
+  "agent_schedule_interval_below_minimum": () => l10n.t("schedule.the_agent_created_task_interval_is_too_short"),
+  "execution_failed": () => l10n.t("schedule.execution_failed"),
+  "execution_interrupted": () => l10n.t("schedule.execution_interrupted"),
+  "message_cancelled": () => l10n.t("schedule.the_scheduled_message_was_canceled_before_delivery")
 };
 export function reasonText(reason?: string, compact = false): string {
   return reason
-    ? ((compact ? compactReasons[reason] : undefined) ?? reasons[reason] ?? `电脑返回的原因：${reason}`)
-    : "运行结果无法确认";
+    ? ((compact ? compactReasons[reason]?.() : undefined) ?? reasons[reason]?.() ?? l10n.t("schedule.reason_returned_by_the_computer", { value: String(reason) }))
+    : l10n.t("schedule.execution_outcome_is_unconfirmed");
 }
 export function allRuns(t: ScheduleTask): ScheduleRun[] {
   const byId = new Map((t.runs ?? []).map((r) => [r.id, r]));
@@ -292,25 +299,25 @@ export function latestNotification(task: ScheduleTask): ScheduleRun | undefined 
   )[0];
 }
 export function unreadLabel(count: number): string { return count > 99 ? "99+" : String(count); }
-const stoppedRunLabels: Record<string, string> = {
-  failed: "失败",
-  uncertain: "无法确认",
-  interrupted: "已中断",
-  skipped: "跳过",
-  cancelled: "已取消",
+const stoppedRunLabels: Record<string, () => string> = {
+  failed: () => l10n.t("attachment.failed"),
+  uncertain: () => l10n.t("schedule.unconfirmed"),
+  interrupted: () => l10n.t("session.interrupted"),
+  skipped: () => l10n.t("schedule.skipped"),
+  cancelled: () => l10n.t("queue.canceled"),
 };
 export function runResult(r: ScheduleRun): string {
-  if (stoppedRunLabels[r.status]) return stoppedRunLabels[r.status];
-  if (r.notified) return "通知了你";
+  if (stoppedRunLabels[r.status]) return stoppedRunLabels[r.status]();
+  if (r.notified) return l10n.t("schedule.notified_you");
   return (
     (
       {
-        completed: "没有通知",
-        dispatching: "正在启动",
-        queued: "等待当前轮结束",
-        running: "正在运行",
+        completed: l10n.t("schedule.no_notification"),
+        dispatching: l10n.t("schedule.starting"),
+        queued: l10n.t("schedule.waiting_for_the_current_turn_to_end"),
+        running: l10n.t("schedule.running"),
       } as Record<string, string>
-    )[r.status] ?? "等待结果"
+    )[r.status] ?? l10n.t("schedule.waiting_for_results")
   );
 }
 /** Only an agent-authored notification can add a distinct result heading. */
@@ -331,19 +338,19 @@ export function lastResult(t: ScheduleTask, now = Date.now()): string {
   if (taskGroup(t) === "attention") return reasonText(t.reason);
   const runs = allRuns(t);
   const latest = runs[0];
-  if (!latest) return "还没有运行";
-  if (["dispatching", "queued", "running"].includes(latest.status)) return "还没有结果";
+  if (!latest) return l10n.t("schedule.has_not_run_yet");
+  if (["dispatching", "queued", "running"].includes(latest.status)) return l10n.t("schedule.no_results_yet");
   const today = runs.filter((r) => dayKey(r.started_at) === dayKey(now));
   if (
     today.length > 1 &&
     today.every((r) => r.status === "completed" && !r.notified)
   )
-    return `今天 ${today.length} 次，都没有通知`;
+    return l10n.t("schedule.runs_today_none_notified_you", { count: today.length });
   const detail =
     latest.notified || stoppedRunLabels[latest.status]
       ? runSummary(latest)
       : "";
-  return `${dateTime(latest.started_at, now)} ${runResult(latest)}${detail ? "：" + detail : ""}`;
+  return detail ? l10n.t("schedule.last_result_detail", { time: dateTime(latest.started_at, now), result: runResult(latest), detail }) : l10n.t("schedule.last_result", { time: dateTime(latest.started_at, now), result: runResult(latest) });
 }
 export type RunGroup = {
   key: string;
@@ -570,7 +577,7 @@ export function foldScheduled(
 /** Convert a wall-clock input in an IANA zone, rejecting nonexistent DST times. */
 export function zonedISO(local: string, timezone: string): string {
   const target = Date.parse(local + "Z");
-  if (!Number.isFinite(target)) throw new Error("请选择有效的日期和时间");
+  if (!Number.isFinite(target)) throw new Error(l10n.t("schedule.choose_a_valid_date_and_time"));
   const format = new Intl.DateTimeFormat("sv-SE", {
     timeZone: timezone,
     year: "numeric",
@@ -589,7 +596,7 @@ export function zonedISO(local: string, timezone: string): string {
     return target - (wall(sample) - sample);
   }).filter(instant => wall(instant) === target);
   if (candidates.length) return new Date(Math.min(...candidates)).toISOString();
-  throw new Error("这个时区在该时刻发生夏令时跳转，请换一个时间");
+  throw new Error(l10n.t("schedule.daylight_saving_time_skips_this_time_in_the_selected"));
 }
 export function localInput(at: string, timezone: string): string {
   return new Intl.DateTimeFormat("sv-SE", {

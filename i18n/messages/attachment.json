@@ -575,7 +575,8 @@
     "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -589,7 +590,8 @@
     "notes": "SessionStore.swift。 iOS 会话批次 B，保留原中文。界面或 VoiceOver 文案；沿用现有组件空间和换行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -1107,6 +1109,22 @@
     "en": "Folders cannot be sent directly. Compress the folder as a ZIP, then select the file.",
     "notes": "附件栏的状态、提示或操作文字。可视短标签/状态提示。 空间：顶栏/菜单/按钮保持紧凑，沿用现有省略与换行；说明正文允许多行。 无变量。",
     "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "attachment.release_to_add",
+    "zh-CN": "松开以添加附件",
+    "en": "Release to add attachments",
+    "params": {},
+    "notes": "输入框拖放覆盖层提示；不是文件名。居中一行，允许换行，无变量。",
     "platforms": [
       "web",
       "android",

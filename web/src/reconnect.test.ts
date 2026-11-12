@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConnBar } from "./ui";
@@ -150,7 +151,7 @@ it("bounds terminal opening and cancels it without waiting for socket callbacks"
   Socket.all[0].onopen?.(); expect(Socket.all[0].send).not.toHaveBeenCalled();
   const controller = new AbortController();
   const aborted = r.openTerminal("s", vi.fn(), close, controller.signal).catch(e => e);
-  controller.abort(); expect((await aborted).message).toContain("取消");
+  controller.abort(); expect((await aborted).message).toContain(message("common.cancel"));
   expect(Socket.all[1].closed).toBe(true);
   const stopped = r.openTerminal("s", vi.fn(), close).catch(e => e);
   r.stop(); expect(await stopped).toBeInstanceOf(Error); expect(Socket.all[2].closed).toBe(true);
@@ -207,18 +208,18 @@ it("allows each setup step its own deadline instead of restarting a healthy slow
   vi.spyOn(r.security, "sync").mockReturnValue(new Promise(resolve => { synced = resolve; }));
   r.start(); await flush();
   const startedAt = r.connStartedAt;
-  expect(startedAt).toBe(Date.now()); expect(r.connStep).toBe("读取本机状态");
+  expect(startedAt).toBe(Date.now()); expect(r.connStep).toBe(message("errors.reading_local_state"));
   await vi.advanceTimersByTimeAsync(14_000); warmed(); await flush();
-  expect(r.connStep).toBe("登录"); expect(r.connStartedAt).toBe(startedAt);
+  expect(r.connStep).toBe(message("errors.signing_in")); expect(r.connStartedAt).toBe(startedAt);
   await vi.advanceTimersByTimeAsync(14_000); loggedIn(); await flush();
-  expect(r.connStep).toBe("同步设备状态"); expect(r.connStartedAt).toBe(startedAt);
+  expect(r.connStep).toBe(message("errors.syncing_device_state")); expect(r.connStartedAt).toBe(startedAt);
   await vi.advanceTimersByTimeAsync(20_000);
   expect(r.conn).toBe("connecting"); expect(r.failures).toBe(0);
   synced({ member: true, states: [{ core: { authorityID: "authority" } }] }); await flush();
   expect(Socket.all).toHaveLength(1);
-  expect(r.connStep).toBe("建立推送连接"); expect(r.connStartedAt).toBe(startedAt);
+  expect(r.connStep).toBe(message("errors.establishing_push_connection")); expect(r.connStartedAt).toBe(startedAt);
   Socket.all[0].onopen?.();
-  expect(r.connStep).toBe("建立推送连接");
+  expect(r.connStep).toBe(message("errors.establishing_push_connection"));
   Socket.all[0].frame("ready"); await flush();
   expect(r.conn).toBe("online"); expect(r.failures).toBe(0);
   expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
@@ -230,7 +231,7 @@ it("clears attempt progress on failure and stop, starts afresh on retries and ne
   const unsubscribe = r.subscribe(() => seen.push(r.connStep));
   try {
     r.start(); await flush(); const startedAt = r.connStartedAt;
-    expect(seen).toEqual(expect.arrayContaining(["读取本机状态", "登录", "同步设备状态", "建立推送连接"]));
+    expect(seen).toEqual(expect.arrayContaining([message("errors.reading_local_state"), message("errors.signing_in"), message("errors.syncing_device_state"), message("errors.establishing_push_connection")]));
     await vi.advanceTimersByTimeAsync(15_000);
     expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined(); expect(r.connError).not.toBe("");
     // The last failure stays for the banner's details until Ready.
@@ -239,7 +240,7 @@ it("clears attempt progress on failure and stop, starts afresh on retries and ne
     expect(r.connError).toBe(failed); expect(r.connStartedAt).toBeGreaterThan(startedAt!);
     await vi.advanceTimersByTimeAsync(100);
     r.setNetwork(false); await flush();
-    expect(r.connStartedAt).toBe(Date.now()); expect(r.connStep).toBe("建立推送连接");
+    expect(r.connStartedAt).toBe(Date.now()); expect(r.connStep).toBe(message("errors.establishing_push_connection"));
     r.stop(); expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
     Socket.all.at(-1)!.frame("ready"); await flush();
     expect(r.connStep).toBe(""); expect(r.connStartedAt).toBeUndefined();
@@ -335,14 +336,14 @@ it("cancels an old backoff when foreground startup has already replaced it", asy
 it("delays only cached waiting notices, preserves offline warnings and the ten-second failure deadline", async () => {
   const r = await probe(); vi.useFakeTimers();
   const bar = () => renderToStaticMarkup(createElement(ConnBar, { remote: r }));
-  r.start(); await flush(); expect(bar()).toContain("连接中");
+  r.start(); await flush(); expect(bar()).toContain(message("connection.connecting_conn_check"));
   Socket.all[0].frame("ready"); await flush(); r.listed = true;
   Socket.all[0].onclose?.({ code: 1006 });
   expect(bar()).toBe("");
   await vi.advanceTimersByTimeAsync(1_499); expect(bar()).toBe("");
   await vi.advanceTimersByTimeAsync(1); expect(bar()).toContain("正在重连");
-  await vi.advanceTimersByTimeAsync(8_500); expect(bar()).toContain("连不上服务器");
-  r.setNetwork(false); expect(bar()).toContain("本机网络不通");
+  await vi.advanceTimersByTimeAsync(8_500); expect(bar()).toContain(message("connection.no_server"));
+  r.setNetwork(false); expect(bar()).toContain(message("connection.no_network"));
 });
 it("never flashes a waiting notice when cached content reconnects within one second", async () => {
   const r = await probe(); vi.useFakeTimers(); r.listed = true;

@@ -1,10 +1,12 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { AccountEntry } from "./AuthoritySetup";
 import { AuthoritySetup, authorityStartup } from "../authority-setup";
-vi.mock("../authority-setup", () => ({
+vi.mock("../authority-setup", async importOriginal => ({
+  ...await importOriginal<typeof import("../authority-setup")>(),
   AuthoritySetup: vi.fn(),
   authorityStartup: vi.fn(async () => ({ kind: "empty" })),
 }));
@@ -52,11 +54,11 @@ it("has three unauthenticated entries and keeps pairing direction", async () => 
     expect(button(label)).toBeTruthy();
   const rows = [...host.querySelectorAll(".grp .entry-row")];
   expect(rows.map(row => row.querySelector("small")?.textContent)).toEqual([
-    "这台设备成为管理端", "用管理端给的配对码加入", "管理端丢失时使用",
+    message("security.this_device_becomes_the_managing_client"), message("security.join_with_a_code_from_the_managing_client"), message("security.use_when_the_managing_client_is_lost"),
   ]);
-  await click("加入已有账户");
+  await click(message("security.join_an_existing_account"));
   expect(host.textContent).toContain(
-    "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
+    message("security.on_the_managing_client_open_settings_add_device_and"),
   );
 });
 it("requires offline backup before continuing creation and does not claim success on a failed save", async () => {
@@ -76,17 +78,17 @@ it("requires offline backup before continuing creation and does not claim succes
     continueCreation: vi.fn(),
   } as unknown as AuthoritySetup;
   await mount(setup);
-  await click("新建账户");
+  await click(message("security.create_account"));
   await input("服务器", "https://ra.example.com");
-  await click("生成恢复码");
-  expect(host.textContent).toContain("浏览器没有承诺保留数据");
-  expect(button("继续创建").disabled).toBe(true);
-  await click("继续创建");
+  await click(message("security.generate_recovery_code"));
+  expect(host.textContent).toContain(message("security.the_browser_did_not_promise_to_retain_data"));
+  expect(button(message("security.continue_creation")).disabled).toBe(true);
+  await click(message("security.continue_creation"));
   expect(setup.confirmCreationCodeSaved).not.toHaveBeenCalled();
   await act(async () =>
     host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
   );
-  await click("继续创建");
+  await click(message("security.continue_creation"));
   expect(host.textContent).toContain("storage failed");
   expect(setup.continueCreation).not.toHaveBeenCalled();
   expect(done).not.toHaveBeenCalled();
@@ -104,7 +106,7 @@ it("resumes a published creation with no replacement genesis or invented backup"
   } as unknown as AuthoritySetup;
   await mount(setup);
   expect(host.textContent).toContain("恢复码不会再次显示");
-  await click("继续创建");
+  await click(message("security.continue_creation"));
   expect(setup.prepareCreation).not.toHaveBeenCalled();
   expect(setup.adoptCreationWithoutCode).toHaveBeenCalledOnce();
   expect(done).toHaveBeenCalledOnce();
@@ -124,8 +126,8 @@ it("queries a recovery draft on restart and permits completing it without claimi
   await mount(setup);
   expect(host.textContent).toContain("完成恢复时会自动移除旧身份并轮换内容密钥");
   expect(host.textContent).toContain("中断后请继续原恢复");
-  await click("提交或查询原恢复");
-  await click("完成恢复");
+  await click(message("security.submit_or_check_original_recovery"));
+  await click(message("security.complete_recovery"));
   expect(setup.completeRecovery).toHaveBeenCalledOnce();
   expect(setup.confirmRecoveryCodeSaved).not.toHaveBeenCalled();
   expect(done).toHaveBeenCalledOnce();
@@ -150,13 +152,13 @@ it("finishes a retried published creation when backup confirmation already adopt
     continueCreation: vi.fn(),
   } as unknown as AuthoritySetup;
   await mount(setup);
-  await click("新建账户");
+  await click(message("security.create_account"));
   await input("服务器", "https://ra.example.com");
-  await click("生成恢复码");
+  await click(message("security.generate_recovery_code"));
   await act(async () =>
     host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
   );
-  await click("继续创建");
+  await click(message("security.continue_creation"));
   expect(setup.confirmCreationCodeSaved).toHaveBeenCalledOnce();
   expect(setup.continueCreation).not.toHaveBeenCalled();
   expect(done).toHaveBeenCalledOnce();

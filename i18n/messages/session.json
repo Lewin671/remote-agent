@@ -357,7 +357,8 @@
     "notes": "Android 批次 B：Actions.kt 的现有显示文案，保留原中文措辞与标点。无变量。短标签保持紧凑；说明正文可多行。英文初稿待审。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -1535,7 +1536,8 @@
     "notes": "会话、审批、提问、计划与图片路由查找失败的空页标题；不存在由状态 .missing 决定，不按文案判断。 iOS 会话附件提示，保留中文；正文允许多行，按钮保持紧凑。 无变量。",
     "params": {},
     "platforms": [
-      "ios"
+      "ios",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

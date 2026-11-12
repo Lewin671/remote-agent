@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { describe, expect, it } from "vitest";
 import {
   CHUNK_BYTES,
@@ -386,7 +387,7 @@ describe("prepareOriginal", () => {
 
   it("refuses files over 20 MB", async () => {
     const f = fakeBackend(1, 1);
-    await expect(prepareOriginal(blob(new Uint8Array(MAX_ORIGINAL_BYTES + 1)), f.backend)).rejects.toMatchObject({ code: "too_large", message: "图片超过 20 MB" });
+    await expect(prepareOriginal(blob(new Uint8Array(MAX_ORIGINAL_BYTES + 1)), f.backend)).rejects.toMatchObject({ code: "too_large", message: message("image.image_exceeds_20_mb") });
   });
 
   it("strips an upright JPEG without touching its pixels", async () => {

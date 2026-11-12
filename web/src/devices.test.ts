@@ -31,14 +31,14 @@ describe("device names", () => {
     expect(clientName(all.get("dddd0000dddd0000dddd0000ddddpxl1"), all)).toBe("我的手机");
     // Two Android phones that say no model: told apart by their IDs.
     expect(clientName(all.get("bbbb0000bbbb0000bbbb0000bbbbb71c"), all)).toBe("Android · b71c");
-    expect(clientName(all.get("cccc0000cccc0000cccc0000cccc92de"), all)).toBe("客户端");
+    expect(clientName(all.get("cccc0000cccc0000cccc0000cccc92de"), all)).toBe(message("security.client"));
     expect(platformName(create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }))).toBe("Chrome · macOS");
     expect(platformName(create(DeviceMetaSchema, { platform: "web", description: "Firefox" }))).toBe("Firefox");
-    expect(platformName(create(DeviceMetaSchema, { platform: "web" }))).toBe("浏览器");
+    expect(platformName(create(DeviceMetaSchema, { platform: "web" }))).toBe(message("security.browser"));
     expect(platformName(create(DeviceMetaSchema, { platform: "android", description: "Android 16 · Pixel 9" }))).toBe("Android · Pixel 9");
     expect(platformName(create(DeviceMetaSchema, { platform: "ios", description: "iOS 26.0 · iPad" }))).toBe("iPad");
     expect(platformName(create(DeviceMetaSchema, { platform: "ios" }))).toBe("iOS");
-    expect(platformName(undefined)).toBe("客户端");
+    expect(platformName(undefined)).toBe(message("security.client"));
     // A taken name keeps the default it would have.
     expect(defaultClientName(dev("dddd0000dddd0000dddd0000ddddpxl1", { name: "我的手机", platform: "android", description: "Android 16 · Pixel 9" }), all)).toBe("Android · Pixel 9");
   });
@@ -62,14 +62,14 @@ describe("device names", () => {
     expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "web", description: "Chrome on macOS" }) })).toBe("浏览器 · Chrome on macOS");
     expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "android", description: "Android 16 · Pixel 9" }) })).toBe("App · Android 16 · Pixel 9");
     expect(clientDetail({ meta: create(DeviceMetaSchema, { platform: "ios", description: "iOS 27.0 · iPhone" }) })).toBe("App · iOS 27.0 · iPhone");
-    expect(clientDetail(undefined)).toBe("种类未知");
+    expect(clientDetail(undefined)).toBe(message("security.unknown_type"));
     expect(clientUsed({ lastSeenMs: BigInt(now - 30_000), createdMs: at(2026, 8, 1) }, now)).toBe("刚刚使用");
     expect(clientUsed({ lastSeenMs: BigInt(now - 5 * 60_000) }, now)).toBe("5 分钟前使用");
     expect(clientUsed({ lastSeenMs: at(2026, 9, 3, 9, 5) }, now)).toBe("今天 9:05 使用");
     expect(clientUsed({ lastSeenMs: at(2026, 9, 2, 23) }, now)).toBe("昨天使用");
     expect(clientUsed({ lastSeenMs: at(2026, 7, 3) }, now)).toBe("8月3日使用");
     expect(clientUsed({ lastSeenMs: 0n, createdMs: at(2025, 11, 1) }, now)).toBe("2025年12月1日添加");
-    expect(clientUsed(undefined, now)).toBe("已配对");
+    expect(clientUsed(undefined, now)).toBe(message("security.paired"));
     const order = sortClients(
       [
         { id: "old", createdMs: 1n, lastSeenMs: 0n },

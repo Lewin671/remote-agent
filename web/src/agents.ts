@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import * as i18n from "./i18n";
 import { Agent, ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import type { AgentDefaults, DaemonSettings } from "./gen/remoteagent/v1/local_pb";
@@ -69,17 +70,17 @@ function gptSlugLabel(id: string): string {
 }
 
 function fixedWindowLabel(name: string): QuotaWindowDescriptor {
-  if (name === "primary" || name === "five_hour") return { label: "5 小时", group: null };
-  if (name === "secondary" || name === "seven_day") return { label: "7 天", group: null };
+  if (name === "primary" || name === "five_hour") return { label: l10n.t("quota.hr", { count: 5 }), group: null };
+  if (name === "secondary" || name === "seven_day") return { label: l10n.t("quota.days", { count: 7 }), group: null };
   return { label: name, group: null };
 }
 
-const ANTIGRAVITY_QUOTA_WINDOWS: Record<string, QuotaWindowDescriptor> = {
-  "gemini-5h": { label: "Gemini · 5 小时", group: "Gemini", pool: "Gemini" },
-  "gemini-weekly": { label: "Gemini · 7 天", group: "Gemini", pool: "Gemini" },
-  "gemini-argon-wtu-weekly": { label: "Gemini 4 Argon · 7 天", group: "Gemini", pool: "Gemini 4 Argon" },
-  "3p-5h": { label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" },
-  "3p-weekly": { label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" },
+const ANTIGRAVITY_QUOTA_WINDOWS: Record<string, () => QuotaWindowDescriptor> = {
+  "gemini-5h": () => ({ label: l10n.t("quota.named_hours", { name: "Gemini", count: 5 }), group: "Gemini", pool: "Gemini" }),
+  "gemini-weekly": () => ({ label: l10n.t("quota.named_days", { name: "Gemini", count: 7 }), group: "Gemini", pool: "Gemini" }),
+  "gemini-argon-wtu-weekly": () => ({ label: l10n.t("quota.named_days", { name: "Gemini 4 Argon", count: 7 }), group: "Gemini", pool: "Gemini 4 Argon" }),
+  "3p-5h": () => ({ label: l10n.t("quota.named_hours", { name: l10n.t("quota.third_party_models"), count: 5 }), group: l10n.t("quota.third_party_models_claude_gpt_oss"), pool: l10n.t("quota.third_party_models") }),
+  "3p-weekly": () => ({ label: l10n.t("quota.named_days", { name: l10n.t("quota.third_party_models"), count: 7 }), group: l10n.t("quota.third_party_models_claude_gpt_oss"), pool: l10n.t("quota.third_party_models") }),
 };
 
 const CODEX_ENTRY: AgentEntry = {
@@ -183,7 +184,7 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
   name: "Antigravity",
   quotaWindows: [],
   quotaWindow(name: string): QuotaWindowDescriptor {
-    return ANTIGRAVITY_QUOTA_WINDOWS[name] ?? { label: name, group: name };
+    return ANTIGRAVITY_QUOTA_WINDOWS[name]?.() ?? { label: name, group: name };
   },
   planName(raw: string): string {
     return raw;
@@ -227,7 +228,7 @@ const ANTIGRAVITY_ENTRY: AgentEntry = {
 const UNKNOWN_ENTRY: AgentEntry = {
   agent: -1 as Agent,
   id: "",
-  name: "未知 CLI",
+  name: l10n.t("models.unknown_cli"),
   quotaWindows: [],
   quotaWindow(name: string): QuotaWindowDescriptor {
     return { label: name, group: null };

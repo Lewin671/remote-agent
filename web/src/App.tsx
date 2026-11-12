@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { useLocale } from "./i18n";
 import { Startup } from "./Startup";
 import { RetainedIdentityDeniedScreen } from "./Rejoin";
@@ -80,14 +81,14 @@ export function App() {
         }
         if (status === "clock") {
           setSetupError(
-            "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
+            l10n.t("errors.this_device_s_clock_is_behind_the_account_state"),
           );
           setRemote(null);
           return;
         }
         if (status === "invalid") {
           setSetupError(
-            "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",
+            l10n.t("errors.this_device_s_security_state_could_not_be_verified"),
           );
           setRemote(null);
           return;
@@ -106,8 +107,7 @@ export function App() {
     } catch (error) {
       if (!active()) return;
       setSetupError(
-        errorText(error) +
-          "。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
+        l10n.t("errors.setup_request_preserved", { reason: errorText(error) }),
       );
       setRemote(null);
     }
@@ -193,7 +193,7 @@ export function App() {
     return (
       <div className="center">
         <p>{setupError}</p>
-        <button onClick={() => void load()}>重试</button>
+        <button onClick={() => void load()}>{l10n.t("common.retry")}</button>
         <SetupReset onDone={() => void load()} />
       </div>
     );

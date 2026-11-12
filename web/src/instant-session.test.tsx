@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -55,5 +56,5 @@ it("shows a verified session even if an earlier lookup marked it missing", async
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
   await act(async () => root!.render(<Workspace remote={remote} />));
   expect(host.querySelector(".session")).not.toBeNull();
-  expect(host.textContent).not.toContain("找不到这个会话");
+  expect(host.textContent).not.toContain(message("session.ios_missing"));
 });

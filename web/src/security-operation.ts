@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // Foreground-only durable authority coordination. No service-worker imports.
 import { equal, SecurityError } from "./device-security";
 import { securityEntry, updateSecurityEntry, type SecurityRecord } from "./device-security-store";
@@ -36,7 +37,7 @@ export async function readSecurityOperation<L = unknown>(): Promise<SecurityOper
 }
 export async function claimSecurityOperation<L>(op: SecurityOperation<L>, expectedHead?: B, expectedMemberID = op.memberID): Promise<void> {
   await updateSecurityEntry<SecurityOperation<L>>("pending", (old, record) => {
-    if (old) throw new Error("还有未完成的安全操作，请先继续处理");
+    if (old) throw new Error(l10n.t("security.a_security_operation_is_unfinished_continue_it_first"));
     if (expectedHead && (!record || record.memberID !== expectedMemberID || !equal(record.stateHash, expectedHead)))
       throw new SecurityError("stale");
     return op;
@@ -98,10 +99,10 @@ export class AuthorityLifecycle {
     const generation = this.generation;
     const check = () => {
       if (!this.enabled || this.hidden || !this.visible() || generation !== this.generation)
-        throw new Error("页面已暂停，请回到前台继续安全操作");
+        throw new Error(l10n.t("security.the_page_is_paused_return_to_the_foreground_to"));
     };
     check();
-    if (!navigator.locks) throw new Error("浏览器不支持 Web Locks，无法安全管理账户");
+    if (!navigator.locks) throw new Error(l10n.t("security.this_browser_does_not_support_web_locks_it_cannot"));
     return navigator.locks.request("remote-agent-authority", { mode: "exclusive" }, async () => {
       check();
       return work(check);
@@ -109,7 +110,7 @@ export class AuthorityLifecycle {
   }
 }
 
-export const BROWSER_AUTHORITY_NOTICE = "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。";
+export const BROWSER_AUTHORITY_NOTICE = () => l10n.t("security.this_browser_will_be_the_only_managing_client_clearing");
 /** Expose the actual browser result to batch C; persistence cannot prevent
  * explicit site-data deletion and is never reported as a guarantee. */
 export async function requestAuthorityPersistence(): Promise<boolean> {
@@ -124,9 +125,9 @@ export async function authorityExitAdvice(): Promise<{ authority: boolean; unres
     authority = isAuthority(await loadSecurity());
   } catch { /* A damaged pin is retained until an explicit storage reset. */ }
   return { authority, unresolved: !!pending,
-    message: pending ? "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。"
-      : authority ? "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。"
-      : "退出会删除本机密钥，需要重新配对。" };
+    message: pending ? l10n.t("security.the_security_operation_s_outcome_is_unverified_continue_the")
+      : authority ? l10n.t("security.this_browser_is_the_only_managing_client_transfer_management")
+      : l10n.t("security.exiting_deletes_local_keys_you_will_need_to_pair") };
 }
 
 interface CodeRotationNotice { server: string; account: string; genesis: B }

@@ -1,0 +1,3560 @@
+[
+  {
+    "key": "security.on_the_managing_client_open_settings_add_device_and",
+    "zh-CN": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
+    "en": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_original_device_identity_keys_and_history_are_preserved",
+    "zh-CN": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。",
+    "en": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device_s_clock_is_behind_the_managing_client",
+    "zh-CN": "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+    "en": "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_account_s_state_chain_is_too_long_to",
+    "zh-CN": "账户的状态链太长，无法加入；请在管理端重建账户。",
+    "en": "The account’s state chain is too long to join. Rebuild the account on the managing client.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_page_and_the_server_or_pairing_device_use",
+    "zh-CN": "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
+    "en": "This page and the server or pairing device use different versions. Refresh to update and retry.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_pairing_code_is_wrong_or_has_already_been",
+    "zh-CN": "配对码不对，或者已经用过了",
+    "en": "The pairing code is wrong or has already been used",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.too_many_attempts_wait_a_minute_and_retry",
+    "zh-CN": "试得太多了，等一分钟再试",
+    "en": "Too many attempts. Wait a minute and retry.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_pairing_expired_generate_a_new_code_on_the",
+    "zh-CN": "这次配对已失效，请在管理端重新生成配对码",
+    "en": "This pairing expired. Generate a new code on the managing client.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_other_device_refused_this_join_request",
+    "zh-CN": "对方拒绝了这次加入",
+    "en": "The other device refused this join request",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.success_is_uncertain_connection_lost",
+    "zh-CN": "不确定是否成功：网络断了",
+    "en": "Success is uncertain: connection lost",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.stopped_waiting_reject_the_old_request_on_the_managing",
+    "zh-CN": "已停止这次等待。请在管理端拒绝旧请求，再生成新的配对码。",
+    "en": "Stopped waiting. Reject the old request on the managing client, then generate a new pairing code.",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.start_over",
+    "zh-CN": "重新开始",
+    "en": "Start over",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.re_enter",
+    "zh-CN": "重填",
+    "en": "Re-enter",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.compare_patterns",
+    "zh-CN": "核对图案",
+    "en": "Compare patterns",
+    "notes": "Pairing 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.compare_the_managing_client_s_4_patterns_if_they",
+    "zh-CN": "核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。",
+    "en": "Compare the managing client’s 4 patterns. If they match, confirm here first, then allow on the managing client.",
+    "notes": "Pairing 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.patterns_match_trust_and_continue",
+    "zh-CN": "图案一致，信任并继续",
+    "en": "Patterns match, trust and continue",
+    "notes": "Pairing 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirm_the_patterns_on_this_device_first",
+    "zh-CN": "请先在本机确认图案",
+    "en": "Confirm the patterns on this device first",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirmed_here_waiting_for_managing_client_approval_and_binding",
+    "zh-CN": "本机已确认，等待管理端批准并完成绑定…",
+    "en": "Confirmed here. Waiting for managing client approval and binding…",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.waiting_for_comparison",
+    "zh-CN": "等待核对…",
+    "en": "Waiting for comparison…",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.patterns_differ_return_to_code_entry",
+    "zh-CN": "图案不一致，返回填码",
+    "en": "Patterns differ, return to code entry",
+    "notes": "Pairing 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.returning_stops_this_wait_reject_the_old_request_on",
+    "zh-CN": "返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。",
+    "en": "Returning stops this wait. Reject the old request on the managing client, then generate a new code.",
+    "notes": "Pairing 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.one_time_security_setup",
+    "zh-CN": "一次性安全设置",
+    "en": "One-time security setup",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.join_account",
+    "zh-CN": "加入账户",
+    "en": "Join account",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_code",
+    "zh-CN": "配对码",
+    "en": "Pairing code",
+    "notes": "Pairing 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.join",
+    "zh-CN": "加入",
+    "en": "Join",
+    "notes": "Pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device_has_an_unfinished_join_request_deleting_it",
+    "zh-CN": "这台设备还有未完成的加入请求，删除后将无法继续原请求。",
+    "en": "This device has an unfinished join request. Deleting it prevents you from continuing that request.",
+    "notes": "Rejoin 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_deletes_the_account_keys_and_cache_on_this",
+    "zh-CN": "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。",
+    "en": "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.",
+    "notes": "Rejoin 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.delete_local_keys_and_rejoin",
+    "zh-CN": "删除本机密钥并重新加入？",
+    "en": "Delete local keys and rejoin?",
+    "notes": "Rejoin 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.rejoin",
+    "zh-CN": "重新加入",
+    "en": "Rejoin",
+    "notes": "Rejoin 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_server_does_not_recognize_this_device",
+    "zh-CN": "服务器不认识这台设备",
+    "en": "The server does not recognize this device",
+    "notes": "Rejoin 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.it_may_have_been_removed_or_the_service_may",
+    "zh-CN": "可能已被移除，或服务已重建。电脑上的会话不受影响。",
+    "en": "It may have been removed, or the service may have been rebuilt. Sessions on your computers are unaffected.",
+    "notes": "Rejoin 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.rejoin_with_a_pairing_code",
+    "zh-CN": "用配对码重新加入",
+    "en": "Rejoin with a pairing code",
+    "notes": "Rejoin 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_account_keys_and_cache_in_this_browser_will",
+    "zh-CN": "会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。",
+    "en": "The account keys and cache in this browser will be deleted before joining with a pairing code.",
+    "notes": "Rejoin 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exit_and_start_over",
+    "zh-CN": "退出并重新开始",
+    "en": "Exit and start over",
+    "notes": "SetupReset 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exit_and_delete_local_keys",
+    "zh-CN": "退出并删除本机密钥？",
+    "en": "Exit and delete local keys?",
+    "notes": "SetupReset 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_local_account_unfinished_registration_and_security_operations_will",
+    "zh-CN": "本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。",
+    "en": "The local account, unfinished registration, and security operations will be cleared. You will need to pair again or create an account. Sessions and archives on the server will remain. Operations with an unknown outcome may have succeeded; verify them on the managing client.",
+    "notes": "SetupReset 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirm_exit",
+    "zh-CN": "确认退出",
+    "en": "Confirm exit",
+    "notes": "SetupReset 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.return_to_account_creation_or_recovery_to_continue_the",
+    "zh-CN": "请回到创建或恢复流程继续原草稿",
+    "en": "Return to account creation or recovery to continue the original draft",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.device_information_changed_the_original_transfer_request_was_not",
+    "zh-CN": "设备信息已变化，原交接申请未应用；可明确放弃后重新准备",
+    "en": "Device information changed. The original transfer request was not applied; explicitly abandon it before preparing another.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before",
+    "zh-CN": "配对已取消，请明确移除未完成候选后重新开始",
+    "en": "Pairing was canceled. Explicitly remove the unfinished candidate before starting over.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before",
+    "zh-CN": "配对交付已失效，请明确移除未完成候选后重新开始",
+    "en": "Pairing delivery expired. Explicitly remove the unfinished candidate before starting over.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon",
+    "zh-CN": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
+    "en": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate",
+    "zh-CN": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
+    "en": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.account_public_key_missing_pair_again_or_use_a",
+    "zh-CN": "缺少账户公钥，请重新配对或用恢复码补齐",
+    "en": "Account public key missing. Pair again or use a recovery code to restore it.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.finish_the_current_security_operation_first",
+    "zh-CN": "请先完成当前安全操作",
+    "en": "Finish the current security operation first",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_managing_client_cannot_be_removed_directly_transfer_management",
+    "zh-CN": "管理端不能被普通删除，请先交接",
+    "en": "The managing client cannot be removed directly. Transfer management first.",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.generate_and_save_a_recovery_code_on_the_successor",
+    "zh-CN": "请先在接任设备生成并保存恢复码",
+    "en": "Generate and save a recovery code on the successor device first",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.another_security_operation_is_unfinished",
+    "zh-CN": "另一次安全操作尚未完成",
+    "en": "Another security operation is unfinished",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_expired",
+    "zh-CN": "配对已过期",
+    "en": "Pairing expired",
+    "notes": "authority-client 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.only_a_removed_computer_s_archive_can_be_rejoined",
+    "zh-CN": "只能从已移除电脑的档案重新加入",
+    "en": "Only a removed computer’s archive can be rejoined",
+    "notes": "authority-pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_computer_s_archive_was_deleted_join_as_a",
+    "zh-CN": "电脑档案已删除，请按新设备加入",
+    "en": "The computer’s archive was deleted. Join as a new device.",
+    "notes": "authority-pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_was_canceled_or_expired",
+    "zh-CN": "配对已取消或过期",
+    "en": "Pairing was canceled or expired",
+    "notes": "authority-pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_canceled",
+    "zh-CN": "配对已取消",
+    "en": "Pairing canceled",
+    "notes": "authority-pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirm_the_patterns_on_the_new_device_before_approving",
+    "zh-CN": "请先由新设备确认图案，再在管理端批准",
+    "en": "Confirm the patterns on the new device before approving on the managing client",
+    "notes": "authority-pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.finish_the_original_security_operation_first",
+    "zh-CN": "请先完成原安全操作",
+    "en": "Finish the original security operation first",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.invalid_recovery_code",
+    "zh-CN": "恢复码无效",
+    "en": "Invalid recovery code",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected",
+    "zh-CN": "请先继续原恢复或明确放弃已否决的恢复",
+    "en": "Continue the original recovery or explicitly abandon the rejected recovery first",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.finish_device_registration_first",
+    "zh-CN": "请先完成设备注册",
+    "en": "Finish device registration first",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.apply_again_with_the_current_recovery_code",
+    "zh-CN": "请使用当前恢复码重新申请",
+    "en": "Apply again with the current recovery code",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_recovery_signature_has_not_been_saved_re_enter",
+    "zh-CN": "恢复签名尚未保存，请重新输入原恢复码继续原草稿",
+    "en": "The recovery signature has not been saved. Re-enter the original recovery code to continue the original draft.",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_was_rejected_explicitly_apply_again",
+    "zh-CN": "恢复已被否决，请明确重新申请",
+    "en": "Recovery was rejected. Explicitly apply again.",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_48_hour_wait_has_not_ended",
+    "zh-CN": "48 小时等待尚未结束",
+    "en": "The 48-hour wait has not ended",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_is_pending_or_its_outcome_is_unknown_and",
+    "zh-CN": "恢复仍待处理或结果未明，不能放弃",
+    "en": "Recovery is pending or its outcome is unknown and cannot be abandoned",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.registration_proof_of_work_is_invalid_or_expired",
+    "zh-CN": "注册工作量证明无效或已过期",
+    "en": "Registration proof of work is invalid or expired",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.registration_proof_of_work_expired_retry_the_original_draft",
+    "zh-CN": "注册工作量证明已过期，请重试原草稿",
+    "en": "Registration proof of work expired. Retry the original draft.",
+    "notes": "authority-setup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.another_pairing_draft_is_unfinished_complete_this_pairing_or",
+    "zh-CN": "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
+    "en": "Another pairing draft is unfinished. Complete this pairing or explicitly exit before retrying.",
+    "notes": "device-security-store 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.browser",
+    "zh-CN": "浏览器",
+    "en": "Browser",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。 describeBrowser 写入设备描述的未知浏览器名称固定取源语言，保持现有元信息字节，不把本机语言偏好同步到设备元信息。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.client",
+    "zh-CN": "客户端",
+    "en": "Client",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.unknown_type",
+    "zh-CN": "种类未知",
+    "en": "Unknown type",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.used",
+    "zh-CN": "{value}{detail}使用",
+    "en": "Used {value}{detail}",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = used；detail = /\\d$/.test(used) ? \" \" : \"\"；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.added",
+    "zh-CN": "{value}添加",
+    "en": "Added {value}",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = dayText(d!.createdMs!, now)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.paired",
+    "zh-CN": "已配对",
+    "en": "Paired",
+    "notes": "devices 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.invalid_pairing_key",
+    "zh-CN": "配对密钥无效",
+    "en": "Invalid pairing key",
+    "notes": "pair 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_managing_client_canceled_pairing",
+    "zh-CN": "管理端取消了配对",
+    "en": "The managing client canceled pairing",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_expired_or_was_canceled",
+    "zh-CN": "配对已过期或被取消",
+    "en": "Pairing expired or was canceled",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.registration_on_another_server_is_unfinished_retry_it_or",
+    "zh-CN": "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
+    "en": "Registration on another server is unfinished. Retry it or exit and start over.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.security_setup_must_use_the_original_account_s_server",
+    "zh-CN": "安全设置必须使用原账户的服务器",
+    "en": "Security setup must use the original account’s server",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_commitment_mismatch_pairing_stopped",
+    "zh-CN": "配对承诺不匹配，已停止配对",
+    "en": "Pairing commitment mismatch. Pairing stopped.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.another_pairing_draft_is_unfinished",
+    "zh-CN": "另一个配对草稿仍待完成",
+    "en": "Another pairing draft is unfinished",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_pairing_draft_conflicts_with_the_current_identity",
+    "zh-CN": "配对草稿与当前身份冲突",
+    "en": "The pairing draft conflicts with the current identity",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_server_replaced_the_pairing_commitment_after_receiving_the",
+    "zh-CN": "服务器在获得临时公钥后替换了配对承诺，已停止配对",
+    "en": "The server replaced the pairing commitment after receiving the temporary public key. Pairing stopped.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_server_returned_information_for_a_different_device_from",
+    "zh-CN": "服务器返回的不是发起配对那台设备的信息，已停止配对",
+    "en": "The server returned information for a different device from the one that started pairing. Pairing stopped.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_managing_client_s_trust_information_does_not_match",
+    "zh-CN": "管理端的信任信息与配对承诺不匹配",
+    "en": "The managing client’s trust information does not match the pairing commitment",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_local_security_state_is_damaged_and_cannot_be",
+    "zh-CN": "本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试",
+    "en": "The local security state is damaged and cannot be overwritten by pairing again. Export and clear it first.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_pairing_code_belongs_to_another_security_domain_original",
+    "zh-CN": "配对码属于另一个安全域，原密钥已保留",
+    "en": "The pairing code belongs to another security domain. Original keys preserved.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.invalid_pairing_trust_information",
+    "zh-CN": "无效的配对信任信息",
+    "en": "Invalid pairing trust information",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_account_belongs_to_another_server",
+    "zh-CN": "账户属于另一个服务器",
+    "en": "The account belongs to another server",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_account_does_not_match_the_managing_client_s",
+    "zh-CN": "账户与管理端的信任信息不匹配",
+    "en": "The account does not match the managing client’s trust information",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pairing_approval_does_not_match_this_device_or_has",
+    "zh-CN": "配对批准与这台设备不匹配或已过期",
+    "en": "Pairing approval does not match this device or has expired",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_pairing_receipt_was_approved_by_a_device_other",
+    "zh-CN": "配对回执的批准设备不是当前管理端",
+    "en": "The pairing receipt was approved by a device other than the current managing client",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_join_receipt_does_not_contain_the_correct_identity",
+    "zh-CN": "加入回执没有本机的正确身份",
+    "en": "The join receipt does not contain the correct identity for this device",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_browser_s_original_public_key_could_not_be",
+    "zh-CN": "无法核实这台浏览器原来的公钥，原密钥已保留",
+    "en": "This browser’s original public key could not be verified. Original keys preserved.",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_original_device_public_key_does_not_match_the",
+    "zh-CN": "原设备公钥与本机签名密钥不匹配",
+    "en": "The original device public key does not match the local signing key",
+    "notes": "pairing 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.a_security_operation_is_unfinished_continue_it_first",
+    "zh-CN": "还有未完成的安全操作，请先继续处理",
+    "en": "A security operation is unfinished. Continue it first.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_page_is_paused_return_to_the_foreground_to",
+    "zh-CN": "页面已暂停，请回到前台继续安全操作",
+    "en": "The page is paused. Return to the foreground to continue security operations.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_browser_does_not_support_web_locks_it_cannot",
+    "zh-CN": "浏览器不支持 Web Locks，无法安全管理账户",
+    "en": "This browser does not support Web Locks. It cannot safely manage the account.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_browser_will_be_the_only_managing_client_clearing",
+    "zh-CN": "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。",
+    "en": "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_security_operation_s_outcome_is_unverified_continue_the",
+    "zh-CN": "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。",
+    "en": "The security operation’s outcome is unverified. Continue the original operation first; exiting deletes the only completion materials.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_browser_is_the_only_managing_client_transfer_management",
+    "zh-CN": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "en": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exiting_deletes_local_keys_you_will_need_to_pair",
+    "zh-CN": "退出会删除本机密钥，需要重新配对。",
+    "en": "Exiting deletes local keys. You will need to pair again.",
+    "notes": "security-operation 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.asked_the_browser_to_retain_data",
+    "zh-CN": "已请求浏览器保留数据",
+    "en": "Asked the browser to retain data",
+    "notes": "AuthorityKit 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_browser_did_not_promise_to_retain_data",
+    "zh-CN": "浏览器没有承诺保留数据",
+    "en": "The browser did not promise to retain data",
+    "notes": "AuthorityKit 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.new_recovery_code_shown_only_once",
+    "zh-CN": "新的恢复码 · 只显示这一次",
+    "en": "New recovery code · Shown only once",
+    "notes": "AuthorityKit 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.new_recovery_code",
+    "zh-CN": "新的恢复码",
+    "en": "New recovery code",
+    "notes": "AuthorityKit 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.save_the_recovery_code_offline_anyone_with_it_can",
+    "zh-CN": "请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。",
+    "en": "Save the recovery code offline. Anyone with it can request management takeover; do not send it to others.",
+    "notes": "AuthorityKit 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.i_saved_the_new_recovery_code_offline",
+    "zh-CN": "我已离线保存新的恢复码",
+    "en": "I saved the new recovery code offline",
+    "notes": "AuthorityKit 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.loading",
+    "zh-CN": "加载中…",
+    "en": "Loading…",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.join_an_existing_account",
+    "zh-CN": "加入已有账户",
+    "en": "Join an existing account",
+    "notes": "AuthoritySetup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.control_ai_coding_clis_on_your_computer_from_any",
+    "zh-CN": "在任何设备上操作电脑里的 AI 编程 CLI",
+    "en": "Control AI coding CLIs on your computer from any device",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.create_account",
+    "zh-CN": "新建账户",
+    "en": "Create account",
+    "notes": "AuthoritySetup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device_becomes_the_managing_client",
+    "zh-CN": "这台设备成为管理端",
+    "en": "This device becomes the managing client",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.join_with_a_code_from_the_managing_client",
+    "zh-CN": "用管理端给的配对码加入",
+    "en": "Join with a code from the managing client",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recover_management_with_a_recovery_code",
+    "zh-CN": "用恢复码找回管理权",
+    "en": "Recover management with a recovery code",
+    "notes": "AuthoritySetup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.use_when_the_managing_client_is_lost",
+    "zh-CN": "管理端丢失时使用",
+    "en": "Use when the managing client is lost",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.server",
+    "zh-CN": "服务器",
+    "en": "Server",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_original_creation_draft_is_preserved_continue_with_the",
+    "zh-CN": "原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。",
+    "en": "The original creation draft is preserved. Continue with the same account. The recovery code will not be shown again; if you have no backup, replace it immediately after entering the account.",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.setup_token_optional_with_open_registration",
+    "zh-CN": "Setup token（开放注册可留空）",
+    "en": "Setup token (optional with open registration)",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.processing",
+    "zh-CN": "处理中…",
+    "en": "Processing…",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.generate_recovery_code",
+    "zh-CN": "生成恢复码",
+    "en": "Generate recovery code",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.continue_creation",
+    "zh-CN": "继续创建",
+    "en": "Continue creation",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.if_this_browser_is_already_a_member_recovery_will",
+    "zh-CN": "若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。",
+    "en": "If this browser is already a member, recovery will remove its old identity and rotate content keys. If interrupted, continue the original recovery.",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.after_submission_wait_48_hours_the_current_managing_client",
+    "zh-CN": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
+    "en": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.original_recovery_code",
+    "zh-CN": "原恢复码",
+    "en": "Original recovery code",
+    "notes": "AuthoritySetup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.prepare_recovery",
+    "zh-CN": "准备恢复",
+    "en": "Prepare recovery",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_original_recovery_draft_is_preserved_the_new_recovery",
+    "zh-CN": "原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。",
+    "en": "The original recovery draft is preserved. The new recovery code will not be shown again; you can still finish the original recovery without saving it. Replace it immediately after entering the account.",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_was_rejected_you_can_apply_again",
+    "zh-CN": "恢复已被否决，可以重新申请。",
+    "en": "Recovery was rejected. You can apply again.",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_request_pending_eligible_at",
+    "zh-CN": "恢复申请待处理。可生效时间：{value}",
+    "en": "Recovery request pending. Eligible at: {value}",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = futureTime(status.readyMs)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.continue_original_draft",
+    "zh-CN": "继续原草稿",
+    "en": "Continue original draft",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.abandon_unsigned_draft",
+    "zh-CN": "放弃未签名草稿",
+    "en": "Abandon unsigned draft",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.complete_recovery",
+    "zh-CN": "完成恢复",
+    "en": "Complete recovery",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.submit_or_check_original_recovery",
+    "zh-CN": "提交或查询原恢复",
+    "en": "Submit or check original recovery",
+    "notes": "AuthoritySetup 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.apply_again",
+    "zh-CN": "重新申请",
+    "en": "Apply again",
+    "notes": "AuthoritySetup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management",
+    "zh-CN": "管理端不能直接移除，请先交接管理权。",
+    "en": "The managing client cannot be removed directly. Transfer management first.",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remove_unfinished_pairing",
+    "zh-CN": "移除未完成的配对…",
+    "en": "Remove unfinished pairing…",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remove_device",
+    "zh-CN": "移除设备…",
+    "en": "Remove device…",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.rejoin_and_resume_sessions",
+    "zh-CN": "重新加入并接续会话",
+    "en": "Rejoin and resume sessions",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.delete_this_computer_s_records",
+    "zh-CN": "删除这台电脑的记录…",
+    "en": "Delete this computer’s records…",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remove_device_device_management",
+    "zh-CN": "移除设备？",
+    "en": "Remove device?",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.delete_this_computer_s_records_device_management",
+    "zh-CN": "删除这台电脑的记录",
+    "en": "Delete this computer’s records",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.after_removing_this_unfinished_pairing_generate_a_new_code",
+    "zh-CN": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
+    "en": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.removal_immediately_stops_remote_access_from_this_device_the",
+    "zh-CN": "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。",
+    "en": "Removal immediately stops remote access from this device. The computer’s sessions and archives remain; its local CLI is unaffected.",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_permanently_deletes_sessions_events_and_images_on_the",
+    "zh-CN": "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。",
+    "en": "This permanently deletes sessions, events, and images on the relay. Local computer files are unaffected. This does not remove the device.",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.delete_records",
+    "zh-CN": "删除记录",
+    "en": "Delete records",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.computer_run_remote_agent_account_join_and_enter_the",
+    "zh-CN": "电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。",
+    "en": "Computer: run remote-agent account join and enter the code below. Client: scan the QR code or enter the pairing code.",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.device_joined",
+    "zh-CN": "设备已加入",
+    "en": "Device joined",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.only_this_computer_can_rejoin_its_original_archive_with",
+    "zh-CN": "只允许这台电脑以新身份接回原档案，保留原会话和历史。",
+    "en": "Only this computer can rejoin its original archive with a new identity, preserving its sessions and history.",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.generating",
+    "zh-CN": "生成中…",
+    "en": "Generating…",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.generate_pairing_code",
+    "zh-CN": "生成配对码",
+    "en": "Generate pairing code",
+    "notes": "DeviceManagement 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.qr_code_for_adding_a_device",
+    "zh-CN": "添加设备的配对二维码",
+    "en": "QR code for adding a device",
+    "notes": "DeviceManagement 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.compare_the_4_patterns_on_the_new_device_confirm",
+    "zh-CN": "核对新设备上的 4 个图案。先在新设备确认，再在这里允许。",
+    "en": "Compare the 4 patterns on the new device. Confirm there first, then allow here.",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.patterns_match_the_new_device_confirmed_first",
+    "zh-CN": "图案一致，新设备已先确认",
+    "en": "Patterns match; the new device confirmed first",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.allow_to_join",
+    "zh-CN": "允许加入",
+    "en": "Allow to join",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.approved_waiting_for_the_new_device_to_finish_binding",
+    "zh-CN": "已批准，等待新设备完成绑定…",
+    "en": "Approved. Waiting for the new device to finish binding…",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.waiting_for_the_new_device_to_enter_the_pairing",
+    "zh-CN": "等待新设备输入配对码…",
+    "en": "Waiting for the new device to enter the pairing code…",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.cancel_pairing",
+    "zh-CN": "取消配对",
+    "en": "Cancel pairing",
+    "notes": "DeviceManagement 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.account_security",
+    "zh-CN": "账户安全",
+    "en": "Account security",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device_manages_the_account",
+    "zh-CN": "本机是管理端",
+    "en": "This device manages the account",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exit_this_browser",
+    "zh-CN": "退出这个浏览器？",
+    "en": "Exit this browser?",
+    "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.verifying_management_identity_and_unfinished_security_operations",
+    "zh-CN": "正在核实管理身份和未完成的安全操作…",
+    "en": "Verifying management identity and unfinished security operations…",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exiting",
+    "zh-CN": "退出中…",
+    "en": "Exiting…",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.exit",
+    "zh-CN": "退出",
+    "en": "Exit",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remote_control_expiry_not_received_yet",
+    "zh-CN": "尚未取得远程控制有效期",
+    "en": "Remote control expiry not received yet",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.abandon_this_succession_preparation",
+    "zh-CN": "放弃此接任准备？",
+    "en": "Abandon this succession preparation?",
+    "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_public_key_may_already_be_published_abandoning_only",
+    "zh-CN": "公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
+    "en": "The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code.",
+    "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_code",
+    "zh-CN": "恢复码",
+    "en": "Recovery code",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.unfinished_security_operation",
+    "zh-CN": "未完成的安全操作",
+    "en": "Unfinished security operation",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.transfer_management",
+    "zh-CN": "交接管理权",
+    "en": "Transfer management",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.take_over_management",
+    "zh-CN": "接管管理权",
+    "en": "Take over management",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.reject",
+    "zh-CN": "否决",
+    "en": "Reject",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.someone_is_requesting_management_takeover_with_a_recovery_code",
+    "zh-CN": "有人正在用恢复码申请接管管理权，{value} 后生效。不是你本人就现在否决。",
+    "en": "Someone is requesting management takeover with a recovery code. It takes effect after {value}. Reject it now if this was not you.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : \"48 小时\"；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.duration_48_hours",
+    "zh-CN": "48 小时",
+    "en": "48 hours",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.security_state_may_be_out_of_date_connect_and",
+    "zh-CN": "安全状态可能过期，请联网后重新核实。",
+    "en": "Security state may be out of date. Connect and verify again.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.completing_takeover_keep_this_page_in_the_foreground_and",
+    "zh-CN": "正在完成接管，请保持页面在前台，等待远程控制续期。",
+    "en": "Completing takeover. Keep this page in the foreground and wait for remote control renewal.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_new_recovery_code_backup_is_unconfirmed_replace_the",
+    "zh-CN": "新恢复码尚未确认备份，请立即换码并离线保存。",
+    "en": "The new recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.current_managing_client",
+    "zh-CN": "当前管理端",
+    "en": "Current managing client",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.this_device",
+    "zh-CN": "本机",
+    "en": "This device",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remote_control_expiry",
+    "zh-CN": "远程控制有效期",
+    "en": "Remote control expiry",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.reading",
+    "zh-CN": "正在读取…",
+    "en": "Reading…",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.finish_the_current_security_operation_before_renewing",
+    "zh-CN": "请先完成当前安全操作，再续期",
+    "en": "Finish the current security operation before renewing",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.remote_control_renewed",
+    "zh-CN": "远程控制已续期",
+    "en": "Remote control renewed",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.renew_now",
+    "zh-CN": "现在续期",
+    "en": "Renew now",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.automatically_renews_when_you_return_to_the_managing_client",
+    "zh-CN": "回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。",
+    "en": "Automatically renews when you return to the managing client. Remote control pauses after expiry; chat and history remain available. Cannot renew while the page is closed or frozen.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.open_to_renew",
+    "zh-CN": "请打开{value}续期。",
+    "en": "Open {value} to renew.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = authorityName(remote)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.a_security_operation_is_unfinished_continue_the_original_operation",
+    "zh-CN": "有未完成的安全操作，请先继续原操作。",
+    "en": "A security operation is unfinished. Continue the original operation first.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.verify_and_continue",
+    "zh-CN": "核实并继续",
+    "en": "Verify and continue",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.abandon_this_succession_preparation_security",
+    "zh-CN": "放弃此接任准备",
+    "en": "Abandon this succession preparation",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.abandon_unpublished_recovery_code",
+    "zh-CN": "放弃未发布的恢复码",
+    "en": "Abandon unpublished recovery code",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.abandon_unsigned_operation",
+    "zh-CN": "放弃未签名的操作",
+    "en": "Abandon unsigned operation",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.the_original_operation_is_unfinished_continue_verifying",
+    "zh-CN": "原操作尚未完成，请继续核实",
+    "en": "The original operation is unfinished. Continue verifying.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_code_updated_the_previous_code_and_pending_recovery",
+    "zh-CN": "恢复码已更新，原恢复码和待处理恢复申请已作废。",
+    "en": "Recovery code updated. The previous code and pending recovery requests are invalidated.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_code_saved_and_confirmed_waiting_for_the_current",
+    "zh-CN": "恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。",
+    "en": "Recovery code saved and confirmed. Waiting for the current managing client’s approval; reopen this page to check.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.publishing",
+    "zh-CN": "发布中…",
+    "en": "Publishing…",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.saved_publish_replacement",
+    "zh-CN": "我已保存，发布换码",
+    "en": "Saved, publish replacement",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.saved_notify_managing_client",
+    "zh-CN": "我已保存，通知管理端",
+    "en": "Saved, notify managing client",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.nothing_is_published_before_you_save_it_an_unpublished",
+    "zh-CN": "保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。",
+    "en": "Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.replacing_the_recovery_code_immediately_invalidates_the_old_code",
+    "zh-CN": "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
+    "en": "Replacing the recovery code immediately invalidates the old code and rejects pending recovery requests.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.generate_new_recovery_code",
+    "zh-CN": "生成新的恢复码",
+    "en": "Generate new recovery code",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.once_the_successor_device_joins_and_confirms_saving_its",
+    "zh-CN": "在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。",
+    "en": "Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.transfer_to",
+    "zh-CN": "交接给",
+    "en": "Transfer to",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.refresh_successor_devices",
+    "zh-CN": "刷新接任设备",
+    "en": "Refresh successor devices",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.waiting_for_the_successor_device_to_generate_and_save",
+    "zh-CN": "等待接任设备生成并保存恢复码",
+    "en": "Waiting for the successor device to generate and save a recovery code",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.save_the_new_recovery_code_first_then_ask_the",
+    "zh-CN": "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
+    "en": "Save the new recovery code first, then ask the current managing client to approve transfer. The current managing client will be removed; no 48-hour wait is needed.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.regenerate_recovery_code",
+    "zh-CN": "重新生成恢复码",
+    "en": "Regenerate recovery code",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.computers_can_only_run_clis_and_cannot_take_over",
+    "zh-CN": "电脑只能运行 CLI，不能接管管理权。",
+    "en": "Computers can only run CLIs and cannot take over management.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.restore_account_public_key",
+    "zh-CN": "补齐账户公钥",
+    "en": "Restore account public key",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.before_succession_pair_again_afterward_enter_the_new_recovery",
+    "zh-CN": "接任前可重新配对，或在接任后输入新恢复码补齐公开资料。查询公开资料不会发起紧急恢复。",
+    "en": "Before succession, pair again; afterward, enter the new recovery code to restore public information. Looking up public information does not start emergency recovery.",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pair_again",
+    "zh-CN": "重新配对",
+    "en": "Pair again",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_code_for_restoring_public_information",
+    "zh-CN": "补齐资料的恢复码",
+    "en": "Recovery code for restoring public information",
+    "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.account_public_key_restored",
+    "zh-CN": "账户公钥已补齐",
+    "en": "Account public key restored",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.restore_public_information",
+    "zh-CN": "补齐公开资料",
+    "en": "Restore public information",
+    "notes": "Security 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirm_that_the_successor_device_saved_the_new_recovery",
+    "zh-CN": "确认接任设备（{value}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
+    "en": "Confirm that the successor device ({value}) saved the new recovery code. Transfer removes this device and makes the successor the only managing client.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = clientName(remote.devices.get(target), remote.devices, target)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.confirm_transfer",
+    "zh-CN": "确认交接",
+    "en": "Confirm transfer",
+    "notes": "Security 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.transfer_result_unverified_continue_the_original_operation",
+    "zh-CN": "交接结果尚未核实，请继续原操作",
+    "en": "Transfer result unverified. Continue the original operation.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.management_transferred_waiting_for_the_successor_to_complete_takeover",
+    "zh-CN": "已交接管理权，等待接任设备完成接管。",
+    "en": "Management transferred. Waiting for the successor to complete takeover.",
+    "notes": "Security 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.recovery_request_pending",
+    "zh-CN": "恢复申请待处理",
+    "en": "Recovery request pending",
+    "notes": "authority-notice 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.eligible_at",
+    "zh-CN": " · 可生效时间：{value}",
+    "en": " · Eligible at: {value}",
+    "notes": "authority-notice 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = futureTime(remote.recoveryReadyMs)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.add_on_authority",
+    "zh-CN": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
+    "en": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "设置添加设备说明；name 是当前管理端设备名称，原样保留。多行正文。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.manage_on_authority",
+    "zh-CN": "设备管理请在管理端（{name}）上操作。",
+    "en": "Manage devices on the managing client ({name}).",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "security.pair_valid_until",
+    "zh-CN": "有效期至 {time}",
+    "en": "Valid until {time}",
+    "params": {
+      "time": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "配对码有效期；time 为本地化到期时间，紧凑一行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

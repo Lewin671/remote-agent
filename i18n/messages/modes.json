@@ -594,5 +594,26 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "modes.agent_own",
+    "zh-CN": "{agent} 自己的模式",
+    "en": "{agent}’s own mode",
+    "params": {
+      "agent": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "电脑默认审批设置说明的实际 CLI 模式；不带“默认”前缀。agent 为 CLI 品牌原名，短说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]

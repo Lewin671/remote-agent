@@ -1,4 +1,5 @@
 import { ScheduleRevisionError } from "../remote";
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { hasScheduleDrafts } from "../schedule-drafts";
 import { create, toBinary } from "@bufbuild/protobuf";
@@ -71,7 +72,7 @@ function button(text: string | RegExp) {
 }
 async function click(text: string | RegExp) {
   const target = text === "删除任务" ? "删除任务…" : text;
-  if (!button(target) && ["删除任务", "删除任务…", "立即运行一次", "暂停", "恢复"].includes(String(text))) {
+  if (!button(target) && ["删除任务", message("schedule.delete_task"), message("schedule.run_once_now"), message("schedule.pause"), message("schedule.resume")].includes(String(text))) {
     const more = host.querySelector<HTMLButtonElement>('[aria-label="更多"]');
     if (more) await act(async () => more.click());
   }
@@ -111,7 +112,7 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
   // The sentence counts what stopped; its card comes before the other tasks.
   expect(host.querySelector(".hl")?.textContent).toBe("1 个任务停下了");
   expect(host.textContent!.indexOf("失败任务")).toBeLessThan(
-    host.textContent!.indexOf("其他任务"),
+    host.textContent!.indexOf(message("schedule.other_tasks")),
   );
   expect(host.querySelector(".rc.warn")?.textContent).toContain("失败任务");
   expect(host.querySelectorAll(".schedule-line")).toHaveLength(2);
@@ -121,7 +122,7 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
     r.machines.get("mac")!.online = false;
     r.touch();
   });
-  expect(host.textContent).toContain(scheduleOffline);
+  expect(host.textContent).toContain(scheduleOffline());
   expect(host.querySelectorAll(".schedule-line.off")).toHaveLength(2);
   await act(async () =>
     root!.render(
@@ -135,8 +136,8 @@ it("renders attention first, combines machines and keeps cached tasks read-only 
     ),
   );
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  expect(button("立即运行一次")?.disabled).toBe(true);
-  expect(button("删除任务…")?.disabled).toBe(true);
+  expect(button(message("schedule.run_once_now"))?.disabled).toBe(true);
+  expect(button(message("schedule.delete_task"))?.disabled).toBe(true);
   await act(async () => host.querySelector<HTMLDivElement>(".dim")?.click());
 });
 it("confirms deletion, preserves conversations and uses the displayed revision", async () => {
@@ -159,7 +160,7 @@ it("confirms deletion, preserves conversations and uses the displayed revision",
   expect(host.querySelector('[role="alertdialog"]')?.textContent).toContain(
     "已开出的对话保留",
   );
-  await click("删除");
+  await click(message("schedule.delete"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -206,11 +207,11 @@ it("makes resume the only solid page action when a task needs attention", async 
       onBack={() => {}}
     />,
   );
-  expect(host.textContent).toContain("中继上的会话数已满");
+  expect(host.textContent).toContain(message("schedule.the_relay_s_session_limit_has_been_reached"));
   expect([...host.querySelectorAll(".pri")].map((b) => b.textContent)).toEqual([
-    "恢复",
+    message("schedule.resume"),
   ]);
-  await click("恢复");
+  await click(message("schedule.resume"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -226,7 +227,7 @@ it("edits calendar time, weekdays, limits and the IANA timezone", async () => {
       onClose={() => {}}
     />,
   );
-  await click("每周");
+  await click(message("schedule.weekly_on"));
   await click("周五");
   const select = host.querySelector("select")!;
   await act(async () => {
@@ -234,7 +235,7 @@ it("edits calendar time, weekdays, limits and the IANA timezone", async () => {
     select.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await input(host.querySelector('input[type="number"]')!, "6");
-  await click("完成");
+  await click(message("common.done"));
   expect(onSave).toHaveBeenCalledWith({
     type: "calendar",
     time: "08:00",
@@ -255,9 +256,9 @@ it("creates a current-conversation task with message, time and an optional name"
       onBack={() => {}}
     />,
   );
-  expect(host.textContent).not.toContain("机器和模型");
+  expect(host.textContent).not.toContain(message("schedule.computer_and_model"));
   await input(host.querySelector("textarea")!, "检查新回复，有结果通知我");
-  await click("创建");
+  await click(message("schedule.create"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "create:s-idle",
@@ -293,10 +294,10 @@ it("offers the scheduled-send menu and links the conversation strip to its task"
   await act(async () =>
     host.querySelector<HTMLButtonElement>(".navbar .more")!.click(),
   );
-  await click("定时发送…");
+  await click(message("session.schedule_send"));
   expect(
     host.querySelector(".schedule-session-overlay")?.textContent,
-  ).toContain("定时发到这个对话");
+  ).toContain(message("schedule.schedule_messages_to_this_conversation"));
 });
 
 it("preserves message and timing drafts when a viewport layout remounts the form", async () => {
@@ -305,9 +306,9 @@ it("preserves message and timing drafts when a viewport layout remounts the form
   await mount(<ScheduleCreate {...props} />);
   await input(host.querySelector("textarea")!, "保留这条消息");
   await click(/^什么时候/);
-  await click("每隔");
+  await click(message("schedule.every"));
   await input(host.querySelector('input[type="number"]')!, "15");
-  await click("完成");
+  await click(message("common.done"));
   await act(async () => root!.render(<div />));
   await act(async () => root!.render(<ScheduleCreate {...props} />));
   expect(host.querySelector("textarea")?.value).toBe("保留这条消息");
@@ -330,7 +331,7 @@ it("keeps a delivery cancellation visible and re-arms the schedule explicitly", 
     />,
   );
   expect(host.textContent).toContain("送达前被取消");
-  await click("恢复");
+  await click(message("schedule.resume"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -358,7 +359,7 @@ it("edits a task's run settings without replacing the project's defaults", async
   expect(host.querySelector('[role="dialog"]')?.textContent).toContain(
     "只修改这个任务",
   );
-  await click("保存");
+  await click(message("common.save"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -386,9 +387,9 @@ it("creates a new-conversation task without borrowing a source session", async (
   const write = vi.spyOn(r, "changeSchedule").mockResolvedValue(task());
   await mount(<ScheduleCreate remote={r} go={() => {}} onBack={() => {}} />);
   await input(host.querySelector("textarea")!, "新建来源测试");
-  expect(button("创建")?.disabled, host.textContent ?? "").toBe(false);
-  await click("创建");
-  if (host.querySelector('[role="alertdialog"]')) await click("完全放行");
+  expect(button(message("schedule.create"))?.disabled, host.textContent ?? "").toBe(false);
+  await click(message("schedule.create"));
+  if (host.querySelector('[role="alertdialog"]')) await click(message("modes.full_access"));
   expect(write).toHaveBeenCalled();
   const [machineId, , request] = write.mock.calls[0];
   expect(machineId).toBe("mac");
@@ -421,9 +422,9 @@ it("starts a newly selected interval after the full interval", async () => {
       onClose={() => {}}
     />,
   );
-  await click("每隔");
+  await click(message("schedule.every"));
   await input(host.querySelector('input[type="number"]')!, "15");
-  await click("完成");
+  await click(message("common.done"));
   expect(save).toHaveBeenCalledWith({
     type: "interval",
     interval_seconds: 900,
@@ -451,12 +452,12 @@ it("creates with an optional name after the message and preserves that name in t
   const name = host.querySelector<HTMLInputElement>(
     'input[aria-label="任务名"]',
   )!;
-  expect(name.placeholder).toBe("留空就用消息的第一句");
+  expect(name.placeholder).toBe(message("schedule.leave_blank_to_use_the_message_s_first_sentence"));
   expect(
     [...host.querySelectorAll(".schedule-body > label, .schedule-body label")]
       .slice(0, 2)
       .map((el) => el.textContent),
-  ).toEqual(["消息", "任务名"]);
+  ).toEqual([message("composer.message"), message("schedule.task_name")]);
   await input(name, "每小时看 PR");
   await input(
     host.querySelector("textarea")!,
@@ -467,7 +468,7 @@ it("creates with an optional name after the message and preserves that name in t
   expect(
     host.querySelector<HTMLInputElement>('input[aria-label="任务名"]')?.value,
   ).toBe("每小时看 PR");
-  await click("创建");
+  await click(message("schedule.create"));
   expect(write.mock.calls[0][2].spec?.title).toBe("每小时看 PR");
 });
 it("edits the task name with the existing rename interaction and keeps the other settings", async () => {
@@ -498,7 +499,7 @@ it("edits the task name with the existing rename interaction and keeps the other
   expect(name.selectionStart).toBe(0);
   expect(name.selectionEnd).toBe(name.value.length);
   await input(name, "项目巡检");
-  await click("保存");
+  await click(message("common.save"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -514,7 +515,7 @@ it("edits the task name with the existing rename interaction and keeps the other
     host.querySelector<HTMLInputElement>('[aria-label="重命名任务"] input')!,
     "",
   );
-  await click("保存");
+  await click(message("common.save"));
   expect(write.mock.calls[1][2].spec?.title).toBe(task().spec.message);
 });
 it("keeps timezone inside the timing sheet and appends only foreign zones to its value", async () => {
@@ -540,14 +541,14 @@ it("keeps timezone inside the timing sheet and appends only foreign zones to its
     [...host.querySelectorAll(".grp > .schedule-field > span:first-child")].map(
       (el) => el.textContent,
     ),
-  ).toEqual(["什么时候", "完成后通知", "在哪运行", "权限", "任务名"]);
+  ).toEqual([message("schedule.when"), message("schedule.notify_on_completion"), message("schedule.run_in"), message("new_session.permissions"), message("schedule.task_name")]);
   expect(button(/^什么时候/)?.textContent).toBe("什么时候每天 09:49");
   const zone = local === "UTC" ? "America/Los_Angeles" : "UTC";
   await act(async () => {
     t.spec.trigger.timezone = zone;
     r.touch();
   });
-  expect(button(/^什么时候/)?.textContent).toBe(`什么时候每天 09:49（${zone === "America/Los_Angeles" ? "洛杉矶时间" : zone}）`);
+  expect(button(/^什么时候/)?.textContent).toBe(`什么时候每天 09:49（${zone === "America/Los_Angeles" ? message("schedule.los_angeles_time") : zone}）`);
   await click(/^什么时候/);
   expect(
     host.querySelector<HTMLInputElement>('input[aria-label="时区"]')?.value,
@@ -556,7 +557,7 @@ it("keeps timezone inside the timing sheet and appends only foreign zones to its
     host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!,
     local,
   );
-  await click("完成");
+  await click(message("common.done"));
   expect(write).toHaveBeenCalledWith(
     "mac",
     "task-1",
@@ -607,7 +608,7 @@ it("closes an unchanged task name without sending an update", async () => {
     />,
   );
   await click(/^任务名/);
-  await click("保存");
+  await click(message("common.save"));
   expect(write).not.toHaveBeenCalled();
   expect(host.querySelector('[aria-label="重命名任务"]')).toBeNull();
 });
@@ -642,7 +643,7 @@ it.each<Partial<ScheduleTask>>([
     host.querySelector<HTMLInputElement>('[aria-label="重命名任务"] input')!,
     "新任务名",
   );
-  await click("保存");
+  await click(message("common.save"));
   expect(write).toHaveBeenCalledExactlyOnceWith("mac", "task-1", {
     operation: "update",
     taskId: "task-1",
@@ -663,10 +664,10 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   const write=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.textContent).toContain("共 5 次，或到 ");
-  expect(host.textContent).toContain("你创建");
+  expect(host.textContent).toContain(message("schedule.created_by_you"));
   expect(host.textContent).not.toContain("接管");
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  expect(button("立即运行一次")?.disabled).toBe(true);
+  expect(button(message("schedule.run_once_now"))?.disabled).toBe(true);
   await act(async () => host.querySelector<HTMLDivElement>(".dim")?.click());
   for (const label of [/^什么时候/,/^编辑$/,/^在哪运行/]) expect(button(label)?.disabled).toBe(true);
   expect(button(/^任务名/)?.disabled).toBe(false);
@@ -675,8 +676,8 @@ it("derives final limits, creator, offline subtitle and running edit guards", as
   await act(async()=>notice.click());
   expect(write.mock.calls[0][2].spec).toEqual({...t.spec,notify:"agent_only"});
   await act(async()=>{r.machines.get("mac")!.online=false;r.touch();});
-  expect(host.textContent).toContain(scheduleOffline);
-  expect(host.querySelector(".navbar")?.textContent).not.toContain("运行中");
+  expect(host.textContent).toContain(scheduleOffline());
+  expect(host.querySelector(".navbar")?.textContent).not.toContain(message("list_state.running"));
   expect(host.querySelector<HTMLButtonElement>('[role="switch"][aria-label="完成后通知"]')!.disabled).toBe(true);
 });
 it("uses shared empty copy and resolves a missing conversation before naming it", async () => {
@@ -684,29 +685,29 @@ it("uses shared empty copy and resolves a missing conversation before naming it"
   vi.stubEnv("TZ", "UTC");
   const r=remote([]);
   await mount(<SchedulesPage remote={r} go={()=>{}} />);
-  expect(host.textContent).toContain(scheduleEmpty);
+  expect(host.textContent).toContain(scheduleEmpty());
   const t=task();t.spec.target={type:"resume_session",session:"not-loaded"};
   r.schedules.get("mac")!.tasks=[t];
   await act(async()=>r.touch());
-  expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
-  expect(host.querySelector(".sess .mc")?.textContent).toContain("北京时间");
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.in_conversation"));
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.beijing_time"));
   r.sessions.set("not-loaded",{id:"not-loaded",machineId:"mac",metaRev:0n,lastSeq:0n,updatedMs:0n,endedMs:0n});
   await act(async()=>r.touch());
-  expect(host.querySelector(".sess .mc")?.textContent).toContain("在对话里");
+  expect(host.querySelector(".sess .mc")?.textContent).toContain(message("schedule.in_conversation"));
 });
 it("keeps the original interval phase and both unchanged end limits", async () => {
   const trigger={type:"interval" as const,interval_seconds:900,at:"2026-10-01T08:00:00Z",delay_seconds:29,max_runs:5,until:"2027-10-30T08:00:29Z"};
   const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
-  await click("完成");expect(save).toHaveBeenCalledWith(trigger);
+  await click(message("common.done"));expect(save).toHaveBeenCalledWith(trigger);
   await input(host.querySelectorAll<HTMLInputElement>('input[type="number"]')[1],"6");
-  await click("完成");expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:6,until:trigger.until});
+  await click(message("common.done"));expect(save.mock.calls.at(-1)![0]).toMatchObject({at:trigger.at,delay_seconds:29,max_runs:6,until:trigger.until});
 });
 it("submits the editor's snapshot revision and spec even after remote changes", async () => {
   const old=task();const r=remote([old]);const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(old);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={old.id} go={()=>{}} onBack={()=>{}} />);
   await click(/^编辑$/);
   await act(async()=>{r.schedules.get("mac")!.tasks=[task({revision:9,spec:{...old.spec,title:"别人改名"}})];r.touch();});
-  await input(host.querySelector("textarea")!,"我的修改");await click("保存");
+  await input(host.querySelector("textarea")!,"我的修改");await click(message("common.save"));
   expect(send.mock.calls[0][2]).toMatchObject({revision:1,spec:{...old.spec,message:"我的修改"}});
 });
 it("keeps plan permission visible and disables scheduled creation", async () => {
@@ -716,7 +717,7 @@ it("keeps plan permission visible and disables scheduled creation", async () => 
   const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
   await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
   await input(host.querySelector("textarea")!,"检查更新");
-  expect(button("创建")?.disabled).toBe(true);
+  expect(button(message("schedule.create"))?.disabled).toBe(true);
   expect(host.textContent).toContain("计划模式不能创建执行任务");expect(send).not.toHaveBeenCalled();
 });
 
@@ -724,7 +725,7 @@ it("derives an empty quiet summary and pending-only run guard from the task",asy
   const t=task({runs:[run("q1",{notified:false,final_summary:""}),run("q2",{notified:false,final_summary:""})],manual_request:{request_id:"manual"}});
   const r=remote([t]);await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.textContent).toContain("：没有通知");await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  expect(button("立即运行一次")?.disabled).toBe(true);
+  expect(button(message("schedule.run_once_now"))?.disabled).toBe(true);
   await act(async () => host.querySelector<HTMLDivElement>(".dim")?.click());
 });
 
@@ -742,7 +743,7 @@ it("defaults dual limits to count and preserves the deadline when only the zone 
  const onSave=vi.fn();const trigger={type:"calendar" as const,time:"08:00",timezone:"America/Los_Angeles",max_runs:5,until:"2027-10-30T08:00:00Z"};
  await mount(<TimingSheet trigger={trigger} onSave={onSave} onClose={()=>{}} />);
  expect((host.querySelector('select[aria-label="结束"]') as HTMLSelectElement)?.value || (host.querySelector("select") as HTMLSelectElement)?.value).toBe("count");
- await input(host.querySelector('input[placeholder="Asia/Shanghai"]')!,"Asia/Shanghai");await click("完成");
+ await input(host.querySelector('input[placeholder="Asia/Shanghai"]')!,"Asia/Shanghai");await click(message("common.done"));
  expect(onSave.mock.calls[0][0]).toMatchObject({max_runs:5,until:trigger.until,timezone:"Asia/Shanghai"});
 });
 
@@ -754,9 +755,9 @@ it("edits CLI choices and inherited settings only on the task computer",async()=
  const send=vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);await click(/^在哪运行/);
  expect(button("Codex")).toBeTruthy();
- await click(/^模型和权限/);expect(host.textContent).toContain("任务设置");expect(button("设为常用")).toBeUndefined();expect(button("移除项目…")).toBeUndefined();await click("完成");
+ await click(/^模型和权限/);expect(host.textContent).toContain(message("new_session.task_settings"));expect(button(message("projects.pin"))).toBeUndefined();expect(button(message("projects.remove_action"))).toBeUndefined();await click(message("common.done"));
  await click(/^项目/);expect(button("另一个电脑")).toBeUndefined();expect(button("MacBook")?.disabled).toBe(true);await act(async () => ([...host.querySelectorAll(".dim")].at(-1) as HTMLElement).click());
- await click("Codex");await click("保存");
+ await click("Codex");await click(message("common.save"));
  expect(send.mock.calls[0][2].spec?.target).toMatchObject({agent:"codex",model:"",mode:"auto"});
 });
 
@@ -772,7 +773,7 @@ it("shows CLI as plain text on a single-CLI computer and a segmented control whe
     r.touch();
   });
   expect(host.querySelector(".schedule-field .seg")).toBeNull();
-  const cliField = [...host.querySelectorAll(".schedule-field")].find((el) => el.firstElementChild?.textContent === "CLI");
+  const cliField = [...host.querySelectorAll(".schedule-field")].find((el) => el.firstElementChild?.textContent === message("new_session.cli_picker_label"));
   expect(cliField?.querySelector(".v")?.textContent).toBe("Codex");
 });
 
@@ -784,15 +785,15 @@ it("shows the shared destination placeholder until target metadata is loaded",as
 });
 
 it("closes a stale editor when the daemon reports a revision conflict",async()=>{
- const t=task();const r=remote([t]);vi.spyOn(r,"changeSchedule").mockRejectedValue(new ScheduleRevisionError("任务刚被修改，已更新为最新内容"));
+ const t=task();const r=remote([t]);vi.spyOn(r,"changeSchedule").mockRejectedValue(new ScheduleRevisionError(message("errors.the_task_was_just_changed_updated_to_the_latest")));
  await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
- await click(/^编辑$/);await input(host.querySelector("textarea")!,"新消息");await click("保存");
- expect(host.querySelector('[role="dialog"]')).toBeNull();expect(host.textContent).toContain("任务刚被修改，已更新为最新内容");
+ await click(/^编辑$/);await input(host.querySelector("textarea")!,"新消息");await click(message("common.save"));
+ expect(host.querySelector('[role="dialog"]')).toBeNull();expect(host.textContent).toContain(message("errors.the_task_was_just_changed_updated_to_the_latest"));
 });
 
 it.each(["2027-10-24T15:00:00Z","2027-10-24T15:00:00+08:00"])("uses the local IANA zone when converting timestamp %s to a calendar",async(at)=>{
  const save=vi.fn();await mount(<TimingSheet trigger={{type:"at",at}} onSave={save} onClose={()=>{}} />);
- await click("每天");await click("完成");
+ await click(message("schedule.daily"));await click(message("common.done"));
  expect(save.mock.calls[0][0].timezone).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
 });
 
@@ -801,17 +802,17 @@ it("requires a concrete permission when neither project nor CLI has a known defa
  for(const machine of r.machines.values()) for(const agent of machine.meta?.agents??[]) {agent.defaultMode=ApprovalMode.UNSPECIFIED;agent.defaultModeSource=0;}
  for(const setting of r.prefs.snap?.prefs.settings??[]) for(const agent of setting.agents) agent.mode=ApprovalMode.UNSPECIFIED;
  await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);await input(host.querySelector("textarea")!,"检查");
- expect(button("创建")?.disabled).toBe(true);expect(host.textContent).toContain("请选择明确的权限，再创建定时任务。");
+ expect(button(message("schedule.create"))?.disabled).toBe(true);expect(host.textContent).toContain(message("schedule.select_explicit_permissions_before_creating_a_scheduled_task"));
 });
 
 it.each([31,62,123])("preserves an unchanged %i-second interval exactly", async seconds => {
   const trigger={type:"interval" as const,interval_seconds:seconds,delay_seconds:29,at:"2026-10-01T08:00:00Z"};
   const save=vi.fn();await mount(<TimingSheet trigger={trigger} onSave={save} onClose={()=>{}} />);
-  await click("完成");expect(save).toHaveBeenLastCalledWith(trigger);
+  await click(message("common.done"));expect(save).toHaveBeenLastCalledWith(trigger);
   await input(host.querySelector<HTMLInputElement>('input[type="number"]')!,String(seconds/60+1));
-  await click("完成");expect(save).toHaveBeenLastCalledWith({type:"interval",interval_seconds:seconds+60,delay_seconds:seconds+60});
+  await click(message("common.done"));expect(save).toHaveBeenLastCalledWith({type:"interval",interval_seconds:seconds+60,delay_seconds:seconds+60});
   await input(host.querySelector<HTMLInputElement>('input[type="number"]')!,"0.511");
-  save.mockClear();await click("完成");expect(save).not.toHaveBeenCalled();expect(host.textContent).toContain("间隔至少为 1 秒");
+  save.mockClear();await click(message("common.done"));expect(save).not.toHaveBeenCalled();expect(host.textContent).toContain(message("schedule.the_interval_must_be_at_least_1_second"));
 });
 it("converts cutoff display across zones while retaining the absolute instant", async () => {
   const trigger={type:"calendar" as const,time:"08:00",timezone:"Asia/Shanghai",until:"2027-10-30T00:15:29Z"};
@@ -820,11 +821,11 @@ it("converts cutoff display across zones while retaining the absolute instant", 
   const zone=host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!;
   expect(cutoff().value).toBe("2027-10-30T08:15");
   await input(zone,"America/Los_Angeles");expect(cutoff().value).toBe("2027-10-29T17:15");
-  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe(trigger.until);
+  await click(message("common.done"));expect(save.mock.calls.at(-1)![0].until).toBe(trigger.until);
   await input(zone,"Asia/Tokyo");expect(cutoff().value).toBe("2027-10-30T09:15");
   await input(cutoff(),"2027-11-01T09:30");
   await input(zone,"UTC");expect(cutoff().value).toBe("2027-11-01T00:30");
-  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-01T00:30:00.000Z");
+  await click(message("common.done"));expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-01T00:30:00.000Z");
 });
 
 it("keeps an edited cutoff instant when a zone change lands it in a repeated wall time", async () => {
@@ -833,7 +834,7 @@ it("keeps an edited cutoff instant when a zone change lands it in a repeated wal
   await input(cutoff(),"2027-11-07T06:30");
   await input(host.querySelector<HTMLInputElement>('input[aria-label="时区"]')!,"America/New_York");
   expect(cutoff().value).toBe("2027-11-07T01:30");
-  await click("完成");expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-07T06:30:00.000Z");
+  await click(message("common.done"));expect(save.mock.calls.at(-1)![0].until).toBe("2027-11-07T06:30:00.000Z");
 });
 
 it("creates with the new computer's displayed defaults after switching without editing",async()=>{
@@ -851,14 +852,14 @@ it("creates with the new computer's displayed defaults after switching without e
   await mount(<ScheduleCreate remote={r} go={()=>{}} onBack={()=>{}} />);
   await input(host.querySelector("textarea")!,"检查回复");
   await click(/^机器和模型/);
-  const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".mt")?.textContent==="机器");
+  const machineRow=[...host.querySelectorAll<HTMLButtonElement>("button")].find(b=>b.querySelector(".mt")?.textContent===message("common.machine"));
   expect(machineRow,host.textContent??"").toBeTruthy();await act(async()=>machineRow!.click());
   expect(button(/改用 新电脑/),host.textContent??"").toBeTruthy();await click(/改用 新电脑/);
-  await click("完成");
+  await click(message("common.done"));
   expect(button(/^机器和模型/)?.textContent).toContain("新电脑");
-  expect(button(/^权限/)?.textContent).toContain("询问");
+  expect(button(/^权限/)?.textContent).toContain(message("modes.ask"));
   expect(button(/^机器和模型/)?.textContent).not.toContain("gpt-6-astra");
-  await click("创建");expect(send).toHaveBeenCalledTimes(1);
+  await click(message("schedule.create"));expect(send).toHaveBeenCalledTimes(1);
   const [machine,,request]=send.mock.calls[0];expect(machine).toBe("new");
   expect(request.spec?.target).toMatchObject({agent:"claude",model:"",effort:"",mode:"ask",cwd:path});
 });
@@ -872,12 +873,12 @@ it.each(["at", "cutoff"])("rejects a DST gap and saves the first repeated time f
   await input(zone, "America/Los_Angeles");
   const local = host.querySelector<HTMLInputElement>('input[type="datetime-local"]')!;
   await input(local, "2027-03-14T02:30");
-  await click("完成");
+  await click(message("common.done"));
   expect(save).not.toHaveBeenCalled();
-  expect(host.textContent).toContain("这个时区在该时刻发生夏令时跳转，请换一个时间");
+  expect(host.textContent).toContain(message("schedule.daylight_saving_time_skips_this_time_in_the_selected"));
   await input(zone, "Europe/Berlin");
   await input(local, "2027-10-31T02:30");
-  await click("完成");
+  await click(message("common.done"));
   expect(save.mock.calls.at(-1)![0][field === "at" ? "at" : "until"]).toBe("2027-10-31T00:30:00.000Z");
 });
 
@@ -962,19 +963,19 @@ it("leaves 新定时 to the bottom row and remembers the ended group on this dev
 it("uses short offline rows and hides editing arrows with the computer disconnected", async () => {
   const r = remote(); r.machines.get("mac")!.online = false;
   await mount(<SchedulesPage remote={r} go={()=>{}} />);
-  expect(host.querySelector(".mc")?.textContent).toContain("未连接");
+  expect(host.querySelector(".mc")?.textContent).toContain(message("list_state.unlinked"));
   expect(host.querySelector(".row1")?.textContent).not.toContain("上次");
   await act(async()=>root!.render(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />));
   expect(host.querySelectorAll(".schedule-field .ic")).toHaveLength(0);
   expect(host.textContent).toContain("连上后才能修改、运行或删除。");
-  expect(button("编辑")?.disabled).toBe(true);
+  expect(button(message("tools.android_edit"))?.disabled).toBe(true);
 });
 it("shows five recent runs before settings and expands all history on request", async () => {
   const r = remote([task({runs:Array.from({length:8}, (_, i)=>run(`r${i}`, {notified:true,started_at:new Date(1792828800000+i*3600000).toISOString()}))})]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id="task-1" go={()=>{}} onBack={()=>{}} />);
   expect(host.querySelectorAll(".schedule-run")).toHaveLength(5);
-  expect(host.textContent!.indexOf("更早")).toBeLessThan(host.textContent!.indexOf("让 agent 做什么"));
-  expect(host.textContent!.indexOf("更早")).toBeLessThan(host.textContent!.indexOf("设置"));
+  expect(host.textContent!.indexOf(message("schedule.earlier"))).toBeLessThan(host.textContent!.indexOf(message("schedule.what_should_the_agent_do")));
+  expect(host.textContent!.indexOf(message("schedule.earlier"))).toBeLessThan(host.textContent!.indexOf(message("common.settings")));
   await click("查看全部 7 次");
   expect(host.querySelectorAll(".schedule-run")).toHaveLength(7);
 });
@@ -982,19 +983,19 @@ it("opens a full message editor, guards cancel and validates UTF-8 bytes", async
   const t = task(); t.spec.message = Array.from({length:9}, (_,i)=>`检查第 ${i} 项`).join("\n");
   const r = remote([t]); const write = vi.spyOn(r,"changeSchedule").mockResolvedValue(t);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
-  await click("展开全文");
+  await click(message("markdown.expand"));
   expect(host.querySelector(".schedule-text.expanded")).not.toBeNull();
-  await click("收起"); await click("编辑");
+  await click(message("markdown.collapse")); await click(message("tools.android_edit"));
   expect(host.querySelector(".schedule-editor")).not.toBeNull();
   await input(host.querySelector("textarea")!,"中".repeat(11000));
-  expect(button("保存")?.disabled).toBe(true);
-  expect(host.textContent).toContain("太长了，最多 32 KB");
-  await input(host.querySelector("textarea")!,"   "); expect(button("保存")?.disabled).toBe(true);
+  expect(button(message("common.save"))?.disabled).toBe(true);
+  expect(host.textContent).toContain(message("schedule.too_long_maximum_32_kb"));
+  await input(host.querySelector("textarea")!,"   "); expect(button(message("common.save"))?.disabled).toBe(true);
   await input(host.querySelector("textarea")!,"第一行\n第二行");
-  await click("取消"); expect(host.querySelector('[role="alertdialog"]')?.textContent).toContain("放弃修改？");
-  expect(write).not.toHaveBeenCalled(); await click("放弃修改");
+  await click(message("common.cancel")); expect(host.querySelector('[role="alertdialog"]')?.textContent).toContain(message("schedule.discard_changes"));
+  expect(write).not.toHaveBeenCalled(); await click(message("schedule.discard_changes_schedule_text"));
   expect(host.querySelector(".schedule-editor")).toBeNull();
-  await click("编辑"); expect(host.querySelector("textarea")?.value).toBe(t.spec.message);
+  await click(message("tools.android_edit")); expect(host.querySelector("textarea")?.value).toBe(t.spec.message);
 });
 it("shows the generated task name as a live placeholder and rejects an oversized creation", async () => {
   const r = remote([]); const write = vi.spyOn(r,"changeSchedule").mockResolvedValue(task());
@@ -1002,14 +1003,14 @@ it("shows the generated task name as a live placeholder and rejects an oversized
   await input(host.querySelector("textarea")!,"检查项目更新：\n逐条列出");
   expect(host.querySelector<HTMLInputElement>('[aria-label="任务名"]')?.placeholder).toBe("留空会用：检查项目更新");
   await input(host.querySelector("textarea")!,"x".repeat(32769));
-  expect(button("创建")?.disabled).toBe(true); expect(host.textContent).toContain("太长了，最多 32 KB"); expect(write).not.toHaveBeenCalled();
+  expect(button(message("schedule.create"))?.disabled).toBe(true); expect(host.textContent).toContain(message("schedule.too_long_maximum_32_kb")); expect(write).not.toHaveBeenCalled();
 });
 it("disables weekly completion without selected days and hides interval timezone", async () => {
   const save = vi.fn(); await mount(<TimingSheet trigger={{type:"calendar",time:"09:30",weekdays:[1],timezone:"UTC",max_runs:4}} onSave={save} onClose={()=>{}} />);
-  await click("周一"); expect(button("完成")?.disabled).toBe(true);
-  await click("每隔"); expect(host.querySelector('[aria-label="时区"]')).toBeNull();
-  await click("一次"); await click("每周"); expect(button("完成")?.disabled).toBe(true);
-  await click("周五"); await click("完成");
+  await click("周一"); expect(button(message("common.done"))?.disabled).toBe(true);
+  await click(message("schedule.every")); expect(host.querySelector('[aria-label="时区"]')).toBeNull();
+  await click(message("schedule.once_schedules")); await click(message("schedule.weekly_on")); expect(button(message("common.done"))?.disabled).toBe(true);
+  await click("周五"); await click(message("common.done"));
   expect(save).toHaveBeenCalledWith(expect.objectContaining({time:"09:30",weekdays:[5],max_runs:4,timezone:"UTC"}));
 });
 it("keeps manual pauses banner-free and places missing-target recovery beneath the warning", async () => {
@@ -1017,14 +1018,14 @@ it("keeps manual pauses banner-free and places missing-target recovery beneath t
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.querySelector(".banner.warn")).toBeNull(); expect(host.querySelector(".pri")).toBeNull();
   await act(async()=>{ t.reason="execution_session_missing";t.spec.target={type:"resume_session",session:"missing"};r.touch(); });
-  expect(host.querySelector(".pri")?.textContent).toBe("恢复");
+  expect(host.querySelector(".pri")?.textContent).toBe(message("schedule.resume"));
 });
 it("replaces the wide session timeline with a task list and keeps navigation tabs", async () => {
   const r=remote(); await mount(<Sidebar remote={r} active="tasks" selectedTask="tasks/mac/task-1" go={()=>{}} />);
   expect(host.querySelector(".schedule-sidebar")).not.toBeNull(); expect(host.querySelector(".schedule-selected")).not.toBeNull();
-  expect(host.querySelector(".side-top .mini")?.textContent).toBe("新定时");
-  expect(host.querySelector(".sfoot .seg")?.textContent).toContain("会话");
-  expect(host.querySelector(".sfoot .seg .on")?.textContent).toContain("定时");
+  expect(host.querySelector(".side-top .mini")?.textContent).toBe(message("home.new_schedule"));
+  expect(host.querySelector(".sfoot .seg")?.textContent).toContain(message("session.title"));
+  expect(host.querySelector(".sfoot .seg .on")?.textContent).toContain(message("home.schedules_tab"));
 });
 
 it("renders scheduled queue metadata from the accepted event and keeps cancellation available", async () => {
@@ -1035,7 +1036,7 @@ it("renders scheduled queue metadata from the accepted event and keeps cancellat
   const command = vi.spyOn(r,"command").mockResolvedValue(create(CommandResultSchema));
   await mount(<PendingBubbles remote={r} session={session} d={derive(events,Agent.CLAUDE)} />);
   expect(host.querySelector(".pending-meta")?.textContent).toContain("定时任务 · 15:00 · 这一轮结束后发");
-  await click("取消");
+  await click(message("common.cancel"));
   expect(command).toHaveBeenCalledWith(session.id,expect.objectContaining({case:"cancelInput",value:{sessionId:session.id,requestId:"scheduled-input"}}));
 });
 
@@ -1053,7 +1054,7 @@ it("offers a return to the owning task from a wide run conversation", async () =
   const back = vi.fn();
   await mount(<SessionPage remote={r} session={session} wide onBack={back} />);
   const control=host.querySelector<HTMLButtonElement>('.schedule-run-back');
-  expect(control?.getAttribute("aria-label")).toBe("返回");
+  expect(control?.getAttribute("aria-label")).toBe(message("common.back"));
   await act(async()=>control!.click());expect(back).toHaveBeenCalledOnce();
 });
 
@@ -1072,7 +1073,7 @@ it.each([0, 1, 2, 400])("explains missing-target failures using that run's local
   const r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={()=>{}} onBack={()=>{}} />);
   expect(host.querySelector(".banner.warn")?.textContent).toBe(`${expectedDay} 15:00 的运行失败，任务已停下：找不到运行的对话。这个任务只发到原来的对话，恢复后还会失败。`);
-  expect(host.querySelector(".pri")?.textContent).toBe("恢复");
+  expect(host.querySelector(".pri")?.textContent).toBe(message("schedule.resume"));
 });
 it("does not invent a failure time when a missing-target task has no recorded run", async () => {
   const t = task({status:"failed",reason:"execution_session_missing"});
@@ -1094,7 +1095,7 @@ it("defaults completion notifications on, submits opt-out, and edits the full sn
   expect(toggle.getAttribute("aria-checked")).toBe("true");
   await act(async () => toggle.click());
   await input(host.querySelector("textarea")!, "检查完成通知");
-  await click("创建");
+  await click(message("schedule.create"));
   expect(write.mock.calls[0][2].spec?.notify).toBe("agent_only");
   await act(async () => root!.unmount()); root = undefined; host.remove();
   const original = task({ spec: { ...task().spec, notify: "agent_only", late_seconds: 123 } });
@@ -1131,20 +1132,20 @@ it("shows the latest notified preview instead of a newer quiet result, caps unre
   const row = host.querySelector(".rc.schedule-line")!;
   expect(row.classList.contains("unread")).toBe(true);
   expect(row.querySelector('.row1 [aria-label="有新结果"]')).not.toBeNull();
-  expect(row.querySelector(".go")?.textContent).toBe("看全文");
+  expect(row.querySelector(".go")?.textContent).toBe(message("schedule.read_full_text"));
   expect(row.querySelector(".row1 b")?.textContent).toBe(longTitle);
   expect(row.querySelector(".row1 > span")?.textContent).toBe(scheduleTime(ended_at));
   expect(row.querySelector(".pv")?.textContent).toBe(summary);
   expect(row.querySelector(".schedule-unread")).toBeNull();
   expect(row.querySelector('[aria-label="有新结果"]')).not.toBeNull();
-  expect(row.querySelector(".mc")?.textContent).toContain("未连接");
+  expect(row.querySelector(".mc")?.textContent).toContain(message("list_state.unlinked"));
   expect(row.querySelector(".mc")?.textContent).not.toContain("Claude Code");
   expect(row.querySelector(".mc")?.textContent).not.toContain("下次");
   tasks[0].status = "failed";
   tasks[0].reason = "relay_session_limit";
   await act(async () => { r.schedules.get("mac")!.tasks = tasks; r.touch(); });
   expect(host.querySelector(".rc.warn .pv")?.textContent).toBe("已停下 · 中继上的会话数已满");
-  expect(host.querySelector(".rc.warn .go")?.textContent).toBe("去处理");
+  expect(host.querySelector(".rc.warn .go")?.textContent).toBe(message("schedule.take_action"));
 });
 
 it("captures unread dots when a deep-linked detail receives its first task snapshot", async () => {
@@ -1244,9 +1245,9 @@ it("keeps the latest card unchanged until the new-result prompt is clicked", asy
   const next = run("new", { notified: true, ended_at: "2026-11-01T09:00:00Z", notification_source: "agent", notification_text: "后来结果", session_id: undefined });
   await act(async () => { t.runs = [old, next]; r.touch(); });
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("原结果");
-  await click("有新结果");
+  await click(message("home.ios_new_results"));
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("后来结果");
-  expect(button("有新结果")).toBeUndefined();
+  expect(button(message("home.ios_new_results"))).toBeUndefined();
 });
 
 it("marks only the recent group read, retains the attention dot, and exposes keyboard reading actions", async () => {
@@ -1263,11 +1264,11 @@ it("marks only the recent group read, retains the attention dot, and exposes key
   expect(host.querySelector('.attention .row1 [aria-label="需要你处理"]')).not.toBeNull();
   expect(host.querySelector(".hl-sub")?.textContent).toBe("另有 2 个新结果");
   expect(host.querySelectorAll('.attention .schedule-unread-dot')).toHaveLength(1);
-  await click("全部标为已读");
+  await click(message("schedule.mark_all_as_read"));
   expect(r.scheduleHasNew("mac", tasks[0])).toBe(true);
   expect(r.scheduleHasNew("mac", tasks[1])).toBe(false);
   expect(r.scheduleHasNew("mac", tasks[2])).toBe(false);
-  expect(button("全部标为已读")).toBeUndefined();
+  expect(button(message("schedule.mark_all_as_read"))).toBeUndefined();
   const unread = host.querySelector<HTMLButtonElement>('.schedule-read-action[aria-label="标为未读"]')!;
   await act(async () => unread.click());
   expect(r.scheduleUnread("mac", tasks[1])).toEqual(new Set(["r"]));
@@ -1299,7 +1300,7 @@ it("marks the selected wide row unread through its context menu and exits the de
   await mount(<SchedulesPage remote={r} go={go} sidebar selected="tasks/mac/task-1" />);
   await act(async () => host.querySelector(".schedule-line")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
   expect(host.querySelector(".schedule-menu")).not.toBeNull();
-  await click("标为未读");
+  await click(message("schedule.mark_as_unread"));
   expect(r.scheduleUnread("mac", t)).toEqual(new Set(["latest"]));
   expect(go).toHaveBeenCalledWith("tasks");
 });
@@ -1310,10 +1311,10 @@ it("re-arms a cancelled one-shot from the wide row menu with a new time before s
   vi.spyOn(window, "matchMedia").mockReturnValue({ matches: true } as MediaQueryList);
   await mount(<SchedulesPage remote={r} go={() => {}} sidebar />);
   await act(async () => host.querySelector(".schedule-line")!.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })));
-  await click("恢复");
+  await click(message("schedule.resume"));
   expect(write).not.toHaveBeenCalled();
-  expect(host.querySelector('[role="dialog"]')?.textContent).toContain("什么时候");
-  await click("完成");
+  expect(host.querySelector('[role="dialog"]')?.textContent).toContain(message("schedule.when"));
+  await click(message("common.done"));
   expect(write).toHaveBeenCalledWith("mac", t.id, expect.objectContaining({ operation: "update", revision: t.revision, spec: expect.objectContaining({ trigger: expect.objectContaining({ type: "at" }) }) }));
 });
 
@@ -1325,22 +1326,22 @@ it("updates a frozen run's summary and end time without replacing its identity",
   await act(async () => { r.schedules.get("mac")!.tasks = [{ ...t, runs: [completed] }]; r.touch(); });
   expect(host.querySelector(".schedule-result .ai")?.textContent).toBe("完成后补齐的摘要");
   expect(host.querySelector(".schedule-result-head")?.textContent).toContain(dateTime(completed.ended_at));
-  expect(button("有新结果")).toBeUndefined();
+  expect(button(message("home.ios_new_results"))).toBeUndefined();
 });
 
 it("shows the first result at once when the task was entered with none, and holds the next ones", async () => {
   const t = task({ runs: [] }), r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
-  expect(host.textContent).toContain("还没有运行");
+  expect(host.textContent).toContain(message("schedule.has_not_run_yet"));
   const first = run("first", { notified: true, ended_at: "2026-11-01T09:00:00Z", notification_source: "agent", notification_text: "第一个结果", session_id: undefined });
   await act(async () => { t.runs = [first]; r.touch(); });
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("第一个结果");
-  expect(button("有新结果")).toBeUndefined();
-  expect(host.textContent).not.toContain("还没有运行");
+  expect(button(message("home.ios_new_results"))).toBeUndefined();
+  expect(host.textContent).not.toContain(message("schedule.has_not_run_yet"));
   const next = run("next", { notified: true, ended_at: "2026-11-01T10:00:00Z", notification_source: "agent", notification_text: "第二个结果", session_id: undefined });
   await act(async () => { t.runs = [first, next]; r.touch(); });
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("第一个结果");
-  expect(button("有新结果")).toBeTruthy();
+  expect(button(message("home.ios_new_results"))).toBeTruthy();
 });
 
 it("follows cached results until the first live list, then freezes only the selected run ID", async () => {
@@ -1352,11 +1353,11 @@ it("follows cached results until the first live list, then freezes only the sele
   const live = run("live", { notified: true, session_id: undefined, notification_source: "agent", notification_text: "在线结果", ended_at: "2026-11-01T09:00:00Z" });
   await act(async () => { vi.mocked(r.hasLiveSchedules).mockReturnValue(true); r.schedules.get("mac")!.tasks = [{ ...t, runs: [cached, live] }]; r.touch(); });
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("在线结果");
-  expect(button("有新结果")).toBeUndefined();
+  expect(button(message("home.ios_new_results"))).toBeUndefined();
   const next = run("later", { notified: true, session_id: undefined, notification_source: "agent", notification_text: "之后的新结果", ended_at: "2026-11-01T10:00:00Z" });
   await act(async () => { r.schedules.get("mac")!.tasks = [{ ...t, runs: [cached, live, next] }]; r.touch(); });
   expect(host.querySelector(".schedule-result h4")?.textContent).toBe("在线结果");
-  expect(button("有新结果")).toBeTruthy();
+  expect(button(message("home.ios_new_results"))).toBeTruthy();
 });
 
 it.each(["one large paragraph", "| A | B |\n| --- | --- |\n| one | two |"])("retains the first oversized Markdown block: %s", async text => {
@@ -1377,8 +1378,8 @@ it("keeps the detail menu's specified order", async () => {
   const t = task({ runs: [run("result", { notified: true, session_id: undefined })] }), r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  expect([...host.querySelectorAll(".schedule-menu .mi")].map(button => button.textContent)).toEqual(["立即运行一次", "标为未读", "暂停", "删除任务…"]);
-  expect(host.querySelector(".schedule-menu .mi.danger")?.textContent).toBe("删除任务…");
+  expect([...host.querySelectorAll(".schedule-menu .mi")].map(button => button.textContent)).toEqual([message("schedule.run_once_now"), message("schedule.mark_as_unread"), message("schedule.pause"), message("schedule.delete_task")]);
+  expect(host.querySelector(".schedule-menu .mi.danger")?.textContent).toBe(message("schedule.delete_task"));
 });
 
 it("protects a name-only schedule draft after leaving the creation form", async () => {
@@ -1397,7 +1398,7 @@ it.each(["dispatching", "queued", "running"])("shows no-result copy on the first
   const active = run("first", { status, ended_at: undefined, notified: false });
   const t = task({ active_run: active, runs: [] }), r = remote([t]);
   await mount(<ScheduleRow remote={r} machineId="mac" task={t} go={() => {}} />);
-  expect(host.querySelector(".pv")?.textContent).toBe("还没有结果");
+  expect(host.querySelector(".pv")?.textContent).toBe(message("schedule.no_results_yet"));
   expect(host.querySelector(".mc")?.textContent).toMatch(/^正在运行/);
   expect(host.querySelector(".mc .spin")).not.toBeNull();
   expect(host.querySelector(".row1 > span")?.textContent).toBe("");
@@ -1412,7 +1413,7 @@ it("keeps the last result's preview and time while running again, and the never-
   const never = task();
   await act(async () => root!.render(<ScheduleRow remote={r} machineId="mac" task={never} go={() => {}} />));
   expect(host.querySelector(".pv")?.textContent).toBe(`还没有运行 · 下次 ${dateTime(never.next_run_at!)}`);
-  expect(host.querySelector(".pv")?.textContent).not.toContain("正在运行");
+  expect(host.querySelector(".pv")?.textContent).not.toContain(message("schedule.running"));
 });
 
 it.each([
@@ -1434,7 +1435,7 @@ it.each(["never", "running", "single-result"])("omits the entire earlier group w
   const r = remote([t]);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={t.id} go={() => {}} onBack={() => {}} />);
   expect(host.querySelector(".schedule-history")).toBeNull();
-  expect([...host.querySelectorAll(".label")].some(label => label.textContent?.includes("更早"))).toBe(false);
+  expect([...host.querySelectorAll(".label")].some(label => label.textContent?.includes(message("schedule.earlier")))).toBe(false);
   expect(host.textContent).not.toMatch(/表示已请求通知|不保证送达|记录保留最近/);
 });
 
@@ -1477,7 +1478,7 @@ it.each(["light", "dark"])("aligns the attention banner, recovery button and car
 it("does not put a running status in the preview when the run record is present before active_run", async () => {
   const t = task({ runs: [run("pending", { status: "running", notified: false, ended_at: undefined })] }), r = remote([t]);
   await mount(<ScheduleRow remote={r} machineId="mac" task={t} go={() => {}} />);
-  expect(host.querySelector(".pv")?.textContent).toBe("还没有结果");
+  expect(host.querySelector(".pv")?.textContent).toBe(message("schedule.no_results_yet"));
 });
 
 it.each(["offline", "list-error"])("shows the latest cached result without reading it or showing entry dots (%s)", async mode => {
@@ -1514,7 +1515,7 @@ it("uses the latest task at the instant a stale menu action is invoked", async (
   r.markScheduleRead("mac", current);
   await mount(<ScheduleDetail remote={r} machineId="mac" id={before.id} go={go} onBack={() => {}} />);
   await act(async () => host.querySelector<HTMLButtonElement>('[aria-label="更多"]')!.click());
-  const control = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu .mi")].find(button => button.textContent === "标为未读")!;
+  const control = [...host.querySelectorAll<HTMLButtonElement>(".schedule-menu .mi")].find(button => button.textContent === message("schedule.mark_as_unread"))!;
   // The store has advanced, but this DOM action still closes over the old task.
   r.schedules.get("mac")!.tasks = [current];
   await act(async () => control.click());

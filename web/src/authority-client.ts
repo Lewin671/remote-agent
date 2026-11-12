@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";
 import { Code, ConnectError, type Client } from "@connectrpc/connect";
 import { Authority, authoritySigningTime } from "./authority";
@@ -79,7 +80,7 @@ export class AuthorityClient {
     if (!op) return;
     this.bound(op);
     check();
-    if (op.kind === "create" || op.kind === "recovery") throw new Error("请回到创建或恢复流程继续原草稿");
+    if (op.kind === "create" || op.kind === "recovery") throw new Error(l10n.t("security.return_to_account_creation_or_recovery_to_continue_the"));
     if (op.kind === "offer") {
       if (!op.codeSaved) return;
       const local = op.local as { recoveryEd: B };
@@ -103,7 +104,7 @@ export class AuthorityClient {
       if (!published) {
         op = await saveSecurityOperation(op, { ...op, local: { ...local, rejected: true } });
         check();
-        throw new Error("设备信息已变化，原交接申请未应用；可明确放弃后重新准备");
+        throw new Error(l10n.t("security.device_information_changed_the_original_transfer_request_was_not"));
       }
       op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
       check();
@@ -227,7 +228,7 @@ export class AuthorityClient {
         const status = await this.pairing.getPairing({ pairingId: delivery.pairingId });
         check();
         if (status.state !== PairingState.DELIVERED) {
-          if (status.state === PairingState.CANCELED) throw new PairingDeliveryError("配对已取消，请明确移除未完成候选后重新开始");
+          if (status.state === PairingState.CANCELED) throw new PairingDeliveryError(l10n.t("security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before"));
           return;
         }
       } catch (e) {
@@ -239,7 +240,7 @@ export class AuthorityClient {
         const approval = fromBinary(PairApprovalSchema, delivery.approval);
         const candidate = await deviceID(approval.candidateDevicePublicKey);
         if (!devices.devices.some((d) => d.id === candidate))
-          throw new PairingDeliveryError("配对交付已失效，请明确移除未完成候选后重新开始");
+          throw new PairingDeliveryError(l10n.t("security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before"));
       }
     }
     op = await saveSecurityOperation(op, { ...op, phase: "DELIVERED" });
@@ -256,13 +257,13 @@ export class AuthorityClient {
     const head = r.states.at(-1)!, draft = op.local, key = this.account.devicePrivate, now = signingTime(r);
     if (draft.pair) {
       if (draft.pair.candidate.id === r.memberID) throw new SecurityError("untrusted");
-      if (draft.pair.expires <= maxTime(r)) throw new Error("配对草稿已过期，尚未发布，可明确放弃后重新开始");
+      if (draft.pair.expires <= maxTime(r)) throw new Error(l10n.t("security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon"));
       check();
       const status = await this.pairing.getPairing({ pairingId: draft.pair.pairingId });
       check();
       if (status.state !== PairingState.REVEALED || status.joinerKind !== draft.pair.candidate.kind ||
           !equal(status.devicePublicKey, draft.pair.candidate.ed) || !equal(status.deviceHpkePublicKey, draft.pair.candidate.x))
-        throw new Error("配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始");
+        throw new Error(l10n.t("security.the_unpublished_pairing_draft_was_canceled_or_its_candidate"));
     }
     check();
     let next;
@@ -283,7 +284,7 @@ export class AuthorityClient {
     if (draft.pair) {
       const pair = draft.pair;
       const profile = await loadAccountPublicProfile(this.account.server, r.pin);
-      if (!profile) throw new Error("缺少账户公钥，请重新配对或用恢复码补齐");
+      if (!profile) throw new Error(l10n.t("security.account_public_key_missing_pair_again_or_use_a"));
       const approval = await makePairApproval(head, key, pair.pairingId, pair.candidate.ed, pair.candidate.kind as DeviceKind.CLIENT | DeviceKind.MACHINE, pair.expires, pair.replacesDeviceId, undefined, check);
       check();
       const states = await Promise.all([...r.states, next].map(async (s, i) => ({ state: await stateBytes(s), recovery: r.proofs[i] ? await recoveryBytes(r.proofs[i]!) : new Uint8Array() })));
@@ -351,9 +352,9 @@ export class AuthorityClient {
         // verified current head. It never signs a competing parent.
         await clearSecurityOperation(pending);
       } else await this.resume(check);
-      if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
+      if (await readSecurityOperation()) throw new Error(l10n.t("security.finish_the_current_security_operation_first"));
       const r = await this.authority(check);
-      if (id === r.memberID) throw new Error("管理端不能被普通删除，请先交接");
+      if (id === r.memberID) throw new Error(l10n.t("security.the_managing_client_cannot_be_removed_directly_transfer_management"));
       if (!r.states.at(-1)!.core.members.some((m) => m.id === id)) return;
       await this.claim("state", { action: "remove", target: id } satisfies StateDraft, r);
       check();
@@ -376,7 +377,7 @@ export class AuthorityClient {
       await this.resume(check);
       const r = await this.authority(check), recovery = await Authority.newRecovery();
       try {
-        if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
+        if (await readSecurityOperation()) throw new Error(l10n.t("security.finish_the_current_security_operation_first"));
         check();
         this.codeDraft = operation("state", this.account.server, this.account.deviceId, r.stateHash,
           { action: "recovery", recoveryEd: recovery.publicKey } satisfies StateDraft);
@@ -386,7 +387,7 @@ export class AuthorityClient {
   }
   async prepareHandoffCode() {
     return this.lifecycle.run(async (check) => {
-      if (await readSecurityOperation()) throw new Error("请先完成当前安全操作");
+      if (await readSecurityOperation()) throw new Error(l10n.t("security.finish_the_current_security_operation_first"));
       const r = await this.security.sync();
       check();
       if (!r.member || isAuthority(r)) throw new SecurityError("untrusted");
@@ -452,7 +453,7 @@ export class AuthorityClient {
       await this.resume(check);
       const r = await this.authority(check);
       const offer = handoffCandidates(r, verifiedOffers).find((o) => o.id === incoming);
-      if (!offer) throw new Error("请先在接任设备生成并保存恢复码");
+      if (!offer) throw new Error(l10n.t("security.generate_and_save_a_recovery_code_on_the_successor"));
       await this.claim("state", { action: "handoff", target: incoming, recoveryEd: new Uint8Array(offer.recoveryEd) } satisfies StateDraft, r);
       check();
       await this.resume(check);
@@ -470,9 +471,9 @@ export class AuthorityClient {
         return;
       }
       await this.resume(check);
-      if (await readSecurityOperation()) throw new Error("另一次安全操作尚未完成");
+      if (await readSecurityOperation()) throw new Error(l10n.t("security.another_security_operation_is_unfinished"));
       const r = await this.authority(check);
-      if (pair.expires <= maxTime(r)) throw new Error("配对已过期");
+      if (pair.expires <= maxTime(r)) throw new Error(l10n.t("security.pairing_expired"));
       await this.claim("state", { action: "pair", pair } satisfies StateDraft, r);
       check();
       await this.resume(check);

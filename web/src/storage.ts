@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { forgetSecurity } from "./device-security-store";
 import { ApprovalMode } from "./gen/remoteagent/v1/event_pb";
 import { isKnownAgent } from "./agents";
@@ -264,7 +265,7 @@ export async function saveRegistration(
       };
       tx.oncomplete = () => resolve();
       tx.onabort = tx.onerror = () =>
-        reject(new Error("还有未完成的设备注册，请先重试"));
+        reject(new Error(l10n.t("errors.device_registration_is_unfinished_retry_it_first")));
     });
   } finally {
     d.close();

@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { expect, it } from "vitest";
 const fs = "node:fs";
@@ -9,9 +10,9 @@ it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the
   // Stopped tasks first with an orange dot, then new results with a blue one, which can all be marked read.
   expect(list.querySelectorAll(".rc.warn .dotk.o")).toHaveLength(1);
   expect(list.querySelectorAll(".rc:not(.warn) .dotk:not(.o)").length).toBeGreaterThan(0);
-  expect(list.querySelector(".sec")?.textContent).toContain("全部标为已读");
+  expect(list.querySelector(".sec")?.textContent).toContain(message("schedule.mark_all_as_read"));
   expect(chapter.querySelectorAll(".schedule-unread")).toHaveLength(0);
-  expect(chapter.querySelector("#schedule-wide-empty .main")?.textContent).toBe("选一个任务查看结果");
+  expect(chapter.querySelector("#schedule-wide-empty .main")?.textContent).toBe(message("home.ios_choose_task"));
   expect(chapter.querySelector("#schedule-wide-empty .sel")).toBeNull();
   // A blue dot for new results only, orange numbers for what needs the user.
   const badges = chapter.querySelector("#schedule-badges + .hint + .screens")!;
@@ -22,12 +23,12 @@ it("shows schedule inbox groups, fixed leading dots, two kinds of badges and the
 it("puts the result above history, prompt and settings, and includes running and menu examples", () => {
   const doc = design(), detail = doc.querySelector("#d-new .scroll")!;
   expect(detail.firstElementChild?.className).toBe("res");
-  expect(detail.textContent!.indexOf("更早")).toBeLessThan(detail.textContent!.indexOf("让 agent 做什么"));
-  expect(detail.textContent!.indexOf("让 agent 做什么")).toBeLessThan(detail.textContent!.indexOf("设置"));
+  expect(detail.textContent!.indexOf(message("schedule.earlier"))).toBeLessThan(detail.textContent!.indexOf(message("schedule.what_should_the_agent_do")));
+  expect(detail.textContent!.indexOf(message("schedule.what_should_the_agent_do"))).toBeLessThan(detail.textContent!.indexOf(message("common.settings")));
   expect(detail.querySelector(".grp .mi.h .lead .dotk")).not.toBeNull();
   expect(detail.querySelector(".res table")).not.toBeNull();
-  expect(doc.querySelector("#d-run .res.run")?.textContent).toContain("正在运行");
-  expect(doc.querySelector("#d-menu .sheet")?.textContent).toContain("标为未读");
-  expect(doc.querySelector("#d-menu .sheet .red")?.textContent).toBe("删除任务…");
-  expect(doc.querySelector("#schedule-create")!.nextElementSibling!.textContent).toContain("模型");
+  expect(doc.querySelector("#d-run .res.run")?.textContent).toContain(message("schedule.running"));
+  expect(doc.querySelector("#d-menu .sheet")?.textContent).toContain(message("schedule.mark_as_unread"));
+  expect(doc.querySelector("#d-menu .sheet .red")?.textContent).toBe(message("schedule.delete_task"));
+  expect(doc.querySelector("#schedule-create")!.nextElementSibling!.textContent).toContain(message("models.title"));
 });

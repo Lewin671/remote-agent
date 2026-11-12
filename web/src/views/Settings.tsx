@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { t } from "../i18n";
 import { AgentMark } from "../agent-mark";
 import { Switch } from "../ui";
@@ -94,7 +95,7 @@ export function Settings({
         </div>
       )}
       <div className="large">
-        <h3>设置</h3>
+        <h3>{l10n.t("common.settings")}</h3>
       </div>
       <div className="set-banners">
         {push.top}
@@ -102,53 +103,49 @@ export function Settings({
         <ClockBanner remote={remote} />
       </div>
       <div className="label">
-        电脑
-        <button className="link" onClick={() => go("devices")}>
-          全部设备
-          <ChevronRight />
+        {l10n.t("settings.computer")}<button className="link" onClick={() => go("devices")}>
+          {l10n.t("settings.all_devices")}<ChevronRight />
         </button>
       </div>
       {machines.map((m) => (
         <MachineCard key={m.id} m={m} remote={remote} go={go} />
       ))}
-      {machines.length === 0 && <p className="gf">还没有电脑。</p>}
+      {machines.length === 0 && <p className="gf">{l10n.t("settings.no_computers_yet")}</p>}
       <ManagementEntry remote={remote} go={go} />
-      <div className="label">客户端</div>
+      <div className="label">{l10n.t("security.client")}</div>
       <div className="grp">
         <button className="row" onClick={() => go("c/" + me)}>
           <ClientIcon d={remote.devices.get(me)} />
           <span className="row-name">{clientName(remote.devices.get(me), remote.devices, me)}</span>
-          <span className="v">当前</span>
+          <span className="v">{l10n.t("settings.current")}</span>
           <ChevronRight className="chev" />
         </button>
         {others.slice(0, 3).map((d) => (
           <button key={d.id} className="row" onClick={() => go("c/" + d.id)}>
             <ClientIcon d={d} />
             <span className="row-name">{clientName(d, remote.devices)}</span>
-            <span className="v">已配对</span>
+            <span className="v">{l10n.t("security.paired")}</span>
             <ChevronRight className="chev" />
           </button>
         ))}
         {others.length > 3 && (
           <button className="row act" onClick={() => go("devices")}>
-            全部客户端
-            <ChevronRight className="chev" />
+            {l10n.t("settings.all_clients")}<ChevronRight className="chev" />
           </button>
         )}
       </div>
       <SecurityGroup remote={remote} go={go} />
       {push.group}
-      <div className="label">外观</div>
+      <div className="label">{l10n.t("settings.appearance")}</div>
       <div className="grp">
         <div className="row">
           <span className="ico">
             <Moon />
           </span>
-          主题
-          <ThemePicker />
+          {l10n.t("settings.theme")}<ThemePicker />
         </div>
       </div>
-      <div className="label">关于</div>
+      <div className="label">{l10n.t("settings.about")}</div>
       <div className="grp">
         <div className="row">
           <span className="ico">
@@ -164,22 +161,20 @@ export function Settings({
         </div>
         <UpdateRow />
       </div>
-      <div className="label">账户</div>
+      <div className="label">{l10n.t("settings.account")}</div>
       <div className="grp">
         <div className="row">
-          服务器<span className="v">{new URL(remote.account.server).host}</span>
+          {l10n.t("security.server")}<span className="v">{new URL(remote.account.server).host}</span>
         </div>
         <button className="row" onClick={() => setChecking(true)}>
-          连接检测
-          <span className="v">
+          {l10n.t("home.connection_check")}<span className="v">
             {conn.text && <StateMark kind={conn.tone} />}
             {conn.text}
           </span>
           <ChevronRight className="chev" />
         </button>
         <button className="row danger" onClick={() => setLeaving(true)}>
-          退出并删除本机密钥…
-        </button>
+          {l10n.t("settings.exit_and_delete_local_keys")}</button>
       </div>
       {leaving && <LeaveAlert onCancel={() => setLeaving(false)} />}
       {checking && (
@@ -208,7 +203,7 @@ function MachineCard({ m, remote, go }: { m: MachineView; remote: Remote; go: (r
         </span>
         <span className="s">
           <StateMark kind={online ? "online" : "off"} />
-          {online ? "在线" : m.lastSeenMs ? `${ago(m.lastSeenMs)}在线` : "离线"}
+          {online ? l10n.t("common.ios_online") : m.lastSeenMs ? l10n.t("settings.online", { value: String(ago(m.lastSeenMs)) }) : l10n.t("settings.offline")}
         </span>
       </button>
       {online &&
@@ -235,8 +230,8 @@ function MachineCard({ m, remote, go }: { m: MachineView; remote: Remote; go: (r
 
 /** A CLI's tightest window for its card line, or what stands in its place. */
 function tightest(views: ReturnType<typeof machineQuotaViews>): { left: string; reset: string; percent?: number; tone: string } {
-  const rows = views.flatMap((v) => v.rows).filter((r) => r.percent !== undefined && r.left !== "未获取");
-  if (!rows.length) return { left: quotaSummary(views) || "暂未获取额度", reset: "", tone: "" };
+  const rows = views.flatMap((v) => v.rows).filter((r) => r.percent !== undefined && r.left !== l10n.t("quota.unavailable"));
+  if (!rows.length) return { left: quotaSummary(views) || l10n.t("quota.quota_not_available_yet"), reset: "", tone: "" };
   const r = rows.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
   return { left: r.left, reset: r.reset.split(" · ")[0], percent: r.percent, tone: r.tone };
 }
@@ -247,8 +242,7 @@ function UpdateRow() {
   if (update === "ready")
     return (
       <button className="row" onClick={applyUpdate}>
-        新版本已下载
-        <span className="v">重新加载</span>
+        {l10n.t("home.update_ready")}<span className="v">{l10n.t("common.reload")}</span>
         <ChevronRight className="chev" />
       </button>
     );
@@ -258,16 +252,14 @@ function UpdateRow() {
       disabled={update === "checking"}
       onClick={() => void checkUpdate(true)}
     >
-      检查更新
-      <span className="v">
+      {l10n.t("settings.check_for_updates")}<span className="v">
         {update === "checking" ? (
           <>
-            <LoaderCircle /> 正在检查…
-          </>
+            <LoaderCircle />{l10n.t("settings.checking")}</>
         ) : update === "latest" ? (
-          "已是最新"
+          l10n.t("settings.up_to_date")
         ) : update === "failed" ? (
-          "没能下载，稍后再试"
+          l10n.t("settings.could_not_download_retry_later")
         ) : null}
       </span>
     </button>
@@ -282,7 +274,7 @@ function QuotaSummary({ m, go }: { m: MachineView; go: (r: string) => void }) {
   const views = machineQuotaViews(m.meta, agents, now, m.online);
   return (
     <>
-      <div className="label">账户额度</div>
+      <div className="label">{l10n.t("settings.account_quota")}</div>
       <div className="grp">
         {agents.map((a) => {
           const mine = views.filter((v) => v.agent === agentInfo(a).agent);
@@ -330,7 +322,7 @@ export function QuotaPage({
     return (
       <div className="page">
         <NavBar onBack={onBack} />
-        <div className="center muted">没有这台设备</div>
+        <div className="center muted">{l10n.t("settings.device_not_found")}</div>
       </div>
     );
   const views = machineQuotaViews(m.meta, machineAgents(m), clock, m.online);
@@ -338,13 +330,13 @@ export function QuotaPage({
     <div className="page set">
       <NavBar
         onBack={onBack}
-        title="账户额度"
-        sub={`${machineName(m)} · ${m.online ? "在线" : "离线"}`}
+        title={l10n.t("settings.account_quota")}
+        sub={`${machineName(m)} · ${m.online ? l10n.t("common.ios_online") : l10n.t("settings.offline")}`}
       />
       <div className="body">
         {!m.online && (
           <div className="set-banners">
-            <Banner kind="warn">机器离线，显示上次记录</Banner>
+            <Banner kind="warn">{l10n.t("settings.computer_offline_showing_the_last_reading")}</Banner>
           </div>
         )}
         {views.map((v, i) => (
@@ -365,7 +357,7 @@ export function QuotaPage({
                     <div className="rs">
                       {v.detail ||
                         (v.kind === "unsupported"
-                          ? (agentInfo(v.agent).usageHint ?? "可在本机 CLI 中查看用量")
+                          ? (agentInfo(v.agent).usageHint ?? l10n.t("settings.view_usage_in_the_local_cli"))
                           : "")}
                     </div>
                   </div>
@@ -406,9 +398,7 @@ export function QuotaPage({
           </div>
         ))}
         <div className="gf">
-          时间按北京时间显示。额度属于 CLI
-          登录账户，该账户的其他使用也可能计入。
-        </div>
+          {l10n.t("settings.times_are_shown_in_beijing_time_quotas_belong_to")}</div>
       </div>
     </div>
   );
@@ -421,24 +411,22 @@ export function RemovedScreen({ remote }: { remote: Remote }) {
   return (
     <div className="center">
       <div className="gone">
-        <div className="et">{remote.removalVerified ? "本机已被移出账户" : "暂时无法登录中继"}</div>
+        <div className="et">{remote.removalVerified ? l10n.t("settings.this_device_was_removed_from_the_account") : l10n.t("settings.cannot_sign_in_to_the_relay_right_now")}</div>
         <p className="muted small">
           {remote.removalVerified
-            ? "已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。"
-            : "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。"}
+            ? l10n.t("settings.signed_account_state_confirms_this_device_was_removed_sessions")
+            : l10n.t("settings.the_device_may_have_been_removed_the_service_reset")}
         </p>
-        <RejoinButton server={remote.account.server}>重新加入账户</RejoinButton>
+        <RejoinButton server={remote.account.server}>{l10n.t("settings.rejoin_account")}</RejoinButton>
         <p className="muted small">
-          会先删除这个浏览器里的账户密钥，再用配对码加入。
-        </p>
+          {l10n.t("settings.the_account_keys_in_this_browser_will_be_deleted")}</p>
         <button className="link mid" onClick={async () => {
-          try { await remote.resumeSecurityOperation(); setResult(await remote.authority.pending() ? "原操作尚未完成，请继续核实。" : "原安全操作已核实完成，可以重新加入账户。"); }
+          try { await remote.resumeSecurityOperation(); setResult(await remote.authority.pending() ? l10n.t("settings.the_original_operation_is_unfinished_continue_verifying") : l10n.t("settings.the_original_security_operation_is_verified_complete_you_can")); }
           catch (e) { setResult(errorText(e)); }
-        }}>核实并继续安全操作</button>
+        }}>{l10n.t("settings.verify_and_continue_security_operation")}</button>
         {result && <Banner>{result}</Banner>}
         <button className="link mid" onClick={() => remote.retryLogin()}>
-          再试一次
-        </button>
+          {l10n.t("session.try_again")}</button>
       </div>
     </div>
   );
@@ -471,17 +459,17 @@ export function DevicesPage({
   }, [remote]);
   return (
     <div className="page set">
-      <NavBar onBack={onBack} title="设备" />
+      <NavBar onBack={onBack} title={l10n.t("settings.devices")} />
       <div className="body">
         {incomplete.length > 0 && <>
-          <div className="label">未完成的配对</div>
-          <p className="gf">新设备尚未完成加入。若无法继续，可移除后重新配对。</p>
+          <div className="label">{l10n.t("settings.unfinished_pairing")}</div>
+          <p className="gf">{l10n.t("settings.the_new_device_has_not_finished_joining_if_it")}</p>
           {incomplete.map(d => <div key={d.id}>
-            <p className="gf">{d.kind === DeviceKind.MACHINE ? "电脑" : "客户端"} · 未完成的配对</p>
+            <p className="gf">{d.kind === DeviceKind.MACHINE ? l10n.t("settings.computer") : l10n.t("security.client")}{l10n.t("settings.unfinished_pairing_settings")}</p>
             <DeviceActions remote={remote} id={d.id} incomplete />
           </div>)}
         </>}
-        <div className="label">电脑 · 运行 CLI</div>
+        <div className="label">{l10n.t("settings.computers_run_clis")}</div>
         <div className="grp">
           {machines.map((m) => (
             <button key={m.id} className="row" onClick={() => go("m/" + m.id)}>
@@ -493,27 +481,25 @@ export function DevicesPage({
                 {m.online ? (
                   <>
                     <StateMark kind="online" />
-                    在线
-                  </>
+                    {l10n.t("common.ios_online")}</>
                 ) : (
-                  ago(m.lastSeenMs) || "离线"
+                  ago(m.lastSeenMs) || l10n.t("settings.offline")
                 )}
               </span>
               <ChevronRight className="chev" />
             </button>
           ))}
           {machines.length === 0 && (
-            <div className="row help">还没有电脑。</div>
+            <div className="row help">{l10n.t("settings.no_computers_yet")}</div>
           )}
           {remote.isAuthority && <ManagementEntry remote={remote} go={go} row />}
         </div>
         {!remote.isAuthority && <ManagementEntry remote={remote} go={go} />}
-        <div className="label">客户端 · 操作会话</div>
+        <div className="label">{l10n.t("settings.clients_control_sessions")}</div>
         <div className="grp">
           {remote.devicesStatus === "error" && (
             <div className="row help">
-              没能读取设备列表
-              <button
+              {l10n.t("settings.could_not_read_the_device_list")}<button
                 className="link"
                 onClick={() => void remote.loadDevices()}
               >
@@ -534,7 +520,7 @@ export function DevicesPage({
                   <small>{clientDetail(d)}</small>
                 </span>
                 <span className="v">
-                  {d.id === me ? "本机" : d.id === remote.authorityDeviceId ? "管理端" : clientUsed(d)}
+                  {d.id === me ? l10n.t("security.this_device") : d.id === remote.authorityDeviceId ? l10n.t("settings.managing_client") : clientUsed(d)}
                 </span>
                 {d.id !== me && <ChevronRight className="chev" />}
               </button>
@@ -542,8 +528,7 @@ export function DevicesPage({
           )}
         </div>
         <div className="gf">
-          右边是上次使用的时间。名称只能在那台设备上修改。
-        </div>
+          {l10n.t("settings.the_time_on_the_right_is_the_last_use")}</div>
       </div>
     </div>
   );
@@ -601,14 +586,14 @@ export function ClientPage({
         title={clientName(d, remote.devices, id)}
         sub={
           current
-            ? "本机"
+            ? l10n.t("security.this_device")
             : id === remote.authorityDeviceId
-              ? "管理端"
-              : "已配对的客户端"
+              ? l10n.t("settings.managing_client")
+              : l10n.t("settings.paired_client")
         }
       />
       <div className="body">
-        <div className="label">客户端</div>
+        <div className="label">{l10n.t("security.client")}</div>
         <div className="grp">
           <button
             className="row"
@@ -618,8 +603,7 @@ export function ClientPage({
               setRenaming(true);
             }}
           >
-            名称
-            <span className="v">{d?.meta?.name || "未命名"}</span>
+            {l10n.t("settings.name")}<span className="v">{d?.meta?.name || l10n.t("settings.unnamed")}</span>
             {canEdit && <ChevronRight className="chev" />}
           </button>
           {d?.meta?.name && (
@@ -628,52 +612,49 @@ export function ClientPage({
               disabled={!canEdit || busy}
               onClick={() => void save("")}
             >
-              恢复默认名称
-              <span className="v">{defaultClientName(d, remote.devices, id)}</span>
+              {l10n.t("settings.restore_default_name")}<span className="v">{defaultClientName(d, remote.devices, id)}</span>
             </button>
           )}
           {d?.meta?.description && (
             <div className="row">
-              运行在<span className="v">{d.meta.description}</span>
+              {l10n.t("settings.runs_on")}<span className="v">{d.meta.description}</span>
             </div>
           )}
           <div className="row">
-            上次使用
-            <span className="v">
-              {current ? "现在" : lastUsed(d) || "没有记录"}
+            {l10n.t("settings.last_used")}<span className="v">
+              {current ? l10n.t("settings.now") : lastUsed(d) || l10n.t("settings.no_record")}
             </span>
           </div>
           {!!d?.createdMs && (
             <div className="row">
-              添加于<span className="v">{dayText(d.createdMs)}</span>
+              {l10n.t("settings.added")}<span className="v">{dayText(d.createdMs)}</span>
             </div>
           )}
           <div className="row">
-            设备 ID<span className="v mono">…{shortId(id)}</span>
+            {l10n.t("settings.device_id")}<span className="v mono">…{shortId(id)}</span>
           </div>
         </div>
         <div className="gf">
           {current
-            ? "修改名称同步到其他客户端。"
-            : "名称和通知开关要在那台设备上设置。"}
+            ? l10n.t("settings.name_changes_sync_to_other_clients")
+            : l10n.t("settings.set_the_name_and_notification_preferences_on_that_device")}
         </div>
         {error && (
           <div className="set-banners">
-            <Banner kind="err">没能保存名称：{error}</Banner>
+            <Banner kind="err">{l10n.t("settings.name_save_error", { reason: error })}</Banner>
           </div>
         )}
         {current ? (
           <div className="grp">
             <button className="row danger" onClick={() => setLeaving(true)}>
-              退出并删除本机密钥…
-            </button>
+              {l10n.t("settings.exit_and_delete_local_keys")}</button>
           </div>
         ) : (
           <DeviceActions remote={remote} id={id} onRemoved={onBack} />
         )}
       </div>
       {renaming && (
-        <Sheet onClose={() => setRenaming(false)} title="客户端名称">
+        <Sheet onClose={() => setRenaming(false)} title={l10n.t("settings.client_name")}>
           <input
             className="field"
             autoFocus
@@ -681,18 +662,17 @@ export function ClientPage({
             placeholder={defaultClientName(d, remote.devices, id)}
             maxLength={40}
             onChange={(e) => setName(e.target.value)}
-            aria-label="客户端名称"
+            aria-label={l10n.t("settings.client_name")}
           />
           <div className="hint">
-            名称加密后同步，服务器看不到。留空就用默认名称。
-          </div>
+            {l10n.t("settings.names_sync_encrypted_the_server_cannot_read_them_leave")}</div>
           <div className="btns sheet-foot">
             <button
               className="btn pri"
               disabled={busy}
               onClick={() => void save(name)}
             >
-              {busy ? "保存中…" : t("common.save")}
+              {busy ? l10n.t("common.ios_saving") : t("common.save")}
             </button>
           </div>
         </Sheet>
@@ -744,37 +724,32 @@ function usePush(remote: Remote) {
     warn = (
       <div className="set-banners">
         <Banner
-          action={help ? undefined : "说明"}
+          action={help ? undefined : l10n.t("settings.details")}
           onAction={() => setHelp(true)}
         >
-          iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送
-          {help &&
-            "：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。"}
+          {help ? l10n.t("settings.iphone_push_help") : l10n.t("settings.on_iphone_add_to_home_screen_and_open_from")}
         </Banner>
       </div>
     );
   else if (st === "unsupported")
     warn = (
       <div className="set-banners">
-        <Banner>这个浏览器不支持推送</Banner>
+        <Banner>{l10n.t("settings.this_browser_does_not_support_push_notifications")}</Banner>
       </div>
     );
   else if (st === "denied")
     warn = (
       <div className="set-banners">
-        <Banner kind="warn" action={help ? undefined : "怎么打开"} onAction={() => setHelp(true)}>
-          浏览器拒绝了通知权限
-          {help &&
-            "。在地址栏左边的网站设置里把「通知」改成允许，再回来打开开关。"}
+        <Banner kind="warn" action={help ? undefined : l10n.t("settings.how_to_enable")} onAction={() => setHelp(true)}>
+          {help ? l10n.t("settings.notification_permission_help") : l10n.t("settings.the_browser_denied_notification_permission")}
         </Banner>
       </div>
     );
   else if (!prefs.attention && !prefs.turns)
     warn = (
       <div className="set-banners">
-        <Banner kind="warn" action="开启" onAction={busy ? undefined : () => void change({ ...prefs, attention: true })}>
-          会话提醒没开，审批来了不会提醒你
-        </Banner>
+        <Banner kind="warn" action={l10n.t("settings.enable")} onAction={busy ? undefined : () => void change({ ...prefs, attention: true })}>
+          {l10n.t("settings.session_alerts_are_off_you_will_not_be_notified")}</Banner>
       </div>
     );
   const usable = st === "ok" || st === "default";
@@ -788,7 +763,7 @@ function usePush(remote: Remote) {
             action={t("common.retry")}
             onAction={() => last && void change(last)}
           >
-            订阅失败：{error}
+            {l10n.t("settings.subscription_error", { reason: error })}
           </Banner>
         </div>
       )}
@@ -796,36 +771,32 @@ function usePush(remote: Remote) {
   );
   const group = (
     <>
-      <div className="label">本客户端的通知</div>
+      <div className="label">{l10n.t("settings.notifications_on_this_client")}</div>
       <div className="grp">
         <div className="row">
-          安全通知
-          <span className="v">{!usable ? "无法接收" : securitySubscribed ? "已开启" : <button className="link" disabled={busy} onClick={() => void change(prefs)}>开启安全通知</button>}</span>
+          {l10n.t("settings.security_notifications")}<span className="v">{!usable ? l10n.t("settings.cannot_receive") : securitySubscribed ? l10n.t("settings.enabled") : <button className="link" disabled={busy} onClick={() => void change(prefs)}>{l10n.t("settings.enable_security_notifications")}</button>}</span>
         </div>
         <div className="row">
-          等我处理时
-          <Switch
-            label="等我处理时"
+          {l10n.t("settings.when_i_need_to_act")}<Switch
+            label={l10n.t("settings.when_i_need_to_act")}
             on={prefs.attention}
             disabled={busy || !usable}
             onChange={(v) => void change({ ...prefs, attention: v })}
           />
         </div>
         <div className="row">
-          一轮结束时
-          <Switch
-            label="一轮结束时"
+          {l10n.t("settings.when_a_turn_ends")}<Switch
+            label={l10n.t("settings.when_a_turn_ends")}
             on={prefs.turns}
             disabled={busy || !usable}
             onChange={(v) => void change({ ...prefs, turns: v })}
           />
         </div>
         <div className="row">
-          定时任务结果
-          <Switch label="定时任务结果" on={prefs.scheduled !== false} disabled={busy || !usable} onChange={(v) => void change({ ...prefs, scheduled: v })} />
+          {l10n.t("settings.scheduled_task_results")}<Switch label={l10n.t("settings.scheduled_task_results")} on={prefs.scheduled !== false} disabled={busy || !usable} onChange={(v) => void change({ ...prefs, scheduled: v })} />
         </div>
       </div>
-      <div className="gf">安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。</div>
+      <div className="gf">{l10n.t("settings.security_notifications_are_independent_of_session_alerts_delivery_is")}</div>
     </>
   );
   return { top, group };
@@ -847,8 +818,8 @@ function idleCloseValue(minutes: number): number {
 
 export function idleCloseLabel(minutes: number): string {
   const m = idleCloseValue(minutes);
-  if (m < 0) return "关闭";
-  return m % 60 === 0 ? `${m / 60} 小时` : `${m} 分钟`;
+  if (m < 0) return l10n.t("settings.idle_close_off");
+  return m % 60 === 0 ? l10n.t("quota.hr", { count: m / 60 }) : l10n.t("quota.min", { count: m });
 }
 
 /** The choices to show: the fixed ones plus the current value when it is
@@ -907,7 +878,7 @@ export function MachinePage({
     return (
       <div className="page">
         <NavBar onBack={onBack} />
-        <div className="center muted">没有这台设备</div>
+        <div className="center muted">{l10n.t("settings.device_not_found")}</div>
       </div>
     );
   const save = async (next: DaemonSettings) => {
@@ -935,7 +906,7 @@ export function MachinePage({
   if (pick && st) {
     if (pick.what === "timeout")
       sheet = (
-        <Sheet onClose={() => setPick(undefined)} title="审批超时">
+        <Sheet onClose={() => setPick(undefined)} title={l10n.t("settings.approval_timeout")}>
           <div className="list">
             {timeouts.map((t) => (
               <button
@@ -943,7 +914,7 @@ export function MachinePage({
                 className="mi"
                 onClick={() => void save({ ...st, approvalTimeoutSeconds: t })}
               >
-                <div className="mt">{t / 60} 分钟</div>
+                <div className="mt">{t / 60}{l10n.t("settings.min")}</div>
                 {t === st.approvalTimeoutSeconds && (
                   <span className="ck">
                     <Check />
@@ -952,12 +923,12 @@ export function MachinePage({
               </button>
             ))}
           </div>
-          <div className="hint">没人回复的审批过了这个时间就拒绝</div>
+          <div className="hint">{l10n.t("settings.unanswered_approvals_are_denied_after_this_time")}</div>
         </Sheet>
       );
     else if (pick.what === "idleClose")
       sheet = (
-        <Sheet onClose={() => setPick(undefined)} title="空闲自动结束会话">
+        <Sheet onClose={() => setPick(undefined)} title={l10n.t("settings.automatically_end_idle_sessions")}>
           <div className="list">
             {idleCloseChoices(st.idleCloseMinutes).map((t) => (
               <button
@@ -967,7 +938,7 @@ export function MachinePage({
               >
                 <div className="mt">
                   {idleCloseLabel(t)}
-                  {t === idleCloseDefault && "（默认）"}
+                  {t === idleCloseDefault && l10n.t("settings.default")}
                 </div>
                 {t === idleCloseValue(st.idleCloseMinutes) && (
                   <span className="ck">
@@ -978,8 +949,7 @@ export function MachinePage({
             ))}
           </div>
           <div className="hint">
-            会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在
-          </div>
+            {l10n.t("settings.sessions_end_automatically_after_this_much_inactivity_not_running")}</div>
         </Sheet>
       );
     else {
@@ -990,7 +960,7 @@ export function MachinePage({
         list?.models,
         def.model || list?.defaultModel || "",
       );
-      const follow = `跟随 ${agentName(a)} 配置`;
+      const follow = l10n.t("settings.follow_configuration", { value: String(agentName(a)) });
       const allNoAuto =
         agentInfo(a).autoMayBeUnavailable && allAutoUnavailable(list?.models);
       const noAuto =
@@ -1048,8 +1018,8 @@ export function MachinePage({
                 desc:
                   x === ApprovalMode.AUTO && noAuto
                     ? allNoAuto
-                      ? "当前账户不支持自动模式"
-                      : "当前模型没有自动模式"
+                      ? l10n.t("modes.account_unsupported")
+                      : l10n.t("new_session.this_model_has_no_auto_mode")
                     : undefined,
                 off: x === ApprovalMode.AUTO && noAuto,
                 on: x === def.mode,
@@ -1058,10 +1028,10 @@ export function MachinePage({
       sheet = (
         <Sheet
           onClose={() => setPick(undefined)}
-          title={(agents.length > 1 ? agentName(a) + " · " : "") + { model: "默认模型", effort: "默认推理强度", mode: "默认审批模式" }[pick.what]}
+          title={(agents.length > 1 ? agentName(a) + " · " : "") + { model: l10n.t("new_session.default_model"), effort: l10n.t("settings.default_reasoning_effort"), mode: l10n.t("settings.default_approval_mode") }[pick.what]}
         >
           {pick.what === "model" && !list && (
-            <div className="hint top">读取模型列表…</div>
+            <div className="hint top">{l10n.t("session.reading_models")}</div>
           )}
           <div className="list">
             {opts.map((o) => (
@@ -1090,30 +1060,27 @@ export function MachinePage({
 
   return (
     <div className="page set">
-      <NavBar onBack={onBack} title={name} sub={m.online ? "在线" : ago(m.lastSeenMs) ? `${ago(m.lastSeenMs)}在线` : "离线"} />
+      <NavBar onBack={onBack} title={name} sub={m.online ? l10n.t("common.ios_online") : ago(m.lastSeenMs) ? l10n.t("settings.online", { value: String(ago(m.lastSeenMs)) }) : l10n.t("settings.offline")} />
       <div className="body">
         <QuotaSummary m={m} go={go} />
         {versions.length > 0 && (
           <div className="grp">
             {versions.map((v) => (
               <div className="row" key={v.agent}>
-                {agentName(v.agent)} 版本
-                <span className="v">
-                  {!v.verified && "未验证 · "}
+                {l10n.t("settings.cli_version", { name: agentName(v.agent) })}<span className="v">
+                  {!v.verified && l10n.t("settings.unverified")}
                   {v.version}
                 </span>
               </div>
             ))}
             {versions.some((v) => !v.verified) && (
               <div className="row help">
-                版本未验证：在这台电脑上运行 remote-agent
-                doctor，它会用一个临时会话检查各项功能。
-              </div>
+                {l10n.t("settings.version_unverified_run_remote_agent_doctor_on_this_computer")}</div>
             )}
           </div>
         )}
         {!m.online && (
-          <div className="label">{name} 不在线，暂时看不到它的设置。</div>
+          <div className="label">{l10n.t("settings.computer_settings_offline", { name })}</div>
         )}
         {error && (
           <div className="set-banners">
@@ -1122,7 +1089,7 @@ export function MachinePage({
               action={t("common.retry")}
               onAction={() => setAttempt((a) => a + 1)}
             >
-              没能读取设置：{error}
+              {l10n.t("settings.read_error", { reason: error })}
             </Banner>
           </div>
         )}
@@ -1133,7 +1100,7 @@ export function MachinePage({
               action={t("common.retry")}
               onAction={() => void save(saveError.next)}
             >
-              没能保存：{saveError.text}
+              {l10n.t("settings.save_error", { reason: saveError.text })}
             </Banner>
           </div>
         )}
@@ -1142,18 +1109,18 @@ export function MachinePage({
           (() => {
             const a = activeAgent;
             const def = defaultsFor(st, a);
-            const follow = "跟随配置";
+            const follow = l10n.t("settings.follow_configuration_settings");
             return (
               <>
                 <div className="label">
                   {agents.length > 1
-                    ? "新项目默认设置"
-                    : `新项目默认设置 · ${agentName(a)}`}
+                    ? l10n.t("settings.new_project_defaults")
+                    : l10n.t("settings.new_project_defaults_settings", { value: String(agentName(a)) })}
                 </div>
                 {agents.length > 1 && (
                   <Segmented
                     className="cli-tabs full"
-                    label="按 CLI 的新项目默认设置"
+                    label={l10n.t("settings.use_cli_defaults_for_new_projects")}
                     value={String(a)}
                     onChange={(v) => setDefaultAgent(Number(v) as Agent)}
                     options={agents.map((x) => ({ value: String(x), label: agentName(x) }))}
@@ -1164,8 +1131,7 @@ export function MachinePage({
                     className="row"
                     onClick={() => setPick({ agent: a, what: "model" })}
                   >
-                    模型
-                    <span className="v">
+                    {l10n.t("models.title")}<span className="v">
                       {def.model ? modelName(a, def.model) : follow}
                     </span>
                     <ChevronRight className="chev" />
@@ -1174,8 +1140,7 @@ export function MachinePage({
                     className="row"
                     onClick={() => setPick({ agent: a, what: "effort" })}
                   >
-                    推理强度
-                    <span className="v">
+                    {l10n.t("models.effort")}<span className="v">
                       {def.effort || follow}
                     </span>
                     <ChevronRight className="chev" />
@@ -1184,18 +1149,16 @@ export function MachinePage({
                     className="row"
                     onClick={() => setPick({ agent: a, what: "mode" })}
                   >
-                    审批模式
-                    <span className="v">
+                    {l10n.t("modes.title")}<span className="v">
                       {modeName(def.mode) || follow}
                     </span>
                     <ChevronRight className="chev" />
                   </button>
                   {!def.mode && (
                     <div className="row help">
-                      不指定时实际用：
-                      {/* 完全放行 is red wherever it is written. */}
+                      {l10n.t("settings.when_unspecified_uses")}{/* 完全放行 is red wherever it is written. */}
                       <span className={defaultModeOf(m, a).mode === ApprovalMode.FULL_ACCESS ? "red" : undefined}>
-                        {modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(m, a), a).replace(/^默认：/, "")}
+                        {modeLabel(ApprovalMode.UNSPECIFIED, defaultModeOf(m, a), a, false)}
                       </span>
                     </div>
                   )}
@@ -1209,18 +1172,15 @@ export function MachinePage({
               className="row"
               onClick={() => setPick({ what: "timeout" })}
             >
-              审批超时
-              <span className="v">
-                {Math.round(st.approvalTimeoutSeconds / 60)} 分钟
-              </span>
+              {l10n.t("settings.approval_timeout")}<span className="v">
+                {l10n.t("quota.min", { count: Math.round(st.approvalTimeoutSeconds / 60) })}</span>
               <ChevronRight className="chev" />
             </button>
             <button
               className="row"
               onClick={() => setPick({ what: "idleClose" })}
             >
-              空闲自动结束会话
-              <span className="v">
+              {l10n.t("settings.automatically_end_idle_sessions")}<span className="v">
                 {idleCloseLabel(st.idleCloseMinutes)}
               </span>
               <ChevronRight className="chev" />
@@ -1238,7 +1198,7 @@ export function MachinePage({
         )}
         {projs.length > 0 && (
           <>
-            <div className="label">项目</div>
+            <div className="label">{l10n.t("schedule.project")}</div>
             <div className="grp">
               {projs.map((p) => (
                 <button
@@ -1270,12 +1230,12 @@ export function versionText(version: string, commit?: string): string {
 function ThemePicker() {
   const [theme, set] = useState<Theme>(getTheme);
   const opts: [Theme, string][] = [
-    ["auto", "自动"],
-    ["light", "亮色"],
-    ["dark", "暗色"],
+    ["auto", l10n.t("settings.theme_auto")],
+    ["light", l10n.t("settings.light")],
+    ["dark", l10n.t("settings.dark")],
   ];
   return (
-    <div className="seg" role="radiogroup" aria-label="外观">
+    <div className="seg" role="radiogroup" aria-label={l10n.t("settings.appearance")}>
       {opts.map(([t, name]) => (
         <button
           key={t}
@@ -1296,7 +1256,7 @@ function ThemePicker() {
 
 function storageSize(n: bigint | number): string {
   const value = Number(n);
-  if (value > 0 && value < 104858) return "不到 0.1 MiB";
+  if (value > 0 && value < 104858) return l10n.t("settings.less_than_0_1_mib");
   return value >= 1073741824
     ? `${(value / 1073741824).toFixed(1)} GiB`
     : `${(value / 1048576).toFixed(1)} MiB`;
@@ -1335,30 +1295,29 @@ function ImageStorageSettings({
   const parts = usage
     ? [
         usage.reclaimableBytes > 0n &&
-          `可清理 ${storageSize(usage.reclaimableBytes)}`,
+          l10n.t("settings.can_clear", { value: String(storageSize(usage.reclaimableBytes)) }),
         usage.reservedBytes > 0n &&
-          `正在上传 ${storageSize(usage.reservedBytes)}`,
+          l10n.t("settings.uploading", { value: String(storageSize(usage.reservedBytes)) }),
       ]
         .filter(Boolean)
         .join(" · ")
     : "";
   return (
     <>
-      <div className="label">附件存储</div>
+      <div className="label">{l10n.t("settings.attachment_storage")}</div>
       <div className="grp">
         <div className="row col">
           <div className="line">
-            <span>上传的图片和文件</span>
+            <span>{l10n.t("settings.uploaded_images_and_files")}</span>
             <span className="v">
-              {usage ? storageSize(usage.uploadBytes) : "读取中…"}
+              {usage ? storageSize(usage.uploadBytes) : l10n.t("projects.reading_directory")}
             </span>
           </div>
           {parts && <div className="hint">{parts}</div>}
         </div>
         <div className="row">
-          空间上限
-          <select
-            aria-label="空间上限"
+          {l10n.t("settings.storage_limit")}<select
+            aria-label={l10n.t("settings.storage_limit")}
             className="v"
             value={String(settings.imageUploadQuotaBytes)}
             disabled={busy || !online}
@@ -1385,8 +1344,7 @@ function ImageStorageSettings({
           </select>
         </div>
         <div className="row">
-          预览缓存
-          <span className="v">
+          {l10n.t("settings.preview_cache")}<span className="v">
             {usage ? storageSize(usage.cacheBytes) : "—"}
           </span>
         </div>
@@ -1395,20 +1353,17 @@ function ImageStorageSettings({
           disabled={busy || !online || free === 0n}
           onClick={() => setClean(true)}
         >
-          清理…
-          <span className="v">
+          {l10n.t("settings.clear")}<span className="v">
             {usage
               ? free > 0n
-                ? `可释放 ${storageSize(free)}`
-                : "没有可清理的"
+                ? l10n.t("settings.can_free", { value: String(storageSize(free)) })
+                : l10n.t("settings.nothing_to_clear")
               : ""}
           </span>
         </button>
       </div>
       <div className="gf">
-        附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多
-        150 MiB，自动回收。
-      </div>
+        {l10n.t("settings.attachments_are_stored_on_this_computer_session_files_remain")}</div>
       {error && (
         <div className="set-banners">
           <Banner kind="err">{error}</Banner>
@@ -1416,9 +1371,9 @@ function ImageStorageSettings({
       )}
       {clean && (
         <Alert
-          title="清理可回收附件和缓存？"
-          text="清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。"
-          ok="清理"
+          title={l10n.t("settings.clear_reclaimable_attachments_and_cache")}
+          text={l10n.t("settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache")}
+          ok={l10n.t("settings.clear_settings")}
           onCancel={() => setClean(false)}
           onOk={async () => {
             setClean(false);

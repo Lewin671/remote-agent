@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -46,7 +47,7 @@ it("distinguishes verified removal from a refused login and uses stopped-transpo
   await act(async () => root.render(<RemovedScreen remote={r} />));
   expect(host.textContent).toContain("已通过账户签名状态核实本机被移除");
   expect(host.textContent).not.toContain("可能是设备被移除、服务重置或连接出了问题");
-  await click("核实并继续安全操作");
+  await click(message("settings.verify_and_continue_security_operation"));
   expect(resume).toHaveBeenCalledOnce();
   expect(host.textContent).toContain("原安全操作已核实完成");
 });
@@ -58,13 +59,13 @@ it("offers an explicit exit for a confirmed handoff backup whose offer was never
   let pending: typeof op | undefined = op;
   const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockImplementation(async () => { pending = undefined; });
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
-  await click("未完成的安全操作");
-  await click("放弃此接任准备");
+  await click(message("security.unfinished_security_operation"));
+  await click(message("security.abandon_this_succession_preparation_security"));
   expect(discard).not.toHaveBeenCalled();
   expect(host.textContent).toContain("公钥可能已经发布");
-  await click("放弃");
+  await click(message("new_session.android_abandon"));
   expect(discard).toHaveBeenCalledOnce();
-  expect(button("放弃此接任准备")).toBeUndefined();
+  expect(button(message("security.abandon_this_succession_preparation_security"))).toBeUndefined();
 });
 
 it("ignores a security read paused by hiding the page and refreshes when it becomes visible", async () => {
@@ -87,7 +88,7 @@ it("ignores a security read paused by hiding the page and refreshes when it beco
   });
   expect(read.mock.calls.length).toBeGreaterThan(1);
   expect(host.textContent).not.toContain("security: storage");
-  expect(host.textContent).not.toContain("正在读取…");
+  expect(host.textContent).not.toContain(message("security.reading"));
 });
 
 it("clears a passive read error after a successful foreground refresh", async () => {
@@ -107,26 +108,26 @@ it.each(["authority", "member", "machine"])(
     const r = demo(`role=${role}&empty=none`);
     const go = vi.fn();
     await mount(<Settings remote={r} go={go} />);
-    expect(!!button("添加设备")).toBe(role === "authority");
+    expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
         "要添加电脑或客户端，在管理端（Android · Pixel 9）上打开「设置 › 添加设备」。",
       );
     if (role === "authority") {
       // After the computers' cards: a line of blue words with ＋.
-      const add = button("添加设备");
+      const add = button(message("home.add_device"));
       expect(add.closest(".grp")).toBeNull();
       expect(add.classList.contains("addrow")).toBe(true);
       expect(add.querySelector("svg")).toBeTruthy();
-      await click("添加设备");
+      await click(message("home.add_device"));
       expect(go).toHaveBeenCalledWith("settings/add-device");
     }
     await act(async () =>
       root.render(<DevicesPage remote={r} go={go} onBack={() => {}} />),
     );
-    expect(!!button("添加设备")).toBe(role === "authority");
+    expect(!!button(message("home.add_device"))).toBe(role === "authority");
     await act(async () => root.render(<Home remote={r} go={go} />));
-    expect(!!button("添加设备")).toBe(role === "authority");
+    expect(!!button(message("home.add_device"))).toBe(role === "authority");
     if (role !== "authority")
       expect(host.textContent).toContain(
         "还没有电脑。在管理端（Android · Pixel 9）上打开「设置 › 添加设备」，把电脑加进来。",
@@ -138,14 +139,14 @@ it.each(["authority", "member", "machine"])(
   async (role) => {
     const r = demo(`role=${role}&archive=1`);
     await mount(<DeviceActions remote={r} id="mini" machine go={() => {}} />);
-    expect(!!button("重新加入并接续会话")).toBe(role === "authority");
-    expect(!!button("删除这台电脑的记录…")).toBe(role === "authority");
+    expect(!!button(message("security.rejoin_and_resume_sessions"))).toBe(role === "authority");
+    expect(!!button(message("security.delete_this_computer_s_records"))).toBe(role === "authority");
     await act(async () =>
       root.render(<SecurityPage remote={r} onBack={() => {}} />),
     );
-    expect(!!button("现在续期")).toBe(role === "authority");
-    expect(!!button("恢复码")).toBe(role === "authority");
-    expect(!!button("接管管理权")).toBe(role === "member");
+    expect(!!button(message("security.renew_now"))).toBe(role === "authority");
+    expect(!!button(message("security.recovery_code"))).toBe(role === "authority");
+    expect(!!button(message("security.take_over_management"))).toBe(role === "member");
   },
 );
 it.each(["authority", "member"])(
@@ -159,8 +160,8 @@ it.each(["authority", "member"])(
         role === "authority" ? "publishRecovery" : "offerHandoff",
       )
       .mockRejectedValue(new Error("storage failed"));
-    await click(role === "authority" ? "恢复码" : "接管管理权");
-    await click("生成新的恢复码");
+    await click(role === "authority" ? message("security.recovery_code") : message("security.take_over_management"));
+    await click(message("security.generate_new_recovery_code"));
     const label =
       role === "authority" ? "我已保存，发布换码" : "我已保存，通知管理端";
     expect(button(label).disabled).toBe(true);
@@ -183,20 +184,20 @@ it("separates device removal from archive deletion and retains the actions after
     .mockRejectedValue(new Error("storage failed"));
   const deletion = vi.spyOn(r, "deleteMachineRecords");
   await mount(<DeviceActions remote={r} id="mini" machine />);
-  await click("移除设备…");
+  await click(message("security.remove_device"));
   expect(host.textContent).toContain("历史档案仍保留");
-  await click("移除");
+  await click(message("common.remove"));
   expect(remove).toHaveBeenCalledWith("mini");
   expect(deletion).not.toHaveBeenCalled();
   expect(host.textContent).toContain("storage failed");
-  expect(button("移除设备…")).toBeTruthy();
+  expect(button(message("security.remove_device"))).toBeTruthy();
 });
 it("shows pending recovery on home and settings, with the actual ready time", async () => {
   const r = demo("role=authority&recovery=pending");
   const go = vi.fn();
   await mount(<Home remote={r} go={go} />);
-  expect(host.textContent).toContain("恢复申请待处理");
-  await click("处理");
+  expect(host.textContent).toContain(message("security.recovery_request_pending"));
+  await click(message("dock.handle"));
   expect(go).toHaveBeenCalledWith("settings/security");
   await act(async () => root.render(<Settings remote={r} go={go} />));
   expect(host.textContent).toContain("可生效时间");
@@ -204,7 +205,7 @@ it("shows pending recovery on home and settings, with the actual ready time", as
 it("requires the candidate to confirm SAS before authority approval and waits for delivery", async () => {
   const r = demo("role=authority&pair=compare");
   await mount(<PairCodePage remote={r} onBack={() => {}} />);
-  await click("生成配对码");
+  await click(message("security.generate_pairing_code"));
   // Clicking finishes before the lazy QR module necessarily loads. Flush React
   // work on each attempt and wait for the rendered image, not a fixed delay.
   await vi.waitFor(async () => {
@@ -212,12 +213,12 @@ it("requires the candidate to confirm SAS before authority approval and waits fo
     expect(host.querySelector('img[alt="添加设备的配对二维码"]')).toBeTruthy();
   });
   expect(host.textContent).toContain("🌲 🍋 🚲 🐳");
-  expect(button("允许加入").disabled).toBe(true);
+  expect(button(message("security.allow_to_join")).disabled).toBe(true);
   await act(async () =>
     host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click(),
   );
-  await click("允许加入");
-  expect(host.textContent).toContain("设备已加入");
+  await click(message("security.allow_to_join"));
+  expect(host.textContent).toContain(message("security.device_joined"));
 });
 it("gives authority-specific exit advice before erasing keys", async () => {
   vi.spyOn(operations, "authorityExitAdvice").mockResolvedValue({
@@ -232,24 +233,24 @@ it("gives authority-specific exit advice before erasing keys", async () => {
 it("renews while an unconfirmed code remains in memory", async () => {
   const r = demo("role=authority");
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
-  await click("恢复码");
-  await click("生成新的恢复码");
+  await click(message("security.recovery_code"));
+  await click(message("security.generate_new_recovery_code"));
   await act(async () => host.querySelector<HTMLButtonElement>('button[aria-label="返回"]')!.click());
-  await click("现在续期");
-  expect(host.textContent).not.toContain("请先完成当前安全操作，再续期");
-  expect(host.textContent).toContain("远程控制已续期");
+  await click(message("security.renew_now"));
+  expect(host.textContent).not.toContain(message("security.finish_the_current_security_operation_before_renewing"));
+  expect(host.textContent).toContain(message("security.remote_control_renewed"));
 });
 it.each(["authority", "member", "machine"])("keeps the security overview ordered and hides absent pending operations: %s", async role => {
   const r = demo(`role=${role}&recovery=pending`);
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
   const text = host.textContent!;
-  expect(text.indexOf("有人正在用恢复码")).toBeLessThan(text.indexOf("当前管理端"));
-  expect(text.indexOf("当前管理端")).toBeLessThan(text.indexOf("远程控制有效期"));
-  expect(text).not.toContain("未完成的安全操作");
+  expect(text.indexOf("有人正在用恢复码")).toBeLessThan(text.indexOf(message("security.current_managing_client")));
+  expect(text.indexOf(message("security.current_managing_client"))).toBeLessThan(text.indexOf(message("security.remote_control_expiry")));
+  expect(text).not.toContain(message("security.unfinished_security_operation"));
   expect(text).not.toContain("租约");
-  expect(!!button("否决")).toBe(role === "authority");
-  expect(!!button("恢复码")).toBe(role === "authority");
-  expect(!!button("接管管理权")).toBe(role === "member");
+  expect(!!button(message("security.reject"))).toBe(role === "authority");
+  expect(!!button(message("security.recovery_code"))).toBe(role === "authority");
+  expect(!!button(message("security.take_over_management"))).toBe(role === "member");
 });
 it("lets a confirmed uncertain handoff offer be abandoned with a public-key warning", async () => {
   const r = demo("role=member");
@@ -258,10 +259,10 @@ it("lets a confirmed uncertain handoff offer be abandoned with a public-key warn
   vi.spyOn(r.authority, "pending").mockResolvedValue(pending);
   const discard = vi.spyOn(r.authority, "discardUnpublishedCode").mockResolvedValue();
   await mount(<SecurityPage remote={r} onBack={() => {}} />);
-  await click("未完成的安全操作");
-  await click("放弃此接任准备");
+  await click(message("security.unfinished_security_operation"));
+  await click(message("security.abandon_this_succession_preparation_security"));
   expect(discard).not.toHaveBeenCalled();
   expect(host.textContent).toContain("公钥可能已经发布");
-  await click("放弃");
+  await click(message("new_session.android_abandon"));
   expect(discard).toHaveBeenCalledOnce();
 });

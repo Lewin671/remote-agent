@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { create, type MessageInitShape } from "@bufbuild/protobuf";
 import { timestampFromMs } from "@bufbuild/protobuf/wkt";
 import { expect, it } from "vitest";
@@ -74,7 +75,7 @@ it("groups tasks after one failed execution and counts only attention", () => {
       },
     ]).get("attention"),
   ).toHaveLength(1);
-  expect(reasonText("relay_session_limit")).toBe("中继上的会话数已满");
+  expect(reasonText("relay_session_limit")).toBe(message("schedule.the_relay_s_session_limit_has_been_reached"));
   expect(taskGroup(task({ status: "failed", runs: [run("1")] }))).toBe(
     "attention",
   );
@@ -107,7 +108,7 @@ it("aggregates today's quiet results without hiding notified or failed runs", ()
   ).toEqual([["3"], ["2", "1"], ["old"]]);
   expect(
     lastResult(task({ runs: [run("bad", { status: "failed" })] }), now),
-  ).toContain("失败");
+  ).toContain(message("attachment.failed"));
 });
 it("derives next time labels by local date, state and active run", () => {
   const now = Date.parse("2026-10-24T10:00:00Z");
@@ -117,15 +118,15 @@ it("derives next time labels by local date, state and active run", () => {
   expect(nextText(task({ next_run_at: "2026-10-25T15:00:00Z" }), now)).toBe(
     `下次 ${dateTime("2026-10-25T15:00:00Z", now)}`,
   );
-  expect(nextText(task({ status: "failed" }), now)).toBe("已停下");
+  expect(nextText(task({ status: "failed" }), now)).toBe(message("schedule.stopped"));
   expect(nextText(task({ status: "paused", reason: "user_paused" }), now)).toBe(
-    "已暂停",
+    message("queue.paused"),
   );
   expect(
     nextText(task({ active_run: run("live", { status: "queued" }) }), now),
-  ).toBe("运行中");
+  ).toBe(message("list_state.running"));
   expect(frequency({ type: "interval", interval_seconds: 3600 })).toBe(
-    "每小时",
+    message("schedule.hourly"),
   );
   expect(
     frequency({ type: "calendar", weekdays: [1, 2, 3, 4, 5], time: "08:00" }),
@@ -399,7 +400,7 @@ it("only appends a foreign calendar zone to the timing value", () => {
   );
   expect(timingText({ ...tr, timezone: "Etc/UTC" }, "UTC")).toBe("每天 09:49");
   expect(timingText({ type: "interval", interval_seconds: 3600 }, "UTC")).toBe(
-    "每小时",
+    message("schedule.hourly"),
   );
 });
 it("uses the agreed outcome wording and never replaces a failure reason with its final summary", () => {
@@ -410,8 +411,8 @@ it("uses the agreed outcome wording and never replaces a failure reason with its
     notified: true,
     notification_text: "之前的通知",
   });
-  expect(runResult(failed)).toBe("失败");
-  expect(runSummary(failed)).toBe("中继上的会话数已满");
+  expect(runResult(failed)).toBe(message("attachment.failed"));
+  expect(runSummary(failed)).toBe(message("schedule.the_relay_s_session_limit_has_been_reached"));
   expect(lastResult(task({ runs: [failed] }))).toContain(
     "失败：中继上的会话数已满",
   );
@@ -423,24 +424,24 @@ it("uses the agreed outcome wording and never replaces a failure reason with its
         final_summary: "无关摘要",
       }),
     ),
-  ).toBe("运行结果无法确认");
-  expect(runResult(run("skip", { status: "skipped" }))).toBe("跳过");
-  expect(runResult(run("quiet"))).toBe("没有通知");
-  expect(runResult(run("notify", { notified: true }))).toBe("通知了你");
+  ).toBe(message("schedule.execution_outcome_is_unconfirmed"));
+  expect(runResult(run("skip", { status: "skipped" }))).toBe(message("schedule.skipped"));
+  expect(runResult(run("quiet"))).toBe(message("schedule.no_notification"));
+  expect(runResult(run("notify", { notified: true }))).toBe(message("schedule.notified_you"));
 });
 
 it("derives the final shared grouping, attention reason and state copy from tasks", () => {
-  expect(scheduleEmpty).toBe(shared.empty);expect(scheduleOffline).toBe(shared.offline);
+  expect(scheduleEmpty()).toBe(shared.empty);expect(scheduleOffline()).toBe(shared.offline);
   const tasks = shared.tasks as ScheduleTask[];
   const groups = groupTasks(tasks.map(task => ({ machineId: shared.machine, task })));
   expect(Object.fromEntries([...groups].map(([g, tasks]) => [g, tasks.map(e => e.task.id)]))).toEqual({ "attention": shared.groups["需要你看一下"], "recent": ["conversation", "quiet", "paused"], "ended": shared.groups["已结束"] });
   const attention = tasks.find(t => t.id === "attention")!;
-  expect(lastResult(attention, Date.parse(shared.now))).toBe("创建任务时的权限已改变，任务已停下");
-  expect(runResult(attention.runs![0])).toBe("没有通知");
-  expect(reasonText("completed_while_paused")).toBe("已暂停：期间计划已到期");
+  expect(lastResult(attention, Date.parse(shared.now))).toBe(message("schedule.task_creation_permissions_changed_the_task_stopped"));
+  expect(runResult(attention.runs![0])).toBe(message("schedule.no_notification"));
+  expect(reasonText("completed_while_paused")).toBe(message("schedule.paused_the_schedule_expired_in_the_meantime"));
   for (const status of ["dispatching", "queued", "running"])
-    expect(nextText(task({active_run: run("live", {status})}))).toBe("运行中");
-  expect(nextText(task({next_run_at: undefined}))).toBe("下次待定");
+    expect(nextText(task({active_run: run("live", {status})}))).toBe(message("list_state.running"));
+  expect(nextText(task({next_run_at: undefined}))).toBe(message("schedule.next_run_pending"));
   expect(taskName("", "  检查更新  。第二句")).toBe("检查更新");
   const now = new Date(2026, 9, 24, 12).getTime();
   expect(dateTime(new Date(2026, 9, 25, 8).toISOString(), now)).toBe("明天 08:00");
@@ -503,7 +504,7 @@ it("keeps a failed result painted back onto a tool started in an earlier round",
 });
 
 it("uses the shared v52 title and offline-row vectors and UTF-8 message limit", () => {
-  expect(scheduleOfflineRow).toBe(shared.offlineRow);
+  expect(scheduleOfflineRow()).toBe(shared.offlineRow);
   for (const [message, expected] of shared.titleFromMessage) expect(taskName("", message)).toBe(expected);
   expect(validScheduleMessage(" ")).toBe(false);
   expect(validScheduleMessage("a".repeat(32768))).toBe(true);

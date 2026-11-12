@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 // @vitest-environment happy-dom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -20,7 +21,7 @@ it("shows a disconnected push stream even when server and computer round trips s
   const reconnect = vi.spyOn(remote, "reconnectNow").mockImplementation(() => {});
   const host = document.createElement("div"); document.body.append(host);
   const root = createRoot(host);
-  const push = () => [...host.querySelectorAll(".conn-check .mi")].find(row => row.textContent?.startsWith("实时推送"));
+  const push = () => [...host.querySelectorAll(".conn-check .mi")].find(row => row.textContent?.startsWith(message("connection.live_push")));
   try {
     await act(async () => root.render(<ConnCheck remote={remote} onClose={() => {}} />));
     expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalled();
@@ -31,16 +32,16 @@ it("shows a disconnected push stream even when server and computer round trips s
     expect(host.textContent).toContain("实时推送未连接，会话变化可能延迟");
     expect(host.textContent).toContain(remote.connError);
     const probes = machine.mock.calls.length;
-    const retry = [...host.querySelectorAll("button")].find(b => b.textContent === "立即重连")!;
+    const retry = [...host.querySelectorAll("button")].find(b => b.textContent === message("connection.reconnect_now"))!;
     await act(async () => retry.click());
     expect(reconnect).toHaveBeenCalledExactlyOnceWith(true);
     expect(server).toHaveBeenCalledTimes(3); expect(machine).toHaveBeenCalledTimes(probes);
     await act(async () => { remote.conn = "online"; remote.connError = ""; remote.touch(); });
     expect(push()?.textContent).toBe("实时推送已连接");
     expect(host.textContent).not.toContain("实时推送未连接");
-    expect(host.textContent).not.toContain("立即重连");
+    expect(host.textContent).not.toContain(message("connection.reconnect_now"));
     expect(server).toHaveBeenCalledTimes(3);
-    const measure = [...host.querySelectorAll("button")].find(b => b.textContent === "再测一次")!;
+    const measure = [...host.querySelectorAll("button")].find(b => b.textContent === message("connection.test_again"))!;
     await act(async () => measure.click());
     expect(server).toHaveBeenCalledTimes(6);
     expect(reconnect).toHaveBeenCalledTimes(1);

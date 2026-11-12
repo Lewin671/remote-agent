@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { loadLocalData, saveLocalData, removeLocalData, CorruptLocalContent } from "./device-security-store";
 import { newRequestID } from "./crypto";
 import type { StoredAccount } from "./storage";
@@ -141,7 +142,7 @@ export class ComposerDraftStore {
           ...o,
           status: o.status === "sending" ? "failed" : o.status,
           unknown: o.status === "sending" || o.unknown,
-          error: o.status === "sending" ? "连接中途断了" : o.error,
+          error: o.status === "sending" ? l10n.t("errors.connection_dropped_midway") : o.error,
           thumbs: o.thumbs?.map(source),
           attachments: o.attachments && { original: o.attachments.original, files: o.attachments.sources.map(source) },
           files: o.files?.map((f: { sizeBytes: string; file?: number }) => ({ ...f, sizeBytes: BigInt(f.sizeBytes), file: f.file === undefined ? undefined : source(f.file) })),

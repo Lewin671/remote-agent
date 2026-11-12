@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { Remote, SessionView } from "./remote";
 import { Startup } from "./Startup";
@@ -113,14 +114,12 @@ export default function Workspace({ remote }: { remote: Remote }) {
         <NavBar onBack={() => go("")} />
         <div className="center">
           <div>
-            <div className="et">找不到这个会话</div>
+            <div className="et">{l10n.t("session.ios_missing")}</div>
             <div className="muted small">
-              它可能已经被删除，或者属于一台被移除的电脑。
-            </div>
+              {l10n.t("errors.it_may_have_been_deleted_or_belong_to_a")}</div>
             <div className="big">
               <button className="btn pri" onClick={() => go("")}>
-                返回
-              </button>
+                {l10n.t("common.back")}</button>
             </div>
           </div>
         </div>
@@ -133,10 +132,9 @@ export default function Workspace({ remote }: { remote: Remote }) {
       // Selecting a task marks its results read; a wide window starts with none selected.
       : wide ? (
         <div className="center muted schedule-selection-empty">
-          <span>选一个任务查看结果</span>
+          <span>{l10n.t("home.ios_choose_task")}</span>
           <button className="btn sm" disabled={!scheduling || remote.unlinked} onClick={() => go("tasks/new")}>
-            新定时
-          </button>
+            {l10n.t("home.new_schedule")}</button>
         </div>
       ) : <SchedulesPage remote={remote} go={go} />;
   }
@@ -164,8 +162,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
   else if (kind.startsWith("pair"))
     page = (
       <div className="center muted">
-        这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。
-      </div>
+        {l10n.t("errors.this_browser_has_already_joined_an_account_open_this")}</div>
     );
   else
     page = wide ? (
@@ -194,7 +191,7 @@ export default function Workspace({ remote }: { remote: Remote }) {
     <div className="phone">
       <Suspense fallback={loading}>{page}</Suspense>
       {kind === "tasks" && !arg && (
-        <BottomBar remote={remote} go={go} active="tasks" action={{ label: "新定时", icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling || remote.unlinked }} />
+        <BottomBar remote={remote} go={go} active="tasks" action={{ label: l10n.t("home.new_schedule"), icon: <Plus />, onClick: () => go("tasks/new"), disabled: !scheduling || remote.unlinked }} />
       )}
     </div>
   );

@@ -99,7 +99,8 @@
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

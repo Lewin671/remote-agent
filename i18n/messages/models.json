@@ -1,5 +1,21 @@
 [
   {
+    "key": "models.unknown_cli",
+    "zh-CN": "未知 CLI",
+    "en": "Unknown CLI",
+    "notes": "agents 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
     "key": "models.all",
     "zh-CN": "全部模型",
     "en": "All models",
@@ -50,7 +66,8 @@
       }
     },
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",

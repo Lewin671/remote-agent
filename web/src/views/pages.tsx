@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { lazy, type ComponentType } from "react";
 import { chunkMissing } from "../chunks";
 
@@ -11,12 +12,11 @@ function Gone() {
   return (
     <div className="center">
       <div>
-        <div className="et">页面已更新</div>
-        <div className="muted small">这一部分没能取到，重新加载就好。</div>
+        <div className="et">{l10n.t("startup.page_updated")}</div>
+        <div className="muted small">{l10n.t("startup.this_part_could_not_be_fetched_reload_to_continue")}</div>
         <div className="big">
           <button className="btn pri" onClick={() => location.reload()}>
-            重新加载
-          </button>
+            {l10n.t("common.reload")}</button>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { useState } from "react";
 import { Alert, Banner } from "./ui";
 import { authorityExitAdvice } from "./security-operation";
@@ -11,15 +12,15 @@ export function SetupReset({ onDone }: { onDone: () => void }) {
   return (
     <>
       {error && <Banner kind="err">{error}</Banner>}
-      <button className="link mid" onClick={() => { void authorityExitAdvice().then(a => { setAdvice(a.message); setAsking(true); }).catch(e => setError(String(e))); }}>退出并重新开始</button>
+      <button className="link mid" onClick={() => { void authorityExitAdvice().then(a => { setAdvice(a.message); setAsking(true); }).catch(e => setError(String(e))); }}>{l10n.t("security.exit_and_start_over")}</button>
       {asking && (
         <Alert
-          title="退出并删除本机密钥？"
+          title={l10n.t("security.exit_and_delete_local_keys")}
           text={
             error || advice ||
-            "本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。"
+            l10n.t("security.the_local_account_unfinished_registration_and_security_operations_will")
           }
-          ok="确认退出"
+          ok={l10n.t("security.confirm_exit")}
           danger
           onCancel={() => setAsking(false)}
           onOk={async () => {

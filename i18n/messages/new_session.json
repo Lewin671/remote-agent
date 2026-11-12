@@ -43,7 +43,8 @@
     "notes": " Android 批次 A，保留当前中文原句。短标签保持紧凑，说明可换行；变量为当前界面的名称、数量或原始诊断，不翻译用户/CLI 原文。",
     "params": {},
     "platforms": [
-      "android"
+      "android",
+      "web"
     ],
     "status": {
       "zh-CN": "source",
@@ -1422,6 +1423,186 @@
         "example": "Example Computer"
       }
     },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.follow_s_configuration",
+    "zh-CN": "跟随 {value} 自己的配置",
+    "en": "Follow {value}’s configuration",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = agentName(cfg.agent)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.this_model_has_no_auto_mode",
+    "zh-CN": "当前模型没有自动模式",
+    "en": "This model has no Auto mode",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.task_settings",
+    "zh-CN": "任务设置",
+    "en": "Task settings",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.permissions",
+    "zh-CN": "权限",
+    "en": "Permissions",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.only_changes_this_task_existing_conversations_keep_their_settings",
+    "zh-CN": "只修改这个任务；已开出的对话保留原来的设置。",
+    "en": "Only changes this task. Existing conversations keep their settings.",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.each_cli_has_its_own_settings_choose_the_cli",
+    "zh-CN": "每个 CLI 各存一套，新建时用哪个在句子里选。",
+    "en": "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.",
+    "notes": "NewSession 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced",
+    "zh-CN": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
+    "en": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
+    "notes": "NewSession 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.model_list_default",
+    "zh-CN": "没能读取模型列表，会用 {name} 自己的默认模型",
+    "en": "Could not read the model list. Using {name}’s default model.",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "模型选择/设置的失败提示；name 是 CLI 品牌。多行横幅，完整句。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.machine_project_defaults",
+    "zh-CN": "用 {name} 的新项目默认设置",
+    "en": "Use {name} defaults for new projects",
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "new_session.fixed_effort",
+    "zh-CN": "推理强度固定为 {effort}",
+    "en": "Reasoning effort fixed at {effort}",
+    "params": {
+      "effort": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "notes": "定时/设置/账户页面完整句或短标签。参数为当前页面数据，用户/CLI 原文不翻译；短标签空间紧凑，说明可换行。",
     "platforms": [
       "web",
       "android",

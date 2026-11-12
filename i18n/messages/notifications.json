@@ -1,0 +1,34 @@
+[
+  {
+    "key": "notifications.the_browser_did_not_allow_notifications",
+    "zh-CN": "浏览器没有允许通知",
+    "en": "The browser did not allow notifications",
+    "notes": "push 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "notifications.scheduled_tasks_have_new_results",
+    "zh-CN": "定时任务有新结果",
+    "en": "Scheduled tasks have new results",
+    "notes": "sw-notify 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

@@ -44,7 +44,7 @@ describe("images waiting to be sent", () => {
     tray.add([file("a"), file("b")]);
     await vi.waitFor(() => expect(tray.items.every((i) => i.state === "done" || i.state === "failed")).toBe(true));
     expect(tray.ready()).toBe(false);
-    expect(tray.items[1]).toMatchObject({ state: "failed", error: "连接超时" });
+    expect(tray.items[1]).toMatchObject({ state: "failed", error: message("errors.connection_timed_out") });
     tray.retry(tray.items[1].key);
     await vi.waitFor(() => expect(tray.ready()).toBe(true));
     expect(tray.imageIds()).toEqual(["id1", "id3"]);

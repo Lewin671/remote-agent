@@ -332,7 +332,7 @@ it("shows a failed first listing and lists again", async () => {
     await act(async () => r.refresh());
     expect(r.listed).toBe(false);
     expect(host.querySelector(".skels")).toBeNull();
-    expect(host.textContent).toContain(message("home.list_failed", {"reason":"连接超时"}, "zh-CN"));
+    expect(host.textContent).toContain(message("home.list_failed", {"reason":message("errors.connection_timed_out")}, "zh-CN"));
     // It tries again by itself.
     fail = false;
     await act(async () => vi.advanceTimersByTimeAsync(2500));
@@ -1990,7 +1990,7 @@ describe("project management (v2)", () => {
     const r = demo();
     await vi.waitFor(() => expect(r.prefs.status).toBe("ready"));
     const { ProjectPicker } = await import("./NewSession");
-    const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== "全部项目" && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
+    const seen = () => [...host.querySelectorAll(".plist .fl, .plist .pi b, .plist .pi small, .plist .pi.add")].map((e) => e.textContent).filter((t) => t !== message("home.all_projects") && !/^(\d+ 个待处理|\d+ 个进行中)( · \d+ 个进行中)?$/.test(t ?? ""));
     mount(<ManagePage remote={r} go={() => undefined} onBack={() => undefined} />);
     const managed = seen();
     // Counted as the home's sections are: waiting, then running.
@@ -2083,7 +2083,7 @@ describe("who did what (v2)", () => {
       // The first message is this client's own: it carries no name.
       expect(notes).toEqual(["Android · Pixel 9", message("session.origin_terminal", {"name":"VPS-dev"})]);
       // A client that says nothing of itself, with no ID in its name.
-      expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":"客户端","value":"计划"}));
+      expect(host.textContent).toContain(message("session.mode_changed_by", {"origin":message("security.client"),"value":message("modes.plan")}));
       expect(host.querySelector(".record")?.textContent).toContain("已允许 · Android · Pixel 9");
       await click(button(/还有 2 条排队/));
       const entries = [...host.querySelectorAll(".pending-bubble")].map((x) => x.textContent);
@@ -2263,7 +2263,7 @@ describe("sending images (v2)", () => {
   it("never sends a message with fewer images than shown", async () => {
     const t = setup((n) => n === "b.png");
     await t.pick("a.png", "b.png");
-    await vi.waitFor(() => expect(host.textContent).toContain("图片没能传到电脑，连接恢复后重试"));
+    await vi.waitFor(() => expect(host.textContent).toContain(message("image.the_image_could_not_reach_the_computer_retry_when")));
     expect(sendButton()?.disabled).toBe(true);
     // Removing the failed one lets the rest go, with only their IDs.
     await click(host.querySelectorAll<HTMLButtonElement>(".att-tray .x")[1]);
@@ -2295,7 +2295,7 @@ describe("sending images (v2)", () => {
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
     expect(button(message("common.retry", {}, "zh-CN"), dialog())).toBeFalsy();
     act(() => dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
-    expect(dialog().textContent).toContain("图片尺寸太大，缩小后再试");
+    expect(dialog().textContent).toContain(message("image.image_dimensions_are_too_large_resize_it_and_retry"));
     await click(button(message("common.remove", {}, "zh-CN"), dialog()));
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
     expect(dialog().textContent).toContain("换成 JPEG 或 PNG 再试");
@@ -2325,7 +2325,7 @@ describe("sending images (v2)", () => {
     await click(thumb);
     expect(host.querySelector(".attach-menu")).toBeNull();
     const dialog = document.body.querySelector<HTMLElement>(`[role="dialog"][aria-label="${message("image.view")}"]`)!;
-    expect(dialog.textContent).toContain("图片没能传到电脑，连接恢复后重试");
+    expect(dialog.textContent).toContain(message("image.the_image_could_not_reach_the_computer_retry_when"));
     expect(button(message("common.retry", {}, "zh-CN"), dialog)).toBeTruthy();
     expect(button(message("common.remove", {}, "zh-CN"), dialog)).toBeTruthy();
     await click(dialog.querySelector<HTMLElement>(`[aria-label="${message("common.close")}"]`)!);
@@ -2661,10 +2661,10 @@ it("marks a quota window as waiting for an update once its reset time passes (re
     const r = demo();
     const { QuotaPage } = await import("./Settings");
     mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-    expect(host.textContent).not.toContain("等待更新");
+    expect(host.textContent).not.toContain(message("quota.awaiting_update"));
     // The demo's 5-hour window resets in three hours; nothing else changes.
     act(() => void vi.advanceTimersByTime(3 * 60 * 60_000 + 60_000));
-    expect(host.textContent).toContain("等待更新");
+    expect(host.textContent).toContain(message("quota.awaiting_update"));
   } finally {
     vi.useRealTimers();
   }
@@ -2707,10 +2707,10 @@ it("shows Claude Code's collected quota on the quota page (Go ed1a14d)", async (
   ];
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
-  expect(host.textContent).not.toContain("暂不支持读取额度");
+  expect(host.textContent).not.toContain(message("quota.quota_lookup_is_not_supported_yet"));
   expect(host.textContent).toContain("剩 72%");
-  expect(host.textContent).toContain("暂未获取额度");
-  expect(host.textContent).not.toContain("7 天");
+  expect(host.textContent).toContain(message("quota.quota_not_available_yet"));
+  expect(host.textContent).not.toContain(message("quota.days", { count: 7 }));
   expect(host.textContent).toContain("最近收到");
 });
 
@@ -2741,15 +2741,15 @@ it("renders Antigravity's quota windows grouped by family on the quota page", as
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const labels = [...host.querySelectorAll(".label")].map((el) => el.textContent);
   expect(labels).toContain("Antigravity · Google AI Pro · Gemini");
-  expect(labels).toContain("第三方模型（Claude、GPT-OSS）");
-  expect(host.textContent).toContain("Gemini · 5 小时");
-  expect(host.textContent).toContain("Gemini 4 Argon · 7 天");
-  expect(host.textContent).toContain("第三方模型 · 5 小时");
+  expect(labels).toContain(message("quota.third_party_models_claude_gpt_oss"));
+  expect(host.textContent).toContain(message("quota.named_hours", { name: "Gemini", count: 5 }));
+  expect(host.textContent).toContain(message("quota.named_days", { name: "Gemini 4 Argon", count: 7 }));
+  expect(host.textContent).toContain(message("quota.named_hours", { name: message("quota.third_party_models"), count: 5 }));
   expect(host.textContent).not.toContain("gemini-argon-wtu-weekly");
   expect([...host.querySelectorAll(".gf")].filter((el) => el.textContent?.startsWith("最近收到"))).toHaveLength(1);
   // What is left of each window, the bar drawing what is left.
   expect(host.textContent).toContain("剩 82%");
-  const bar = [...host.querySelectorAll<HTMLElement>(".qrow")].find((q) => q.textContent?.includes("Gemini · 5 小时"))!.querySelector<HTMLElement>(".bar i")!;
+  const bar = [...host.querySelectorAll<HTMLElement>(".qrow")].find((q) => q.textContent?.includes(message("quota.named_hours", { name: "Gemini", count: 5 })))!.querySelector<HTMLElement>(".bar i")!;
   expect(bar.style.width).toBe("82%");
 });
 
@@ -3935,7 +3935,7 @@ it("puts a daemon-rejected image message back with its text, original option and
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain("图片不在电脑上"));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("attachment.ios_image_missing")));
   expect(host.querySelector(".me.fail")!.textContent).not.toContain(message("common.retry", {}, "zh-CN"));
   await click(button(message("composer.restore")));
   const tray = r.trays.get("s-idle")!;
@@ -3985,7 +3985,7 @@ describe("client names", () => {
     const { DevicesPage } = await import("./Settings");
     mount(<DevicesPage remote={r} go={() => undefined} onBack={() => undefined} />);
     const names = [...host.querySelectorAll(".row.client .client-info")].map((x) => x.firstChild?.textContent);
-    expect(names).toEqual(["Chrome · macOS", "Android · Pixel 9", "客户端"]);
+    expect(names).toEqual(["Chrome · macOS", "Android · Pixel 9", message("security.client")]);
     expect(document.body.textContent).not.toContain("起个名字");
   });
 });
@@ -4034,7 +4034,7 @@ it("sends files-only messages and restores a missing file from its original File
   });
   await vi.waitFor(() => expect(sendButton()?.disabled).toBe(false));
   await click(sendButton());
-  await vi.waitFor(() => expect(host.textContent).toContain("附件不在电脑上"));
+  await vi.waitFor(() => expect(host.textContent).toContain(message("attachment.ios_missing")));
   expect(sent[0]).toMatchObject({ case: "send", value: { text: "", imageIds: [], fileIds: ["data.csv1"] } });
   expect(host.querySelector(".me.fail .file-chip")?.textContent).toContain("data.csv");
   await click(button(message("composer.restore")));
@@ -4221,7 +4221,7 @@ it("keeps a named quota warning next to its card before the received time", asyn
   const { QuotaPage } = await import("./Settings");
   mount(<QuotaPage remote={r} id="mac" go={() => undefined} onBack={() => undefined} />);
   const text = host.textContent!;
-  expect(text).toContain(message("quota.warning", {"name":"Claude Code","window":"7 天"}));
+  expect(text).toContain(message("quota.warning", {"name":"Claude Code","window":message("quota.days", { count: 7 })}));
   expect(text.indexOf("Claude Code · 7 天额度即将用尽")).toBeLessThan(text.indexOf("最近收到"));
   expect(host.querySelector(".qrow.warn .bar i")?.getAttribute("style")).toContain("3%");
 });

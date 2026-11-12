@@ -71,6 +71,8 @@ export interface MessageArgs {
   "attachment.file_progress": { [name: string]: never };
   "attachment.filename_limit": { [name: string]: never };
   "attachment.images_limit": { count: number; limit: number };
+  "attachment.ios_image_missing": { [name: string]: never };
+  "attachment.ios_missing": { [name: string]: never };
   "attachment.max_files": { count: number };
   "attachment.max_images": { count: number };
   "attachment.metadata": { [name: string]: never };
@@ -79,6 +81,7 @@ export interface MessageArgs {
   "attachment.photos_videos": { [name: string]: never };
   "attachment.preparing": { [name: string]: never };
   "attachment.read_failed": { [name: string]: never };
+  "attachment.release_to_add": { [name: string]: never };
   "attachment.remove_file": { name: string };
   "attachment.remove_video": { name: string };
   "attachment.size_limit": { limit: number };
@@ -98,7 +101,11 @@ export interface MessageArgs {
   "common.details": { [name: string]: never };
   "common.done": { [name: string]: never };
   "common.got_it": { [name: string]: never };
+  "common.ios_more": { [name: string]: never };
+  "common.ios_offline": { [name: string]: never };
+  "common.ios_online": { [name: string]: never };
   "common.ios_save_failed": { reason: string };
+  "common.ios_saving": { [name: string]: never };
   "common.ios_spoken_separator": { [name: string]: never };
   "common.list_separator": { [name: string]: never };
   "common.loading": { [name: string]: never };
@@ -137,18 +144,39 @@ export interface MessageArgs {
   "composer.slash_title": { [name: string]: never };
   "composer.unconfirmed": { [name: string]: never };
   "composer.write_failed": { [name: string]: never };
+  "connection.checking": { [name: string]: never };
+  "connection.connected": { [name: string]: never };
   "connection.connecting": { [name: string]: never };
+  "connection.connecting_conn_check": { [name: string]: never };
+  "connection.connecting_conn_check_label": { [name: string]: never };
+  "connection.last_failure": { value: string };
+  "connection.latency_is_one_round_trip_the_server_row_measures": { [name: string]: never };
+  "connection.live_push": { [name: string]: never };
+  "connection.live_push_is_not_connected": { [name: string]: never };
+  "connection.live_push_is_not_connected_session_changes_may_be": { value: string };
+  "connection.local_network": { [name: string]: never };
   "connection.network_required": { [name: string]: never };
   "connection.no_network": { [name: string]: never };
   "connection.no_network_empty": { [name: string]: never };
   "connection.no_network_previous": { [name: string]: never };
   "connection.no_response": { [name: string]: never };
   "connection.no_server": { [name: string]: never };
+  "connection.not_checked": { [name: string]: never };
   "connection.previous_below": { [name: string]: never };
+  "connection.reconnect_now": { [name: string]: never };
   "connection.reconnecting": { [name: string]: never };
+  "connection.reconnecting_conn_check": { [name: string]: never };
+  "connection.reconnecting_conn_check_label": { [name: string]: never };
   "connection.retrying_previous": { [name: string]: never };
+  "connection.sec_elapsed": { count: number; detail: string; previousFailure: string; value: string };
   "connection.server_details": { reason: string };
   "connection.server_retrying": { [name: string]: never };
+  "connection.slow": { [name: string]: never };
+  "connection.test_again": { [name: string]: never };
+  "connection.this_device_has_no_network_it_will_reconnect_when": { [name: string]: never };
+  "connection.unavailable": { [name: string]: never };
+  "connection.unreachable": { [name: string]: never };
+  "connection.working": { [name: string]: never };
   "dock.agent_waiting": { agent: string };
   "dock.agy_plan_note": { [name: string]: never };
   "dock.answer_title": { [name: string]: never };
@@ -180,6 +208,96 @@ export interface MessageArgs {
   "dock.submitting": { [name: string]: never };
   "dock.trust_folder": { [name: string]: never };
   "dock.waiting_confirmation": { [name: string]: never };
+  "errors.account_creation_draft_preserved_continue_the_original_creation_flow": { [name: string]: never };
+  "errors.cannot_connect_to_terminal": { [name: string]: never };
+  "errors.cannot_sign_with_the_current_security_state_the_operation": { [name: string]: never };
+  "errors.connection_dropped_midway": { [name: string]: never };
+  "errors.connection_timed_out": { [name: string]: never };
+  "errors.connection_timed_out_reconnecting": { [name: string]: never };
+  "errors.current_membership_could_not_be_verified": { [name: string]: never };
+  "errors.device_directory_state_changed": { [name: string]: never };
+  "errors.device_information_could_not_be_verified": { [name: string]: never };
+  "errors.device_information_is_changing_retry": { [name: string]: never };
+  "errors.device_registration_is_unfinished_retry_it_first": { [name: string]: never };
+  "errors.disconnected_from_server": { [name: string]: never };
+  "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": { [name: string]: never };
+  "errors.establishing_push_connection": { [name: string]: never };
+  "errors.history_could_not_continue_loading_retry": { [name: string]: never };
+  "errors.history_has_a_gap_retry": { [name: string]: never };
+  "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": { [name: string]: never };
+  "errors.invalid_ciphertext_current_state_checkpoint_mismatch": { [name: string]: never };
+  "errors.invalid_ciphertext_signature_key_or_content_verification_failed": { [name: string]: never };
+  "errors.invalid_current_request_snapshot": { [name: string]: never };
+  "errors.invalid_pairing_approval_signature": { [name: string]: never };
+  "errors.invalid_push_frame": { [name: string]: never };
+  "errors.invalid_session_seed": { [name: string]: never };
+  "errors.it_may_have_been_deleted_or_belong_to_a": { [name: string]: never };
+  "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": { [name: string]: never };
+  "errors.names_can_only_be_changed_on_that_device": { [name: string]: never };
+  "errors.network_changed_reconnecting": { [name: string]: never };
+  "errors.other_clients_kept_changing_the_project_list_changes_could": { [name: string]: never };
+  "errors.pending_requests_on_the_computer_could_not_be_verified": { [name: string]: never };
+  "errors.project_preferences_format_is_not_supported": { [name: string]: never };
+  "errors.push_backlog_reconnecting": { [name: string]: never };
+  "errors.queued_records_could_not_be_restored_you_can_still": { [name: string]: never };
+  "errors.queued_records_could_not_be_saved_locally_messages_will": { [name: string]: never };
+  "errors.reading_local_state": { [name: string]: never };
+  "errors.remote_agent_on_is_out_of_date_update_it": { value: string };
+  "errors.remote_control_expired_control_and_new_uploads_are_paused": { [name: string]: never };
+  "errors.remote_control_expired_saving_changes_session_control_and_new": { [name: string]: never };
+  "errors.security_body_type_or_direction_mismatch": { [name: string]: never };
+  "errors.security_envelope_missing": { [name: string]: never };
+  "errors.server_returned": { value: string };
+  "errors.session_key_envelope_missing": { [name: string]: never };
+  "errors.setup_request_preserved": { reason: string };
+  "errors.signing_in": { [name: string]: never };
+  "errors.syncing_device_state": { [name: string]: never };
+  "errors.terminal_connection_canceled": { [name: string]: never };
+  "errors.terminal_connection_closed": { [name: string]: never };
+  "errors.terminal_connection_dropped": { [name: string]: never };
+  "errors.terminal_connection_timed_out_reconnect": { [name: string]: never };
+  "errors.terminal_frames_are_out_of_order": { [name: string]: never };
+  "errors.terminal_output_backlog_reconnect_for_the_latest_display": { [name: string]: never };
+  "errors.the_computer_did_not_return_a_task": { [name: string]: never };
+  "errors.the_computer_did_not_return_a_task_list": { [name: string]: never };
+  "errors.the_computer_did_not_return_an_attachment_id": { [name: string]: never };
+  "errors.the_computer_is_offline_connect_to_edit_tasks": { [name: string]: never };
+  "errors.the_computer_is_offline_the_command_was_not_sent": { [name: string]: never };
+  "errors.the_computer_is_still_verifying_attachments_retry_shortly": { [name: string]: never };
+  "errors.the_computer_s_reply_could_not_be_verified_command": { [name: string]: never };
+  "errors.the_current_request_could_not_be_verified_again": { [name: string]: never };
+  "errors.the_device_directory_response_is_out_of_date": { [name: string]: never };
+  "errors.the_draft_could_not_be_restored_you_can_still": { [name: string]: never };
+  "errors.the_draft_could_not_be_saved_locally_keep_the": { [name: string]: never };
+  "errors.the_draft_could_not_be_saved_the_original_message": { [name: string]: never };
+  "errors.the_event_s_position_was_changed": { [name: string]: never };
+  "errors.the_plan_display_changed_review_it_again": { [name: string]: never };
+  "errors.the_previous_operation_s_outcome_is_still_unknown_reload": { [name: string]: never };
+  "errors.the_previous_request_s_outcome_is_still_unknown_cannot": { [name: string]: never };
+  "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": { [name: string]: never };
+  "errors.the_relay_did_not_provide_a_verifiable_execution_result": { [name: string]: never };
+  "errors.the_request_on_the_computer_changed_review_it_again": { [name: string]: never };
+  "errors.the_server_address_cannot_include_a_username_or_password": { [name: string]: never };
+  "errors.the_server_does_not_recognize_this_device_it_may": { [name: string]: never };
+  "errors.the_server_must_use_https": { [name: string]: never };
+  "errors.the_server_returned_an_unexpected_device_id": { [name: string]: never };
+  "errors.the_session_record_s_computer_was_changed": { [name: string]: never };
+  "errors.the_task_list_returned_by_the_computer_could_not": { [name: string]: never };
+  "errors.the_task_was_just_changed_updated_to_the_latest": { [name: string]: never };
+  "errors.this_browser_has_already_joined_an_account_open_this": { [name: string]: never };
+  "errors.this_device_s_clock_is_behind_the_account_state": { [name: string]: never };
+  "errors.this_device_s_clock_is_behind_the_account_state_remote": { [name: string]: never };
+  "errors.this_device_s_security_state_could_not_be_verified": { [name: string]: never };
+  "errors.this_history_uses_an_old_encryption_format_and_can": { [name: string]: never };
+  "errors.this_is_not_a_remote_agent_account_key": { [name: string]: never };
+  "errors.this_page_is_out_of_date_refresh_or_update": { [name: string]: never };
+  "errors.this_request_can_no_longer_be_acted_on": { [name: string]: never };
+  "errors.this_request_has_not_been_verified_by_the_computer": { [name: string]: never };
+  "errors.timed_out_reconnecting": { value: string };
+  "errors.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
+  "errors.upload_made_no_progress": { [name: string]: never };
+  "errors.waiting_for_the_owning_computer_to_update_the_current": { [name: string]: never };
+  "errors.waiting_for_the_owning_computer_to_update_the_current_remote": { [name: string]: never };
   "home.add_device": { [name: string]: never };
   "home.add_via_manager": { name: string };
   "home.all_projects": { [name: string]: never };
@@ -192,6 +310,9 @@ export interface MessageArgs {
   "home.forked": { [name: string]: never };
   "home.idle_count": { count: number };
   "home.ios_approval_remaining": { count: number };
+  "home.ios_badge_tasks": { count: number };
+  "home.ios_choose_task": { [name: string]: never };
+  "home.ios_new_results": { [name: string]: never };
   "home.list_failed": { reason: string };
   "home.live": { [name: string]: never };
   "home.loading_earlier": { [name: string]: never };
@@ -228,12 +349,19 @@ export interface MessageArgs {
   "image.add": { [name: string]: never };
   "image.attach_failed": { count: number };
   "image.back_message": { [name: string]: never };
+  "image.cannot_read_this_image": { [name: string]: never };
+  "image.cannot_read_this_image_try_jpeg_or_png_instead": { [name: string]: never };
   "image.convert_failed": { [name: string]: never };
   "image.copy_failed": { reason: string };
   "image.count": { count: number };
   "image.download_retry": { [name: string]: never };
   "image.draft": { [name: string]: never };
   "image.generated": { [name: string]: never };
+  "image.image_dimensions_are_too_large": { [name: string]: never };
+  "image.image_dimensions_are_too_large_resize_it_and_retry": { [name: string]: never };
+  "image.image_dimensions_are_too_large_send_a_compressed_version": { [name: string]: never };
+  "image.image_exceeds_20_mb": { [name: string]: never };
+  "image.image_exceeds_20_mb_turn_off_original_and_send": { [name: string]: never };
   "image.load_connected": { [name: string]: never };
   "image.more": { count: number };
   "image.named": { name: string };
@@ -256,6 +384,11 @@ export interface MessageArgs {
   "image.screenshots": { count: number };
   "image.share": { [name: string]: never };
   "image.share_failed": { reason: string };
+  "image.the_computer_s_attachment_storage_is_full_clear_space": { [name: string]: never };
+  "image.the_image_could_not_reach_the_computer_retry_when": { [name: string]: never };
+  "image.this_image_could_not_be_processed": { [name: string]: never };
+  "image.this_image_format_is_not_supported": { [name: string]: never };
+  "image.this_image_has_no_local_copy_remove_it_and": { [name: string]: never };
   "image.title": { [name: string]: never };
   "image.tool_source": { agent: string };
   "image.total_size": { size: string };
@@ -270,6 +403,7 @@ export interface MessageArgs {
   "list_state.approval": { [name: string]: never };
   "list_state.ended": { [name: string]: never };
   "list_state.idle": { [name: string]: never };
+  "list_state.ios_new_session": { [name: string]: never };
   "list_state.no_message": { [name: string]: never };
   "list_state.offline": { [name: string]: never };
   "list_state.plan": { [name: string]: never };
@@ -287,6 +421,7 @@ export interface MessageArgs {
   "markdown.ios_hidden_lines": { count: number };
   "markdown.line_count": { count: number };
   "models.all": { [name: string]: never };
+  "models.android_reading_machine": { name: string };
   "models.back": { [name: string]: never };
   "models.context_size": { size: string };
   "models.context_window": { [name: string]: never };
@@ -302,8 +437,10 @@ export interface MessageArgs {
   "models.summary_effort_label": { effort: string; model: string };
   "models.summary_label": { model: string };
   "models.title": { [name: string]: never };
+  "models.unknown_cli": { [name: string]: never };
   "modes.account_no_auto": { [name: string]: never };
   "modes.account_unsupported": { [name: string]: never };
+  "modes.agent_own": { agent: string };
   "modes.agy_ask_desc": { [name: string]: never };
   "modes.agy_plan_desc": { [name: string]: never };
   "modes.ask": { [name: string]: never };
@@ -337,6 +474,7 @@ export interface MessageArgs {
   "modes.title": { [name: string]: never };
   "new_session.abandon_start": { [name: string]: never };
   "new_session.account_no_auto": { name: string };
+  "new_session.android_abandon": { [name: string]: never };
   "new_session.attachments_moved": { name: string };
   "new_session.change_defaults": { [name: string]: never };
   "new_session.change_machine": { [name: string]: never };
@@ -348,9 +486,12 @@ export interface MessageArgs {
   "new_session.config_fallback": { [name: string]: never };
   "new_session.default_model": { [name: string]: never };
   "new_session.disconnected": { [name: string]: never };
+  "new_session.each_cli_has_its_own_settings_choose_the_cli": { [name: string]: never };
   "new_session.expired_start": { [name: string]: never };
   "new_session.first_message": { [name: string]: never };
+  "new_session.fixed_effort": { effort: string };
   "new_session.follow_cli": { [name: string]: never };
+  "new_session.follow_s_configuration": { value: string };
   "new_session.installed": { agents: string };
   "new_session.installed_fallback": { agent: string; agents: string; missing: string };
   "new_session.ios_attach": { [name: string]: never };
@@ -360,10 +501,15 @@ export interface MessageArgs {
   "new_session.location_machine_cli": { cli: string; machine: string; project: string };
   "new_session.machine_label": { name: string };
   "new_session.machine_offline": { name: string };
+  "new_session.machine_project_defaults": { name: string };
+  "new_session.model_list_default": { name: string };
   "new_session.model_no_auto": { name: string };
   "new_session.offline_last_seen": { time: string };
   "new_session.offline_no_start": { [name: string]: never };
   "new_session.offline_with_draft": { name: string };
+  "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": { [name: string]: never };
+  "new_session.only_changes_this_task_existing_conversations_keep_their_settings": { [name: string]: never };
+  "new_session.permissions": { [name: string]: never };
   "new_session.project_label": { name: string };
   "new_session.project_session_label": { name: string };
   "new_session.prompt": { [name: string]: never };
@@ -378,11 +524,16 @@ export interface MessageArgs {
   "new_session.start_shortcut": { keys: string };
   "new_session.start_unknown": { reason: string };
   "new_session.starting_on": { name: string };
+  "new_session.task_settings": { [name: string]: never };
+  "new_session.this_model_has_no_auto_mode": { [name: string]: never };
   "new_session.unconfirmed_start": { [name: string]: never };
   "new_session.unexpected_reply": { [name: string]: never };
   "new_session.use_machine": { name: string };
+  "notifications.scheduled_tasks_have_new_results": { [name: string]: never };
+  "notifications.the_browser_did_not_allow_notifications": { [name: string]: never };
   "projects.add_again": { [name: string]: never };
   "projects.adding": { [name: string]: never };
+  "projects.android_settings": { [name: string]: never };
   "projects.changed_elsewhere": { [name: string]: never };
   "projects.choose": { [name: string]: never };
   "projects.choose_directory": { [name: string]: never };
@@ -424,6 +575,7 @@ export interface MessageArgs {
   "queue.after_turn": { [name: string]: never };
   "queue.agent_ready": { agent: string };
   "queue.already_submitted": { [name: string]: never };
+  "queue.android_scheduled": { [name: string]: never };
   "queue.cancel_failed": { [name: string]: never };
   "queue.canceled": { [name: string]: never };
   "queue.canceled_elsewhere": { [name: string]: never };
@@ -443,21 +595,456 @@ export interface MessageArgs {
   "queue.terminal_draft": { [name: string]: never };
   "queue.unrecognized": { [name: string]: never };
   "queue.when_ready": { [name: string]: never };
+  "quota.account": { value: string };
+  "quota.awaiting_update": { [name: string]: never };
+  "quota.days": { count: number };
   "quota.exhausted": { name: string; window: string };
+  "quota.exhausted_quota": { [name: string]: never };
   "quota.failure": { detail: string; name: string };
   "quota.failure_no_reason": { name: string };
+  "quota.hr": { count: number };
+  "quota.last_reading": { [name: string]: never };
+  "quota.last_reading_computer_offline_may_have_changed": { [name: string]: never };
+  "quota.last_reading_reset_time_passed_but_quota_recovery_is": { value: string };
+  "quota.left": { value: string };
+  "quota.min": { count: number };
+  "quota.named_days": { count: number; name: string };
+  "quota.named_hours": { count: number; name: string };
+  "quota.no_data_received_for_this_quota": { [name: string]: never };
   "quota.old_hours": { count: number };
   "quota.old_minutes": { count: number };
+  "quota.previously": { value: string };
+  "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed": { value: string };
+  "quota.quota_lookup_is_not_supported_yet": { [name: string]: never };
+  "quota.quota_not_available_yet": { [name: string]: never };
   "quota.read_failed": { [name: string]: never };
   "quota.received": { time: string };
   "quota.received_date": { day: number; month: number; time: string };
   "quota.received_success": { time: string };
   "quota.received_success_date": { day: number; month: number; time: string };
+  "quota.resets_in_days_hr": { count: number; detail: number };
+  "quota.resets_in_hr_min": { count: number; detail: string };
+  "quota.resets_in_min": { count: number };
+  "quota.resetting_soon": { [name: string]: never };
+  "quota.session": { value: string };
+  "quota.third_party_models": { [name: string]: never };
+  "quota.third_party_models_claude_gpt_oss": { [name: string]: never };
+  "quota.unavailable": { [name: string]: never };
+  "quota.unavailable_previous": { [name: string]: never };
   "quota.unknown_time": { [name: string]: never };
   "quota.waiting": { name: string };
   "quota.warning": { name: string; window: string };
+  "schedule.after_a_run_count": { [name: string]: never };
+  "schedule.after_current_turn": { count: number };
+  "schedule.after_each_turn": { count: number };
+  "schedule.after_turn_ends": { [name: string]: never };
+  "schedule.after_turn_replace": { frequency: string };
+  "schedule.attention_once": { reason: string };
+  "schedule.attention_resume": { reason: string };
+  "schedule.attention_uncertain": { reason: string };
+  "schedule.beijing_time": { [name: string]: never };
+  "schedule.choose_a_valid_date_and_time": { [name: string]: never };
+  "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": { [name: string]: never };
+  "schedule.computer_and_model": { [name: string]: never };
+  "schedule.connect_to_edit_run_or_delete": { [name: string]: never };
+  "schedule.continuing_takes_over_the_task_and_runs_it_with": { [name: string]: never };
+  "schedule.conversation": { [name: string]: never };
+  "schedule.could_not_run": { [name: string]: never };
+  "schedule.count": { [name: string]: never };
+  "schedule.create": { [name: string]: never };
+  "schedule.created_by_the_agent_in_a_conversation": { [name: string]: never };
+  "schedule.created_by_you": { [name: string]: never };
+  "schedule.creating": { [name: string]: never };
+  "schedule.daily": { [name: string]: never };
+  "schedule.daily_at": { time: string };
+  "schedule.date_and_time": { [name: string]: never };
+  "schedule.daylight_saving_time_skips_this_time_in_the_selected": { [name: string]: never };
+  "schedule.delete": { [name: string]: never };
+  "schedule.delete_task": { [name: string]: never };
+  "schedule.delete_task_schedules": { [name: string]: never };
+  "schedule.deleted": { [name: string]: never };
+  "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed": { [name: string]: never };
+  "schedule.describe_the_scheduled_work_and_ask_the_agent_to": { [name: string]: never };
+  "schedule.discard_changes": { [name: string]: never };
+  "schedule.discard_changes_schedule_text": { [name: string]: never };
+  "schedule.each_run_opens_a_new_conversation_grouped_under_this": { [name: string]: never };
+  "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": { [name: string]: never };
+  "schedule.earlier": { [name: string]: never };
+  "schedule.end_date": { [name: string]: never };
+  "schedule.end_time": { [name: string]: never };
+  "schedule.ended": { [name: string]: never };
+  "schedule.every": { [name: string]: never };
+  "schedule.every_days": { count: number };
+  "schedule.every_hr": { count: number };
+  "schedule.every_min": { count: number };
+  "schedule.every_sec": { count: number };
+  "schedule.execution_failed": { [name: string]: never };
+  "schedule.execution_failed_the_task_stopped": { [name: string]: never };
+  "schedule.execution_interrupted": { [name: string]: never };
+  "schedule.execution_interrupted_the_task_stopped": { [name: string]: never };
+  "schedule.execution_outcome_is_unconfirmed": { [name: string]: never };
+  "schedule.frequency": { [name: string]: never };
+  "schedule.fri": { [name: string]: never };
+  "schedule.has_not_run_yet": { [name: string]: never };
+  "schedule.hong_kong_time": { [name: string]: never };
+  "schedule.hourly": { [name: string]: never };
+  "schedule.if_blank_uses": { value: string };
+  "schedule.in": { value: string };
+  "schedule.in_conversation": { [name: string]: never };
+  "schedule.interval_minutes": { [name: string]: never };
+  "schedule.last_result": { result: string; time: string };
+  "schedule.last_result_detail": { detail: string; result: string; time: string };
+  "schedule.latest_summary": { summary: string; time: string };
+  "schedule.leave_blank_to_use_the_message_s_first_sentence": { [name: string]: never };
+  "schedule.limits_both": { count: number; time: string };
+  "schedule.list_failed": { name: string; reason: string };
+  "schedule.london_time": { [name: string]: never };
+  "schedule.los_angeles_time": { [name: string]: never };
+  "schedule.manage": { [name: string]: never };
+  "schedule.mark_all_as_read": { [name: string]: never };
+  "schedule.mark_as_read": { [name: string]: never };
+  "schedule.mark_as_unread": { [name: string]: never };
+  "schedule.messages_go_to_the_current_conversation_and_wait_for": { [name: string]: never };
+  "schedule.messages_will_go_to_the_current_conversation_and_wait": { [name: string]: never };
+  "schedule.missing_target": { reason: string };
+  "schedule.missing_target_run": { reason: string; time: string };
+  "schedule.model_and_permissions": { [name: string]: never };
+  "schedule.mon": { [name: string]: never };
+  "schedule.more_new_results": { count: number };
+  "schedule.needs_your_attention": { [name: string]: never };
+  "schedule.never": { [name: string]: never };
+  "schedule.new_results": { count: number };
+  "schedule.new_results_schedules": { [name: string]: never };
+  "schedule.new_york_time": { [name: string]: never };
+  "schedule.next": { value: string };
+  "schedule.next_run_pending": { [name: string]: never };
+  "schedule.no_approval_is_required_for_any_operation_whenever_this": { [name: string]: never };
+  "schedule.no_approval_will_be_required_for_future_runs_existing": { [name: string]: never };
+  "schedule.no_new_results": { [name: string]: never };
+  "schedule.no_notification": { [name: string]: never };
+  "schedule.no_results_yet": { [name: string]: never };
+  "schedule.no_runs_next": { time: string };
+  "schedule.no_scheduled_tasks_yet": { [name: string]: never };
+  "schedule.not_connected_showing_the_previous_state": { [name: string]: never };
+  "schedule.notified_you": { [name: string]: never };
+  "schedule.notify_on_completion": { [name: string]: never };
+  "schedule.notify_on_completion_by_default_when_off_only_the": { [name: string]: never };
+  "schedule.once_at": { time: string };
+  "schedule.once_schedules": { [name: string]: never };
+  "schedule.only_changes_this_task_it_still_runs_on_the": { [name: string]: never };
+  "schedule.other_tasks": { [name: string]: never };
+  "schedule.pause": { [name: string]: never };
+  "schedule.paused_the_schedule_expired_in_the_meantime": { [name: string]: never };
+  "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": { [name: string]: never };
+  "schedule.project": { [name: string]: never };
+  "schedule.quiet_runs": { count: number; day: string };
+  "schedule.read_full_text": { [name: string]: never };
+  "schedule.reading_tasks": { [name: string]: never };
+  "schedule.reason_returned_by_the_computer": { value: string };
+  "schedule.rename_task": { [name: string]: never };
+  "schedule.requested_a_run_now_the_automatic_schedule_is_unchanged": { [name: string]: never };
+  "schedule.resume": { [name: string]: never };
+  "schedule.retry_creation": { [name: string]: never };
+  "schedule.retry_same_request": { [name: string]: never };
+  "schedule.run_in": { [name: string]: never };
+  "schedule.run_once_now": { [name: string]: never };
+  "schedule.run_with_full_access": { [name: string]: never };
+  "schedule.running": { [name: string]: never };
+  "schedule.running_schedules": { [name: string]: never };
+  "schedule.running_since": { time: string };
+  "schedule.runs_count": { count: number };
+  "schedule.runs_today_none_notified_you": { count: number };
+  "schedule.runs_total": { count: number };
+  "schedule.sat": { [name: string]: never };
+  "schedule.saving_blank_uses_the_message_s_first_sentence": { [name: string]: never };
+  "schedule.schedule_messages_to_this_conversation": { [name: string]: never };
+  "schedule.select_a_future_time": { [name: string]: never };
+  "schedule.select_a_time": { [name: string]: never };
+  "schedule.select_at_least_one_day": { [name: string]: never };
+  "schedule.select_explicit_permissions_before_creating_a_scheduled_task": { [name: string]: never };
+  "schedule.select_permissions": { [name: string]: never };
+  "schedule.send_to": { detail: string; value: string };
+  "schedule.send_to_schedules": { [name: string]: never };
+  "schedule.singapore_time": { [name: string]: never };
+  "schedule.skipped": { [name: string]: never };
+  "schedule.starting": { [name: string]: never };
+  "schedule.stopped": { [name: string]: never };
+  "schedule.stopped_count": { count: number; total: string };
+  "schedule.stops_automatic_runs_existing_conversations_remain": { [name: string]: never };
+  "schedule.strip_count": { count: number; state: string };
+  "schedule.strip_single": { frequency: string; state: string };
+  "schedule.sun": { [name: string]: never };
+  "schedule.take_action": { [name: string]: never };
+  "schedule.task_creation_permissions_changed": { [name: string]: never };
+  "schedule.task_creation_permissions_changed_the_task_stopped": { [name: string]: never };
+  "schedule.task_name": { [name: string]: never };
+  "schedule.tasks_do_not_run_while_the_computer_sleeps_or": { [name: string]: never };
+  "schedule.tell_the_agent_in_a_conversation_check_for_me": { [name: string]: never };
+  "schedule.the_agent_created_task_interval_is_too_short": { [name: string]: never };
+  "schedule.the_agent_created_task_interval_is_too_short_the": { [name: string]: never };
+  "schedule.the_catch_up_window_expired_this_run_was_skipped": { [name: string]: never };
+  "schedule.the_computer_is_offline_connect_to_create_tasks": { [name: string]: never };
+  "schedule.the_first_run_is_after_a_full_interval_to": { [name: string]: never };
+  "schedule.the_interval_must_be_at_least_1_second": { [name: string]: never };
+  "schedule.the_message_could_not_be_queued": { [name: string]: never };
+  "schedule.the_message_was_not_delivered_to_the_cli": { [name: string]: never };
+  "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the": { [name: string]: never };
+  "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the": { [name: string]: never };
+  "schedule.the_relay_s_session_limit_has_been_reached": { [name: string]: never };
+  "schedule.the_run_count_must_be_a_positive_integer": { [name: string]: never };
+  "schedule.the_running_conversation_could_not_be_found": { [name: string]: never };
+  "schedule.the_running_conversation_ended": { [name: string]: never };
+  "schedule.the_scheduled_message_is_paused_resume_or_cancel_it": { [name: string]: never };
+  "schedule.the_scheduled_message_was_canceled_before_delivery": { [name: string]: never };
+  "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": { [name: string]: never };
+  "schedule.these_changes_will_not_be_saved": { [name: string]: never };
+  "schedule.this_conversation_s_scheduled_tasks": { [name: string]: never };
+  "schedule.this_task_could_not_be_found_if_the_computer": { [name: string]: never };
+  "schedule.thu": { [name: string]: never };
+  "schedule.time": { [name: string]: never };
+  "schedule.time_zone": { [name: string]: never };
+  "schedule.tokyo_time": { [name: string]: never };
+  "schedule.too_long_maximum_32_kb": { [name: string]: never };
+  "schedule.tue": { [name: string]: never };
+  "schedule.unconfirmed": { [name: string]: never };
+  "schedule.unread_on_entry": { [name: string]: never };
+  "schedule.until": { value: string };
+  "schedule.update_remote_agent_on_the_computer_to_use_scheduled": { [name: string]: never };
+  "schedule.update_remote_agent_on_this_computer_to_use_scheduled": { [name: string]: never };
+  "schedule.verified_abandon_request": { [name: string]: never };
+  "schedule.verify_current_permissions_in_the_conversation": { [name: string]: never };
+  "schedule.view_all_runs": { count: number };
+  "schedule.waiting_for_results": { [name: string]: never };
+  "schedule.waiting_for_the_current_turn_to_end": { [name: string]: never };
+  "schedule.wed": { [name: string]: never };
+  "schedule.weekdays_only": { [name: string]: never };
+  "schedule.weekly_at": { days: string; time: string };
+  "schedule.weekly_on": { [name: string]: never };
+  "schedule.what_should_the_agent_do": { [name: string]: never };
+  "schedule.when": { [name: string]: never };
+  "schedule.workdays_at": { time: string };
+  "security.a_security_operation_is_unfinished_continue_it_first": { [name: string]: never };
+  "security.a_security_operation_is_unfinished_continue_the_original_operation": { [name: string]: never };
+  "security.abandon_this_succession_preparation": { [name: string]: never };
+  "security.abandon_this_succession_preparation_security": { [name: string]: never };
+  "security.abandon_unpublished_recovery_code": { [name: string]: never };
+  "security.abandon_unsigned_draft": { [name: string]: never };
+  "security.abandon_unsigned_operation": { [name: string]: never };
+  "security.account_public_key_missing_pair_again_or_use_a": { [name: string]: never };
+  "security.account_public_key_restored": { [name: string]: never };
+  "security.account_security": { [name: string]: never };
+  "security.add_on_authority": { name: string };
+  "security.added": { value: string };
+  "security.after_removing_this_unfinished_pairing_generate_a_new_code": { [name: string]: never };
+  "security.after_submission_wait_48_hours_the_current_managing_client": { [name: string]: never };
+  "security.allow_to_join": { [name: string]: never };
+  "security.another_pairing_draft_is_unfinished": { [name: string]: never };
+  "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": { [name: string]: never };
+  "security.another_security_operation_is_unfinished": { [name: string]: never };
+  "security.apply_again": { [name: string]: never };
+  "security.apply_again_with_the_current_recovery_code": { [name: string]: never };
+  "security.approved_waiting_for_the_new_device_to_finish_binding": { [name: string]: never };
+  "security.asked_the_browser_to_retain_data": { [name: string]: never };
+  "security.automatically_renews_when_you_return_to_the_managing_client": { [name: string]: never };
+  "security.before_succession_pair_again_afterward_enter_the_new_recovery": { [name: string]: never };
+  "security.browser": { [name: string]: never };
+  "security.cancel_pairing": { [name: string]: never };
+  "security.client": { [name: string]: never };
+  "security.compare_patterns": { [name: string]: never };
+  "security.compare_the_4_patterns_on_the_new_device_confirm": { [name: string]: never };
+  "security.compare_the_managing_client_s_4_patterns_if_they": { [name: string]: never };
+  "security.complete_recovery": { [name: string]: never };
+  "security.completing_takeover_keep_this_page_in_the_foreground_and": { [name: string]: never };
+  "security.computer_run_remote_agent_account_join_and_enter_the": { [name: string]: never };
+  "security.computers_can_only_run_clis_and_cannot_take_over": { [name: string]: never };
+  "security.confirm_exit": { [name: string]: never };
+  "security.confirm_that_the_successor_device_saved_the_new_recovery": { value: string };
+  "security.confirm_the_patterns_on_the_new_device_before_approving": { [name: string]: never };
+  "security.confirm_the_patterns_on_this_device_first": { [name: string]: never };
+  "security.confirm_transfer": { [name: string]: never };
+  "security.confirmed_here_waiting_for_managing_client_approval_and_binding": { [name: string]: never };
+  "security.continue_creation": { [name: string]: never };
+  "security.continue_original_draft": { [name: string]: never };
+  "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": { [name: string]: never };
+  "security.control_ai_coding_clis_on_your_computer_from_any": { [name: string]: never };
+  "security.create_account": { [name: string]: never };
+  "security.current_managing_client": { [name: string]: never };
+  "security.delete_local_keys_and_rejoin": { [name: string]: never };
+  "security.delete_records": { [name: string]: never };
+  "security.delete_this_computer_s_records": { [name: string]: never };
+  "security.delete_this_computer_s_records_device_management": { [name: string]: never };
+  "security.device_information_changed_the_original_transfer_request_was_not": { [name: string]: never };
+  "security.device_joined": { [name: string]: never };
+  "security.duration_48_hours": { [name: string]: never };
+  "security.eligible_at": { value: string };
+  "security.exit": { [name: string]: never };
+  "security.exit_and_delete_local_keys": { [name: string]: never };
+  "security.exit_and_start_over": { [name: string]: never };
+  "security.exit_this_browser": { [name: string]: never };
+  "security.exiting": { [name: string]: never };
+  "security.exiting_deletes_local_keys_you_will_need_to_pair": { [name: string]: never };
+  "security.finish_device_registration_first": { [name: string]: never };
+  "security.finish_the_current_security_operation_before_renewing": { [name: string]: never };
+  "security.finish_the_current_security_operation_first": { [name: string]: never };
+  "security.finish_the_original_security_operation_first": { [name: string]: never };
+  "security.generate_and_save_a_recovery_code_on_the_successor": { [name: string]: never };
+  "security.generate_new_recovery_code": { [name: string]: never };
+  "security.generate_pairing_code": { [name: string]: never };
+  "security.generate_recovery_code": { [name: string]: never };
+  "security.generating": { [name: string]: never };
+  "security.i_saved_the_new_recovery_code_offline": { [name: string]: never };
+  "security.if_this_browser_is_already_a_member_recovery_will": { [name: string]: never };
+  "security.invalid_pairing_key": { [name: string]: never };
+  "security.invalid_pairing_trust_information": { [name: string]: never };
+  "security.invalid_recovery_code": { [name: string]: never };
+  "security.it_may_have_been_removed_or_the_service_may": { [name: string]: never };
+  "security.join": { [name: string]: never };
+  "security.join_account": { [name: string]: never };
+  "security.join_an_existing_account": { [name: string]: never };
+  "security.join_with_a_code_from_the_managing_client": { [name: string]: never };
+  "security.loading": { [name: string]: never };
+  "security.manage_on_authority": { name: string };
+  "security.management_transferred_waiting_for_the_successor_to_complete_takeover": { [name: string]: never };
+  "security.new_recovery_code": { [name: string]: never };
+  "security.new_recovery_code_shown_only_once": { [name: string]: never };
+  "security.nothing_is_published_before_you_save_it_an_unpublished": { [name: string]: never };
+  "security.on_the_managing_client_open_settings_add_device_and": { [name: string]: never };
+  "security.once_the_successor_device_joins_and_confirms_saving_its": { [name: string]: never };
+  "security.one_time_security_setup": { [name: string]: never };
+  "security.only_a_removed_computer_s_archive_can_be_rejoined": { [name: string]: never };
+  "security.only_this_computer_can_rejoin_its_original_archive_with": { [name: string]: never };
+  "security.open_to_renew": { value: string };
+  "security.original_recovery_code": { [name: string]: never };
+  "security.pair_again": { [name: string]: never };
+  "security.pair_valid_until": { time: string };
+  "security.paired": { [name: string]: never };
+  "security.pairing_approval_does_not_match_this_device_or_has": { [name: string]: never };
+  "security.pairing_canceled": { [name: string]: never };
+  "security.pairing_code": { [name: string]: never };
+  "security.pairing_commitment_mismatch_pairing_stopped": { [name: string]: never };
+  "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": { [name: string]: never };
+  "security.pairing_expired": { [name: string]: never };
+  "security.pairing_expired_or_was_canceled": { [name: string]: never };
+  "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": { [name: string]: never };
+  "security.pairing_was_canceled_or_expired": { [name: string]: never };
+  "security.patterns_differ_return_to_code_entry": { [name: string]: never };
+  "security.patterns_match_the_new_device_confirmed_first": { [name: string]: never };
+  "security.patterns_match_trust_and_continue": { [name: string]: never };
+  "security.prepare_recovery": { [name: string]: never };
+  "security.processing": { [name: string]: never };
+  "security.publishing": { [name: string]: never };
+  "security.qr_code_for_adding_a_device": { [name: string]: never };
+  "security.re_enter": { [name: string]: never };
+  "security.reading": { [name: string]: never };
+  "security.recover_management_with_a_recovery_code": { [name: string]: never };
+  "security.recovery_code": { [name: string]: never };
+  "security.recovery_code_for_restoring_public_information": { [name: string]: never };
+  "security.recovery_code_saved_and_confirmed_waiting_for_the_current": { [name: string]: never };
+  "security.recovery_code_updated_the_previous_code_and_pending_recovery": { [name: string]: never };
+  "security.recovery_is_pending_or_its_outcome_is_unknown_and": { [name: string]: never };
+  "security.recovery_request_pending": { [name: string]: never };
+  "security.recovery_request_pending_eligible_at": { value: string };
+  "security.recovery_was_rejected_explicitly_apply_again": { [name: string]: never };
+  "security.recovery_was_rejected_you_can_apply_again": { [name: string]: never };
+  "security.refresh_successor_devices": { [name: string]: never };
+  "security.regenerate_recovery_code": { [name: string]: never };
+  "security.registration_on_another_server_is_unfinished_retry_it_or": { [name: string]: never };
+  "security.registration_proof_of_work_expired_retry_the_original_draft": { [name: string]: never };
+  "security.registration_proof_of_work_is_invalid_or_expired": { [name: string]: never };
+  "security.reject": { [name: string]: never };
+  "security.rejoin": { [name: string]: never };
+  "security.rejoin_and_resume_sessions": { [name: string]: never };
+  "security.rejoin_with_a_pairing_code": { [name: string]: never };
+  "security.remote_control_expiry": { [name: string]: never };
+  "security.remote_control_expiry_not_received_yet": { [name: string]: never };
+  "security.remote_control_renewed": { [name: string]: never };
+  "security.removal_immediately_stops_remote_access_from_this_device_the": { [name: string]: never };
+  "security.remove_device": { [name: string]: never };
+  "security.remove_device_device_management": { [name: string]: never };
+  "security.remove_unfinished_pairing": { [name: string]: never };
+  "security.renew_now": { [name: string]: never };
+  "security.replacing_the_recovery_code_immediately_invalidates_the_old_code": { [name: string]: never };
+  "security.restore_account_public_key": { [name: string]: never };
+  "security.restore_public_information": { [name: string]: never };
+  "security.return_to_account_creation_or_recovery_to_continue_the": { [name: string]: never };
+  "security.returning_stops_this_wait_reject_the_old_request_on": { [name: string]: never };
+  "security.save_the_new_recovery_code_first_then_ask_the": { [name: string]: never };
+  "security.save_the_recovery_code_offline_anyone_with_it_can": { [name: string]: never };
+  "security.saved_notify_managing_client": { [name: string]: never };
+  "security.saved_publish_replacement": { [name: string]: never };
+  "security.security_setup_must_use_the_original_account_s_server": { [name: string]: never };
+  "security.security_state_may_be_out_of_date_connect_and": { [name: string]: never };
+  "security.server": { [name: string]: never };
+  "security.setup_token_optional_with_open_registration": { [name: string]: never };
+  "security.someone_is_requesting_management_takeover_with_a_recovery_code": { value: string };
+  "security.start_over": { [name: string]: never };
+  "security.stopped_waiting_reject_the_old_request_on_the_managing": { [name: string]: never };
+  "security.submit_or_check_original_recovery": { [name: string]: never };
+  "security.success_is_uncertain_connection_lost": { [name: string]: never };
+  "security.take_over_management": { [name: string]: never };
+  "security.the_48_hour_wait_has_not_ended": { [name: string]: never };
+  "security.the_account_belongs_to_another_server": { [name: string]: never };
+  "security.the_account_does_not_match_the_managing_client_s": { [name: string]: never };
+  "security.the_account_keys_and_cache_in_this_browser_will": { [name: string]: never };
+  "security.the_account_s_state_chain_is_too_long_to": { [name: string]: never };
+  "security.the_browser_did_not_promise_to_retain_data": { [name: string]: never };
+  "security.the_computer_s_archive_was_deleted_join_as_a": { [name: string]: never };
+  "security.the_join_receipt_does_not_contain_the_correct_identity": { [name: string]: never };
+  "security.the_local_account_unfinished_registration_and_security_operations_will": { [name: string]: never };
+  "security.the_local_security_state_is_damaged_and_cannot_be": { [name: string]: never };
+  "security.the_managing_client_canceled_pairing": { [name: string]: never };
+  "security.the_managing_client_cannot_be_removed_directly_transfer_management": { [name: string]: never };
+  "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": { [name: string]: never };
+  "security.the_managing_client_s_trust_information_does_not_match": { [name: string]: never };
+  "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": { [name: string]: never };
+  "security.the_original_creation_draft_is_preserved_continue_with_the": { [name: string]: never };
+  "security.the_original_device_identity_keys_and_history_are_preserved": { [name: string]: never };
+  "security.the_original_device_public_key_does_not_match_the": { [name: string]: never };
+  "security.the_original_operation_is_unfinished_continue_verifying": { [name: string]: never };
+  "security.the_original_recovery_draft_is_preserved_the_new_recovery": { [name: string]: never };
+  "security.the_other_device_refused_this_join_request": { [name: string]: never };
+  "security.the_page_is_paused_return_to_the_foreground_to": { [name: string]: never };
+  "security.the_pairing_code_belongs_to_another_security_domain_original": { [name: string]: never };
+  "security.the_pairing_code_is_wrong_or_has_already_been": { [name: string]: never };
+  "security.the_pairing_draft_conflicts_with_the_current_identity": { [name: string]: never };
+  "security.the_pairing_receipt_was_approved_by_a_device_other": { [name: string]: never };
+  "security.the_public_key_may_already_be_published_abandoning_only": { [name: string]: never };
+  "security.the_recovery_signature_has_not_been_saved_re_enter": { [name: string]: never };
+  "security.the_security_operation_s_outcome_is_unverified_continue_the": { [name: string]: never };
+  "security.the_server_does_not_recognize_this_device": { [name: string]: never };
+  "security.the_server_replaced_the_pairing_commitment_after_receiving_the": { [name: string]: never };
+  "security.the_server_returned_information_for_a_different_device_from": { [name: string]: never };
+  "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": { [name: string]: never };
+  "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": { [name: string]: never };
+  "security.this_browser_does_not_support_web_locks_it_cannot": { [name: string]: never };
+  "security.this_browser_is_the_only_managing_client_transfer_management": { [name: string]: never };
+  "security.this_browser_s_original_public_key_could_not_be": { [name: string]: never };
+  "security.this_browser_will_be_the_only_managing_client_clearing": { [name: string]: never };
+  "security.this_deletes_the_account_keys_and_cache_on_this": { [name: string]: never };
+  "security.this_device": { [name: string]: never };
+  "security.this_device_becomes_the_managing_client": { [name: string]: never };
+  "security.this_device_has_an_unfinished_join_request_deleting_it": { [name: string]: never };
+  "security.this_device_manages_the_account": { [name: string]: never };
+  "security.this_device_s_clock_is_behind_the_managing_client": { [name: string]: never };
+  "security.this_page_and_the_server_or_pairing_device_use": { [name: string]: never };
+  "security.this_pairing_expired_generate_a_new_code_on_the": { [name: string]: never };
+  "security.this_permanently_deletes_sessions_events_and_images_on_the": { [name: string]: never };
+  "security.too_many_attempts_wait_a_minute_and_retry": { [name: string]: never };
+  "security.transfer_management": { [name: string]: never };
+  "security.transfer_result_unverified_continue_the_original_operation": { [name: string]: never };
+  "security.transfer_to": { [name: string]: never };
+  "security.unfinished_security_operation": { [name: string]: never };
+  "security.unknown_type": { [name: string]: never };
+  "security.use_when_the_managing_client_is_lost": { [name: string]: never };
+  "security.used": { detail: string; value: string };
+  "security.verify_and_continue": { [name: string]: never };
+  "security.verifying_management_identity_and_unfinished_security_operations": { [name: string]: never };
+  "security.waiting_for_comparison": { [name: string]: never };
+  "security.waiting_for_the_new_device_to_enter_the_pairing": { [name: string]: never };
+  "security.waiting_for_the_successor_device_to_generate_and_save": { [name: string]: never };
   "session.abandon_fork": { [name: string]: never };
   "session.action_failed": { action: string; reason: string };
+  "session.android_unknown": { [name: string]: never };
   "session.approval_resolved": { [name: string]: never };
   "session.auto_title_hint": { [name: string]: never };
   "session.back_task": { [name: string]: never };
@@ -502,6 +1089,7 @@ export interface MessageArgs {
   "session.interrupt": { [name: string]: never };
   "session.interrupt_turn": { [name: string]: never };
   "session.interrupted": { [name: string]: never };
+  "session.ios_missing": { [name: string]: never };
   "session.latest": { [name: string]: never };
   "session.loading_earlier": { [name: string]: never };
   "session.manually_closed": { [name: string]: never };
@@ -566,6 +1154,124 @@ export interface MessageArgs {
   "session.turn_duration": { duration: string };
   "session.update_computer": { [name: string]: never };
   "session.view": { [name: string]: never };
+  "settings.about": { [name: string]: never };
+  "settings.account": { [name: string]: never };
+  "settings.account_quota": { [name: string]: never };
+  "settings.added": { [name: string]: never };
+  "settings.all_clients": { [name: string]: never };
+  "settings.all_devices": { [name: string]: never };
+  "settings.appearance": { [name: string]: never };
+  "settings.approval_timeout": { [name: string]: never };
+  "settings.attachment_storage": { [name: string]: never };
+  "settings.attachments_are_stored_on_this_computer_session_files_remain": { [name: string]: never };
+  "settings.automatically_end_idle_sessions": { [name: string]: never };
+  "settings.can_clear": { value: string };
+  "settings.can_free": { value: string };
+  "settings.cannot_receive": { [name: string]: never };
+  "settings.cannot_sign_in_to_the_relay_right_now": { [name: string]: never };
+  "settings.check_for_updates": { [name: string]: never };
+  "settings.checking": { [name: string]: never };
+  "settings.clear": { [name: string]: never };
+  "settings.clear_reclaimable_attachments_and_cache": { [name: string]: never };
+  "settings.clear_settings": { [name: string]: never };
+  "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": { [name: string]: never };
+  "settings.cli_version": { name: string };
+  "settings.client_name": { [name: string]: never };
+  "settings.clients_control_sessions": { [name: string]: never };
+  "settings.computer": { [name: string]: never };
+  "settings.computer_offline_showing_the_last_reading": { [name: string]: never };
+  "settings.computer_settings_offline": { name: string };
+  "settings.computers_run_clis": { [name: string]: never };
+  "settings.could_not_download_retry_later": { [name: string]: never };
+  "settings.could_not_read_the_device_list": { [name: string]: never };
+  "settings.current": { [name: string]: never };
+  "settings.dark": { [name: string]: never };
+  "settings.default": { [name: string]: never };
+  "settings.default_approval_mode": { [name: string]: never };
+  "settings.default_reasoning_effort": { [name: string]: never };
+  "settings.details": { [name: string]: never };
+  "settings.device_id": { [name: string]: never };
+  "settings.device_not_found": { [name: string]: never };
+  "settings.devices": { [name: string]: never };
+  "settings.enable": { [name: string]: never };
+  "settings.enable_security_notifications": { [name: string]: never };
+  "settings.enabled": { [name: string]: never };
+  "settings.exit_and_delete_local_keys": { [name: string]: never };
+  "settings.follow_configuration": { value: string };
+  "settings.follow_configuration_settings": { [name: string]: never };
+  "settings.how_to_enable": { [name: string]: never };
+  "settings.idle_close_off": { [name: string]: never };
+  "settings.iphone_push_help": { [name: string]: never };
+  "settings.last_used": { [name: string]: never };
+  "settings.less_than_0_1_mib": { [name: string]: never };
+  "settings.light": { [name: string]: never };
+  "settings.managing_client": { [name: string]: never };
+  "settings.min": { [name: string]: never };
+  "settings.name": { [name: string]: never };
+  "settings.name_changes_sync_to_other_clients": { [name: string]: never };
+  "settings.name_save_error": { reason: string };
+  "settings.names_sync_encrypted_the_server_cannot_read_them_leave": { [name: string]: never };
+  "settings.new_project_defaults": { [name: string]: never };
+  "settings.new_project_defaults_settings": { value: string };
+  "settings.no_computers_yet": { [name: string]: never };
+  "settings.no_record": { [name: string]: never };
+  "settings.nothing_to_clear": { [name: string]: never };
+  "settings.notification_permission_help": { [name: string]: never };
+  "settings.notifications_on_this_client": { [name: string]: never };
+  "settings.now": { [name: string]: never };
+  "settings.offline": { [name: string]: never };
+  "settings.on_iphone_add_to_home_screen_and_open_from": { [name: string]: never };
+  "settings.online": { value: string };
+  "settings.paired_client": { [name: string]: never };
+  "settings.preview_cache": { [name: string]: never };
+  "settings.read_error": { reason: string };
+  "settings.rejoin_account": { [name: string]: never };
+  "settings.restore_default_name": { [name: string]: never };
+  "settings.runs_on": { [name: string]: never };
+  "settings.save_error": { reason: string };
+  "settings.scheduled_task_results": { [name: string]: never };
+  "settings.security_notifications": { [name: string]: never };
+  "settings.security_notifications_are_independent_of_session_alerts_delivery_is": { [name: string]: never };
+  "settings.session_alerts_are_off_you_will_not_be_notified": { [name: string]: never };
+  "settings.sessions_end_automatically_after_this_much_inactivity_not_running": { [name: string]: never };
+  "settings.set_the_name_and_notification_preferences_on_that_device": { [name: string]: never };
+  "settings.signed_account_state_confirms_this_device_was_removed_sessions": { [name: string]: never };
+  "settings.storage_limit": { [name: string]: never };
+  "settings.subscription_error": { reason: string };
+  "settings.the_account_keys_in_this_browser_will_be_deleted": { [name: string]: never };
+  "settings.the_browser_denied_notification_permission": { [name: string]: never };
+  "settings.the_device_may_have_been_removed_the_service_reset": { [name: string]: never };
+  "settings.the_new_device_has_not_finished_joining_if_it": { [name: string]: never };
+  "settings.the_original_operation_is_unfinished_continue_verifying": { [name: string]: never };
+  "settings.the_original_security_operation_is_verified_complete_you_can": { [name: string]: never };
+  "settings.the_time_on_the_right_is_the_last_use": { [name: string]: never };
+  "settings.theme": { [name: string]: never };
+  "settings.theme_auto": { [name: string]: never };
+  "settings.this_browser_does_not_support_push_notifications": { [name: string]: never };
+  "settings.this_device_was_removed_from_the_account": { [name: string]: never };
+  "settings.times_are_shown_in_beijing_time_quotas_belong_to": { [name: string]: never };
+  "settings.unanswered_approvals_are_denied_after_this_time": { [name: string]: never };
+  "settings.unfinished_pairing": { [name: string]: never };
+  "settings.unfinished_pairing_settings": { [name: string]: never };
+  "settings.unnamed": { [name: string]: never };
+  "settings.unverified": { [name: string]: never };
+  "settings.up_to_date": { [name: string]: never };
+  "settings.uploaded_images_and_files": { [name: string]: never };
+  "settings.uploading": { value: string };
+  "settings.use_cli_defaults_for_new_projects": { [name: string]: never };
+  "settings.verify_and_continue_security_operation": { [name: string]: never };
+  "settings.version_unverified_run_remote_agent_doctor_on_this_computer": { [name: string]: never };
+  "settings.view_usage_in_the_local_cli": { [name: string]: never };
+  "settings.when_a_turn_ends": { [name: string]: never };
+  "settings.when_i_need_to_act": { [name: string]: never };
+  "settings.when_unspecified_uses": { [name: string]: never };
+  "startup.install_description": { [name: string]: never };
+  "startup.javascript_required": { [name: string]: never };
+  "startup.opening": { [name: string]: never };
+  "startup.opening_remote_agent": { [name: string]: never };
+  "startup.page_updated": { [name: string]: never };
+  "startup.the_page_could_not_load_check_your_connection_and": { [name: string]: never };
+  "startup.this_part_could_not_be_fetched_reload_to_continue": { [name: string]: never };
   "terminal.closed": { [name: string]: never };
   "terminal.closed_ended_note": { [name: string]: never };
   "terminal.closed_running_note": { [name: string]: never };
@@ -598,6 +1304,7 @@ export interface MessageArgs {
   "terminal.size_note": { [name: string]: never };
   "terminal.up": { [name: string]: never };
   "terminal.view_details": { [name: string]: never };
+  "time.calendar_date_year": { day: number; month: number; year: number };
   "time.duration_hours_minutes": { hours: number; minutes: number };
   "time.duration_minutes_seconds": { minutes: number; seconds: number };
   "time.duration_seconds": { count: number };
@@ -609,9 +1316,12 @@ export interface MessageArgs {
   "time.month_day": { day: number; month: number };
   "time.month_group": { month: number };
   "time.today": { [name: string]: never };
+  "time.today_clock": { detail: string; value: string };
+  "time.tomorrow": { [name: string]: never };
   "time.weekday": { day: string };
   "time.year_month_group": { month: number; year: number };
   "time.yesterday": { [name: string]: never };
+  "tools.android_edit": { [name: string]: never };
   "tools.background": { [name: string]: never };
   "tools.background_agent": { [name: string]: never };
   "tools.background_returned": { [name: string]: never };
@@ -678,6 +1388,8 @@ export const messages = {
       },
       "plural": "count"
     },
+    "attachment.ios_image_missing": "Image is not on the computer",
+    "attachment.ios_missing": "Attachment is not on the computer",
     "attachment.max_files": {
       "forms": {
         "one": "A message can have at most {count} file",
@@ -698,6 +1410,7 @@ export const messages = {
     "attachment.photos_videos": "Photos and videos",
     "attachment.preparing": "Preparing",
     "attachment.read_failed": "Cannot read this file. Compress folders before selecting them, or select a readable file again.",
+    "attachment.release_to_add": "Release to add attachments",
     "attachment.remove_file": "Remove file {name}",
     "attachment.remove_video": "Remove video {name}",
     "attachment.size_limit": "A file cannot exceed {limit} MB",
@@ -717,7 +1430,11 @@ export const messages = {
     "common.details": "Details",
     "common.done": "Done",
     "common.got_it": "Got it",
+    "common.ios_more": "More",
+    "common.ios_offline": "Offline",
+    "common.ios_online": "Online",
     "common.ios_save_failed": "Could not save: {reason}",
+    "common.ios_saving": "Saving…",
     "common.ios_spoken_separator": ", ",
     "common.list_separator": ", ",
     "common.loading": "Loading",
@@ -768,18 +1485,45 @@ export const messages = {
     "composer.slash_title": "Send as a regular message?",
     "composer.unconfirmed": "Possibly not sent: written to terminal but unconfirmed",
     "composer.write_failed": "Could not write to terminal",
+    "connection.checking": "Checking…",
+    "connection.connected": "Connected",
     "connection.connecting": "Connecting…",
+    "connection.connecting_conn_check": "Connecting",
+    "connection.connecting_conn_check_label": "Connecting",
+    "connection.last_failure": "Last failure: {value}",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "Latency is one round trip. The server row measures this device to the server; computer rows go through the server to the computer and back, so they are slower.",
+    "connection.live_push": "Live push",
+    "connection.live_push_is_not_connected": "Live push is not connected.",
+    "connection.live_push_is_not_connected_session_changes_may_be": "Live push is not connected; session changes may be delayed. Last failure: {value}",
+    "connection.local_network": "Local network",
     "connection.network_required": "Connect to read sessions",
     "connection.no_network": "No network connection",
     "connection.no_network_empty": "No network connection · Connect to read sessions",
     "connection.no_network_previous": "No network connection · Showing previous content",
     "connection.no_response": "No response",
     "connection.no_server": "Cannot connect to server",
+    "connection.not_checked": "Not checked",
     "connection.previous_below": "Showing previous content below",
+    "connection.reconnect_now": "Reconnect now",
     "connection.reconnecting": "Reconnecting…",
+    "connection.reconnecting_conn_check": "Reconnecting",
+    "connection.reconnecting_conn_check_label": "Reconnecting",
     "connection.retrying_previous": "Retrying, showing previous content below",
+    "connection.sec_elapsed": {
+      "forms": {
+        "one": "{value}: {detail}, {count} sec elapsed. {previousFailure}",
+        "other": "{value}: {detail}, {count} sec elapsed. {previousFailure}"
+      },
+      "plural": "count"
+    },
     "connection.server_details": "Cannot connect to server: {reason}. This device’s network may also be unavailable. Retrying automatically.",
     "connection.server_retrying": "Cannot connect to server · Retrying",
+    "connection.slow": " · Slow",
+    "connection.test_again": "Test again",
+    "connection.this_device_has_no_network_it_will_reconnect_when": "This device has no network. It will reconnect when online.",
+    "connection.unavailable": "Unavailable",
+    "connection.unreachable": "Unreachable",
+    "connection.working": "Working",
     "dock.agent_waiting": "{agent} is waiting for you",
     "dock.agy_plan_note": "Return to the default mode (Ask) after approval",
     "dock.answer_title": "Answer question",
@@ -835,6 +1579,96 @@ export const messages = {
     "dock.submitting": "Submitting…",
     "dock.trust_folder": "No, exit is selected by default. Press ↓ to select Yes, I trust this folder, then press ⏎",
     "dock.waiting_confirmation": "Waiting for confirmation",
+    "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "Account creation draft preserved. Continue the original creation flow and recovery code confirmation.",
+    "errors.cannot_connect_to_terminal": "Cannot connect to terminal",
+    "errors.cannot_sign_with_the_current_security_state_the_operation": "Cannot sign with the current security state. The operation has not been sent; retry.",
+    "errors.connection_dropped_midway": "Connection dropped midway",
+    "errors.connection_timed_out": "Connection timed out",
+    "errors.connection_timed_out_reconnecting": "Connection timed out. Reconnecting.",
+    "errors.current_membership_could_not_be_verified": "Current membership could not be verified",
+    "errors.device_directory_state_changed": "Device directory state changed",
+    "errors.device_information_could_not_be_verified": "Device information could not be verified",
+    "errors.device_information_is_changing_retry": "Device information is changing. Retry.",
+    "errors.device_registration_is_unfinished_retry_it_first": "Device registration is unfinished. Retry it first.",
+    "errors.disconnected_from_server": "Disconnected from server",
+    "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "Emergency recovery draft preserved. Continue checking, waiting, or completing the original recovery.",
+    "errors.establishing_push_connection": "Establishing push connection",
+    "errors.history_could_not_continue_loading_retry": "History could not continue loading. Retry.",
+    "errors.history_has_a_gap_retry": "History has a gap. Retry.",
+    "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "History keys unavailable: records from before recovery cannot be decrypted",
+    "errors.invalid_ciphertext_current_state_checkpoint_mismatch": "Invalid ciphertext: current state checkpoint mismatch",
+    "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "Invalid ciphertext: signature, key, or content verification failed",
+    "errors.invalid_current_request_snapshot": "Invalid current request snapshot",
+    "errors.invalid_pairing_approval_signature": "Invalid pairing approval signature",
+    "errors.invalid_push_frame": "Invalid push frame",
+    "errors.invalid_session_seed": "Invalid session seed",
+    "errors.it_may_have_been_deleted_or_belong_to_a": "It may have been deleted, or belong to a computer that was removed.",
+    "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "Membership chain conflict. Security operations stopped; verify devices and explicitly rejoin.",
+    "errors.names_can_only_be_changed_on_that_device": "Names can only be changed on that device",
+    "errors.network_changed_reconnecting": "Network changed. Reconnecting.",
+    "errors.other_clients_kept_changing_the_project_list_changes_could": "Other clients kept changing the project list. Changes could not be saved.",
+    "errors.pending_requests_on_the_computer_could_not_be_verified": "Pending requests on the computer could not be verified. Retry or handle them in the computer’s terminal.",
+    "errors.project_preferences_format_is_not_supported": "Project preferences format is not supported",
+    "errors.push_backlog_reconnecting": "Push backlog. Reconnecting.",
+    "errors.queued_records_could_not_be_restored_you_can_still": "Queued records could not be restored. You can still type and send; retry next time.",
+    "errors.queued_records_could_not_be_saved_locally_messages_will": "Queued records could not be saved locally. Messages will still send; verify delivery before closing the page.",
+    "errors.reading_local_state": "Reading local state",
+    "errors.remote_agent_on_is_out_of_date_update_it": "remote-agent on {value} is out of date. Update it on the computer and retry.",
+    "errors.remote_control_expired_control_and_new_uploads_are_paused": "Remote control expired. Control and new uploads are paused; renew on the current managing client.",
+    "errors.remote_control_expired_saving_changes_session_control_and_new": "Remote control expired. Saving changes, session control, and new uploads are paused; renew on the current managing client and retry. History remains available.",
+    "errors.security_body_type_or_direction_mismatch": "Security body type or direction mismatch",
+    "errors.security_envelope_missing": "Security envelope missing",
+    "errors.server_returned": "Server returned {value}",
+    "errors.session_key_envelope_missing": "Session key envelope missing",
+    "errors.setup_request_preserved": "{reason}. The original request and keys are preserved. Retry; if approval expired or was refused, exit and pair again or create an account.",
+    "errors.signing_in": "Signing in",
+    "errors.syncing_device_state": "Syncing device state",
+    "errors.terminal_connection_canceled": "Terminal connection canceled",
+    "errors.terminal_connection_closed": "Terminal connection closed",
+    "errors.terminal_connection_dropped": "Terminal connection dropped",
+    "errors.terminal_connection_timed_out_reconnect": "Terminal connection timed out. Reconnect.",
+    "errors.terminal_frames_are_out_of_order": "Terminal frames are out of order",
+    "errors.terminal_output_backlog_reconnect_for_the_latest_display": "Terminal output backlog. Reconnect for the latest display.",
+    "errors.the_computer_did_not_return_a_task": "The computer did not return a task",
+    "errors.the_computer_did_not_return_a_task_list": "The computer did not return a task list",
+    "errors.the_computer_did_not_return_an_attachment_id": "The computer did not return an attachment ID",
+    "errors.the_computer_is_offline_connect_to_edit_tasks": "The computer is offline. Connect to edit tasks.",
+    "errors.the_computer_is_offline_the_command_was_not_sent": "The computer is offline. The command was not sent.",
+    "errors.the_computer_is_still_verifying_attachments_retry_shortly": "The computer is still verifying attachments. Retry shortly.",
+    "errors.the_computer_s_reply_could_not_be_verified_command": "The computer’s reply could not be verified. Command execution is uncertain.",
+    "errors.the_current_request_could_not_be_verified_again": "The current request could not be verified again",
+    "errors.the_device_directory_response_is_out_of_date": "The device directory response is out of date",
+    "errors.the_draft_could_not_be_restored_you_can_still": "The draft could not be restored. You can still type and send; retry when opening or editing next time.",
+    "errors.the_draft_could_not_be_saved_locally_keep_the": "The draft could not be saved locally. Keep the original images and text before closing the page.",
+    "errors.the_draft_could_not_be_saved_the_original_message": "The draft could not be saved. The original message’s local copy is preserved.",
+    "errors.the_event_s_position_was_changed": "The event’s position was changed",
+    "errors.the_plan_display_changed_review_it_again": "The plan display changed. Review it again.",
+    "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "The previous operation’s outcome is still unknown. Reload and verify the task before continuing.",
+    "errors.the_previous_request_s_outcome_is_still_unknown_cannot": "The previous request’s outcome is still unknown. Cannot sign in again yet.",
+    "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "The recovery object was updated concurrently. Retrying on the next sync.",
+    "errors.the_relay_did_not_provide_a_verifiable_execution_result": "The relay did not provide a verifiable execution result. Retry the same request.",
+    "errors.the_request_on_the_computer_changed_review_it_again": "The request on the computer changed. Review it again.",
+    "errors.the_server_address_cannot_include_a_username_or_password": "The server address cannot include a username or password",
+    "errors.the_server_does_not_recognize_this_device_it_may": "The server does not recognize this device (it may have been removed or the service rebuilt)",
+    "errors.the_server_must_use_https": "The server must use HTTPS",
+    "errors.the_server_returned_an_unexpected_device_id": "The server returned an unexpected device ID",
+    "errors.the_session_record_s_computer_was_changed": "The session record’s computer was changed",
+    "errors.the_task_list_returned_by_the_computer_could_not": "The task list returned by the computer could not be read",
+    "errors.the_task_was_just_changed_updated_to_the_latest": "The task was just changed. Updated to the latest content.",
+    "errors.this_browser_has_already_joined_an_account_open_this": "This browser has already joined an account. Open this link on the new device to join.",
+    "errors.this_device_s_clock_is_behind_the_account_state": "This device’s clock is behind the account state. Correct the system time and time zone, or remote operations will be refused.",
+    "errors.this_device_s_clock_is_behind_the_account_state_remote": "This device’s clock is behind the account state. Correct the time and time zone before continuing; the operation has not been sent.",
+    "errors.this_device_s_security_state_could_not_be_verified": "This device’s security state could not be verified. Remote operations are paused. Your original keys and history are preserved; check local storage.",
+    "errors.this_history_uses_an_old_encryption_format_and_can": "This history uses an old encryption format and can no longer be viewed",
+    "errors.this_is_not_a_remote_agent_account_key": "This is not a remote-agent account key",
+    "errors.this_page_is_out_of_date_refresh_or_update": "This page is out of date. Refresh or update it and retry.",
+    "errors.this_request_can_no_longer_be_acted_on": "This request can no longer be acted on",
+    "errors.this_request_has_not_been_verified_by_the_computer": "This request has not been verified by the computer yet. Wait for sync.",
+    "errors.timed_out_reconnecting": "{value} timed out. Reconnecting.",
+    "errors.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks",
+    "errors.upload_made_no_progress": "Upload made no progress",
+    "errors.waiting_for_the_owning_computer_to_update_the_current": "Waiting for the owning computer to update the current state",
+    "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "Waiting for the owning computer to update the current state: this device lacks the content key from that time",
     "home.add_device": "Add device",
     "home.add_via_manager": "No computers yet. Open “Settings › Add device” on the managing client ({name}) to add one.",
     "home.all_projects": "All projects",
@@ -859,6 +1693,15 @@ export const messages = {
       },
       "plural": "count"
     },
+    "home.ios_badge_tasks": {
+      "forms": {
+        "one": "{count} task needs attention",
+        "other": "{count} tasks need attention"
+      },
+      "plural": "count"
+    },
+    "home.ios_choose_task": "Choose a task to see its results",
+    "home.ios_new_results": "New results",
     "home.list_failed": "Could not load sessions: {reason}",
     "home.live": "In progress",
     "home.loading_earlier": "Loading earlier sessions…",
@@ -973,6 +1816,8 @@ export const messages = {
       "plural": "count"
     },
     "image.back_message": "Back to message",
+    "image.cannot_read_this_image": "Cannot read this image",
+    "image.cannot_read_this_image_try_jpeg_or_png_instead": "Cannot read this image. Try JPEG or PNG instead.",
     "image.convert_failed": "Conversion failed",
     "image.copy_failed": "Could not copy: {reason}",
     "image.count": {
@@ -985,6 +1830,11 @@ export const messages = {
     "image.download_retry": "Download failed · Tap to retry",
     "image.draft": "Image ready to send",
     "image.generated": "Generated image",
+    "image.image_dimensions_are_too_large": "Image dimensions are too large",
+    "image.image_dimensions_are_too_large_resize_it_and_retry": "Image dimensions are too large. Resize it and retry.",
+    "image.image_dimensions_are_too_large_send_a_compressed_version": "Image dimensions are too large. Send a compressed version.",
+    "image.image_exceeds_20_mb": "Image exceeds 20 MB",
+    "image.image_exceeds_20_mb_turn_off_original_and_send": "Image exceeds 20 MB. Turn off Original and send again.",
     "image.load_connected": "Load when connected",
     "image.more": {
       "forms": {
@@ -1031,6 +1881,11 @@ export const messages = {
     },
     "image.share": "Share",
     "image.share_failed": "Could not share: {reason}",
+    "image.the_computer_s_attachment_storage_is_full_clear_space": "The computer’s attachment storage is full. Clear space and retry.",
+    "image.the_image_could_not_reach_the_computer_retry_when": "The image could not reach the computer. Retry when connected.",
+    "image.this_image_could_not_be_processed": "This image could not be processed",
+    "image.this_image_format_is_not_supported": "This image format is not supported",
+    "image.this_image_has_no_local_copy_remove_it_and": "This image has no local copy. Remove it and select it again.",
     "image.title": "Image",
     "image.tool_source": "Image viewed by {agent}",
     "image.total_size": " · Total {size}",
@@ -1045,6 +1900,7 @@ export const messages = {
     "list_state.approval": "Awaiting approval",
     "list_state.ended": "Ended",
     "list_state.idle": "Idle",
+    "list_state.ios_new_session": "New session",
     "list_state.no_message": "No messages yet",
     "list_state.offline": "Computer offline",
     "list_state.plan": "Plan awaiting approval",
@@ -1074,6 +1930,7 @@ export const messages = {
       "plural": "count"
     },
     "models.all": "All models",
+    "models.android_reading_machine": "Reading settings from {name}…",
     "models.back": "Back to models",
     "models.context_size": "{size} context",
     "models.context_window": "Context window",
@@ -1089,8 +1946,10 @@ export const messages = {
     "models.summary_effort_label": "Model: {model}, reasoning effort: {effort}",
     "models.summary_label": "Model: {model}",
     "models.title": "Model",
+    "models.unknown_cli": "Unknown CLI",
     "modes.account_no_auto": "This account does not support Auto mode. Choose another approval mode before starting.",
     "modes.account_unsupported": "This account does not support Auto mode",
+    "modes.agent_own": "{agent}’s own mode",
     "modes.agy_ask_desc": "You confirm approval requests; automatically deny on timeout",
     "modes.agy_plan_desc": "Explore read-only and write a plan; after approval, return to the default mode to execute",
     "modes.ask": "Ask",
@@ -1124,6 +1983,7 @@ export const messages = {
     "modes.title": "Approval mode",
     "new_session.abandon_start": "Abandon this start",
     "new_session.account_no_auto": "This account does not support Auto mode, but {name} uses Auto by default for new projects. Change the default in “Settings › This computer” before starting.",
+    "new_session.android_abandon": "Abandon",
     "new_session.attachments_moved": "Switched to {name}. Uploading attachments again",
     "new_session.change_defaults": "Change defaults",
     "new_session.change_machine": "Change computer",
@@ -1135,9 +1995,12 @@ export const messages = {
     "new_session.config_fallback": "The selected model or reasoning effort is unavailable on this computer. Using its defaults for this session.",
     "new_session.default_model": "Default model",
     "new_session.disconnected": "Disconnected from server",
+    "new_session.each_cli_has_its_own_settings_choose_the_cli": "Each CLI has its own settings. Choose the CLI in the sentence when creating a task.",
     "new_session.expired_start": "The start is unconfirmed. Check the session list first. This request has expired and will not be retried or replaced.",
     "new_session.first_message": "First message of the new session",
+    "new_session.fixed_effort": "Reasoning effort fixed at {effort}",
     "new_session.follow_cli": "Follow CLI settings",
+    "new_session.follow_s_configuration": "Follow {value}’s configuration",
     "new_session.installed": "Installed: {agents}",
     "new_session.installed_fallback": "Installed: {agents}; this computer does not have {missing}, so {agent} will be used",
     "new_session.ios_attach": "Add attachment",
@@ -1147,10 +2010,15 @@ export const messages = {
     "new_session.location_machine_cli": "On {machine} in {project} using {cli}",
     "new_session.machine_label": "Computer: {name}",
     "new_session.machine_offline": "{name} is offline",
+    "new_session.machine_project_defaults": "Use {name} defaults for new projects",
+    "new_session.model_list_default": "Could not read the model list. Using {name}’s default model.",
     "new_session.model_no_auto": "This model has no Auto mode, but {name} uses Auto by default for new projects. Choose another model or change the default in “Settings › This computer”.",
     "new_session.offline_last_seen": "Last online {time}. Cannot start a session now",
     "new_session.offline_no_start": "Cannot start a session now",
     "new_session.offline_with_draft": "{name} is offline. The task has not started. Your draft is saved. Choose an online computer.",
+    "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "Only affects future sessions. Active sessions stay unchanged; synced across your devices.",
+    "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "Only changes this task. Existing conversations keep their settings.",
+    "new_session.permissions": "Permissions",
     "new_session.project_label": "Project: {name}",
     "new_session.project_session_label": "{name} · New session",
     "new_session.prompt": "What would you like to do?",
@@ -1165,11 +2033,16 @@ export const messages = {
     "new_session.start_shortcut": "{keys} Start",
     "new_session.start_unknown": "Start unconfirmed: {reason}. Retrying sends the same request and will not start another session.",
     "new_session.starting_on": "Starting on {name}…",
+    "new_session.task_settings": "Task settings",
+    "new_session.this_model_has_no_auto_mode": "This model has no Auto mode",
     "new_session.unconfirmed_start": "The previous start is still unconfirmed",
     "new_session.unexpected_reply": "Unexpected response",
     "new_session.use_machine": "Use {name}",
+    "notifications.scheduled_tasks_have_new_results": "Scheduled tasks have new results",
+    "notifications.the_browser_did_not_allow_notifications": "The browser did not allow notifications",
     "projects.add_again": "Add again",
     "projects.adding": "Adding…",
+    "projects.android_settings": "Project settings",
     "projects.changed_elsewhere": "Projects were updated on another client",
     "projects.choose": "Choose a project",
     "projects.choose_directory": "Project · Choose a folder",
@@ -1235,6 +2108,7 @@ export const messages = {
     "queue.after_turn": "Send after this turn",
     "queue.agent_ready": "Send when {agent} is ready",
     "queue.already_submitted": "The previous message is already in the terminal and cannot be canceled",
+    "queue.android_scheduled": "Scheduled task",
     "queue.cancel_failed": "Could not cancel; still queued",
     "queue.canceled": "Canceled",
     "queue.canceled_elsewhere": "The previous message was canceled on another client",
@@ -1260,9 +2134,52 @@ export const messages = {
     "queue.terminal_draft": "There is an unsent draft in the terminal. Send or clear it first.",
     "queue.unrecognized": "Input field not recognized; paused",
     "queue.when_ready": "Send when ready",
+    "quota.account": " · Account {value}",
+    "quota.awaiting_update": "Awaiting update",
+    "quota.days": {
+      "forms": {
+        "one": "{count} day",
+        "other": "{count} days"
+      },
+      "plural": "count"
+    },
     "quota.exhausted": "{name} · {window} quota is exhausted. CLI and model will not switch automatically.",
+    "quota.exhausted_quota": "Exhausted",
     "quota.failure": "Could not read {name} quota: {detail}",
     "quota.failure_no_reason": "Could not read {name} quota",
+    "quota.hr": {
+      "forms": {
+        "one": "{count} hr",
+        "other": "{count} hr"
+      },
+      "plural": "count"
+    },
+    "quota.last_reading": " · Last reading",
+    "quota.last_reading_computer_offline_may_have_changed": "Last reading: computer offline, may have changed",
+    "quota.last_reading_reset_time_passed_but_quota_recovery_is": "Last reading: {value}; reset time passed, but quota recovery is unconfirmed",
+    "quota.left": "{value}% left",
+    "quota.min": {
+      "forms": {
+        "one": "{count} min",
+        "other": "{count} min"
+      },
+      "plural": "count"
+    },
+    "quota.named_days": {
+      "forms": {
+        "one": "{name} · {count} day",
+        "other": "{name} · {count} days"
+      },
+      "plural": "count"
+    },
+    "quota.named_hours": {
+      "forms": {
+        "one": "{name} · {count} hr",
+        "other": "{name} · {count} hr"
+      },
+      "plural": "count"
+    },
+    "quota.no_data_received_for_this_quota": "No data received for this quota",
     "quota.old_hours": {
       "forms": {
         "one": "Data from {count} hour ago; may have changed",
@@ -1277,16 +2194,552 @@ export const messages = {
       },
       "plural": "count"
     },
+    "quota.previously": "Previously {value}",
+    "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed": "Previously {value}; reset time passed, but quota recovery is unconfirmed",
+    "quota.quota_lookup_is_not_supported_yet": "Quota lookup is not supported yet",
+    "quota.quota_not_available_yet": "Quota not available yet",
     "quota.read_failed": "Could not parse CLI status line data. Check the CLI version and session settings.",
     "quota.received": "Last received {time}",
     "quota.received_date": "Last received {month}/{day} {time}",
     "quota.received_success": "Last successfully received {time}",
     "quota.received_success_date": "Last successfully received {month}/{day} {time}",
+    "quota.resets_in_days_hr": {
+      "forms": {
+        "one": "Resets in {count} day {detail} hr",
+        "other": "Resets in {count} days {detail} hr"
+      },
+      "plural": "count"
+    },
+    "quota.resets_in_hr_min": {
+      "forms": {
+        "one": "Resets in {count} hr {detail} min",
+        "other": "Resets in {count} hr {detail} min"
+      },
+      "plural": "count"
+    },
+    "quota.resets_in_min": {
+      "forms": {
+        "one": "Resets in {count} min",
+        "other": "Resets in {count} min"
+      },
+      "plural": "count"
+    },
+    "quota.resetting_soon": "Resetting soon",
+    "quota.session": " · Session {value}",
+    "quota.third_party_models": "Third-party models",
+    "quota.third_party_models_claude_gpt_oss": "Third-party models (Claude, GPT-OSS)",
+    "quota.unavailable": "Unavailable",
+    "quota.unavailable_previous": "Quota not available yet (last reading)",
     "quota.unknown_time": "Observation time unknown; showing the last record",
     "quota.waiting": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
     "quota.warning": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
+    "schedule.after_a_run_count": "After a run count",
+    "schedule.after_current_turn": {
+      "forms": {
+        "one": "{count} sec after the current turn ends",
+        "other": "{count} sec after the current turn ends"
+      },
+      "plural": "count"
+    },
+    "schedule.after_each_turn": {
+      "forms": {
+        "one": "{count} sec after each turn ends",
+        "other": "{count} sec after each turn ends"
+      },
+      "plural": "count"
+    },
+    "schedule.after_turn_ends": "After turn ends",
+    "schedule.after_turn_replace": "{frequency}. Choose another frequency above to replace it.",
+    "schedule.attention_once": "{reason}. Change the time to reschedule.",
+    "schedule.attention_resume": "{reason}. Resuming or rescheduling starts at the next automatic time and does not resend the last message.",
+    "schedule.attention_uncertain": "{reason}. Continuing may repeat the last message. Open the run records to verify first.",
+    "schedule.beijing_time": "Beijing time",
+    "schedule.choose_a_valid_date_and_time": "Choose a valid date and time",
+    "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": "Choose Ask, Auto, or Full access. Scheduled tasks cannot open conversations in Plan mode.",
+    "schedule.computer_and_model": "Computer and model",
+    "schedule.connect_to_edit_run_or_delete": " Connect to edit, run, or delete.",
+    "schedule.continuing_takes_over_the_task_and_runs_it_with": " Continuing takes over the task and runs it with the permissions shown.",
+    "schedule.conversation": "Conversation",
+    "schedule.could_not_run": "Could not run",
+    "schedule.count": "Count",
+    "schedule.create": "Create",
+    "schedule.created_by_the_agent_in_a_conversation": "Created by the agent in a conversation",
+    "schedule.created_by_you": "Created by you",
+    "schedule.creating": "Creating…",
+    "schedule.daily": "Daily",
+    "schedule.daily_at": "Daily {time}",
+    "schedule.date_and_time": "Date and time",
+    "schedule.daylight_saving_time_skips_this_time_in_the_selected": "Daylight saving time skips this time in the selected zone. Choose another time.",
+    "schedule.delete": "Delete",
+    "schedule.delete_task": "Delete task…",
+    "schedule.delete_task_schedules": "Delete task?",
+    "schedule.deleted": "Deleted",
+    "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed": "Delivery before the computer restarted could not be confirmed",
+    "schedule.describe_the_scheduled_work_and_ask_the_agent_to": "Describe the scheduled work and ask the agent to notify you of results",
+    "schedule.discard_changes": "Discard changes?",
+    "schedule.discard_changes_schedule_text": "Discard changes",
+    "schedule.each_run_opens_a_new_conversation_grouped_under_this": "Each run opens a new conversation grouped under this task.",
+    "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": "Each run opens a new conversation grouped under this task, outside the session list.",
+    "schedule.earlier": "Earlier",
+    "schedule.end_date": "End date",
+    "schedule.end_time": "End time",
+    "schedule.ended": "Ended ",
+    "schedule.every": "Every",
+    "schedule.every_days": {
+      "forms": {
+        "one": "Every {count} day",
+        "other": "Every {count} days"
+      },
+      "plural": "count"
+    },
+    "schedule.every_hr": {
+      "forms": {
+        "one": "Every {count} hr",
+        "other": "Every {count} hr"
+      },
+      "plural": "count"
+    },
+    "schedule.every_min": {
+      "forms": {
+        "one": "Every {count} min",
+        "other": "Every {count} min"
+      },
+      "plural": "count"
+    },
+    "schedule.every_sec": {
+      "forms": {
+        "one": "Every {count} sec",
+        "other": "Every {count} sec"
+      },
+      "plural": "count"
+    },
+    "schedule.execution_failed": "Execution failed",
+    "schedule.execution_failed_the_task_stopped": "Execution failed. The task stopped",
+    "schedule.execution_interrupted": "Execution interrupted",
+    "schedule.execution_interrupted_the_task_stopped": "Execution interrupted. The task stopped",
+    "schedule.execution_outcome_is_unconfirmed": "Execution outcome is unconfirmed",
+    "schedule.frequency": "Frequency",
+    "schedule.fri": "Fri",
+    "schedule.has_not_run_yet": "Has not run yet",
+    "schedule.hong_kong_time": "Hong Kong time",
+    "schedule.hourly": "Hourly",
+    "schedule.if_blank_uses": "If blank, uses: {value}",
+    "schedule.in": "In “{value}”",
+    "schedule.in_conversation": "In conversation",
+    "schedule.interval_minutes": "Interval (minutes)",
+    "schedule.last_result": "{time} {result}",
+    "schedule.last_result_detail": "{time} {result}: {detail}",
+    "schedule.latest_summary": "Latest {time}: {summary}",
+    "schedule.leave_blank_to_use_the_message_s_first_sentence": "Leave blank to use the message’s first sentence",
+    "schedule.limits_both": {
+      "forms": {
+        "one": "{count} run total, or until {time}",
+        "other": "{count} runs total, or until {time}"
+      },
+      "plural": "count"
+    },
+    "schedule.list_failed": "Could not read tasks on {name}: {reason}",
+    "schedule.london_time": "London time",
+    "schedule.los_angeles_time": "Los Angeles time",
+    "schedule.manage": "Manage",
+    "schedule.mark_all_as_read": "Mark all as read",
+    "schedule.mark_as_read": "Mark as read",
+    "schedule.mark_as_unread": "Mark as unread",
+    "schedule.messages_go_to_the_current_conversation_and_wait_for": "Messages go to the current conversation and wait for the current turn to end.",
+    "schedule.messages_will_go_to_the_current_conversation_and_wait": "Messages will go to the current conversation and wait for the running turn to end.",
+    "schedule.missing_target": "Task stopped: {reason}. This task only sends to the original conversation and will fail again if resumed.",
+    "schedule.missing_target_run": "The run at {time} failed. Task stopped: {reason}. This task only sends to the original conversation and will fail again if resumed.",
+    "schedule.model_and_permissions": "Model and permissions",
+    "schedule.mon": "Mon",
+    "schedule.more_new_results": {
+      "forms": {
+        "one": "{count} more new result",
+        "other": "{count} more new results"
+      },
+      "plural": "count"
+    },
+    "schedule.needs_your_attention": "Needs your attention",
+    "schedule.never": "Never",
+    "schedule.new_results": {
+      "forms": {
+        "one": "{count} new result",
+        "other": "{count} new results"
+      },
+      "plural": "count"
+    },
+    "schedule.new_results_schedules": "New results",
+    "schedule.new_york_time": "New York time",
+    "schedule.next": "Next {value}",
+    "schedule.next_run_pending": "Next run pending",
+    "schedule.no_approval_is_required_for_any_operation_whenever_this": "No approval is required for any operation whenever this task runs.",
+    "schedule.no_approval_will_be_required_for_future_runs_existing": "No approval will be required for future runs. Existing conversations stay unchanged.",
+    "schedule.no_new_results": "No new results",
+    "schedule.no_notification": "No notification",
+    "schedule.no_results_yet": "No results yet",
+    "schedule.no_runs_next": "Has not run yet · Next {time}",
+    "schedule.no_scheduled_tasks_yet": "No scheduled tasks yet",
+    "schedule.not_connected_showing_the_previous_state": "Not connected. Showing the previous state.",
+    "schedule.notified_you": "Notified you",
+    "schedule.notify_on_completion": "Notify on completion",
+    "schedule.notify_on_completion_by_default_when_off_only_the": " Notify on completion by default. When off, only the agent can send notifications.",
+    "schedule.once_at": "{time}, once",
+    "schedule.once_schedules": "Once",
+    "schedule.only_changes_this_task_it_still_runs_on_the": "Only changes this task. It still runs on the original computer; existing conversations keep their settings.",
+    "schedule.other_tasks": "Other tasks",
+    "schedule.pause": "Pause",
+    "schedule.paused_the_schedule_expired_in_the_meantime": "Paused: the schedule expired in the meantime",
+    "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": "Plan mode cannot create execution tasks. Choose other permissions first.",
+    "schedule.project": "Project",
+    "schedule.quiet_runs": {
+      "forms": {
+        "one": "{day} · {count} run, none notified you",
+        "other": "{day} · {count} runs, none notified you"
+      },
+      "plural": "count"
+    },
+    "schedule.read_full_text": "Read full text",
+    "schedule.reading_tasks": "Reading tasks…",
+    "schedule.reason_returned_by_the_computer": "Reason returned by the computer: {value}",
+    "schedule.rename_task": "Rename task",
+    "schedule.requested_a_run_now_the_automatic_schedule_is_unchanged": "Requested a run now. The automatic schedule is unchanged.",
+    "schedule.resume": "Resume",
+    "schedule.retry_creation": "Retry creation",
+    "schedule.retry_same_request": "Retry same request",
+    "schedule.run_in": "Run in",
+    "schedule.run_once_now": "Run once now",
+    "schedule.run_with_full_access": "Run with full access?",
+    "schedule.running": "Running",
+    "schedule.running_schedules": "Running · ",
+    "schedule.running_since": "Running · Started {time}",
+    "schedule.runs_count": {
+      "forms": {
+        "one": "{count} run",
+        "other": "{count} runs"
+      },
+      "plural": "count"
+    },
+    "schedule.runs_today_none_notified_you": {
+      "forms": {
+        "one": "{count} run today, none notified you",
+        "other": "{count} runs today, none notified you"
+      },
+      "plural": "count"
+    },
+    "schedule.runs_total": {
+      "forms": {
+        "one": "{count} run total",
+        "other": "{count} runs total"
+      },
+      "plural": "count"
+    },
+    "schedule.sat": "Sat",
+    "schedule.saving_blank_uses_the_message_s_first_sentence": "Saving blank uses the message’s first sentence",
+    "schedule.schedule_messages_to_this_conversation": "Schedule messages to this conversation",
+    "schedule.select_a_future_time": "Select a future time",
+    "schedule.select_a_time": "Select a time",
+    "schedule.select_at_least_one_day": "Select at least one day",
+    "schedule.select_explicit_permissions_before_creating_a_scheduled_task": "Select explicit permissions before creating a scheduled task.",
+    "schedule.select_permissions": "Select permissions",
+    "schedule.send_to": "{value} · Send to “{detail}”",
+    "schedule.send_to_schedules": "Send to",
+    "schedule.singapore_time": "Singapore time",
+    "schedule.skipped": "Skipped",
+    "schedule.starting": "Starting",
+    "schedule.stopped": "Stopped",
+    "schedule.stopped_count": {
+      "forms": {
+        "one": "{total} task stopped",
+        "other": "{total} tasks stopped"
+      },
+      "plural": "count"
+    },
+    "schedule.stops_automatic_runs_existing_conversations_remain": "Stops automatic runs. Existing conversations remain.",
+    "schedule.strip_count": {
+      "forms": {
+        "one": "{count} schedule · {state}",
+        "other": "{count} schedules · {state}"
+      },
+      "plural": "count"
+    },
+    "schedule.strip_single": "Scheduled · {frequency}, {state}",
+    "schedule.sun": "Sun",
+    "schedule.take_action": "Take action",
+    "schedule.task_creation_permissions_changed": "Task creation permissions changed",
+    "schedule.task_creation_permissions_changed_the_task_stopped": "Task creation permissions changed. The task stopped",
+    "schedule.task_name": "Task name",
+    "schedule.tasks_do_not_run_while_the_computer_sleeps_or": "Tasks do not run while the computer sleeps or is off. After waking, the latest run is caught up within 24 hours by default; later runs are skipped. Run once now does not count toward the automatic schedule.",
+    "schedule.tell_the_agent_in_a_conversation_check_for_me": "Tell the agent in a conversation, “Check for me every day at 8…”, and it will create a schedule. You can also create one yourself.",
+    "schedule.the_agent_created_task_interval_is_too_short": "The agent-created task interval is too short",
+    "schedule.the_agent_created_task_interval_is_too_short_the": "The agent-created task interval is too short. The task stopped",
+    "schedule.the_catch_up_window_expired_this_run_was_skipped": "The catch-up window expired. This run was skipped",
+    "schedule.the_computer_is_offline_connect_to_create_tasks": "The computer is offline. Connect to create tasks.",
+    "schedule.the_first_run_is_after_a_full_interval_to": "The first run is after a full interval. To run now, create the task and select “Run once now”.",
+    "schedule.the_interval_must_be_at_least_1_second": "The interval must be at least 1 second",
+    "schedule.the_message_could_not_be_queued": "The message could not be queued",
+    "schedule.the_message_was_not_delivered_to_the_cli": "The message was not delivered to the CLI",
+    "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the": "The previous creation result is unconfirmed. Retrying uses the original task name, message, time, and request key without creating duplicates.",
+    "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the": "The previous operation’s result is unconfirmed. Verify the task and records; retrying uses the same request.",
+    "schedule.the_relay_s_session_limit_has_been_reached": "The relay’s session limit has been reached",
+    "schedule.the_run_count_must_be_a_positive_integer": "The run count must be a positive integer",
+    "schedule.the_running_conversation_could_not_be_found": "The running conversation could not be found",
+    "schedule.the_running_conversation_ended": "The running conversation ended",
+    "schedule.the_scheduled_message_is_paused_resume_or_cancel_it": "The scheduled message is paused. Resume or cancel it in the conversation first",
+    "schedule.the_scheduled_message_was_canceled_before_delivery": "The scheduled message was canceled before delivery",
+    "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": "The scheduled message was canceled before delivery. The task stopped",
+    "schedule.these_changes_will_not_be_saved": "These changes will not be saved.",
+    "schedule.this_conversation_s_scheduled_tasks": "This conversation’s scheduled tasks",
+    "schedule.this_task_could_not_be_found_if_the_computer": "This task could not be found. If the computer is offline with no cache, connect and retry.",
+    "schedule.thu": "Thu",
+    "schedule.time": "Time",
+    "schedule.time_zone": "Time zone",
+    "schedule.tokyo_time": "Tokyo time",
+    "schedule.too_long_maximum_32_kb": "Too long. Maximum 32 KB.",
+    "schedule.tue": "Tue",
+    "schedule.unconfirmed": "Unconfirmed",
+    "schedule.unread_on_entry": "Unread on entry",
+    "schedule.until": "Until {value}",
+    "schedule.update_remote_agent_on_the_computer_to_use_scheduled": "Update remote-agent on the computer to use scheduled tasks.",
+    "schedule.update_remote_agent_on_this_computer_to_use_scheduled": "Update remote-agent on this computer to use scheduled tasks.",
+    "schedule.verified_abandon_request": "Verified, abandon request",
+    "schedule.verify_current_permissions_in_the_conversation": "Verify current permissions in the conversation",
+    "schedule.view_all_runs": {
+      "forms": {
+        "one": "View all {count} run",
+        "other": "View all {count} runs"
+      },
+      "plural": "count"
+    },
+    "schedule.waiting_for_results": "Waiting for results",
+    "schedule.waiting_for_the_current_turn_to_end": "Waiting for the current turn to end",
+    "schedule.wed": "Wed",
+    "schedule.weekdays_only": "Weekdays only",
+    "schedule.weekly_at": "Weekly on {days} at {time}",
+    "schedule.weekly_on": "Weekly",
+    "schedule.what_should_the_agent_do": "What should the agent do",
+    "schedule.when": "When",
+    "schedule.workdays_at": "Weekdays {time}",
+    "security.a_security_operation_is_unfinished_continue_it_first": "A security operation is unfinished. Continue it first.",
+    "security.a_security_operation_is_unfinished_continue_the_original_operation": "A security operation is unfinished. Continue the original operation first.",
+    "security.abandon_this_succession_preparation": "Abandon this succession preparation?",
+    "security.abandon_this_succession_preparation_security": "Abandon this succession preparation",
+    "security.abandon_unpublished_recovery_code": "Abandon unpublished recovery code",
+    "security.abandon_unsigned_draft": "Abandon unsigned draft",
+    "security.abandon_unsigned_operation": "Abandon unsigned operation",
+    "security.account_public_key_missing_pair_again_or_use_a": "Account public key missing. Pair again or use a recovery code to restore it.",
+    "security.account_public_key_restored": "Account public key restored",
+    "security.account_security": "Account security",
+    "security.add_on_authority": "To add a computer or client, open Settings › Add device on the managing client ({name}).",
+    "security.added": "Added {value}",
+    "security.after_removing_this_unfinished_pairing_generate_a_new_code": "After removing this unfinished pairing, generate a new code in Add device so the new device can join again.",
+    "security.after_submission_wait_48_hours_the_current_managing_client": "After submission, wait 48 hours. The current managing client can reject the request; history from before the recovery boundary will be unreadable.",
+    "security.allow_to_join": "Allow to join",
+    "security.another_pairing_draft_is_unfinished": "Another pairing draft is unfinished",
+    "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": "Another pairing draft is unfinished. Complete this pairing or explicitly exit before retrying.",
+    "security.another_security_operation_is_unfinished": "Another security operation is unfinished",
+    "security.apply_again": "Apply again",
+    "security.apply_again_with_the_current_recovery_code": "Apply again with the current recovery code",
+    "security.approved_waiting_for_the_new_device_to_finish_binding": "Approved. Waiting for the new device to finish binding…",
+    "security.asked_the_browser_to_retain_data": "Asked the browser to retain data",
+    "security.automatically_renews_when_you_return_to_the_managing_client": "Automatically renews when you return to the managing client. Remote control pauses after expiry; chat and history remain available. Cannot renew while the page is closed or frozen.",
+    "security.before_succession_pair_again_afterward_enter_the_new_recovery": "Before succession, pair again; afterward, enter the new recovery code to restore public information. Looking up public information does not start emergency recovery.",
+    "security.browser": "Browser",
+    "security.cancel_pairing": "Cancel pairing",
+    "security.client": "Client",
+    "security.compare_patterns": "Compare patterns",
+    "security.compare_the_4_patterns_on_the_new_device_confirm": "Compare the 4 patterns on the new device. Confirm there first, then allow here.",
+    "security.compare_the_managing_client_s_4_patterns_if_they": "Compare the managing client’s 4 patterns. If they match, confirm here first, then allow on the managing client.",
+    "security.complete_recovery": "Complete recovery",
+    "security.completing_takeover_keep_this_page_in_the_foreground_and": "Completing takeover. Keep this page in the foreground and wait for remote control renewal.",
+    "security.computer_run_remote_agent_account_join_and_enter_the": "Computer: run remote-agent account join and enter the code below. Client: scan the QR code or enter the pairing code.",
+    "security.computers_can_only_run_clis_and_cannot_take_over": "Computers can only run CLIs and cannot take over management.",
+    "security.confirm_exit": "Confirm exit",
+    "security.confirm_that_the_successor_device_saved_the_new_recovery": "Confirm that the successor device ({value}) saved the new recovery code. Transfer removes this device and makes the successor the only managing client.",
+    "security.confirm_the_patterns_on_the_new_device_before_approving": "Confirm the patterns on the new device before approving on the managing client",
+    "security.confirm_the_patterns_on_this_device_first": "Confirm the patterns on this device first",
+    "security.confirm_transfer": "Confirm transfer",
+    "security.confirmed_here_waiting_for_managing_client_approval_and_binding": "Confirmed here. Waiting for managing client approval and binding…",
+    "security.continue_creation": "Continue creation",
+    "security.continue_original_draft": "Continue original draft",
+    "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "Continue the original recovery or explicitly abandon the rejected recovery first",
+    "security.control_ai_coding_clis_on_your_computer_from_any": "Control AI coding CLIs on your computer from any device",
+    "security.create_account": "Create account",
+    "security.current_managing_client": "Current managing client",
+    "security.delete_local_keys_and_rejoin": "Delete local keys and rejoin?",
+    "security.delete_records": "Delete records",
+    "security.delete_this_computer_s_records": "Delete this computer’s records…",
+    "security.delete_this_computer_s_records_device_management": "Delete this computer’s records",
+    "security.device_information_changed_the_original_transfer_request_was_not": "Device information changed. The original transfer request was not applied; explicitly abandon it before preparing another.",
+    "security.device_joined": "Device joined",
+    "security.duration_48_hours": "48 hours",
+    "security.eligible_at": " · Eligible at: {value}",
+    "security.exit": "Exit",
+    "security.exit_and_delete_local_keys": "Exit and delete local keys?",
+    "security.exit_and_start_over": "Exit and start over",
+    "security.exit_this_browser": "Exit this browser?",
+    "security.exiting": "Exiting…",
+    "security.exiting_deletes_local_keys_you_will_need_to_pair": "Exiting deletes local keys. You will need to pair again.",
+    "security.finish_device_registration_first": "Finish device registration first",
+    "security.finish_the_current_security_operation_before_renewing": "Finish the current security operation before renewing",
+    "security.finish_the_current_security_operation_first": "Finish the current security operation first",
+    "security.finish_the_original_security_operation_first": "Finish the original security operation first",
+    "security.generate_and_save_a_recovery_code_on_the_successor": "Generate and save a recovery code on the successor device first",
+    "security.generate_new_recovery_code": "Generate new recovery code",
+    "security.generate_pairing_code": "Generate pairing code",
+    "security.generate_recovery_code": "Generate recovery code",
+    "security.generating": "Generating…",
+    "security.i_saved_the_new_recovery_code_offline": "I saved the new recovery code offline",
+    "security.if_this_browser_is_already_a_member_recovery_will": "If this browser is already a member, recovery will remove its old identity and rotate content keys. If interrupted, continue the original recovery.",
+    "security.invalid_pairing_key": "Invalid pairing key",
+    "security.invalid_pairing_trust_information": "Invalid pairing trust information",
+    "security.invalid_recovery_code": "Invalid recovery code",
+    "security.it_may_have_been_removed_or_the_service_may": "It may have been removed, or the service may have been rebuilt. Sessions on your computers are unaffected.",
+    "security.join": "Join",
+    "security.join_account": "Join account",
+    "security.join_an_existing_account": "Join an existing account",
+    "security.join_with_a_code_from_the_managing_client": "Join with a code from the managing client",
+    "security.loading": "Loading…",
+    "security.manage_on_authority": "Manage devices on the managing client ({name}).",
+    "security.management_transferred_waiting_for_the_successor_to_complete_takeover": "Management transferred. Waiting for the successor to complete takeover.",
+    "security.new_recovery_code": "New recovery code",
+    "security.new_recovery_code_shown_only_once": "New recovery code · Shown only once",
+    "security.nothing_is_published_before_you_save_it_an_unpublished": "Nothing is published before you save it. An unpublished recovery code can be explicitly abandoned and regenerated next time.",
+    "security.on_the_managing_client_open_settings_add_device_and": "On the managing client, open Settings › Add device and enter its 8-digit pairing code here.",
+    "security.once_the_successor_device_joins_and_confirms_saving_its": "Once the successor device joins and confirms saving its new recovery code, approve here. Transfer preserves accessible history and removes this device.",
+    "security.one_time_security_setup": "One-time security setup",
+    "security.only_a_removed_computer_s_archive_can_be_rejoined": "Only a removed computer’s archive can be rejoined",
+    "security.only_this_computer_can_rejoin_its_original_archive_with": "Only this computer can rejoin its original archive with a new identity, preserving its sessions and history.",
+    "security.open_to_renew": "Open {value} to renew.",
+    "security.original_recovery_code": "Original recovery code",
+    "security.pair_again": "Pair again",
+    "security.pair_valid_until": "Valid until {time}",
+    "security.paired": "Paired",
+    "security.pairing_approval_does_not_match_this_device_or_has": "Pairing approval does not match this device or has expired",
+    "security.pairing_canceled": "Pairing canceled",
+    "security.pairing_code": "Pairing code",
+    "security.pairing_commitment_mismatch_pairing_stopped": "Pairing commitment mismatch. Pairing stopped.",
+    "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": "Pairing delivery expired. Explicitly remove the unfinished candidate before starting over.",
+    "security.pairing_expired": "Pairing expired",
+    "security.pairing_expired_or_was_canceled": "Pairing expired or was canceled",
+    "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": "Pairing was canceled. Explicitly remove the unfinished candidate before starting over.",
+    "security.pairing_was_canceled_or_expired": "Pairing was canceled or expired",
+    "security.patterns_differ_return_to_code_entry": "Patterns differ, return to code entry",
+    "security.patterns_match_the_new_device_confirmed_first": "Patterns match; the new device confirmed first",
+    "security.patterns_match_trust_and_continue": "Patterns match, trust and continue",
+    "security.prepare_recovery": "Prepare recovery",
+    "security.processing": "Processing…",
+    "security.publishing": "Publishing…",
+    "security.qr_code_for_adding_a_device": "QR code for adding a device",
+    "security.re_enter": "Re-enter",
+    "security.reading": "Reading…",
+    "security.recover_management_with_a_recovery_code": "Recover management with a recovery code",
+    "security.recovery_code": "Recovery code",
+    "security.recovery_code_for_restoring_public_information": "Recovery code for restoring public information",
+    "security.recovery_code_saved_and_confirmed_waiting_for_the_current": "Recovery code saved and confirmed. Waiting for the current managing client’s approval; reopen this page to check.",
+    "security.recovery_code_updated_the_previous_code_and_pending_recovery": "Recovery code updated. The previous code and pending recovery requests are invalidated.",
+    "security.recovery_is_pending_or_its_outcome_is_unknown_and": "Recovery is pending or its outcome is unknown and cannot be abandoned",
+    "security.recovery_request_pending": "Recovery request pending",
+    "security.recovery_request_pending_eligible_at": "Recovery request pending. Eligible at: {value}",
+    "security.recovery_was_rejected_explicitly_apply_again": "Recovery was rejected. Explicitly apply again.",
+    "security.recovery_was_rejected_you_can_apply_again": "Recovery was rejected. You can apply again.",
+    "security.refresh_successor_devices": "Refresh successor devices",
+    "security.regenerate_recovery_code": "Regenerate recovery code",
+    "security.registration_on_another_server_is_unfinished_retry_it_or": "Registration on another server is unfinished. Retry it or exit and start over.",
+    "security.registration_proof_of_work_expired_retry_the_original_draft": "Registration proof of work expired. Retry the original draft.",
+    "security.registration_proof_of_work_is_invalid_or_expired": "Registration proof of work is invalid or expired",
+    "security.reject": "Reject",
+    "security.rejoin": "Rejoin",
+    "security.rejoin_and_resume_sessions": "Rejoin and resume sessions",
+    "security.rejoin_with_a_pairing_code": "Rejoin with a pairing code",
+    "security.remote_control_expiry": "Remote control expiry",
+    "security.remote_control_expiry_not_received_yet": "Remote control expiry not received yet",
+    "security.remote_control_renewed": "Remote control renewed",
+    "security.removal_immediately_stops_remote_access_from_this_device_the": "Removal immediately stops remote access from this device. The computer’s sessions and archives remain; its local CLI is unaffected.",
+    "security.remove_device": "Remove device…",
+    "security.remove_device_device_management": "Remove device?",
+    "security.remove_unfinished_pairing": "Remove unfinished pairing…",
+    "security.renew_now": "Renew now",
+    "security.replacing_the_recovery_code_immediately_invalidates_the_old_code": "Replacing the recovery code immediately invalidates the old code and rejects pending recovery requests.",
+    "security.restore_account_public_key": "Restore account public key",
+    "security.restore_public_information": "Restore public information",
+    "security.return_to_account_creation_or_recovery_to_continue_the": "Return to account creation or recovery to continue the original draft",
+    "security.returning_stops_this_wait_reject_the_old_request_on": "Returning stops this wait. Reject the old request on the managing client, then generate a new code.",
+    "security.save_the_new_recovery_code_first_then_ask_the": "Save the new recovery code first, then ask the current managing client to approve transfer. The current managing client will be removed; no 48-hour wait is needed.",
+    "security.save_the_recovery_code_offline_anyone_with_it_can": "Save the recovery code offline. Anyone with it can request management takeover; do not send it to others.",
+    "security.saved_notify_managing_client": "Saved, notify managing client",
+    "security.saved_publish_replacement": "Saved, publish replacement",
+    "security.security_setup_must_use_the_original_account_s_server": "Security setup must use the original account’s server",
+    "security.security_state_may_be_out_of_date_connect_and": "Security state may be out of date. Connect and verify again.",
+    "security.server": "Server",
+    "security.setup_token_optional_with_open_registration": "Setup token (optional with open registration)",
+    "security.someone_is_requesting_management_takeover_with_a_recovery_code": "Someone is requesting management takeover with a recovery code. It takes effect after {value}. Reject it now if this was not you.",
+    "security.start_over": "Start over",
+    "security.stopped_waiting_reject_the_old_request_on_the_managing": "Stopped waiting. Reject the old request on the managing client, then generate a new pairing code.",
+    "security.submit_or_check_original_recovery": "Submit or check original recovery",
+    "security.success_is_uncertain_connection_lost": "Success is uncertain: connection lost",
+    "security.take_over_management": "Take over management",
+    "security.the_48_hour_wait_has_not_ended": "The 48-hour wait has not ended",
+    "security.the_account_belongs_to_another_server": "The account belongs to another server",
+    "security.the_account_does_not_match_the_managing_client_s": "The account does not match the managing client’s trust information",
+    "security.the_account_keys_and_cache_in_this_browser_will": "The account keys and cache in this browser will be deleted before joining with a pairing code.",
+    "security.the_account_s_state_chain_is_too_long_to": "The account’s state chain is too long to join. Rebuild the account on the managing client.",
+    "security.the_browser_did_not_promise_to_retain_data": "The browser did not promise to retain data",
+    "security.the_computer_s_archive_was_deleted_join_as_a": "The computer’s archive was deleted. Join as a new device.",
+    "security.the_join_receipt_does_not_contain_the_correct_identity": "The join receipt does not contain the correct identity for this device",
+    "security.the_local_account_unfinished_registration_and_security_operations_will": "The local account, unfinished registration, and security operations will be cleared. You will need to pair again or create an account. Sessions and archives on the server will remain. Operations with an unknown outcome may have succeeded; verify them on the managing client.",
+    "security.the_local_security_state_is_damaged_and_cannot_be": "The local security state is damaged and cannot be overwritten by pairing again. Export and clear it first.",
+    "security.the_managing_client_canceled_pairing": "The managing client canceled pairing",
+    "security.the_managing_client_cannot_be_removed_directly_transfer_management": "The managing client cannot be removed directly. Transfer management first.",
+    "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "The managing client cannot be removed directly. Transfer management first.",
+    "security.the_managing_client_s_trust_information_does_not_match": "The managing client’s trust information does not match the pairing commitment",
+    "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "The new recovery code backup is unconfirmed. Replace the code and save it offline immediately.",
+    "security.the_original_creation_draft_is_preserved_continue_with_the": "The original creation draft is preserved. Continue with the same account. The recovery code will not be shown again; if you have no backup, replace it immediately after entering the account.",
+    "security.the_original_device_identity_keys_and_history_are_preserved": "The original device identity, keys, and history are preserved. On the managing client, open Settings › Add device, enter its 8-digit code here, then compare four patterns to finish binding.",
+    "security.the_original_device_public_key_does_not_match_the": "The original device public key does not match the local signing key",
+    "security.the_original_operation_is_unfinished_continue_verifying": "The original operation is unfinished. Continue verifying.",
+    "security.the_original_recovery_draft_is_preserved_the_new_recovery": "The original recovery draft is preserved. The new recovery code will not be shown again; you can still finish the original recovery without saving it. Replace it immediately after entering the account.",
+    "security.the_other_device_refused_this_join_request": "The other device refused this join request",
+    "security.the_page_is_paused_return_to_the_foreground_to": "The page is paused. Return to the foreground to continue security operations.",
+    "security.the_pairing_code_belongs_to_another_security_domain_original": "The pairing code belongs to another security domain. Original keys preserved.",
+    "security.the_pairing_code_is_wrong_or_has_already_been": "The pairing code is wrong or has already been used",
+    "security.the_pairing_draft_conflicts_with_the_current_identity": "The pairing draft conflicts with the current identity",
+    "security.the_pairing_receipt_was_approved_by_a_device_other": "The pairing receipt was approved by a device other than the current managing client",
+    "security.the_public_key_may_already_be_published_abandoning_only": "The public key may already be published. Abandoning only clears local preparation and does not withdraw the key seen by the managing client. If transferred, this device will still verify management and renew control; keep the saved recovery code.",
+    "security.the_recovery_signature_has_not_been_saved_re_enter": "The recovery signature has not been saved. Re-enter the original recovery code to continue the original draft.",
+    "security.the_security_operation_s_outcome_is_unverified_continue_the": "The security operation’s outcome is unverified. Continue the original operation first; exiting deletes the only completion materials.",
+    "security.the_server_does_not_recognize_this_device": "The server does not recognize this device",
+    "security.the_server_replaced_the_pairing_commitment_after_receiving_the": "The server replaced the pairing commitment after receiving the temporary public key. Pairing stopped.",
+    "security.the_server_returned_information_for_a_different_device_from": "The server returned information for a different device from the one that started pairing. Pairing stopped.",
+    "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "The unpublished pairing draft expired. You can explicitly abandon it and start over.",
+    "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "The unpublished pairing draft was canceled or its candidate changed. You can explicitly abandon it and start over.",
+    "security.this_browser_does_not_support_web_locks_it_cannot": "This browser does not support Web Locks. It cannot safely manage the account.",
+    "security.this_browser_is_the_only_managing_client_transfer_management": "This browser is the only managing client. Transfer management first if possible; exiting deletes the management key. Without a recovery code backup, management will be lost.",
+    "security.this_browser_s_original_public_key_could_not_be": "This browser’s original public key could not be verified. Original keys preserved.",
+    "security.this_browser_will_be_the_only_managing_client_clearing": "This browser will be the only managing client. Clearing site data or switching browsers loses the management key; keep the recovery code offline. Using the app for daily management is recommended.",
+    "security.this_deletes_the_account_keys_and_cache_on_this": "This deletes the account keys and cache on this device. Sessions on your computers are unaffected.",
+    "security.this_device": "This device",
+    "security.this_device_becomes_the_managing_client": "This device becomes the managing client",
+    "security.this_device_has_an_unfinished_join_request_deleting_it": "This device has an unfinished join request. Deleting it prevents you from continuing that request.",
+    "security.this_device_manages_the_account": "This device manages the account",
+    "security.this_device_s_clock_is_behind_the_managing_client": "This device’s clock is behind the managing client. Operations will be refused. Correct the system time and time zone before joining.",
+    "security.this_page_and_the_server_or_pairing_device_use": "This page and the server or pairing device use different versions. Refresh to update and retry.",
+    "security.this_pairing_expired_generate_a_new_code_on_the": "This pairing expired. Generate a new code on the managing client.",
+    "security.this_permanently_deletes_sessions_events_and_images_on_the": "This permanently deletes sessions, events, and images on the relay. Local computer files are unaffected. This does not remove the device.",
+    "security.too_many_attempts_wait_a_minute_and_retry": "Too many attempts. Wait a minute and retry.",
+    "security.transfer_management": "Transfer management",
+    "security.transfer_result_unverified_continue_the_original_operation": "Transfer result unverified. Continue the original operation.",
+    "security.transfer_to": "Transfer to",
+    "security.unfinished_security_operation": "Unfinished security operation",
+    "security.unknown_type": "Unknown type",
+    "security.use_when_the_managing_client_is_lost": "Use when the managing client is lost",
+    "security.used": "Used {value}{detail}",
+    "security.verify_and_continue": "Verify and continue",
+    "security.verifying_management_identity_and_unfinished_security_operations": "Verifying management identity and unfinished security operations…",
+    "security.waiting_for_comparison": "Waiting for comparison…",
+    "security.waiting_for_the_new_device_to_enter_the_pairing": "Waiting for the new device to enter the pairing code…",
+    "security.waiting_for_the_successor_device_to_generate_and_save": "Waiting for the successor device to generate and save a recovery code",
     "session.abandon_fork": "Abandon previous fork",
     "session.action_failed": "{action} failed: {reason}",
+    "session.android_unknown": "Unknown session",
     "session.approval_resolved": "This approval has already been handled.",
     "session.auto_title_hint": "Save an empty title to restore the automatic title",
     "session.back_task": "Back to task",
@@ -1337,6 +2790,7 @@ export const messages = {
     "session.interrupt": "Interrupt",
     "session.interrupt_turn": "Interrupt turn",
     "session.interrupted": "Interrupted",
+    "session.ios_missing": "Session not found",
     "session.latest": "Back to latest",
     "session.loading_earlier": "Loading earlier history…",
     "session.manually_closed": "The session was ended manually.",
@@ -1407,6 +2861,124 @@ export const messages = {
     "session.turn_duration": "Turn took {duration}",
     "session.update_computer": "Update remote-agent on the computer",
     "session.view": "View",
+    "settings.about": "About",
+    "settings.account": "Account",
+    "settings.account_quota": "Account quota",
+    "settings.added": "Added",
+    "settings.all_clients": "All clients",
+    "settings.all_devices": "All devices",
+    "settings.appearance": "Appearance",
+    "settings.approval_timeout": "Approval timeout",
+    "settings.attachment_storage": "Attachment storage",
+    "settings.attachments_are_stored_on_this_computer_session_files_remain": "Attachments are stored on this computer. Session files remain until the session ends; images being sent or used in execution are not cleared. The preview cache is limited to 150 MiB and reclaimed automatically.",
+    "settings.automatically_end_idle_sessions": "Automatically end idle sessions",
+    "settings.can_clear": "Can clear {value}",
+    "settings.can_free": "Can free {value}",
+    "settings.cannot_receive": "Cannot receive",
+    "settings.cannot_sign_in_to_the_relay_right_now": "Cannot sign in to the relay right now",
+    "settings.check_for_updates": "Check for updates",
+    "settings.checking": " Checking…",
+    "settings.clear": "Clear…",
+    "settings.clear_reclaimable_attachments_and_cache": "Clear reclaimable attachments and cache?",
+    "settings.clear_settings": "Clear",
+    "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "Clears reclaimable originals, previews, and unsynced large image cache. Queued and active originals, session files, and history remain; unsynced large images will show only previews.",
+    "settings.cli_version": "{name} version",
+    "settings.client_name": "Client name",
+    "settings.clients_control_sessions": "Clients · Control sessions",
+    "settings.computer": "Computer",
+    "settings.computer_offline_showing_the_last_reading": "Computer offline. Showing the last reading.",
+    "settings.computer_settings_offline": "{name} is offline. Its settings are unavailable for now.",
+    "settings.computers_run_clis": "Computers · Run CLIs",
+    "settings.could_not_download_retry_later": "Could not download. Retry later.",
+    "settings.could_not_read_the_device_list": "Could not read the device list",
+    "settings.current": "Current",
+    "settings.dark": "Dark",
+    "settings.default": " (default)",
+    "settings.default_approval_mode": "Default approval mode",
+    "settings.default_reasoning_effort": "Default reasoning effort",
+    "settings.details": "Details",
+    "settings.device_id": "Device ID",
+    "settings.device_not_found": "Device not found",
+    "settings.devices": "Devices",
+    "settings.enable": "Enable",
+    "settings.enable_security_notifications": "Enable security notifications",
+    "settings.enabled": "Enabled",
+    "settings.exit_and_delete_local_keys": "Exit and delete local keys…",
+    "settings.follow_configuration": "Follow {value} configuration",
+    "settings.follow_configuration_settings": "Follow configuration",
+    "settings.how_to_enable": "How to enable",
+    "settings.idle_close_off": "Off",
+    "settings.iphone_push_help": "On iPhone, add to Home Screen and open from there to receive push notifications: in Safari, tap Share, choose Add to Home Screen, then open its icon.",
+    "settings.last_used": "Last used",
+    "settings.less_than_0_1_mib": "Less than 0.1 MiB",
+    "settings.light": "Light",
+    "settings.managing_client": "Managing client",
+    "settings.min": " min",
+    "settings.name": "Name",
+    "settings.name_changes_sync_to_other_clients": "Name changes sync to other clients.",
+    "settings.name_save_error": "Could not save name: {reason}",
+    "settings.names_sync_encrypted_the_server_cannot_read_them_leave": "Names sync encrypted; the server cannot read them. Leave blank for the default name.",
+    "settings.new_project_defaults": "New project defaults",
+    "settings.new_project_defaults_settings": "New project defaults · {value}",
+    "settings.no_computers_yet": "No computers yet.",
+    "settings.no_record": "No record",
+    "settings.nothing_to_clear": "Nothing to clear",
+    "settings.notification_permission_help": "The browser denied notification permission. In site settings to the left of the address bar, allow Notifications, then return and turn on the switch.",
+    "settings.notifications_on_this_client": "Notifications on this client",
+    "settings.now": "Now",
+    "settings.offline": "Offline",
+    "settings.on_iphone_add_to_home_screen_and_open_from": "On iPhone, add to Home Screen and open from there to receive push notifications",
+    "settings.online": "{value} online",
+    "settings.paired_client": "Paired client",
+    "settings.preview_cache": "Preview cache",
+    "settings.read_error": "Could not read settings: {reason}",
+    "settings.rejoin_account": "Rejoin account",
+    "settings.restore_default_name": "Restore default name",
+    "settings.runs_on": "Runs on",
+    "settings.save_error": "Could not save: {reason}",
+    "settings.scheduled_task_results": "Scheduled task results",
+    "settings.security_notifications": "Security notifications",
+    "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "Security notifications are independent of session alerts. Delivery is not guaranteed; open the managing client daily to check recovery requests.",
+    "settings.session_alerts_are_off_you_will_not_be_notified": "Session alerts are off. You will not be notified of approvals.",
+    "settings.sessions_end_automatically_after_this_much_inactivity_not_running": "Sessions end automatically after this much inactivity (not running, nothing pending, no terminal input). Resume anytime; chat history is preserved.",
+    "settings.set_the_name_and_notification_preferences_on_that_device": "Set the name and notification preferences on that device.",
+    "settings.signed_account_state_confirms_this_device_was_removed_sessions": "Signed account state confirms this device was removed. Sessions on your computers are unaffected; rejoining requires a pairing code from the managing client.",
+    "settings.storage_limit": "Storage limit",
+    "settings.subscription_error": "Subscription failed: {reason}",
+    "settings.the_account_keys_in_this_browser_will_be_deleted": "The account keys in this browser will be deleted before joining with a pairing code.",
+    "settings.the_browser_denied_notification_permission": "The browser denied notification permission",
+    "settings.the_device_may_have_been_removed_the_service_reset": "The device may have been removed, the service reset, or the connection interrupted. Retry first; if sign-in still fails, check this device’s membership on the managing client. Sessions on your computers are unaffected.",
+    "settings.the_new_device_has_not_finished_joining_if_it": "The new device has not finished joining. If it cannot continue, remove it and pair again.",
+    "settings.the_original_operation_is_unfinished_continue_verifying": "The original operation is unfinished. Continue verifying.",
+    "settings.the_original_security_operation_is_verified_complete_you_can": "The original security operation is verified complete. You can rejoin the account.",
+    "settings.the_time_on_the_right_is_the_last_use": "The time on the right is the last use. Names can only be changed on that device.",
+    "settings.theme": "Theme",
+    "settings.theme_auto": "Auto",
+    "settings.this_browser_does_not_support_push_notifications": "This browser does not support push notifications",
+    "settings.this_device_was_removed_from_the_account": "This device was removed from the account",
+    "settings.times_are_shown_in_beijing_time_quotas_belong_to": "Times are shown in Beijing time. Quotas belong to the CLI’s signed-in account; other usage on that account may also count.",
+    "settings.unanswered_approvals_are_denied_after_this_time": "Unanswered approvals are denied after this time",
+    "settings.unfinished_pairing": "Unfinished pairing",
+    "settings.unfinished_pairing_settings": " · Unfinished pairing",
+    "settings.unnamed": "Unnamed",
+    "settings.unverified": "Unverified · ",
+    "settings.up_to_date": "Up to date",
+    "settings.uploaded_images_and_files": "Uploaded images and files",
+    "settings.uploading": "Uploading {value}",
+    "settings.use_cli_defaults_for_new_projects": "Use CLI defaults for new projects",
+    "settings.verify_and_continue_security_operation": "Verify and continue security operation",
+    "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "Version unverified: run remote-agent doctor on this computer to check features in a temporary session.",
+    "settings.view_usage_in_the_local_cli": "View usage in the local CLI",
+    "settings.when_a_turn_ends": "When a turn ends",
+    "settings.when_i_need_to_act": "When I need to act",
+    "settings.when_unspecified_uses": "When unspecified, uses:",
+    "startup.install_description": "Control Codex on your own computer from any device",
+    "startup.javascript_required": "Enable JavaScript and reload.",
+    "startup.opening": "Opening…",
+    "startup.opening_remote_agent": "Opening remote-agent",
+    "startup.page_updated": "Page updated",
+    "startup.the_page_could_not_load_check_your_connection_and": "The page could not load. Check your connection and retry.",
+    "startup.this_part_could_not_be_fetched_reload_to_continue": "This part could not be fetched. Reload to continue.",
     "terminal.closed": "Terminal connection lost",
     "terminal.closed_ended_note": "The last frame before disconnection is shown below. The session has ended.",
     "terminal.closed_running_note": "The last frame before disconnection is shown below. The session is still running; chat updates continue.",
@@ -1439,6 +3011,7 @@ export const messages = {
     "terminal.size_note": "The window size changed, possibly from the computer or another client. The latest size is shown here; opening the keyboard does not resize the remote terminal.",
     "terminal.up": "Up",
     "terminal.view_details": "View details",
+    "time.calendar_date_year": "{year}/{month}/{day}",
     "time.duration_hours_minutes": "{hours} hr {minutes} min",
     "time.duration_minutes_seconds": "{minutes} min {seconds} sec",
     "time.duration_seconds": {
@@ -1468,6 +3041,8 @@ export const messages = {
     "time.month_day": "{month}/{day}",
     "time.month_group": "Month {month}",
     "time.today": "Today",
+    "time.today_clock": "Today {value}:{detail}",
+    "time.tomorrow": "Tomorrow",
     "time.weekday": {
       "forms": {
         "fri": "Fri",
@@ -1483,6 +3058,7 @@ export const messages = {
     },
     "time.year_month_group": "{year}/{month}",
     "time.yesterday": "Yesterday",
+    "tools.android_edit": "Edit",
     "tools.background": "Running in background",
     "tools.background_agent": "Running in the background at the model’s request. Its completion time is unknown here; check the terminal.",
     "tools.background_returned": "The call returned and the command moved to the background. Its completion time is unknown here; check the terminal.",
@@ -1563,6 +3139,8 @@ export const messages = {
       },
       "plural": "count"
     },
+    "attachment.ios_image_missing": "图片不在电脑上",
+    "attachment.ios_missing": "附件不在电脑上",
     "attachment.max_files": {
       "forms": {
         "other": "一条消息最多 {count} 个文件"
@@ -1581,6 +3159,7 @@ export const messages = {
     "attachment.photos_videos": "照片和视频",
     "attachment.preparing": "准备中",
     "attachment.read_failed": "无法读取这个文件；文件夹不能直接发送，请压缩后选择，或重新选择可读取的文件",
+    "attachment.release_to_add": "松开以添加附件",
     "attachment.remove_file": "移除文件 {name}",
     "attachment.remove_video": "移除视频 {name}",
     "attachment.size_limit": "单个文件不能超过 {limit} MB",
@@ -1600,7 +3179,11 @@ export const messages = {
     "common.details": "详情",
     "common.done": "完成",
     "common.got_it": "知道了",
+    "common.ios_more": "更多",
+    "common.ios_offline": "不在线",
+    "common.ios_online": "在线",
     "common.ios_save_failed": "没能保存：{reason}",
+    "common.ios_saving": "保存中…",
     "common.ios_spoken_separator": "，",
     "common.list_separator": "、",
     "common.loading": "加载中",
@@ -1649,18 +3232,44 @@ export const messages = {
     "composer.slash_title": "作为普通消息发送？",
     "composer.unconfirmed": "可能没发出去：已送到终端但没确认",
     "composer.write_failed": "写入终端失败",
+    "connection.checking": "检测中…",
+    "connection.connected": "已连接",
     "connection.connecting": "连接中…",
+    "connection.connecting_conn_check": "连接中",
+    "connection.connecting_conn_check_label": "连接",
+    "connection.last_failure": "上一次失败：{value}",
+    "connection.latency_is_one_round_trip_the_server_row_measures": "延时是一次往返的时间。服务器一行是这台设备到服务器；电脑一行是经服务器到电脑再回来，所以总比服务器慢。",
+    "connection.live_push": "实时推送",
+    "connection.live_push_is_not_connected": "实时推送未连接。",
+    "connection.live_push_is_not_connected_session_changes_may_be": "实时推送未连接，会话变化可能延迟。最近一次失败：{value}",
+    "connection.local_network": "本机网络",
     "connection.network_required": "联网后才能读取会话",
     "connection.no_network": "本机网络不通",
     "connection.no_network_empty": "本机网络不通 · 联网后才能读取会话",
     "connection.no_network_previous": "本机网络不通 · 显示的是上次的内容",
     "connection.no_response": "没有回应",
     "connection.no_server": "连不上服务器",
+    "connection.not_checked": "未检测",
     "connection.previous_below": "下面是上次的内容",
+    "connection.reconnect_now": "立即重连",
     "connection.reconnecting": "正在重连…",
+    "connection.reconnecting_conn_check": "重连中",
+    "connection.reconnecting_conn_check_label": "重连",
     "connection.retrying_previous": "正在重试，下面是上次的内容",
+    "connection.sec_elapsed": {
+      "forms": {
+        "other": "正在{value}：{detail}，已 {count} 秒。{previousFailure}"
+      },
+      "plural": "count"
+    },
     "connection.server_details": "连不上服务器：{reason}。也可能是这台设备的网络不通，会一直自动重试",
     "connection.server_retrying": "连不上服务器 · 正在重试",
+    "connection.slow": " · 较慢",
+    "connection.test_again": "再测一次",
+    "connection.this_device_has_no_network_it_will_reconnect_when": "本机网络不通，联网后会重新连接。",
+    "connection.unavailable": "不通",
+    "connection.unreachable": "连不上",
+    "connection.working": "正常",
     "dock.agent_waiting": "{agent} 在等你",
     "dock.agy_plan_note": "批准后回到默认模式（询问）",
     "dock.answer_title": "回答提问",
@@ -1712,6 +3321,96 @@ export const messages = {
     "dock.submitting": "提交中…",
     "dock.trust_folder": "默认选中的是 No, exit。按 ↓ 选中 Yes, I trust this folder 再按 ⏎",
     "dock.waiting_confirmation": "等待确认",
+    "errors.account_creation_draft_preserved_continue_the_original_creation_flow": "账户创建草稿已保留，请继续原创建流程和恢复码确认",
+    "errors.cannot_connect_to_terminal": "连不上终端",
+    "errors.cannot_sign_with_the_current_security_state_the_operation": "无法用当前安全状态签名，操作尚未发出；请重试",
+    "errors.connection_dropped_midway": "连接中途断了",
+    "errors.connection_timed_out": "连接超时",
+    "errors.connection_timed_out_reconnecting": "连接超时，正在重连",
+    "errors.current_membership_could_not_be_verified": "无法核实当前成员",
+    "errors.device_directory_state_changed": "设备目录状态已变化",
+    "errors.device_information_could_not_be_verified": "无法核实设备信息",
+    "errors.device_information_is_changing_retry": "设备信息正在变化，请重试",
+    "errors.device_registration_is_unfinished_retry_it_first": "还有未完成的设备注册，请先重试",
+    "errors.disconnected_from_server": "与 server 的连接断开",
+    "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing": "紧急恢复草稿已保留，请继续查询、等待或完成原恢复",
+    "errors.establishing_push_connection": "建立推送连接",
+    "errors.history_could_not_continue_loading_retry": "历史记录未能继续加载，请重试",
+    "errors.history_has_a_gap_retry": "历史记录存在缺口，请重试",
+    "errors.history_keys_unavailable_records_from_before_recovery_cannot_be": "历史密钥不可用：恢复前的记录无法解密",
+    "errors.invalid_ciphertext_current_state_checkpoint_mismatch": "密文无效：当前状态 checkpoint 不匹配",
+    "errors.invalid_ciphertext_signature_key_or_content_verification_failed": "密文无效：签名、密钥或内容校验失败",
+    "errors.invalid_current_request_snapshot": "当前请求快照无效",
+    "errors.invalid_pairing_approval_signature": "配对批准签名无效",
+    "errors.invalid_push_frame": "无效的推送帧",
+    "errors.invalid_session_seed": "无效的会话种子",
+    "errors.it_may_have_been_deleted_or_belong_to_a": "它可能已经被删除，或者属于一台被移除的电脑。",
+    "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and": "成员链冲突，安全操作已停止；请核对设备后明确重新加入",
+    "errors.names_can_only_be_changed_on_that_device": "名称只能在那台设备上修改",
+    "errors.network_changed_reconnecting": "网络已变化，正在重连",
+    "errors.other_clients_kept_changing_the_project_list_changes_could": "项目列表一直在被别的客户端修改，没能保存",
+    "errors.pending_requests_on_the_computer_could_not_be_verified": "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
+    "errors.project_preferences_format_is_not_supported": "项目偏好格式不受支持",
+    "errors.push_backlog_reconnecting": "推送积压，正在重连",
+    "errors.queued_records_could_not_be_restored_you_can_still": "待发记录没能恢复，仍可输入和发送，下次重试",
+    "errors.queued_records_could_not_be_saved_locally_messages_will": "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果",
+    "errors.reading_local_state": "读取本机状态",
+    "errors.remote_agent_on_is_out_of_date_update_it": "{value} 上的 remote-agent 版本较旧，请在电脑上更新后再试",
+    "errors.remote_control_expired_control_and_new_uploads_are_paused": "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
+    "errors.remote_control_expired_saving_changes_session_control_and_new": "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看",
+    "errors.security_body_type_or_direction_mismatch": "安全正文类型或方向不匹配",
+    "errors.security_envelope_missing": "缺少安全信封",
+    "errors.server_returned": "服务器返回 {value}",
+    "errors.session_key_envelope_missing": "缺少会话密钥信封",
+    "errors.setup_request_preserved": "{reason}。原请求和密钥已保留，可重试；若批准已过期或被拒绝，可退出并重新配对或创建。",
+    "errors.signing_in": "登录",
+    "errors.syncing_device_state": "同步设备状态",
+    "errors.terminal_connection_canceled": "终端连接已取消",
+    "errors.terminal_connection_closed": "终端连接已关闭",
+    "errors.terminal_connection_dropped": "终端连接断开",
+    "errors.terminal_connection_timed_out_reconnect": "连接终端超时，请重新连接",
+    "errors.terminal_frames_are_out_of_order": "终端帧顺序不对",
+    "errors.terminal_output_backlog_reconnect_for_the_latest_display": "终端输出积压，请重新连接以获取最新画面",
+    "errors.the_computer_did_not_return_a_task": "电脑没有返回任务",
+    "errors.the_computer_did_not_return_a_task_list": "电脑没有返回任务列表",
+    "errors.the_computer_did_not_return_an_attachment_id": "电脑没有返回附件 ID",
+    "errors.the_computer_is_offline_connect_to_edit_tasks": "电脑不在线，连上后才能修改任务",
+    "errors.the_computer_is_offline_the_command_was_not_sent": "电脑不在线，指令没有发出",
+    "errors.the_computer_is_still_verifying_attachments_retry_shortly": "电脑仍在校验附件，请稍后重试",
+    "errors.the_computer_s_reply_could_not_be_verified_command": "电脑的回复未通过验证，不确定指令是否执行",
+    "errors.the_current_request_could_not_be_verified_again": "无法重新核实当前请求",
+    "errors.the_device_directory_response_is_out_of_date": "设备目录响应已过时",
+    "errors.the_draft_could_not_be_restored_you_can_still": "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试",
+    "errors.the_draft_could_not_be_saved_locally_keep_the": "草稿没能保存到本机，关闭页面前请保留原图和文字",
+    "errors.the_draft_could_not_be_saved_the_original_message": "草稿没能保存，原消息的本机副本仍保留",
+    "errors.the_event_s_position_was_changed": "事件的位置被改动",
+    "errors.the_plan_display_changed_review_it_again": "计划画面已变化，请重新核对",
+    "errors.the_previous_operation_s_outcome_is_still_unknown_reload": "上次操作的结果仍未知，请重新读取任务核实后再操作",
+    "errors.the_previous_request_s_outcome_is_still_unknown_cannot": "之前请求的结果仍未知，当前无法重新登录",
+    "errors.the_recovery_object_was_updated_concurrently_retrying_on_the": "恢复对象同时更新，将在下次同步重试",
+    "errors.the_relay_did_not_provide_a_verifiable_execution_result": "中继未提供可验证的执行结果，请重试同一请求",
+    "errors.the_request_on_the_computer_changed_review_it_again": "电脑上的请求已变化，请重新核对",
+    "errors.the_server_address_cannot_include_a_username_or_password": "server 地址不能包含用户名或密码",
+    "errors.the_server_does_not_recognize_this_device_it_may": "服务器不认识这台设备（可能已被移除，或服务已重建）",
+    "errors.the_server_must_use_https": "server 必须使用 https",
+    "errors.the_server_returned_an_unexpected_device_id": "server 返回了意外的设备 ID",
+    "errors.the_session_record_s_computer_was_changed": "会话记录的机器被改动",
+    "errors.the_task_list_returned_by_the_computer_could_not": "电脑返回的任务列表无法读取",
+    "errors.the_task_was_just_changed_updated_to_the_latest": "任务刚被修改，已更新为最新内容",
+    "errors.this_browser_has_already_joined_an_account_open_this": "这个浏览器已经加入了账户。要让新设备加入，在新设备上打开这个链接。",
+    "errors.this_device_s_clock_is_behind_the_account_state": "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。",
+    "errors.this_device_s_clock_is_behind_the_account_state_remote": "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
+    "errors.this_device_s_security_state_could_not_be_verified": "本机安全状态无法校验，远程操作已暂停。原密钥和历史已保留，请检查本机存储。",
+    "errors.this_history_uses_an_old_encryption_format_and_can": "这条历史是旧版加密格式，已不再支持查看",
+    "errors.this_is_not_a_remote_agent_account_key": "这不是 remote-agent 的账户密钥",
+    "errors.this_page_is_out_of_date_refresh_or_update": "这个网页版本较旧，请刷新或更新后再试",
+    "errors.this_request_can_no_longer_be_acted_on": "当前请求已不可操作",
+    "errors.this_request_has_not_been_verified_by_the_computer": "当前请求尚未由电脑核实，请等待同步",
+    "errors.timed_out_reconnecting": "{value}超时，正在重连",
+    "errors.update_remote_agent_on_this_computer_to_use_scheduled": "请先更新这台电脑上的 remote-agent，才能使用定时任务",
+    "errors.upload_made_no_progress": "上传没有进展",
+    "errors.waiting_for_the_owning_computer_to_update_the_current": "等待所属电脑更新当前状态",
+    "errors.waiting_for_the_owning_computer_to_update_the_current_remote": "等待所属电脑更新当前状态：这台设备没有当时的内容密钥",
     "home.add_device": "添加设备",
     "home.add_via_manager": "还没有电脑。在管理端（{name}）上打开「设置 › 添加设备」，把电脑加进来。",
     "home.all_projects": "全部项目",
@@ -1734,6 +3433,14 @@ export const messages = {
       },
       "plural": "count"
     },
+    "home.ios_badge_tasks": {
+      "forms": {
+        "other": "{count} 件需要处理"
+      },
+      "plural": "count"
+    },
+    "home.ios_choose_task": "选一个任务查看结果",
+    "home.ios_new_results": "有新结果",
     "home.list_failed": "没能读取会话列表：{reason}",
     "home.live": "进行中",
     "home.loading_earlier": "正在加载更早的会话…",
@@ -1835,6 +3542,8 @@ export const messages = {
       "plural": "count"
     },
     "image.back_message": "回到消息",
+    "image.cannot_read_this_image": "读不出这张图片",
+    "image.cannot_read_this_image_try_jpeg_or_png_instead": "读不出这张图片，换成 JPEG 或 PNG 再试",
     "image.convert_failed": "转换失败",
     "image.copy_failed": "没能复制：{reason}",
     "image.count": {
@@ -1846,6 +3555,11 @@ export const messages = {
     "image.download_retry": "没能下载 · 点按重试",
     "image.draft": "待发送的图片",
     "image.generated": "生成的图片",
+    "image.image_dimensions_are_too_large": "图片尺寸太大",
+    "image.image_dimensions_are_too_large_resize_it_and_retry": "图片尺寸太大，缩小后再试",
+    "image.image_dimensions_are_too_large_send_a_compressed_version": "图片尺寸太大，请用压缩方式发送",
+    "image.image_exceeds_20_mb": "图片超过 20 MB",
+    "image.image_exceeds_20_mb_turn_off_original_and_send": "图片超过 20 MB，关掉原图再发",
     "image.load_connected": "连上后加载",
     "image.more": {
       "forms": {
@@ -1888,6 +3602,11 @@ export const messages = {
     },
     "image.share": "分享",
     "image.share_failed": "没能分享：{reason}",
+    "image.the_computer_s_attachment_storage_is_full_clear_space": "电脑附件空间不足，清理后重试",
+    "image.the_image_could_not_reach_the_computer_retry_when": "图片没能传到电脑，连接恢复后重试",
+    "image.this_image_could_not_be_processed": "这张图片处理失败",
+    "image.this_image_format_is_not_supported": "不支持这种图片格式",
+    "image.this_image_has_no_local_copy_remove_it_and": "这张图片没有本机副本，请移除后重新选择",
     "image.title": "图片",
     "image.tool_source": "{agent} 查看的图",
     "image.total_size": " · 共 {size}",
@@ -1902,6 +3621,7 @@ export const messages = {
     "list_state.approval": "等待审批",
     "list_state.ended": "已结束",
     "list_state.idle": "空闲",
+    "list_state.ios_new_session": "新会话",
     "list_state.no_message": "还没发消息",
     "list_state.offline": "电脑离线",
     "list_state.plan": "计划待批准",
@@ -1929,6 +3649,7 @@ export const messages = {
       "plural": "count"
     },
     "models.all": "全部模型",
+    "models.android_reading_machine": "读取 {name} 的设置…",
     "models.back": "返回模型",
     "models.context_size": "{size} 上下文",
     "models.context_window": "上下文窗口",
@@ -1944,8 +3665,10 @@ export const messages = {
     "models.summary_effort_label": "模型：{model}，推理强度：{effort}",
     "models.summary_label": "模型：{model}",
     "models.title": "模型",
+    "models.unknown_cli": "未知 CLI",
     "modes.account_no_auto": "当前账户不支持自动模式，换一种审批模式再开始",
     "modes.account_unsupported": "当前账户不支持自动模式",
+    "modes.agent_own": "{agent} 自己的模式",
     "modes.agy_ask_desc": "需要审批时由你确认，超时自动拒绝",
     "modes.agy_plan_desc": "先只读探索并写方案，批准后回到默认模式执行",
     "modes.ask": "询问",
@@ -1979,6 +3702,7 @@ export const messages = {
     "modes.title": "审批模式",
     "new_session.abandon_start": "放弃这次启动",
     "new_session.account_no_auto": "当前账户不支持自动模式，而 {name} 的新项目默认审批模式是自动。到「设置 › 这台电脑」改默认后再开始",
+    "new_session.android_abandon": "放弃",
     "new_session.attachments_moved": "已换到 {name}，附件正在重新上传",
     "new_session.change_defaults": "去改默认",
     "new_session.change_machine": "换机器",
@@ -1990,9 +3714,12 @@ export const messages = {
     "new_session.config_fallback": "所选模型或推理强度在这台机器上不可用，这次用机器的默认值",
     "new_session.default_model": "默认模型",
     "new_session.disconnected": "和服务器断线了",
+    "new_session.each_cli_has_its_own_settings_choose_the_cli": "每个 CLI 各存一套，新建时用哪个在句子里选。",
     "new_session.expired_start": "不确定是否已经启动，请先看会话列表。这个请求已经过期，不会再发，也不会换成新的请求",
     "new_session.first_message": "新会话的第一句话",
+    "new_session.fixed_effort": "推理强度固定为 {effort}",
     "new_session.follow_cli": "跟随 CLI 设置",
+    "new_session.follow_s_configuration": "跟随 {value} 自己的配置",
     "new_session.installed": "已装 {agents}",
     "new_session.installed_fallback": "已装 {agents}；这台机器没有 {missing}，会改用 {agent}",
     "new_session.ios_attach": "添加附件",
@@ -2002,10 +3729,15 @@ export const messages = {
     "new_session.location_machine_cli": "在{machine}的{project}用{cli}",
     "new_session.machine_label": "机器：{name}",
     "new_session.machine_offline": "{name} 不在线",
+    "new_session.machine_project_defaults": "用 {name} 的新项目默认设置",
+    "new_session.model_list_default": "没能读取模型列表，会用 {name} 自己的默认模型",
     "new_session.model_no_auto": "这个模型没有自动模式，而 {name} 的新项目默认审批模式是自动。换一个模型，或到「设置 › 这台电脑」改默认",
     "new_session.offline_last_seen": "{time}在线，现在不能新建",
     "new_session.offline_no_start": "现在不能新建",
     "new_session.offline_with_draft": "{name} 已离线，任务还没开始。草稿已保留，换一台在线的机器吧。",
+    "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced": "只影响之后新建的会话，进行中的不变；在你的设备之间同步。",
+    "new_session.only_changes_this_task_existing_conversations_keep_their_settings": "只修改这个任务；已开出的对话保留原来的设置。",
+    "new_session.permissions": "权限",
     "new_session.project_label": "项目：{name}",
     "new_session.project_session_label": "{name} · 新会话",
     "new_session.prompt": "要做什么？",
@@ -2020,11 +3752,16 @@ export const messages = {
     "new_session.start_shortcut": "{keys} 开始",
     "new_session.start_unknown": "不确定是否已经启动：{reason}。重试会发送同一个请求，不会重复启动",
     "new_session.starting_on": "正在 {name} 上启动…",
+    "new_session.task_settings": "任务设置",
+    "new_session.this_model_has_no_auto_mode": "当前模型没有自动模式",
     "new_session.unconfirmed_start": "上次的启动结果还没有确认",
     "new_session.unexpected_reply": "意外的回复",
     "new_session.use_machine": "改用 {name}",
+    "notifications.scheduled_tasks_have_new_results": "定时任务有新结果",
+    "notifications.the_browser_did_not_allow_notifications": "浏览器没有允许通知",
     "projects.add_again": "重新添加",
     "projects.adding": "正在添加…",
+    "projects.android_settings": "项目设置",
     "projects.changed_elsewhere": "项目列表已在另一客户端更新",
     "projects.choose": "选项目",
     "projects.choose_directory": "项目 · 选目录",
@@ -2086,6 +3823,7 @@ export const messages = {
     "queue.after_turn": "这一轮结束后发",
     "queue.agent_ready": "等 {agent} 就绪后发出",
     "queue.already_submitted": "上一条已送入终端，不能取消",
+    "queue.android_scheduled": "定时任务",
     "queue.cancel_failed": "取消没成功，仍在排队",
     "queue.canceled": "已取消",
     "queue.canceled_elsewhere": "上一条已在另一客户端取消",
@@ -2110,9 +3848,47 @@ export const messages = {
     "queue.terminal_draft": "终端里有没发出的草稿，发完或清掉后再发",
     "queue.unrecognized": "认不出输入框，已暂停",
     "queue.when_ready": "就绪后发送",
+    "quota.account": " · 账户 {value}",
+    "quota.awaiting_update": "等待更新",
+    "quota.days": {
+      "forms": {
+        "other": "{count} 天"
+      },
+      "plural": "count"
+    },
     "quota.exhausted": "{name} · {window}额度已用尽，不会自动切换 CLI 或模型",
+    "quota.exhausted_quota": "已用尽",
     "quota.failure": "没能读取 {name} 额度：{detail}",
     "quota.failure_no_reason": "没能读取 {name} 额度",
+    "quota.hr": {
+      "forms": {
+        "other": "{count} 小时"
+      },
+      "plural": "count"
+    },
+    "quota.last_reading": " · 上次记录",
+    "quota.last_reading_computer_offline_may_have_changed": "上次记录：电脑离线，可能已变化",
+    "quota.last_reading_reset_time_passed_but_quota_recovery_is": "上次记录 {value}；重置时间已过，不能据此确认额度已经恢复",
+    "quota.left": "剩 {value}%",
+    "quota.min": {
+      "forms": {
+        "other": "{count} 分钟"
+      },
+      "plural": "count"
+    },
+    "quota.named_days": {
+      "forms": {
+        "other": "{name} · {count} 天"
+      },
+      "plural": "count"
+    },
+    "quota.named_hours": {
+      "forms": {
+        "other": "{name} · {count} 小时"
+      },
+      "plural": "count"
+    },
+    "quota.no_data_received_for_this_quota": "没有收到这项额度数据",
     "quota.old_hours": {
       "forms": {
         "other": "{count} 小时前的数据，可能已变化"
@@ -2125,16 +3901,533 @@ export const messages = {
       },
       "plural": "count"
     },
+    "quota.previously": "上次{value}",
+    "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed": "上次{value}；重置时间已过，不能据此确认额度已经恢复",
+    "quota.quota_lookup_is_not_supported_yet": "暂不支持读取额度",
+    "quota.quota_not_available_yet": "暂未获取额度",
     "quota.read_failed": "无法解析 CLI 状态栏数据，请检查 CLI 版本和会话设置。",
     "quota.received": "最近收到 {time}",
     "quota.received_date": "最近收到 {month}月{day}日 {time}",
     "quota.received_success": "最近成功收到 {time}",
     "quota.received_success_date": "最近成功收到 {month}月{day}日 {time}",
+    "quota.resets_in_days_hr": {
+      "forms": {
+        "other": "{count} 天 {detail} 小时后重置"
+      },
+      "plural": "count"
+    },
+    "quota.resets_in_hr_min": {
+      "forms": {
+        "other": "{count} 小时 {detail} 分后重置"
+      },
+      "plural": "count"
+    },
+    "quota.resets_in_min": {
+      "forms": {
+        "other": "{count} 分钟后重置"
+      },
+      "plural": "count"
+    },
+    "quota.resetting_soon": "即将重置",
+    "quota.session": " · 会话 {value}",
+    "quota.third_party_models": "第三方模型",
+    "quota.third_party_models_claude_gpt_oss": "第三方模型（Claude、GPT-OSS）",
+    "quota.unavailable": "未获取",
+    "quota.unavailable_previous": "暂未获取额度（上次记录）",
     "quota.unknown_time": "数据时间未知，显示上次记录",
     "quota.waiting": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
     "quota.warning": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
+    "schedule.after_a_run_count": "运行指定次数",
+    "schedule.after_current_turn": {
+      "forms": {
+        "other": "当前轮结束 {count} 秒后"
+      },
+      "plural": "count"
+    },
+    "schedule.after_each_turn": {
+      "forms": {
+        "other": "每轮结束 {count} 秒后"
+      },
+      "plural": "count"
+    },
+    "schedule.after_turn_ends": "轮结束后",
+    "schedule.after_turn_replace": "{frequency}。选择上方其他频率可替换。",
+    "schedule.attention_once": "{reason}。可改时间重排。",
+    "schedule.attention_resume": "{reason}。恢复或重新安排后从下一次自动时间开始，不重发上次消息。",
+    "schedule.attention_uncertain": "{reason}。继续可能重复执行上次的消息，请先打开运行记录核实。",
+    "schedule.beijing_time": "北京时间",
+    "schedule.choose_a_valid_date_and_time": "请选择有效的日期和时间",
+    "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot": "请选择询问、自动或完全放行，定时任务不能以计划模式新开对话。",
+    "schedule.computer_and_model": "机器和模型",
+    "schedule.connect_to_edit_run_or_delete": " 连上后才能修改、运行或删除。",
+    "schedule.continuing_takes_over_the_task_and_runs_it_with": "继续会由你接管任务，按任务中显示的权限运行。",
+    "schedule.conversation": "对话",
+    "schedule.could_not_run": "没能运行",
+    "schedule.count": "次数",
+    "schedule.create": "创建",
+    "schedule.created_by_the_agent_in_a_conversation": "Agent 在对话里创建",
+    "schedule.created_by_you": "你创建",
+    "schedule.creating": "正在创建…",
+    "schedule.daily": "每天",
+    "schedule.daily_at": "每天 {time}",
+    "schedule.date_and_time": "日期和时间",
+    "schedule.daylight_saving_time_skips_this_time_in_the_selected": "这个时区在该时刻发生夏令时跳转，请换一个时间",
+    "schedule.delete": "删除",
+    "schedule.delete_task": "删除任务…",
+    "schedule.delete_task_schedules": "删除任务？",
+    "schedule.deleted": "已删除",
+    "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed": "电脑重启前的发送结果无法确认",
+    "schedule.describe_the_scheduled_work_and_ask_the_agent_to": "描述要定时做的事，有结果时让 agent 通知你",
+    "schedule.discard_changes": "放弃修改？",
+    "schedule.discard_changes_schedule_text": "放弃修改",
+    "schedule.each_run_opens_a_new_conversation_grouped_under_this": "每次新开一个对话，归在这个任务下面。",
+    "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules": "每次运行新开一个对话，归在这个任务下面，不进会话列表。",
+    "schedule.earlier": "更早",
+    "schedule.end_date": "截止日期",
+    "schedule.end_time": "截止时间",
+    "schedule.ended": "已结束 ",
+    "schedule.every": "每隔",
+    "schedule.every_days": {
+      "forms": {
+        "other": "每 {count} 天"
+      },
+      "plural": "count"
+    },
+    "schedule.every_hr": {
+      "forms": {
+        "other": "每 {count} 小时"
+      },
+      "plural": "count"
+    },
+    "schedule.every_min": {
+      "forms": {
+        "other": "每 {count} 分钟"
+      },
+      "plural": "count"
+    },
+    "schedule.every_sec": {
+      "forms": {
+        "other": "每 {count} 秒"
+      },
+      "plural": "count"
+    },
+    "schedule.execution_failed": "运行失败",
+    "schedule.execution_failed_the_task_stopped": "运行失败，任务已停下",
+    "schedule.execution_interrupted": "运行被中断",
+    "schedule.execution_interrupted_the_task_stopped": "运行被中断，任务已停下",
+    "schedule.execution_outcome_is_unconfirmed": "运行结果无法确认",
+    "schedule.frequency": "频率",
+    "schedule.fri": "五",
+    "schedule.has_not_run_yet": "还没有运行",
+    "schedule.hong_kong_time": "香港时间",
+    "schedule.hourly": "每小时",
+    "schedule.if_blank_uses": "留空会用：{value}",
+    "schedule.in": "在「{value}」里",
+    "schedule.in_conversation": "在对话里",
+    "schedule.interval_minutes": "间隔（分钟）",
+    "schedule.last_result": "{time} {result}",
+    "schedule.last_result_detail": "{time} {result}：{detail}",
+    "schedule.latest_summary": "最近一次 {time}：{summary}",
+    "schedule.leave_blank_to_use_the_message_s_first_sentence": "留空就用消息的第一句",
+    "schedule.limits_both": {
+      "forms": {
+        "other": "共 {count} 次，或到 {time}"
+      },
+      "plural": "count"
+    },
+    "schedule.list_failed": "{name} 的任务没能读取：{reason}",
+    "schedule.london_time": "伦敦时间",
+    "schedule.los_angeles_time": "洛杉矶时间",
+    "schedule.manage": "管理",
+    "schedule.mark_all_as_read": "全部标为已读",
+    "schedule.mark_as_read": "标为已读",
+    "schedule.mark_as_unread": "标为未读",
+    "schedule.messages_go_to_the_current_conversation_and_wait_for": "消息发到当前对话，等待当前轮结束。",
+    "schedule.messages_will_go_to_the_current_conversation_and_wait": "消息会发到当前对话，等待正在运行的一轮结束。",
+    "schedule.missing_target": "任务已停下：{reason}。这个任务只发到原来的对话，恢复后还会失败。",
+    "schedule.missing_target_run": "{time} 的运行失败，任务已停下：{reason}。这个任务只发到原来的对话，恢复后还会失败。",
+    "schedule.model_and_permissions": "模型和权限",
+    "schedule.mon": "一",
+    "schedule.more_new_results": {
+      "forms": {
+        "other": "另有 {count} 个新结果"
+      },
+      "plural": "count"
+    },
+    "schedule.needs_your_attention": "需要你处理",
+    "schedule.never": "不结束",
+    "schedule.new_results": {
+      "forms": {
+        "other": "{count} 个新结果"
+      },
+      "plural": "count"
+    },
+    "schedule.new_results_schedules": "新结果",
+    "schedule.new_york_time": "纽约时间",
+    "schedule.next": "下次 {value}",
+    "schedule.next_run_pending": "下次待定",
+    "schedule.no_approval_is_required_for_any_operation_whenever_this": "任务每次运行时，所有操作都不审批。",
+    "schedule.no_approval_will_be_required_for_future_runs_existing": "以后每次运行都不审批。已开出的对话不变。",
+    "schedule.no_new_results": "没有新结果",
+    "schedule.no_notification": "没有通知",
+    "schedule.no_results_yet": "还没有结果",
+    "schedule.no_runs_next": "还没有运行 · 下次 {time}",
+    "schedule.no_scheduled_tasks_yet": "还没有定时任务",
+    "schedule.not_connected_showing_the_previous_state": "未连接，显示的是上次的状态",
+    "schedule.notified_you": "通知了你",
+    "schedule.notify_on_completion": "完成后通知",
+    "schedule.notify_on_completion_by_default_when_off_only_the": "完成后默认通知；关闭后仅由 agent 主动通知。",
+    "schedule.once_at": "{time}，一次",
+    "schedule.once_schedules": "一次",
+    "schedule.only_changes_this_task_it_still_runs_on_the": "只修改这个任务。它仍在原来的电脑运行；已开出的对话保留原来的设置。",
+    "schedule.other_tasks": "其他任务",
+    "schedule.pause": "暂停",
+    "schedule.paused_the_schedule_expired_in_the_meantime": "已暂停：期间计划已到期",
+    "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions": "计划模式不能创建执行任务，请先选择其他权限",
+    "schedule.project": "项目",
+    "schedule.quiet_runs": {
+      "forms": {
+        "other": "{day} · {count} 次，都没有通知"
+      },
+      "plural": "count"
+    },
+    "schedule.read_full_text": "看全文",
+    "schedule.reading_tasks": "正在读取任务…",
+    "schedule.reason_returned_by_the_computer": "电脑返回的原因：{value}",
+    "schedule.rename_task": "重命名任务",
+    "schedule.requested_a_run_now_the_automatic_schedule_is_unchanged": "已请求立即运行一次，不改变自动计划。",
+    "schedule.resume": "恢复",
+    "schedule.retry_creation": "重试创建",
+    "schedule.retry_same_request": "重试同一请求",
+    "schedule.run_in": "在哪运行",
+    "schedule.run_once_now": "立即运行一次",
+    "schedule.run_with_full_access": "以完全放行运行？",
+    "schedule.running": "正在运行",
+    "schedule.running_schedules": "正在运行 · ",
+    "schedule.running_since": "正在运行 · {time} 开始",
+    "schedule.runs_count": {
+      "forms": {
+        "other": "{count} 次"
+      },
+      "plural": "count"
+    },
+    "schedule.runs_today_none_notified_you": {
+      "forms": {
+        "other": "今天 {count} 次，都没有通知"
+      },
+      "plural": "count"
+    },
+    "schedule.runs_total": {
+      "forms": {
+        "other": "共 {count} 次"
+      },
+      "plural": "count"
+    },
+    "schedule.sat": "六",
+    "schedule.saving_blank_uses_the_message_s_first_sentence": "留空保存会用消息的第一句",
+    "schedule.schedule_messages_to_this_conversation": "定时发到这个对话",
+    "schedule.select_a_future_time": "请选择未来的时间",
+    "schedule.select_a_time": "请选择时间",
+    "schedule.select_at_least_one_day": "请至少选择一天",
+    "schedule.select_explicit_permissions_before_creating_a_scheduled_task": "请选择明确的权限，再创建定时任务。",
+    "schedule.select_permissions": "请选择权限",
+    "schedule.send_to": "{value} · 发到「{detail}」",
+    "schedule.send_to_schedules": "发到",
+    "schedule.singapore_time": "新加坡时间",
+    "schedule.skipped": "跳过",
+    "schedule.starting": "正在启动",
+    "schedule.stopped": "已停下",
+    "schedule.stopped_count": {
+      "forms": {
+        "other": "{total} 个任务停下了"
+      },
+      "plural": "count"
+    },
+    "schedule.stops_automatic_runs_existing_conversations_remain": "不再自动运行，已开出的对话保留。",
+    "schedule.strip_count": {
+      "forms": {
+        "other": "{count} 个定时 · {state}"
+      },
+      "plural": "count"
+    },
+    "schedule.strip_single": "定时 · {frequency}，{state}",
+    "schedule.sun": "日",
+    "schedule.take_action": "去处理",
+    "schedule.task_creation_permissions_changed": "创建任务时的权限已改变",
+    "schedule.task_creation_permissions_changed_the_task_stopped": "创建任务时的权限已改变，任务已停下",
+    "schedule.task_name": "任务名",
+    "schedule.tasks_do_not_run_while_the_computer_sleeps_or": "电脑睡眠或关机时不会运行；醒来后默认在 24 小时内补跑最近一次，再晚就跳过。立即运行一次不占自动计划的次数。",
+    "schedule.tell_the_agent_in_a_conversation_check_for_me": "在对话里跟 agent 说「每天 8 点帮我看看…」，它会替你建好；也可以自己新建一个。",
+    "schedule.the_agent_created_task_interval_is_too_short": "Agent 创建的任务间隔过短",
+    "schedule.the_agent_created_task_interval_is_too_short_the": "Agent 创建的任务间隔过短，任务已停下",
+    "schedule.the_catch_up_window_expired_this_run_was_skipped": "已超过补跑时间，本次跳过",
+    "schedule.the_computer_is_offline_connect_to_create_tasks": "电脑不在线，连上后才能创建任务。",
+    "schedule.the_first_run_is_after_a_full_interval_to": "第一次会在一个完整间隔后运行，想现在执行可以创建后点“立即运行一次”。",
+    "schedule.the_interval_must_be_at_least_1_second": "间隔至少为 1 秒",
+    "schedule.the_message_could_not_be_queued": "消息没能加入待发队列",
+    "schedule.the_message_was_not_delivered_to_the_cli": "消息没有送达 CLI",
+    "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the": "上次创建结果还没有确认。重试会使用原来的任务名、消息、时间和请求键，不会重复创建。",
+    "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the": "上次操作结果还没有确认。请核对任务与记录，重试会使用同一个请求。",
+    "schedule.the_relay_s_session_limit_has_been_reached": "中继上的会话数已满",
+    "schedule.the_run_count_must_be_a_positive_integer": "运行次数必须是正整数",
+    "schedule.the_running_conversation_could_not_be_found": "找不到运行的对话",
+    "schedule.the_running_conversation_ended": "运行中的对话已结束",
+    "schedule.the_scheduled_message_is_paused_resume_or_cancel_it": "定时消息已暂停，请先在对话里恢复或取消这条消息",
+    "schedule.the_scheduled_message_was_canceled_before_delivery": "定时消息在送达前被取消",
+    "schedule.the_scheduled_message_was_canceled_before_delivery_the_task": "定时消息在送达前被取消，任务已停下",
+    "schedule.these_changes_will_not_be_saved": "这次修改不会保存。",
+    "schedule.this_conversation_s_scheduled_tasks": "这个对话的定时任务",
+    "schedule.this_task_could_not_be_found_if_the_computer": "找不到这个任务。电脑离线且没有缓存时，请连上电脑后重试。",
+    "schedule.thu": "四",
+    "schedule.time": "时间",
+    "schedule.time_zone": "时区",
+    "schedule.tokyo_time": "东京时间",
+    "schedule.too_long_maximum_32_kb": "太长了，最多 32 KB",
+    "schedule.tue": "二",
+    "schedule.unconfirmed": "无法确认",
+    "schedule.unread_on_entry": "进入时未读",
+    "schedule.until": "到 {value}",
+    "schedule.update_remote_agent_on_the_computer_to_use_scheduled": "需要更新电脑上的 remote-agent 才能使用定时任务。",
+    "schedule.update_remote_agent_on_this_computer_to_use_scheduled": "需要更新这台电脑上的 remote-agent 才能使用定时任务。",
+    "schedule.verified_abandon_request": "已核实，放弃请求",
+    "schedule.verify_current_permissions_in_the_conversation": "请在对话里核实当前权限",
+    "schedule.view_all_runs": {
+      "forms": {
+        "other": "查看全部 {count} 次"
+      },
+      "plural": "count"
+    },
+    "schedule.waiting_for_results": "等待结果",
+    "schedule.waiting_for_the_current_turn_to_end": "等待当前轮结束",
+    "schedule.wed": "三",
+    "schedule.weekdays_only": "只在工作日",
+    "schedule.weekly_at": "每周{days} {time}",
+    "schedule.weekly_on": "每周",
+    "schedule.what_should_the_agent_do": "让 agent 做什么",
+    "schedule.when": "什么时候",
+    "schedule.workdays_at": "工作日 {time}",
+    "security.a_security_operation_is_unfinished_continue_it_first": "还有未完成的安全操作，请先继续处理",
+    "security.a_security_operation_is_unfinished_continue_the_original_operation": "有未完成的安全操作，请先继续原操作。",
+    "security.abandon_this_succession_preparation": "放弃此接任准备？",
+    "security.abandon_this_succession_preparation_security": "放弃此接任准备",
+    "security.abandon_unpublished_recovery_code": "放弃未发布的恢复码",
+    "security.abandon_unsigned_draft": "放弃未签名草稿",
+    "security.abandon_unsigned_operation": "放弃未签名的操作",
+    "security.account_public_key_missing_pair_again_or_use_a": "缺少账户公钥，请重新配对或用恢复码补齐",
+    "security.account_public_key_restored": "账户公钥已补齐",
+    "security.account_security": "账户安全",
+    "security.add_on_authority": "要添加电脑或客户端，在管理端（{name}）上打开「设置 › 添加设备」。",
+    "security.added": "{value}添加",
+    "security.after_removing_this_unfinished_pairing_generate_a_new_code": "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。",
+    "security.after_submission_wait_48_hours_the_current_managing_client": "提交后需等待 48 小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。",
+    "security.allow_to_join": "允许加入",
+    "security.another_pairing_draft_is_unfinished": "另一个配对草稿仍待完成",
+    "security.another_pairing_draft_is_unfinished_complete_this_pairing_or": "另一个配对草稿未完成，请先完成本次配对或明确退出后重试",
+    "security.another_security_operation_is_unfinished": "另一次安全操作尚未完成",
+    "security.apply_again": "重新申请",
+    "security.apply_again_with_the_current_recovery_code": "请使用当前恢复码重新申请",
+    "security.approved_waiting_for_the_new_device_to_finish_binding": "已批准，等待新设备完成绑定…",
+    "security.asked_the_browser_to_retain_data": "已请求浏览器保留数据",
+    "security.automatically_renews_when_you_return_to_the_managing_client": "回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。",
+    "security.before_succession_pair_again_afterward_enter_the_new_recovery": "接任前可重新配对，或在接任后输入新恢复码补齐公开资料。查询公开资料不会发起紧急恢复。",
+    "security.browser": "浏览器",
+    "security.cancel_pairing": "取消配对",
+    "security.client": "客户端",
+    "security.compare_patterns": "核对图案",
+    "security.compare_the_4_patterns_on_the_new_device_confirm": "核对新设备上的 4 个图案。先在新设备确认，再在这里允许。",
+    "security.compare_the_managing_client_s_4_patterns_if_they": "核对管理端的 4 个图案；一致后先在本机确认，再在管理端允许。",
+    "security.complete_recovery": "完成恢复",
+    "security.completing_takeover_keep_this_page_in_the_foreground_and": "正在完成接管，请保持页面在前台，等待远程控制续期。",
+    "security.computer_run_remote_agent_account_join_and_enter_the": "电脑：运行 remote-agent account join，输入下面的配对码。客户端：扫二维码或输入配对码。",
+    "security.computers_can_only_run_clis_and_cannot_take_over": "电脑只能运行 CLI，不能接管管理权。",
+    "security.confirm_exit": "确认退出",
+    "security.confirm_that_the_successor_device_saved_the_new_recovery": "确认接任设备（{value}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。",
+    "security.confirm_the_patterns_on_the_new_device_before_approving": "请先由新设备确认图案，再在管理端批准",
+    "security.confirm_the_patterns_on_this_device_first": "请先在本机确认图案",
+    "security.confirm_transfer": "确认交接",
+    "security.confirmed_here_waiting_for_managing_client_approval_and_binding": "本机已确认，等待管理端批准并完成绑定…",
+    "security.continue_creation": "继续创建",
+    "security.continue_original_draft": "继续原草稿",
+    "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected": "请先继续原恢复或明确放弃已否决的恢复",
+    "security.control_ai_coding_clis_on_your_computer_from_any": "在任何设备上操作电脑里的 AI 编程 CLI",
+    "security.create_account": "新建账户",
+    "security.current_managing_client": "当前管理端",
+    "security.delete_local_keys_and_rejoin": "删除本机密钥并重新加入？",
+    "security.delete_records": "删除记录",
+    "security.delete_this_computer_s_records": "删除这台电脑的记录…",
+    "security.delete_this_computer_s_records_device_management": "删除这台电脑的记录",
+    "security.device_information_changed_the_original_transfer_request_was_not": "设备信息已变化，原交接申请未应用；可明确放弃后重新准备",
+    "security.device_joined": "设备已加入",
+    "security.duration_48_hours": "48 小时",
+    "security.eligible_at": " · 可生效时间：{value}",
+    "security.exit": "退出",
+    "security.exit_and_delete_local_keys": "退出并删除本机密钥？",
+    "security.exit_and_start_over": "退出并重新开始",
+    "security.exit_this_browser": "退出这个浏览器？",
+    "security.exiting": "退出中…",
+    "security.exiting_deletes_local_keys_you_will_need_to_pair": "退出会删除本机密钥，需要重新配对。",
+    "security.finish_device_registration_first": "请先完成设备注册",
+    "security.finish_the_current_security_operation_before_renewing": "请先完成当前安全操作，再续期",
+    "security.finish_the_current_security_operation_first": "请先完成当前安全操作",
+    "security.finish_the_original_security_operation_first": "请先完成原安全操作",
+    "security.generate_and_save_a_recovery_code_on_the_successor": "请先在接任设备生成并保存恢复码",
+    "security.generate_new_recovery_code": "生成新的恢复码",
+    "security.generate_pairing_code": "生成配对码",
+    "security.generate_recovery_code": "生成恢复码",
+    "security.generating": "生成中…",
+    "security.i_saved_the_new_recovery_code_offline": "我已离线保存新的恢复码",
+    "security.if_this_browser_is_already_a_member_recovery_will": "若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。",
+    "security.invalid_pairing_key": "配对密钥无效",
+    "security.invalid_pairing_trust_information": "无效的配对信任信息",
+    "security.invalid_recovery_code": "恢复码无效",
+    "security.it_may_have_been_removed_or_the_service_may": "可能已被移除，或服务已重建。电脑上的会话不受影响。",
+    "security.join": "加入",
+    "security.join_account": "加入账户",
+    "security.join_an_existing_account": "加入已有账户",
+    "security.join_with_a_code_from_the_managing_client": "用管理端给的配对码加入",
+    "security.loading": "加载中…",
+    "security.manage_on_authority": "设备管理请在管理端（{name}）上操作。",
+    "security.management_transferred_waiting_for_the_successor_to_complete_takeover": "已交接管理权，等待接任设备完成接管。",
+    "security.new_recovery_code": "新的恢复码",
+    "security.new_recovery_code_shown_only_once": "新的恢复码 · 只显示这一次",
+    "security.nothing_is_published_before_you_save_it_an_unpublished": "保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。",
+    "security.on_the_managing_client_open_settings_add_device_and": "在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里。",
+    "security.once_the_successor_device_joins_and_confirms_saving_its": "在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。",
+    "security.one_time_security_setup": "一次性安全设置",
+    "security.only_a_removed_computer_s_archive_can_be_rejoined": "只能从已移除电脑的档案重新加入",
+    "security.only_this_computer_can_rejoin_its_original_archive_with": "只允许这台电脑以新身份接回原档案，保留原会话和历史。",
+    "security.open_to_renew": "请打开{value}续期。",
+    "security.original_recovery_code": "原恢复码",
+    "security.pair_again": "重新配对",
+    "security.pair_valid_until": "有效期至 {time}",
+    "security.paired": "已配对",
+    "security.pairing_approval_does_not_match_this_device_or_has": "配对批准与这台设备不匹配或已过期",
+    "security.pairing_canceled": "配对已取消",
+    "security.pairing_code": "配对码",
+    "security.pairing_commitment_mismatch_pairing_stopped": "配对承诺不匹配，已停止配对",
+    "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before": "配对交付已失效，请明确移除未完成候选后重新开始",
+    "security.pairing_expired": "配对已过期",
+    "security.pairing_expired_or_was_canceled": "配对已过期或被取消",
+    "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before": "配对已取消，请明确移除未完成候选后重新开始",
+    "security.pairing_was_canceled_or_expired": "配对已取消或过期",
+    "security.patterns_differ_return_to_code_entry": "图案不一致，返回填码",
+    "security.patterns_match_the_new_device_confirmed_first": "图案一致，新设备已先确认",
+    "security.patterns_match_trust_and_continue": "图案一致，信任并继续",
+    "security.prepare_recovery": "准备恢复",
+    "security.processing": "处理中…",
+    "security.publishing": "发布中…",
+    "security.qr_code_for_adding_a_device": "添加设备的配对二维码",
+    "security.re_enter": "重填",
+    "security.reading": "正在读取…",
+    "security.recover_management_with_a_recovery_code": "用恢复码找回管理权",
+    "security.recovery_code": "恢复码",
+    "security.recovery_code_for_restoring_public_information": "补齐资料的恢复码",
+    "security.recovery_code_saved_and_confirmed_waiting_for_the_current": "恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。",
+    "security.recovery_code_updated_the_previous_code_and_pending_recovery": "恢复码已更新，原恢复码和待处理恢复申请已作废。",
+    "security.recovery_is_pending_or_its_outcome_is_unknown_and": "恢复仍待处理或结果未明，不能放弃",
+    "security.recovery_request_pending": "恢复申请待处理",
+    "security.recovery_request_pending_eligible_at": "恢复申请待处理。可生效时间：{value}",
+    "security.recovery_was_rejected_explicitly_apply_again": "恢复已被否决，请明确重新申请",
+    "security.recovery_was_rejected_you_can_apply_again": "恢复已被否决，可以重新申请。",
+    "security.refresh_successor_devices": "刷新接任设备",
+    "security.regenerate_recovery_code": "重新生成恢复码",
+    "security.registration_on_another_server_is_unfinished_retry_it_or": "另一个服务器的注册尚未完成，请先重试或退出并重新开始",
+    "security.registration_proof_of_work_expired_retry_the_original_draft": "注册工作量证明已过期，请重试原草稿",
+    "security.registration_proof_of_work_is_invalid_or_expired": "注册工作量证明无效或已过期",
+    "security.reject": "否决",
+    "security.rejoin": "重新加入",
+    "security.rejoin_and_resume_sessions": "重新加入并接续会话",
+    "security.rejoin_with_a_pairing_code": "用配对码重新加入",
+    "security.remote_control_expiry": "远程控制有效期",
+    "security.remote_control_expiry_not_received_yet": "尚未取得远程控制有效期",
+    "security.remote_control_renewed": "远程控制已续期",
+    "security.removal_immediately_stops_remote_access_from_this_device_the": "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。",
+    "security.remove_device": "移除设备…",
+    "security.remove_device_device_management": "移除设备？",
+    "security.remove_unfinished_pairing": "移除未完成的配对…",
+    "security.renew_now": "现在续期",
+    "security.replacing_the_recovery_code_immediately_invalidates_the_old_code": "更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。",
+    "security.restore_account_public_key": "补齐账户公钥",
+    "security.restore_public_information": "补齐公开资料",
+    "security.return_to_account_creation_or_recovery_to_continue_the": "请回到创建或恢复流程继续原草稿",
+    "security.returning_stops_this_wait_reject_the_old_request_on": "返回后停止这次等待；请在管理端拒绝旧请求，再生成新的配对码。",
+    "security.save_the_new_recovery_code_first_then_ask_the": "先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。",
+    "security.save_the_recovery_code_offline_anyone_with_it_can": "请离线保存恢复码。任何拿到它的人都能申请接管管理权；不要发送给别人。",
+    "security.saved_notify_managing_client": "我已保存，通知管理端",
+    "security.saved_publish_replacement": "我已保存，发布换码",
+    "security.security_setup_must_use_the_original_account_s_server": "安全设置必须使用原账户的服务器",
+    "security.security_state_may_be_out_of_date_connect_and": "安全状态可能过期，请联网后重新核实。",
+    "security.server": "服务器",
+    "security.setup_token_optional_with_open_registration": "Setup token（开放注册可留空）",
+    "security.someone_is_requesting_management_takeover_with_a_recovery_code": "有人正在用恢复码申请接管管理权，{value} 后生效。不是你本人就现在否决。",
+    "security.start_over": "重新开始",
+    "security.stopped_waiting_reject_the_old_request_on_the_managing": "已停止这次等待。请在管理端拒绝旧请求，再生成新的配对码。",
+    "security.submit_or_check_original_recovery": "提交或查询原恢复",
+    "security.success_is_uncertain_connection_lost": "不确定是否成功：网络断了",
+    "security.take_over_management": "接管管理权",
+    "security.the_48_hour_wait_has_not_ended": "48 小时等待尚未结束",
+    "security.the_account_belongs_to_another_server": "账户属于另一个服务器",
+    "security.the_account_does_not_match_the_managing_client_s": "账户与管理端的信任信息不匹配",
+    "security.the_account_keys_and_cache_in_this_browser_will": "会先删除这个浏览器里的账户密钥和缓存，再用配对码加入。",
+    "security.the_account_s_state_chain_is_too_long_to": "账户的状态链太长，无法加入；请在管理端重建账户。",
+    "security.the_browser_did_not_promise_to_retain_data": "浏览器没有承诺保留数据",
+    "security.the_computer_s_archive_was_deleted_join_as_a": "电脑档案已删除，请按新设备加入",
+    "security.the_join_receipt_does_not_contain_the_correct_identity": "加入回执没有本机的正确身份",
+    "security.the_local_account_unfinished_registration_and_security_operations_will": "本机账户、未完成的注册和安全操作会被清除，需要重新配对或创建。服务器上的会话和档案不会被删除；结果未明的操作可能已经成功，请在管理端核实。",
+    "security.the_local_security_state_is_damaged_and_cannot_be": "本机安全状态已损坏，不能用重新配对覆盖；请先导出并清空后重试",
+    "security.the_managing_client_canceled_pairing": "管理端取消了配对",
+    "security.the_managing_client_cannot_be_removed_directly_transfer_management": "管理端不能被普通删除，请先交接",
+    "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management": "管理端不能直接移除，请先交接管理权。",
+    "security.the_managing_client_s_trust_information_does_not_match": "管理端的信任信息与配对承诺不匹配",
+    "security.the_new_recovery_code_backup_is_unconfirmed_replace_the": "新恢复码尚未确认备份，请立即换码并离线保存。",
+    "security.the_original_creation_draft_is_preserved_continue_with_the": "原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。",
+    "security.the_original_device_identity_keys_and_history_are_preserved": "原设备身份、密钥和历史保留。在管理端打开「设置 › 添加设备」，把它显示的 8 位配对码填在这里，再核对四个图案完成绑定。",
+    "security.the_original_device_public_key_does_not_match_the": "原设备公钥与本机签名密钥不匹配",
+    "security.the_original_operation_is_unfinished_continue_verifying": "原操作尚未完成，请继续核实",
+    "security.the_original_recovery_draft_is_preserved_the_new_recovery": "原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。",
+    "security.the_other_device_refused_this_join_request": "对方拒绝了这次加入",
+    "security.the_page_is_paused_return_to_the_foreground_to": "页面已暂停，请回到前台继续安全操作",
+    "security.the_pairing_code_belongs_to_another_security_domain_original": "配对码属于另一个安全域，原密钥已保留",
+    "security.the_pairing_code_is_wrong_or_has_already_been": "配对码不对，或者已经用过了",
+    "security.the_pairing_draft_conflicts_with_the_current_identity": "配对草稿与当前身份冲突",
+    "security.the_pairing_receipt_was_approved_by_a_device_other": "配对回执的批准设备不是当前管理端",
+    "security.the_public_key_may_already_be_published_abandoning_only": "公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。",
+    "security.the_recovery_signature_has_not_been_saved_re_enter": "恢复签名尚未保存，请重新输入原恢复码继续原草稿",
+    "security.the_security_operation_s_outcome_is_unverified_continue_the": "安全操作结果尚未核实，请先继续原操作；退出会删除唯一完成材料。",
+    "security.the_server_does_not_recognize_this_device": "服务器不认识这台设备",
+    "security.the_server_replaced_the_pairing_commitment_after_receiving_the": "服务器在获得临时公钥后替换了配对承诺，已停止配对",
+    "security.the_server_returned_information_for_a_different_device_from": "服务器返回的不是发起配对那台设备的信息，已停止配对",
+    "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon": "配对草稿已过期，尚未发布，可明确放弃后重新开始",
+    "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate": "配对草稿已取消或候选改变，尚未发布，可明确放弃后重新开始",
+    "security.this_browser_does_not_support_web_locks_it_cannot": "浏览器不支持 Web Locks，无法安全管理账户",
+    "security.this_browser_is_the_only_managing_client_transfer_management": "此浏览器是唯一管理端，建议先交接；退出会删除管理密钥，没有恢复码备份将丢失管理权。",
+    "security.this_browser_s_original_public_key_could_not_be": "无法核实这台浏览器原来的公钥，原密钥已保留",
+    "security.this_browser_will_be_the_only_managing_client_clearing": "此浏览器将是唯一管理端。清理网站数据或换浏览器会丢失管理密钥；恢复码必须离线保存。日常建议用 App 管理。",
+    "security.this_deletes_the_account_keys_and_cache_on_this": "这会删除本机的账户密钥和缓存，电脑上的会话不受影响。",
+    "security.this_device": "本机",
+    "security.this_device_becomes_the_managing_client": "这台设备成为管理端",
+    "security.this_device_has_an_unfinished_join_request_deleting_it": "这台设备还有未完成的加入请求，删除后将无法继续原请求。",
+    "security.this_device_manages_the_account": "本机是管理端",
+    "security.this_device_s_clock_is_behind_the_managing_client": "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
+    "security.this_page_and_the_server_or_pairing_device_use": "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
+    "security.this_pairing_expired_generate_a_new_code_on_the": "这次配对已失效，请在管理端重新生成配对码",
+    "security.this_permanently_deletes_sessions_events_and_images_on_the": "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。",
+    "security.too_many_attempts_wait_a_minute_and_retry": "试得太多了，等一分钟再试",
+    "security.transfer_management": "交接管理权",
+    "security.transfer_result_unverified_continue_the_original_operation": "交接结果尚未核实，请继续原操作",
+    "security.transfer_to": "交接给",
+    "security.unfinished_security_operation": "未完成的安全操作",
+    "security.unknown_type": "种类未知",
+    "security.use_when_the_managing_client_is_lost": "管理端丢失时使用",
+    "security.used": "{value}{detail}使用",
+    "security.verify_and_continue": "核实并继续",
+    "security.verifying_management_identity_and_unfinished_security_operations": "正在核实管理身份和未完成的安全操作…",
+    "security.waiting_for_comparison": "等待核对…",
+    "security.waiting_for_the_new_device_to_enter_the_pairing": "等待新设备输入配对码…",
+    "security.waiting_for_the_successor_device_to_generate_and_save": "等待接任设备生成并保存恢复码",
     "session.abandon_fork": "放弃上次的分叉",
     "session.action_failed": "{action}失败：{reason}",
+    "session.android_unknown": "未知会话",
     "session.approval_resolved": "这条审批已经处理了。",
     "session.auto_title_hint": "留空保存会恢复自动标题",
     "session.back_task": "返回任务",
@@ -2184,6 +4477,7 @@ export const messages = {
     "session.interrupt": "中断",
     "session.interrupt_turn": "中断本轮",
     "session.interrupted": "已中断",
+    "session.ios_missing": "找不到这个会话",
     "session.latest": "回到最新",
     "session.loading_earlier": "正在加载更早的记录…",
     "session.manually_closed": "会话是被手动结束的。",
@@ -2253,6 +4547,124 @@ export const messages = {
     "session.turn_duration": "本轮用时 {duration}",
     "session.update_computer": "请更新电脑上的 remote-agent",
     "session.view": "视图",
+    "settings.about": "关于",
+    "settings.account": "账户",
+    "settings.account_quota": "账户额度",
+    "settings.added": "添加于",
+    "settings.all_clients": "全部客户端",
+    "settings.all_devices": "全部设备",
+    "settings.appearance": "外观",
+    "settings.approval_timeout": "审批超时",
+    "settings.attachment_storage": "附件存储",
+    "settings.attachments_are_stored_on_this_computer_session_files_remain": "附件存在这台电脑上。会话使用过的文件保留到会话结束；正在发送和执行中用到的图片不会被清理。预览缓存最多 150 MiB，自动回收。",
+    "settings.automatically_end_idle_sessions": "空闲自动结束会话",
+    "settings.can_clear": "可清理 {value}",
+    "settings.can_free": "可释放 {value}",
+    "settings.cannot_receive": "无法接收",
+    "settings.cannot_sign_in_to_the_relay_right_now": "暂时无法登录中继",
+    "settings.check_for_updates": "检查更新",
+    "settings.checking": " 正在检查…",
+    "settings.clear": "清理…",
+    "settings.clear_reclaimable_attachments_and_cache": "清理可回收附件和缓存？",
+    "settings.clear_settings": "清理",
+    "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache": "清除可回收原图、预览和待同步的大图缓存。排队与当前执行中的原图、会话文件和历史保留；尚未同步的大图会只显示预览。",
+    "settings.cli_version": "{name} 版本",
+    "settings.client_name": "客户端名称",
+    "settings.clients_control_sessions": "客户端 · 操作会话",
+    "settings.computer": "电脑",
+    "settings.computer_offline_showing_the_last_reading": "机器离线，显示上次记录",
+    "settings.computer_settings_offline": "{name} 不在线，暂时看不到它的设置。",
+    "settings.computers_run_clis": "电脑 · 运行 CLI",
+    "settings.could_not_download_retry_later": "没能下载，稍后再试",
+    "settings.could_not_read_the_device_list": "没能读取设备列表",
+    "settings.current": "当前",
+    "settings.dark": "暗色",
+    "settings.default": "（默认）",
+    "settings.default_approval_mode": "默认审批模式",
+    "settings.default_reasoning_effort": "默认推理强度",
+    "settings.details": "说明",
+    "settings.device_id": "设备 ID",
+    "settings.device_not_found": "没有这台设备",
+    "settings.devices": "设备",
+    "settings.enable": "开启",
+    "settings.enable_security_notifications": "开启安全通知",
+    "settings.enabled": "已开启",
+    "settings.exit_and_delete_local_keys": "退出并删除本机密钥…",
+    "settings.follow_configuration": "跟随 {value} 配置",
+    "settings.follow_configuration_settings": "跟随配置",
+    "settings.how_to_enable": "怎么打开",
+    "settings.idle_close_off": "关闭",
+    "settings.iphone_push_help": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送：在 Safari 里点分享按钮，选「添加到主屏幕」，再从主屏幕上的图标打开。",
+    "settings.last_used": "上次使用",
+    "settings.less_than_0_1_mib": "不到 0.1 MiB",
+    "settings.light": "亮色",
+    "settings.managing_client": "管理端",
+    "settings.min": " 分钟",
+    "settings.name": "名称",
+    "settings.name_changes_sync_to_other_clients": "修改名称同步到其他客户端。",
+    "settings.name_save_error": "没能保存名称：{reason}",
+    "settings.names_sync_encrypted_the_server_cannot_read_them_leave": "名称加密后同步，服务器看不到。留空就用默认名称。",
+    "settings.new_project_defaults": "新项目默认设置",
+    "settings.new_project_defaults_settings": "新项目默认设置 · {value}",
+    "settings.no_computers_yet": "还没有电脑。",
+    "settings.no_record": "没有记录",
+    "settings.nothing_to_clear": "没有可清理的",
+    "settings.notification_permission_help": "浏览器拒绝了通知权限。在地址栏左边的网站设置里把「通知」改成允许，再回来打开开关。",
+    "settings.notifications_on_this_client": "本客户端的通知",
+    "settings.now": "现在",
+    "settings.offline": "离线",
+    "settings.on_iphone_add_to_home_screen_and_open_from": "iPhone 要先「添加到主屏幕」，从主屏幕打开才能收推送",
+    "settings.online": "{value}在线",
+    "settings.paired_client": "已配对的客户端",
+    "settings.preview_cache": "预览缓存",
+    "settings.read_error": "没能读取设置：{reason}",
+    "settings.rejoin_account": "重新加入账户",
+    "settings.restore_default_name": "恢复默认名称",
+    "settings.runs_on": "运行在",
+    "settings.save_error": "没能保存：{reason}",
+    "settings.scheduled_task_results": "定时任务结果",
+    "settings.security_notifications": "安全通知",
+    "settings.security_notifications_are_independent_of_session_alerts_delivery_is": "安全通知独立于会话提醒。通知不保证送达，建议每天打开管理端核实恢复申请。",
+    "settings.session_alerts_are_off_you_will_not_be_notified": "会话提醒没开，审批来了不会提醒你",
+    "settings.sessions_end_automatically_after_this_much_inactivity_not_running": "会话这么久没有任何活动（没在运行、没有待处理、终端里没人输入）就自动结束，随时可以恢复，聊天记录都在",
+    "settings.set_the_name_and_notification_preferences_on_that_device": "名称和通知开关要在那台设备上设置。",
+    "settings.signed_account_state_confirms_this_device_was_removed_sessions": "已通过账户签名状态核实本机被移除。电脑上的会话不受影响；重新加入需要管理端提供配对码。",
+    "settings.storage_limit": "空间上限",
+    "settings.subscription_error": "订阅失败：{reason}",
+    "settings.the_account_keys_in_this_browser_will_be_deleted": "会先删除这个浏览器里的账户密钥，再用配对码加入。",
+    "settings.the_browser_denied_notification_permission": "浏览器拒绝了通知权限",
+    "settings.the_device_may_have_been_removed_the_service_reset": "可能是设备被移除、服务重置或连接出了问题。请先再试一次；仍无法登录时，请在管理端查看这台设备是否还在账户里。电脑上的会话不受影响。",
+    "settings.the_new_device_has_not_finished_joining_if_it": "新设备尚未完成加入。若无法继续，可移除后重新配对。",
+    "settings.the_original_operation_is_unfinished_continue_verifying": "原操作尚未完成，请继续核实。",
+    "settings.the_original_security_operation_is_verified_complete_you_can": "原安全操作已核实完成，可以重新加入账户。",
+    "settings.the_time_on_the_right_is_the_last_use": "右边是上次使用的时间。名称只能在那台设备上修改。",
+    "settings.theme": "主题",
+    "settings.theme_auto": "自动",
+    "settings.this_browser_does_not_support_push_notifications": "这个浏览器不支持推送",
+    "settings.this_device_was_removed_from_the_account": "本机已被移出账户",
+    "settings.times_are_shown_in_beijing_time_quotas_belong_to": "时间按北京时间显示。额度属于 CLI 登录账户，该账户的其他使用也可能计入。",
+    "settings.unanswered_approvals_are_denied_after_this_time": "没人回复的审批过了这个时间就拒绝",
+    "settings.unfinished_pairing": "未完成的配对",
+    "settings.unfinished_pairing_settings": " · 未完成的配对",
+    "settings.unnamed": "未命名",
+    "settings.unverified": "未验证 · ",
+    "settings.up_to_date": "已是最新",
+    "settings.uploaded_images_and_files": "上传的图片和文件",
+    "settings.uploading": "正在上传 {value}",
+    "settings.use_cli_defaults_for_new_projects": "按 CLI 的新项目默认设置",
+    "settings.verify_and_continue_security_operation": "核实并继续安全操作",
+    "settings.version_unverified_run_remote_agent_doctor_on_this_computer": "版本未验证：在这台电脑上运行 remote-agent doctor，它会用一个临时会话检查各项功能。",
+    "settings.view_usage_in_the_local_cli": "可在本机 CLI 中查看用量",
+    "settings.when_a_turn_ends": "一轮结束时",
+    "settings.when_i_need_to_act": "等我处理时",
+    "settings.when_unspecified_uses": "不指定时实际用：",
+    "startup.install_description": "在任何设备上操作自己电脑上的 Codex",
+    "startup.javascript_required": "请启用 JavaScript 后重新加载。",
+    "startup.opening": "正在打开…",
+    "startup.opening_remote_agent": "正在打开 remote-agent",
+    "startup.page_updated": "页面已更新",
+    "startup.the_page_could_not_load_check_your_connection_and": "页面未能加载，请检查网络后重试。",
+    "startup.this_part_could_not_be_fetched_reload_to_continue": "这一部分没能取到，重新加载就好。",
     "terminal.closed": "终端连接断开了",
     "terminal.closed_ended_note": "下面是断开前的画面。会话已经结束。",
     "terminal.closed_running_note": "下面是断开前的画面。会话还在运行，聊天照常更新。",
@@ -2285,6 +4697,7 @@ export const messages = {
     "terminal.size_note": "窗口尺寸已变化，可能来自电脑或另一客户端。这里按最新尺寸显示；打开键盘不改远端尺寸。",
     "terminal.up": "上",
     "terminal.view_details": "查看详情",
+    "time.calendar_date_year": "{year}年{month}月{day}日",
     "time.duration_hours_minutes": "{hours} 小时 {minutes} 分",
     "time.duration_minutes_seconds": "{minutes} 分 {seconds} 秒",
     "time.duration_seconds": {
@@ -2311,6 +4724,8 @@ export const messages = {
     "time.month_day": "{month}月{day}日",
     "time.month_group": "{month} 月",
     "time.today": "今天",
+    "time.today_clock": "今天 {value}:{detail}",
+    "time.tomorrow": "明天",
     "time.weekday": {
       "forms": {
         "fri": "周五",
@@ -2326,6 +4741,7 @@ export const messages = {
     },
     "time.year_month_group": "{year} 年 {month} 月",
     "time.yesterday": "昨天",
+    "tools.android_edit": "编辑",
     "tools.background": "后台运行",
     "tools.background_agent": "按模型的要求在后台运行；它什么时候结束这里不知道，请到终端确认。",
     "tools.background_returned": "调用已返回，命令转到了后台；它什么时候结束这里不知道，请到终端确认。",

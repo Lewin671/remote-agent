@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { create } from "@bufbuild/protobuf";
 import { expect, it } from "vitest";
 import { EventSchema, OriginKind, SessionStatus, type Event } from "./gen/remoteagent/v1/event_pb";
@@ -55,8 +56,8 @@ it("formats schedule dates by local calendar days through DST, week and year bou
   const now = new Date(2026, 10, 1, 14).getTime();
   const at = (year: number, month: number, day: number, hour = 8) => new Date(year, month, day, hour).toISOString();
   expect([at(2026, 10, 1), at(2026, 9, 31), at(2026, 9, 30), at(2026, 9, 26), at(2026, 9, 25), at(2025, 11, 31)].map(t => scheduleTime(t, now)))
-    .toEqual(["08:00", "昨天", "周五", "周一", "10月25日", "2025年12月31日"]);
-  expect(scheduleTime(at(2025, 11, 31), new Date(2026, 0, 1, 9).getTime())).toBe("昨天");
+    .toEqual(["08:00", message("time.yesterday"), "周五", "周一", "10月25日", "2025年12月31日"]);
+  expect(scheduleTime(at(2025, 11, 31), new Date(2026, 0, 1, 9).getTime())).toBe(message("time.yesterday"));
   expect(scheduleTime(at(2025, 11, 30), new Date(2026, 0, 3, 9).getTime())).toBe("周二");
   expect(timingText({ type: "calendar", time: "08:00", timezone: "Asia/Shanghai" }, "America/Los_Angeles")).toBe("每天 08:00（北京时间）");
   expect(timingText({ type: "calendar", time: "08:00", timezone: "Europe/Oslo" }, "UTC")).toBe("每天 08:00（Oslo）");

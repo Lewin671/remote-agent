@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { afterEach, expect, it, vi } from "vitest";
 import { create, toBinary } from "@bufbuild/protobuf";
 import { deflateSync } from "fflate";
@@ -13,7 +14,7 @@ import { scheduledPushContent } from "./sw-notify";
 import rawSource from "./sw.js?raw";
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
-const generic = { title: "remote-agent", body: "定时任务有新结果" };
+const generic = { title: "remote-agent", body: message("notifications.scheduled_tasks_have_new_results") };
 
 it("opens the actual Go sender's signed and compressed NotifyContent using stored browser keys", async () => {
   const f = await GoSecurityFixture.create();

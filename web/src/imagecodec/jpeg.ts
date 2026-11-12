@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 // Lossless JPEG transforms, like `jpegtran -perfect`: the entropy-coded DCT
 // coefficients are decoded, moved and sign-flipped block by block, and
 // Huffman-coded again with the original quantization, so every decoded
@@ -291,7 +292,7 @@ function decodeScan(
   // The header's size is only a claim: bound what it would allocate before
   // reading a single coefficient (a rotation needs a second grid as big).
   const bytes = comps.reduce((n, c) => n + c.bw * c.bh * 64 * 2, 0);
-  if (bytes > MAX_COEFFICIENT_BYTES) throw new ImageError("too_large", `${width}x${height} needs ${bytes} coefficient bytes`, "图片尺寸太大", "dimensions");
+  if (bytes > MAX_COEFFICIENT_BYTES) throw new ImageError("too_large", `${width}x${height} needs ${bytes} coefficient bytes`, l10n.t("image.image_dimensions_are_too_large"), "dimensions");
   for (const c of comps) c.coef = new Int16Array(c.bw * c.bh * 64);
   const single = comps.length === 1;
   const r = new BitReader(b, start, end);

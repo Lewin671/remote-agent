@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { ChevronRight, Lock } from "../icons";
 import { futureTime } from "../model";
 import { useEffect, useState } from "react";
@@ -31,13 +32,13 @@ export function SecurityGroup({
 }) {
   return (
     <>
-      <div className="label">账户安全</div>
+      <div className="label">{l10n.t("security.account_security")}</div>
       <div className="grp">
         <button className="row" onClick={() => go("settings/security")}>
           <span className="ico">
             <Lock />
           </span>
-          账户安全<span className="v">{remote.isAuthority ? "本机是管理端" : authorityName(remote)}</span>
+          {l10n.t("security.account_security")}<span className="v">{remote.isAuthority ? l10n.t("security.this_device_manages_the_account") : authorityName(remote)}</span>
           <ChevronRight className="chev" />
         </button>
       </div>
@@ -56,9 +57,9 @@ export function LeaveAlert({ onCancel }: { onCancel: () => void }) {
   }, []);
   return (
     <Alert
-      title="退出这个浏览器？"
-      text={error || advice || "正在核实管理身份和未完成的安全操作…"}
-      ok={busy ? "退出中…" : "退出"}
+      title={l10n.t("security.exit_this_browser")}
+      text={error || advice || l10n.t("security.verifying_management_identity_and_unfinished_security_operations")}
+      ok={busy ? l10n.t("security.exiting") : l10n.t("security.exit")}
       danger
       onCancel={onCancel}
       onOk={() => {
@@ -94,7 +95,7 @@ export function SecurityPage({
   const [code, setCode] = useState(""),
     [saved, setSaved] = useState(false);
   const [persisted, setPersisted] = useState<boolean>();
-  const [lease, setLease] = useState("");
+  const [lease, setLease] = useState<bigint | null>();
   const [pending, setPending] = useState<SecurityOperation>();
   const [rotation, setRotation] = useState(false);
   const [offers, setOffers] = useState<HandoffOffer[]>([]);
@@ -108,8 +109,8 @@ export function SecurityPage({
     const r = await remote.security.verifiedRecord();
     setLease(
       r.lease && equal(r.lease.head, r.stateHash)
-        ? futureTime(r.lease.notAfter)
-        : "尚未取得远程控制有效期",
+        ? r.lease.notAfter
+        : null,
     );
     setTakingOver(
       remote.isAuthority &&
@@ -167,45 +168,43 @@ export function SecurityPage({
     remote.devices.get(remote.account.deviceId)?.kind === DeviceKind.CLIENT;
   return (
     <div className="page set" data-route="account-security">
-      {abandonOffer && <Alert title="放弃此接任准备？"
-        text="公钥可能已经发布，放弃只清除本机准备，不会撤回管理端已看到的公钥。若已交接，本机仍会核实管理权并续期；请保留已保存的恢复码。"
-        ok="放弃" danger onCancel={() => setAbandonOffer(false)} onOk={() => {
+      {abandonOffer && <Alert title={l10n.t("security.abandon_this_succession_preparation")}
+        text={l10n.t("security.the_public_key_may_already_be_published_abandoning_only")}
+        ok={l10n.t("new_session.android_abandon")} danger onCancel={() => setAbandonOffer(false)} onOk={() => {
           setAbandonOffer(false);
           void run(async () => { await remote.authority.discardUnpublishedCode(); setCode(""); setSaved(false); });
         }} />}
-      <NavBar title={page === "overview" ? "账户安全" : page === "recovery" ? "恢复码" : page === "pending" ? "未完成的安全操作" : remote.isAuthority ? "交接管理权" : "接管管理权"} onBack={page === "overview" ? onBack : () => setPage("overview")} />
+      <NavBar title={page === "overview" ? l10n.t("security.account_security") : page === "recovery" ? l10n.t("security.recovery_code") : page === "pending" ? l10n.t("security.unfinished_security_operation") : remote.isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")} onBack={page === "overview" ? onBack : () => setPage("overview")} />
       <div className="body security-body">
         <div className="set-banners">
         {remote.recoveryPending && (
-          <Banner kind="warn" action={remote.isAuthority ? "否决" : undefined} onAction={() => setPage("recovery")}>
-            {`有人正在用恢复码申请接管管理权，${remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : "48 小时"} 后生效。不是你本人就现在否决。`}
+          <Banner kind="warn" action={remote.isAuthority ? l10n.t("security.reject") : undefined} onAction={() => setPage("recovery")}>
+            {l10n.t("security.someone_is_requesting_management_takeover_with_a_recovery_code", { value: String(remote.recoveryReadyMs > 0n ? futureTime(remote.recoveryReadyMs) : l10n.t("security.duration_48_hours")) })}
           </Banner>
         )}
         {remote.security.recoveryStatusStale && (
-          <Banner kind="warn">安全状态可能过期，请联网后重新核实。</Banner>
+          <Banner kind="warn">{l10n.t("security.security_state_may_be_out_of_date_connect_and")}</Banner>
         )}
         {takingOver && (
           <Banner kind="warn">
-            正在完成接管，请保持页面在前台，等待远程控制续期。
-          </Banner>
+            {l10n.t("security.completing_takeover_keep_this_page_in_the_foreground_and")}</Banner>
         )}
         {rotation && (
           <Banner kind="warn">
-            新恢复码尚未确认备份，请立即换码并离线保存。
-          </Banner>
+            {l10n.t("security.the_new_recovery_code_backup_is_unconfirmed_replace_the")}</Banner>
         )}
         {remote.authorityError && (
           <Banner kind="warn">{remote.authorityError}</Banner>
         )}
         </div>
         {page === "overview" && pending && (
-          <div className="grp"><button className="row" onClick={() => setPage("pending")}>未完成的安全操作<ChevronRight className="chev" /></button></div>
+          <div className="grp"><button className="row" onClick={() => setPage("pending")}>{l10n.t("security.unfinished_security_operation")}<ChevronRight className="chev" /></button></div>
         )}
         {page === "overview" && <>
         <div className="grp">
-          <div className="row">当前管理端<span className="v">{remote.isAuthority ? "本机" : authorityName(remote)}</span></div>
+          <div className="row">{l10n.t("security.current_managing_client")}<span className="v">{remote.isAuthority ? l10n.t("security.this_device") : authorityName(remote)}</span></div>
           <div className="row">
-            远程控制有效期<span className="v">{lease || "正在读取…"}</span>
+            {l10n.t("security.remote_control_expiry")}<span className="v">{lease === undefined ? l10n.t("security.reading") : lease === null ? l10n.t("security.remote_control_expiry_not_received_yet") : futureTime(lease, now)}</span>
           </div>
           {remote.isAuthority && (
             <button
@@ -216,25 +215,24 @@ export function SecurityPage({
                   await remote.authority.renewLeaseNow();
                   const pending = await remote.authority.pending();
                   if (pending && (pending.kind === "state" || pending.kind === "lease"))
-                    throw new Error("请先完成当前安全操作，再续期");
-                  setMessage("远程控制已续期");
+                    throw new Error(l10n.t("security.finish_the_current_security_operation_before_renewing"));
+                  setMessage(l10n.t("security.remote_control_renewed"));
                 })
               }
             >
-              现在续期
-            </button>
+              {l10n.t("security.renew_now")}</button>
           )}
         </div>
-        <p className="gf">回到管理端时自动续期；过期后远程控制暂停，聊天和历史仍可查看。网页关闭或冻结时无法续期。</p>
-        {!remote.isAuthority && <p className="gf">{`请打开${authorityName(remote)}续期。`}</p>}
+        <p className="gf">{l10n.t("security.automatically_renews_when_you_return_to_the_managing_client")}</p>
+        {!remote.isAuthority && <p className="gf">{l10n.t("security.open_to_renew", { value: String(authorityName(remote)) })}</p>}
         <div className="grp">
-          {remote.isAuthority && <button className="row" onClick={() => setPage("recovery")}>恢复码<ChevronRight className="chev" /></button>}
-          {(remote.isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{remote.isAuthority ? "交接管理权" : "接管管理权"}<ChevronRight className="chev" /></button>}
+          {remote.isAuthority && <button className="row" onClick={() => setPage("recovery")}>{l10n.t("security.recovery_code")}<ChevronRight className="chev" /></button>}
+          {(remote.isAuthority || localClient) && <button className="row" onClick={() => setPage("handoff")}>{remote.isAuthority ? l10n.t("security.transfer_management") : l10n.t("security.take_over_management")}<ChevronRight className="chev" /></button>}
         </div>
         </>}
         {page === "pending" && pending && (
           <div className="grp">
-            <div className="row help">有未完成的安全操作，请先继续原操作。</div>
+            <div className="row help">{l10n.t("security.a_security_operation_is_unfinished_continue_the_original_operation")}</div>
             <button
               className="row act"
               disabled={busy}
@@ -244,8 +242,7 @@ export function SecurityPage({
                 })
               }
             >
-              核实并继续
-            </button>
+              {l10n.t("security.verify_and_continue")}</button>
             {draft && pending.phase === "PREPARED" &&
               (pending.kind === "offer" || (!pending.signed && !pending.codeSaved)) && (
               <button
@@ -259,7 +256,7 @@ export function SecurityPage({
                   })
                 }
               >
-                {pending.kind === "offer" ? "放弃此接任准备" : "放弃未发布的恢复码"}
+                {pending.kind === "offer" ? l10n.t("security.abandon_this_succession_preparation_security") : l10n.t("security.abandon_unpublished_recovery_code")}
               </button>
             )}
             {pending.kind === "state" && !pending.signed && !draft && (
@@ -272,8 +269,7 @@ export function SecurityPage({
                   })
                 }
               >
-                放弃未签名的操作
-              </button>
+                {l10n.t("security.abandon_unsigned_operation")}</button>
             )}
           </div>
         )}
@@ -292,30 +288,29 @@ export function SecurityPage({
                     await remote.authority.publishRecovery();
                   else await remote.authority.offerHandoff();
                   if (await remote.authority.pending())
-                    throw new Error("原操作尚未完成，请继续核实");
+                    throw new Error(l10n.t("security.the_original_operation_is_unfinished_continue_verifying"));
                   setCode("");
                   setSaved(false);
                   setMessage(
                     remote.isAuthority
-                      ? "恢复码已更新，原恢复码和待处理恢复申请已作废。"
-                      : "恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。",
+                      ? l10n.t("security.recovery_code_updated_the_previous_code_and_pending_recovery")
+                      : l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current"),
                   );
                 })
               }
             >
               {busy
-                ? "发布中…"
+                ? l10n.t("security.publishing")
                 : remote.isAuthority
-                  ? "我已保存，发布换码"
-                  : "我已保存，通知管理端"}
+                  ? l10n.t("security.saved_publish_replacement")
+                  : l10n.t("security.saved_notify_managing_client")}
             </button>
             <p className="gf">
-              保存好之前不会发布。未发布的恢复码可在下次打开时明确放弃并重新生成。
-            </p>
+              {l10n.t("security.nothing_is_published_before_you_save_it_an_unpublished")}</p>
           </>
         ) : page === "recovery" && remote.isAuthority ? (
           <>
-          <p className="txt">更换恢复码后，旧码立即作废；正在等待的恢复申请会被否决。</p>
+          <p className="txt">{l10n.t("security.replacing_the_recovery_code_immediately_invalidates_the_old_code")}</p>
           <div className="grp">
             <button
               className="row act"
@@ -328,16 +323,14 @@ export function SecurityPage({
                 })
               }
             >
-              生成新的恢复码
-            </button>
+              {l10n.t("security.generate_new_recovery_code")}</button>
           </div>
           </>
         ) : null}
         {page === "handoff" && (remote.isAuthority ? (
           <>
             <p className="txt">
-              在接任设备加入账户并确认保存新恢复码后，在这里批准。交接保留可达历史，同时移除本机。
-            </p>
+              {l10n.t("security.once_the_successor_device_joins_and_confirms_saving_its")}</p>
             <div className="grp">
               {offers.map((o) => (
                 <button
@@ -346,7 +339,7 @@ export function SecurityPage({
                   disabled={busy || !!pending}
                   onClick={() => setTarget(o.id)}
                 >
-                  交接给{" "}
+                  {l10n.t("security.transfer_to")}{" "}
                   {clientName(remote.devices.get(o.id), remote.devices, o.id)}
                   <ChevronRight className="chev" />
                 </button>
@@ -356,23 +349,20 @@ export function SecurityPage({
                 disabled={busy}
                 onClick={() => void run(async () => {})}
               >
-                刷新接任设备
-              </button>
+                {l10n.t("security.refresh_successor_devices")}</button>
               {!offers.length && (
-                <div className="row help">等待接任设备生成并保存恢复码</div>
+                <div className="row help">{l10n.t("security.waiting_for_the_successor_device_to_generate_and_save")}</div>
               )}
             </div>
           </>
         ) : localClient ? (
           <>
-            <Banner>{BROWSER_AUTHORITY_NOTICE}</Banner>
+            <Banner>{BROWSER_AUTHORITY_NOTICE()}</Banner>
             <p className="txt">
-              先保存新的恢复码，再请当前管理端批准交接。当前管理端会被移除，不需要等待 48 小时。
-            </p>
+              {l10n.t("security.save_the_new_recovery_code_first_then_ask_the")}</p>
             {offered && (
               <Banner kind="warn">
-                恢复码已确认保存，等待当前管理端批准；可以重新打开此页查看。
-              </Banner>
+                {l10n.t("security.recovery_code_saved_and_confirmed_waiting_for_the_current")}</Banner>
             )}
             <button
               className="btn"
@@ -386,18 +376,17 @@ export function SecurityPage({
                 })
               }
             >
-              {offered ? "重新生成恢复码" : "生成新的恢复码"}
+              {offered ? l10n.t("security.regenerate_recovery_code") : l10n.t("security.generate_new_recovery_code")}
             </button>
           </>
         ) : (
-          <p className="txt">电脑只能运行 CLI，不能接管管理权。</p>
+          <p className="txt">{l10n.t("security.computers_can_only_run_clis_and_cannot_take_over")}</p>
         ))}
         {page === "handoff" && !profileReady && (
           <>
-            <div className="label">补齐账户公钥</div>
+            <div className="label">{l10n.t("security.restore_account_public_key")}</div>
             <p className="txt">
-              接任前可重新配对，或在接任后输入新恢复码补齐公开资料。查询公开资料不会发起紧急恢复。
-            </p>
+              {l10n.t("security.before_succession_pair_again_afterward_enter_the_new_recovery")}</p>
             <button
               className="btn"
               disabled={busy}
@@ -405,11 +394,10 @@ export function SecurityPage({
                 location.hash = "/settings/rejoin";
               }}
             >
-              重新配对
-            </button>
+              {l10n.t("security.pair_again")}</button>
             <textarea
               className="field"
-              aria-label="补齐资料的恢复码"
+              aria-label={l10n.t("security.recovery_code_for_restoring_public_information")}
               value={profileCode}
               onChange={(e) => setProfileCode(e.target.value)}
             />
@@ -426,15 +414,14 @@ export function SecurityPage({
                       profileCode,
                     );
                     setProfileCode("");
-                    setMessage("账户公钥已补齐");
+                    setMessage(l10n.t("security.account_public_key_restored"));
                   } finally {
                     setup.lifecycle.dispose();
                   }
                 })
               }
             >
-              补齐公开资料
-            </button>
+              {l10n.t("security.restore_public_information")}</button>
           </>
         )}
         <div className="set-banners">
@@ -444,9 +431,9 @@ export function SecurityPage({
       </div>
       {target && (
         <Alert
-          title="交接管理权"
-          text={`确认接任设备（${clientName(remote.devices.get(target), remote.devices, target)}）已经保存新的恢复码。交接后本机会被移除，接任设备成为唯一管理端。`}
-          ok="确认交接"
+          title={l10n.t("security.transfer_management")}
+          text={l10n.t("security.confirm_that_the_successor_device_saved_the_new_recovery", { value: String(clientName(remote.devices.get(target), remote.devices, target)) })}
+          ok={l10n.t("security.confirm_transfer")}
           danger
           onCancel={() => setTarget("")}
           onOk={() => {
@@ -455,8 +442,8 @@ export function SecurityPage({
             void run(async () => {
               await remote.handoffAuthority(id);
               if (await remote.authority.pending())
-                throw new Error("交接结果尚未核实，请继续原操作");
-              setMessage("已交接管理权，等待接任设备完成接管。");
+                throw new Error(l10n.t("security.transfer_result_unverified_continue_the_original_operation"));
+              setMessage(l10n.t("security.management_transferred_waiting_for_the_successor_to_complete_takeover"));
             });
           }}
         />

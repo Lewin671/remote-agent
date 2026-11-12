@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 // Web Push: subscribe this browser and choose which notifications to get.
 
 import { NotifyKind } from "./gen/remoteagent/v1/relay_pb";
@@ -104,7 +105,7 @@ export function setPushPrefs(remote: Remote, prefs: PushPrefs): Promise<void> {
       await remote.setPushSubscription("", []);
       await sub?.unsubscribe();
     } else {
-      if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error("浏览器没有允许通知");
+      if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error(l10n.t("notifications.the_browser_did_not_allow_notifications"));
       if (!sub) {
         const key = await remote.pushKey();
         sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });

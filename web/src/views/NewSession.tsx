@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { t } from "../i18n";
 // Starting sessions. There is one way: type in a project's new-session
 // box and send. Project settings persist in the sealed account prefs.
@@ -902,15 +903,14 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
     body = (
       <>
         {info.error && (
-          <Banner kind="warn" action="重试" onAction={info.retry}>
-            没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
-          </Banner>
+          <Banner kind="warn" action={l10n.t("common.retry")} onAction={info.retry}>
+            {l10n.t("new_session.model_list_default", { name: agentName(cfg.agent) })}</Banner>
         )}
-        {!info.models && !info.error && <div className="hint top">读取 {machineName(machine)} 的设置…</div>}
+        {!info.models && !info.error && <div className="hint top">{l10n.t("models.android_reading_machine", { name: machineName(machine) })}</div>}
         <div className="list">
           <button className="mi" onClick={() => set({ model: "", effort: "" })}>
             <div className="mt">
-              默认模型<div className="md">用 {machineName(machine)} 的新项目默认设置</div>
+              {l10n.t("new_session.default_model")}<div className="md">{l10n.t("new_session.machine_project_defaults", { name: machineName(machine) })}</div>
             </div>
             {!cfg.model && <span className="ck"><Check /></span>}
           </button>
@@ -918,24 +918,24 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
             <button key={m.slug} className="mi" onClick={() => set({ model: m.slug, effort: "" })}>
               <div className="mt">
                 {m.displayName || m.slug}
-                {m.efforts.length === 1 && <div className="md">推理强度固定为 {m.efforts[0]}</div>}
+                {m.efforts.length === 1 && <div className="md">{l10n.t("new_session.fixed_effort", { effort: m.efforts[0] })}</div>}
               </div>
               {m === picked && <span className="ck"><Check /></span>}
             </button>
           ))}
           {!few && (
             <button className="mi link-row" onClick={() => setAllModels(true)}>
-              <span className="mt">全部模型</span>
+              <span className="mt">{l10n.t("models.all")}</span>
               <ChevronRight className="chev" />
             </button>
           )}
         </div>
         {chosen && chosen.efforts.length > 0 && (
           <>
-            <div className="fl">推理强度</div>
+            <div className="fl">{l10n.t("models.effort")}</div>
             <Segmented
               className="full wrap"
-              label="推理强度"
+              label={l10n.t("models.effort")}
               value={cfg.effort || (cfg.model ? chosen.defaultEffort : def.effort || chosen.defaultEffort)}
               onChange={(e) => set({ effort: e })}
               options={chosen.efforts.map((e) => ({ value: e, label: e }))}
@@ -944,18 +944,18 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
         )}
         {agentInfo(cfg.agent).standardContextOption && !scheduled && (
           <>
-            <div className="fl">上下文窗口</div>
+            <div className="fl">{l10n.t("models.context_window")}</div>
             {parts.fixedWindow ? (
-              <div className="hint top">标准 200k · 这个模型只有标准窗口</div>
+              <div className="hint top">{l10n.t("models.standard_only")}</div>
             ) : (
               <Segmented
                 className="full"
-                label="上下文窗口"
+                label={l10n.t("models.context_window")}
                 value={cfg.standardContext ? "std" : "1m"}
                 onChange={(v) => set({ standardContext: v === "std" })}
                 options={[
                   { value: "1m", label: "1M" },
-                  { value: "std", label: "标准 200k" },
+                  { value: "std", label: l10n.t("models.standard_window") },
                 ]}
               />
             )}
@@ -973,12 +973,12 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
     body = (
       <div className="list">
         {[
-          { mode: ApprovalMode.UNSPECIFIED, name: "默认", desc: `跟随 ${agentName(cfg.agent)} 自己的配置` },
-          { mode: ApprovalMode.ASK, name: "询问", desc: "需要审批时由你确认，超时拒绝" },
+          { mode: ApprovalMode.UNSPECIFIED, name: l10n.t("models.default"), desc: l10n.t("new_session.follow_s_configuration", { value: String(agentName(cfg.agent)) }) },
+          { mode: ApprovalMode.ASK, name: l10n.t("modes.ask"), desc: l10n.t("modes.ask_desc") },
           noAuto
-            ? { mode: ApprovalMode.AUTO, name: "自动", desc: allNoAuto ? "当前账户不支持自动模式" : "当前模型没有自动模式", off: true }
-            : { mode: ApprovalMode.AUTO, name: "自动", desc: `由 ${agentName(cfg.agent)} 自己判断，拿不准的在对话里问你` },
-          { mode: ApprovalMode.FULL_ACCESS, name: "完全放行", desc: "所有操作都不审批", danger: true },
+            ? { mode: ApprovalMode.AUTO, name: l10n.t("modes.auto"), desc: allNoAuto ? l10n.t("modes.account_unsupported") : l10n.t("new_session.this_model_has_no_auto_mode"), off: true }
+            : { mode: ApprovalMode.AUTO, name: l10n.t("modes.auto"), desc: l10n.t("modes.auto_desc", { agent: String(agentName(cfg.agent)) }) },
+          { mode: ApprovalMode.FULL_ACCESS, name: l10n.t("modes.full_access"), desc: l10n.t("modes.skip_all"), danger: true },
         ].map((m: { mode: ApprovalMode; name: string; desc: string; danger?: boolean; off?: boolean }) => (
           <button
             key={m.mode}
@@ -999,7 +999,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
       </div>
     );
   }
-  const titles: Record<Pick, string> = { "": taskEditing ? "任务设置" : "项目设置", machine: t("common.machine"), model: t("models.title"), mode: taskEditing ? "权限" : "审批模式" };
+  const titles: Record<Pick, string> = { "": taskEditing ? l10n.t("new_session.task_settings") : l10n.t("projects.android_settings"), machine: t("common.machine"), model: t("models.title"), mode: taskEditing ? l10n.t("new_session.permissions") : l10n.t("modes.title") };
   const many = ns.agents.length > 1;
   if (open && pick && pick !== "machine") body = <div className="hint top">{t("new_session.reading_previous")}</div>;
   const content = (
@@ -1019,10 +1019,10 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
           )}
           {scheduled && (
             <>
-              <div className="fl">新会话</div>
+              <div className="fl">{l10n.t("list_state.ios_new_session")}</div>
               <div className="list">
                 <button className="mi" disabled={lockMachine} onClick={() => setPick("machine")}>
-                  <span className="mt">机器</span>
+                  <span className="mt">{l10n.t("common.machine")}</span>
                   <span className="mv">
                     <StateMark kind={machine?.online || !remote.listed ? "online" : "off"} />
                     {machineName(machine)}
@@ -1034,17 +1034,17 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
           )}
           {many && <div className="fl">{agentName(agent)}</div>}
           {open ? (
-            <div className="hint top">正在读取这个项目上次的设置…</div>
+            <div className="hint top">{l10n.t("new_session.reading_previous")}</div>
           ) : (
             <div className="list">
               <button className="mi" onClick={() => setPick("model")}>
-                <span className="mt">模型</span>
-                <span className="mv">{info.loading ? `读取 ${machineName(machine)} 的设置…` : parts.model}</span>
+                <span className="mt">{l10n.t("models.title")}</span>
+                <span className="mv">{info.loading ? l10n.t("models.android_reading_machine", { name: String(machineName(machine)) }) : parts.model}</span>
                 <ChevronRight className="chev" />
               </button>
               {scheduled && (
                 <button className="mi" onClick={() => setPick("mode")}>
-                  <span className="mt">{taskEditing ? "权限" : "审批"}</span>
+                  <span className="mt">{taskEditing ? l10n.t("new_session.permissions") : l10n.t("approval.title")}</span>
                   <span className={"mv" + ((cfg.mode || defaultModeOf(machine, cfg.agent).mode) === ApprovalMode.FULL_ACCESS ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
                   <ChevronRight className="chev" />
                 </button>
@@ -1052,18 +1052,17 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
             </div>
           )}
           {info.error && (
-            <Banner kind="warn" action="重试" onAction={info.retry}>
-              没能读取模型列表，会用 {agentName(cfg.agent)} 自己的默认模型
-            </Banner>
+            <Banner kind="warn" action={l10n.t("common.retry")} onAction={info.retry}>
+              {l10n.t("new_session.model_list_default", { name: agentName(cfg.agent) })}</Banner>
           )}
-          {scheduled && <div className="hint">{taskEditing ? "只修改这个任务；已开出的对话保留原来的设置。" : <>{many ? "每个 CLI 各存一套，新建时用哪个在句子里选。" : ""}只影响之后新建的会话，进行中的不变；在你的设备之间同步。</>}</div>}
+          {scheduled && <div className="hint">{taskEditing ? l10n.t("new_session.only_changes_this_task_existing_conversations_keep_their_settings") : <>{many ? l10n.t("new_session.each_cli_has_its_own_settings_choose_the_cli") : ""}{l10n.t("new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced")}</>}</div>}
           {scheduled && !taskEditing && (
             <div className="list">
               <button className="mi link-row" disabled={!!prefsBlocked(remote)} onClick={pinAction(remote, cfg.cwd).run}>
                 <span className="mt">{pinAction(remote, cfg.cwd).label}</span>
               </button>
               <button className="mi danger" disabled={!!prefsBlocked(remote)} onClick={() => setRemoving(true)}>
-                <span className="mt">移除项目…</span>
+                <span className="mt">{l10n.t("projects.remove_action")}</span>
               </button>
             </div>
           )}

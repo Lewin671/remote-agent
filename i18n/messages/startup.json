@@ -1,0 +1,114 @@
+[
+  {
+    "key": "startup.opening_remote_agent",
+    "zh-CN": "正在打开 remote-agent",
+    "en": "Opening remote-agent",
+    "notes": "Startup 页面或对应功能的无障碍/标题/字段提示。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.opening",
+    "zh-CN": "正在打开…",
+    "en": "Opening…",
+    "notes": "Startup 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.the_page_could_not_load_check_your_connection_and",
+    "zh-CN": "页面未能加载，请检查网络后重试。",
+    "en": "The page could not load. Check your connection and retry.",
+    "notes": "main 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.page_updated",
+    "zh-CN": "页面已更新",
+    "en": "Page updated",
+    "notes": "pages 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.this_part_could_not_be_fetched_reload_to_continue",
+    "zh-CN": "这一部分没能取到，重新加载就好。",
+    "en": "This part could not be fetched. Reload to continue.",
+    "notes": "pages 页面或对应功能的界面正文/短标签。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.javascript_required",
+    "zh-CN": "请启用 JavaScript 后重新加载。",
+    "en": "Enable JavaScript and reload.",
+    "params": {},
+    "notes": "无脚本启动壳的 noscript 故障提示；保留中文默认，不依赖 JavaScript。多行正文，无变量。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "startup.install_description",
+    "zh-CN": "在任何设备上操作自己电脑上的 Codex",
+    "en": "Control Codex on your own computer from any device",
+    "params": {},
+    "notes": "PWA 安装描述元数据；保持现有中文，品牌 Codex 不翻译。无变量。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

@@ -1,9 +1,10 @@
+import * as l10n from "../i18n";
 export type ImageErrorCode = "too_large" | "unsupported" | "decode_failed";
 
-const messages: Record<ImageErrorCode, string> = {
-  too_large: "图片超过 20 MB",
-  unsupported: "不支持这种图片格式",
-  decode_failed: "读不出这张图片",
+const messages: Record<ImageErrorCode, () => string> = {
+  too_large: () => l10n.t("image.image_exceeds_20_mb"),
+  unsupported: () => l10n.t("image.this_image_format_is_not_supported"),
+  decode_failed: () => l10n.t("image.cannot_read_this_image"),
 };
 
 /**
@@ -14,7 +15,7 @@ export class ImageError extends Error {
   readonly code: ImageErrorCode;
   readonly detail: string;
 
-  constructor(code: ImageErrorCode, detail: string, message = messages[code], readonly problem: "original_too_large" | "dimensions" | "decode" = code === "too_large" ? "original_too_large" : "decode") {
+  constructor(code: ImageErrorCode, detail: string, message = messages[code](), readonly problem: "original_too_large" | "dimensions" | "decode" = code === "too_large" ? "original_too_large" : "decode") {
     super(message);
     this.name = "ImageError";
     this.code = code;

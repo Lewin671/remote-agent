@@ -36,7 +36,7 @@ class CompilerTest(unittest.TestCase):
             (lambda r: r[0].pop('en'), 'fields/translations'),
             (lambda r: r[0].update(en=''), 'selector differs'),
             (lambda r: r.append(copy.deepcopy(r[0])), 'duplicate key'),
-            (lambda r: r[0]['en']['forms'].update(other='missing'), 'parameters/format'),
+            (lambda r: (r[0]['params'].update(detail={'type':'string','example':'Example'}), r[0]['en']['forms'].update(other='missing')), 'parameters/format'),
             (lambda r: r[0]['en']['forms'].update(other='{unknown}'), 'parameters/format'),
             (lambda r: r[0]['en']['forms'].update(other=' '), 'empty translation'),
             (lambda r: r[0]['en']['forms'].pop('one'), 'categories'),
@@ -48,6 +48,32 @@ class CompilerTest(unittest.TestCase):
                 original=(self.root/'i18n/messages/image.json').read_text()
                 self.rejected(change,pattern)
                 (self.root/'i18n/messages/image.json').write_text(original)
+
+    def test_plural_rich_slot_can_carry_the_visible_count(self):
+        def change(rows):
+            row = rows[0]
+            row['params']['total'] = {'type': 'string', 'example': '2'}
+            for lang in ('zh-CN', 'en'):
+                row[lang]['forms'] = {form: text.replace('{count}', '{total}') for form, text in row[lang]['forms'].items()}
+        self.mutate(change)
+        output = i18n.build(self.root)
+        self.assertIn('count: number; total: string', output['web/src/i18n/generated.ts'])
+        self.assertIn('getQuantityString(R.plurals.image_attach_failed, count, count, total)', output['android/app/src/main/java/io/github/lewin671/remoteagent/ui/UiMessages.generated.kt'])
+        self.rejected(lambda rows: rows[0]['en']['forms'].update(other='missing visible slot'), 'parameters/format')
+
+    def test_launch_surfaces_are_generated_from_the_same_source(self):
+        folder = self.root / 'scripts/i18n_templates'
+        folder.mkdir(parents=True)
+        for name in ('web-shell.html', 'web-manifest.json'):
+            shutil.copy(i18n.ROOT / 'scripts/i18n_templates' / name, folder / name)
+        output = i18n.build(self.root)
+        self.assertIn('正在打开…', output['web/index.html'])
+        self.assertIn('请启用 JavaScript 后重新加载。', output['web/index.html'])
+        self.assertNotIn('{{', output['web/index.html'])
+        self.assertIn('在任何设备上操作自己电脑上的 Codex', output['web/public/manifest.webmanifest'])
+        self.assertIn('Opening…', output['web/src/i18n/startup.generated.ts'])
+        (folder / 'web-shell.html').write_text('{{startup.unknown}}')
+        with self.assertRaises(KeyError): i18n.build(self.root)
 
     def test_duplicate_json_fields(self):
         with self.assertRaisesRegex(ValueError,'duplicate JSON field'):

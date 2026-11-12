@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
@@ -370,7 +371,7 @@ export async function joinWithApproval(
       a.approverDeviceId ||
     a.approverDeviceId === (await deviceID(pub))
   )
-    throw new Error("配对批准与这台设备不匹配或已过期");
+    throw new Error(l10n.t("security.pairing_approval_does_not_match_this_device_or_has"));
   const signer = await crypto.subtle.importKey(
     "raw",
     a.approverPublicKey as Uint8Array<ArrayBuffer>,
@@ -389,7 +390,7 @@ export async function joinWithApproval(
       ),
     ))
   )
-    throw new Error("配对批准签名无效");
+    throw new Error(l10n.t("errors.invalid_pairing_approval_signature"));
   const reg = toBinary(
     DeviceRegistrationSchema,
     create(DeviceRegistrationSchema, {
@@ -630,14 +631,14 @@ export class Remote {
             value: { operation: "list" },
           });
           if (result.kind.case !== "schedule")
-            throw new Error("电脑没有返回任务列表");
+            throw new Error(l10n.t("errors.the_computer_did_not_return_a_task_list"));
           const tasks = (
             JSON.parse(
               new TextDecoder().decode(result.kind.value.resultJson),
             ) as { tasks: ScheduleTask[] }
           ).tasks;
           if (!Array.isArray(tasks))
-            throw new Error("电脑返回的任务列表无法读取");
+            throw new Error(l10n.t("errors.the_task_list_returned_by_the_computer_could_not"));
           if (
             !this.machines.has(id) ||
             !this.supportsSchedules(id) ||
@@ -691,9 +692,9 @@ export class Remote {
     },
   ): Promise<ScheduleTask> {
     if (this.conn !== "online" || !this.machines.get(machineId)?.online)
-      throw new Error("电脑不在线，连上后才能修改任务");
+      throw new Error(l10n.t("errors.the_computer_is_offline_connect_to_edit_tasks"));
     if (!this.supportsSchedules(machineId))
-      throw new Error("请先更新这台电脑上的 remote-agent，才能使用定时任务");
+      throw new Error(l10n.t("errors.update_remote_agent_on_this_computer_to_use_scheduled"));
     const attemptKey = machineId + "/" + key;
     let attempt = this.scheduleAttempts.get(attemptKey);
     if (!attempt) {
@@ -701,7 +702,7 @@ export class Remote {
       this.scheduleAttempts.set(attemptKey, attempt);
     }
     if (attempt.expired)
-      throw new Error("上次操作的结果仍未知，请重新读取任务核实后再操作");
+      throw new Error(l10n.t("errors.the_previous_operation_s_outcome_is_still_unknown_reload"));
     const sent = attempt.next({
       ...payload,
       taskId: payload.taskId ?? "",
@@ -726,7 +727,7 @@ export class Remote {
         },
         sent.slot,
       );
-      if (result.kind.case !== "schedule") throw new Error("电脑没有返回任务");
+      if (result.kind.case !== "schedule") throw new Error(l10n.t("errors.the_computer_did_not_return_a_task"));
       const task = JSON.parse(
         new TextDecoder().decode(result.kind.value.resultJson),
       ) as ScheduleTask;
@@ -740,7 +741,7 @@ export class Remote {
       if (error instanceof CommandError && error.fromDaemon && error.code === "aborted") {
         attempt.abandon(); // definite schedule revision conflict
         await this.refreshSchedules(machineId);
-        throw new ScheduleRevisionError("任务刚被修改，已更新为最新内容");
+        throw new ScheduleRevisionError(l10n.t("errors.the_task_was_just_changed_updated_to_the_latest"));
       }
       throw error;
     }
@@ -892,7 +893,7 @@ export class Remote {
     });
     void save.then(() => {
       if (this.draftRevisions.get(key) === revision) this.clearLocalNotice(key);
-    }, () => this.localNotice(key, "草稿没能保存到本机，关闭页面前请保留原图和文字"));
+    }, () => this.localNotice(key, l10n.t("errors.the_draft_could_not_be_saved_locally_keep_the")));
     return save;
   }
 
@@ -913,7 +914,7 @@ export class Remote {
       this.clearLocalNotice(key);
     }).catch(error => {
       this.draftLoads.delete(key);
-      this.localNotice(key, "草稿没能恢复，仍可输入和发送，下次打开或编辑时重试");
+      this.localNotice(key, l10n.t("errors.the_draft_could_not_be_restored_you_can_still"));
       throw error;
     }).finally(() => {
       tray.restoring = false;
@@ -921,7 +922,7 @@ export class Remote {
       if (!this.closed) this.touch();
     });
     this.draftLoads.set(key, job);
-    if (!key.startsWith("new:")) void this.restoreOutbox(key).catch(() => this.localNotice(key, "待发记录没能恢复，仍可输入和发送，下次重试"));
+    if (!key.startsWith("new:")) void this.restoreOutbox(key).catch(() => this.localNotice(key, l10n.t("errors.queued_records_could_not_be_restored_you_can_still")));
     return job;
   }
 
@@ -953,7 +954,7 @@ export class Remote {
       }
     }, () => {
       if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
-      this.localNotice(sid, "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果", "outbox_save");
+      this.localNotice(sid, l10n.t("errors.queued_records_could_not_be_saved_locally_messages_will"), "outbox_save");
     });
     return saved;
   }
@@ -1227,7 +1228,7 @@ export class Remote {
     history = false,
     historical?: HistoryResult,
   ) {
-    if (!env) throw new Error("缺少安全信封");
+    if (!env) throw new Error(l10n.t("errors.security_envelope_missing"));
     if (
       [
         PayloadKind.ACCOUNT_PREFS,
@@ -1274,7 +1275,7 @@ export class Remote {
       msg = fromBinary(schema, out.plaintext);
       validateSecurityBody(out.header, schema.typeName, msg);
     } catch {
-      throw new Error("安全正文类型或方向不匹配");
+      throw new Error(l10n.t("errors.security_body_type_or_direction_mismatch"));
     }
     return { header, msg, size: out.plaintext.length };
   }
@@ -1698,7 +1699,7 @@ export class Remote {
   private noteClock(e: unknown) {
     if (e instanceof SecurityError && e.code === "clock") {
       this.clockWarning =
-        "本机时间比账户状态慢。请校准系统时间和时区，否则远程操作会被拒绝。";
+        l10n.t("errors.this_device_s_clock_is_behind_the_account_state");
       this.changed();
     }
   }
@@ -1728,7 +1729,7 @@ export class Remote {
     const ws = this.ws;
     this.ws = undefined;
     ws?.close();
-    for (const close of this.terminals.values()) close("终端连接已关闭");
+    for (const close of this.terminals.values()) close(l10n.t("errors.terminal_connection_closed"));
     this.terminals.clear();
     if (this.conn === "online") this.lostAt = Date.now();
     this.conn = "offline";
@@ -1749,7 +1750,7 @@ export class Remote {
       this.ws = undefined;
       ws?.close();
       for (const close of this.terminals.values())
-        close("网络已变化，正在重连");
+        close(l10n.t("errors.network_changed_reconnecting"));
     } else if (this.ws || this.retryTimer === undefined) return;
     clearTimeout(this.retryTimer);
     this.retryTimer = undefined;
@@ -1769,10 +1770,10 @@ export class Remote {
         signal: stop.signal,
       });
       await res.arrayBuffer();
-      if (!res.ok) throw new Error(`服务器返回 ${res.status}`);
+      if (!res.ok) throw new Error(l10n.t("errors.server_returned", { value: String(res.status) }));
       return Math.round(performance.now() - started);
     } catch (e) {
-      throw stop.signal.aborted ? new Error("没有回应") : e;
+      throw stop.signal.aborted ? new Error(l10n.t("connection.no_response")) : e;
     } finally {
       clearTimeout(timer);
     }
@@ -1789,7 +1790,7 @@ export class Remote {
         new Promise<never>(
           (_, reject) =>
             (timer = setTimeout(
-              () => reject(new Error("没有回应")),
+              () => reject(new Error(l10n.t("connection.no_response"))),
               timeoutMs,
             )),
         ),
@@ -1866,7 +1867,7 @@ export class Remote {
     this.retryTimer = undefined;
     const generation = ++this.generation;
     this.conn = "connecting";
-    const attempt = this.connAttempt = { step: "读取本机状态", startedAt: Date.now() };
+    const attempt = this.connAttempt = { step: l10n.t("errors.reading_local_state"), startedAt: Date.now() };
     let step = "";
     let budget = OPEN_TIMEOUT_MS;
     let stall: ReturnType<typeof setTimeout> | undefined;
@@ -1876,7 +1877,7 @@ export class Remote {
       stall = setTimeout(() => {
         if (this.closed || generation !== this.generation) return;
         this.generation++;
-        this.fail(new Error(`${step}超时，正在重连`));
+        this.fail(new Error(l10n.t("errors.timed_out_reconnecting", { value: String(step) })));
       }, budget);
     };
     const at = (name: string, timeout = OPEN_TIMEOUT_MS) => {
@@ -1887,11 +1888,11 @@ export class Remote {
       progress();
     };
     this.setupProgress = progress;
-    at("读取本机状态");
+    at(l10n.t("errors.reading_local_state"));
     try {
       const go = await this.preStream(generation, at);
       if (go) {
-        attempt.step = "建立推送连接";
+        attempt.step = l10n.t("errors.establishing_push_connection");
         this.changed(true);
         this.openStream(generation);
       }
@@ -1913,7 +1914,7 @@ export class Remote {
   ): Promise<boolean> {
     await this.warm();
     if (this.closed || generation !== this.generation) return false;
-    at("登录", SETUP_IDLE_MS);
+    at(l10n.t("errors.signing_in"), SETUP_IDLE_MS);
     try {
       // A token kept from an earlier visit saves the two login calls. One
       // about to expire is not worth a refused connection; the server
@@ -1928,7 +1929,7 @@ export class Remote {
       return false;
     }
     if (this.closed || generation !== this.generation) return false;
-    at("同步设备状态", SETUP_IDLE_MS);
+    at(l10n.t("errors.syncing_device_state"), SETUP_IDLE_MS);
     try {
       // A stale head must not receive or open live frames; pull it before
       // the stream starts. The 60 s loop keeps it fresh afterwards.
@@ -1970,14 +1971,14 @@ export class Remote {
       if (code === 1008) this.discardToken();
       ws.close();
       for (const close of this.terminals.values())
-        close("与 server 的连接断开");
+        close(l10n.t("errors.disconnected_from_server"));
       this.fail(e);
     };
     const watch = () => {
       this.lastFrameAt = Date.now();
       clearTimeout(this.idleTimer);
       this.idleTimer = setTimeout(
-        () => drop(new Error("连接超时，正在重连")),
+        () => drop(new Error(l10n.t("errors.connection_timed_out_reconnecting"))),
         STREAM_IDLE_MS,
       );
     };
@@ -1985,7 +1986,7 @@ export class Remote {
     // minutes; the next attempt usually gets through much sooner.
     clearTimeout(this.openTimer);
     this.openTimer = setTimeout(() => {
-      drop(new Error("连接超时，正在重连"));
+      drop(new Error(l10n.t("errors.connection_timed_out_reconnecting")));
     }, OPEN_TIMEOUT_MS);
     ws.onopen = () => {
       if (this.ws !== ws || this.closed || generation !== this.generation)
@@ -2007,7 +2008,7 @@ export class Remote {
       queuedFrames++;
       if (queuedBytes > 8 * 1024 * 1024 || queuedFrames > 1024) {
         overflow = true;
-        drop(new Error("推送积压，正在重连"));
+        drop(new Error(l10n.t("errors.push_backlog_reconnecting")));
         return;
       }
       processing = processing
@@ -2018,7 +2019,7 @@ export class Remote {
             f = fromBinary(ServerFrameSchema, new Uint8Array(data));
           } catch {
             overflow = true;
-            drop(new Error("无效的推送帧"));
+            drop(new Error(l10n.t("errors.invalid_push_frame")));
             return;
           }
           await this.onFrame(f.kind, generation);
@@ -2032,7 +2033,7 @@ export class Remote {
           queuedFrames--;
         });
     };
-    ws.onclose = (e) => drop(new Error("与 server 的连接断开"), e?.code);
+    ws.onclose = (e) => drop(new Error(l10n.t("errors.disconnected_from_server")), e?.code);
   }
 
   private fail(e: unknown) {
@@ -2202,7 +2203,7 @@ export class Remote {
       const listing = ++this.listing;
       this.relisting++;
       await this.loadDevices(false);
-      if (this.devicesStatus !== "ready") throw new Error("无法核实当前成员");
+      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.current_membership_could_not_be_verified"));
       const [ms, ss] = await Promise.all([
         this.api.listMachines({}),
         this.api.listRemoteSessions({ limit: this.sessionPageSize }),
@@ -2463,10 +2464,10 @@ export class Remote {
     try {
       rejectRetiredHistory(rs.key);
       if (!view) {
-        if (!rs.key) throw new Error("缺少会话密钥信封");
+        if (!rs.key) throw new Error(l10n.t("errors.session_key_envelope_missing"));
         const opened = await this.security.openHistory(rs.key);
         const header = this.projectHeader(opened.header), plaintext = opened.plaintext;
-        if (plaintext.length !== 32) throw new Error("无效的会话种子");
+        if (plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
         this.sessionSeeds.set(rs.sessionId, new Uint8Array(plaintext));
         expect(header, {
           kind: PayloadKind.SESSION_KEY,
@@ -2509,7 +2510,7 @@ export class Remote {
           msg.machineReplacements,
         );
         if (!origins.has(view.machineId))
-          throw new Error("会话记录的机器被改动");
+          throw new Error(l10n.t("errors.the_session_record_s_computer_was_changed"));
         // Validate the new seed before changing an already displayed route.
         const opened = await this.security.openHistory(rs.key!);
         expect(this.projectHeader(opened.header), {
@@ -2517,7 +2518,7 @@ export class Remote {
           machineId: rs.machineId,
           sessionId: rs.sessionId,
         });
-        if (opened.plaintext.length !== 32) throw new Error("无效的会话种子");
+        if (opened.plaintext.length !== 32) throw new Error(l10n.t("errors.invalid_session_seed"));
         this.sessionSeeds.set(rs.sessionId, new Uint8Array(opened.plaintext));
         view = {
           ...view,
@@ -2556,7 +2557,7 @@ export class Remote {
                 (e) => e.sessionId !== rs.sessionId || e.seq > msg.lastSeq,
               )
             )
-              throw new Error("密文无效：当前状态 checkpoint 不匹配");
+              throw new Error(l10n.t("errors.invalid_ciphertext_current_state_checkpoint_mismatch"));
             view.checkpoint = cp;
             view.checkpointStatus = "ready";
           } else view.checkpointStatus = "waiting";
@@ -2756,13 +2757,13 @@ export class Remote {
           // same page again would not help.
           if (b.broken) break;
           if (b.events.length === before && b.pending.size)
-            throw new Error("历史记录存在缺口，请重试");
+            throw new Error(l10n.t("errors.history_has_a_gap_retry"));
           if (!res.more) {
-            if (b.pending.size) throw new Error("历史记录存在缺口，请重试");
+            if (b.pending.size) throw new Error(l10n.t("errors.history_has_a_gap_retry"));
             break;
           }
           if (b.events.length === before)
-            throw new Error("历史记录未能继续加载，请重试");
+            throw new Error(l10n.t("errors.history_could_not_continue_loading_retry"));
         }
       } while (b.refetch);
       b.loaded = true;
@@ -2844,7 +2845,7 @@ export class Remote {
         );
         if (this.buffers.get(s.id) !== b) return;
         if (msg.seq !== se.seq || msg.sessionId !== s.id)
-          throw new Error("事件的位置被改动");
+          throw new Error(l10n.t("errors.the_event_s_position_was_changed"));
         if (se.seq <= BigInt(b.events.length) || b.pending.has(se.seq))
           continue;
         if (fromBinary(HeaderSchema, se.envelope!.header).version === 3)
@@ -2925,7 +2926,7 @@ export class Remote {
     const job = (async () => {
       try {
         const s = this.sessions.get(sid);
-        if (!s) throw new Error("未知会话");
+        if (!s) throw new Error(l10n.t("session.android_unknown"));
         const reply = await this.forward(s.machineId, sid, {
           case: "getLiveSnapshot",
           value: { sessionId: sid },
@@ -2934,7 +2935,7 @@ export class Remote {
           reply.kind.case !== "liveSnapshot" ||
           reply.kind.value.session?.id !== sid
         )
-          throw new Error("当前请求快照无效");
+          throw new Error(l10n.t("errors.invalid_current_request_snapshot"));
         this.liveSnapshots.set(sid, reply.kind.value);
         this.liveErrors.delete(sid);
         if (s.info) s.info = { ...s.info, ...reply.kind.value.session };
@@ -2943,7 +2944,7 @@ export class Remote {
         this.liveSnapshots.delete(sid);
         this.liveErrors.set(
           sid,
-          "无法核实电脑上的待处理请求，请重试或在电脑终端处理",
+          l10n.t("errors.pending_requests_on_the_computer_could_not_be_verified"),
         );
         this.changed();
       } finally {
@@ -3060,7 +3061,7 @@ export class Remote {
     return (
       this.liveErrors.get(sid) ??
       (this.sessions.get(sid)?.checkpointStatus === "waiting"
-        ? "等待所属电脑更新当前状态"
+        ? l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current")
         : undefined)
     );
   }
@@ -3080,7 +3081,7 @@ export class Remote {
         slot,
       );
     const s = this.sessions.get(sid);
-    if (!s) throw new Error("未知会话");
+    if (!s) throw new Error(l10n.t("session.android_unknown"));
     if (
       cmd?.case === "resolveApproval" ||
       cmd?.case === "answerQuestion" ||
@@ -3088,7 +3089,7 @@ export class Remote {
     ) {
       const action = cmd;
       const shown = this.liveSnapshots.get(sid);
-      if (!shown) throw new Error("当前请求尚未由电脑核实，请等待同步");
+      if (!shown) throw new Error(l10n.t("errors.this_request_has_not_been_verified_by_the_computer"));
       const key =
         action.case === "resolveApproval"
           ? action.value.approvalId
@@ -3105,10 +3106,10 @@ export class Remote {
         action.case === "answerPlan"
           ? shown.planEventSeq
           : (displayed?.seq ?? 0n);
-      if (observed === 0n) throw new Error("当前请求已不可操作");
+      if (observed === 0n) throw new Error(l10n.t("errors.this_request_can_no_longer_be_acted_on"));
       await this.refreshLiveSnapshot(sid);
       const fresh = this.liveSnapshots.get(sid);
-      if (!fresh) throw new Error("无法重新核实当前请求");
+      if (!fresh) throw new Error(l10n.t("errors.the_current_request_could_not_be_verified_again"));
       const current = fresh.actions.find((e) =>
         action.case === "resolveApproval"
           ? e.kind.case === "approvalRequested" &&
@@ -3120,7 +3121,7 @@ export class Remote {
           fresh.planEventSeq !== observed ||
           !equalBytes(fresh.planScreenHash, shown.planScreenHash)
         )
-          throw new Error("计划画面已变化，请重新核对");
+          throw new Error(l10n.t("errors.the_plan_display_changed_review_it_again"));
         cmd = {
           case: "answerPlan",
           value: {
@@ -3138,7 +3139,7 @@ export class Remote {
             toBinary(EventSchema, displayed),
           )
         )
-          throw new Error("电脑上的请求已变化，请重新核对");
+          throw new Error(l10n.t("errors.the_request_on_the_computer_changed_review_it_again"));
         if (action.case === "resolveApproval")
           cmd = {
             case: "resolveApproval",
@@ -3195,8 +3196,8 @@ export class Remote {
       throw new CommandError(
         "failed_precondition",
         theirs < PROTOCOL_VERSION
-          ? `${machineName(m)} 上的 remote-agent 版本较旧，请在电脑上更新后再试`
-          : "这个网页版本较旧，请刷新或更新后再试",
+          ? l10n.t("errors.remote_agent_on_is_out_of_date_update_it", { value: String(machineName(m)) })
+          : l10n.t("errors.this_page_is_out_of_date_refresh_or_update"),
       );
     this.checkFileCapability(machineId, cmd);
     // Signed by this device, so the daemon knows who sent it whatever the
@@ -3220,16 +3221,16 @@ export class Remote {
       if (e instanceof SecurityError && e.code === "clock")
         throw new CommandError(
           "clock",
-          "本机时间比账户状态慢，请校准时间和时区后再操作；操作尚未发出",
+          l10n.t("errors.this_device_s_clock_is_behind_the_account_state_remote"),
         );
       if (e instanceof SecurityError && e.code === "lease")
         throw new CommandError(
           "failed_precondition",
-          "远程控制有效期已过，控制和新内容上传已暂停；请在当前管理端续期",
+          l10n.t("errors.remote_control_expired_control_and_new_uploads_are_paused"),
         );
       throw new CommandError(
         "security_unavailable",
-        "无法用当前安全状态签名，操作尚未发出；请重试",
+        l10n.t("errors.cannot_sign_with_the_current_security_state_the_operation"),
       );
     }
     this.authorizedCommands.set(slot, { machineId, sid, cmd });
@@ -3262,7 +3263,7 @@ export class Remote {
         } catch {
           throw new CommandError(
             "unknown",
-            "电脑的回复未通过验证，不确定指令是否执行",
+            l10n.t("errors.the_computer_s_reply_could_not_be_verified_command"),
           );
         }
         if (msg.errorCode)
@@ -3281,7 +3282,7 @@ export class Remote {
           } catch {
             throw new CommandError(
               "unknown",
-              "之前请求的结果仍未知，当前无法重新登录",
+              l10n.t("errors.the_previous_request_s_outcome_is_still_unknown_cannot"),
             );
           }
           continue;
@@ -3301,13 +3302,13 @@ export class Remote {
         }
         if (ce.code === Code.Unavailable)
           throw mayHaveRun
-            ? new CommandError("unknown", "连接中途断了")
-            : new CommandError("unavailable", "电脑不在线，指令没有发出");
-        if (unknown) throw new CommandError("unknown", "连接超时");
+            ? new CommandError("unknown", l10n.t("errors.connection_dropped_midway"))
+            : new CommandError("unavailable", l10n.t("errors.the_computer_is_offline_the_command_was_not_sent"));
+        if (unknown) throw new CommandError("unknown", l10n.t("errors.connection_timed_out"));
         if (mayHaveRun)
           throw new CommandError(
             "unknown",
-            "中继未提供可验证的执行结果，请重试同一请求",
+            l10n.t("errors.the_relay_did_not_provide_a_verifiable_execution_result"),
           );
         throw e;
       }
@@ -3465,7 +3466,7 @@ export class Remote {
     if (!restored || !this.localDrafts) { drop(); return; }
     // Do not release the old owner until the merged draft has landed.
     const saved = this.persistDraft(sid);
-    if (saved) void saved.then(drop).catch(() => this.localNotice(sid, "草稿没能保存，原消息的本机副本仍保留"));
+    if (saved) void saved.then(drop).catch(() => this.localNotice(sid, l10n.t("errors.the_draft_could_not_be_saved_the_original_message")));
   }
 
   private async deliver(sid: string, o: Outgoing) {
@@ -3499,7 +3500,7 @@ export class Remote {
       this.patchOut(sid, o.sendId, {
         status: "failed",
         error: missingImages
-          ? o.files?.length ? "附件不在电脑上" : "图片不在电脑上"
+          ? o.files?.length ? l10n.t("attachment.ios_missing") : l10n.t("attachment.ios_image_missing")
           : errorText(e),
         missingImages,
         unknown: still,
@@ -3517,8 +3518,8 @@ export class Remote {
     signal?: AbortSignal,
   ): Promise<TermConn> {
     const s = this.sessions.get(sid);
-    if (!s) throw new Error("未知会话");
-    if (signal?.aborted) throw new Error("终端连接已取消");
+    if (!s) throw new Error(l10n.t("session.android_unknown"));
+    if (signal?.aborted) throw new Error(l10n.t("errors.terminal_connection_canceled"));
     const streamId = newRequestID();
     const ws = new WebSocket(
       apiBase(this.account.server).replace(/^http/, "ws") + "/v1/term",
@@ -3527,7 +3528,7 @@ export class Remote {
     let closed = false;
     let openingTimer: ReturnType<typeof setTimeout> | undefined;
     let rejectOpening: (e: Error) => void = () => {};
-    const abort = () => finish("终端连接已取消");
+    const abort = () => finish(l10n.t("errors.terminal_connection_canceled"));
     const finish = (reason: string, notify = true) => {
       if (closed) return;
       closed = true;
@@ -3543,7 +3544,7 @@ export class Remote {
     await new Promise<void>((resolve, reject) => {
       rejectOpening = reject;
       openingTimer = setTimeout(
-        () => finish("连接终端超时，请重新连接"),
+        () => finish(l10n.t("errors.terminal_connection_timed_out_reconnect")),
         OPEN_TIMEOUT_MS,
       );
       ws.onopen = () => {
@@ -3565,8 +3566,8 @@ export class Remote {
           finish(errorText(e));
         }
       };
-      ws.onerror = () => finish("连不上终端");
-      ws.onclose = () => finish("终端连接已关闭");
+      ws.onerror = () => finish(l10n.t("errors.cannot_connect_to_terminal"));
+      ws.onclose = () => finish(l10n.t("errors.terminal_connection_closed"));
     });
     let last = 0n;
     let queue = Promise.resolve();
@@ -3578,7 +3579,7 @@ export class Remote {
       pendingBytes += size;
       pendingFrames++;
       if (pendingBytes > 2 * 1024 * 1024 || pendingFrames > 512) {
-        finish("终端输出积压，请重新连接以获取最新画面");
+        finish(l10n.t("errors.terminal_output_backlog_reconnect_for_the_latest_display"));
         ws.close();
         return;
       }
@@ -3601,7 +3602,7 @@ export class Remote {
             TerminalFrameSchema,
           );
           if (closed) return;
-          if (header.seq <= last) throw new Error("终端帧顺序不对");
+          if (header.seq <= last) throw new Error(l10n.t("errors.terminal_frames_are_out_of_order"));
           last = header.seq;
           await onFrame(msg);
         } catch (e) {
@@ -3613,8 +3614,8 @@ export class Remote {
         }
       });
     };
-    ws.onclose = () => finish("终端连接断开");
-    if (closed) throw new Error("终端连接已关闭");
+    ws.onclose = () => finish(l10n.t("errors.terminal_connection_dropped"));
+    if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     try {
       await this.command(sid, {
         case: "openTerminal",
@@ -3624,7 +3625,7 @@ export class Remote {
       finish(errorText(e));
       throw e;
     }
-    if (closed) throw new Error("终端连接已关闭");
+    if (closed) throw new Error(l10n.t("errors.terminal_connection_closed"));
     let seq = 0n;
     let sending = Promise.resolve();
     return {
@@ -3648,7 +3649,7 @@ export class Remote {
             ws.send(toBinary(EnvelopeSchema, env));
         });
       },
-      close: () => finish("终端连接已关闭", false),
+      close: () => finish(l10n.t("errors.terminal_connection_closed"), false),
     };
   }
 
@@ -3709,7 +3710,7 @@ export class Remote {
         ).applied
       )
         break;
-      if (attempt === 4) throw new Error("恢复对象同时更新，将在下次同步重试");
+      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
     for (let attempt = 0; attempt < 5; attempt++) {
       const own = (await this.api.listDevices({})).devices.find(
@@ -3755,7 +3756,7 @@ export class Remote {
         ).applied
       )
         break;
-      if (attempt === 4) throw new Error("恢复对象同时更新，将在下次同步重试");
+      if (attempt === 4) throw new Error(l10n.t("errors.the_recovery_object_was_updated_concurrently_retrying_on_the"));
     }
   }
 
@@ -3929,10 +3930,10 @@ export class Remote {
       }
       if (this.directoryJob?.invalidated) return;
       if (!equalBytes(await this.security.localStateHash(), state))
-        throw new Error("设备目录状态已变化");
+        throw new Error(l10n.t("errors.device_directory_state_changed"));
       for (const [id, d] of nextDevices) {
         if ((this.devices.get(id)?.metaRev ?? 0n) > d.metaRev)
-          throw new Error("设备目录响应已过时");
+          throw new Error(l10n.t("errors.the_device_directory_response_is_out_of_date"));
       }
       this.archiveMachines = new Set(
         record.states.flatMap((s) =>
@@ -4005,7 +4006,7 @@ export class Remote {
    * DeviceMeta is self-only in protocol 10. */
   renameDevice(id: string, name: string): Promise<void> {
     if (id !== this.account.deviceId)
-      throw new Error("名称只能在那台设备上修改");
+      throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
     return this.changeDeviceMeta(id, (m) => ({
       name: name.trim(),
       platform: m?.platform ?? "",
@@ -4025,7 +4026,7 @@ export class Remote {
     else {
       await this.loadDevices(false);
       check();
-      if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
+      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
       const own = this.devices.get(this.account.deviceId), revision = own?.metaRev ?? 0n;
       const meta = await this.sealSecureMessage({ kind: PayloadKind.DEVICE_META,
         requestId: this.account.deviceId, seq: revision + 1n, sender: this.account.deviceId },
@@ -4059,10 +4060,10 @@ export class Remote {
     check: () => void = () => undefined,
   ) {
     if (id !== this.account.deviceId)
-      throw new Error("名称只能在那台设备上修改");
+      throw new Error(l10n.t("errors.names_can_only_be_changed_on_that_device"));
     for (let i = 0; i < 5; i++) {
       await this.loadDevices(false);
-      if (this.devicesStatus !== "ready") throw new Error("无法核实设备信息");
+      if (this.devicesStatus !== "ready") throw new Error(l10n.t("errors.device_information_could_not_be_verified"));
       check();
       const cur = this.devices.get(id),
         rev = cur?.metaRev ?? 0n;
@@ -4089,7 +4090,7 @@ export class Remote {
         return;
       }
     }
-    throw new Error("设备信息正在变化，请重试");
+    throw new Error(l10n.t("errors.device_information_is_changing_retry"));
   }
 
   // --- project list preferences ---
@@ -4137,7 +4138,7 @@ export class Remote {
       ProjectPrefsSchema,
     );
     if (msg.schema !== 1 || header.seq !== o.revision)
-      throw new Error("项目偏好格式不受支持");
+      throw new Error(l10n.t("errors.project_preferences_format_is_not_supported"));
     return { revision: o.revision, prefs: msg };
   }
 
@@ -4281,7 +4282,7 @@ export class Remote {
         k.case === "completeImageUpload"
           ? k.value.status
           : undefined;
-      if (!st) throw new Error("意外的回复");
+      if (!st) throw new Error(l10n.t("new_session.unexpected_reply"));
       return st;
     };
     // A step whose outcome is unknown is followed by asking where it got.
@@ -4290,7 +4291,7 @@ export class Remote {
         try {
           const st = statusOf(await this.machineCommand(machineId, cmd));
           if (cmd?.case === "completeImageUpload" && st.state === ImageUploadState.RECEIVING && Number(st.persistedBytes) === total) {
-            if (i >= 2) throw new Error("电脑仍在校验附件，请稍后重试");
+            if (i >= 2) throw new Error(l10n.t("errors.the_computer_is_still_verifying_attachments_retry_shortly"));
             continue;
           }
           return st;
@@ -4331,7 +4332,7 @@ export class Remote {
       st.maxChunkBytes > 0 ? st.maxChunkBytes : UPLOAD_CHUNK,
     );
     for (let guard = 0; Number(st.persistedBytes) < total; guard++) {
-      if (guard > total / chunk + 10) throw new Error("上传没有进展");
+      if (guard > total / chunk + 10) throw new Error(l10n.t("errors.upload_made_no_progress"));
       const offset = Number(st.persistedBytes);
       progress(offset, total);
       st = await step({
@@ -4345,7 +4346,7 @@ export class Remote {
     }
     progress(total, total);
     st = await step({ case: "completeImageUpload", value: { transferId } });
-    if (p.fileName ? !st.fileId : !st.imageId) throw new Error("电脑没有返回附件 ID");
+    if (p.fileName ? !st.fileId : !st.imageId) throw new Error(l10n.t("errors.the_computer_did_not_return_an_attachment_id"));
     return { imageId: st.imageId, ...(st.fileId ? { fileId: st.fileId } : {}), expiresMs: Number(st.expiresMs) };
   }
 
@@ -4365,7 +4366,7 @@ export class Remote {
       return hit;
     }
     const s = this.sessions.get(sid);
-    if (!s) throw new Error("未知会话");
+    if (!s) throw new Error(l10n.t("session.android_unknown"));
     let res;
     try {
       res = await this.api.getImage({ sessionId: sid, imageId });
@@ -4467,7 +4468,7 @@ export class Remote {
         case: "listModels",
         value: { agent },
       }).then((r) => {
-        if (r.kind.case !== "listModels") throw new Error("意外的回复");
+        if (r.kind.case !== "listModels") throw new Error(l10n.t("new_session.unexpected_reply"));
         this.modelLists.set(key, r.kind.value);
         this.keepInfo();
         this.changed();
@@ -4523,7 +4524,7 @@ export class Remote {
         case: "getSettings",
         value: {},
       }).then((r) => {
-        if (r.kind.case !== "getSettings") throw new Error("意外的回复");
+        if (r.kind.case !== "getSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
         if (r.kind.value.imageStorage)
           this.imageStorage.set(machineId, r.kind.value.imageStorage);
         this.settingsRead.set(machineId, r.kind.value.settings);
@@ -4546,7 +4547,7 @@ export class Remote {
       case: "updateSettings",
       value: { settings: next, cleanImages },
     });
-    if (r.kind.case !== "updateSettings") throw new Error("意外的回复");
+    if (r.kind.case !== "updateSettings") throw new Error(l10n.t("new_session.unexpected_reply"));
     if (r.kind.value.imageStorage)
       this.imageStorage.set(machineId, r.kind.value.imageStorage);
     this.changed();
@@ -4587,21 +4588,21 @@ function maxBig(a: bigint, ...rest: bigint[]): bigint {
 
 export function errorText(e: unknown): string {
   if (e instanceof RecoveryHistoryUnavailable)
-    return "历史密钥不可用：恢复前的记录无法解密";
+    return l10n.t("errors.history_keys_unavailable_records_from_before_recovery_cannot_be");
   if (e instanceof SecurityError) {
     if (e.code === "lease")
-      return "远程控制有效期已过，无法保存更改、控制会话或上传新内容；请在当前管理端续期后重试。历史仍可查看";
+      return l10n.t("errors.remote_control_expired_saving_changes_session_control_and_new");
     if (e.code === "unavailable")
-      return "等待所属电脑更新当前状态：这台设备没有当时的内容密钥";
+      return l10n.t("errors.waiting_for_the_owning_computer_to_update_the_current_remote");
     if (e.code === "invalid" || e.code === "untrusted")
-      return "密文无效：签名、密钥或内容校验失败";
+      return l10n.t("errors.invalid_ciphertext_signature_key_or_content_verification_failed");
     if (e.code === "conflict")
-      return "成员链冲突，安全操作已停止；请核对设备后明确重新加入";
+      return l10n.t("errors.membership_chain_conflict_security_operations_stopped_verify_devices_and");
   }
   if (e instanceof CommandError) return e.message;
   if (e instanceof ConnectError) {
     if (e.code === Code.PermissionDenied && e.rawMessage === "login failed")
-      return "服务器不认识这台设备（可能已被移除，或服务已重建）";
+      return l10n.t("errors.the_server_does_not_recognize_this_device_it_may");
     return e.rawMessage || e.message;
   }
   if (e instanceof Error) return e.message;
@@ -4615,8 +4616,8 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 /** Startup retries the exact signed request, including after a lost response. */
 export async function resumeRegistration(): Promise<void> {
   const authority = await readSecurityOperation();
-  if (authority?.kind === "create") throw new Error("账户创建草稿已保留，请继续原创建流程和恢复码确认");
-  if (authority?.kind === "recovery") throw new Error("紧急恢复草稿已保留，请继续查询、等待或完成原恢复");
+  if (authority?.kind === "create") throw new Error(l10n.t("errors.account_creation_draft_preserved_continue_the_original_creation_flow"));
+  if (authority?.kind === "recovery") throw new Error(l10n.t("errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing"));
   const pending = await loadRegistration();
   if (!pending) return;
   const request = fromBinary(RegisterDeviceRequestSchema, pending.request);
@@ -4653,7 +4654,7 @@ export async function resumeRegistration(): Promise<void> {
     { timeoutMs: 15000 },
   );
   if (res.deviceId !== pending.account.deviceId)
-    throw new Error("server 返回了意外的设备 ID");
+    throw new Error(l10n.t("errors.the_server_returned_an_unexpected_device_id"));
   const approval = fromBinary(
     PairApprovalSchema,
     fromBinary(RegisterDeviceRequestSchema, pending.request).approval,

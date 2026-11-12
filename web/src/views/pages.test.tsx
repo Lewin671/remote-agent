@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // The pages fetched on demand: a page whose file the server no longer has
 // (a newer build replaced it) says so instead of leaving a blank screen.
@@ -28,6 +29,6 @@ it("shows a way to reload when a page's file is gone and the page has just start
   document.body.append(host);
   root = createRoot(host);
   await act(async () => root!.render(<Suspense fallback={<p>加载中…</p>}><SettingsPage remote={{} as Remote} go={() => undefined} /></Suspense>));
-  await vi.waitFor(() => expect(host.textContent).toContain("页面已更新"));
-  expect(host.querySelector("button")?.textContent).toBe("重新加载");
+  await vi.waitFor(() => expect(host.textContent).toContain(message("startup.page_updated")));
+  expect(host.querySelector("button")?.textContent).toBe(message("common.reload"));
 });

@@ -1,3 +1,4 @@
+import { t as message } from "./i18n";
 import { create, fromBinary } from "@bufbuild/protobuf";
 import { HeaderSchema, type Envelope } from "./gen/remoteagent/v1/envelope_pb";
 import { Code, ConnectError } from "@connectrpc/connect";
@@ -85,7 +86,7 @@ it("reports a command unknown when a retry finds the machine gone", async () => 
     const e = await result;
     expect(e).toBeInstanceOf(CommandError);
     expect((e as CommandError).code).toBe("unknown");
-    expect((e as CommandError).message).toBe("连接中途断了");
+    expect((e as CommandError).message).toBe(message("errors.connection_dropped_midway"));
     expect(replies).toHaveLength(0);
   } finally {
     globalThis.setTimeout = clockTimeout;
@@ -198,7 +199,7 @@ it("sends its protocol version with a command, and sends none to a machine of an
   const newer = await run("newer");
   expect(newer).toBeInstanceOf(CommandError);
   expect((newer as CommandError).message).toBe(
-    "这个网页版本较旧，请刷新或更新后再试",
+    message("errors.this_page_is_out_of_date_refresh_or_update"),
   );
   expect(sent).toHaveLength(2);
 });
@@ -924,7 +925,7 @@ it.each(["send", "createSession"] as const)("rejects file-bearing %s when refres
   const error = await (kind === "send" ? r.command("s", cmd) : r.machineCommand(r.machine, cmd)).catch(e => e);
   expect(error).toBeInstanceOf(CommandError);
   expect(error.code).toBe("failed_precondition");
-  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(error.message).toContain(message("session.update_computer"));
   expect(forward).not.toHaveBeenCalled();
 });
 
@@ -943,13 +944,13 @@ it.each([false, true])("blocks file resend/retry after downgrade and keeps unkno
   r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
   const attempts = forward.mock.calls.length;
   r.retrySend("s", id);
-  await vi.waitFor(() => expect(r.outbox("s")[0]?.error).toContain("请更新电脑上的 remote-agent"));
+  await vi.waitFor(() => expect(r.outbox("s")[0]?.error).toContain(message("session.update_computer")));
   expect(forward).toHaveBeenCalledTimes(attempts);
   expect(r.outbox("s")[0]?.files).toEqual([file]);
   expect(r.outbox("s")[0]?.unknown).toBe(unknown);
   if (unknown) expect(r.outbox("s")[0]).toMatchObject({ requestId: original.requestId, deadline: original.deadline });
   r.resend("s", "daemon-rejected", "text with file", [], [], [file]);
-  await vi.waitFor(() => expect(r.outbox("s").at(-1)?.error).toContain("请更新电脑上的 remote-agent"));
+  await vi.waitFor(() => expect(r.outbox("s").at(-1)?.error).toContain(message("session.update_computer")));
   expect(forward).toHaveBeenCalledTimes(attempts);
 });
 
@@ -966,7 +967,7 @@ it("checks the canonical file-bearing payload again on an authorized create retr
   r.machines.get(r.machine)!.meta!.capabilities!.fileUpload = false;
   // A caller cannot strip the files from an already authorized request.
   const error = await r.machineCommand(r.machine, { case: "createSession", value: { prompt: "changed" } }, slot).catch(e => e);
-  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(error.message).toContain(message("session.update_computer"));
   expect(forward).toHaveBeenCalledOnce();
 });
 
@@ -984,7 +985,7 @@ it("rechecks file capability after asynchronous sealing before first dispatch", 
   const forward = vi.fn(async () => { throw new ConnectError("reached transport", Code.InvalidArgument); });
   (r as unknown as { api: object }).api = { forward };
   const error = await r.command("s", { case: "send", value: { text: "text", fileIds: ["file"] } }).catch(e => e);
-  expect(error.message).toContain("请更新电脑上的 remote-agent");
+  expect(error.message).toContain(message("session.update_computer"));
   expect(forward).not.toHaveBeenCalled();
 });
 
@@ -1006,7 +1007,7 @@ it("blocks an automatic file retry after metadata refresh and keeps its outcome 
     await vi.advanceTimersByTimeAsync(1000);
     const error = await done;
     expect(error.code).toBe("unknown");
-    expect(error.message).toContain("请更新电脑上的 remote-agent");
+    expect(error.message).toContain(message("session.update_computer"));
     expect(forward).toHaveBeenCalledOnce();
   } finally { globalThis.setTimeout = timer; vi.useRealTimers(); }
 });

@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // Giving up while waiting for the other device to allow a join.
 import { act } from "react";
@@ -62,7 +63,7 @@ async function start() {
   type("配对码", "48291756");
   await act(async () =>
     [...host.querySelectorAll("button")]
-      .find((b) => b.textContent === "加入")!
+      .find((b) => b.textContent === message("security.join"))!
       .click(),
   );
   return { done, input };
@@ -70,7 +71,7 @@ async function start() {
 
 const give = () =>
   [...host.querySelectorAll("button")].find(
-    (b) => b.textContent === "图案不一致，返回填码",
+    (b) => b.textContent === message("security.patterns_differ_return_to_code_entry"),
   )!;
 
 it("goes back to the code, keeping the server, and stops the join", async () => {
@@ -78,12 +79,12 @@ it("goes back to the code, keeping the server, and stops the join", async () => 
   expect(host.textContent).toContain("🦊 🌵 🚲 🎈");
   await act(async () => give().click());
   expect(calls[0].stopped()).toBe(true);
-  expect(input("配对码").value).toBe("");
-  expect(input("服务器").value).toBe("https://ra.example.com");
+  expect(input(message("security.pairing_code")).value).toBe("");
+  expect(input(message("security.server")).value).toBe("https://ra.example.com");
   expect(host.textContent).toContain("已停止这次等待");
   // The join ends as canceled; nothing else is claimed.
   await act(async () => calls[0].release(false));
-  expect(host.textContent).not.toContain("对方拒绝了这次加入");
+  expect(host.textContent).not.toContain(message("security.the_other_device_refused_this_join_request"));
 });
 
 it("cannot give up once this device began to register, and reports the outcome", async () => {
@@ -108,7 +109,7 @@ it("keeps a given-up attempt canceled when the user pairs again", async () => {
   });
   await act(async () =>
     [...host.querySelectorAll("button")]
-      .find((b) => b.textContent === "加入")!
+      .find((b) => b.textContent === message("security.join"))!
       .click(),
   );
   expect(calls.length).toBe(2);

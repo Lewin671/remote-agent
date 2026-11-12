@@ -222,6 +222,9 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "attachment.read_failed" -> {
             resources.getString(R.string.attachment_read_failed)
         }
+        "attachment.release_to_add" -> {
+            resources.getString(R.string.attachment_release_to_add)
+        }
         "attachment.remove_file" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.attachment_remove_file, name)
@@ -440,8 +443,40 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.connection_android_server_failed, reason)
         }
+        "connection.checking" -> {
+            resources.getString(R.string.connection_checking)
+        }
+        "connection.connected" -> {
+            resources.getString(R.string.connection_connected)
+        }
         "connection.connecting" -> {
             resources.getString(R.string.connection_connecting)
+        }
+        "connection.connecting_conn_check" -> {
+            resources.getString(R.string.connection_connecting_conn_check)
+        }
+        "connection.connecting_conn_check_label" -> {
+            resources.getString(R.string.connection_connecting_conn_check_label)
+        }
+        "connection.last_failure" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.connection_last_failure, value)
+        }
+        "connection.latency_is_one_round_trip_the_server_row_measures" -> {
+            resources.getString(R.string.connection_latency_is_one_round_trip_the_server_row_measures)
+        }
+        "connection.live_push" -> {
+            resources.getString(R.string.connection_live_push)
+        }
+        "connection.live_push_is_not_connected" -> {
+            resources.getString(R.string.connection_live_push_is_not_connected)
+        }
+        "connection.live_push_is_not_connected_session_changes_may_be" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.connection_live_push_is_not_connected_session_changes_may_be, value)
+        }
+        "connection.local_network" -> {
+            resources.getString(R.string.connection_local_network)
         }
         "connection.network_required" -> {
             resources.getString(R.string.connection_network_required)
@@ -461,14 +496,33 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "connection.no_server" -> {
             resources.getString(R.string.connection_no_server)
         }
+        "connection.not_checked" -> {
+            resources.getString(R.string.connection_not_checked)
+        }
         "connection.previous_below" -> {
             resources.getString(R.string.connection_previous_below)
+        }
+        "connection.reconnect_now" -> {
+            resources.getString(R.string.connection_reconnect_now)
         }
         "connection.reconnecting" -> {
             resources.getString(R.string.connection_reconnecting)
         }
+        "connection.reconnecting_conn_check" -> {
+            resources.getString(R.string.connection_reconnecting_conn_check)
+        }
+        "connection.reconnecting_conn_check_label" -> {
+            resources.getString(R.string.connection_reconnecting_conn_check_label)
+        }
         "connection.retrying_previous" -> {
             resources.getString(R.string.connection_retrying_previous)
+        }
+        "connection.sec_elapsed" -> {
+            val count = message.args.getValue("count") as Int
+            val detail = message.args.getValue("detail") as String
+            val previousFailure = message.args.getValue("previousFailure") as String
+            val value = message.args.getValue("value") as String
+            resources.getQuantityString(R.plurals.connection_sec_elapsed, count, count, detail, previousFailure, value)
         }
         "connection.server_details" -> {
             val reason = message.args.getValue("reason") as String
@@ -476,6 +530,24 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "connection.server_retrying" -> {
             resources.getString(R.string.connection_server_retrying)
+        }
+        "connection.slow" -> {
+            resources.getString(R.string.connection_slow)
+        }
+        "connection.test_again" -> {
+            resources.getString(R.string.connection_test_again)
+        }
+        "connection.this_device_has_no_network_it_will_reconnect_when" -> {
+            resources.getString(R.string.connection_this_device_has_no_network_it_will_reconnect_when)
+        }
+        "connection.unavailable" -> {
+            resources.getString(R.string.connection_unavailable)
+        }
+        "connection.unreachable" -> {
+            resources.getString(R.string.connection_unreachable)
+        }
+        "connection.working" -> {
+            resources.getString(R.string.connection_working)
         }
         "dock.agent_waiting" -> {
             val agent = message.args.getValue("agent") as String
@@ -619,6 +691,280 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "dock.waiting_confirmation" -> {
             resources.getString(R.string.dock_waiting_confirmation)
+        }
+        "errors.account_creation_draft_preserved_continue_the_original_creation_flow" -> {
+            resources.getString(R.string.errors_account_creation_draft_preserved_continue_the_original_creation_flow)
+        }
+        "errors.cannot_connect_to_terminal" -> {
+            resources.getString(R.string.errors_cannot_connect_to_terminal)
+        }
+        "errors.cannot_sign_with_the_current_security_state_the_operation" -> {
+            resources.getString(R.string.errors_cannot_sign_with_the_current_security_state_the_operation)
+        }
+        "errors.connection_dropped_midway" -> {
+            resources.getString(R.string.errors_connection_dropped_midway)
+        }
+        "errors.connection_timed_out" -> {
+            resources.getString(R.string.errors_connection_timed_out)
+        }
+        "errors.connection_timed_out_reconnecting" -> {
+            resources.getString(R.string.errors_connection_timed_out_reconnecting)
+        }
+        "errors.current_membership_could_not_be_verified" -> {
+            resources.getString(R.string.errors_current_membership_could_not_be_verified)
+        }
+        "errors.device_directory_state_changed" -> {
+            resources.getString(R.string.errors_device_directory_state_changed)
+        }
+        "errors.device_information_could_not_be_verified" -> {
+            resources.getString(R.string.errors_device_information_could_not_be_verified)
+        }
+        "errors.device_information_is_changing_retry" -> {
+            resources.getString(R.string.errors_device_information_is_changing_retry)
+        }
+        "errors.device_registration_is_unfinished_retry_it_first" -> {
+            resources.getString(R.string.errors_device_registration_is_unfinished_retry_it_first)
+        }
+        "errors.disconnected_from_server" -> {
+            resources.getString(R.string.errors_disconnected_from_server)
+        }
+        "errors.emergency_recovery_draft_preserved_continue_checking_waiting_or_completing" -> {
+            resources.getString(R.string.errors_emergency_recovery_draft_preserved_continue_checking_waiting_or_completing)
+        }
+        "errors.establishing_push_connection" -> {
+            resources.getString(R.string.errors_establishing_push_connection)
+        }
+        "errors.history_could_not_continue_loading_retry" -> {
+            resources.getString(R.string.errors_history_could_not_continue_loading_retry)
+        }
+        "errors.history_has_a_gap_retry" -> {
+            resources.getString(R.string.errors_history_has_a_gap_retry)
+        }
+        "errors.history_keys_unavailable_records_from_before_recovery_cannot_be" -> {
+            resources.getString(R.string.errors_history_keys_unavailable_records_from_before_recovery_cannot_be)
+        }
+        "errors.invalid_ciphertext_current_state_checkpoint_mismatch" -> {
+            resources.getString(R.string.errors_invalid_ciphertext_current_state_checkpoint_mismatch)
+        }
+        "errors.invalid_ciphertext_signature_key_or_content_verification_failed" -> {
+            resources.getString(R.string.errors_invalid_ciphertext_signature_key_or_content_verification_failed)
+        }
+        "errors.invalid_current_request_snapshot" -> {
+            resources.getString(R.string.errors_invalid_current_request_snapshot)
+        }
+        "errors.invalid_pairing_approval_signature" -> {
+            resources.getString(R.string.errors_invalid_pairing_approval_signature)
+        }
+        "errors.invalid_push_frame" -> {
+            resources.getString(R.string.errors_invalid_push_frame)
+        }
+        "errors.invalid_session_seed" -> {
+            resources.getString(R.string.errors_invalid_session_seed)
+        }
+        "errors.it_may_have_been_deleted_or_belong_to_a" -> {
+            resources.getString(R.string.errors_it_may_have_been_deleted_or_belong_to_a)
+        }
+        "errors.membership_chain_conflict_security_operations_stopped_verify_devices_and" -> {
+            resources.getString(R.string.errors_membership_chain_conflict_security_operations_stopped_verify_devices_and)
+        }
+        "errors.names_can_only_be_changed_on_that_device" -> {
+            resources.getString(R.string.errors_names_can_only_be_changed_on_that_device)
+        }
+        "errors.network_changed_reconnecting" -> {
+            resources.getString(R.string.errors_network_changed_reconnecting)
+        }
+        "errors.other_clients_kept_changing_the_project_list_changes_could" -> {
+            resources.getString(R.string.errors_other_clients_kept_changing_the_project_list_changes_could)
+        }
+        "errors.pending_requests_on_the_computer_could_not_be_verified" -> {
+            resources.getString(R.string.errors_pending_requests_on_the_computer_could_not_be_verified)
+        }
+        "errors.project_preferences_format_is_not_supported" -> {
+            resources.getString(R.string.errors_project_preferences_format_is_not_supported)
+        }
+        "errors.push_backlog_reconnecting" -> {
+            resources.getString(R.string.errors_push_backlog_reconnecting)
+        }
+        "errors.queued_records_could_not_be_restored_you_can_still" -> {
+            resources.getString(R.string.errors_queued_records_could_not_be_restored_you_can_still)
+        }
+        "errors.queued_records_could_not_be_saved_locally_messages_will" -> {
+            resources.getString(R.string.errors_queued_records_could_not_be_saved_locally_messages_will)
+        }
+        "errors.reading_local_state" -> {
+            resources.getString(R.string.errors_reading_local_state)
+        }
+        "errors.remote_agent_on_is_out_of_date_update_it" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.errors_remote_agent_on_is_out_of_date_update_it, value)
+        }
+        "errors.remote_control_expired_control_and_new_uploads_are_paused" -> {
+            resources.getString(R.string.errors_remote_control_expired_control_and_new_uploads_are_paused)
+        }
+        "errors.remote_control_expired_saving_changes_session_control_and_new" -> {
+            resources.getString(R.string.errors_remote_control_expired_saving_changes_session_control_and_new)
+        }
+        "errors.security_body_type_or_direction_mismatch" -> {
+            resources.getString(R.string.errors_security_body_type_or_direction_mismatch)
+        }
+        "errors.security_envelope_missing" -> {
+            resources.getString(R.string.errors_security_envelope_missing)
+        }
+        "errors.server_returned" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.errors_server_returned, value)
+        }
+        "errors.session_key_envelope_missing" -> {
+            resources.getString(R.string.errors_session_key_envelope_missing)
+        }
+        "errors.setup_request_preserved" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.errors_setup_request_preserved, reason)
+        }
+        "errors.signing_in" -> {
+            resources.getString(R.string.errors_signing_in)
+        }
+        "errors.syncing_device_state" -> {
+            resources.getString(R.string.errors_syncing_device_state)
+        }
+        "errors.terminal_connection_canceled" -> {
+            resources.getString(R.string.errors_terminal_connection_canceled)
+        }
+        "errors.terminal_connection_closed" -> {
+            resources.getString(R.string.errors_terminal_connection_closed)
+        }
+        "errors.terminal_connection_dropped" -> {
+            resources.getString(R.string.errors_terminal_connection_dropped)
+        }
+        "errors.terminal_connection_timed_out_reconnect" -> {
+            resources.getString(R.string.errors_terminal_connection_timed_out_reconnect)
+        }
+        "errors.terminal_frames_are_out_of_order" -> {
+            resources.getString(R.string.errors_terminal_frames_are_out_of_order)
+        }
+        "errors.terminal_output_backlog_reconnect_for_the_latest_display" -> {
+            resources.getString(R.string.errors_terminal_output_backlog_reconnect_for_the_latest_display)
+        }
+        "errors.the_computer_did_not_return_a_task" -> {
+            resources.getString(R.string.errors_the_computer_did_not_return_a_task)
+        }
+        "errors.the_computer_did_not_return_a_task_list" -> {
+            resources.getString(R.string.errors_the_computer_did_not_return_a_task_list)
+        }
+        "errors.the_computer_did_not_return_an_attachment_id" -> {
+            resources.getString(R.string.errors_the_computer_did_not_return_an_attachment_id)
+        }
+        "errors.the_computer_is_offline_connect_to_edit_tasks" -> {
+            resources.getString(R.string.errors_the_computer_is_offline_connect_to_edit_tasks)
+        }
+        "errors.the_computer_is_offline_the_command_was_not_sent" -> {
+            resources.getString(R.string.errors_the_computer_is_offline_the_command_was_not_sent)
+        }
+        "errors.the_computer_is_still_verifying_attachments_retry_shortly" -> {
+            resources.getString(R.string.errors_the_computer_is_still_verifying_attachments_retry_shortly)
+        }
+        "errors.the_computer_s_reply_could_not_be_verified_command" -> {
+            resources.getString(R.string.errors_the_computer_s_reply_could_not_be_verified_command)
+        }
+        "errors.the_current_request_could_not_be_verified_again" -> {
+            resources.getString(R.string.errors_the_current_request_could_not_be_verified_again)
+        }
+        "errors.the_device_directory_response_is_out_of_date" -> {
+            resources.getString(R.string.errors_the_device_directory_response_is_out_of_date)
+        }
+        "errors.the_draft_could_not_be_restored_you_can_still" -> {
+            resources.getString(R.string.errors_the_draft_could_not_be_restored_you_can_still)
+        }
+        "errors.the_draft_could_not_be_saved_locally_keep_the" -> {
+            resources.getString(R.string.errors_the_draft_could_not_be_saved_locally_keep_the)
+        }
+        "errors.the_draft_could_not_be_saved_the_original_message" -> {
+            resources.getString(R.string.errors_the_draft_could_not_be_saved_the_original_message)
+        }
+        "errors.the_event_s_position_was_changed" -> {
+            resources.getString(R.string.errors_the_event_s_position_was_changed)
+        }
+        "errors.the_plan_display_changed_review_it_again" -> {
+            resources.getString(R.string.errors_the_plan_display_changed_review_it_again)
+        }
+        "errors.the_previous_operation_s_outcome_is_still_unknown_reload" -> {
+            resources.getString(R.string.errors_the_previous_operation_s_outcome_is_still_unknown_reload)
+        }
+        "errors.the_previous_request_s_outcome_is_still_unknown_cannot" -> {
+            resources.getString(R.string.errors_the_previous_request_s_outcome_is_still_unknown_cannot)
+        }
+        "errors.the_recovery_object_was_updated_concurrently_retrying_on_the" -> {
+            resources.getString(R.string.errors_the_recovery_object_was_updated_concurrently_retrying_on_the)
+        }
+        "errors.the_relay_did_not_provide_a_verifiable_execution_result" -> {
+            resources.getString(R.string.errors_the_relay_did_not_provide_a_verifiable_execution_result)
+        }
+        "errors.the_request_on_the_computer_changed_review_it_again" -> {
+            resources.getString(R.string.errors_the_request_on_the_computer_changed_review_it_again)
+        }
+        "errors.the_server_address_cannot_include_a_username_or_password" -> {
+            resources.getString(R.string.errors_the_server_address_cannot_include_a_username_or_password)
+        }
+        "errors.the_server_does_not_recognize_this_device_it_may" -> {
+            resources.getString(R.string.errors_the_server_does_not_recognize_this_device_it_may)
+        }
+        "errors.the_server_must_use_https" -> {
+            resources.getString(R.string.errors_the_server_must_use_https)
+        }
+        "errors.the_server_returned_an_unexpected_device_id" -> {
+            resources.getString(R.string.errors_the_server_returned_an_unexpected_device_id)
+        }
+        "errors.the_session_record_s_computer_was_changed" -> {
+            resources.getString(R.string.errors_the_session_record_s_computer_was_changed)
+        }
+        "errors.the_task_list_returned_by_the_computer_could_not" -> {
+            resources.getString(R.string.errors_the_task_list_returned_by_the_computer_could_not)
+        }
+        "errors.the_task_was_just_changed_updated_to_the_latest" -> {
+            resources.getString(R.string.errors_the_task_was_just_changed_updated_to_the_latest)
+        }
+        "errors.this_browser_has_already_joined_an_account_open_this" -> {
+            resources.getString(R.string.errors_this_browser_has_already_joined_an_account_open_this)
+        }
+        "errors.this_device_s_clock_is_behind_the_account_state" -> {
+            resources.getString(R.string.errors_this_device_s_clock_is_behind_the_account_state)
+        }
+        "errors.this_device_s_clock_is_behind_the_account_state_remote" -> {
+            resources.getString(R.string.errors_this_device_s_clock_is_behind_the_account_state_remote)
+        }
+        "errors.this_device_s_security_state_could_not_be_verified" -> {
+            resources.getString(R.string.errors_this_device_s_security_state_could_not_be_verified)
+        }
+        "errors.this_history_uses_an_old_encryption_format_and_can" -> {
+            resources.getString(R.string.errors_this_history_uses_an_old_encryption_format_and_can)
+        }
+        "errors.this_is_not_a_remote_agent_account_key" -> {
+            resources.getString(R.string.errors_this_is_not_a_remote_agent_account_key)
+        }
+        "errors.this_page_is_out_of_date_refresh_or_update" -> {
+            resources.getString(R.string.errors_this_page_is_out_of_date_refresh_or_update)
+        }
+        "errors.this_request_can_no_longer_be_acted_on" -> {
+            resources.getString(R.string.errors_this_request_can_no_longer_be_acted_on)
+        }
+        "errors.this_request_has_not_been_verified_by_the_computer" -> {
+            resources.getString(R.string.errors_this_request_has_not_been_verified_by_the_computer)
+        }
+        "errors.timed_out_reconnecting" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.errors_timed_out_reconnecting, value)
+        }
+        "errors.update_remote_agent_on_this_computer_to_use_scheduled" -> {
+            resources.getString(R.string.errors_update_remote_agent_on_this_computer_to_use_scheduled)
+        }
+        "errors.upload_made_no_progress" -> {
+            resources.getString(R.string.errors_upload_made_no_progress)
+        }
+        "errors.waiting_for_the_owning_computer_to_update_the_current" -> {
+            resources.getString(R.string.errors_waiting_for_the_owning_computer_to_update_the_current)
+        }
+        "errors.waiting_for_the_owning_computer_to_update_the_current_remote" -> {
+            resources.getString(R.string.errors_waiting_for_the_owning_computer_to_update_the_current_remote)
         }
         "home.add_device" -> {
             resources.getString(R.string.home_add_device)
@@ -907,6 +1253,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "image.back_message" -> {
             resources.getString(R.string.image_back_message)
         }
+        "image.cannot_read_this_image" -> {
+            resources.getString(R.string.image_cannot_read_this_image)
+        }
+        "image.cannot_read_this_image_try_jpeg_or_png_instead" -> {
+            resources.getString(R.string.image_cannot_read_this_image_try_jpeg_or_png_instead)
+        }
         "image.convert_failed" -> {
             resources.getString(R.string.image_convert_failed)
         }
@@ -926,6 +1278,21 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "image.generated" -> {
             resources.getString(R.string.image_generated)
+        }
+        "image.image_dimensions_are_too_large" -> {
+            resources.getString(R.string.image_image_dimensions_are_too_large)
+        }
+        "image.image_dimensions_are_too_large_resize_it_and_retry" -> {
+            resources.getString(R.string.image_image_dimensions_are_too_large_resize_it_and_retry)
+        }
+        "image.image_dimensions_are_too_large_send_a_compressed_version" -> {
+            resources.getString(R.string.image_image_dimensions_are_too_large_send_a_compressed_version)
+        }
+        "image.image_exceeds_20_mb" -> {
+            resources.getString(R.string.image_image_exceeds_20_mb)
+        }
+        "image.image_exceeds_20_mb_turn_off_original_and_send" -> {
+            resources.getString(R.string.image_image_exceeds_20_mb_turn_off_original_and_send)
         }
         "image.load_connected" -> {
             resources.getString(R.string.image_load_connected)
@@ -1004,6 +1371,21 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "image.share_failed" -> {
             val reason = message.args.getValue("reason") as String
             resources.getString(R.string.image_share_failed, reason)
+        }
+        "image.the_computer_s_attachment_storage_is_full_clear_space" -> {
+            resources.getString(R.string.image_the_computer_s_attachment_storage_is_full_clear_space)
+        }
+        "image.the_image_could_not_reach_the_computer_retry_when" -> {
+            resources.getString(R.string.image_the_image_could_not_reach_the_computer_retry_when)
+        }
+        "image.this_image_could_not_be_processed" -> {
+            resources.getString(R.string.image_this_image_could_not_be_processed)
+        }
+        "image.this_image_format_is_not_supported" -> {
+            resources.getString(R.string.image_this_image_format_is_not_supported)
+        }
+        "image.this_image_has_no_local_copy_remove_it_and" -> {
+            resources.getString(R.string.image_this_image_has_no_local_copy_remove_it_and)
         }
         "image.title" -> {
             resources.getString(R.string.image_title)
@@ -1172,11 +1554,18 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "models.title" -> {
             resources.getString(R.string.models_title)
         }
+        "models.unknown_cli" -> {
+            resources.getString(R.string.models_unknown_cli)
+        }
         "modes.account_no_auto" -> {
             resources.getString(R.string.modes_account_no_auto)
         }
         "modes.account_unsupported" -> {
             resources.getString(R.string.modes_account_unsupported)
+        }
+        "modes.agent_own" -> {
+            val agent = message.args.getValue("agent") as String
+            resources.getString(R.string.modes_agent_own, agent)
         }
         "modes.agy_ask_desc" -> {
             resources.getString(R.string.modes_agy_ask_desc)
@@ -1384,14 +1773,25 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "new_session.disconnected" -> {
             resources.getString(R.string.new_session_disconnected)
         }
+        "new_session.each_cli_has_its_own_settings_choose_the_cli" -> {
+            resources.getString(R.string.new_session_each_cli_has_its_own_settings_choose_the_cli)
+        }
         "new_session.expired_start" -> {
             resources.getString(R.string.new_session_expired_start)
         }
         "new_session.first_message" -> {
             resources.getString(R.string.new_session_first_message)
         }
+        "new_session.fixed_effort" -> {
+            val effort = message.args.getValue("effort") as String
+            resources.getString(R.string.new_session_fixed_effort, effort)
+        }
         "new_session.follow_cli" -> {
             resources.getString(R.string.new_session_follow_cli)
+        }
+        "new_session.follow_s_configuration" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.new_session_follow_s_configuration, value)
         }
         "new_session.installed" -> {
             val agents = message.args.getValue("agents") as String
@@ -1434,6 +1834,14 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_machine_offline, name)
         }
+        "new_session.machine_project_defaults" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_machine_project_defaults, name)
+        }
+        "new_session.model_list_default" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.new_session_model_list_default, name)
+        }
         "new_session.model_no_auto" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_model_no_auto, name)
@@ -1448,6 +1856,15 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "new_session.offline_with_draft" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_offline_with_draft, name)
+        }
+        "new_session.only_affects_future_sessions_active_sessions_stay_unchanged_synced" -> {
+            resources.getString(R.string.new_session_only_affects_future_sessions_active_sessions_stay_unchanged_synced)
+        }
+        "new_session.only_changes_this_task_existing_conversations_keep_their_settings" -> {
+            resources.getString(R.string.new_session_only_changes_this_task_existing_conversations_keep_their_settings)
+        }
+        "new_session.permissions" -> {
+            resources.getString(R.string.new_session_permissions)
         }
         "new_session.project_label" -> {
             val name = message.args.getValue("name") as String
@@ -1497,6 +1914,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_starting_on, name)
         }
+        "new_session.task_settings" -> {
+            resources.getString(R.string.new_session_task_settings)
+        }
+        "new_session.this_model_has_no_auto_mode" -> {
+            resources.getString(R.string.new_session_this_model_has_no_auto_mode)
+        }
         "new_session.unconfirmed_start" -> {
             resources.getString(R.string.new_session_unconfirmed_start)
         }
@@ -1506,6 +1929,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "new_session.use_machine" -> {
             val name = message.args.getValue("name") as String
             resources.getString(R.string.new_session_use_machine, name)
+        }
+        "notifications.scheduled_tasks_have_new_results" -> {
+            resources.getString(R.string.notifications_scheduled_tasks_have_new_results)
+        }
+        "notifications.the_browser_did_not_allow_notifications" -> {
+            resources.getString(R.string.notifications_the_browser_did_not_allow_notifications)
         }
         "projects.add_again" -> {
             resources.getString(R.string.projects_add_again)
@@ -1784,10 +2213,24 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "queue.when_ready" -> {
             resources.getString(R.string.queue_when_ready)
         }
+        "quota.account" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_account, value)
+        }
+        "quota.awaiting_update" -> {
+            resources.getString(R.string.quota_awaiting_update)
+        }
+        "quota.days" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_days, count, count)
+        }
         "quota.exhausted" -> {
             val name = message.args.getValue("name") as String
             val window = message.args.getValue("window") as String
             resources.getString(R.string.quota_exhausted, name, window)
+        }
+        "quota.exhausted_quota" -> {
+            resources.getString(R.string.quota_exhausted_quota)
         }
         "quota.failure" -> {
             val detail = message.args.getValue("detail") as String
@@ -1798,6 +2241,41 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             resources.getString(R.string.quota_failure_no_reason, name)
         }
+        "quota.hr" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_hr, count, count)
+        }
+        "quota.last_reading" -> {
+            resources.getString(R.string.quota_last_reading)
+        }
+        "quota.last_reading_computer_offline_may_have_changed" -> {
+            resources.getString(R.string.quota_last_reading_computer_offline_may_have_changed)
+        }
+        "quota.last_reading_reset_time_passed_but_quota_recovery_is" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_last_reading_reset_time_passed_but_quota_recovery_is, value)
+        }
+        "quota.left" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_left, value)
+        }
+        "quota.min" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_min, count, count)
+        }
+        "quota.named_days" -> {
+            val count = message.args.getValue("count") as Int
+            val name = message.args.getValue("name") as String
+            resources.getQuantityString(R.plurals.quota_named_days, count, count, name)
+        }
+        "quota.named_hours" -> {
+            val count = message.args.getValue("count") as Int
+            val name = message.args.getValue("name") as String
+            resources.getQuantityString(R.plurals.quota_named_hours, count, count, name)
+        }
+        "quota.no_data_received_for_this_quota" -> {
+            resources.getString(R.string.quota_no_data_received_for_this_quota)
+        }
         "quota.old_hours" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.quota_old_hours, count, count)
@@ -1805,6 +2283,20 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "quota.old_minutes" -> {
             val count = message.args.getValue("count") as Int
             resources.getQuantityString(R.plurals.quota_old_minutes, count, count)
+        }
+        "quota.previously" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_previously, value)
+        }
+        "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_previously_reset_time_passed_but_quota_recovery_is_unconfirmed, value)
+        }
+        "quota.quota_lookup_is_not_supported_yet" -> {
+            resources.getString(R.string.quota_quota_lookup_is_not_supported_yet)
+        }
+        "quota.quota_not_available_yet" -> {
+            resources.getString(R.string.quota_quota_not_available_yet)
         }
         "quota.received" -> {
             val time = message.args.getValue("time") as String
@@ -1826,6 +2318,39 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val time = message.args.getValue("time") as String
             resources.getString(R.string.quota_received_success_date, day, month, time)
         }
+        "quota.resets_in_days_hr" -> {
+            val count = message.args.getValue("count") as Int
+            val detail = message.args.getValue("detail") as Int
+            resources.getQuantityString(R.plurals.quota_resets_in_days_hr, count, count, detail)
+        }
+        "quota.resets_in_hr_min" -> {
+            val count = message.args.getValue("count") as Int
+            val detail = message.args.getValue("detail") as String
+            resources.getQuantityString(R.plurals.quota_resets_in_hr_min, count, count, detail)
+        }
+        "quota.resets_in_min" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.quota_resets_in_min, count, count)
+        }
+        "quota.resetting_soon" -> {
+            resources.getString(R.string.quota_resetting_soon)
+        }
+        "quota.session" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.quota_session, value)
+        }
+        "quota.third_party_models" -> {
+            resources.getString(R.string.quota_third_party_models)
+        }
+        "quota.third_party_models_claude_gpt_oss" -> {
+            resources.getString(R.string.quota_third_party_models_claude_gpt_oss)
+        }
+        "quota.unavailable" -> {
+            resources.getString(R.string.quota_unavailable)
+        }
+        "quota.unavailable_previous" -> {
+            resources.getString(R.string.quota_unavailable_previous)
+        }
         "quota.unknown_time" -> {
             resources.getString(R.string.quota_unknown_time)
         }
@@ -1837,6 +2362,1293 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
             val name = message.args.getValue("name") as String
             val window = message.args.getValue("window") as String
             resources.getString(R.string.quota_warning, name, window)
+        }
+        "schedule.after_a_run_count" -> {
+            resources.getString(R.string.schedule_after_a_run_count)
+        }
+        "schedule.after_current_turn" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_after_current_turn, count, count)
+        }
+        "schedule.after_each_turn" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_after_each_turn, count, count)
+        }
+        "schedule.after_turn_ends" -> {
+            resources.getString(R.string.schedule_after_turn_ends)
+        }
+        "schedule.after_turn_replace" -> {
+            val frequency = message.args.getValue("frequency") as String
+            resources.getString(R.string.schedule_after_turn_replace, frequency)
+        }
+        "schedule.attention_once" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_attention_once, reason)
+        }
+        "schedule.attention_resume" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_attention_resume, reason)
+        }
+        "schedule.attention_uncertain" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_attention_uncertain, reason)
+        }
+        "schedule.beijing_time" -> {
+            resources.getString(R.string.schedule_beijing_time)
+        }
+        "schedule.choose_a_valid_date_and_time" -> {
+            resources.getString(R.string.schedule_choose_a_valid_date_and_time)
+        }
+        "schedule.choose_ask_auto_or_full_access_scheduled_tasks_cannot" -> {
+            resources.getString(R.string.schedule_choose_ask_auto_or_full_access_scheduled_tasks_cannot)
+        }
+        "schedule.computer_and_model" -> {
+            resources.getString(R.string.schedule_computer_and_model)
+        }
+        "schedule.connect_to_edit_run_or_delete" -> {
+            resources.getString(R.string.schedule_connect_to_edit_run_or_delete)
+        }
+        "schedule.continuing_takes_over_the_task_and_runs_it_with" -> {
+            resources.getString(R.string.schedule_continuing_takes_over_the_task_and_runs_it_with)
+        }
+        "schedule.conversation" -> {
+            resources.getString(R.string.schedule_conversation)
+        }
+        "schedule.could_not_run" -> {
+            resources.getString(R.string.schedule_could_not_run)
+        }
+        "schedule.count" -> {
+            resources.getString(R.string.schedule_count)
+        }
+        "schedule.create" -> {
+            resources.getString(R.string.schedule_create)
+        }
+        "schedule.created_by_the_agent_in_a_conversation" -> {
+            resources.getString(R.string.schedule_created_by_the_agent_in_a_conversation)
+        }
+        "schedule.created_by_you" -> {
+            resources.getString(R.string.schedule_created_by_you)
+        }
+        "schedule.creating" -> {
+            resources.getString(R.string.schedule_creating)
+        }
+        "schedule.daily" -> {
+            resources.getString(R.string.schedule_daily)
+        }
+        "schedule.daily_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_daily_at, time)
+        }
+        "schedule.date_and_time" -> {
+            resources.getString(R.string.schedule_date_and_time)
+        }
+        "schedule.daylight_saving_time_skips_this_time_in_the_selected" -> {
+            resources.getString(R.string.schedule_daylight_saving_time_skips_this_time_in_the_selected)
+        }
+        "schedule.delete" -> {
+            resources.getString(R.string.schedule_delete)
+        }
+        "schedule.delete_task" -> {
+            resources.getString(R.string.schedule_delete_task)
+        }
+        "schedule.delete_task_schedules" -> {
+            resources.getString(R.string.schedule_delete_task_schedules)
+        }
+        "schedule.deleted" -> {
+            resources.getString(R.string.schedule_deleted)
+        }
+        "schedule.delivery_before_the_computer_restarted_could_not_be_confirmed" -> {
+            resources.getString(R.string.schedule_delivery_before_the_computer_restarted_could_not_be_confirmed)
+        }
+        "schedule.describe_the_scheduled_work_and_ask_the_agent_to" -> {
+            resources.getString(R.string.schedule_describe_the_scheduled_work_and_ask_the_agent_to)
+        }
+        "schedule.discard_changes" -> {
+            resources.getString(R.string.schedule_discard_changes)
+        }
+        "schedule.discard_changes_schedule_text" -> {
+            resources.getString(R.string.schedule_discard_changes_schedule_text)
+        }
+        "schedule.each_run_opens_a_new_conversation_grouped_under_this" -> {
+            resources.getString(R.string.schedule_each_run_opens_a_new_conversation_grouped_under_this)
+        }
+        "schedule.each_run_opens_a_new_conversation_grouped_under_this_schedules" -> {
+            resources.getString(R.string.schedule_each_run_opens_a_new_conversation_grouped_under_this_schedules)
+        }
+        "schedule.earlier" -> {
+            resources.getString(R.string.schedule_earlier)
+        }
+        "schedule.end_date" -> {
+            resources.getString(R.string.schedule_end_date)
+        }
+        "schedule.end_time" -> {
+            resources.getString(R.string.schedule_end_time)
+        }
+        "schedule.ended" -> {
+            resources.getString(R.string.schedule_ended)
+        }
+        "schedule.every" -> {
+            resources.getString(R.string.schedule_every)
+        }
+        "schedule.every_days" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_every_days, count, count)
+        }
+        "schedule.every_hr" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_every_hr, count, count)
+        }
+        "schedule.every_min" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_every_min, count, count)
+        }
+        "schedule.every_sec" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_every_sec, count, count)
+        }
+        "schedule.execution_failed" -> {
+            resources.getString(R.string.schedule_execution_failed)
+        }
+        "schedule.execution_failed_the_task_stopped" -> {
+            resources.getString(R.string.schedule_execution_failed_the_task_stopped)
+        }
+        "schedule.execution_interrupted" -> {
+            resources.getString(R.string.schedule_execution_interrupted)
+        }
+        "schedule.execution_interrupted_the_task_stopped" -> {
+            resources.getString(R.string.schedule_execution_interrupted_the_task_stopped)
+        }
+        "schedule.execution_outcome_is_unconfirmed" -> {
+            resources.getString(R.string.schedule_execution_outcome_is_unconfirmed)
+        }
+        "schedule.frequency" -> {
+            resources.getString(R.string.schedule_frequency)
+        }
+        "schedule.fri" -> {
+            resources.getString(R.string.schedule_fri)
+        }
+        "schedule.has_not_run_yet" -> {
+            resources.getString(R.string.schedule_has_not_run_yet)
+        }
+        "schedule.hong_kong_time" -> {
+            resources.getString(R.string.schedule_hong_kong_time)
+        }
+        "schedule.hourly" -> {
+            resources.getString(R.string.schedule_hourly)
+        }
+        "schedule.if_blank_uses" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_if_blank_uses, value)
+        }
+        "schedule.in" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_in, value)
+        }
+        "schedule.in_conversation" -> {
+            resources.getString(R.string.schedule_in_conversation)
+        }
+        "schedule.interval_minutes" -> {
+            resources.getString(R.string.schedule_interval_minutes)
+        }
+        "schedule.last_result" -> {
+            val result = message.args.getValue("result") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_last_result, result, time)
+        }
+        "schedule.last_result_detail" -> {
+            val detail = message.args.getValue("detail") as String
+            val result = message.args.getValue("result") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_last_result_detail, detail, result, time)
+        }
+        "schedule.latest_summary" -> {
+            val summary = message.args.getValue("summary") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_latest_summary, summary, time)
+        }
+        "schedule.leave_blank_to_use_the_message_s_first_sentence" -> {
+            resources.getString(R.string.schedule_leave_blank_to_use_the_message_s_first_sentence)
+        }
+        "schedule.limits_both" -> {
+            val count = message.args.getValue("count") as Int
+            val time = message.args.getValue("time") as String
+            resources.getQuantityString(R.plurals.schedule_limits_both, count, count, time)
+        }
+        "schedule.list_failed" -> {
+            val name = message.args.getValue("name") as String
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_list_failed, name, reason)
+        }
+        "schedule.london_time" -> {
+            resources.getString(R.string.schedule_london_time)
+        }
+        "schedule.los_angeles_time" -> {
+            resources.getString(R.string.schedule_los_angeles_time)
+        }
+        "schedule.manage" -> {
+            resources.getString(R.string.schedule_manage)
+        }
+        "schedule.mark_all_as_read" -> {
+            resources.getString(R.string.schedule_mark_all_as_read)
+        }
+        "schedule.mark_as_read" -> {
+            resources.getString(R.string.schedule_mark_as_read)
+        }
+        "schedule.mark_as_unread" -> {
+            resources.getString(R.string.schedule_mark_as_unread)
+        }
+        "schedule.messages_go_to_the_current_conversation_and_wait_for" -> {
+            resources.getString(R.string.schedule_messages_go_to_the_current_conversation_and_wait_for)
+        }
+        "schedule.messages_will_go_to_the_current_conversation_and_wait" -> {
+            resources.getString(R.string.schedule_messages_will_go_to_the_current_conversation_and_wait)
+        }
+        "schedule.missing_target" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.schedule_missing_target, reason)
+        }
+        "schedule.missing_target_run" -> {
+            val reason = message.args.getValue("reason") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_missing_target_run, reason, time)
+        }
+        "schedule.model_and_permissions" -> {
+            resources.getString(R.string.schedule_model_and_permissions)
+        }
+        "schedule.mon" -> {
+            resources.getString(R.string.schedule_mon)
+        }
+        "schedule.more_new_results" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_more_new_results, count, count)
+        }
+        "schedule.needs_your_attention" -> {
+            resources.getString(R.string.schedule_needs_your_attention)
+        }
+        "schedule.never" -> {
+            resources.getString(R.string.schedule_never)
+        }
+        "schedule.new_results" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_new_results, count, count)
+        }
+        "schedule.new_results_schedules" -> {
+            resources.getString(R.string.schedule_new_results_schedules)
+        }
+        "schedule.new_york_time" -> {
+            resources.getString(R.string.schedule_new_york_time)
+        }
+        "schedule.next" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_next, value)
+        }
+        "schedule.next_run_pending" -> {
+            resources.getString(R.string.schedule_next_run_pending)
+        }
+        "schedule.no_approval_is_required_for_any_operation_whenever_this" -> {
+            resources.getString(R.string.schedule_no_approval_is_required_for_any_operation_whenever_this)
+        }
+        "schedule.no_approval_will_be_required_for_future_runs_existing" -> {
+            resources.getString(R.string.schedule_no_approval_will_be_required_for_future_runs_existing)
+        }
+        "schedule.no_new_results" -> {
+            resources.getString(R.string.schedule_no_new_results)
+        }
+        "schedule.no_notification" -> {
+            resources.getString(R.string.schedule_no_notification)
+        }
+        "schedule.no_results_yet" -> {
+            resources.getString(R.string.schedule_no_results_yet)
+        }
+        "schedule.no_runs_next" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_no_runs_next, time)
+        }
+        "schedule.no_scheduled_tasks_yet" -> {
+            resources.getString(R.string.schedule_no_scheduled_tasks_yet)
+        }
+        "schedule.not_connected_showing_the_previous_state" -> {
+            resources.getString(R.string.schedule_not_connected_showing_the_previous_state)
+        }
+        "schedule.notified_you" -> {
+            resources.getString(R.string.schedule_notified_you)
+        }
+        "schedule.notify_on_completion" -> {
+            resources.getString(R.string.schedule_notify_on_completion)
+        }
+        "schedule.notify_on_completion_by_default_when_off_only_the" -> {
+            resources.getString(R.string.schedule_notify_on_completion_by_default_when_off_only_the)
+        }
+        "schedule.once_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_once_at, time)
+        }
+        "schedule.once_schedules" -> {
+            resources.getString(R.string.schedule_once_schedules)
+        }
+        "schedule.only_changes_this_task_it_still_runs_on_the" -> {
+            resources.getString(R.string.schedule_only_changes_this_task_it_still_runs_on_the)
+        }
+        "schedule.other_tasks" -> {
+            resources.getString(R.string.schedule_other_tasks)
+        }
+        "schedule.pause" -> {
+            resources.getString(R.string.schedule_pause)
+        }
+        "schedule.paused_the_schedule_expired_in_the_meantime" -> {
+            resources.getString(R.string.schedule_paused_the_schedule_expired_in_the_meantime)
+        }
+        "schedule.plan_mode_cannot_create_execution_tasks_choose_other_permissions" -> {
+            resources.getString(R.string.schedule_plan_mode_cannot_create_execution_tasks_choose_other_permissions)
+        }
+        "schedule.project" -> {
+            resources.getString(R.string.schedule_project)
+        }
+        "schedule.quiet_runs" -> {
+            val count = message.args.getValue("count") as Int
+            val day = message.args.getValue("day") as String
+            resources.getQuantityString(R.plurals.schedule_quiet_runs, count, count, day)
+        }
+        "schedule.read_full_text" -> {
+            resources.getString(R.string.schedule_read_full_text)
+        }
+        "schedule.reading_tasks" -> {
+            resources.getString(R.string.schedule_reading_tasks)
+        }
+        "schedule.reason_returned_by_the_computer" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_reason_returned_by_the_computer, value)
+        }
+        "schedule.rename_task" -> {
+            resources.getString(R.string.schedule_rename_task)
+        }
+        "schedule.requested_a_run_now_the_automatic_schedule_is_unchanged" -> {
+            resources.getString(R.string.schedule_requested_a_run_now_the_automatic_schedule_is_unchanged)
+        }
+        "schedule.resume" -> {
+            resources.getString(R.string.schedule_resume)
+        }
+        "schedule.retry_creation" -> {
+            resources.getString(R.string.schedule_retry_creation)
+        }
+        "schedule.retry_same_request" -> {
+            resources.getString(R.string.schedule_retry_same_request)
+        }
+        "schedule.run_in" -> {
+            resources.getString(R.string.schedule_run_in)
+        }
+        "schedule.run_once_now" -> {
+            resources.getString(R.string.schedule_run_once_now)
+        }
+        "schedule.run_with_full_access" -> {
+            resources.getString(R.string.schedule_run_with_full_access)
+        }
+        "schedule.running" -> {
+            resources.getString(R.string.schedule_running)
+        }
+        "schedule.running_schedules" -> {
+            resources.getString(R.string.schedule_running_schedules)
+        }
+        "schedule.running_since" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_running_since, time)
+        }
+        "schedule.runs_count" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_runs_count, count, count)
+        }
+        "schedule.runs_today_none_notified_you" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_runs_today_none_notified_you, count, count)
+        }
+        "schedule.runs_total" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_runs_total, count, count)
+        }
+        "schedule.sat" -> {
+            resources.getString(R.string.schedule_sat)
+        }
+        "schedule.saving_blank_uses_the_message_s_first_sentence" -> {
+            resources.getString(R.string.schedule_saving_blank_uses_the_message_s_first_sentence)
+        }
+        "schedule.schedule_messages_to_this_conversation" -> {
+            resources.getString(R.string.schedule_schedule_messages_to_this_conversation)
+        }
+        "schedule.select_a_future_time" -> {
+            resources.getString(R.string.schedule_select_a_future_time)
+        }
+        "schedule.select_a_time" -> {
+            resources.getString(R.string.schedule_select_a_time)
+        }
+        "schedule.select_at_least_one_day" -> {
+            resources.getString(R.string.schedule_select_at_least_one_day)
+        }
+        "schedule.select_explicit_permissions_before_creating_a_scheduled_task" -> {
+            resources.getString(R.string.schedule_select_explicit_permissions_before_creating_a_scheduled_task)
+        }
+        "schedule.select_permissions" -> {
+            resources.getString(R.string.schedule_select_permissions)
+        }
+        "schedule.send_to" -> {
+            val detail = message.args.getValue("detail") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_send_to, detail, value)
+        }
+        "schedule.send_to_schedules" -> {
+            resources.getString(R.string.schedule_send_to_schedules)
+        }
+        "schedule.singapore_time" -> {
+            resources.getString(R.string.schedule_singapore_time)
+        }
+        "schedule.skipped" -> {
+            resources.getString(R.string.schedule_skipped)
+        }
+        "schedule.starting" -> {
+            resources.getString(R.string.schedule_starting)
+        }
+        "schedule.stopped" -> {
+            resources.getString(R.string.schedule_stopped)
+        }
+        "schedule.stopped_count" -> {
+            val count = message.args.getValue("count") as Int
+            val total = message.args.getValue("total") as String
+            resources.getQuantityString(R.plurals.schedule_stopped_count, count, count, total)
+        }
+        "schedule.stops_automatic_runs_existing_conversations_remain" -> {
+            resources.getString(R.string.schedule_stops_automatic_runs_existing_conversations_remain)
+        }
+        "schedule.strip_count" -> {
+            val count = message.args.getValue("count") as Int
+            val state = message.args.getValue("state") as String
+            resources.getQuantityString(R.plurals.schedule_strip_count, count, count, state)
+        }
+        "schedule.strip_single" -> {
+            val frequency = message.args.getValue("frequency") as String
+            val state = message.args.getValue("state") as String
+            resources.getString(R.string.schedule_strip_single, frequency, state)
+        }
+        "schedule.sun" -> {
+            resources.getString(R.string.schedule_sun)
+        }
+        "schedule.take_action" -> {
+            resources.getString(R.string.schedule_take_action)
+        }
+        "schedule.task_creation_permissions_changed" -> {
+            resources.getString(R.string.schedule_task_creation_permissions_changed)
+        }
+        "schedule.task_creation_permissions_changed_the_task_stopped" -> {
+            resources.getString(R.string.schedule_task_creation_permissions_changed_the_task_stopped)
+        }
+        "schedule.task_name" -> {
+            resources.getString(R.string.schedule_task_name)
+        }
+        "schedule.tasks_do_not_run_while_the_computer_sleeps_or" -> {
+            resources.getString(R.string.schedule_tasks_do_not_run_while_the_computer_sleeps_or)
+        }
+        "schedule.tell_the_agent_in_a_conversation_check_for_me" -> {
+            resources.getString(R.string.schedule_tell_the_agent_in_a_conversation_check_for_me)
+        }
+        "schedule.the_agent_created_task_interval_is_too_short" -> {
+            resources.getString(R.string.schedule_the_agent_created_task_interval_is_too_short)
+        }
+        "schedule.the_agent_created_task_interval_is_too_short_the" -> {
+            resources.getString(R.string.schedule_the_agent_created_task_interval_is_too_short_the)
+        }
+        "schedule.the_catch_up_window_expired_this_run_was_skipped" -> {
+            resources.getString(R.string.schedule_the_catch_up_window_expired_this_run_was_skipped)
+        }
+        "schedule.the_computer_is_offline_connect_to_create_tasks" -> {
+            resources.getString(R.string.schedule_the_computer_is_offline_connect_to_create_tasks)
+        }
+        "schedule.the_first_run_is_after_a_full_interval_to" -> {
+            resources.getString(R.string.schedule_the_first_run_is_after_a_full_interval_to)
+        }
+        "schedule.the_interval_must_be_at_least_1_second" -> {
+            resources.getString(R.string.schedule_the_interval_must_be_at_least_1_second)
+        }
+        "schedule.the_message_could_not_be_queued" -> {
+            resources.getString(R.string.schedule_the_message_could_not_be_queued)
+        }
+        "schedule.the_message_was_not_delivered_to_the_cli" -> {
+            resources.getString(R.string.schedule_the_message_was_not_delivered_to_the_cli)
+        }
+        "schedule.the_previous_creation_result_is_unconfirmed_retrying_uses_the" -> {
+            resources.getString(R.string.schedule_the_previous_creation_result_is_unconfirmed_retrying_uses_the)
+        }
+        "schedule.the_previous_operation_s_result_is_unconfirmed_verify_the" -> {
+            resources.getString(R.string.schedule_the_previous_operation_s_result_is_unconfirmed_verify_the)
+        }
+        "schedule.the_relay_s_session_limit_has_been_reached" -> {
+            resources.getString(R.string.schedule_the_relay_s_session_limit_has_been_reached)
+        }
+        "schedule.the_run_count_must_be_a_positive_integer" -> {
+            resources.getString(R.string.schedule_the_run_count_must_be_a_positive_integer)
+        }
+        "schedule.the_running_conversation_could_not_be_found" -> {
+            resources.getString(R.string.schedule_the_running_conversation_could_not_be_found)
+        }
+        "schedule.the_running_conversation_ended" -> {
+            resources.getString(R.string.schedule_the_running_conversation_ended)
+        }
+        "schedule.the_scheduled_message_is_paused_resume_or_cancel_it" -> {
+            resources.getString(R.string.schedule_the_scheduled_message_is_paused_resume_or_cancel_it)
+        }
+        "schedule.the_scheduled_message_was_canceled_before_delivery" -> {
+            resources.getString(R.string.schedule_the_scheduled_message_was_canceled_before_delivery)
+        }
+        "schedule.the_scheduled_message_was_canceled_before_delivery_the_task" -> {
+            resources.getString(R.string.schedule_the_scheduled_message_was_canceled_before_delivery_the_task)
+        }
+        "schedule.these_changes_will_not_be_saved" -> {
+            resources.getString(R.string.schedule_these_changes_will_not_be_saved)
+        }
+        "schedule.this_conversation_s_scheduled_tasks" -> {
+            resources.getString(R.string.schedule_this_conversation_s_scheduled_tasks)
+        }
+        "schedule.this_task_could_not_be_found_if_the_computer" -> {
+            resources.getString(R.string.schedule_this_task_could_not_be_found_if_the_computer)
+        }
+        "schedule.thu" -> {
+            resources.getString(R.string.schedule_thu)
+        }
+        "schedule.time" -> {
+            resources.getString(R.string.schedule_time)
+        }
+        "schedule.time_zone" -> {
+            resources.getString(R.string.schedule_time_zone)
+        }
+        "schedule.tokyo_time" -> {
+            resources.getString(R.string.schedule_tokyo_time)
+        }
+        "schedule.too_long_maximum_32_kb" -> {
+            resources.getString(R.string.schedule_too_long_maximum_32_kb)
+        }
+        "schedule.tue" -> {
+            resources.getString(R.string.schedule_tue)
+        }
+        "schedule.unconfirmed" -> {
+            resources.getString(R.string.schedule_unconfirmed)
+        }
+        "schedule.unread_on_entry" -> {
+            resources.getString(R.string.schedule_unread_on_entry)
+        }
+        "schedule.until" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.schedule_until, value)
+        }
+        "schedule.update_remote_agent_on_the_computer_to_use_scheduled" -> {
+            resources.getString(R.string.schedule_update_remote_agent_on_the_computer_to_use_scheduled)
+        }
+        "schedule.update_remote_agent_on_this_computer_to_use_scheduled" -> {
+            resources.getString(R.string.schedule_update_remote_agent_on_this_computer_to_use_scheduled)
+        }
+        "schedule.verified_abandon_request" -> {
+            resources.getString(R.string.schedule_verified_abandon_request)
+        }
+        "schedule.verify_current_permissions_in_the_conversation" -> {
+            resources.getString(R.string.schedule_verify_current_permissions_in_the_conversation)
+        }
+        "schedule.view_all_runs" -> {
+            val count = message.args.getValue("count") as Int
+            resources.getQuantityString(R.plurals.schedule_view_all_runs, count, count)
+        }
+        "schedule.waiting_for_results" -> {
+            resources.getString(R.string.schedule_waiting_for_results)
+        }
+        "schedule.waiting_for_the_current_turn_to_end" -> {
+            resources.getString(R.string.schedule_waiting_for_the_current_turn_to_end)
+        }
+        "schedule.wed" -> {
+            resources.getString(R.string.schedule_wed)
+        }
+        "schedule.weekdays_only" -> {
+            resources.getString(R.string.schedule_weekdays_only)
+        }
+        "schedule.weekly_at" -> {
+            val days = message.args.getValue("days") as String
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_weekly_at, days, time)
+        }
+        "schedule.weekly_on" -> {
+            resources.getString(R.string.schedule_weekly_on)
+        }
+        "schedule.what_should_the_agent_do" -> {
+            resources.getString(R.string.schedule_what_should_the_agent_do)
+        }
+        "schedule.when" -> {
+            resources.getString(R.string.schedule_when)
+        }
+        "schedule.workdays_at" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.schedule_workdays_at, time)
+        }
+        "security.a_security_operation_is_unfinished_continue_it_first" -> {
+            resources.getString(R.string.security_a_security_operation_is_unfinished_continue_it_first)
+        }
+        "security.a_security_operation_is_unfinished_continue_the_original_operation" -> {
+            resources.getString(R.string.security_a_security_operation_is_unfinished_continue_the_original_operation)
+        }
+        "security.abandon_this_succession_preparation" -> {
+            resources.getString(R.string.security_abandon_this_succession_preparation)
+        }
+        "security.abandon_this_succession_preparation_security" -> {
+            resources.getString(R.string.security_abandon_this_succession_preparation_security)
+        }
+        "security.abandon_unpublished_recovery_code" -> {
+            resources.getString(R.string.security_abandon_unpublished_recovery_code)
+        }
+        "security.abandon_unsigned_draft" -> {
+            resources.getString(R.string.security_abandon_unsigned_draft)
+        }
+        "security.abandon_unsigned_operation" -> {
+            resources.getString(R.string.security_abandon_unsigned_operation)
+        }
+        "security.account_public_key_missing_pair_again_or_use_a" -> {
+            resources.getString(R.string.security_account_public_key_missing_pair_again_or_use_a)
+        }
+        "security.account_public_key_restored" -> {
+            resources.getString(R.string.security_account_public_key_restored)
+        }
+        "security.account_security" -> {
+            resources.getString(R.string.security_account_security)
+        }
+        "security.add_on_authority" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.security_add_on_authority, name)
+        }
+        "security.added" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_added, value)
+        }
+        "security.after_removing_this_unfinished_pairing_generate_a_new_code" -> {
+            resources.getString(R.string.security_after_removing_this_unfinished_pairing_generate_a_new_code)
+        }
+        "security.after_submission_wait_48_hours_the_current_managing_client" -> {
+            resources.getString(R.string.security_after_submission_wait_48_hours_the_current_managing_client)
+        }
+        "security.allow_to_join" -> {
+            resources.getString(R.string.security_allow_to_join)
+        }
+        "security.another_pairing_draft_is_unfinished" -> {
+            resources.getString(R.string.security_another_pairing_draft_is_unfinished)
+        }
+        "security.another_pairing_draft_is_unfinished_complete_this_pairing_or" -> {
+            resources.getString(R.string.security_another_pairing_draft_is_unfinished_complete_this_pairing_or)
+        }
+        "security.another_security_operation_is_unfinished" -> {
+            resources.getString(R.string.security_another_security_operation_is_unfinished)
+        }
+        "security.apply_again" -> {
+            resources.getString(R.string.security_apply_again)
+        }
+        "security.apply_again_with_the_current_recovery_code" -> {
+            resources.getString(R.string.security_apply_again_with_the_current_recovery_code)
+        }
+        "security.approved_waiting_for_the_new_device_to_finish_binding" -> {
+            resources.getString(R.string.security_approved_waiting_for_the_new_device_to_finish_binding)
+        }
+        "security.asked_the_browser_to_retain_data" -> {
+            resources.getString(R.string.security_asked_the_browser_to_retain_data)
+        }
+        "security.automatically_renews_when_you_return_to_the_managing_client" -> {
+            resources.getString(R.string.security_automatically_renews_when_you_return_to_the_managing_client)
+        }
+        "security.before_succession_pair_again_afterward_enter_the_new_recovery" -> {
+            resources.getString(R.string.security_before_succession_pair_again_afterward_enter_the_new_recovery)
+        }
+        "security.browser" -> {
+            resources.getString(R.string.security_browser)
+        }
+        "security.cancel_pairing" -> {
+            resources.getString(R.string.security_cancel_pairing)
+        }
+        "security.client" -> {
+            resources.getString(R.string.security_client)
+        }
+        "security.compare_patterns" -> {
+            resources.getString(R.string.security_compare_patterns)
+        }
+        "security.compare_the_4_patterns_on_the_new_device_confirm" -> {
+            resources.getString(R.string.security_compare_the_4_patterns_on_the_new_device_confirm)
+        }
+        "security.compare_the_managing_client_s_4_patterns_if_they" -> {
+            resources.getString(R.string.security_compare_the_managing_client_s_4_patterns_if_they)
+        }
+        "security.complete_recovery" -> {
+            resources.getString(R.string.security_complete_recovery)
+        }
+        "security.completing_takeover_keep_this_page_in_the_foreground_and" -> {
+            resources.getString(R.string.security_completing_takeover_keep_this_page_in_the_foreground_and)
+        }
+        "security.computer_run_remote_agent_account_join_and_enter_the" -> {
+            resources.getString(R.string.security_computer_run_remote_agent_account_join_and_enter_the)
+        }
+        "security.computers_can_only_run_clis_and_cannot_take_over" -> {
+            resources.getString(R.string.security_computers_can_only_run_clis_and_cannot_take_over)
+        }
+        "security.confirm_exit" -> {
+            resources.getString(R.string.security_confirm_exit)
+        }
+        "security.confirm_that_the_successor_device_saved_the_new_recovery" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_confirm_that_the_successor_device_saved_the_new_recovery, value)
+        }
+        "security.confirm_the_patterns_on_the_new_device_before_approving" -> {
+            resources.getString(R.string.security_confirm_the_patterns_on_the_new_device_before_approving)
+        }
+        "security.confirm_the_patterns_on_this_device_first" -> {
+            resources.getString(R.string.security_confirm_the_patterns_on_this_device_first)
+        }
+        "security.confirm_transfer" -> {
+            resources.getString(R.string.security_confirm_transfer)
+        }
+        "security.confirmed_here_waiting_for_managing_client_approval_and_binding" -> {
+            resources.getString(R.string.security_confirmed_here_waiting_for_managing_client_approval_and_binding)
+        }
+        "security.continue_creation" -> {
+            resources.getString(R.string.security_continue_creation)
+        }
+        "security.continue_original_draft" -> {
+            resources.getString(R.string.security_continue_original_draft)
+        }
+        "security.continue_the_original_recovery_or_explicitly_abandon_the_rejected" -> {
+            resources.getString(R.string.security_continue_the_original_recovery_or_explicitly_abandon_the_rejected)
+        }
+        "security.control_ai_coding_clis_on_your_computer_from_any" -> {
+            resources.getString(R.string.security_control_ai_coding_clis_on_your_computer_from_any)
+        }
+        "security.create_account" -> {
+            resources.getString(R.string.security_create_account)
+        }
+        "security.current_managing_client" -> {
+            resources.getString(R.string.security_current_managing_client)
+        }
+        "security.delete_local_keys_and_rejoin" -> {
+            resources.getString(R.string.security_delete_local_keys_and_rejoin)
+        }
+        "security.delete_records" -> {
+            resources.getString(R.string.security_delete_records)
+        }
+        "security.delete_this_computer_s_records" -> {
+            resources.getString(R.string.security_delete_this_computer_s_records)
+        }
+        "security.delete_this_computer_s_records_device_management" -> {
+            resources.getString(R.string.security_delete_this_computer_s_records_device_management)
+        }
+        "security.device_information_changed_the_original_transfer_request_was_not" -> {
+            resources.getString(R.string.security_device_information_changed_the_original_transfer_request_was_not)
+        }
+        "security.device_joined" -> {
+            resources.getString(R.string.security_device_joined)
+        }
+        "security.duration_48_hours" -> {
+            resources.getString(R.string.security_duration_48_hours)
+        }
+        "security.eligible_at" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_eligible_at, value)
+        }
+        "security.exit" -> {
+            resources.getString(R.string.security_exit)
+        }
+        "security.exit_and_delete_local_keys" -> {
+            resources.getString(R.string.security_exit_and_delete_local_keys)
+        }
+        "security.exit_and_start_over" -> {
+            resources.getString(R.string.security_exit_and_start_over)
+        }
+        "security.exit_this_browser" -> {
+            resources.getString(R.string.security_exit_this_browser)
+        }
+        "security.exiting" -> {
+            resources.getString(R.string.security_exiting)
+        }
+        "security.exiting_deletes_local_keys_you_will_need_to_pair" -> {
+            resources.getString(R.string.security_exiting_deletes_local_keys_you_will_need_to_pair)
+        }
+        "security.finish_device_registration_first" -> {
+            resources.getString(R.string.security_finish_device_registration_first)
+        }
+        "security.finish_the_current_security_operation_before_renewing" -> {
+            resources.getString(R.string.security_finish_the_current_security_operation_before_renewing)
+        }
+        "security.finish_the_current_security_operation_first" -> {
+            resources.getString(R.string.security_finish_the_current_security_operation_first)
+        }
+        "security.finish_the_original_security_operation_first" -> {
+            resources.getString(R.string.security_finish_the_original_security_operation_first)
+        }
+        "security.generate_and_save_a_recovery_code_on_the_successor" -> {
+            resources.getString(R.string.security_generate_and_save_a_recovery_code_on_the_successor)
+        }
+        "security.generate_new_recovery_code" -> {
+            resources.getString(R.string.security_generate_new_recovery_code)
+        }
+        "security.generate_pairing_code" -> {
+            resources.getString(R.string.security_generate_pairing_code)
+        }
+        "security.generate_recovery_code" -> {
+            resources.getString(R.string.security_generate_recovery_code)
+        }
+        "security.generating" -> {
+            resources.getString(R.string.security_generating)
+        }
+        "security.i_saved_the_new_recovery_code_offline" -> {
+            resources.getString(R.string.security_i_saved_the_new_recovery_code_offline)
+        }
+        "security.if_this_browser_is_already_a_member_recovery_will" -> {
+            resources.getString(R.string.security_if_this_browser_is_already_a_member_recovery_will)
+        }
+        "security.invalid_pairing_key" -> {
+            resources.getString(R.string.security_invalid_pairing_key)
+        }
+        "security.invalid_pairing_trust_information" -> {
+            resources.getString(R.string.security_invalid_pairing_trust_information)
+        }
+        "security.invalid_recovery_code" -> {
+            resources.getString(R.string.security_invalid_recovery_code)
+        }
+        "security.it_may_have_been_removed_or_the_service_may" -> {
+            resources.getString(R.string.security_it_may_have_been_removed_or_the_service_may)
+        }
+        "security.join" -> {
+            resources.getString(R.string.security_join)
+        }
+        "security.join_account" -> {
+            resources.getString(R.string.security_join_account)
+        }
+        "security.join_an_existing_account" -> {
+            resources.getString(R.string.security_join_an_existing_account)
+        }
+        "security.join_with_a_code_from_the_managing_client" -> {
+            resources.getString(R.string.security_join_with_a_code_from_the_managing_client)
+        }
+        "security.loading" -> {
+            resources.getString(R.string.security_loading)
+        }
+        "security.manage_on_authority" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.security_manage_on_authority, name)
+        }
+        "security.management_transferred_waiting_for_the_successor_to_complete_takeover" -> {
+            resources.getString(R.string.security_management_transferred_waiting_for_the_successor_to_complete_takeover)
+        }
+        "security.new_recovery_code" -> {
+            resources.getString(R.string.security_new_recovery_code)
+        }
+        "security.new_recovery_code_shown_only_once" -> {
+            resources.getString(R.string.security_new_recovery_code_shown_only_once)
+        }
+        "security.nothing_is_published_before_you_save_it_an_unpublished" -> {
+            resources.getString(R.string.security_nothing_is_published_before_you_save_it_an_unpublished)
+        }
+        "security.on_the_managing_client_open_settings_add_device_and" -> {
+            resources.getString(R.string.security_on_the_managing_client_open_settings_add_device_and)
+        }
+        "security.once_the_successor_device_joins_and_confirms_saving_its" -> {
+            resources.getString(R.string.security_once_the_successor_device_joins_and_confirms_saving_its)
+        }
+        "security.one_time_security_setup" -> {
+            resources.getString(R.string.security_one_time_security_setup)
+        }
+        "security.only_a_removed_computer_s_archive_can_be_rejoined" -> {
+            resources.getString(R.string.security_only_a_removed_computer_s_archive_can_be_rejoined)
+        }
+        "security.only_this_computer_can_rejoin_its_original_archive_with" -> {
+            resources.getString(R.string.security_only_this_computer_can_rejoin_its_original_archive_with)
+        }
+        "security.open_to_renew" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_open_to_renew, value)
+        }
+        "security.original_recovery_code" -> {
+            resources.getString(R.string.security_original_recovery_code)
+        }
+        "security.pair_again" -> {
+            resources.getString(R.string.security_pair_again)
+        }
+        "security.pair_valid_until" -> {
+            val time = message.args.getValue("time") as String
+            resources.getString(R.string.security_pair_valid_until, time)
+        }
+        "security.paired" -> {
+            resources.getString(R.string.security_paired)
+        }
+        "security.pairing_approval_does_not_match_this_device_or_has" -> {
+            resources.getString(R.string.security_pairing_approval_does_not_match_this_device_or_has)
+        }
+        "security.pairing_canceled" -> {
+            resources.getString(R.string.security_pairing_canceled)
+        }
+        "security.pairing_code" -> {
+            resources.getString(R.string.security_pairing_code)
+        }
+        "security.pairing_commitment_mismatch_pairing_stopped" -> {
+            resources.getString(R.string.security_pairing_commitment_mismatch_pairing_stopped)
+        }
+        "security.pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before" -> {
+            resources.getString(R.string.security_pairing_delivery_expired_explicitly_remove_the_unfinished_candidate_before)
+        }
+        "security.pairing_expired" -> {
+            resources.getString(R.string.security_pairing_expired)
+        }
+        "security.pairing_expired_or_was_canceled" -> {
+            resources.getString(R.string.security_pairing_expired_or_was_canceled)
+        }
+        "security.pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before" -> {
+            resources.getString(R.string.security_pairing_was_canceled_explicitly_remove_the_unfinished_candidate_before)
+        }
+        "security.pairing_was_canceled_or_expired" -> {
+            resources.getString(R.string.security_pairing_was_canceled_or_expired)
+        }
+        "security.patterns_differ_return_to_code_entry" -> {
+            resources.getString(R.string.security_patterns_differ_return_to_code_entry)
+        }
+        "security.patterns_match_the_new_device_confirmed_first" -> {
+            resources.getString(R.string.security_patterns_match_the_new_device_confirmed_first)
+        }
+        "security.patterns_match_trust_and_continue" -> {
+            resources.getString(R.string.security_patterns_match_trust_and_continue)
+        }
+        "security.prepare_recovery" -> {
+            resources.getString(R.string.security_prepare_recovery)
+        }
+        "security.processing" -> {
+            resources.getString(R.string.security_processing)
+        }
+        "security.publishing" -> {
+            resources.getString(R.string.security_publishing)
+        }
+        "security.qr_code_for_adding_a_device" -> {
+            resources.getString(R.string.security_qr_code_for_adding_a_device)
+        }
+        "security.re_enter" -> {
+            resources.getString(R.string.security_re_enter)
+        }
+        "security.reading" -> {
+            resources.getString(R.string.security_reading)
+        }
+        "security.recover_management_with_a_recovery_code" -> {
+            resources.getString(R.string.security_recover_management_with_a_recovery_code)
+        }
+        "security.recovery_code" -> {
+            resources.getString(R.string.security_recovery_code)
+        }
+        "security.recovery_code_for_restoring_public_information" -> {
+            resources.getString(R.string.security_recovery_code_for_restoring_public_information)
+        }
+        "security.recovery_code_saved_and_confirmed_waiting_for_the_current" -> {
+            resources.getString(R.string.security_recovery_code_saved_and_confirmed_waiting_for_the_current)
+        }
+        "security.recovery_code_updated_the_previous_code_and_pending_recovery" -> {
+            resources.getString(R.string.security_recovery_code_updated_the_previous_code_and_pending_recovery)
+        }
+        "security.recovery_is_pending_or_its_outcome_is_unknown_and" -> {
+            resources.getString(R.string.security_recovery_is_pending_or_its_outcome_is_unknown_and)
+        }
+        "security.recovery_request_pending" -> {
+            resources.getString(R.string.security_recovery_request_pending)
+        }
+        "security.recovery_request_pending_eligible_at" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_recovery_request_pending_eligible_at, value)
+        }
+        "security.recovery_was_rejected_explicitly_apply_again" -> {
+            resources.getString(R.string.security_recovery_was_rejected_explicitly_apply_again)
+        }
+        "security.recovery_was_rejected_you_can_apply_again" -> {
+            resources.getString(R.string.security_recovery_was_rejected_you_can_apply_again)
+        }
+        "security.refresh_successor_devices" -> {
+            resources.getString(R.string.security_refresh_successor_devices)
+        }
+        "security.regenerate_recovery_code" -> {
+            resources.getString(R.string.security_regenerate_recovery_code)
+        }
+        "security.registration_on_another_server_is_unfinished_retry_it_or" -> {
+            resources.getString(R.string.security_registration_on_another_server_is_unfinished_retry_it_or)
+        }
+        "security.registration_proof_of_work_expired_retry_the_original_draft" -> {
+            resources.getString(R.string.security_registration_proof_of_work_expired_retry_the_original_draft)
+        }
+        "security.registration_proof_of_work_is_invalid_or_expired" -> {
+            resources.getString(R.string.security_registration_proof_of_work_is_invalid_or_expired)
+        }
+        "security.reject" -> {
+            resources.getString(R.string.security_reject)
+        }
+        "security.rejoin" -> {
+            resources.getString(R.string.security_rejoin)
+        }
+        "security.rejoin_and_resume_sessions" -> {
+            resources.getString(R.string.security_rejoin_and_resume_sessions)
+        }
+        "security.rejoin_with_a_pairing_code" -> {
+            resources.getString(R.string.security_rejoin_with_a_pairing_code)
+        }
+        "security.remote_control_expiry" -> {
+            resources.getString(R.string.security_remote_control_expiry)
+        }
+        "security.remote_control_expiry_not_received_yet" -> {
+            resources.getString(R.string.security_remote_control_expiry_not_received_yet)
+        }
+        "security.remote_control_renewed" -> {
+            resources.getString(R.string.security_remote_control_renewed)
+        }
+        "security.removal_immediately_stops_remote_access_from_this_device_the" -> {
+            resources.getString(R.string.security_removal_immediately_stops_remote_access_from_this_device_the)
+        }
+        "security.remove_device" -> {
+            resources.getString(R.string.security_remove_device)
+        }
+        "security.remove_device_device_management" -> {
+            resources.getString(R.string.security_remove_device_device_management)
+        }
+        "security.remove_unfinished_pairing" -> {
+            resources.getString(R.string.security_remove_unfinished_pairing)
+        }
+        "security.renew_now" -> {
+            resources.getString(R.string.security_renew_now)
+        }
+        "security.replacing_the_recovery_code_immediately_invalidates_the_old_code" -> {
+            resources.getString(R.string.security_replacing_the_recovery_code_immediately_invalidates_the_old_code)
+        }
+        "security.restore_account_public_key" -> {
+            resources.getString(R.string.security_restore_account_public_key)
+        }
+        "security.restore_public_information" -> {
+            resources.getString(R.string.security_restore_public_information)
+        }
+        "security.return_to_account_creation_or_recovery_to_continue_the" -> {
+            resources.getString(R.string.security_return_to_account_creation_or_recovery_to_continue_the)
+        }
+        "security.returning_stops_this_wait_reject_the_old_request_on" -> {
+            resources.getString(R.string.security_returning_stops_this_wait_reject_the_old_request_on)
+        }
+        "security.save_the_new_recovery_code_first_then_ask_the" -> {
+            resources.getString(R.string.security_save_the_new_recovery_code_first_then_ask_the)
+        }
+        "security.save_the_recovery_code_offline_anyone_with_it_can" -> {
+            resources.getString(R.string.security_save_the_recovery_code_offline_anyone_with_it_can)
+        }
+        "security.saved_notify_managing_client" -> {
+            resources.getString(R.string.security_saved_notify_managing_client)
+        }
+        "security.saved_publish_replacement" -> {
+            resources.getString(R.string.security_saved_publish_replacement)
+        }
+        "security.security_setup_must_use_the_original_account_s_server" -> {
+            resources.getString(R.string.security_security_setup_must_use_the_original_account_s_server)
+        }
+        "security.security_state_may_be_out_of_date_connect_and" -> {
+            resources.getString(R.string.security_security_state_may_be_out_of_date_connect_and)
+        }
+        "security.server" -> {
+            resources.getString(R.string.security_server)
+        }
+        "security.setup_token_optional_with_open_registration" -> {
+            resources.getString(R.string.security_setup_token_optional_with_open_registration)
+        }
+        "security.someone_is_requesting_management_takeover_with_a_recovery_code" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_someone_is_requesting_management_takeover_with_a_recovery_code, value)
+        }
+        "security.start_over" -> {
+            resources.getString(R.string.security_start_over)
+        }
+        "security.stopped_waiting_reject_the_old_request_on_the_managing" -> {
+            resources.getString(R.string.security_stopped_waiting_reject_the_old_request_on_the_managing)
+        }
+        "security.submit_or_check_original_recovery" -> {
+            resources.getString(R.string.security_submit_or_check_original_recovery)
+        }
+        "security.success_is_uncertain_connection_lost" -> {
+            resources.getString(R.string.security_success_is_uncertain_connection_lost)
+        }
+        "security.take_over_management" -> {
+            resources.getString(R.string.security_take_over_management)
+        }
+        "security.the_48_hour_wait_has_not_ended" -> {
+            resources.getString(R.string.security_the_48_hour_wait_has_not_ended)
+        }
+        "security.the_account_belongs_to_another_server" -> {
+            resources.getString(R.string.security_the_account_belongs_to_another_server)
+        }
+        "security.the_account_does_not_match_the_managing_client_s" -> {
+            resources.getString(R.string.security_the_account_does_not_match_the_managing_client_s)
+        }
+        "security.the_account_keys_and_cache_in_this_browser_will" -> {
+            resources.getString(R.string.security_the_account_keys_and_cache_in_this_browser_will)
+        }
+        "security.the_account_s_state_chain_is_too_long_to" -> {
+            resources.getString(R.string.security_the_account_s_state_chain_is_too_long_to)
+        }
+        "security.the_browser_did_not_promise_to_retain_data" -> {
+            resources.getString(R.string.security_the_browser_did_not_promise_to_retain_data)
+        }
+        "security.the_computer_s_archive_was_deleted_join_as_a" -> {
+            resources.getString(R.string.security_the_computer_s_archive_was_deleted_join_as_a)
+        }
+        "security.the_join_receipt_does_not_contain_the_correct_identity" -> {
+            resources.getString(R.string.security_the_join_receipt_does_not_contain_the_correct_identity)
+        }
+        "security.the_local_account_unfinished_registration_and_security_operations_will" -> {
+            resources.getString(R.string.security_the_local_account_unfinished_registration_and_security_operations_will)
+        }
+        "security.the_local_security_state_is_damaged_and_cannot_be" -> {
+            resources.getString(R.string.security_the_local_security_state_is_damaged_and_cannot_be)
+        }
+        "security.the_managing_client_canceled_pairing" -> {
+            resources.getString(R.string.security_the_managing_client_canceled_pairing)
+        }
+        "security.the_managing_client_cannot_be_removed_directly_transfer_management" -> {
+            resources.getString(R.string.security_the_managing_client_cannot_be_removed_directly_transfer_management)
+        }
+        "security.the_managing_client_cannot_be_removed_directly_transfer_management_device_management" -> {
+            resources.getString(R.string.security_the_managing_client_cannot_be_removed_directly_transfer_management_device_management)
+        }
+        "security.the_managing_client_s_trust_information_does_not_match" -> {
+            resources.getString(R.string.security_the_managing_client_s_trust_information_does_not_match)
+        }
+        "security.the_new_recovery_code_backup_is_unconfirmed_replace_the" -> {
+            resources.getString(R.string.security_the_new_recovery_code_backup_is_unconfirmed_replace_the)
+        }
+        "security.the_original_creation_draft_is_preserved_continue_with_the" -> {
+            resources.getString(R.string.security_the_original_creation_draft_is_preserved_continue_with_the)
+        }
+        "security.the_original_device_identity_keys_and_history_are_preserved" -> {
+            resources.getString(R.string.security_the_original_device_identity_keys_and_history_are_preserved)
+        }
+        "security.the_original_device_public_key_does_not_match_the" -> {
+            resources.getString(R.string.security_the_original_device_public_key_does_not_match_the)
+        }
+        "security.the_original_operation_is_unfinished_continue_verifying" -> {
+            resources.getString(R.string.security_the_original_operation_is_unfinished_continue_verifying)
+        }
+        "security.the_original_recovery_draft_is_preserved_the_new_recovery" -> {
+            resources.getString(R.string.security_the_original_recovery_draft_is_preserved_the_new_recovery)
+        }
+        "security.the_other_device_refused_this_join_request" -> {
+            resources.getString(R.string.security_the_other_device_refused_this_join_request)
+        }
+        "security.the_page_is_paused_return_to_the_foreground_to" -> {
+            resources.getString(R.string.security_the_page_is_paused_return_to_the_foreground_to)
+        }
+        "security.the_pairing_code_belongs_to_another_security_domain_original" -> {
+            resources.getString(R.string.security_the_pairing_code_belongs_to_another_security_domain_original)
+        }
+        "security.the_pairing_code_is_wrong_or_has_already_been" -> {
+            resources.getString(R.string.security_the_pairing_code_is_wrong_or_has_already_been)
+        }
+        "security.the_pairing_draft_conflicts_with_the_current_identity" -> {
+            resources.getString(R.string.security_the_pairing_draft_conflicts_with_the_current_identity)
+        }
+        "security.the_pairing_receipt_was_approved_by_a_device_other" -> {
+            resources.getString(R.string.security_the_pairing_receipt_was_approved_by_a_device_other)
+        }
+        "security.the_public_key_may_already_be_published_abandoning_only" -> {
+            resources.getString(R.string.security_the_public_key_may_already_be_published_abandoning_only)
+        }
+        "security.the_recovery_signature_has_not_been_saved_re_enter" -> {
+            resources.getString(R.string.security_the_recovery_signature_has_not_been_saved_re_enter)
+        }
+        "security.the_security_operation_s_outcome_is_unverified_continue_the" -> {
+            resources.getString(R.string.security_the_security_operation_s_outcome_is_unverified_continue_the)
+        }
+        "security.the_server_does_not_recognize_this_device" -> {
+            resources.getString(R.string.security_the_server_does_not_recognize_this_device)
+        }
+        "security.the_server_replaced_the_pairing_commitment_after_receiving_the" -> {
+            resources.getString(R.string.security_the_server_replaced_the_pairing_commitment_after_receiving_the)
+        }
+        "security.the_server_returned_information_for_a_different_device_from" -> {
+            resources.getString(R.string.security_the_server_returned_information_for_a_different_device_from)
+        }
+        "security.the_unpublished_pairing_draft_expired_you_can_explicitly_abandon" -> {
+            resources.getString(R.string.security_the_unpublished_pairing_draft_expired_you_can_explicitly_abandon)
+        }
+        "security.the_unpublished_pairing_draft_was_canceled_or_its_candidate" -> {
+            resources.getString(R.string.security_the_unpublished_pairing_draft_was_canceled_or_its_candidate)
+        }
+        "security.this_browser_does_not_support_web_locks_it_cannot" -> {
+            resources.getString(R.string.security_this_browser_does_not_support_web_locks_it_cannot)
+        }
+        "security.this_browser_is_the_only_managing_client_transfer_management" -> {
+            resources.getString(R.string.security_this_browser_is_the_only_managing_client_transfer_management)
+        }
+        "security.this_browser_s_original_public_key_could_not_be" -> {
+            resources.getString(R.string.security_this_browser_s_original_public_key_could_not_be)
+        }
+        "security.this_browser_will_be_the_only_managing_client_clearing" -> {
+            resources.getString(R.string.security_this_browser_will_be_the_only_managing_client_clearing)
+        }
+        "security.this_deletes_the_account_keys_and_cache_on_this" -> {
+            resources.getString(R.string.security_this_deletes_the_account_keys_and_cache_on_this)
+        }
+        "security.this_device" -> {
+            resources.getString(R.string.security_this_device)
+        }
+        "security.this_device_becomes_the_managing_client" -> {
+            resources.getString(R.string.security_this_device_becomes_the_managing_client)
+        }
+        "security.this_device_has_an_unfinished_join_request_deleting_it" -> {
+            resources.getString(R.string.security_this_device_has_an_unfinished_join_request_deleting_it)
+        }
+        "security.this_device_manages_the_account" -> {
+            resources.getString(R.string.security_this_device_manages_the_account)
+        }
+        "security.this_device_s_clock_is_behind_the_managing_client" -> {
+            resources.getString(R.string.security_this_device_s_clock_is_behind_the_managing_client)
+        }
+        "security.this_page_and_the_server_or_pairing_device_use" -> {
+            resources.getString(R.string.security_this_page_and_the_server_or_pairing_device_use)
+        }
+        "security.this_pairing_expired_generate_a_new_code_on_the" -> {
+            resources.getString(R.string.security_this_pairing_expired_generate_a_new_code_on_the)
+        }
+        "security.this_permanently_deletes_sessions_events_and_images_on_the" -> {
+            resources.getString(R.string.security_this_permanently_deletes_sessions_events_and_images_on_the)
+        }
+        "security.too_many_attempts_wait_a_minute_and_retry" -> {
+            resources.getString(R.string.security_too_many_attempts_wait_a_minute_and_retry)
+        }
+        "security.transfer_management" -> {
+            resources.getString(R.string.security_transfer_management)
+        }
+        "security.transfer_result_unverified_continue_the_original_operation" -> {
+            resources.getString(R.string.security_transfer_result_unverified_continue_the_original_operation)
+        }
+        "security.transfer_to" -> {
+            resources.getString(R.string.security_transfer_to)
+        }
+        "security.unfinished_security_operation" -> {
+            resources.getString(R.string.security_unfinished_security_operation)
+        }
+        "security.unknown_type" -> {
+            resources.getString(R.string.security_unknown_type)
+        }
+        "security.use_when_the_managing_client_is_lost" -> {
+            resources.getString(R.string.security_use_when_the_managing_client_is_lost)
+        }
+        "security.used" -> {
+            val detail = message.args.getValue("detail") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.security_used, detail, value)
+        }
+        "security.verify_and_continue" -> {
+            resources.getString(R.string.security_verify_and_continue)
+        }
+        "security.verifying_management_identity_and_unfinished_security_operations" -> {
+            resources.getString(R.string.security_verifying_management_identity_and_unfinished_security_operations)
+        }
+        "security.waiting_for_comparison" -> {
+            resources.getString(R.string.security_waiting_for_comparison)
+        }
+        "security.waiting_for_the_new_device_to_enter_the_pairing" -> {
+            resources.getString(R.string.security_waiting_for_the_new_device_to_enter_the_pairing)
+        }
+        "security.waiting_for_the_successor_device_to_generate_and_save" -> {
+            resources.getString(R.string.security_waiting_for_the_successor_device_to_generate_and_save)
         }
         "session.abandon_fork" -> {
             resources.getString(R.string.session_abandon_fork)
@@ -2273,6 +4085,372 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "session.view" -> {
             resources.getString(R.string.session_view)
         }
+        "settings.about" -> {
+            resources.getString(R.string.settings_about)
+        }
+        "settings.account" -> {
+            resources.getString(R.string.settings_account)
+        }
+        "settings.account_quota" -> {
+            resources.getString(R.string.settings_account_quota)
+        }
+        "settings.added" -> {
+            resources.getString(R.string.settings_added)
+        }
+        "settings.all_clients" -> {
+            resources.getString(R.string.settings_all_clients)
+        }
+        "settings.all_devices" -> {
+            resources.getString(R.string.settings_all_devices)
+        }
+        "settings.appearance" -> {
+            resources.getString(R.string.settings_appearance)
+        }
+        "settings.approval_timeout" -> {
+            resources.getString(R.string.settings_approval_timeout)
+        }
+        "settings.attachment_storage" -> {
+            resources.getString(R.string.settings_attachment_storage)
+        }
+        "settings.attachments_are_stored_on_this_computer_session_files_remain" -> {
+            resources.getString(R.string.settings_attachments_are_stored_on_this_computer_session_files_remain)
+        }
+        "settings.automatically_end_idle_sessions" -> {
+            resources.getString(R.string.settings_automatically_end_idle_sessions)
+        }
+        "settings.can_clear" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_can_clear, value)
+        }
+        "settings.can_free" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_can_free, value)
+        }
+        "settings.cannot_receive" -> {
+            resources.getString(R.string.settings_cannot_receive)
+        }
+        "settings.cannot_sign_in_to_the_relay_right_now" -> {
+            resources.getString(R.string.settings_cannot_sign_in_to_the_relay_right_now)
+        }
+        "settings.check_for_updates" -> {
+            resources.getString(R.string.settings_check_for_updates)
+        }
+        "settings.checking" -> {
+            resources.getString(R.string.settings_checking)
+        }
+        "settings.clear" -> {
+            resources.getString(R.string.settings_clear)
+        }
+        "settings.clear_reclaimable_attachments_and_cache" -> {
+            resources.getString(R.string.settings_clear_reclaimable_attachments_and_cache)
+        }
+        "settings.clear_settings" -> {
+            resources.getString(R.string.settings_clear_settings)
+        }
+        "settings.clears_reclaimable_originals_previews_and_unsynced_large_image_cache" -> {
+            resources.getString(R.string.settings_clears_reclaimable_originals_previews_and_unsynced_large_image_cache)
+        }
+        "settings.cli_version" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.settings_cli_version, name)
+        }
+        "settings.client_name" -> {
+            resources.getString(R.string.settings_client_name)
+        }
+        "settings.clients_control_sessions" -> {
+            resources.getString(R.string.settings_clients_control_sessions)
+        }
+        "settings.computer" -> {
+            resources.getString(R.string.settings_computer)
+        }
+        "settings.computer_offline_showing_the_last_reading" -> {
+            resources.getString(R.string.settings_computer_offline_showing_the_last_reading)
+        }
+        "settings.computer_settings_offline" -> {
+            val name = message.args.getValue("name") as String
+            resources.getString(R.string.settings_computer_settings_offline, name)
+        }
+        "settings.computers_run_clis" -> {
+            resources.getString(R.string.settings_computers_run_clis)
+        }
+        "settings.could_not_download_retry_later" -> {
+            resources.getString(R.string.settings_could_not_download_retry_later)
+        }
+        "settings.could_not_read_the_device_list" -> {
+            resources.getString(R.string.settings_could_not_read_the_device_list)
+        }
+        "settings.current" -> {
+            resources.getString(R.string.settings_current)
+        }
+        "settings.dark" -> {
+            resources.getString(R.string.settings_dark)
+        }
+        "settings.default" -> {
+            resources.getString(R.string.settings_default)
+        }
+        "settings.default_approval_mode" -> {
+            resources.getString(R.string.settings_default_approval_mode)
+        }
+        "settings.default_reasoning_effort" -> {
+            resources.getString(R.string.settings_default_reasoning_effort)
+        }
+        "settings.details" -> {
+            resources.getString(R.string.settings_details)
+        }
+        "settings.device_id" -> {
+            resources.getString(R.string.settings_device_id)
+        }
+        "settings.device_not_found" -> {
+            resources.getString(R.string.settings_device_not_found)
+        }
+        "settings.devices" -> {
+            resources.getString(R.string.settings_devices)
+        }
+        "settings.enable" -> {
+            resources.getString(R.string.settings_enable)
+        }
+        "settings.enable_security_notifications" -> {
+            resources.getString(R.string.settings_enable_security_notifications)
+        }
+        "settings.enabled" -> {
+            resources.getString(R.string.settings_enabled)
+        }
+        "settings.exit_and_delete_local_keys" -> {
+            resources.getString(R.string.settings_exit_and_delete_local_keys)
+        }
+        "settings.follow_configuration" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_follow_configuration, value)
+        }
+        "settings.follow_configuration_settings" -> {
+            resources.getString(R.string.settings_follow_configuration_settings)
+        }
+        "settings.how_to_enable" -> {
+            resources.getString(R.string.settings_how_to_enable)
+        }
+        "settings.idle_close_off" -> {
+            resources.getString(R.string.settings_idle_close_off)
+        }
+        "settings.iphone_push_help" -> {
+            resources.getString(R.string.settings_iphone_push_help)
+        }
+        "settings.last_used" -> {
+            resources.getString(R.string.settings_last_used)
+        }
+        "settings.less_than_0_1_mib" -> {
+            resources.getString(R.string.settings_less_than_0_1_mib)
+        }
+        "settings.light" -> {
+            resources.getString(R.string.settings_light)
+        }
+        "settings.managing_client" -> {
+            resources.getString(R.string.settings_managing_client)
+        }
+        "settings.min" -> {
+            resources.getString(R.string.settings_min)
+        }
+        "settings.name" -> {
+            resources.getString(R.string.settings_name)
+        }
+        "settings.name_changes_sync_to_other_clients" -> {
+            resources.getString(R.string.settings_name_changes_sync_to_other_clients)
+        }
+        "settings.name_save_error" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.settings_name_save_error, reason)
+        }
+        "settings.names_sync_encrypted_the_server_cannot_read_them_leave" -> {
+            resources.getString(R.string.settings_names_sync_encrypted_the_server_cannot_read_them_leave)
+        }
+        "settings.new_project_defaults" -> {
+            resources.getString(R.string.settings_new_project_defaults)
+        }
+        "settings.new_project_defaults_settings" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_new_project_defaults_settings, value)
+        }
+        "settings.no_computers_yet" -> {
+            resources.getString(R.string.settings_no_computers_yet)
+        }
+        "settings.no_record" -> {
+            resources.getString(R.string.settings_no_record)
+        }
+        "settings.nothing_to_clear" -> {
+            resources.getString(R.string.settings_nothing_to_clear)
+        }
+        "settings.notification_permission_help" -> {
+            resources.getString(R.string.settings_notification_permission_help)
+        }
+        "settings.notifications_on_this_client" -> {
+            resources.getString(R.string.settings_notifications_on_this_client)
+        }
+        "settings.now" -> {
+            resources.getString(R.string.settings_now)
+        }
+        "settings.offline" -> {
+            resources.getString(R.string.settings_offline)
+        }
+        "settings.on_iphone_add_to_home_screen_and_open_from" -> {
+            resources.getString(R.string.settings_on_iphone_add_to_home_screen_and_open_from)
+        }
+        "settings.online" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_online, value)
+        }
+        "settings.paired_client" -> {
+            resources.getString(R.string.settings_paired_client)
+        }
+        "settings.preview_cache" -> {
+            resources.getString(R.string.settings_preview_cache)
+        }
+        "settings.read_error" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.settings_read_error, reason)
+        }
+        "settings.rejoin_account" -> {
+            resources.getString(R.string.settings_rejoin_account)
+        }
+        "settings.restore_default_name" -> {
+            resources.getString(R.string.settings_restore_default_name)
+        }
+        "settings.runs_on" -> {
+            resources.getString(R.string.settings_runs_on)
+        }
+        "settings.save_error" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.settings_save_error, reason)
+        }
+        "settings.scheduled_task_results" -> {
+            resources.getString(R.string.settings_scheduled_task_results)
+        }
+        "settings.security_notifications" -> {
+            resources.getString(R.string.settings_security_notifications)
+        }
+        "settings.security_notifications_are_independent_of_session_alerts_delivery_is" -> {
+            resources.getString(R.string.settings_security_notifications_are_independent_of_session_alerts_delivery_is)
+        }
+        "settings.session_alerts_are_off_you_will_not_be_notified" -> {
+            resources.getString(R.string.settings_session_alerts_are_off_you_will_not_be_notified)
+        }
+        "settings.sessions_end_automatically_after_this_much_inactivity_not_running" -> {
+            resources.getString(R.string.settings_sessions_end_automatically_after_this_much_inactivity_not_running)
+        }
+        "settings.set_the_name_and_notification_preferences_on_that_device" -> {
+            resources.getString(R.string.settings_set_the_name_and_notification_preferences_on_that_device)
+        }
+        "settings.signed_account_state_confirms_this_device_was_removed_sessions" -> {
+            resources.getString(R.string.settings_signed_account_state_confirms_this_device_was_removed_sessions)
+        }
+        "settings.storage_limit" -> {
+            resources.getString(R.string.settings_storage_limit)
+        }
+        "settings.subscription_error" -> {
+            val reason = message.args.getValue("reason") as String
+            resources.getString(R.string.settings_subscription_error, reason)
+        }
+        "settings.the_account_keys_in_this_browser_will_be_deleted" -> {
+            resources.getString(R.string.settings_the_account_keys_in_this_browser_will_be_deleted)
+        }
+        "settings.the_browser_denied_notification_permission" -> {
+            resources.getString(R.string.settings_the_browser_denied_notification_permission)
+        }
+        "settings.the_device_may_have_been_removed_the_service_reset" -> {
+            resources.getString(R.string.settings_the_device_may_have_been_removed_the_service_reset)
+        }
+        "settings.the_new_device_has_not_finished_joining_if_it" -> {
+            resources.getString(R.string.settings_the_new_device_has_not_finished_joining_if_it)
+        }
+        "settings.the_original_operation_is_unfinished_continue_verifying" -> {
+            resources.getString(R.string.settings_the_original_operation_is_unfinished_continue_verifying)
+        }
+        "settings.the_original_security_operation_is_verified_complete_you_can" -> {
+            resources.getString(R.string.settings_the_original_security_operation_is_verified_complete_you_can)
+        }
+        "settings.the_time_on_the_right_is_the_last_use" -> {
+            resources.getString(R.string.settings_the_time_on_the_right_is_the_last_use)
+        }
+        "settings.theme" -> {
+            resources.getString(R.string.settings_theme)
+        }
+        "settings.theme_auto" -> {
+            resources.getString(R.string.settings_theme_auto)
+        }
+        "settings.this_browser_does_not_support_push_notifications" -> {
+            resources.getString(R.string.settings_this_browser_does_not_support_push_notifications)
+        }
+        "settings.this_device_was_removed_from_the_account" -> {
+            resources.getString(R.string.settings_this_device_was_removed_from_the_account)
+        }
+        "settings.times_are_shown_in_beijing_time_quotas_belong_to" -> {
+            resources.getString(R.string.settings_times_are_shown_in_beijing_time_quotas_belong_to)
+        }
+        "settings.unanswered_approvals_are_denied_after_this_time" -> {
+            resources.getString(R.string.settings_unanswered_approvals_are_denied_after_this_time)
+        }
+        "settings.unfinished_pairing" -> {
+            resources.getString(R.string.settings_unfinished_pairing)
+        }
+        "settings.unfinished_pairing_settings" -> {
+            resources.getString(R.string.settings_unfinished_pairing_settings)
+        }
+        "settings.unnamed" -> {
+            resources.getString(R.string.settings_unnamed)
+        }
+        "settings.unverified" -> {
+            resources.getString(R.string.settings_unverified)
+        }
+        "settings.up_to_date" -> {
+            resources.getString(R.string.settings_up_to_date)
+        }
+        "settings.uploaded_images_and_files" -> {
+            resources.getString(R.string.settings_uploaded_images_and_files)
+        }
+        "settings.uploading" -> {
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.settings_uploading, value)
+        }
+        "settings.use_cli_defaults_for_new_projects" -> {
+            resources.getString(R.string.settings_use_cli_defaults_for_new_projects)
+        }
+        "settings.verify_and_continue_security_operation" -> {
+            resources.getString(R.string.settings_verify_and_continue_security_operation)
+        }
+        "settings.version_unverified_run_remote_agent_doctor_on_this_computer" -> {
+            resources.getString(R.string.settings_version_unverified_run_remote_agent_doctor_on_this_computer)
+        }
+        "settings.view_usage_in_the_local_cli" -> {
+            resources.getString(R.string.settings_view_usage_in_the_local_cli)
+        }
+        "settings.when_a_turn_ends" -> {
+            resources.getString(R.string.settings_when_a_turn_ends)
+        }
+        "settings.when_i_need_to_act" -> {
+            resources.getString(R.string.settings_when_i_need_to_act)
+        }
+        "settings.when_unspecified_uses" -> {
+            resources.getString(R.string.settings_when_unspecified_uses)
+        }
+        "startup.install_description" -> {
+            resources.getString(R.string.startup_install_description)
+        }
+        "startup.javascript_required" -> {
+            resources.getString(R.string.startup_javascript_required)
+        }
+        "startup.opening" -> {
+            resources.getString(R.string.startup_opening)
+        }
+        "startup.opening_remote_agent" -> {
+            resources.getString(R.string.startup_opening_remote_agent)
+        }
+        "startup.page_updated" -> {
+            resources.getString(R.string.startup_page_updated)
+        }
+        "startup.the_page_could_not_load_check_your_connection_and" -> {
+            resources.getString(R.string.startup_the_page_could_not_load_check_your_connection_and)
+        }
+        "startup.this_part_could_not_be_fetched_reload_to_continue" -> {
+            resources.getString(R.string.startup_this_part_could_not_be_fetched_reload_to_continue)
+        }
         "terminal.android_closed" -> {
             resources.getString(R.string.terminal_android_closed)
         }
@@ -2414,6 +4592,12 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         "terminal.view_details" -> {
             resources.getString(R.string.terminal_view_details)
         }
+        "time.calendar_date_year" -> {
+            val day = message.args.getValue("day") as Int
+            val month = message.args.getValue("month") as Int
+            val year = message.args.getValue("year") as Int
+            resources.getString(R.string.time_calendar_date_year, day, month, year)
+        }
         "time.duration_hours_minutes" -> {
             val hours = message.args.getValue("hours") as Int
             val minutes = message.args.getValue("minutes") as Int
@@ -2453,6 +4637,14 @@ fun resolveUiMessage(context: Context, message: UiMessage, locale: String = "zh-
         }
         "time.today" -> {
             resources.getString(R.string.time_today)
+        }
+        "time.today_clock" -> {
+            val detail = message.args.getValue("detail") as String
+            val value = message.args.getValue("value") as String
+            resources.getString(R.string.time_today_clock, detail, value)
+        }
+        "time.tomorrow" -> {
+            resources.getString(R.string.time_tomorrow)
         }
         "time.weekday" -> {
             val day = message.args.getValue("day") as String

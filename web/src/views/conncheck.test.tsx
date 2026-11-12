@@ -1,3 +1,4 @@
+import { t as message } from "../i18n";
 // @vitest-environment happy-dom
 // 连接检测: each stretch's round trip, measured when the sheet opens.
 
@@ -39,15 +40,15 @@ describe("connection check", () => {
       r.pingServer = async () => pings.shift()!;
       r.pingMachine = async (id) => (id === "vps" ? 2140 : 180);
     });
-    expect(rows()["服务器"]).toBe("检测中…");
+    expect(rows()[message("security.server")]).toBe(message("connection.checking"));
     await vi.waitFor(() => expect(host.querySelector<HTMLButtonElement>(".conn-again button")!.disabled).toBe(false));
     const got = rows();
-    expect(got["本机网络"]).toBe("正常");
+    expect(got[message("connection.local_network")]).toBe(message("connection.working"));
     // One slow sample of three does not make the line slow.
-    expect(got["服务器"]).toBe("95 ms");
+    expect(got[message("security.server")]).toBe("95 ms");
     expect(got["MacBook"]).toBe("180 ms");
     expect(got["VPS-dev"]).toBe("2140 ms · 较慢");
-    expect(got["Mac mini"]).toBe("不在线");
+    expect(got["Mac mini"]).toBe(message("common.ios_offline"));
   });
 
   it("says the server did not answer, and leaves the computers unmeasured", async () => {
@@ -56,8 +57,8 @@ describe("connection check", () => {
       r.pingServer = async () => Promise.reject(new Error("没有回应"));
       r.pingMachine = async () => ++asked;
     });
-    await vi.waitFor(() => expect(rows()["服务器"]).toBe("没有回应"));
-    expect(rows()["MacBook"]).toBe("未检测");
+    await vi.waitFor(() => expect(rows()[message("security.server")]).toBe(message("connection.no_response")));
+    expect(rows()["MacBook"]).toBe(message("connection.not_checked"));
     expect(asked).toBe(0);
   });
 });

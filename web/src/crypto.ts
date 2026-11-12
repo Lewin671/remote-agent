@@ -1,3 +1,4 @@
+import * as l10n from "./i18n";
 import { inflateBounded } from "./inflate";
 // End-to-end encryption, matching internal/e2e in Go: HKDF-SHA256 key
 // derivation from the account root key, AES-256-GCM envelopes whose
@@ -51,7 +52,7 @@ export interface Secret {
 
 /** Parses "ra1.<root key>.<server URL>", both parts base64url. */
 export function parseSecret(text: string): Secret {
-  const bad = new Error("这不是 remote-agent 的账户密钥");
+  const bad = new Error(l10n.t("errors.this_is_not_a_remote_agent_account_key"));
   const t = text.trim();
   if (!t.startsWith("ra1.")) throw bad;
   const parts = t.slice(4).split(".");
@@ -71,8 +72,8 @@ export function parseSecret(text: string): Secret {
 export function checkServer(server: string): string {
   const u = new URL(server.trim());
   const local = ["localhost", "127.0.0.1", "[::1]"].includes(u.hostname);
-  if (u.protocol !== "https:" && !(u.protocol === "http:" && local)) throw new Error("server 必须使用 https");
-  if (u.username || u.password) throw new Error("server 地址不能包含用户名或密码");
+  if (u.protocol !== "https:" && !(u.protocol === "http:" && local)) throw new Error(l10n.t("errors.the_server_must_use_https"));
+  if (u.username || u.password) throw new Error(l10n.t("errors.the_server_address_cannot_include_a_username_or_password"));
   return u.origin;
 }
 
@@ -224,9 +225,9 @@ export function newRequestID(): string {
 export { PayloadKind };
 
 /** The old history envelope is recognized only to report its retirement. */
-export const RETIRED_HISTORY_ERROR = "这条历史是旧版加密格式，已不再支持查看";
+export const RETIRED_HISTORY_ERROR = () => l10n.t("errors.this_history_uses_an_old_encryption_format_and_can");
 export class UnsupportedHistoryError extends Error {
-  constructor() { super(RETIRED_HISTORY_ERROR); }
+  constructor() { super(RETIRED_HISTORY_ERROR()); }
 }
 export function rejectRetiredHistory(env: Envelope | undefined): void {
   if (env && fromBinary(HeaderSchema, env.header).version === 1) throw new UnsupportedHistoryError();

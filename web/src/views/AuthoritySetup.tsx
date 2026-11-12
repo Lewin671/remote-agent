@@ -1,3 +1,4 @@
+import * as l10n from "../i18n";
 import { ChevronRight } from "../icons";
 import { futureTime } from "../model";
 import { Suspense, useEffect, useState } from "react";
@@ -79,11 +80,11 @@ export function AccountEntry({
     }
   };
   if (!setup || (!startup && !error))
-    return <div className="center muted">加载中…</div>;
+    return <div className="center muted">{l10n.t("security.loading")}</div>;
   if (mode === "join")
     return (
       <>
-        <NavBar onBack={() => setMode("")} title="加入已有账户" />
+        <NavBar onBack={() => setMode("")} title={l10n.t("security.join_an_existing_account")} />
         <Suspense fallback={<Startup />}><Setup onDone={onDone} /></Suspense>
       </>
     );
@@ -91,18 +92,18 @@ export function AccountEntry({
     return (
       <div className="setup authority-setup account-entry">
         <h3 className="hl">remote-agent</h3>
-        <div className="hl-sub">在任何设备上操作电脑里的 AI 编程 CLI</div>
+        <div className="hl-sub">{l10n.t("security.control_ai_coding_clis_on_your_computer_from_any")}</div>
         <div className="grp">
-          <button className="row entry-row" aria-label="新建账户" onClick={() => setMode("create")}>
-            <span className="row-name">新建账户<small>这台设备成为管理端</small></span>
+          <button className="row entry-row" aria-label={l10n.t("security.create_account")} onClick={() => setMode("create")}>
+            <span className="row-name">{l10n.t("security.create_account")}<small>{l10n.t("security.this_device_becomes_the_managing_client")}</small></span>
             <span className="v"><ChevronRight /></span>
           </button>
-          <button className="row entry-row" aria-label="加入已有账户" onClick={() => setMode("join")}>
-            <span className="row-name">加入已有账户<small>用管理端给的配对码加入</small></span>
+          <button className="row entry-row" aria-label={l10n.t("security.join_an_existing_account")} onClick={() => setMode("join")}>
+            <span className="row-name">{l10n.t("security.join_an_existing_account")}<small>{l10n.t("security.join_with_a_code_from_the_managing_client")}</small></span>
             <span className="v"><ChevronRight /></span>
           </button>
-          <button className="row entry-row" aria-label="用恢复码找回管理权" onClick={() => setMode("recovery")}>
-            <span className="row-name">用恢复码找回管理权<small>管理端丢失时使用</small></span>
+          <button className="row entry-row" aria-label={l10n.t("security.recover_management_with_a_recovery_code")} onClick={() => setMode("recovery")}>
+            <span className="row-name">{l10n.t("security.recover_management_with_a_recovery_code")}<small>{l10n.t("security.use_when_the_managing_client_is_lost")}</small></span>
             <span className="v"><ChevronRight /></span>
           </button>
         </div>
@@ -113,15 +114,15 @@ export function AccountEntry({
   return (
     <div className="setup authority-setup">
       <NavBar
-        title={mode === "create" ? "新建账户" : "用恢复码找回管理权"}
+        title={mode === "create" ? l10n.t("security.create_account") : l10n.t("security.recover_management_with_a_recovery_code")}
         onBack={!pending ? () => setMode("") : undefined}
       />
-      <Banner kind="">{BROWSER_AUTHORITY_NOTICE}</Banner>
+      <Banner kind="">{BROWSER_AUTHORITY_NOTICE()}</Banner>
       {!pending && (
         <label className="field">
-          <small>服务器</small>
+          <small>{l10n.t("security.server")}</small>
           <input
-            aria-label="服务器"
+            aria-label={l10n.t("security.server")}
             placeholder="https://ra.example.com"
             value={server}
             onChange={(e) => setServer(e.target.value.trim())}
@@ -135,8 +136,7 @@ export function AccountEntry({
         <>
           {pending && !code && (
             <Banner kind="warn">
-              原创建草稿已保留，继续同一个账户。恢复码不会再次显示；没有备份时，进入账户后立即换码。
-            </Banner>
+              {l10n.t("security.the_original_creation_draft_is_preserved_continue_with_the")}</Banner>
           )}
           {persisted !== undefined && (
             <PersistenceResult persisted={persisted} />
@@ -144,7 +144,7 @@ export function AccountEntry({
           {code && <CodeBackup code={code} saved={saved} onSaved={setSaved} />}
           {pending && (
             <label className="field">
-              <small>Setup token（开放注册可留空）</small>
+              <small>{l10n.t("security.setup_token_optional_with_open_registration")}</small>
               <input
                 aria-label="Setup token"
                 type="password"
@@ -180,22 +180,20 @@ export function AccountEntry({
               })
             }
           >
-            {busy ? "处理中…" : !pending ? "生成恢复码" : "继续创建"}
+            {busy ? l10n.t("security.processing") : !pending ? l10n.t("security.generate_recovery_code") : l10n.t("security.continue_creation")}
           </button>
         </>
       ) : (
         <>
-          <p className="txt">若此浏览器已有成员身份，完成恢复时会自动移除旧身份并轮换内容密钥；中断后请继续原恢复。</p>
+          <p className="txt">{l10n.t("security.if_this_browser_is_already_a_member_recovery_will")}</p>
           {!pending && (
             <>
               <p className="txt">
-                提交后需等待 48
-                小时。当前管理端可以否决申请；恢复后无法读取恢复边界之前的历史。
-              </p>
+                {l10n.t("security.after_submission_wait_48_hours_the_current_managing_client")}</p>
               <textarea
                 className="field"
-                aria-label="原恢复码"
-                placeholder="原恢复码"
+                aria-label={l10n.t("security.original_recovery_code")}
+                placeholder={l10n.t("security.original_recovery_code")}
                 value={oldCode}
                 onChange={(e) => setOldCode(e.target.value)}
               />
@@ -214,8 +212,7 @@ export function AccountEntry({
                   })
                 }
               >
-                准备恢复
-              </button>
+                {l10n.t("security.prepare_recovery")}</button>
             </>
           )}
           {pending && (
@@ -224,21 +221,20 @@ export function AccountEntry({
                 <CodeBackup code={code} saved={saved} onSaved={setSaved} />
               ) : (
                 <p className="txt">
-                  原恢复草稿已保留。新恢复码不会再次显示；未保存时仍可完成原恢复，进入账户后立即换码。
-                </p>
+                  {l10n.t("security.the_original_recovery_draft_is_preserved_the_new_recovery")}</p>
               )}
               {status && (
                 <Banner kind={status.phase === Phase.REJECTED ? "err" : "warn"}>
                   {status.phase === Phase.REJECTED
-                    ? "恢复已被否决，可以重新申请。"
-                    : `恢复申请待处理。可生效时间：${futureTime(status.readyMs)}`}
+                    ? l10n.t("security.recovery_was_rejected_you_can_apply_again")
+                    : l10n.t("security.recovery_request_pending_eligible_at", { value: String(futureTime(status.readyMs)) })}
                 </Banner>
               )}
               {signatureMissing && (
                 <>
                   <textarea
                     className="field"
-                    aria-label="原恢复码"
+                    aria-label={l10n.t("security.original_recovery_code")}
                     value={oldCode}
                     onChange={(e) => setOldCode(e.target.value)}
                   />
@@ -252,8 +248,7 @@ export function AccountEntry({
                       })
                     }
                   >
-                    继续原草稿
-                  </button>
+                    {l10n.t("security.continue_original_draft")}</button>
                   <button
                     className="btn"
                     disabled={busy}
@@ -264,8 +259,7 @@ export function AccountEntry({
                       })
                     }
                   >
-                    放弃未签名草稿
-                  </button>
+                    {l10n.t("security.abandon_unsigned_draft")}</button>
                 </>
               )}
               <button
@@ -285,11 +279,11 @@ export function AccountEntry({
                 }
               >
                 {busy
-                  ? "处理中…"
+                  ? l10n.t("security.processing")
                   : status &&
                       [Phase.READY, Phase.PUBLISHED].includes(status.phase)
-                    ? "完成恢复"
-                    : "提交或查询原恢复"}
+                    ? l10n.t("security.complete_recovery")
+                    : l10n.t("security.submit_or_check_original_recovery")}
               </button>
               {status?.phase === Phase.REJECTED && (
                 <button
@@ -304,8 +298,7 @@ export function AccountEntry({
                     })
                   }
                 >
-                  重新申请
-                </button>
+                  {l10n.t("security.apply_again")}</button>
               )}
             </>
           )}

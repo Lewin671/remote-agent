@@ -324,5 +324,595 @@
       "zh-CN": "source",
       "en": "draft"
     }
+  },
+  {
+    "key": "quota.third_party_models_claude_gpt_oss",
+    "zh-CN": "第三方模型（Claude、GPT-OSS）",
+    "en": "Third-party models (Claude, GPT-OSS)",
+    "notes": "agents 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.resetting_soon",
+    "zh-CN": "即将重置",
+    "en": "Resetting soon",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.resets_in_min",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟后重置"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Resets in {count} min",
+        "other": "Resets in {count} min"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = m；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.resets_in_hr_min",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 小时 {detail} 分后重置"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Resets in {count} hr {detail} min",
+        "other": "Resets in {count} hr {detail} min"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = Math.floor(m / 60)；detail = m % 60；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "detail": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.resets_in_days_hr",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 天 {detail} 小时后重置"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "Resets in {count} day {detail} hr",
+        "other": "Resets in {count} days {detail} hr"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = Math.floor(m / (24 * 60))；detail = Math.floor((m % (24 * 60)) / 60)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      },
+      "detail": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.exhausted_quota",
+    "zh-CN": "已用尽",
+    "en": "Exhausted",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.left",
+    "zh-CN": "剩 {value}%",
+    "en": "{value}% left",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = 100 - Math.floor(pct)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.days",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 天"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} day",
+        "other": "{count} days"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = minutes / (24 * 60)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.hr",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 小时"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} hr",
+        "other": "{count} hr"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = Math.round(minutes / 60)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.min",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{count} 分钟"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{count} min",
+        "other": "{count} min"
+      }
+    },
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：count = minutes；名称、日期和诊断原文不翻译。",
+    "params": {
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.unavailable",
+    "zh-CN": "未获取",
+    "en": "Unavailable",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.no_data_received_for_this_quota",
+    "zh-CN": "没有收到这项额度数据",
+    "en": "No data received for this quota",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.awaiting_update",
+    "zh-CN": "等待更新",
+    "en": "Awaiting update",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.last_reading_reset_time_passed_but_quota_recovery_is",
+    "zh-CN": "上次记录 {value}；重置时间已过，不能据此确认额度已经恢复",
+    "en": "Last reading: {value}; reset time passed, but quota recovery is unconfirmed",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = left；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.last_reading_computer_offline_may_have_changed",
+    "zh-CN": "上次记录：电脑离线，可能已变化",
+    "en": "Last reading: computer offline, may have changed",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.previously_reset_time_passed_but_quota_recovery_is_unconfirmed",
+    "zh-CN": "上次{value}；重置时间已过，不能据此确认额度已经恢复",
+    "en": "Previously {value}; reset time passed, but quota recovery is unconfirmed",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = left；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.previously",
+    "zh-CN": "上次{value}",
+    "en": "Previously {value}",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = left；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.quota_lookup_is_not_supported_yet",
+    "zh-CN": "暂不支持读取额度",
+    "en": "Quota lookup is not supported yet",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.account",
+    "zh-CN": " · 账户 {value}",
+    "en": " · Account {value}",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = q.account；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.session",
+    "zh-CN": " · 会话 {value}",
+    "en": " · Session {value}",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。变量来源：value = q.sourceSessionId.slice(-4)；名称、日期和诊断原文不翻译。",
+    "params": {
+      "value": {
+        "type": "string",
+        "example": "Example"
+      }
+    },
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.quota_not_available_yet",
+    "zh-CN": "暂未获取额度",
+    "en": "Quota not available yet",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.last_reading",
+    "zh-CN": " · 上次记录",
+    "en": " · Last reading",
+    "notes": "quota 页面或对应功能的状态、操作标签或错误说明。中文原句保持；按钮与列表行空间紧凑，说明可多行。无变量。",
+    "params": {},
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.named_hours",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{name} · {count} 小时"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{name} · {count} hr",
+        "other": "{name} · {count} hr"
+      }
+    },
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "额度窗口标签；name 是 CLI 或额度池名称、count 是窗口小时数。短标签，不改变额度边界。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.named_days",
+    "zh-CN": {
+      "plural": "count",
+      "forms": {
+        "other": "{name} · {count} 天"
+      }
+    },
+    "en": {
+      "plural": "count",
+      "forms": {
+        "one": "{name} · {count} day",
+        "other": "{name} · {count} days"
+      }
+    },
+    "params": {
+      "name": {
+        "type": "string",
+        "example": "Example"
+      },
+      "count": {
+        "type": "integer",
+        "example": 2
+      }
+    },
+    "notes": "额度窗口标签；name 是 CLI 或额度池名称、count 是窗口天数。短标签。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.third_party_models",
+    "zh-CN": "第三方模型",
+    "en": "Third-party models",
+    "params": {},
+    "notes": "Antigravity 额度池短名称；不是模型标识。短标签，无变量。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "quota.unavailable_previous",
+    "zh-CN": "暂未获取额度（上次记录）",
+    "en": "Quota not available yet (last reading)",
+    "params": {},
+    "notes": "电脑额度摘要的旧数据缺失状态；完整句，无变量。",
+    "platforms": [
+      "web",
+      "android",
+      "ios"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
   }
 ]
