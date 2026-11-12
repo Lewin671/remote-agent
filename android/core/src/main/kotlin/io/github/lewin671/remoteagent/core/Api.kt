@@ -232,7 +232,9 @@ suspend fun loginResponse(api: Api, account: Account): LoginResponse {
 }
 
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
-class CommandException(val code: String, message: String, val fromDaemon: Boolean = false) :
+enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNOWN, COMPUTER_OFFLINE, IMAGE_MISSING }
+
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW) :
     Exception(message) {
     // fromDaemon: the daemon's own answer for this request, the final word
     // on it (except that it expired before reaching the daemon).

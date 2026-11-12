@@ -84,6 +84,8 @@ class Outgoing(
 
     var state by mutableStateOf(State.SENDING)
     var error by mutableStateOf("")
+    var failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
+        internal set
     var missingImages by mutableStateOf(false)
         private set
     val hasLocalAttachments: Boolean get() = images.isNotEmpty() && images.all { it.hasSource() }
@@ -113,6 +115,7 @@ class Outgoing(
             state = if (unknown) State.UNKNOWN else State.FAILED
             missingImages = !unknown && ce?.fromDaemon == true && ce.code == "not_found" &&
                 (imageIds.isNotEmpty() || fileIds.isNotEmpty()) && ce.message.orEmpty().contains("is not on this machine; upload it again")
+            failureKind = if (missingImages && fileIds.isEmpty()) io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING else ce?.failureKind ?: io.github.lewin671.remoteagent.core.CommandFailureKind.RAW
             error = if (missingImages) { if (fileIds.isNotEmpty()) sessionText(UiMessages.attachmentAndroidMissingFiles()) else sessionText(UiMessages.imageAndroidMissingUploads()) } else errorText(e)
         } finally {
             delivering = false
@@ -247,6 +250,7 @@ class OutgoingRecords(private val files: SealedFiles) {
                 // From a run that ended: whether it reached the computer is not known.
                 state = Outgoing.State.UNKNOWN
                 error = sessionText(UiMessages.composerAndroidRestartUnknown())
+                failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN
             }
         }
     }

@@ -9,16 +9,18 @@ import io.github.lewin671.remoteagent.proto.SendMode
 
 internal data class SendFeedback(val text: String, val uncertain: Boolean)
 
-internal fun deliveryFailure(reason: String, uncertain: Boolean, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =
-    SendFeedback(if (uncertain) copy(UiMessages.composerMaybeFailure(reason = (shortSendReason(reason)).toString())) else copy(UiMessages.composerSendFailure(reason = (shortSendReason(reason)).toString())), uncertain)
-
-private fun shortSendReason(reason: String): String = when {
-    reason.contains("回复打不开") || reason.contains("可验证的执行结果") -> "回复验证失败"
-    reason.contains("连接中途断了") -> "连接中途断了"
-    reason.contains("不确定电脑有没有执行") || reason.contains("停止等待回复") -> "结果未知"
-    reason.contains("图片不在电脑上") -> "图片不在电脑上"
-    reason.contains("电脑不在线") -> "电脑不在线"
-    else -> reason.trim().ifEmpty { "原因未知" }
+internal fun deliveryFailure(reason: String, uncertain: Boolean,
+    kind: io.github.lewin671.remoteagent.core.CommandFailureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.RAW,
+    copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback {
+    val short = when (kind) {
+        io.github.lewin671.remoteagent.core.CommandFailureKind.CONNECTION_DROPPED -> "连接中途断了"
+        io.github.lewin671.remoteagent.core.CommandFailureKind.REPLY_UNVERIFIED -> "回复验证失败"
+        io.github.lewin671.remoteagent.core.CommandFailureKind.UNKNOWN -> "结果不确定"
+        io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE -> "电脑不在线"
+        io.github.lewin671.remoteagent.core.CommandFailureKind.IMAGE_MISSING -> "图片不在电脑上"
+        io.github.lewin671.remoteagent.core.CommandFailureKind.RAW -> reason.trim().ifEmpty { "原因未知" }
+    }
+    return SendFeedback(copy(if (uncertain) UiMessages.composerMaybeFailure(short) else UiMessages.composerSendFailure(short)), uncertain)
 }
 
 internal fun inputFeedback(status: InputStatus, reason: String, agent: Agent, copy: (io.github.lewin671.remoteagent.core.UiMessage) -> String = ::sessionText): SendFeedback =

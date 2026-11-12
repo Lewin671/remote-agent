@@ -42,12 +42,12 @@ class DeliveryTest {
         val outgoing = Outgoing("r", "hello")
         outgoing.deliver { throw CommandException(CommandException.UNKNOWN, "连接超时") }
         assertEquals(SendFeedback("可能没发出去：连接超时", true), deliveryFailure(outgoing.error, outgoing.state == Outgoing.State.UNKNOWN))
-        outgoing.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出") }
+        outgoing.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE) }
         assertEquals(Outgoing.State.UNKNOWN, outgoing.state)
         val definite = Outgoing("d", "hello")
-        definite.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出") }
-        assertEquals(SendFeedback("没发出去：电脑不在线", false), deliveryFailure(definite.error, definite.state == Outgoing.State.UNKNOWN))
-        assertEquals("可能没发出去：连接中途断了", deliveryFailure("不确定电脑有没有执行：连接中途断了", true).text)
-        assertEquals("可能没发出去：回复验证失败", deliveryFailure("电脑的回复打不开，不确定指令有没有执行", true).text)
+        definite.deliver { throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", failureKind = io.github.lewin671.remoteagent.core.CommandFailureKind.COMPUTER_OFFLINE) }
+        assertEquals(SendFeedback("没发出去：电脑不在线", false), deliveryFailure(definite.error, definite.state == Outgoing.State.UNKNOWN, kind = definite.failureKind))
+        assertEquals("可能没发出去：连接中途断了", deliveryFailure("raw diagnostic in any language", true, kind = io.github.lewin671.remoteagent.core.CommandFailureKind.CONNECTION_DROPPED).text)
+        assertEquals("可能没发出去：回复验证失败", deliveryFailure("raw diagnostic in any language", true, kind = io.github.lewin671.remoteagent.core.CommandFailureKind.REPLY_UNVERIFIED).text)
     }
 }

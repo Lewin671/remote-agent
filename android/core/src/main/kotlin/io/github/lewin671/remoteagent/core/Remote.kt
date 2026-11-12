@@ -3338,7 +3338,7 @@ class Remote(
             throw CommandException("failed_precondition", it)
         }
         if (!retryOfUnknown && state.value.machines[p.machineId]?.online == false)
-            throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出")
+            throw CommandException(CommandException.UNAVAILABLE, "电脑不在线，指令没有发出", failureKind = CommandFailureKind.COMPUTER_OFFLINE)
         // A command whose outcome is unknown is sent even when expired: the
         // daemon may still have its result in its log.
         if (!retryOfUnknown && clock() >= p.deadlineMs)
@@ -3350,7 +3350,7 @@ class Remote(
         var mayHaveRun = retryOfUnknown
         fun notSent(code: String, text: String) =
             if (mayHaveRun)
-                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：连接中途断了")
+                CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：连接中途断了", failureKind = CommandFailureKind.CONNECTION_DROPPED)
             else CommandException(code, text)
         var waiting = false
         // A previous try may have got the command to the daemon: a later
@@ -3393,7 +3393,7 @@ class Remote(
                         } catch (e: Exception) {
                             // A result that does not open says nothing about whether
                             // the command ran; retrying the same request asks again.
-                            throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行")
+                            throw CommandException(CommandException.UNKNOWN, "电脑的回复打不开，不确定指令有没有执行", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
                         }
                     if (msg.errorCode.isNotEmpty())
                         throw CommandException(
@@ -3445,19 +3445,20 @@ class Remote(
                             CommandException.UNKNOWN,
                             if (ce.code == Code.UNAVAILABLE) "不确定电脑有没有执行：连接中途断了"
                             else "不确定电脑有没有执行：${errorText(ce, state.value)}",
+                            failureKind = if (ce.code == Code.UNAVAILABLE) CommandFailureKind.CONNECTION_DROPPED else CommandFailureKind.UNKNOWN,
                         )
                     }
-                    throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求")
+                    throw CommandException(CommandException.UNKNOWN, "中继未提供可验证的执行结果，请重试同一请求", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
                 }
             }
         } catch (e: CancellationException) {
             if (waiting || mayHaveRun)
-                throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求")
+                throw CommandException(CommandException.UNKNOWN, "不确定电脑有没有执行：已停止等待回复。重试会发送同一个请求", failureKind = CommandFailureKind.UNKNOWN)
             throw e
         } catch (e: Exception) {
             // Only an authenticated daemon answer settles a dispatched request.
             if (e is CommandException && (e.fromDaemon || e.unknown)) throw e
-            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求")
+            if (mayHaveRun) throw CommandException(CommandException.UNKNOWN, "未收到可验证的执行结果，请重试同一请求", failureKind = CommandFailureKind.REPLY_UNVERIFIED)
             throw e
         }
     }
@@ -3474,6 +3475,7 @@ class Remote(
             throw CommandException(
                 CommandException.UNKNOWN,
                 "不确定电脑有没有执行：请求可能已经送到，之后登录失败（${errorText(e, state.value)}）",
+                failureKind = CommandFailureKind.UNKNOWN,
             )
         }
 

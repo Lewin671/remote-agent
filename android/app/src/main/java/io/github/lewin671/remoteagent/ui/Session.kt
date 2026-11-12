@@ -936,7 +936,7 @@ private fun OutgoingView(
             ?: DEFAULT_AGENT
     val feedback = when (input) {
         InputStatus.INPUT_STATUS_FAILED, InputStatus.INPUT_STATUS_NEEDS_TERMINAL, InputStatus.INPUT_STATUS_UNCONFIRMED -> inputFeedback(input, failure.orEmpty(), agent)
-        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN, copy = copy)
+        else -> deliveryFailure(o.error, o.state == Outgoing.State.UNKNOWN, kind = o.failureKind, copy = copy)
     }
     val failed = input == InputStatus.INPUT_STATUS_FAILED || (input == null && o.state == Outgoing.State.FAILED)
     val links = mutableListOf<Pair<String, () -> Unit>>()
