@@ -20,7 +20,7 @@ extension Remote {
             listed.remove(sid)
         }
         // The cache only lists the first page: the others held here go one by one.
-        for sid in sids { await cache?.removeSession(id: sid) }
+        for sid in sids { await sessionRemovalHandler(sid); await cache?.removeSession(id: sid) }
         await cache?.removeMachine(id: id)
     }
 
@@ -94,6 +94,7 @@ extension Remote {
                 // Its events go with it only when it is known not to exist; else it
                 // may be on a later page with what is held here out of date.
                 if end == nil || !hasMachine {
+                    await sessionRemovalHandler(v.id)
                     await cache?.removeSession(id: v.id)
                 } else {
                     await cache?.unlistSession(id: v.id)

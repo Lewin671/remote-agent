@@ -147,6 +147,9 @@ public actor Remote {
     /// How long a lost connection is only being remade, before the server counts as out of reach.
     nonisolated let linkGraceMs: Int64
 
+    var sessionRemovalHandler: @Sendable (String) async -> Void = { _ in }
+    public func onSessionRemoved(_ handler: @escaping @Sendable (String) async -> Void) { sessionRemovalHandler = handler }
+
     var machines: [String: MachineView] = [:]
     var sessions: [String: SessionView] = [:]
     var sessionKeys: [String: Data] = [:]

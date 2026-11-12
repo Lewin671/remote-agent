@@ -250,6 +250,12 @@ class OutgoingRecords(private val files: SealedFiles) {
         }
     }
 
+    fun removeSession(sid: String) = files.transaction {
+        val old = index()
+        old.filter { it.startsWith("$sid\t") }.forEach { line -> files.clearFolder(folder(sid, line.substringAfter('\t'))) }
+        writeIndex(old.filterNot { it.startsWith("$sid\t") })
+    }
+
     private fun writeIntent(folder: String, o: Outgoing) {
         val bytes = java.io.ByteArrayOutputStream()
         java.io.DataOutputStream(bytes).use {
@@ -298,6 +304,7 @@ fun outgoingShown(input: io.github.lewin671.remoteagent.proto.InputStatus?): Boo
 
 /** Messages sent from this device, per session, for this run of the app (and those with images, from before it). */
 object Outbox {
+    private val forgotten = HashSet<String>()
     private val bySession = HashMap<String, androidx.compose.runtime.snapshots.SnapshotStateList<Outgoing>>()
     private val records get() = OutgoingRecords(io.github.lewin671.remoteagent.RaApp.instance.pendingStore.scoped())
 
@@ -377,6 +384,7 @@ object Outbox {
                 }
             }
             if (account !== AccountMemory.token) return@launch
+            if (sid in forgotten) { drop(sid, o.requestId); return@launch }
             keepingNow.remove(sid)
             onKept(kept)
             if (kept.isFailure) return@launch
@@ -491,7 +499,16 @@ object Outbox {
 
     fun prompt(sid: String): String? = prompts[sid]
 
+    fun forgetSession(sid: String) {
+        forgotten += sid
+        watching.remove(sid)?.cancel()
+        bySession.remove(sid)?.flatMap { it.images }?.forEach { it.release(abort = false) }
+        prompts.remove(sid)
+        keepingNow.remove(sid)
+    }
+
     fun clear() {
+        forgotten.clear()
         bySession.clear()
         keepingNow.clear()
         watching.values.forEach { it.cancel() }

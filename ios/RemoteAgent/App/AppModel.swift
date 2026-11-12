@@ -439,16 +439,25 @@ final class AppModel {
         log.info("login from the last run: \(kept == nil ? "none" : "found", privacy: .public)")
         made.remote.keepLogin(kept) { keeper.keep($0) }
         logins = keeper
-        adopt(account: account, made: made, store: store)
+        await adopt(account: account, made: made, store: store)
         if foreground { made.engine.start() }
     }
 
-    private func adopt(account: Account, made: EngineParts, store: CipherStore?) {
+    private func adopt(account: Account, made: EngineParts, store: CipherStore?) async {
         cache = store
         engine = made.engine
         described = nil
         state = made.remote.state.value
         context = AccountContext(account: account, remote: made.remote, preferenceDefaults: parts.defaults, draftFiles: parts.storage.pending.scoped())
+        if let context {
+            await made.remote.onSessionRemoved { [weak context] sid in
+                await MainActor.run {
+                    guard let context else { return }
+                    context.sessionStore.forgetSession(sid)
+                    ImageCenter.of(context.remote).forgetSession(sid)
+                }
+            }
+        }
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.

@@ -206,6 +206,7 @@ fun fixtureRemote(
     streamOpenMs: Long = 15000,
     linkGraceMs: Long = 10000,
     tokenStorage: LoginTokenStore? = null,
+    onSessionRemoved: suspend (String) -> Unit = {},
 ): Remote =
     Remote(
         account,
@@ -221,4 +222,5 @@ fun fixtureRemote(
         linkGraceMs,
         TestSecurity.find(account.server)?.stores?.get(account.deviceId),
         tokenStorage,
+        onSessionRemoved = onSessionRemoved,
     )

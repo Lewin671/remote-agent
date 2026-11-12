@@ -393,6 +393,7 @@ class Remote(
     private val dispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     private val socketFactory: WebSocket.Factory? = null,
     rpcTransport: com.connectrpc.http.HTTPClientInterface? = null,
+    private val onSessionRemoved: suspend (String) -> Unit = {},
 ) {
     private val device = SigningKey(account.deviceSeed)
     val api = Api(account.server, http, ::rejectToken, rpcTransport)
@@ -1074,6 +1075,7 @@ class Remote(
             sessionKeys.remove(sid)
             listed.remove(sid)
         }
+        for (sid in sids) runCatching { onSessionRemoved(sid) }
         try {
             // The cache only lists the first page: the others held here go one by one.
             for (sid in sids) cache?.removeSession(sid)
@@ -1154,7 +1156,10 @@ class Remote(
                         // Its events go with it only when it is known not to exist; else it
                         // may be on a later page with what is held here out of date.
                         try {
-                            if (end == null || !hasMachine(v.machineId)) cache?.removeSession(v.id)
+                            if (end == null || !hasMachine(v.machineId)) {
+                                runCatching { onSessionRemoved(v.id) }
+                                cache?.removeSession(v.id)
+                            }
                             else cache?.unlistSession(v.id)
                         } catch (e: Exception) {
                             report(e)

@@ -723,6 +723,8 @@ object ImageDrafts {
     fun forSession(sid: String) = of("session:$sid")
     fun forProject(key: String) = of("new:$key")
 
+    fun forgetSession(sid: String) { drafts.remove("session:$sid")?.clear() }
+
     fun clear() {
         drafts.values.forEach { d -> d.cancelRestore(); d.images.forEach { it.job?.cancel() } }
         drafts.clear()

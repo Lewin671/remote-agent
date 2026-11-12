@@ -313,13 +313,27 @@ class RaApp : Application() {
         joinDirectly = false
         _pendingCreation.value = false
         _securitySetup.value = null
-        // Drafts and the like are kept per account, and only in memory.
+        // Local drafts and pending sends belong to this account.
         AccountMemory.use("${acct.server} ${acct.deviceId}")
+        val localFiles = pendingStore.scoped()
+        val accountToken = AccountMemory.token
         val r =
             Remote(
                 acct,
                 http,
                 RoomCache(cacheDb.dao(), eventAccess, imageEnvelopes, reclaim = cacheDb::reclaimSpace),
+                onSessionRemoved = { sid ->
+                    withContext(Dispatchers.Main.immediate) {
+                        if (accountToken === AccountMemory.token) {
+                            io.github.lewin671.remoteagent.ui.ImageDrafts.forgetSession(sid)
+                            io.github.lewin671.remoteagent.ui.Outbox.forgetSession(sid)
+                        }
+                    }
+                    withContext(Dispatchers.IO) {
+                        localFiles.clearFolder("session:$sid")
+                        io.github.lewin671.remoteagent.ui.OutgoingRecords(localFiles).removeSession(sid)
+                    }
+                },
                 securityStorage = vault,
                 scheduleSeen = io.github.lewin671.remoteagent.core.ScheduleSeen(
                     listOf(acct.server, acct.deviceId),

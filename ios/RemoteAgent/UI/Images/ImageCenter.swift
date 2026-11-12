@@ -129,6 +129,7 @@ final class ImageCenter {
     @ObservationIgnored private var restorations: [String: Task<Void, Never>] = [:]
     @ObservationIgnored private var watchers: [String: Task<Void, Never>] = [:]
     /// The account was left: what was on its way when that happened must not go on for it.
+    @ObservationIgnored private var forgottenSessions = Set<String>()
     @ObservationIgnored private var closed = false
     /// Display copies decrypted while the viewer is open, so paging back does not fetch again.
     @ObservationIgnored private let viewed = AccountCache<ViewedImage>(limit: 6)
@@ -194,6 +195,21 @@ final class ImageCenter {
         thumbs.removeAll()
         viewed.clear()
         previews.removeAllObjects()
+    }
+
+    func forgetSession(_ sid: String) {
+        guard forgottenSessions.insert(sid).inserted else { return }
+        let key = Self.sessionKey(sid)
+        restorations.removeValue(forKey: key)?.cancel()
+        restorations.removeValue(forKey: "out:" + sid)?.cancel()
+        watchers.removeValue(forKey: sid)?.cancel()
+        let draft = drafts.removeValue(forKey: key)
+        let images = (draft?.images ?? []) + (kept.removeValue(forKey: sid) ?? []).flatMap(\.images)
+        draft?.clear()
+        images.forEach { $0.release() }; forget(images)
+        targets[key] = nil
+        let files = files, records = records
+        Task.detached { try? files.clearFolder(key); try? records.removeSession(sid) }
     }
 
     // MARK: Viewed images
@@ -569,8 +585,9 @@ final class ImageCenter {
             }
             // Logged out while the images were being written: the message is not the next account's to
             // send, and logging out has taken what was written.
-            if closed {
-                done(.failure(UserError("已退出账户")))
+            if closed || forgottenSessions.contains(sid) {
+                try? await Task.detached { try records.remove(sid: sid, requestId: o.requestId) }.value
+                done(.failure(UserError(closed ? "已退出账户" : "会话已移除")))
                 return
             }
             do { try remote.requireFileCapability(machineId: machineId, hasFiles: !o.fileIds.isEmpty) }

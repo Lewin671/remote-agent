@@ -235,7 +235,10 @@ extension ServerTests {
                     endedMs: base - 10)
                 try await other.upload("old-there", agent("旧内容"))
                 let cache = MemoryCache()
+                actor Removed { var ids: [String] = []; func add(_ id: String) { ids.append(id) } }
+                let removed = Removed()
                 let r = try await w.client(cache: cache)
+                await r.onSessionRemoved { await removed.add($0) }
                 r.start()
                 _ = try await r.awaitState("both machines", ms: 15_000) {
                     $0.conn == .online && $0.sessionsNext == pageOneEnd
@@ -260,6 +263,7 @@ extension ServerTests {
                 }
                 #expect(st.sessions["there"] == nil)
                 #expect(st.sessions["old-there"] == nil)
+                #expect(await Set(removed.ids).isSuperset(of: ["there", "old-there"]))
                 #expect(st.sessions.count == 52)
                 // Known not to exist any more: its cached events go too.
                 try await eventually("its cached events to go", ms: 5_000) {

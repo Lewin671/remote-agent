@@ -720,6 +720,16 @@ public struct OutgoingRecords: Sendable {
         return o
     }
 
+    public func removeSession(_ sid: String) throws {
+        try Self.indexLock.withLock {
+            let all = try index()
+            for line in all where line.hasPrefix(sid + "\t") {
+                try files.clearFolder(folder(sid, String(line.dropFirst(sid.count + 1))))
+            }
+            try writeIndex(all.filter { !$0.hasPrefix(sid + "\t") })
+        }
+    }
+
     public func remove(sid: String, requestId: String) throws {
         try files.clearFolder(folder(sid, requestId))
         try Self.indexLock.withLock {

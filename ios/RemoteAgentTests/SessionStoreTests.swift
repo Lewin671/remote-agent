@@ -64,6 +64,19 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
         #expect(SessionStore(draftFiles: files, draftQueue: nil).draft("one").isEmpty)
     }
 
+    @Test func scheduleTextIsNotPersistedAndRemovedSessionTextCannotReturn() {
+        let files = VolatileFiles()
+        let first = SessionStore(draftFiles: files, draftQueue: nil)
+        first.setDraft("schedule:one", "temporary")
+        first.setDraft("gone", "remove")
+        first.setDraft("keep", "keep")
+        first.forgetSession("gone")
+        let next = SessionStore(draftFiles: files, draftQueue: nil)
+        #expect(next.draft("schedule:one").isEmpty)
+        #expect(next.draft("gone").isEmpty)
+        #expect(next.draft("keep") == "keep")
+    }
+
     @Test func unknownTextOnlyMessagesCanBePutBack() {
         let o = Outgoing(requestId: "text", text: "hello")
         o.state = .unknown

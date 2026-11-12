@@ -5,6 +5,20 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ComposerDraftTest {
+    @Test fun removingASessionDropsItsDraftAndOutgoingRecordsOnly() {
+        val files = MemoryFiles()
+        val records = OutgoingRecords(files)
+        records.save("gone", Outgoing("one", "old"), false)
+        records.save("keep", Outgoing("two", "keep"), false)
+        val draft = ImageDraft("session:gone", files, scope = null)
+        draft.text.value = "draft"
+        draft.clear()
+        records.removeSession("gone")
+        assertEquals(emptyList<Outgoing>(), records.load("gone"))
+        assertEquals(listOf("two"), records.load("keep").map { it.requestId })
+        assertEquals(null, files.get("session:gone", "text"))
+    }
+
     @Test fun unknownTextOnlyMessagesCanBePutBack() {
         val o = Outgoing("text-only", "hello").apply { state = Outgoing.State.UNKNOWN }
         org.junit.Assert.assertTrue(o.canPutBack)

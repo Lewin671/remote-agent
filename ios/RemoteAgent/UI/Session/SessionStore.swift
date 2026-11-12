@@ -42,6 +42,7 @@ final class SessionStore {
     @ObservationIgnored private let draftFiles: (any RACore.SealedFiles)?
     @ObservationIgnored private let draftQueue: DispatchQueue?
     @ObservationIgnored private var loadedDrafts = Set<String>()
+    @ObservationIgnored private var forgottenDrafts = Set<String>()
     private(set) var draftErrors: [String: String] = [:]
 
     init(draftFiles: (any RACore.SealedFiles)? = nil, draftQueue: DispatchQueue? = DispatchQueue(label: "remote-agent.draft-text")) {
@@ -118,7 +119,8 @@ final class SessionStore {
 
     /// What is being typed in a session's message box.
     func draft(_ sid: String) -> String {
-        if loadedDrafts.insert(sid).inserted, let draftFiles {
+        if forgottenDrafts.contains(sid) { return "" }
+        if !sid.hasPrefix("schedule:"), loadedDrafts.insert(sid).inserted, let draftFiles {
             do { drafts[sid] = try draftFiles.get(folder: "composer-text", name: draftName(sid)).flatMap { String(data: $0, encoding: .utf8) } }
             catch { draftErrors[sid] = "草稿没能恢复，请重新打开后重试" }
         }
@@ -126,9 +128,10 @@ final class SessionStore {
     }
 
     func setDraft(_ sid: String, _ text: String) {
+        guard !forgottenDrafts.contains(sid) else { return }
         guard draft(sid) != text else { return }
         drafts[sid] = text.isEmpty ? nil : text
-        guard let draftFiles else { return }
+        guard !sid.hasPrefix("schedule:"), let draftFiles else { return }
         let name = draftName(sid)
         let bytes = Data(text.utf8)
         let write: @Sendable () -> Bool = {
@@ -139,12 +142,24 @@ final class SessionStore {
             } catch { return false }
         }
         let finish: @MainActor @Sendable (Bool) -> Void = { [weak self] saved in
-            guard let self else { return }
+            guard let self, !self.forgottenDrafts.contains(sid) else { return }
             self.draftErrors[sid] = saved ? nil : "草稿没能保存到本机，关闭应用前请保留文字"
         }
         if let draftQueue {
             draftQueue.async { let saved = write(); DispatchQueue.main.async { finish(saved) } }
         } else { finish(write()) }
+    }
+
+    func forgetSession(_ sid: String) {
+        guard forgottenDrafts.insert(sid).inserted else { return }
+        drafts[sid] = nil
+        draftErrors[sid] = nil
+        outbox[sid] = nil
+        prompts[sid] = nil
+        guard let draftFiles else { return }
+        let name = draftName(sid)
+        let remove: @Sendable () -> Void = { try? draftFiles.remove(folder: "composer-text", name: name) }
+        if let draftQueue { draftQueue.async(execute: remove) } else { remove() }
     }
 
     /// The reason being typed for refusing an approval. It stays when another

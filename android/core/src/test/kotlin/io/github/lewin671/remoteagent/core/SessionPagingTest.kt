@@ -84,8 +84,9 @@ class SessionPagingTest {
     private suspend fun client(
         cache: CipherCache? = null,
         http: okhttp3.OkHttpClient = this.http,
+        onRemoved: suspend (String) -> Unit = {},
     ): Remote {
-        val r = fixtureRemote(approvedClient(daemon.phone, this.http), http, cache)
+        val r = fixtureRemote(approvedClient(daemon.phone, this.http), http, cache, onSessionRemoved = onRemoved)
         closers += AutoCloseable { r.close() }
         return r
     }
@@ -292,7 +293,8 @@ class SessionPagingTest {
                 Event.newBuilder().setAgentMessage(AgentMessage.newBuilder().setText("旧内容")),
             )
             val cache = MemoryCache()
-            val r = client(cache)
+            val removed = java.util.concurrent.CopyOnWriteArrayList<String>()
+            val r = client(cache, onRemoved = { removed += it })
             r.start()
             r.awaitState("both machines") {
                 it.conn == ConnState.ONLINE &&
@@ -323,6 +325,7 @@ class SessionPagingTest {
                 }
             assertNull(st.sessions["there"])
             assertNull(st.sessions["old-there"])
+            assertTrue(removed.containsAll(listOf("there", "old-there")))
             assertEquals(52, st.sessions.size)
             // Known not to exist any more: its cached events go too.
             withTimeout(5_000) {
