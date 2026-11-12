@@ -87,6 +87,8 @@ describe("the chat of a session that is still talking", () => {
         <SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />
       </VirtuosoMockContext.Provider>));
     const el = host.querySelector<HTMLElement>(".body.chat")!;
+    // The mock has no row layout to measure; expose the positioned list.
+    el.classList.remove("mo-hold");
     let top = 0;
     const sets: number[] = [];
     // Plain lists are as tall as their rows; the virtual one says so.
@@ -113,6 +115,19 @@ describe("the chat of a session that is still talking", () => {
     const stick = () => r.scroll.get(sid)?.stick;
     return { el, scrollTo, theyWrite, resized, stick, top: () => top, sets, height };
   }
+
+  it("does not replace a reading position with transient virtual-list positioning", async () => {
+    const c = await open(20);
+    const end = c.height() - 400;
+    await c.scrollTo(end - 400, "wheel");
+    expect(c.stick()).toBe(false);
+    c.el.classList.add("mo-hold");
+    await c.scrollTo(end);
+    expect(c.stick()).toBe(false);
+    c.el.classList.remove("mo-hold");
+    await c.scrollTo(end);
+    expect(c.stick()).toBe(true);
+  });
 
   it("offers the latest messages while reading old history, with or without new replies", async () => {
     const c = await open(20);
@@ -206,6 +221,8 @@ describe("sending from far up", () => {
     root = createRoot(host);
     await act(async () => root!.render(<SessionPage remote={r} session={r.sessions.get(sid)!} onBack={() => undefined} wide={false} />));
     const el = host.querySelector<HTMLElement>(".body.chat")!;
+    // The mock has no row layout to measure; expose the positioned list.
+    el.classList.remove("mo-hold");
     let top = 0;
     Object.defineProperties(el, {
       clientHeight: { configurable: true, get: () => 400 },

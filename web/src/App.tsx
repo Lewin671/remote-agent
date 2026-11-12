@@ -18,7 +18,8 @@ import { guardUpdateInput } from "./update";
 import { page } from "./views/pages";
 
 // Authenticated views are fetched only after a local identity has loaded.
-const Workspace = page(() => import("./Workspace"));
+const loadWorkspace = () => import("./Workspace");
+const WorkspaceFallback = page(loadWorkspace);
 
 // Joining and pairing bring the QR code and curve code; fetched when used.
 const Setup = lazy(() =>
@@ -46,6 +47,7 @@ async function loadRemote(): Promise<Remote | undefined> {
 export function App() {
   useLocale();
   const [remote, setRemote] = useState<Remote | null | undefined>(undefined);
+  const [workspace, setWorkspace] = useState<Awaited<ReturnType<typeof loadWorkspace>>>();
   const [retained, setRetained] = useState<StoredAccount>();
   const [denied, setDenied] = useState(false);
   const loadGeneration = useRef(0);
@@ -91,9 +93,15 @@ export function App() {
           return;
         }
       }
-      const loaded = await loadRemote();
+      // Read the sealed snapshot while the workspace downloads. Rendering the
+      // resolved component avoids a second, minimum-duration Suspense fallback.
+      const [loaded, workspace] = await Promise.all([
+        loadRemote(),
+        account || demo ? loadWorkspace().catch(() => undefined) : undefined,
+      ]);
       if (!active()) return;
       setRetained(undefined);
+      setWorkspace(workspace);
       setRemote(loaded ?? null);
     } catch (error) {
       if (!active()) return;
@@ -197,5 +205,6 @@ export function App() {
         {retained ? <Setup existing={retained} onDone={() => void load()} /> : <AccountEntry onDone={() => void load()} />}
       </Suspense>
     );
+  const Workspace = workspace?.default ?? WorkspaceFallback;
   return <Suspense fallback={loading}><Workspace remote={remote} /></Suspense>;
 }

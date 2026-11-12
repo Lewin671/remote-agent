@@ -1,5 +1,5 @@
-import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { Remote } from "./remote";
+import { lazy, startTransition, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { Remote, SessionView } from "./remote";
 import { Startup } from "./Startup";
 import { NavBar, useRemote } from "./ui";
 import { BottomBar, Home, Sidebar, WideHome, type Go } from "./views/Home";
@@ -92,41 +92,40 @@ export default function Workspace({ remote }: { remote: Remote }) {
   useEffect(() => {
     if (absent) void remote.ensureSession(arg);
   });
+  const opening = useMemo<SessionView>(() => ({ id: arg, machineId: "", metaRev: 0n, lastSeq: 0n, updatedMs: 0n, endedMs: 0n }), [arg]);
   if (remote.removed) return <Suspense fallback={loading}><RemovedScreen remote={remote} /></Suspense>;
 
   let page;
-  if (session)
+  if (kind === "s" && (session || !remote.missing.has(arg)))
     page = (
       <SessionPage
-        key={session.id}
+        key={arg}
         remote={remote}
-        session={session}
-        onBack={session.info?.taskOwned && session.info.scheduledTaskId ? () => go(taskRoute(session.machineId, session.info!.scheduledTaskId)) : back}
+        session={session ?? opening}
+        pending={!session}
+        onBack={session?.info?.taskOwned && session.info.scheduledTaskId ? () => go(taskRoute(session.machineId, session.info!.scheduledTaskId)) : back}
         wide={wide}
       />
     );
   else if (kind === "s")
-    page =
-      absent && remote.missing.has(arg) ? (
-        <div className="page">
-          <NavBar onBack={() => go("")} />
-          <div className="center">
-            <div>
-              <div className="et">找不到这个会话</div>
-              <div className="muted small">
-                它可能已经被删除，或者属于一台被移除的电脑。
-              </div>
-              <div className="big">
-                <button className="btn pri" onClick={() => go("")}>
-                  返回
-                </button>
-              </div>
+    page = (
+      <div className="page">
+        <NavBar onBack={() => go("")} />
+        <div className="center">
+          <div>
+            <div className="et">找不到这个会话</div>
+            <div className="muted small">
+              它可能已经被删除，或者属于一台被移除的电脑。
+            </div>
+            <div className="big">
+              <button className="btn pri" onClick={() => go("")}>
+                返回
+              </button>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="center muted">正在打开会话…</div>
-      );
+      </div>
+    );
   else if (kind === "tasks") {
     const [machineId, taskId] = rest.map(decodeURIComponent);
     page = machineId === "new" ? <ScheduleCreate remote={remote} go={go} onBack={() => go("tasks")} />

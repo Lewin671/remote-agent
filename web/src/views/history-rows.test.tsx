@@ -84,9 +84,11 @@ it("waits for full history before restoring a reclaimed reading position", async
   const remote = { scroll: new Map([["s", { top: 1200, stick: false }]]) } as unknown as Remote;
   const page = (n: number, loaded: boolean) => <div ref={scroller}><HistoryRows items={Array.from({ length: n }, (_, i) => ({ key: String(i) }))} render={(it) => <p>{it.key}</p>} scroller={scroller} remote={remote} sid="s" follow={() => false} loaded={loaded} ready={loaded} header={<p>start</p>} footer={<p>pending</p>} /></div>;
   await act(async () => root!.render(page(0, false)));
-  expect(host.textContent).toBe("正在恢复阅读位置…");
+  expect(host.textContent).toBe("");
+  expect(scroller.current!.classList.contains("mo-hold")).toBe(true);
   await act(async () => root!.render(page(500, false)));
-  expect(host.textContent).toBe("正在恢复阅读位置…");
+  expect(host.textContent).toBe("");
+  expect(scroller.current!.classList.contains("mo-hold")).toBe(true);
   expect(host.querySelector(".virtual-history")).toBeNull();
   await act(async () => root!.render(page(5000, true)));
   expect(host.querySelector(".virtual-history")).toBeTruthy();

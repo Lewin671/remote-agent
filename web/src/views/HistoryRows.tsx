@@ -62,7 +62,7 @@ export function HistoryRows<T extends { key: string }>(props: Props<T>) {
   useEffect(() => { setParent(scroller.current ?? undefined); }, [scroller]);
   // A reclaimed history arrives in pages. Do not restore a position into an
   // incomplete prefix or overwrite its measurements with that prefix.
-  if (initial.loading && initial.top && !initial.top.stick && !loaded) return <div className="sep">正在恢复阅读位置…</div>;
+  if (initial.loading && initial.top && !initial.top.stick && !loaded) return parent ? <HistoryPlaceholder parent={parent} /> : null;
   if (!windowed.current) return <>{header}{items.map((it, index) => <div key={it.key} className={"history-row" + (rowClass?.(it) ? " " + rowClass(it) : "")} data-history-index={index + 1}>{render(it)}</div>)}{footer}</>;
   if (!parent) return null;
   // Initial positioning must use the page we intend to show, not an empty
@@ -101,7 +101,29 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
     const t0 = performance.now();
     let still = 0;
     let last = -1;
+    let requestedAt = -Infinity;
     let id = requestAnimationFrame(function tick() {
+      // A snapshot can contain only the measured tail. Its first estimate on
+      // remount can land on a different row; restore the actual reading row
+      // before exposing it, and correct its offset as measurements arrive.
+      let anchored = true;
+      if (!follows && !focusKey && saved?.anchor) {
+        const index = currentItems.current.findIndex(it => it.key === saved.anchor!.key) + 1;
+        if (index > 0) {
+          const row = parent.querySelector<HTMLElement>(`[data-item-index="${firstNow.current + index}"]`);
+          if (row) {
+            const delta = row.getBoundingClientRect().top - parent.getBoundingClientRect().top + saved.anchor.offset;
+            anchored = Math.abs(delta) < 1;
+            if (!anchored) parent.scrollTop += delta;
+          } else {
+            anchored = false;
+            if (performance.now() - requestedAt >= 100) {
+              requestedAt = performance.now();
+              list.current?.scrollToIndex({ index, align: "start", offset: saved.anchor.offset });
+            }
+          }
+        }
+      }
       // The list stops short of the chat's own bottom padding: take that last step.
       if (follows && parent.scrollHeight - parent.scrollTop - parent.clientHeight < 40) parent.scrollTop = parent.scrollHeight;
       const sh = parent.scrollHeight;
@@ -113,9 +135,13 @@ function WindowedRows<T extends { key: string }>({ items, render, parent, remote
       // Every row on the page is the size the list holds for it: what is
       // left to correct is not on the page.
       const measured = drawn && [...rows].every((el) => Math.abs(Number(el.dataset.knownSize) - el.offsetHeight) < 1);
-      still = sh === last && there && measured ? still + 1 : 0;
+      still = sh === last && there && measured && anchored ? still + 1 : 0;
       last = sh;
-      if ((still >= STILL_FRAMES && ready.current) || performance.now() - t0 > 6000) return parent.classList.remove("mo-hold");
+      if ((still >= STILL_FRAMES && ready.current) || performance.now() - t0 > 6000) {
+        parent.classList.remove("mo-hold");
+        parent.dispatchEvent(new Event("scroll"));
+        return;
+      }
       id = requestAnimationFrame(tick);
     });
     return () => {

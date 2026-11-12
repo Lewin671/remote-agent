@@ -126,3 +126,32 @@ it("shows the verified cached tail before restoring the prefix, without download
   expect(r.events("s").map(e => e.seq)).toEqual(all.map(e => e.seq));
   expect(getEvents).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ afterSeq: BigInt(count) }));
 }, 20000);
+
+it("starts history allocated by an unresolved route once its verified session arrives", async () => {
+  const r = remote = await SyntheticRemote.create();
+  const row = await r.sessionRow('linked');
+  r.conn = 'online';
+  const getEvents = vi.fn(async () => ({ events: [], more: false }));
+  (r as any).api = { listRemoteSessions: vi.fn(async () => ({ sessions: [row] })), getEvents };
+  r.events('linked');
+  expect(getEvents).not.toHaveBeenCalled();
+  await r.ensureSession('linked');
+  await vi.waitFor(() => expect(r.loaded('linked')).toBe(true));
+  expect(getEvents).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ sessionId: 'linked' }));
+});
+
+it("reports a failed lookup and lets retry bypass its automatic backoff", async () => {
+  const r = remote = await SyntheticRemote.create();
+  const row = await r.sessionRow('linked');
+  r.conn = 'online';
+  const lookup = vi.fn().mockRejectedValueOnce(new Error('synthetic offline')).mockResolvedValue({ sessions: [row] });
+  (r as any).api = { listRemoteSessions: lookup };
+  await r.ensureSession('linked');
+  expect(r.sessionErrors.has('linked')).toBe(true);
+  await r.ensureSession('linked');
+  expect(lookup).toHaveBeenCalledOnce();
+  r.retrySession('linked');
+  await vi.waitFor(() => expect(r.sessions.has('linked')).toBe(true));
+  expect(lookup).toHaveBeenCalledTimes(2);
+  expect(r.sessionErrors.has('linked')).toBe(false);
+});

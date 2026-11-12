@@ -92,7 +92,6 @@ import {
   fromHere,
   NavBar,
   PathText,
-  Skeleton,
   useRemote,
 } from "../ui";
 import { useDerived } from "./actions";
@@ -123,6 +122,7 @@ import {
 } from "./Tools";
 
 import { RowState, RememberDetails } from "./RowState";
+import { HistoryOpening } from "./HistoryOpening";
 import { HistoryRows } from "./HistoryRows";
 import { followsEnd, NEAR_END, type Scrolled } from "./scroll-follow";
 import {
@@ -200,9 +200,11 @@ export function SessionPage({
   session,
   onBack,
   wide,
+  pending = false,
 }: {
   remote: Remote;
   session: SessionView;
+  pending?: boolean;
   onBack: () => void;
   wide: boolean;
 }) {
@@ -222,7 +224,7 @@ export function SessionPage({
   // rather than 未连接 and 电脑离线 and then the state.
   const st = shownStateOf(session, remote.presence.get(session.machineId), remote.unlinked && !remote.awaiting);
   const agent = agentOf(session);
-  const title = titleOf(session);
+  const title = pending ? t("session.title") : titleOf(session);
   const project = projectName(projectKey(session));
   const mname = machineName(machine);
   const ended = st.kind === "ended";
@@ -234,17 +236,18 @@ export function SessionPage({
   const room = colHeight > 0 ? colHeight - 230 : Infinity;
   const canSplit = wide && width >= 840;
   // A new session opens on its terminal once; otherwise the view is the one
-  // last picked on this device. A view that cannot show falls back to the
-  // chat without changing the pick.
+  // last picked on this device. An unresolved link starts in chat so that
+  // its input stays mounted when metadata arrives, without changing the pick.
+  // A view that cannot show falls back to chat without changing the pick.
   const [tabPick, setTab] = useState<Tab>(() =>
-    remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : getView(),
+    remote.termFirst.delete(session.id) ? (wide ? "split" : "term") : pending ? "chat" : getView(),
   );
   const pickTab = (t: Tab) => {
     setTab(t);
     setView(t);
   };
   let tab: Tab = tabPick === "split" && !canSplit ? "chat" : tabPick;
-  if (inactive && tab !== "chat") tab = "chat";
+  if ((inactive || pending) && tab !== "chat") tab = "chat";
   const [sheet, setSheet] = useState<"" | "mode" | "model">("");
   const [menu, setMenu] = useState(false);
   const [scheduling, setScheduling] = useState(false);
@@ -410,7 +413,7 @@ export function SessionPage({
       className={wide ? "seg" : "vseg glass" + (tab === "term" ? " dark" : "")}
       tabs={tabs}
       tab={tab}
-      inactive={inactive}
+      inactive={inactive || pending}
       popup={st.kind === "popup"}
       onPick={pickTab}
     />
@@ -426,7 +429,7 @@ export function SessionPage({
   );
   const sub = (
     <>
-      {st.text}
+      {pending ? t("common.loading") : st.text}
       {modeTail}
     </>
   );
@@ -494,6 +497,7 @@ export function SessionPage({
     <button
       className={"more" + (high ? " context-high" : "")}
       onClick={openMenu}
+      disabled={pending}
       aria-label={moreLabel}
     >
       <Ellipsis />
@@ -507,7 +511,7 @@ export function SessionPage({
       <span className="st">
         <StateMark kind={st.tone} />
         <span>
-          {st.text}
+          {pending ? t("common.loading") : st.text}
           {modeTail}
         </span>
       </span>
@@ -516,6 +520,7 @@ export function SessionPage({
       <button
         className={"ib mr" + (high ? " context-high" : "")}
         onClick={openMenu}
+        disabled={pending}
         aria-label={moreLabel}
       >
         <Ellipsis />
@@ -586,6 +591,7 @@ export function SessionPage({
             remote={remote}
             session={session}
             d={d}
+            ready={!pending}
             onSend={(text, mode) => {
               setSent((n) => n + 1);
               remote.send(
@@ -1042,7 +1048,6 @@ function ChatBody({
         {started ? dayTime(started) + " · " : ""}
         <PathText path={shortPath(cwd)} />
       </div>
-      {!hist.loaded && events.length === 0 && !hist.error && <Skeleton />}
       {hist.backfilling && !hist.error && !hist.broken && (
         <div className="sysline">正在加载更早的记录…</div>
       )}
@@ -1064,14 +1069,14 @@ function ChatBody({
           恢复前有 {hist.unavailable} 条记录不可读；后续可读记录照常显示。
         </Banner>
       )}
-      {hist.broken && (
+      {hist.broken && hist.ready && (
         <Banner>
           {hist.error || "有一条记录读不出来，历史停在这里，后面的内容和状态可能不全"}
         </Banner>
       )}
       {/* Offline, the connection banner says the content may be stale and the
             next connection fetches again: a failed fetch adds nothing. */}
-      {hist.error && !hist.broken && remote.conn === "online" && (
+      {hist.error && hist.ready && !hist.broken && remote.conn === "online" && (
         <Banner
           kind="err"
           action={t("common.retry")}
@@ -1167,6 +1172,9 @@ function ChatBody({
         }}
         onScroll={(e) => {
           const el = e.currentTarget;
+          // Initial virtual measurements can temporarily put an empty list at
+          // its end. They must not replace the reading position being restored.
+          if (el.classList.contains("mo-hold")) return;
           const gap = el.scrollHeight - el.scrollTop - el.clientHeight;
           // Virtual measurement and pagination also produce scroll events;
           // only a scroll away from the end turns following off.
@@ -1221,6 +1229,13 @@ function ChatBody({
           )}
         />
       </div>
+      <HistoryOpening
+        waiting={!hist.ready}
+        connected={remote.conn === "online"}
+        scroller={scroller}
+        error={hist.broken ? hist.error : remote.conn === "online" ? (remote.sessionErrors.has(sid) ? t("session.history_failed") : !hist.ready ? hist.error : undefined) : undefined}
+        onRetry={hist.broken ? undefined : () => remote.retrySession(sid)}
+      />
       {(away || unseen > 0) && (
         <NewMessages
           n={unseen}

@@ -810,6 +810,7 @@ export class Remote {
     return this.moreSessions || !this.listed;
   }
   missing = new Set<string>();
+  sessionErrors = new Set<string>();
   private nextSessions?: SessionCursor;
   private listing = 0; // counts first pages, so a late page of an older listing is not continued from
   private paging?: Promise<boolean>;
@@ -2155,6 +2156,7 @@ export class Remote {
   /** Drops a session of a machine that is gone, with its kept events:
    * no listing will say again that it no longer exists. */
   private forget(id: string) {
+    this.sessionErrors.delete(id);
     this.sessions.delete(id);
     this.forgetLocalSession(id);
     void this.cache?.drop(id).catch(() => undefined);
@@ -2351,6 +2353,14 @@ export class Remote {
     }
   }
 
+  retrySession(id: string) {
+    this.askRetryAt.delete(id);
+    this.sessionErrors.delete(id);
+    if (this.sessions.has(id)) this.retryEvents(id);
+    else void this.ensureSession(id);
+    this.changed();
+  }
+
   /** Fetches a session that is not among the pages held: one opened from
    * a notification, a link or a fork's source. One that does not exist
    * is noted in missing. */
@@ -2382,7 +2392,9 @@ export class Remote {
       // would bring the same record: it cannot be shown.
       if (!this.sessions.has(id)) this.missing.add(id);
       this.askRetryAt.delete(id);
+      this.sessionErrors.delete(id);
     } catch (e) {
+      this.sessionErrors.add(id);
       this.report(e);
       this.askRetryAt.set(id, Date.now() + RETRY_MS);
       this.wake(RETRY_MS);
@@ -2441,6 +2453,7 @@ export class Remote {
     )
       return;
     let view = this.sessions.get(rs.sessionId);
+    const newlyHeld = !view;
     const retired = !!view?.historyError;
     if (retired) view = undefined;
     const removals = this.removedPushes.get(rs.machineId) ?? 0;
@@ -2567,6 +2580,8 @@ export class Remote {
       this.report(e);
     }
     this.changed();
+    const buffer = this.buffers.get(rs.sessionId);
+    if (newlyHeld && buffer && !buffer.fetching && !buffer.loaded) void this.fetchEvents(rs.sessionId);
   }
 
   // --- events ---

@@ -118,5 +118,35 @@
     "path": "ios/RemoteAgent/UI/Project/NewTaskModelPicker.swift",
     "literal": "standard",
     "reason": "Stable context-window option code; the label closure renders generated localized text."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "(undefined); const [workspace, setWorkspace] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "(); const [retained, setRetained] = useState",
+    "reason": "Lexical JSX scanner false positive: TypeScript control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/App.tsx",
+    "literal": "); const Workspace = workspace?.default ?? WorkspaceFallback; return",
+    "reason": "Lexical JSX scanner false positive: TypeScript control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "; let page; if (kind === \"s\" && (session || !remote.missing.has(arg))) page = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/Workspace.tsx",
+    "literal": "); else if (kind === \"s\") page = (",
+    "reason": "Lexical JSX scanner false positive: TypeScript control flow between angle brackets, not rendered text."
+  },
+  {
+    "path": "web/src/views/HistoryRows.tsx",
+    "literal": ": null; if (!windowed.current) return",
+    "reason": "Lexical JSX scanner false positive: conditional render control flow between angle brackets, not rendered text."
   }
 ]

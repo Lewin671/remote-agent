@@ -1,0 +1,44 @@
+[
+  {
+    "key": "session.title",
+    "zh-CN": "会话",
+    "en": "Conversation",
+    "notes": "会话尚未读到标题时的顶栏标题。 无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.opening_slow",
+    "zh-CN": "记录还没读到，可以重试。已输入的内容会保留。",
+    "en": "History is taking longer to load. You can retry; your draft will stay here.",
+    "notes": "会话正文等待超过五秒时的页内状态；同一行有重试按钮。 无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  },
+  {
+    "key": "session.history_failed",
+    "zh-CN": "没能读取记录，请重试。已输入的内容会保留。",
+    "en": "Could not load history. Retry to continue; your draft will stay here.",
+    "notes": "正文尚未就绪时读取历史或会话失败；不用技术错误详情。 无变量。",
+    "params": {},
+    "platforms": [
+      "web"
+    ],
+    "status": {
+      "zh-CN": "source",
+      "en": "draft"
+    }
+  }
+]

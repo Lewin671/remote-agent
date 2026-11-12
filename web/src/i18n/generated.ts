@@ -243,6 +243,9 @@ export interface MessageArgs {
   "quota.unknown_time": { [name: string]: never };
   "quota.waiting": { name: string };
   "quota.warning": { name: string; window: string };
+  "session.history_failed": { [name: string]: never };
+  "session.opening_slow": { [name: string]: never };
+  "session.title": { [name: string]: never };
   "time.hours_ago": { count: number };
   "time.just_now": { [name: string]: never };
   "time.last_week": { [name: string]: never };
@@ -589,6 +592,9 @@ export const messages = {
     "quota.unknown_time": "Observation time unknown; showing the last record",
     "quota.waiting": "No quota received from {name}. Data is read only from CLI sessions managed by remote-agent on this computer; installing the CLI or using another session does not update this page.",
     "quota.warning": "{name} · {window} quota is nearly exhausted. CLI and model will not switch automatically.",
+    "session.history_failed": "Could not load history. Retry to continue; your draft will stay here.",
+    "session.opening_slow": "History is taking longer to load. You can retry; your draft will stay here.",
+    "session.title": "Conversation",
     "time.hours_ago": {
       "forms": {
         "one": "{count} hour ago",
@@ -936,6 +942,9 @@ export const messages = {
     "quota.unknown_time": "数据时间未知，显示上次记录",
     "quota.waiting": "尚未收到 {name} 的额度。仅从这台电脑上由 remote-agent 管理的 CLI 会话读取；安装 CLI 或在其他会话中使用不会触发这里更新。",
     "quota.warning": "{name} · {window}额度即将用尽，不会自动切换 CLI 或模型",
+    "session.history_failed": "没能读取记录，请重试。已输入的内容会保留。",
+    "session.opening_slow": "记录还没读到，可以重试。已输入的内容会保留。",
+    "session.title": "会话",
     "time.hours_ago": {
       "forms": {
         "other": "{count} 小时前"

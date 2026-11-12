@@ -89,6 +89,7 @@ export function Composer({
   attach,
   cardProps,
   dropping,
+  ready = true,
 }: {
   ref: RefObject<HTMLTextAreaElement | null>;
   remote: Remote;
@@ -105,6 +106,7 @@ export function Composer({
   attach?: ReactNode;
   cardProps?: HTMLAttributes<HTMLDivElement>;
   dropping?: boolean;
+  ready?: boolean;
 }) {
   // The draft is the session's, not this input's: it survives opening an
   // approval, plan, queue or tool page and coming back.
@@ -124,7 +126,7 @@ export function Composer({
   useEffect(() => () => clearTimeout(hold.current), []);
   const input = ref;
   useAutoGrow(input, text);
-  const online = remote.conn === "online";
+  const online = ready && remote.conn === "online";
   const t = text.trim();
   // While the server is away, nothing is queued behind the user's back:
   // the text stays here until they send it themselves.

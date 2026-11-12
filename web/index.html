@@ -33,6 +33,10 @@
         letter-spacing: -.01em; -webkit-font-smoothing: antialiased; }
       .startup h1 { margin: 0; font-size: 34px; line-height: 1.14; font-weight: 600; letter-spacing: -.03em; }
       .startup p { margin: 12px 0 0; color: var(--startup-muted); }
+      /* A cached launch can finish before there is anything to announce. */
+      #startup-status { animation: startup-status 0s 300ms both; }
+      @keyframes startup-status { from { visibility: hidden; } to { visibility: visible; } }
+      .startup:has(#startup-retry:not([hidden])) #startup-status { animation: none; }
       .startup a { display: inline-block; margin-top: 20px; color: inherit; }
       .startup [hidden] { display: none; }
     </style>
