@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -62,10 +63,14 @@ func TestClaudeQuotaFromStatusLine(t *testing.T) {
 	if len(w) != 2 || w[0].Name != "five_hour" || w[0].GetUsedPercent() != 80 || w[0].ResetsAtMs != 1790774400000 || w[1].UsedPercent != nil {
 		t.Fatalf("windows %v", w)
 	}
-	// An unchanged report within a minute does not renew the time.
+	// Repeated status line values do not renew their observation time.
 	reportClaudeQuota(t, h.d, "s2", []byte(`{"rate_limits":{"five_hour":{"used_percentage":80,"resets_at":1790774400},"seven_day":{"resets_at":1790960400}}}`), now.Add(10*time.Second))
 	if claudeQuota(h.d)[0].ObservedMs != now.UnixMilli() {
-		t.Fatal("renewed too soon")
+		t.Fatal("renewed unchanged data")
+	}
+	reportClaudeQuota(t, h.d, "s2", []byte(`{"rate_limits":{"five_hour":{"used_percentage":80,"resets_at":1790774400},"seven_day":{"resets_at":1790960400}}}`), now.Add(40*time.Minute))
+	if claudeQuota(h.d)[0].ObservedMs != now.UnixMilli() {
+		t.Fatal("idle repetition made old data fresh")
 	}
 	// An idle session repeats the limits of its last reply: they do not
 	// replace newer ones, nor renew the time.
@@ -201,5 +206,39 @@ func reportClaudeQuota(t *testing.T, d *Daemon, id string, raw []byte, now time.
 	}
 	if report.Quota != nil {
 		d.recordQuota(id, report.Quota, now)
+	}
+}
+
+func TestQuotaStatusLineFailureAndRecovery(t *testing.T) {
+	h := newHarness(t, Config{})
+	h.d.agents[pb.Agent_AGENT_ANTIGRAVITY] = antigravity.New("/bin/true", t.TempDir())
+	h.s.ag = h.d.agents[pb.Agent_AGENT_ANTIGRAVITY]
+	h.d.sessions[h.s.meta.ID] = h.s
+	if err := os.WriteFile(filepath.Join(h.s.dir, antigravity.SettingsFile), []byte(`{"toolPermission":"request-review"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	valid := []byte(`{"product":"antigravity","quota":{"gemini-5h":{"remaining_fraction":0.7}}}`)
+	h.d.statusLine(h.s.meta.ID, []byte(`{"private":"never expose this",`), now)
+	q := agyQuota(h.d)[0]
+	if q.State != pb.QuotaState_QUOTA_STATE_FAILED || q.Detail == "" || strings.Contains(q.Detail, "private") || q.ObservedMs != 0 {
+		t.Fatalf("failure not safely exposed: %v", q)
+	}
+	h.d.statusLine(h.s.meta.ID, valid, now)
+	q = agyQuota(h.d)[0]
+	if q.State != pb.QuotaState_QUOTA_STATE_OK || q.Detail != "" || len(q.Windows) != 1 {
+		t.Fatalf("did not recover: %v", q)
+	}
+	h.d.statusLine(h.s.meta.ID, []byte(`{`), now.Add(time.Minute))
+	q = agyQuota(h.d)[0]
+	if q.State != pb.QuotaState_QUOTA_STATE_FAILED || len(q.Windows) != 1 || q.ObservedMs != now.UnixMilli() {
+		t.Fatalf("lost last successful record: %v", q)
+	}
+	// A successful status line without quota clears the parse error but does
+	// not pretend the previous quota observation is new.
+	h.d.statusLine(h.s.meta.ID, []byte(`{"product":"antigravity"}`), now.Add(2*time.Minute))
+	q = agyQuota(h.d)[0]
+	if q.State != pb.QuotaState_QUOTA_STATE_OK || q.ObservedMs != now.UnixMilli() {
+		t.Fatalf("renewed absent data: %v", q)
 	}
 }

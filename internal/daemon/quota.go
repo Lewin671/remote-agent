@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
 	"github.com/Lewin671/remote-agent/internal/agent"
+	"github.com/Lewin671/remote-agent/internal/i18n"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -22,10 +23,6 @@ import (
 // account (a fingerprint, never the account's IDs), in quota.json, so a
 // restart shows the last record; a record of another account than the
 // one logged in now is dropped. Limits never reach the log.
-
-// quotaRefresh bounds how often an unchanged report renews observed_ms,
-// which would otherwise change the machine metadata every few seconds.
-const quotaRefresh = time.Minute
 
 // quotaStore separates providers even when account fingerprints collide.
 type quotaStore map[string]*pb.AgentQuota
@@ -117,6 +114,19 @@ func (d *Daemon) statusLineContext(ctx context.Context, sessionID string, raw js
 		return
 	}
 	report, err := source.ParseStatusLine(raw, session.dir)
+	if ctx.Err() != nil {
+		return
+	}
+	d.mu.Lock()
+	if d.quotaErrors == nil {
+		d.quotaErrors = map[pb.Agent]string{}
+	}
+	if err != nil {
+		d.quotaErrors[session.ag.Kind()] = i18n.QuotaReadFailed("zh-CN")
+	} else {
+		delete(d.quotaErrors, session.ag.Kind())
+	}
+	d.mu.Unlock()
 	if err != nil {
 		return
 	}
@@ -177,9 +187,10 @@ func (d *Daemon) recordQuotaWithPolicy(sessionID string, e *pb.AgentQuota, now t
 			e.Windows = latestWindows(old.Windows, reported)
 		}
 		same := proto.Equal(&pb.AgentQuota{Windows: old.Windows, Plan: old.Plan, Login: old.Login}, &pb.AgentQuota{Windows: e.Windows, Plan: e.Plan, Login: e.Login})
-		// A report that is behind the record does not renew its time.
-		current := proto.Equal(&pb.AgentQuota{Windows: reported}, &pb.AgentQuota{Windows: e.Windows})
-		if same && (!current || now.Sub(time.UnixMilli(old.ObservedMs)) < quotaRefresh) {
+		// Status lines repeat the last reply's limits without a source
+		// timestamp. Re-reading identical data cannot prove it is fresh,
+		// even when no other session has reported higher usage.
+		if same {
 			return
 		}
 	}
@@ -275,6 +286,9 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 			for _, k := range keys {
 				if d.quotas[k].Agent == ag.Kind() {
 					q := proto.CloneOf(d.quotas[k])
+					if detail := d.quotaErrors[ag.Kind()]; detail != "" {
+						q.State, q.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
+					}
 					if order, ok := ag.(agent.QuotaWindowOrder); ok {
 						order.OrderQuotaWindows(q.Windows)
 					}
@@ -285,8 +299,11 @@ func (d *Daemon) quotaEntriesLocked() []*pb.AgentQuota {
 				out = append(out, agentQuotas...)
 			} else {
 				e := &pb.AgentQuota{Agent: ag.Kind(), State: pb.QuotaState_QUOTA_STATE_WAITING}
+				if detail := d.quotaErrors[ag.Kind()]; detail != "" {
+					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_FAILED, detail
+				}
 				if cl.ManagedStatusLine("") {
-					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_UNSUPPORTED, "the status line is set by managed settings"
+					e.State, e.Detail = pb.QuotaState_QUOTA_STATE_UNSUPPORTED, i18n.QuotaManaged("zh-CN")
 				}
 				out = append(out, e)
 			}

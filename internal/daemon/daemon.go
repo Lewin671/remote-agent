@@ -116,10 +116,11 @@ type Daemon struct {
 	// starting are the sessions whose CLI has been started and that are
 	// not in sessions yet; each channel is closed once its session is, or
 	// its creation failed.
-	starting map[string]chan struct{}
-	limits   *pb.TokenUsage // latest usage limits seen in any session
-	limitsAt time.Time      // when Codex reported them
-	quotas   quotaStore     // CLI account limits
+	starting    map[string]chan struct{}
+	limits      *pb.TokenUsage      // latest usage limits seen in any session
+	limitsAt    time.Time           // when Codex reported them
+	quotaErrors map[pb.Agent]string // last status line parse failure, without private data
+	quotas      quotaStore          // CLI account limits
 	// reported is each session's last Claude Code status line.
 	reported map[string]quotaReport
 
