@@ -39,7 +39,7 @@ object Plans {
         reply: Reply, choice: PlanChoice,
         prepare: (PlanChoice) -> PreparedCommand, forward: suspend (PreparedCommand, Boolean) -> Unit) {
         // Never the earlier command under this choice's name.
-        if (reply.attempt.frozen) throw CommandException("failed_precondition", sessionText(UiMessages.dockAndroidReplyPending()))
+        if (reply.attempt.frozen) throw CommandException("failed_precondition", io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.dockAndroidReplyPending()))
         run(reply, forward) { reply.choice = choice; prepare(choice) }
     }
 

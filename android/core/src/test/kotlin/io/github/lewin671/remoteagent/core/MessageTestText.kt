@@ -31,7 +31,7 @@ fun assertMessageEquals(expected: Any?, actual: Any?) {
         is UiMessage -> messageTextForTest(value)
         is MessageText -> value.testText()
         is SessionLookup.Failed -> listOf("failed", rendered(value.reason))
-        is QuotaWindowDescriptor -> listOf(rendered(value.label), rendered(value.group))
+        is QuotaWindowDescriptor -> listOf(rendered(value.label), rendered(value.group), value.groupId)
         is List<*> -> value.map { rendered(it) }
         is HomeItem.Tail -> rendered(value.tail)
         is HomeTail.Text -> listOf("text", rendered(value.text))

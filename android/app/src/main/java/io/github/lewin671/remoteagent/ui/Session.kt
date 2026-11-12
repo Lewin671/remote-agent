@@ -939,15 +939,14 @@ private fun OutgoingView(
         else -> outgoingFailure(o, copy = copy)
     }
     val failed = input == InputStatus.INPUT_STATUS_FAILED || (input == null && o.state == Outgoing.State.FAILED)
-    val links = mutableListOf<Pair<String, () -> Unit>>()
+    val links = mutableListOf<CaptionLink>()
     var sending = false
     val (caption, color) =
         when {
             // Nothing was submitted and the terminal is as it was.
             input == InputStatus.INPUT_STATUS_FAILED -> {
                 links +=
-                    copy(UiMessages.composerRestore()) to
-                        {
+                    CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) {
                             putBack(remote, sid, o)
                             Unit
                         }
@@ -955,15 +954,14 @@ private fun OutgoingView(
             }
             // Not submitted, and part of it may still be in the input box.
             input == InputStatus.INPUT_STATUS_NEEDS_TERMINAL -> {
-                links += copy(UiMessages.sessionGoTerminal()) to onTerminal
-                if (o.hasLocalAttachments || (o.imageIds.isEmpty() && o.fileIds.isEmpty() && o.text.isNotEmpty())) links += copy(UiMessages.composerRestore()) to { putBack(remote, sid, o); Unit }
+                links += CaptionLink(CaptionAction.TERMINAL, copy(UiMessages.sessionGoTerminal()), onTerminal)
+                if (o.hasLocalAttachments || (o.imageIds.isEmpty() && o.fileIds.isEmpty() && o.text.isNotEmpty())) links += CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) { putBack(remote, sid, o); Unit }
                 feedback.text to p.orangeInk
             }
             input == InputStatus.INPUT_STATUS_UNCONFIRMED -> {
                 // Its images are kept until then; the user decides when to let go.
                 links +=
-                    copy(UiMessages.sessionDismissNotice()) to
-                        {
+                    CaptionLink(CaptionAction.DISMISS, copy(UiMessages.sessionDismissNotice())) {
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release(abort = false) }
                         }
@@ -977,16 +975,14 @@ private fun OutgoingView(
             else -> {
                 if (o.canPutBack)
                     links +=
-                        copy(UiMessages.composerRestore()) to
-                            {
+                        CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) {
                                 putBack(remote, sid, o)
                                 Unit
                             }
                 if (!o.missingImages)
-                    links += uiText(UiMessages.commonRetry()) to { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
+                    links += CaptionLink(CaptionAction.RETRY, copy(UiMessages.commonRetry())) { Outbox.deliver(RaApp.instance.scope, remote, sid, o) }
                 links +=
-                    copy(UiMessages.sessionDismissNotice()) to
-                        {
+                    CaptionLink(CaptionAction.DISMISS, copy(UiMessages.sessionDismissNotice())) {
                             Outbox.remove(sid, o)
                             o.images.forEach { it.release(abort = false) }
                         }
@@ -1454,7 +1450,7 @@ object Forks {
             val result = forward(f.attempt.next(prepare), retry)
             f.attempt.settle()
             return io.github.lewin671.remoteagent.core.forkedSession(result)
-                ?: throw io.github.lewin671.remoteagent.core.CommandException("internal", sessionText(UiMessages.newSessionUnexpectedReply()))
+                ?: throw io.github.lewin671.remoteagent.core.CommandException("internal", io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.newSessionUnexpectedReply()))
         } catch (e: kotlinx.coroutines.CancellationException) {
             // The page went away with the request on its way: whether the computer got it is not
             // known.

@@ -451,6 +451,10 @@ val ChatSide = 20.dp
  * text, at most 84% wide; [caption] under it in 13 says where it came from
  * or how sending went, [captionIcon] before it and [links] after it.
  */
+enum class CaptionAction { RESTORE, RETRY, DISMISS, TERMINAL }
+data class CaptionLink(val action: CaptionAction, val label: String, val onClick: () -> Unit)
+private data class CaptionLinkLabel(val action: CaptionAction, val label: String)
+
 @Composable
 fun MeBubble(
     text: String?,
@@ -458,7 +462,7 @@ fun MeBubble(
     captionColor: Color? = null,
     captionIcon: ImageVector? = null,
     failed: Boolean = false,
-    links: List<Pair<String, () -> Unit>> = emptyList(),
+    links: List<CaptionLink> = emptyList(),
     padded: Boolean = true,
     top: (@Composable () -> Unit)? = null,
     foldScheduled: Boolean = false,
@@ -484,7 +488,7 @@ fun MeBubble(
         val shown = caption != null || links.isNotEmpty()
         if (animated) {
             // The words of the line cross-fade (120 ms) and its room opens or closes (200 ms).
-            val state = if (shown) CaptionState(caption, captionColor, captionIcon, links.map { it.first }) else null
+            val state = if (shown) CaptionState(caption, captionColor, captionIcon, links.map { CaptionLinkLabel(it.action, it.label) }) else null
             AnimatedContent(
                 state,
                 contentAlignment = Alignment.TopEnd,
@@ -494,7 +498,7 @@ fun MeBubble(
                 },
                 label = "status-line",
             ) { st ->
-                if (st != null) CaptionRow(st.caption, st.color, st.icon, st.links.map { label -> label to (links.firstOrNull { it.first == label }?.second ?: {}) }, foldScheduled, long, expanded) { expanded = !expanded }
+                if (st != null) CaptionRow(st.caption, st.color, st.icon, st.links.map { label -> CaptionLink(label.action, label.label, links.firstOrNull { it.action == label.action }?.onClick ?: {}) }, foldScheduled, long, expanded) { expanded = !expanded }
             }
         } else if (shown) CaptionRow(caption, captionColor, captionIcon, links, foldScheduled, long, expanded) { expanded = !expanded }
         else if (settling) {
@@ -508,14 +512,14 @@ fun MeBubble(
 }
 
 /** What a status line says, without what it does: the words, their colour, the icon before them, and the labels of its links. */
-private data class CaptionState(val caption: String?, val color: Color?, val icon: ImageVector?, val links: List<String>)
+private data class CaptionState(val caption: String?, val color: Color?, val icon: ImageVector?, val links: List<CaptionLinkLabel>)
 
 @Composable
 private fun CaptionRow(
     caption: String?,
     captionColor: Color?,
     captionIcon: ImageVector?,
-    links: List<Pair<String, () -> Unit>>,
+    links: List<CaptionLink>,
     foldScheduled: Boolean,
     long: Boolean,
     expanded: Boolean,
@@ -529,7 +533,7 @@ private fun CaptionRow(
             Spacer(Modifier.width(4.dp))
         }
         if (caption != null) Text(caption + if (foldScheduled && long) (" · " + if (expanded) copy(UiMessages.markdownCollapse()) else copy(UiMessages.markdownExpand())) else "", style = T.s13, color = captionColor ?: p.ink2, textAlign = TextAlign.End, modifier = Modifier.weight(1f, fill = false).then(if (foldScheduled && long) Modifier.heightIn(min = 44.dp).clickable(onClick = onToggle) else Modifier))
-        for ((label, go) in links) Text(label, style = T.s13, color = p.blue, modifier = Modifier.padding(start = 12.dp).heightIn(min = 32.dp).clickable(onClick = go).wrapContentHeight())
+        for (link in links) Text(link.label, style = T.s13, color = p.blue, modifier = Modifier.padding(start = 12.dp).heightIn(min = 32.dp).clickable(onClick = link.onClick).wrapContentHeight())
     }
 }
 
@@ -701,7 +705,7 @@ fun ChatItemView(item: ChatItem, agent: String, cwd: String = "", home: String =
         }
         is ChatItem.Unsent -> MeBubble(
             item.text ?: copy(UiMessages.queueAndroidMessage()), caption = copy(UiMessages.sessionEndedSendFailed()), captionColor = p.red, failed = true,
-            links = if (item.text != null && onPutBack != null) listOf(copy(UiMessages.composerRestore()) to { onPutBack(item.requestId, item.text) }) else emptyList(),
+            links = if (item.text != null && onPutBack != null) listOf(CaptionLink(CaptionAction.RESTORE, copy(UiMessages.composerRestore())) { onPutBack(item.requestId, item.text) }) else emptyList(),
         )
         is ChatItem.TurnEnd -> SepLine(item.text)
         is ChatItem.Fork -> {

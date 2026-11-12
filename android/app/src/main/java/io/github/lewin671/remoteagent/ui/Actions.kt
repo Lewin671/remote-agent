@@ -140,7 +140,7 @@ class Outgoing(
 
     internal fun prepareDelivery(remote: Remote, sid: String, request: SendRequest): io.github.lewin671.remoteagent.core.PreparedCommand {
         val machine = targetMachineId ?: remote.state.value.sessions[sid]?.machineId
-            ?: throw CommandException("not_found", sessionText(UiMessages.sessionAndroidUnknown()))
+            ?: throw CommandException("not_found", UiMessages.sessionAndroidUnknown().messageText())
         targetMachineId = machine
         return remote.prepare(machine, sid, remote.cmd { send = request.toBuilder().setSessionId(sid).build() },
             requestId = commandRequestId, deadlineMs = commandDeadlineMs)
@@ -258,7 +258,7 @@ class OutgoingRecords(private val files: SealedFiles) {
             val mode = files.get(f, "mode")?.toString(Charsets.UTF_8)?.let { runCatching { io.github.lewin671.remoteagent.proto.SendMode.valueOf(it) }.getOrNull() }
                 ?: io.github.lewin671.remoteagent.proto.SendMode.SEND_MODE_STEER
             val fileIds = files.get(f, "file-ids")?.toString(Charsets.UTF_8)?.split("\n")?.filter { it.isNotEmpty() }.orEmpty()
-            val intent = files.get(f, "intent") ?: error(sessionText(UiMessages.composerAndroidOutboxFormat()))
+            val intent = files.get(f, "intent") ?: io.github.lewin671.remoteagent.core.messageError(UiMessages.composerAndroidOutboxFormat().messageText())
             val (commandId, deadline, machine) = java.io.DataInputStream(intent.inputStream()).use {
                 Triple(it.readUTF(), it.readLong(), it.readUTF().ifEmpty { null })
             }
@@ -396,7 +396,7 @@ object Outbox {
                         images.filterNot { it.isFile }.mapNotNull { it.imageId } != imageIds ||
                         images.filter { it.isFile }.mapNotNull { it.fileId } != fileIds) {
                         drop(sid, o.requestId)
-                        throw IllegalStateException(sessionText(UiMessages.attachmentAndroidUploadRequired()))
+                        throw io.github.lewin671.remoteagent.core.MessageException(UiMessages.attachmentAndroidUploadRequired().messageText())
                     }
                 }
             }

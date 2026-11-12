@@ -688,5 +688,20 @@
     "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
     "literal": "Gemini 4 Argon",
     "reason": "CLI model family identifier passed unchanged into a shared quota-window label; this proper name is not translated."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "known:gemini",
+    "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "known:third-party",
+    "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
+  },
+  {
+    "path": "android/core/src/main/kotlin/io/github/lewin671/remoteagent/core/Agents.kt",
+    "literal": "window:$name",
+    "reason": "Stable quota-pool identity, separate from the translated section title; never rendered as product copy."
   }
 ]

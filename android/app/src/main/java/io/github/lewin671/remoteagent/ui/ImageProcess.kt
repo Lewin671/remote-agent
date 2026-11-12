@@ -48,7 +48,7 @@ fun readUri(context: Context, uri: Uri, limit: Long): ByteArray {
             if (total > limit) throw ImageTooLarge(UiMessages.imageAndroidImageExceedsValue1Mb((limit / 1024 / 1024).toString()), if (limit == MAX_ORIGINAL_BYTES) ImageProblemKind.ORIGINAL_LIMIT else ImageProblemKind.DIMENSIONS)
             out.write(buf, 0, n)
         }
-    } ?: imageFormatError(UiMessages.imageAndroidCannotReadThisImage())
+    } ?: throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.imageAndroidCannotReadThisImage()), imageKind = ImageProblemKind.FORMAT)
     return out.toByteArray()
 }
 

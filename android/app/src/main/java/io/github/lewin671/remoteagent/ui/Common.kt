@@ -293,7 +293,7 @@ internal fun ServerDetails(state: RemoteState, onClose: () -> Unit) {
                 color = p.ink2,
                 modifier = Modifier.padding(top = 2.dp),
             )
-        if (state.errorDetail.isNotEmpty() && state.errorDetail != uiText(state.error))
+        if (state.errorDetail.isNotEmpty())
             Code(state.errorDetail, Modifier.fillMaxWidth().padding(top = 10.dp), maxLines = 4)
         PillButton(
             uiText(UiMessages.connectionAndroidRetryNow()),

@@ -80,10 +80,12 @@ fun scheduleRowMetadata(task: ScheduledTask, state: RemoteState, tasks: List<Sch
     fun cwd(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.cwd.orEmpty() else t.target.text("cwd")
     fun agent(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.agent?.let { agentName(it, copy = copy) }.orEmpty()
         else (t.target.text("agent").takeIf { it.isNotEmpty() }?.let(::agentById) ?: agentInfo()).let { it.nameMessage?.let(copy) ?: it.name }
+    fun agentId(t: ScheduledTask) = if (t.target.text("type") == "resume_session") state.sessions[t.target.text("session")]?.info?.agent?.let { agentInfo(it).id.ifEmpty { "unknown" } }.orEmpty()
+        else (t.target.text("agent").takeIf { it.isNotEmpty() }?.let(::agentById) ?: agentInfo()).id.ifEmpty { "unknown" }
     return buildList {
         add(scheduleTiming(task.trigger, copy = copy, locale = locale))
         if (tasks.map(::cwd).filter { it.isNotEmpty() }.distinct().size > 1 && cwd(task).isNotEmpty()) add(projectName(cwd(task), copy = copy))
-        if (tasks.map(::agent).filter { it.isNotEmpty() }.distinct().size > 1 && agent(task).isNotEmpty()) add(agent(task))
+        if (tasks.map(::agentId).filter { it.isNotEmpty() }.distinct().size > 1 && agent(task).isNotEmpty()) add(agent(task))
         if (tasks.map { it.machine }.distinct().size > 1) add(machineLabel(state, task.machine))
         if (task.target.text("type") == "resume_session") add(copy(UiMessages.scheduleIn((scheduleDestination(task, state, copy = copy)).toString())))
         if (task.status == "paused") add(copy(UiMessages.queuePaused()))

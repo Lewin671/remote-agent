@@ -559,7 +559,7 @@ private fun JoinField(
 private fun RejoinButton(app: RaApp, title: String) {
     val copy = uiText()
     val scope = rememberCoroutineScope()
-    var advice by remember { mutableStateOf<String?>(null) }
+    var advice by remember { mutableStateOf<ExitRisk?>(null) }
     var error by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     fun leave(confirmed: Boolean) {
@@ -570,7 +570,7 @@ private fun RejoinButton(app: RaApp, title: String) {
                 val warning = withContext(Dispatchers.IO) {
                     val pending = app.vault.readSecurityOperation() != null || app.vault.loadRegistrationIntent() != null
                     val admin = if (app.vault.hasSecurityState()) app.vault.readSecurity().let { it.memberID == it.head.core.authorityID } else false
-                    if (pending || admin) authorityExitAdvice(admin, pending, copy = copy) + copy(UiMessages.securityAndroidThisDeletesTheAccountKeysAndCacheOnThisPhone()) else null
+                    if (pending || admin) authorityExitRisk(admin, pending) else null
                 }
                 if (warning != null && (!confirmed || warning != advice)) advice = warning
                 else app.logout(pairing = true)
@@ -580,8 +580,8 @@ private fun RejoinButton(app: RaApp, title: String) {
     }
     PillButton(title, { leave(false) }, Modifier.fillMaxWidth(), ButtonKind.INK, enabled = !busy)
     if (error.isNotEmpty()) Hint(error)
-    advice?.let { message ->
-        Confirm(copy(UiMessages.securityDeleteLocalKeysAndRejoin()), message, copy(UiMessages.securityRejoin()), danger = true,
+    advice?.let { risk ->
+        Confirm(copy(UiMessages.securityDeleteLocalKeysAndRejoin()), authorityExitAdvice(risk, copy) + copy(UiMessages.securityAndroidThisDeletesTheAccountKeysAndCacheOnThisPhone()), copy(UiMessages.securityRejoin()), danger = true,
             onDismiss = { advice = null }) { leave(true) }
     }
 }

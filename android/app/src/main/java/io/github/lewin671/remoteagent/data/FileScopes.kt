@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.data
 
-import io.github.lewin671.remoteagent.ui.sessionText
 
 import io.github.lewin671.remoteagent.core.UiMessages
 
@@ -16,7 +15,7 @@ class FileScopes(private val files: SealedFiles) {
         val owned = epoch
         object : SealedFiles {
             override fun <T> transaction(work: () -> T): T = files.transaction {
-                check(owned == epoch) { sessionText(UiMessages.commonAndroidAccountSignedOut()) }
+                if (owned != epoch) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.commonAndroidAccountSignedOut()))
                 work()
             }
             override fun put(folder: String, name: String, data: ByteArray) = transaction { files.put(folder, name, data) }

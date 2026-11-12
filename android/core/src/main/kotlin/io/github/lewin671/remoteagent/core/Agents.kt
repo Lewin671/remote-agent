@@ -10,6 +10,7 @@ import io.github.lewin671.remoteagent.proto.MachineMeta
 data class QuotaWindowDescriptor(
     val label: MessageText,
     val group: MessageText? = null,
+    val groupId: String? = null,
 )
 
 interface AgentEntry {
@@ -69,11 +70,11 @@ private fun fixedWindowLabel(name: String): QuotaWindowDescriptor = when (name) 
 }
 
 private val ANTIGRAVITY_QUOTA_WINDOWS = mapOf(
-    "gemini-5h" to QuotaWindowDescriptor(UiMessages.quotaNamedHours(5, "Gemini").messageText(), "Gemini".messageText()),
-    "gemini-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini").messageText(), "Gemini".messageText()),
-    "gemini-argon-wtu-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini 4 Argon").messageText(), "Gemini".messageText()),
-    "3p-5h" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedHours(5, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText()),
-    "3p-weekly" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedDays(7, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText()),
+    "gemini-5h" to QuotaWindowDescriptor(UiMessages.quotaNamedHours(5, "Gemini").messageText(), "Gemini".messageText(), "known:gemini"),
+    "gemini-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini").messageText(), "Gemini".messageText(), "known:gemini"),
+    "gemini-argon-wtu-weekly" to QuotaWindowDescriptor(UiMessages.quotaNamedDays(7, "Gemini 4 Argon").messageText(), "Gemini".messageText(), "known:gemini"),
+    "3p-5h" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedHours(5, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText(), "known:third-party"),
+    "3p-weekly" to QuotaWindowDescriptor(localized { copy -> copy(UiMessages.quotaNamedDays(7, copy(UiMessages.quotaThirdPartyModels()))) }, UiMessages.quotaThirdPartyModelsClaudeGptOss().messageText(), "known:third-party"),
 )
 
 private val CODEX_ENTRY: AgentEntry = object : AgentEntry {
@@ -176,7 +177,7 @@ private val ANTIGRAVITY_ENTRY: AgentEntry = object : AgentEntry {
     override val quotaWindows: List<String> = emptyList()
 
     override fun quotaWindow(name: String): QuotaWindowDescriptor =
-        ANTIGRAVITY_QUOTA_WINDOWS[name] ?: QuotaWindowDescriptor(name.messageText(), name.messageText())
+        ANTIGRAVITY_QUOTA_WINDOWS[name] ?: QuotaWindowDescriptor(name.messageText(), name.messageText(), "window:$name")
 
     override fun planName(raw: String): String = raw
 

@@ -22,8 +22,8 @@ internal fun documentEntry(context: Context, uri: Uri): PendingImage {
             if (b >= 0 && !it.isNull(b)) size = it.getLong(b).coerceAtLeast(0)
         }
     }
-    require(!name.isNullOrBlank()) { sessionText(UiMessages.attachmentAndroidNameUnreadable()) }
-    require(name!!.toByteArray().size <= 255) { sessionText(UiMessages.attachmentAndroidNameTooLong()) }
+    if (name.isNullOrBlank()) throw io.github.lewin671.remoteagent.core.MessageArgumentException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentAndroidNameUnreadable()), imageKind = ImageProblemKind.SOURCE)
+    if (name.toByteArray().size > 255) throw io.github.lewin671.remoteagent.core.MessageArgumentException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentAndroidNameTooLong()), imageKind = ImageProblemKind.SOURCE)
     return PendingImage(newRequestId(), uri.toString(), name, size, retainSource = false)
 }
 
@@ -38,7 +38,7 @@ internal fun ImageDraft.addDocuments(context: Context, uris: List<Uri>, remote: 
             for (uri in uris) {
                 try {
                     val target = remote.state.value.machines[machine]
-                    check(filesSupported(target)) { sessionText(UiMessages.attachmentUpdateRequired()) }
+                    if (!filesSupported(target)) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.attachmentUpdateRequired()), imageKind = ImageProblemKind.UPDATE_REQUIRED)
                     if (documents.size >= maxFiles(target)) { notice = sessionText(UiMessages.attachmentAndroidFilesLimit(count = (maxFiles(target)).toInt())); break }
                     val entry = withContext(Dispatchers.IO) { documentEntry(context, uri) }
                     if (videos) pickedVideoError(entry.fileName!!, entry.fileBytes, maxFileBytes(target))?.let { notice = sessionText(it); continue }

@@ -1,6 +1,5 @@
 package io.github.lewin671.remoteagent.data
 
-import io.github.lewin671.remoteagent.ui.sessionText
 
 import io.github.lewin671.remoteagent.core.UiMessages
 
@@ -94,7 +93,7 @@ class PendingStore(private val context: Context) : io.github.lewin671.remoteagen
         ImageDiskPolicy.requireRoom(dir, f, sealed.size.toLong(), limit)
         try {
             tmp.writeBytes(sealed)
-            check(tmp.renameTo(f)) { sessionText(UiMessages.commonAndroidCouldNotSavePendingImages()) }
+            if (!tmp.renameTo(f)) throw io.github.lewin671.remoteagent.core.MessageException(io.github.lewin671.remoteagent.core.MessageText.Message(UiMessages.commonAndroidCouldNotSavePendingImages()))
         } finally { tmp.delete() }
         f.parentFile?.setLastModified(System.currentTimeMillis())
         requestUriCleanup()

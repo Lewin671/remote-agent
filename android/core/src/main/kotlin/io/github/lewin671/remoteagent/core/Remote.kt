@@ -970,7 +970,7 @@ class Remote(
         clearConnProgress()
         error = errorText(e, state.value)
         connError = error
-        errorDetail = detailText(e)
+        errorDetail = connectionErrorDetail(e)
         unresolved = unresolvedHost(e)
         publish()
         if (!running) return

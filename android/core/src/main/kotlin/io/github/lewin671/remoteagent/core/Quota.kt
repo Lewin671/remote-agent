@@ -179,6 +179,7 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
 
     val rows = mutableListOf<QuotaRow>()
     val groupMap = LinkedHashMap<String, MutableList<QuotaRow>>()
+    val groupTitles = LinkedHashMap<String, String>()
     if (status != QuotaStatus.UNSUPPORTED && status != QuotaStatus.WAITING && q.windowsCount > 0) {
         val expected = agentInfo(agent).quotaWindows
         val ordered = completeWindows(agent, q.windowsList)
@@ -188,12 +189,15 @@ private fun group(agent: Agent, q: AgentQuota, several: Boolean, online: Boolean
             val row = quotaRow(w, now, lastRecord, desc.label.resolve(copy), useMinutes, copy = copy)
             rows += row
             if (desc.group != null) {
-                groupMap.getOrPut(desc.group.resolve(copy)) { mutableListOf() } += row
+                val groupId = checkNotNull(desc.groupId)
+                groupTitles[groupId] = desc.group.resolve(copy)
+                groupMap.getOrPut(groupId) { mutableListOf() } += row
             }
         }
     }
     val sections = if (groupMap.isNotEmpty()) {
-        groupMap.entries.mapIndexed { idx, (g, grows) ->
+        groupMap.entries.mapIndexed { idx, (groupId, grows) ->
+            val g = groupTitles.getValue(groupId)
             QuotaSection(
                 title = if (idx == 0) "$prefix · $g$staleSuffix" else g,
                 rows = grows,

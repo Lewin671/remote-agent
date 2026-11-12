@@ -1450,23 +1450,37 @@ fun cancelOutcome(status: InputStatus?, canceledHere: Boolean): CancelOutcome =
 fun clientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String =
     d?.meta?.name.orEmpty().trim().ifEmpty { defaultClientName(d, id, clients, copy = copy) }
 
-internal fun clientBaseName(d: DeviceView?, copy: MessageResolver): String {
+private sealed interface ClientBase {
+    data class Raw(val value: String) : ClientBase
+    data object Browser : ClientBase
+    data object Client : ClientBase
+
+    fun display(copy: MessageResolver): String = when (this) {
+        is Raw -> value
+        Browser -> copy(UiMessages.securityBrowser())
+        Client -> copy(UiMessages.securityClient())
+    }
+}
+
+private fun clientBase(d: DeviceView?): ClientBase {
     val meta = d?.meta
     val description = meta?.description.orEmpty().trim()
     val model = description.substringAfter(" · ", "").trim()
     return when (meta?.platform) {
-        "web" -> description.replace(" on ", " · ").ifEmpty { copy(UiMessages.securityBrowser()) }
-        "android" -> "Android" + if (model.isNotEmpty()) " · $model" else ""
-        "ios" -> model.ifEmpty { "iOS" }
-        else -> copy(UiMessages.securityClient())
+        "web" -> description.replace(" on ", " · ").takeIf { it.isNotEmpty() }?.let(ClientBase::Raw) ?: ClientBase.Browser
+        "android" -> ClientBase.Raw("Android" + if (model.isNotEmpty()) " · $model" else "")
+        "ios" -> ClientBase.Raw(model.ifEmpty { "iOS" })
+        else -> ClientBase.Client
     }
 }
 
-/** Compare default names even for clients whose users have already supplied a name. */
+internal fun clientBaseName(d: DeviceView?, copy: MessageResolver): String = clientBase(d).display(copy)
+
+/** Compare raw metadata / fallback identities, including clients with a user-supplied name. */
 fun defaultClientName(d: DeviceView?, id: String, clients: Collection<DeviceView> = emptyList(), copy: MessageResolver): String {
-    val base = clientBaseName(d, copy = copy)
-    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBaseName(it, copy = copy) == base }
-    return base + if (duplicate) " · ${shortId(id)}" else ""
+    val base = clientBase(d)
+    val duplicate = clients.any { it.kind == io.github.lewin671.remoteagent.proto.DeviceKind.DEVICE_KIND_CLIENT && it.id != id && clientBase(it) == base }
+    return base.display(copy) + if (duplicate) " · ${shortId(id)}" else ""
 }
 
 /**
