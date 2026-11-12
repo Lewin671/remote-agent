@@ -330,7 +330,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 	if err != nil {
 		slog.Error("list image references", "err", errClass(err))
 	}
-	prepared := map[pb.Agent]bool{}
+	var saved []savedSession
 	for _, e := range entries {
 		if !e.IsDir() {
 			continue
@@ -356,19 +356,47 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 				return fmt.Errorf("save reattached session liveness: %w", err)
 			}
 		}
-		log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
-		if err != nil {
-			slog.Warn("skip session", "session", filepath.Base(dir), "err", errClass(err))
+		saved = append(saved, savedSession{dir: dir, meta: *m, alive: alive, reattached: reattached})
+	}
+
+	// Keep both CPU use and the extra open logs/caches bounded. Registration,
+	// upload reconciliation and reattach preparation remain in disk order.
+	// Clients and storage GC still start only after every batch is restored.
+	const restoreBatchSize = 4
+	prepared := map[pb.Agent]bool{}
+	for first := 0; first < len(saved); first += restoreBatchSize {
+		batch := saved[first:min(first+restoreBatchSize, len(saved))]
+		if err := d.restoreBatch(batch, imageRecords, prepared); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (d *Daemon) restoreBatch(batch []savedSession, imageRecords map[string][]*transfer, prepared map[pb.Agent]bool) error {
+	loaded := make([]*session, len(batch))
+	var wg sync.WaitGroup
+	for i, item := range batch {
+		wg.Go(func() { loaded[i] = d.loadSavedSession(item) })
+	}
+	wg.Wait()
+	// Close histories not yet registered if restoration stops early.
+	defer func() {
+		for _, s := range loaded {
+			if s != nil {
+				_ = s.log.Close()
+			}
+		}
+	}()
+	for i, item := range batch {
+		s := loaded[i]
+		if s == nil {
 			continue
 		}
-		s, err := newSession(d, dir, *m, d.terminal(m), log)
-		if err != nil {
-			slog.Warn("skip session with unreadable history", "session", m.ID, "err", errClass(err))
-			_ = log.Close()
-			continue
-		}
-		// Sessions restored before this one already run their loops, which
-		// read the list.
+		loaded[i] = nil
+		m, alive, reattached := &item.meta, item.alive, item.reattached
+
+		// Earlier live sessions already run their loops, which read the list.
 		d.mu.Lock()
 		d.sessions[m.ID] = s
 		d.mu.Unlock()
@@ -388,7 +416,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			// Read once to restore it; nothing reads an ended session's
 			// events again unless a client or the server asks. Letting go
 			// now keeps a start from holding every session at once.
-			log.Release(0)
+			s.log.Release(0)
 			continue
 		}
 		if !alive {
@@ -402,7 +430,7 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 			continue
 		}
 		slog.Info("reattached session", "session", m.ID, "tmux", m.Tmux)
-		if bin, _, ok := shellReport(dir); ok && bin != "" {
+		if bin, _, ok := shellReport(s.dir); ok && bin != "" {
 			d.learnCLI(s.ag.Kind(), bin)
 		}
 		if init, ok := s.ag.(agent.ReattachPreparer); ok && !prepared[s.ag.Kind()] {
@@ -417,6 +445,28 @@ func (d *Daemon) restoreWithSessionList(list func() ([]tmux.SessionInfo, error))
 		s.start(d.ctx)
 	}
 	return nil
+}
+
+// savedSession records tmux liveness independently of readable history.
+type savedSession struct {
+	dir               string
+	meta              meta
+	alive, reattached bool
+}
+
+func (d *Daemon) loadSavedSession(saved savedSession) *session {
+	log, err := eventlog.Open(filepath.Join(saved.dir, "events.jsonl"))
+	if err != nil {
+		slog.Warn("skip session", "session", filepath.Base(saved.dir), "err", errClass(err))
+		return nil
+	}
+	s, err := newSession(d, saved.dir, saved.meta, d.terminal(&saved.meta), log)
+	if err != nil {
+		slog.Warn("skip session with unreadable history", "session", saved.meta.ID, "err", errClass(err))
+		_ = log.Close()
+		return nil
+	}
+	return s
 }
 
 func (d *Daemon) terminal(m *meta) terminal {

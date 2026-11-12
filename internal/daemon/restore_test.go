@@ -12,6 +12,7 @@ import (
 	"time"
 
 	pb "github.com/Lewin671/remote-agent/gen/remoteagent/v1"
+	"github.com/Lewin671/remote-agent/internal/eventlog"
 	"github.com/Lewin671/remote-agent/internal/paths"
 	"github.com/Lewin671/remote-agent/internal/tmux"
 )
@@ -217,5 +218,66 @@ func TestRestoreReadsTheTranscriptOfAGoneSession(t *testing.T) {
 	}
 	if info := s.info(); info.Status != pb.SessionStatus_SESSION_STATUS_EXITED {
 		t.Fatalf("status %v", info.Status)
+	}
+}
+
+func TestRestoreMultipleHistoryBatchesAndLiveSession(t *testing.T) {
+	r := newRestoreHarness(t)
+	// More than two recovery batches; an exited flag on the live tmux session
+	// must be corrected before storage cleanup, just like a single restore.
+	const count = 11
+	for i := 0; i < count; i++ {
+		id := fmt.Sprintf("%016x", i+1)
+		dir := r.save(meta{ID: id, Exited: true}, i == count-1)
+		log, err := eventlog.Open(filepath.Join(dir, "events.jsonl"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = log.Append(id, []*pb.Event{
+			{Kind: &pb.Event_UserMessage{UserMessage: &pb.UserMessage{Text: "history " + id}}},
+			{Kind: &pb.Event_AgentMessage{AgentMessage: &pb.AgentMessage{Text: "reply " + id}}},
+			{Kind: &pb.Event_SessionState{SessionState: &pb.SessionState{Status: pb.SessionStatus_SESSION_STATUS_EXITED}}},
+		}, "", 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := log.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := r.restore(); err != nil {
+		t.Fatal(err)
+	}
+	all := r.d.list(true)
+	if len(all) != count {
+		t.Fatalf("restored %d sessions, want %d", len(all), count)
+	}
+	seen := map[string]bool{}
+	for _, info := range all {
+		if seen[info.Id] {
+			t.Fatalf("duplicate session %s", info.Id)
+		}
+		seen[info.Id] = true
+		if info.Title != "history "+info.Id || info.Preview != "reply "+info.Id {
+			t.Fatalf("history summary lost: %v", info)
+		}
+		s := r.session(info.Id)
+		events, _, err := s.log.Since(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(events) < 3 || events[0].GetUserMessage().GetText() != "history "+info.Id || events[1].GetAgentMessage().GetText() != "reply "+info.Id {
+			t.Fatalf("history cannot be opened: %v", events)
+		}
+		s.mu.Lock()
+		exited, started := s.meta.Exited, s.stop != nil
+		s.mu.Unlock()
+		live := info.Id == fmt.Sprintf("%016x", count)
+		if exited == live || started != live {
+			t.Fatalf("session %s: exited=%v started=%v", info.Id, exited, started)
+		}
+	}
+	if live := r.d.list(false); len(live) != 1 {
+		t.Fatalf("live list has %d sessions", len(live))
 	}
 }
