@@ -166,7 +166,7 @@ public struct Derived: Equatable, Sendable {
     /// User messages typed in the terminal rather than sent from a client.
     public var typedLocally = Set<UInt64>()
     /// Mode or model changes made in the terminal, by the seq of the turn context that shows them.
-    public var terminalChanges = [UInt64: String]()
+    public var terminalChanges = [UInt64: [TerminalChange]]()
 
     public init() {}
 }
@@ -178,10 +178,36 @@ public func derive(_ events: some Sequence<PBEvent>, agent: PBAgent = defaultAge
     return r.snapshot()
 }
 
+/// Stable CLI mode identity, independent of the label shown to the user.
+public enum ContextApprovalMode: Equatable, Sendable {
+    case known(Mode)
+    case other(String)
+
+    public var text: String {
+        switch self {
+        case .known(let mode): return mode.text
+        case .other(let raw): return permissionModeName(raw)
+        }
+    }
+}
+
+/// Terminal changes retain their data until a chat row is rendered.
+public enum TerminalChange: Equatable, Sendable {
+    case mode(ContextApprovalMode)
+    case model(String, effort: String)
+
+    public var text: String {
+        switch self {
+        case .mode(let mode): return "模式切到了 \(mode.text)"
+        case .model(let model, let effort): return "模型切到了 \(model)" + (effort.isEmpty ? "" : " · \(effort)")
+        }
+    }
+}
+
 struct EventReducer: Sendable {
     private var d = Derived()
     // The mode as the chat names it, a CLI's own name for one outside the four; empty until a context says.
-    private var mode = ""
+    private var mode: ContextApprovalMode?
     private var model = ""
     // The model and effort last switched to from here, until a context shows a model.
     private var expected: (model: String, effort: String)?
@@ -342,18 +368,18 @@ struct EventReducer: Sendable {
             // The next context should show this model; the client names it
             // by slug or alias, the context by the CLI's own ID.
             if !c.model.isEmpty { expected = (c.model, c.effort) }
-            if let m = modeOf(c.mode) { mode = m.text }
+            if let m = modeOf(c.mode) { mode = .known(m) }
         case .turnContext(let c):
             // Claude Code's mode by its own name, so that one outside the four is a change like any other.
             let m = c.permissionMode.isEmpty
                 ? contextMode(
-                    reviewer: c.approvalsReviewer, policy: c.approvalPolicy, sandbox: c.sandbox, collaboration: c.collaborationMode)?.text ?? ""
-                : permissionModeName(c.permissionMode)
+                    reviewer: c.approvalsReviewer, policy: c.approvalPolicy, sandbox: c.sandbox, collaboration: c.collaborationMode).map(ContextApprovalMode.known)
+                : Optional(permissionMode(c.permissionMode).map(ContextApprovalMode.known) ?? .other(c.permissionMode))
             let planning = c.collaborationMode == "plan" || c.permissionMode == "plan"
             let mm = "\(c.model) \(c.effort)"
-            var changes = [String]()
-            if !mode.isEmpty && !m.isEmpty && m != mode && !(mode == Mode.plan.text && planned) { changes.append("模式切到了 \(m)") }
-            if !m.isEmpty && m != mode { planned = false }
+            var changes = [TerminalChange]()
+            if mode != nil, let m, m != mode, !(mode == .known(.plan) && planned) { changes.append(.mode(m)) }
+            if m != nil && m != mode { planned = false }
             // Plan mode runs at its own effort; only a model change counts
             // there. A context without a model is Claude Code's mode, read
             // off the screen; it says nothing about the model. After a
@@ -366,11 +392,11 @@ struct EventReducer: Sendable {
                 changed = mm != model
             }
             if (!model.isEmpty || expected != nil) && !c.model.isEmpty && changed && !planning {
-                changes.append("模型切到了 \(c.model)" + (c.effort.isEmpty ? "" : " · \(c.effort)"))
+                changes.append(.model(c.model, effort: c.effort))
             }
             if !c.model.isEmpty && !planning { expected = nil }
-            if !changes.isEmpty { d.terminalChanges[e.seq] = changes.joined(separator: "，") }
-            if !m.isEmpty { mode = m }
+            if !changes.isEmpty { d.terminalChanges[e.seq] = changes }
+            if let m { mode = m }
             if !planning && !c.model.isEmpty { model = mm }
         case .sessionState(let s):
             d.scheduledClosed = s.status == .exited && s.scheduledClosed

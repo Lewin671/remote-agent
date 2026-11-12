@@ -61,6 +61,7 @@ struct ChatSnapshot: Sendable {
 
 actor ChatBuilder {
     private struct Key: Equatable {
+        var locale: String
         var agent: PBAgent
         var machine, cwd, home, me: String
         var devices: [String: DeviceView]
@@ -98,7 +99,7 @@ actor ChatBuilder {
         // The daemon queues a new session's first message under an ID of its own.
         let initialId = p.prompt == nil ? nil : d.inputs.keys.first { !local.contains($0) }
         let next = Key(
-            agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
+            locale: MessageLocale.current, agent: p.agent, machine: p.machine, cwd: p.cwd, home: p.home, me: p.me,
             devices: p.devices, texts: p.texts,
             prompt: p.prompt, initialId: initialId)
         // Rows name clients and carry the texts sent from here: when those

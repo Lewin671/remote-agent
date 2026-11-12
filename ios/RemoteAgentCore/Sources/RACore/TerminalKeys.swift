@@ -28,14 +28,14 @@ public struct TerminalKey: Sendable, Equatable {
     }
 }
 
-public let terminalKeyRows: [[TerminalKey]] = [
+public var terminalKeyRows: [[TerminalKey]] { [
     [
         .text("Esc", "\u{1b}"), .arrow("左", "D", icon: "arrow.left"), .arrow("上", "A", icon: "arrow.up"),
         .arrow("下", "B", icon: "arrow.down"), .arrow("右", "C", icon: "arrow.right"),
         .text("回车", "\r", icon: "return"),
     ],
     [.text("Tab", "\t"), .text("Ctrl+C", "\u{03}")],
-]
+] }
 
 /// What a key sends; `appCursor` is the terminal's application cursor keys mode.
 public func terminalKeySequence(_ key: TerminalKey, appCursor: Bool) -> String {

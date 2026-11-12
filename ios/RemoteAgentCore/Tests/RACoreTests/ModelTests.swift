@@ -132,7 +132,7 @@ import Testing
             .turnContext(.with { $0.model = "m"; $0.effort = "low"; $0.approvalPolicy = "on-request"; $0.approvalsReviewer = reviewer })
         }
         let d = derive([Mk.ev(1, context("user")), Mk.ev(2, context("auto_review"))])
-        #expect(d.terminalChanges[2] == "模式切到了 自动")
+        #expect(d.terminalChanges[2] == [.mode(.known(.auto))])
     }
 
     // The web's "notes a model changed in the terminal after a switch from here".
@@ -149,7 +149,7 @@ import Testing
             Mk.ev(4, chosen),
             Mk.ev(5, context("gpt-6-sol", "high")),  // as chosen here: nothing to note
         ])
-        #expect(d.terminalChanges == [3: "模型切到了 gpt-6-luna · low"])
+        #expect(d.terminalChanges == [3: [.model("gpt-6-luna", effort: "low")]])
     }
 
     // The web's "notes a switch back made in the terminal after a switch from here".
@@ -163,7 +163,7 @@ import Testing
             Mk.ev(3, context("gpt-6-astra")),  // switched back at the computer before the next turn
             Mk.ev(4, context("gpt-6-sol")),  // and to Sol again there
         ])
-        #expect(d.terminalChanges == [3: "模型切到了 gpt-6-astra · medium", 4: "模型切到了 gpt-6-sol · medium"])
+        #expect(d.terminalChanges == [3: [.model("gpt-6-astra", effort: "medium")], 4: [.model("gpt-6-sol", effort: "medium")]])
     }
 
     private func claudeContext(_ permission: String, _ model: String = "claude-haiku-4-5-20251001") -> PBEvent.OneOf_Kind {
@@ -181,7 +181,7 @@ import Testing
                 Mk.ev(5, claudeContext("plan", "claude-sonnet-5-5")),
                 Mk.ev(6, claudeContext("default", "claude-sonnet-5-5")),
             ], agent: .claude)
-        #expect(d.terminalChanges == [2: "模式切到了 accept edits", 5: "模式切到了 计划", 6: "模式切到了 询问"])
+        #expect(d.terminalChanges == [2: [.mode(.other("acceptEdits"))], 5: [.mode(.known(.plan))], 6: [.mode(.known(.ask))]])
     }
 
     // The web's "notes nothing when a mode-only context carries the switched model".
@@ -195,7 +195,7 @@ import Testing
                 Mk.ev(5, claudeContext("acceptEdits", "claude-opus-5-5")),  // then changed at the computer
                 Mk.ev(6, claudeContext("default", "claude-opus-5-5")),  // and the mode back
             ], agent: .claude)
-        #expect(d.terminalChanges == [3: "模式切到了 accept edits", 5: "模型切到了 claude-opus-5-5", 6: "模式切到了 询问"])
+        #expect(d.terminalChanges == [3: [.mode(.other("acceptEdits"))], 5: [.model("claude-opus-5-5", effort: "")], 6: [.mode(.known(.ask))]])
     }
 
     @Test func aModelIsTheOneChosenBySlugOrAlias() {

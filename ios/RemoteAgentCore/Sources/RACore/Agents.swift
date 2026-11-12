@@ -160,7 +160,7 @@ private let ANTIGRAVITY_QUOTA_WINDOWS: [String: QuotaWindowDescriptor] = [
     "3p-weekly": QuotaWindowDescriptor(label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）"),
 ]
 
-private let CODEX_ENTRY = AgentEntry(
+private var CODEX_ENTRY: AgentEntry { AgentEntry(
     agent: .codex,
     id: "codex",
     name: "Codex",
@@ -194,9 +194,9 @@ private let CODEX_ENTRY = AgentEntry(
         if let mode { s.defaultMode = mode }
         return s
     }
-)
+) }
 
-private let CLAUDE_ENTRY = AgentEntry(
+private var CLAUDE_ENTRY: AgentEntry { AgentEntry(
     agent: .claude,
     id: "claude",
     name: "Claude Code",
@@ -229,9 +229,9 @@ private let CLAUDE_ENTRY = AgentEntry(
         s.claude = c
         return s
     }
-)
+) }
 
-private let ANTIGRAVITY_ENTRY = AgentEntry(
+private var ANTIGRAVITY_ENTRY: AgentEntry { AgentEntry(
     agent: .antigravity,
     id: "agy",
     name: "Antigravity",
@@ -266,7 +266,7 @@ private let ANTIGRAVITY_ENTRY = AgentEntry(
         s.antigravity = a
         return s
     }
-)
+) }
 
 private func unknownEntry(agent: PBAgent) -> AgentEntry {
     AgentEntry(

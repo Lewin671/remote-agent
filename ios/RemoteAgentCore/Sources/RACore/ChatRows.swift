@@ -592,7 +592,7 @@ public func buildChat(
         case .turnContext:
             if let change = d.terminalChanges[e.seq] {
                 flush()
-                out.append(.note(.init(key: k, text: "\(machine) 终端里\(change)")))
+                out.append(.note(.init(key: k, text: "\(machine) 终端里\(change.map(\.text).joined(separator: "，"))")))
             }
         case .sessionState(let s):
             if s.status == .exited {
@@ -629,6 +629,7 @@ public func duration(_ ms: Int64) -> String {
 /// must answer as they did for the same context (a caller whose answers change starts a new projection).
 public struct ChatProjection: Sendable {
     private struct Context: Equatable {
+        var locale: String
         var machine: String
         var cwd: String
         var home: String
@@ -664,7 +665,7 @@ public struct ChatProjection: Sendable {
         textOf: (String) -> String? = { _ in nil },
         who: (PBOrigin?) -> String? = { _ in nil }
     ) -> [ChatItem] {
-        let next = Context(machine: machine, cwd: cwd, home: home, agent: agent)
+        let next = Context(locale: MessageLocale.current, machine: machine, cwd: cwd, home: home, agent: agent)
         let given = Inputs(d: d, zone: zone, day: LocalDay(ms: now, zone: zone))
         // Published histories share immutable pages. Check their append lineage
         // instead of comparing every old protobuf on every arriving message.
