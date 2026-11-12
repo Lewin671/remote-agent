@@ -1236,12 +1236,14 @@ input.field { margin: 0; }
 .attach-menu button > .ic { font-size: 20px; color: var(--ink2); }
 .attach-menu p { margin: 4px 12px 8px; font-size: 13px; line-height: 1.4; color: var(--ink2); }
 .attachments { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 2px 2px 0; }
-.att-tray { display: flex; gap: 8px; flex-wrap: wrap; }
+.att-tray { display: flex; gap: 8px; overflow-x: auto; }
 .pic.tthumb { width: 56px; height: 56px; }
-.draft-thumb { position: relative; display: block; flex: none; width: 56px; height: 74px; }
+/* Each cell contains the corner-centred hit target: 22px above/right of the picture. */
+.draft-thumb { position: relative; display: block; flex: none; width: 78px; height: 78px; }
 .draft-thumb .draft-open { position: absolute; left: 0; bottom: 0; }
-.draft-thumb > .x { position: absolute; top: 0; right: -4px; width: 44px; height: 44px; padding: 0; background: none; color: #fff; z-index: 1; }
-.draft-remove-mark { position: absolute; left: 18px; top: 22px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,.6); font-size: 12px; }
+.draft-thumb > .x { position: absolute; top: 0; right: 0; width: 44px; height: 44px; padding: 0; background: none; color: #fff; z-index: 1; }
+/* Keep the visible mark at its existing inset inside the picture. */
+.draft-remove-mark { position: absolute; left: 0; top: 26px; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; border-radius: 50%; background: rgba(0,0,0,.6); font-size: 12px; }
 .pic .x { position: absolute; right: 4px; top: 4px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; display: flex; align-items: center; justify-content: center; }
 .pic .x::before { content: ""; position: absolute; inset: -11px; }
 .pic .pct { position: absolute; left: 6px; right: 6px; bottom: 6px; height: 4px; border-radius: 2px; background: rgba(255,255,255,.45); overflow: hidden; }

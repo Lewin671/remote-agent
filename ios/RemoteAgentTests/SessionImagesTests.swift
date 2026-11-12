@@ -44,6 +44,22 @@ import UIKit
         }
     }
 
+    @Test func draftRemoveTargetOnlyCoversTheCornerAndStaysInsideItsCell() {
+        for side: CGFloat in [56, 68, 80] {
+            let layout = DraftThumbGeometry(side: side)
+            let thumb = layout.thumbnail
+            let remove = layout.remove
+            let overlap = thumb.intersection(remove)
+            #expect(remove.width == 44 && remove.height == 44)
+            #expect(remove.midX == thumb.maxX && remove.midY == thumb.minY)
+            #expect(overlap.width * overlap.height <= 22 * 22)
+            #expect(!remove.contains(CGPoint(x: thumb.midX, y: thumb.midY)))
+            let neighbour = thumb.offsetBy(dx: layout.cell.width, dy: 0)
+            #expect(remove.intersection(neighbour).width == 0 || !remove.intersects(neighbour))
+            #expect(CGRect(origin: .zero, size: layout.cell).contains(remove))
+        }
+    }
+
     @Test func aDraftWithoutImagesIsNotThisCodesToSend() async {
         let c = center()
         #expect(await send(c, "只有文字") == nil)

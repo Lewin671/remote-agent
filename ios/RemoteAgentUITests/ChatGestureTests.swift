@@ -4,6 +4,45 @@ import XCTest
 /// CLI is involved; protocol end-to-end acceptance is a separate workflow.
 @MainActor
 final class ChatGestureTests: XCTestCase {
+    func testDraftImageRemoveGeometryAndTouches() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-imageDraft", "ready"]
+        app.launch()
+        let first = app.otherElements["图片 1，共 3 张"]
+        XCTAssertTrue(first.waitForExistence(timeout: 15))
+        let remove = app.buttons["移除图片 1"]
+        let body = first.frame, hit = remove.frame
+        let next = app.otherElements["图片 2，共 3 张"].frame
+        XCTAssertEqual(body.width, 56, accuracy: 0.5)
+        XCTAssertEqual(hit.width, 44, accuracy: 0.5)
+        XCTAssertEqual(hit.height, 44, accuracy: 0.5)
+        XCTAssertEqual(hit.midX, body.maxX, accuracy: 0.5)
+        XCTAssertEqual(hit.midY, body.minY, accuracy: 0.5)
+        let overlap = body.intersection(hit)
+        XCTAssertLessThanOrEqual(overlap.width * overlap.height, 22 * 22 + 1)
+        XCTAssertFalse(hit.contains(CGPoint(x: body.midX, y: body.midY)))
+        XCTAssertLessThanOrEqual(hit.maxX, next.minX)
+        print("DRAFT_HIT body=\(body) remove=\(hit) next=\(next)")
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = "ios-draft-images"
+        shot.lifetime = .keepAlways
+        add(shot)
+        first.tap()
+        let close = app.buttons["关闭"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        app.buttons["原图"].tap()
+        // Reacquire after the original-size hint changes the composer height.
+        first.tap()
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+        XCTAssertTrue(first.waitForExistence(timeout: 5))
+        // The upper-right part is outside the thumbnail and still removes it.
+        remove.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.25)).tap()
+        XCTAssertTrue(app.otherElements["图片 1，共 2 张"].waitForExistence(timeout: 5))
+    }
+
     func testComposerMenusKeepKeyboardAndPosition() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-demo", "-demoRoute", "session/sample-queue", "-fileUploads"]

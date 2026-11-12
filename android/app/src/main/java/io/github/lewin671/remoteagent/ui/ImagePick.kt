@@ -30,6 +30,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -143,9 +147,8 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
         Row(Modifier.horizontalScroll(rememberScrollState()).padding(bottom = 6.dp)) {
             for (img in thumbs) {
                 val index = draft.pictures.indexOf(img)
-                // The 44dp remove target lives in its own cell: it reaches
-                // above this image, never into the next image's body.
-                Box(Modifier.width(70.dp).height(82.dp)) {
+                // Reserve the upper/right half of the corner-centred remove target.
+                Box(Modifier.width(86.dp).height(86.dp)) {
                   Box(Modifier.align(Alignment.BottomStart).size(64.dp).clip(Radii.R14).background(p.fill)
                     .clickable(role = Role.Button) {
                         if (!img.isFile) viewing = index
@@ -170,11 +173,20 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
                         PendingImage.State.Ready -> {}
                     }
                   }
-                    Box(Modifier.align(Alignment.TopStart).offset(x = 24.dp).size(44.dp)
-                        .clickable(role = Role.Button) { draft.remove(img) }
-                        .semantics { contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片 ${index + 1}" }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.offset(x = 7.dp, y = 5.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                            Ic(Lucide.X, 12.dp, Color.White, contentDescription = null)
+                    // Compose otherwise expands a 44dp clickable to 48dp on Android.
+                    val viewConfiguration = LocalViewConfiguration.current
+                    CompositionLocalProvider(LocalViewConfiguration provides remember(viewConfiguration) {
+                        object : ViewConfiguration by viewConfiguration {
+                            override val minimumTouchTargetSize = DpSize(44.dp, 44.dp)
+                        }
+                    }) {
+                        Box(Modifier.align(Alignment.TopStart).offset(x = 42.dp).size(44.dp)
+                            .clickable(role = Role.Button) { draft.remove(img) }
+                            .semantics { contentDescription = if (img.isFile) "移除视频 ${img.fileName}" else "移除图片 ${index + 1}" }, contentAlignment = Alignment.Center) {
+                            // Keep the mark at its existing inset inside the picture.
+                            Box(Modifier.offset(x = (-11).dp, y = 9.dp).size(18.dp).clip(CircleShape).background(Color(0x99000000)), contentAlignment = Alignment.Center) {
+                                Ic(Lucide.X, 12.dp, Color.White, contentDescription = null)
+                            }
                         }
                     }
                 }

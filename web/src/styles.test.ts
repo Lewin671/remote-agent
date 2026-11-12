@@ -28,3 +28,31 @@ it("styles no state or inner-part name on its own", () => {
   ];
   expect(scoped.filter((x) => bare().has(x))).toEqual([]);
 });
+
+// Read the actual CSS dimensions: a test-only copy of the geometry would
+// keep passing if the rendered button moved back over the thumbnail.
+it("keeps the draft remove target at the corner, inside its cell and before its neighbour", () => {
+  function rule(selector: string) {
+    return css.split("}").map(block => block.split("{")).find(([selectors]) => selectors.trim() === selector)?.[1] ?? "";
+  }
+  function px(selector: string, property: string) {
+    const value = new RegExp(`(?:^|;)\\s*${property}:\\s*(-?[0-9]+)(?:px)?\\s*;`).exec(rule(selector));
+    expect(value, `${selector} ${property}`).not.toBeNull();
+    return Number(value![1]);
+  }
+  const width = px(".draft-thumb", "width"), height = px(".draft-thumb", "height");
+  const side = px(".pic.tthumb", "width");
+  const hitWidth = px(".draft-thumb > .x", "width"), hitHeight = px(".draft-thumb > .x", "height");
+  const x = width - px(".draft-thumb > .x", "right") - hitWidth;
+  const y = px(".draft-thumb > .x", "top");
+  const top = height - side - px(".draft-thumb .draft-open", "bottom");
+  expect([side, hitWidth, hitHeight]).toEqual([56, 44, 44]);
+  expect([x + hitWidth / 2, y + hitHeight / 2]).toEqual([side, top]);
+  expect(Math.max(0, side - x) * Math.max(0, y + hitHeight - top)).toBeLessThanOrEqual(22 * 22);
+  expect(side / 2 < x && top + side / 2 > y + hitHeight).toBe(true);
+  expect(x + hitWidth).toBeLessThanOrEqual(width);
+  expect(y).toBeGreaterThanOrEqual(0);
+  expect(y + hitHeight).toBeLessThanOrEqual(height);
+  expect(x + hitWidth).toBeLessThanOrEqual(width + px(".att-tray", "gap"));
+  expect(rule(".att-tray")).toContain("overflow-x: auto");
+});

@@ -11,6 +11,9 @@ import io.github.lewin671.remoteagent.core.Remote
 import io.github.lewin671.remoteagent.data.ThemeMode
 import org.junit.After
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertEquals
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +28,27 @@ class LibraryVideoStripTest {
     private val remote = Remote(Account("http://127.0.0.1:1", ByteArray(32), ByteArray(32), "2222222222222222"), Api.defaultHttp())
 
     @After fun close() = remote.close()
+
+    @Test fun removeTargetOnlyCoversTheCornerAndFitsBeforeTheNextThumbnail() {
+        val draft = ImageDraft("session:geometry", MemoryFiles())
+        assertTrue(draft.attach((1..3).map { PendingImage("image-$it", null) }, 9))
+        ui.setContent { RaTheme(ThemeMode.LIGHT) { ImageStrip(draft, remote, null, 9) } }
+        val body = ui.onNodeWithContentDescription("图片 1，共 3 张").getUnclippedBoundsInRoot()
+        val remove = ui.onNodeWithContentDescription("移除图片 1").getUnclippedBoundsInRoot()
+        val next = ui.onNodeWithContentDescription("图片 2，共 3 张").getUnclippedBoundsInRoot()
+        assertEquals(64.dp, (body.right - body.left))
+        assertEquals(64.dp, (body.bottom - body.top))
+        assertEquals(44.dp, (remove.right - remove.left))
+        assertEquals(44.dp, (remove.bottom - remove.top))
+        assertEquals(body.right, ((remove.left + remove.right) / 2))
+        assertEquals(body.top, ((remove.top + remove.bottom) / 2))
+        val overlapWidth = minOf(body.right, remove.right) - maxOf(body.left, remove.left)
+        val overlapHeight = minOf(body.bottom, remove.bottom) - maxOf(body.top, remove.top)
+        assertTrue(overlapWidth.value * overlapHeight.value <= 22f * 22f)
+        assertTrue(((body.left + body.right) / 2) < remove.left && ((body.top + body.bottom) / 2) > remove.bottom)
+        assertTrue(remove.right <= next.left)
+        assertTrue(remove.top >= 0.dp)
+    }
 
     @Test fun aVideoIsAThumbnailBesideTheImagesAndADocumentAChip() {
         val draft = ImageDraft("session:s", MemoryFiles())

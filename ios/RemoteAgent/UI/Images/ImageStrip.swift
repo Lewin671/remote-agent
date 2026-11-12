@@ -163,6 +163,15 @@ struct ImageStrip: View {
     }
 }
 
+/// The target is centred on the picture's top-right corner and contained in its cell.
+struct DraftThumbGeometry {
+    let side: CGFloat
+    let hit: CGFloat = DS.minHit
+    var thumbnail: CGRect { CGRect(x: 0, y: hit / 2, width: side, height: side) }
+    var remove: CGRect { CGRect(x: side - hit / 2, y: 0, width: hit, height: hit) }
+    var cell: CGSize { CGSize(width: side + hit / 2, height: side + hit / 2) }
+}
+
 /// One picked image in the strip.
 private struct DraftThumb: View {
     let image: PendingImage
@@ -182,6 +191,7 @@ private struct DraftThumb: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: DS.Radius.small, style: .continuous)
+        let geometry = DraftThumbGeometry(side: side)
         ZStack(alignment: .topLeading) {
             Button(action: onOpen) {
                 DS.fill
@@ -191,7 +201,7 @@ private struct DraftThumb: View {
                     .overlay { shape.strokeBorder(Color.black.opacity(0.1), lineWidth: 1) }
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain).padding(.top, 18)
+            .buttonStyle(.plain).padding(.top, geometry.thumbnail.minY)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("图片 \(index)，共 \(count) 张")
             .accessibilityValue(draftImageState(image))
@@ -201,12 +211,13 @@ private struct DraftThumb: View {
                 SymbolImage("xmark", size: 12, color: Color.white)
                     .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                     .frame(width: 18, height: 18).background(Color.black.opacity(0.6), in: Circle())
-                    .offset(x: 5, y: 9).frame(width: DS.minHit, height: DS.minHit).contentShape(Rectangle())
+                    // Keep the mark at its existing inset inside the picture.
+                    .offset(x: -13, y: 13).frame(width: geometry.hit, height: geometry.hit).contentShape(Rectangle())
             }
-            .buttonStyle(PressStyle()).offset(x: side - 40)
+            .buttonStyle(PressStyle()).offset(x: geometry.remove.minX)
             .accessibilityLabel("移除图片 \(index)")
         }
-        .frame(width: side + 6, height: side + 18, alignment: .topLeading)
+        .frame(width: geometry.cell.width, height: geometry.cell.height, alignment: .topLeading)
     }
 
     @ViewBuilder private var state: some View {
