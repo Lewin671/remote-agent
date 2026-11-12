@@ -168,7 +168,7 @@ internal fun ColumnScope.NewTaskModelPanel(
                                     Text("标准 200k · 这个模型只有标准窗口", style = T.s13, color = pal.ink2, modifier = Modifier.padding(vertical = 4.dp))
                                 } else {
                                     Text("上下文窗口", style = T.s12, color = pal.ink2, modifier = Modifier.padding(top = 4.dp))
-                                    ModelSegments(listOf("1M", "标准 200k"), if (c.standardContext) "标准 200k" else "1M", enabled) { edit(c.copy(standardContext = it == "标准 200k")) }
+                                    ModelSegments(listOf("extended", "standard"), if (c.standardContext) "standard" else "extended", enabled, label = { if (it == "standard") "标准 200k" else "1M" }) { edit(c.copy(standardContext = it == "standard")) }
                                 }
                             }
                         }
@@ -209,14 +209,14 @@ private fun ModelPanelRow(name: String, checked: Boolean, enabled: Boolean, modi
 
 /** All efforts in one equal-width row, including six-choice models on narrow phones. */
 @Composable
-private fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, onPick: (String) -> Unit) {
+private fun ModelSegments(items: List<String>, selected: String, enabled: Boolean, label: (String) -> String = { it }, onPick: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().clip(Radii.R14).background(pal.fill).selectableGroup()) {
         items.forEach { item ->
             Box(Modifier.weight(1f).heightIn(min = 44.dp)
                 .selectable(selected = item == selected, enabled = enabled, role = Role.Tab) { onPick(item) }
                 .padding(2.dp).clip(Radii.R14)
                 .then(if (item == selected) Modifier.background(pal.raised) else Modifier), contentAlignment = Alignment.Center) {
-                Text(item, style = T.s13, color = if (!enabled) pal.ink3 else if (item == selected) pal.blue else pal.ink2, maxLines = 1)
+                Text(label(item), style = T.s13, color = if (!enabled) pal.ink3 else if (item == selected) pal.blue else pal.ink2, maxLines = 1)
             }
         }
     }

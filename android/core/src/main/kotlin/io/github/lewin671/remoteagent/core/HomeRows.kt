@@ -236,7 +236,7 @@ fun sessionRowText(state: RemoteState, s: SessionView, meta: RowMeta, now: Long,
         time = whenText(s.updatedMs, now, zone),
         status = st,
         // The status word already says a plan waits.
-        preview = if (pv == st.text) "" else pv,
+        preview = if (st == Status.PLAN || (st == Status.POPUP && s.info?.statusDetail.isNullOrEmpty())) "" else pv,
         meta = metaLine(state, s, meta),
         agent = s.agent().takeIf { meta.agent },
     )

@@ -33,5 +33,10 @@
     "path": "web/src/views/NewSession.tsx",
     "literal": "; const busyNote = ns.busy &&",
     "reason": "Lexical JSX scanner false positive: TypeScript/JSX expression between angle brackets, not a rendered text node."
+  },
+  {
+    "path": "android/app/src/main/java/io/github/lewin671/remoteagent/ui/NewTaskModels.kt",
+    "literal": "standard",
+    "reason": "上下文窗口选择的稳定内部代码，用于选择标准窗口；显示标签独立翻译，不以文案判断状态。"
   }
 ]
