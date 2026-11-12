@@ -63,6 +63,16 @@ cd web && pnpm install && pnpm run deploy                   # 部署网页到 Cl
 - Android 构建需要 JDK 17 和 Android SDK；Gradle 会按项目的 daemon JVM criteria 选择 JDK 17。找不到时先安装 JDK 17 再构建。
 - Android 要复用编译缓存但完整重跑 JVM 测试，用 `cd android && ./gradlew --build-cache :core:test --rerun :terminal:testReleaseUnitTest --rerun :app:testDebugUnitTest --rerun :app:lintVitalRelease`。每个测试任务后的 `--rerun` 强制它执行，禁止复用该任务的增量结果或缓存；编译和 lint 仍可复用未变输入的结果，Go 集成夹具仍从当前 checkout 构建。Release 工作流也用这些任务选项，签名构建与公开扫描照常执行。
 
+## 任务开发工具
+
+位于 `scripts/dev/`，供日常开发与 peer 任务快速拉起环境、排查故障及生成测试素材：
+
+- `scripts/dev/preflight.sh`：开工前检查常见环境坑：`RA_DEV_DIR` 路径长度（规避 macOS AF_UNIX 104 字符超长）、残留会话变量（提示需 unset 的列表）、磁盘可用空间与中继 2 GiB 低水位、端口可用性与核心工具（tmux/go/pnpm/adb/xcrun）、Android 设备在线与屏幕唤醒状态（`--wake` 唤醒）、iOS 模拟器可用性。
+- `scripts/dev/e2e-up.sh` / `scripts/dev/e2e-down.sh`：基于 `dev-env.sh` 一键启动与停止隔离的本地端到端环境。自动分配短路径与端口，拉起隔离 relay、初始化测试账户与 daemon、启动 Vite 网页代理服务，并打印网页地址与 CLI 示例；`e2e-down.sh` 一键停止服务、清理 tmux socket 与临时目录。
+- `scripts/dev/fixtures.sh [目录]`（或 `scripts/dev/fixtures/generate.py`）：生成全套编号测试素材至指定目录（普通 PNG、长图、64MP 超大像素、>20MB 大图、GIF、WebP、损坏文件、HEIC、超长单行命令、多行 heredoc 文本），不提交二进制进仓库。
+- `scripts/dev/frames.sh <视频> [输出目录] [时间点...]`：使用 ffmpeg 提取全片约 2fps 的缩略联系表（`contact/sheet.jpg` 及帧序列）和指定时间点前后的逐帧片段，输出固定目录结构与元数据。
+- `scripts/dev/worktree.sh <任务名>`：按 AGENTS.md 约定创建新分支与 worktree，使用 pnpm 离线 store 快速连接 Web 依赖，并打印 Android/iOS 缓存复用规则与各端单测运行命令。
+
 ## iOS 卡顿诊断
 
 实现和隐私边界见 [iOS 客户端设计](ios-client.md#本机卡顿诊断)。前台主线程超过两秒没有回复时才生成报告，正常运行时目录可能不存在。开发签名的 Release 构建与 Debug 使用同一个容器内相对路径；无需启动或重装 App 即可取回已有文件：
