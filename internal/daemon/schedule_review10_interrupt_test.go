@@ -1,6 +1,7 @@
 package daemon
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Lewin671/remote-agent/internal/tail"
@@ -21,7 +22,7 @@ func TestInterruptSurvivesTranscriptFault(t *testing.T) {
 			} else if err := h.s.log.Close(); err != nil {
 				t.Fatal(err)
 			}
-			interrupted, err := h.s.interruptBy(originLocal)
+			interrupted, err := h.s.interruptBy(context.Background(), originLocal)
 			if err != nil || !interrupted {
 				t.Fatalf("storage fault disabled interrupt: interrupted=%v err=%v", interrupted, err)
 			}

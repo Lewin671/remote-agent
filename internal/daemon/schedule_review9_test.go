@@ -176,7 +176,7 @@ func TestContextRequestPathsShareAdmission(t *testing.T) {
 			var err error
 			switch op {
 			case "interrupt":
-				_, err = h.s.interruptBy(originLocal)
+				_, err = h.s.interruptBy(context.Background(), originLocal)
 			case "hook":
 				_, err = h.s.hook(context.Background(), &agent.Hook{HookEventName: "PreToolUse", ToolName: "ExitPlanMode", ToolUseID: "plan", ToolInput: json.RawMessage(`{}`)})
 			case "settlement":

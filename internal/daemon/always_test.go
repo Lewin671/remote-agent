@@ -81,7 +81,7 @@ func TestPermanentApprovalFailsClosed(t *testing.T) {
 				return id != ""
 			})
 			h.term.setScreen(tc.screen)
-			err := rpcErr(h.s.resolveBy(id, true, true, "", originLocal))
+			err := rpcErr(h.s.resolveBy(context.Background(), id, true, true, "", originLocal))
 			if connect.CodeOf(err) != connect.CodeFailedPrecondition || !errors.Is(err, agent.ErrUnsupported) {
 				t.Fatalf("permanent approval error = %v", err)
 			}

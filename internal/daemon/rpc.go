@@ -119,7 +119,7 @@ func (h *handler) Interrupt(ctx context.Context, req *connect.Request[pb.Interru
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	ok, err := s.interruptBy(originOf(ctx))
+	ok, err := s.interruptBy(ctx, originOf(ctx))
 	if err != nil {
 		return nil, rpcErr(err)
 	}
@@ -142,7 +142,7 @@ func (h *handler) ResolveApproval(ctx context.Context, req *connect.Request[pb.R
 	if err != nil {
 		return nil, rpcErr(err)
 	}
-	if err := s.resolveBy(req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Always, req.Msg.Message, originOf(ctx)); err != nil {
+	if err := s.resolveBy(ctx, req.Msg.ApprovalId, req.Msg.Allow, req.Msg.Always, req.Msg.Message, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.ResolveApprovalResponse{}), nil
@@ -157,7 +157,7 @@ func (h *handler) AnswerQuestion(ctx context.Context, req *connect.Request[pb.An
 	if len(options) == 0 {
 		options = []int32{req.Msg.Option}
 	}
-	if err := s.answerBy(req.Msg.QuestionId, options, req.Msg.QuestionIndex, originOf(ctx)); err != nil {
+	if err := s.answerBy(ctx, req.Msg.QuestionId, options, req.Msg.QuestionIndex, originOf(ctx)); err != nil {
 		return nil, rpcErr(err)
 	}
 	return connect.NewResponse(&pb.AnswerQuestionResponse{}), nil

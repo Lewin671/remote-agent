@@ -51,6 +51,22 @@ func (h heldTerm) Write(b []byte) error {
 	return h.c.Write(b)
 }
 
+// answerAttempt distinguishes cancellation before writing from an answer
+// whose keys may already have reached the native CLI. Only the former can be
+// retried safely; heldTerm checks ctx again immediately before each write.
+type answerAttempt struct {
+	agent.Term
+	wrote bool
+}
+
+func (t *answerAttempt) Write(b []byte) error {
+	if err := t.Context().Err(); err != nil {
+		return err
+	}
+	t.wrote = true
+	return t.Term.Write(b)
+}
+
 // drive runs op with the terminal held for it. The status check is paused
 // meanwhile so that the menus it opens are not reported as popups.
 //
@@ -68,7 +84,9 @@ func (s *session) drive(ctx context.Context, op func(t agent.Term, busy bool) er
 	if exited {
 		return errExited
 	}
-	s.ctlMu.Lock()
+	if err := s.ctlMu.LockContext(ctx); err != nil {
+		return err
+	}
 	defer s.ctlMu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return err

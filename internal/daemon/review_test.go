@@ -2,6 +2,7 @@ package daemon
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"github.com/Lewin671/remote-agent/internal/claude"
 	"github.com/Lewin671/remote-agent/internal/codex"
@@ -216,7 +217,7 @@ func TestInterruptOriginIsKnownBeforeTheKey(t *testing.T) {
 			h.s.annotate([]*pb.Event{ended})
 		}
 	}
-	if ok, err := h.s.interruptBy(remote); !ok || err != nil {
+	if ok, err := h.s.interruptBy(context.Background(), remote); !ok || err != nil {
 		t.Fatal(ok, err)
 	}
 	if ended.Origin.GetDeviceId() != "dev" {
@@ -286,11 +287,11 @@ func TestFailedInterruptKeepsEarlierOrigin(t *testing.T) {
 	h.s.running = true
 	a := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "a"}
 	b := &pb.Origin{Kind: pb.OriginKind_ORIGIN_KIND_CLIENT, DeviceId: "b"}
-	if _, err := h.s.interruptBy(a); err != nil {
+	if _, err := h.s.interruptBy(context.Background(), a); err != nil {
 		t.Fatal(err)
 	}
 	h.term.failWrites = true
-	if _, err := h.s.interruptBy(b); err == nil {
+	if _, err := h.s.interruptBy(context.Background(), b); err == nil {
 		t.Fatal("write did not fail")
 	}
 	if h.s.interruptedBy.GetDeviceId() != "a" {

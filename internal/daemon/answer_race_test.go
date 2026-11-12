@@ -136,10 +136,10 @@ func TestQueuedQuestionAnswerRechecksPendingAfterTerminalLock(t *testing.T) {
 	first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-queued-question")
 	second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-queued-question")
 	a, b := make(chan error, 1), make(chan error, 1)
-	go func() { a <- h.s.answerBy("q", []int32{1}, nil, first) }()
+	go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
 	<-term.entered // first holds ctlMu, but has not installed answeredBy yet
 	started := make(chan struct{})
-	go func() { close(started); b <- h.s.answerBy("q", []int32{1}, nil, second) }()
+	go func() { close(started); b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
 	<-started
 	// Let the second request pass its early check and queue for ctlMu.
 	time.Sleep(100 * time.Millisecond)
@@ -160,13 +160,15 @@ func TestQueuedQuestionAnswerRechecksPendingAfterTerminalLock(t *testing.T) {
 
 func (a *blockedQuestionAnswer) Answer(term agent.Term, q *pb.QuestionAsked, index *int32, options []int32) error {
 	if a.calls.Add(1) == 1 {
-		if err := a.Adapter.Answer(term, q, index, options); err != nil {
-			return err
+		if !a.fail {
+			if err := a.Adapter.Answer(term, q, index, options); err != nil {
+				return err
+			}
 		}
 		close(a.entered)
 		<-a.release
 		if a.fail {
-			return errors.New("synthetic key delivery failure")
+			return errors.New("synthetic failure before key delivery")
 		}
 		return nil
 	}
@@ -189,9 +191,9 @@ func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
 			first := answerRaceOrigin(h.s, remoteQuestion, "q", "first-question-request")
 			second := answerRaceOrigin(h.s, remoteQuestion, "q", "second-question-request")
 			a, b := make(chan error, 1), make(chan error, 1)
-			go func() { a <- h.s.answerBy("q", []int32{1}, nil, first) }()
+			go func() { a <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, first) }()
 			<-adapter.entered
-			go func() { b <- h.s.answerBy("q", []int32{1}, nil, second) }()
+			go func() { b <- h.s.answerBy(context.Background(), "q", []int32{1}, nil, second) }()
 			// Pending is already set before keys are sent. Both the early
 			// request check and the post-ctlMu check must reject it.
 			var secondErr error
@@ -212,7 +214,7 @@ func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
 				if firstErr == nil {
 					t.Error("first answer unexpectedly succeeded")
 				}
-				if err := h.s.answerBy("q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "retry-after-failure")); err != nil {
+				if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "retry-after-failure")); err != nil {
 					t.Errorf("failed answer did not roll back: %v", err)
 				}
 			} else {
@@ -234,7 +236,7 @@ func TestConcurrentQuestionAnswersRespectPendingAndRollback(t *testing.T) {
 				if err := h.s.emit(q()); err != nil {
 					t.Fatal(err)
 				}
-				if err := h.s.answerBy("q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "new-question-request")); err != nil {
+				if err := h.s.answerBy(context.Background(), "q", []int32{1}, nil, answerRaceOrigin(h.s, remoteQuestion, "q", "new-question-request")); err != nil {
 					t.Errorf("settled question stayed blocked: %v", err)
 				}
 			}
@@ -258,7 +260,7 @@ func TestConcurrentApprovalAnswersDeliverOnceAndRefuseStale(t *testing.T) {
 			}
 			start, results := make(chan struct{}), make(chan error, 2)
 			for _, o := range []*pb.Origin{first, second} {
-				go func() { <-start; results <- h.s.resolveBy("a", false, false, "denied", o) }()
+				go func() { <-start; results <- h.s.resolveBy(context.Background(), "a", false, false, "denied", o) }()
 			}
 			close(start)
 			stale, delivered := 0, 0
@@ -305,14 +307,14 @@ func TestFailedPlanKeysAndUndeliveredApprovalCanRetry(t *testing.T) {
 		h.s.approvals["a"] = pending
 		origin := answerRaceOrigin(h.s, remoteApproval, "a", "failed-approval")
 		h.s.log.Close()
-		if err := h.s.resolveBy("a", true, false, "", origin); err == nil {
+		if err := h.s.resolveBy(context.Background(), "a", true, false, "", origin); err == nil {
 			t.Fatal("recording failure hidden")
 		}
 		if pending.claimed || len(pending.decision) != 0 {
 			t.Fatal("failed allow reached the hook")
 		}
 		repairEventLog(t, h)
-		if err := h.s.resolveBy("a", true, false, "", answerRaceOrigin(h.s, remoteApproval, "a", "retry-approval")); err != nil {
+		if err := h.s.resolveBy(context.Background(), "a", true, false, "", answerRaceOrigin(h.s, remoteApproval, "a", "retry-approval")); err != nil {
 			t.Fatalf("undelivered allow stayed blocked: %v", err)
 		}
 		if !pending.claimed || len(pending.decision) != 1 {
@@ -333,17 +335,17 @@ func TestRemoteMultiQuestionAnswersEachIndex(t *testing.T) {
 	}
 	first, second := int32(0), int32(1)
 	h.term.setScreen("  \x1b[2mQuestion 1/2 (2 unanswered)\x1b[0m\n  Which time zone?\n  \x1b[1;7m› 1. Beijing\n")
-	if err := h.s.answerBy("q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "first-index")); err != nil {
+	if err := h.s.answerBy(context.Background(), "q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "first-index")); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.s.answerBy("q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-first-index")); !errors.Is(err, errRemoteAnswerStale) {
+	if err := h.s.answerBy(context.Background(), "q", []int32{1}, &first, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-first-index")); !errors.Is(err, errRemoteAnswerStale) {
 		t.Errorf("repeated first index=%v, want stale", err)
 	}
 	h.term.setScreen("  \x1b[2mQuestion 2/2 (1 unanswered)\x1b[0m\n  Which model?\n  \x1b[1;7m› 1. Opus\n")
-	if err := h.s.answerBy("q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "second-index")); err != nil {
+	if err := h.s.answerBy(context.Background(), "q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "second-index")); err != nil {
 		t.Fatalf("second index after the first: %v", err)
 	}
-	if err := h.s.answerBy("q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-second-index")); !errors.Is(err, errRemoteAnswerStale) {
+	if err := h.s.answerBy(context.Background(), "q", []int32{1}, &second, answerRaceOrigin(h.s, remoteQuestion, "q", "repeat-second-index")); !errors.Is(err, errRemoteAnswerStale) {
 		t.Errorf("repeated second index=%v, want stale", err)
 	}
 	if w := h.term.written(); len(w) != 2 {

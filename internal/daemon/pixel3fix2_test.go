@@ -327,7 +327,10 @@ func TestControlCommitRetainsTerminalLockUntilEventRecorded(t *testing.T) {
 
 // The callback barrier has already been reached. Checking its lock directly
 // proves exclusion without assuming the contender has run within a delay.
-func assertMutexHeld(t *testing.T, mu *sync.Mutex, operation string) {
+func assertMutexHeld(t *testing.T, mu interface {
+	TryLock() bool
+	Unlock()
+}, operation string) {
 	t.Helper()
 	if mu.TryLock() {
 		mu.Unlock()

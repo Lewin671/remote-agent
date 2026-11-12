@@ -64,9 +64,9 @@ type session struct {
 	// images are the session's images and their display copies.
 	images *imageStore
 
-	lifecycleMu sync.Mutex // serializes exit/stop/resume/fork/terminal attachment for this session
-	readMu      sync.Mutex // serializes rollout reads
-	ctlMu       sync.Mutex // serializes use of the PTY host: inject, answer, interrupt
+	lifecycleMu sync.Mutex   // serializes exit/stop/resume/fork/terminal attachment for this session
+	readMu      sync.Mutex   // serializes rollout reads
+	ctlMu       controlMutex // serializes use of the PTY host: inject, answer, interrupt
 	parser      agent.Parser
 	reader      *tail.Reader
 	// parserReplayPending keeps a failed rollout append from reusing the
@@ -1331,10 +1331,13 @@ func (s *session) noteWait(scr agent.Screen) {
 }
 
 // interrupt presses Esc if a turn is running.
-func (s *session) interrupt() (bool, error) { return s.interruptBy(originLocal) }
+func (s *session) interrupt() (bool, error) { return s.interruptBy(context.Background(), originLocal) }
 
 // interruptBy is interrupt on behalf of origin.
-func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
+func (s *session) interruptBy(ctx context.Context, origin *pb.Origin) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
 	var running, exited bool
 	refresh := func() error {
 		return s.withLatestOrCachedContext("interrupt", func() error {
@@ -1353,7 +1356,9 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	if !running {
 		return false, nil
 	}
-	s.ctlMu.Lock()
+	if err := s.ctlMu.LockContext(ctx); err != nil {
+		return false, err
+	}
 	defer s.ctlMu.Unlock()
 	// The turn may have ended while waiting for the lock; Esc in an idle
 	// input box does something else.
@@ -1362,6 +1367,9 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	}
 	if !running {
 		return false, nil
+	}
+	if err := ctx.Err(); err != nil {
+		return false, err
 	}
 	c, err := s.term.Control()
 	if err != nil {
@@ -1374,7 +1382,7 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 	prev := s.interruptedBy
 	s.interruptedBy = origin
 	s.mu.Unlock()
-	if err := c.Write(s.ag.Interrupt()); err != nil {
+	if err := (heldTerm{s.term, c, ctx}).Write(s.ag.Interrupt()); err != nil {
 		s.mu.Lock()
 		if s.interruptedBy == origin {
 			s.interruptedBy = prev
@@ -1388,11 +1396,14 @@ func (s *session) interruptBy(origin *pb.Origin) (bool, error) {
 // answer picks options (1-based) of the question that is showing. With
 // index set, that must be the index-th question of the call.
 func (s *session) answer(questionID string, options []int32, index *int32) error {
-	return s.answerBy(questionID, options, index, originLocal)
+	return s.answerBy(context.Background(), questionID, options, index, originLocal)
 }
 
 // answerBy is answer on behalf of origin.
-func (s *session) answerBy(questionID string, options []int32, index *int32, origin *pb.Origin) error {
+func (s *session) answerBy(ctx context.Context, questionID string, options []int32, index *int32, origin *pb.Origin) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if !s.nativeIdentityReady() {
 		return agent.ErrNotReady
 	}
@@ -1419,7 +1430,9 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 			return fmt.Errorf("option must be between 1 and 9")
 		}
 	}
-	s.ctlMu.Lock()
+	if err := s.ctlMu.LockContext(ctx); err != nil {
+		return err
+	}
 	defer s.ctlMu.Unlock()
 	c, err := s.term.Control()
 	if err != nil {
@@ -1430,7 +1443,10 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 		return err
 	}
 	defer c.Release()
-	time.Sleep(settle)
+	term := heldTerm{s.term, c, ctx}
+	if err := agent.Wait(term, settle); err != nil {
+		return err
+	}
 	// The local user may have answered in the meantime, and another
 	// question may be showing now: check both after taking the hold.
 	s.readRollout()
@@ -1444,7 +1460,7 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	if !ok {
 		return fmt.Errorf("question %s was already answered: %w", questionID, errNotFound)
 	}
-	styled, err := s.term.Capture()
+	styled, err := term.Capture()
 	if err != nil {
 		return err
 	}
@@ -1471,7 +1487,13 @@ func (s *session) answerBy(questionID string, options []int32, index *int32, ori
 	prev, part := claim.origin, claimPart(index)
 	claim.origin, claim.parts[part] = origin, true
 	s.mu.Unlock()
-	if err := s.ag.Answer(heldTerm{s.term, c, context.Background()}, q, index, options); err != nil {
+	attempt := &answerAttempt{Term: term}
+	if err := s.ag.Answer(attempt, q, index, options); err != nil {
+		// A partial answer (including an unacknowledged write) is not safe to
+		// repeat: numbers can toggle selections or hit the next prompt.
+		if attempt.wrote {
+			return err
+		}
 		s.mu.Lock()
 		if s.answeredBy[questionID] == claim && claim.origin == origin {
 			claim.origin = prev
@@ -1945,11 +1967,14 @@ func (s *session) claim(a *approval) bool {
 // resolve answers a pending approval. Success means the answer is the one
 // the CLI receives.
 func (s *session) resolve(id string, allow bool, message string) error {
-	return s.resolveBy(id, allow, false, message, originLocal)
+	return s.resolveBy(context.Background(), id, allow, false, message, originLocal)
 }
 
 // resolveBy is resolve on behalf of origin.
-func (s *session) resolveBy(id string, allow, always bool, message string, origin *pb.Origin) error {
+func (s *session) resolveBy(ctx context.Context, id string, allow, always bool, message string, origin *pb.Origin) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	s.mu.Lock()
 	if err := s.checkRemoteAnswer(remoteApproval, id, allow, origin); err != nil {
 		s.mu.Unlock()
@@ -1978,7 +2003,7 @@ func (s *session) resolveBy(id string, allow, always bool, message string, origi
 	}
 	if a.native != nil {
 		s.mu.Unlock()
-		return s.resolveNativeBy(context.Background(), a, allow, message, origin, false)
+		return s.resolveNativeBy(ctx, a, allow, message, origin, false)
 	}
 	kind := pb.ApprovalDecision_APPROVAL_DECISION_DENY
 	if allow {
@@ -2164,8 +2189,12 @@ func (s *session) resolveNativeBy(ctx context.Context, a *approval, allow bool, 
 			defer s.mu.Unlock()
 			return s.nativeCalls[a.native.ToolUseID] == nil
 		}
-		if err := s.ag.AnswerApproval(t, a.native, allow, consumed); err != nil {
-			if errors.Is(err, agent.ErrDeliveryUnconfirmed) {
+		attempt := &answerAttempt{Term: t}
+		if err := s.ag.AnswerApproval(attempt, a.native, allow, consumed); err != nil {
+			if !attempt.wrote && ctx.Err() != nil {
+				return ctx.Err()
+			}
+			if attempt.wrote || errors.Is(err, agent.ErrDeliveryUnconfirmed) {
 				s.mu.Lock()
 				a.claimed = true
 				delete(s.approvals, a.id)
