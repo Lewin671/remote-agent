@@ -24,7 +24,7 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
     t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => { remote.persistDraft(key); remote.touch(); }, max);
     t.machineId = machineId;
     remote.trays.set(key, t);
-    remote.restoreDraft(key, t);
+    void remote.restoreDraft(key, t).catch(() => undefined);
   }
   t.max = max;
   const caps = remote.machines.get(machineId)?.meta?.capabilities;
@@ -32,6 +32,7 @@ export function useTray(remote: Remote, key: string, machineId: string, max: num
   t.maxFiles = caps?.maxFilesPerMessage || 6;
   t.maxFileBytes = Number(caps?.maxFileUploadBytes || 100n * 1024n * 1024n);
   const tray = t;
+  useEffect(() => { void remote.restoreDraft(key, tray).catch(() => undefined); }, [remote, key, tray]);
   useEffect(() => {
     tray.retarget(machineId);
   }, [tray, machineId]);

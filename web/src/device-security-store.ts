@@ -721,6 +721,27 @@ export async function saveLocalData(server: string, memberID: string, values: Ma
   });
 }
 
+export class CorruptLocalContent extends Error {}
+
+/** Discard only one content record and its blobs, even when its binding cannot open. */
+export async function removeLocalData(server: string, memberID: string, name: string): Promise<void> {
+  const db = await database(false);
+  await transaction<void>(db, "readwrite", (store, done, fail) => {
+    const current = store.get(KEY);
+    current.onsuccess = () => {
+      try {
+        validRecord(current.result);
+        if (current.result.memberID !== memberID) { done(); return; }
+        tokenBinding(server, current.result);
+        const key = "local-content:" + name;
+        store.delete(key);
+        const cursor = store.openCursor(IDBKeyRange.bound(key + "/", key + "/\uffff"));
+        cursor.onsuccess = () => { if (cursor.result) { cursor.result.delete(); cursor.result.continue(); } else done(); };
+      } catch { fail(new SecurityError("storage")); }
+    };
+  });
+}
+
 export async function loadLocalData(server: string, memberID: string, name: string): Promise<Uint8Array | undefined> {
   const r = await loadSecurity();
   if (!r.member || r.memberID !== memberID) return;
@@ -731,10 +752,10 @@ export async function loadLocalData(server: string, memberID: string, name: stri
   });
   if (!stored) return;
   const binding = JSON.stringify([tokenBinding(server, r), name]);
-  if (stored.binding !== binding || !(stored.key instanceof CryptoKey) || stored.key.extractable) throw new SecurityError("storage");
+  if (stored.binding !== binding || !(stored.key instanceof CryptoKey) || stored.key.extractable) throw new CorruptLocalContent();
   try {
     return await openLocalValue(stored);
-  } catch { throw new SecurityError("storage"); }
+  } catch { throw new CorruptLocalContent(); }
 }
 export async function saveLoginToken(server: string, memberID: string, token: LoginToken): Promise<void> {
   const r = await loadSecurity();

@@ -2122,7 +2122,7 @@ describe("who did what (v2)", () => {
     const timedOut = [...host.querySelectorAll(".me")].find((x) => x.textContent?.includes("顺便补一个测试"))!;
     expect(timedOut.classList.contains("warn")).toBe(true);
     expect(timedOut.classList.contains("fail")).toBe(false);
-    expect(timedOut.querySelector("small")!.textContent).toBe("可能没发出去：连接超时重试移除此提示");
+    expect(timedOut.querySelector("small")!.textContent).toBe("可能没发出去：连接超时放回输入框重试移除此提示");
     const failed = [...host.querySelectorAll(".me.fail")].find((x) => x.textContent?.includes("Codex 没认出图片"))!;
     await click(button("重试", failed));
     expect(r.outbox("s-msg").at(-1)?.text).toBe("这两个页面底部的按钮都点不到");
@@ -2244,6 +2244,20 @@ describe("sending images (v2)", () => {
       });
     return { r, sent, pick };
   }
+
+  it("hands the text to send before clearing the stored draft", async () => {
+    const t = setup(() => false);
+    act(() => { t.r.drafts.set("s-idle", "keep until outgoing owns it"); t.r.touch(); });
+    let atSend: string | undefined;
+    const send = vi.spyOn(t.r, "send").mockImplementation(() => {
+      atSend = t.r.drafts.get("s-idle");
+      return "new-send";
+    });
+    await click(sendButton());
+    expect(send).toHaveBeenCalledOnce();
+    expect(atSend).toBe("keep until outgoing owns it");
+    expect(t.r.drafts.get("s-idle")).toBe("");
+  });
 
   it("never sends a message with fewer images than shown", async () => {
     const t = setup((n) => n === "b.png");
@@ -2422,6 +2436,26 @@ describe("a failed message with images (review B6)", () => {
     await click(button("放回输入框", warning));
     expect(host.querySelector<HTMLTextAreaElement>("textarea[aria-label=消息]")!.value).toBe("没认出这两张");
     expect(host.querySelectorAll(".draft-open")).toHaveLength(2);
+  });
+
+  it("waits for restoration before merging a put-back message and releasing its owner", async () => {
+    const t = setup("put back", InputStatus.NEEDS_TERMINAL, true);
+    t.r.prepareImage = async () => ({ bytes: new Uint8Array(4), format: "png", width: 1, height: 1 });
+    t.r.uploadImage = async () => ({ imageId: "again", expiresMs: Number.MAX_SAFE_INTEGER });
+    const tray = t.r.trays.get("s-idle")!;
+    let done!: () => void;
+    const gate = new Promise<void>(resolve => { done = resolve; });
+    vi.spyOn(t.r, "restoreDraft").mockReturnValue(gate);
+    await click(button("放回输入框", host.querySelector<HTMLElement>(".me.warn")!));
+    expect(tray.items).toHaveLength(0);
+    expect(t.r.outbox("s-idle")).toHaveLength(1);
+    await act(async () => {
+      t.r.drafts.set("s-idle", "typed while reading");
+      tray.hydrate([{ file: new Blob(["disk source"]) }], false);
+      done();
+    });
+    expect(tray.items).toHaveLength(3);
+    expect(t.r.drafts.get("s-idle")).toBe("typed while reading\n\nput back");
   });
 
   it("does not offer uncertain attachment recovery without local sources", () => {

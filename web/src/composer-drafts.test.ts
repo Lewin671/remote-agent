@@ -1,12 +1,14 @@
-import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
+import { IDBKeyRange } from "fake-indexeddb";
 import { ComposerDraftStore } from "./composer-drafts";
 import { Tray } from "./attach";
-import { loadLocalData, forgetSecurity } from "./device-security-store";
+import { loadLocalData, saveLocalData, forgetSecurity } from "./device-security-store";
 import { rawSecurity, securityFixture, storedSecurity } from "./test/stored-security-fixture";
 import type { StoredAccount } from "./storage";
 import type { Outgoing } from "./model";
 
 beforeAll(securityFixture);
+beforeEach(() => vi.stubGlobal("IDBKeyRange", IDBKeyRange));
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 it("restores text, original source bytes, order and original mode from ciphertext, then removes deleted sources", async () => {
@@ -56,4 +58,41 @@ it("keeps an uncertain send's sources across a reload and transfers ownership be
   const draft = await new ComposerDraftStore(account).read("session");
   expect(draft?.text).toBe("unsent");
   expect(await draft!.items[0].file.text()).toBe("original source");
+});
+
+
+it("discards a corrupt manifest or binding without disturbing another draft or its outbox", async () => {
+  const f = await storedSecurity(), account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
+  const store = new ComposerDraftStore(account);
+  await store.save("bad", "old"); await store.save("other", "keep");
+  await saveLocalData(account.server, account.deviceId, new Map([['composer/"bad"', new TextEncoder().encode("broken json")]]));
+  expect(await store.read("bad")).toBeUndefined();
+  expect(await loadLocalData(account.server, account.deviceId, 'composer/"bad"')).toBeUndefined();
+  await store.save("bad", "new");
+  await rawSecurity("readwrite", s => { const q = s.get('local-content:composer/"bad"'); q.onsuccess = () => s.put({ ...q.result, binding: "wrong account binding" }, 'local-content:composer/"bad"'); return q; });
+  expect(await store.read("bad")).toBeUndefined();
+  expect((await store.read("other"))?.text).toBe("keep");
+});
+
+it("drops only a missing picture source while keeping the draft text and other images", async () => {
+  const f = await storedSecurity(), account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
+  const store = new ComposerDraftStore(account);
+  await store.save("s", "keep text", { original: true, items: ["lost", "kept"].map((text, i) => ({ key: String(i), file: new Blob([text]), state: "done", progress: 1 })) });
+  const manifest = JSON.parse(new TextDecoder().decode(await loadLocalData(account.server, account.deviceId, 'composer/"s"')));
+  await rawSecurity("readwrite", s => s.delete('local-content:composer/"s"/' + manifest.sources[0].id));
+  const saved = await new ComposerDraftStore(account).read("s");
+  expect(saved?.text).toBe("keep text"); expect(saved?.items).toHaveLength(1); expect(await saved!.items[0].file.text()).toBe("kept");
+});
+
+it("discards only the damaged outgoing record and cleans a deleted session's sources", async () => {
+  const f = await storedSecurity(), account = { server: "https://relay.example.com", deviceId: f.memberID } as StoredAccount;
+  const store = new ComposerDraftStore(account);
+  const outgoing = ["bad", "good"].map(sendId => ({ sendId, requestId: sendId, deadline: 1, text: sendId, status: "sending" as const }));
+  await store.saveOutbox("s", outgoing); await store.save("s", "draft"); await store.save("other", "other");
+  const key = 'composer/"out:s"'; const manifest = JSON.parse(new TextDecoder().decode(await loadLocalData(account.server, account.deviceId, key)));
+  const records = JSON.parse(manifest.text); records[0].requestId = null; manifest.text = JSON.stringify(records);
+  await saveLocalData(account.server, account.deviceId, new Map([[key, new TextEncoder().encode(JSON.stringify(manifest))]]));
+  expect((await store.readOutbox("s")).map(o => o.sendId)).toEqual(["good"]);
+  await store.removeSession("s"); expect(await store.read("s")).toBeUndefined(); expect(await store.readOutbox("s")).toEqual([]);
+  expect((await store.read("other"))?.text).toBe("other");
 });

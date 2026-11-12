@@ -127,15 +127,15 @@ export function Composer({
   // With images, every one must be on the machine first; the text may
   // then be empty.
   const images = tray?.items.length ?? 0;
-  const canSend = online && !tray?.restoring && (images ? tray!.ready() : !!t);
+  const canSend = online && (images ? tray!.ready() : !!t);
   const submit = (force = false, sendMode = SendMode.STEER) => {
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
     // Slash commands typed as text go to the model; menus they would open
     // are not visible here.
     if (t.startsWith("/") && !force && !images) return setSlash(sendMode);
-    setText("");
     onSend(t, sendMode);
+    setText("");
     setSendMenu(false);
   };
   const i = session.info;
@@ -178,7 +178,6 @@ export function Composer({
         {attach}
         <textarea
           ref={input}
-          disabled={tray?.restoring}
           className={"draft" + (t ? " typed" : "")}
           value={text}
           rows={1}

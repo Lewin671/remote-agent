@@ -103,7 +103,7 @@ export class Tray {
    * uploaded again: the machine may have cleaned up the old file. All or nothing:
    * false, with nothing added, when they do not all fit. */
   restore(images: { imageId: string; thumb?: Blob; file?: Blob }[], original = false): boolean {
-    if (this.images().length + images.length > this.max) return false;
+    if (this.restoring || this.images().length + images.length > this.max) return false;
     if (!this.images().length) this.original = original;
     for (const im of images) {
       const item: TrayItem = { key: "t" + ++keys, file: im.file ?? im.thumb ?? new Blob(), state: "done", progress: 1, thumb: im.thumb, imageId: im.imageId, machineId: this.machineId, remoteOnly: !im.file && !im.thumb };

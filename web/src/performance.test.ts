@@ -650,7 +650,7 @@ it("commits the valid prefix before a broken event", async () => {
   r.stop();
 });
 
-it("settles a recorded message drained from pending while filling a history gap", async () => {
+it("settles a verified recorded message in pending before filling a history gap", async () => {
   const r = await probe();
   const { PayloadKind } = await import("./crypto");
   const { EventSchema } = await import("./gen/remoteagent/v1/event_pb");
@@ -678,7 +678,7 @@ it("settles a recorded message drained from pending while filling a history gap"
     })),
   );
   await (r as any).ingest(s, rows.slice(1), false);
-  expect(r.outbox("s")).toHaveLength(1);
+  expect(r.outbox("s")).toHaveLength(0);
   await (r as any).ingest(s, rows.slice(0, 1), false);
   expect(r.events("s")).toHaveLength(3);
   expect(r.outbox("s")).toEqual([]);

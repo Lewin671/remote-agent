@@ -274,7 +274,8 @@ export function SessionPage({
   const tray = useTray(remote, sid, session.machineId, maxImages(machine));
   /** Puts a message back into the input: its text, and its images, still
    * on the computer, with this device's copies of them when it has them. */
-  const restore = (text: string, from?: string) => {
+  const restore = async (text: string, from?: string) => {
+    try { await remote.restoreDraft(sid, tray); } catch { return; }
     const o = from
       ? remote.outbox(sid).find((x) => x.sendId === from)
       : undefined;
@@ -305,12 +306,12 @@ export function SessionPage({
         `输入框里已有 ${tray.images().length} 张图，放不下这条消息的 ${ids.length} 张；先移除一些再放回`,
       );
     tray.restoreFiles(files.map((f, i) => ({ fileId: f.fileId, name: f.name, size: Number(f.sizeBytes), file: o?.files?.[i]?.file })));
-    if (o) remote.dismissSend(sid, o.sendId, true);
     const draft = remote.drafts.get(sid) ?? "";
     remote.drafts.set(
       sid,
       draft.trim() ? draft.trimEnd() + "\n\n" + text : text,
     );
+    if (o) remote.dismissSend(sid, o.sendId, true);
     if (foreign)
       setToast(
         acc?.files?.length ? "这条消息的附件是另一客户端上传的，只放回了文字；需要的话在这里重新选择附件" : "这条消息的图片是另一客户端上传的，只放回了文字；需要的话在这里重新选择图片",
