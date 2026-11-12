@@ -186,7 +186,7 @@ fun homeList(
     val tail = if (filtering) filterTail(tl.size, query).takeUnless { wantAll } else endedTail(tl.endedTotal, more)
     // The listing's first page could not be fetched: said here with its retry, whatever the list wants.
     val listFailed = !state.sessionsListed && state.sessionsError.isNotEmpty()
-    if (tail != null || more || wantAll || wantPage || listFailed) {
+    if ((items.isNotEmpty() || listFailed || filtering) && (tail != null || more || wantAll || wantPage || listFailed)) {
         // While pages are on their way the line says so, unless it already counts the scope's sessions;
         // a page that failed is said either way, with its retry.
         items += HomeItem.Tail(

@@ -691,7 +691,8 @@ class Remote(
         }
         val link =
             when {
-                conn == ConnState.ONLINE -> Link.ONLINE
+                conn == ConnState.ONLINE && synced -> Link.ONLINE
+                conn == ConnState.ONLINE -> Link.WAITING
                 !network || unresolved -> Link.NO_NETWORK
                 !waited -> Link.WAITING
                 else -> Link.NO_SERVER

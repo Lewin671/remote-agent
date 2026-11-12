@@ -52,6 +52,19 @@ class HomeRowsTest {
     private fun list(st: RemoteState, scope: HomeScope = HomeScope.All, query: String = "", shown: HomeShown = HomeShown()) =
         homeList(st, scope, query, shown, now, zone)
 
+    @Test fun cachedTotalsDoNotShowATailBeforeAnySessionRowsAreRestored() {
+        val cached = state(emptyList()).copy(
+            sessionsListed = false,
+            machines = mapOf("m" to MachineView("m", true, 0, meta = MachineMeta.newBuilder().addProjects(
+                ProjectSummary.newBuilder().setPath("/p/foo").setEnded(398)
+            ).build())),
+        )
+        assertTrue(list(cached).items.none { it is HomeItem.Tail })
+        val restored = cached.copy(sessions = mapOf("one" to session("one", ended = now - 1000)))
+        assertTrue(list(restored).items.any { it is HomeItem.Tail })
+        assertTrue(list(cached.copy(sessionsError = "synthetic fetch failure")).items.any { it is HomeItem.Tail })
+    }
+
     @Test fun theListIsWhatWaitsThenWhatRunsThenTheEndedByDay() {
         val st = state(listOf(
             session("wait", approvals = 1), session("run", created = now - 60_000, status = SessionStatus.SESSION_STATUS_RUNNING),

@@ -164,6 +164,30 @@ class RemoteTest {
     }
 
     @Test
+    fun readyKeepsCachedPresenceUnknownUntilTheFirstListIsApplied() = runBlocking<Unit> {
+        val release = java.util.concurrent.CountDownLatch(1)
+        val measured = http.newBuilder().addInterceptor { chain ->
+            if (chain.request().url.encodedPath.endsWith("/ListRemoteSessions"))
+                check(release.await(10, TimeUnit.SECONDS))
+            chain.proceed(chain.request())
+        }.build()
+        val r = fixtureRemote(approvedClient(daemon.phone, http), measured)
+        closers += AutoCloseable { r.close() }
+        try {
+            r.start()
+            val opening = r.awaitState("relay ready before lists") { it.conn == ConnState.ONLINE }
+            assertFalse(opening.synced)
+            assertEquals(Link.WAITING, opening.link)
+            assertTrue(opening.unlinked)
+            release.countDown()
+            val ready = r.awaitState("fresh machine presence") { it.synced }
+            assertEquals(Link.ONLINE, ready.link)
+            assertFalse(ready.unlinked)
+            assertEquals(Status.IDLE, shownStatus(ready, ready.sessions.getValue("s1")))
+        } finally { release.countDown() }
+    }
+
+    @Test
     fun aFailedConcurrentListIsReportedWithoutDiscardingLoadedSessions() = runBlocking<Unit> {
         val refuse = java.util.concurrent.atomic.AtomicBoolean(false)
         val measured = http.newBuilder().addInterceptor { chain ->

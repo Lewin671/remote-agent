@@ -31,6 +31,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -266,7 +268,7 @@ private fun PendingItem(state: RemoteState, s: SessionView, scope: HomeScope, fi
  * show, a path in mono, and 详情 in blue when there is more to say about the connection.
  */
 @Composable
-private fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
+internal fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
     val p = pal
     val count = (h.kind as? HomeHeadline.Kind.Waiting)?.count
     val title = uiText(h.title)
@@ -282,15 +284,21 @@ private fun Headline(h: HomeHeadline, onDetails: () -> Unit) {
         style = T.title, color = p.ink,
         modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 6.dp).semantics { heading() }.testTag("headline"),
     )
-    if (h.sub.isNotEmpty() || h.details) Row(
+    Row(
         Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (h.sub.isNotEmpty()) Text(
-            sub,
+        Text(
+            // Measure the same localized line while empty, without painting or announcing it.
+            sub.ifEmpty { uiText(UiMessages.connectionPreviousBelow()) },
+            minLines = 1,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             style = if (h.subPath) T.mono13.copy(fontSize = 15.sp, lineHeight = 21.sp) else T.s17,
             color = if (h.subError) p.red else p.ink2,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f, fill = false).then(
+                if (sub.isEmpty()) Modifier.alpha(0f).clearAndSetSemantics {} else Modifier,
+            ),
         )
         if (h.details) Box(
             Modifier.heightIn(min = 44.dp).clickable(role = Role.Button, onClick = onDetails).padding(start = 12.dp, end = 4.dp),
