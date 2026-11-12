@@ -271,6 +271,17 @@ class ImageDraft(
     /** What they run in; without one (tests) they run in place. */
     private val scope: kotlinx.coroutines.CoroutineScope? = RaApp.scopeOrNull(),
 ) {
+    private val typed = mutableStateOf("")
+    private var textRevision = 0L
+    private var textOnDisk = ""
+    /** Text shares the images' sealed store and ordered write queue. */
+    val text: androidx.compose.runtime.MutableState<String> = object : androidx.compose.runtime.MutableState<String> {
+        override var value: String
+            get() = typed.value
+            set(value) { if (typed.value != value) { typed.value = value; textRevision++; persistOrder() } }
+        override fun component1() = value
+        override fun component2(): (String) -> Unit = { value = it }
+    }
     internal val accountToken = AccountMemory.token
     val images = mutableStateListOf<PendingImage>()
     val pictures: List<PendingImage> get() = images.filterNot { it.isFile }
@@ -329,6 +340,11 @@ class ImageDraft(
 
     private fun saveNow() {
         runCatching { files.transaction {
+            val message = text.value
+            if (message != textOnDisk) {
+                if (message.isEmpty()) files.remove(key, "text") else files.put(key, "text", message.toByteArray(Charsets.UTF_8))
+                textOnDisk = message
+            }
             val now = images.toList()
             val fresh = synchronized(marks) { now.filter { it.isFile || it.id !in saved && (it.id !in stale || it.uri.isNullOrEmpty()) }.map { it to (turns[it.id] ?: 0) } }
             saveImages(files, key, fresh.map { it.first }, original)
@@ -610,6 +626,7 @@ class ImageDraft(
     /** Forgets every image, e.g. when the draft is dropped. */
     fun clear() {
         cancelRestore()
+        text.value = ""
         for (img in images.toList()) remove(img)
         notice = ""
         original = false
@@ -623,10 +640,14 @@ class ImageDraft(
     ): Job {
         restoring = true
         val account = AccountMemory.token
+        val revision = textRevision
         return scope.launch {
             try {
-                val (list, orig) = withContext(Dispatchers.IO) { loadImages(files, key, thumb) }
+                val (kept, message) = withContext(Dispatchers.IO) { loadImages(files, key, thumb) to files.get(key, "text")?.toString(Charsets.UTF_8).orEmpty() }
+                val (list, orig) = kept
                 if (account !== AccountMemory.token) { list.forEach { PendingUris.release(it) }; return@launch }
+                textOnDisk = message
+                if (textRevision == revision) typed.value = message
                 original = orig
                 list.forEach { it.restoreToDraft(); PendingUris.retain(it) }
                 images += list
@@ -666,7 +687,10 @@ object ImageDrafts {
     private val drafts = HashMap<String, ImageDraft>()
 
     fun of(key: String): ImageDraft = drafts.getOrPut(key) {
-        ImageDraft(key).also { draft -> RaApp.scopeOrNull()?.let { draft.restore(it) } }
+        val scope = RaApp.scopeOrNull()
+        // Pure UI-model tests have no Android application or Keystore.
+        if (scope == null) ImageDraft(key, VolatileDraftFiles(), scope = null)
+        else ImageDraft(key).also { it.restore(scope) }
     }
 
     fun forSession(sid: String) = of("session:$sid")
@@ -676,4 +700,12 @@ object ImageDrafts {
         drafts.values.forEach { d -> d.cancelRestore(); d.images.forEach { it.job?.cancel() } }
         drafts.clear()
     }
+}
+
+private class VolatileDraftFiles : SealedFiles {
+    private val values = HashMap<Pair<String, String>, ByteArray>()
+    override fun put(folder: String, name: String, data: ByteArray) { values[folder to name] = data }
+    override fun get(folder: String, name: String) = values[folder to name]
+    override fun remove(folder: String, name: String) { values.remove(folder to name) }
+    override fun clearFolder(folder: String) { values.keys.removeAll { it.first == folder } }
 }

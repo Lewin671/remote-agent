@@ -135,8 +135,7 @@ class Outgoing(
  */
 object Drafts {
     /** A first message with the configuration it will start with, kept and restored together. */
-    class NewSession(initial: NewConfig?, settled: Boolean = true) {
-        val text = mutableStateOf("")
+    class NewSession(initial: NewConfig?, settled: Boolean = true, val text: androidx.compose.runtime.MutableState<String> = mutableStateOf("")) {
         val config = DraftConfig(initial, settled)
         /** The CLI picked next to the message box for this draft, or null to use the one the project remembers. */
         val agent = mutableStateOf<io.github.lewin671.remoteagent.proto.Agent?>(null)
@@ -148,7 +147,7 @@ object Drafts {
     fun of(key: String): androidx.compose.runtime.MutableState<String> = texts.getOrPut(key) { mutableStateOf("") }
 
     /** The new-session draft of a project; [initial] only seeds one that does not exist yet ([settled]: see [ProjectStart]). */
-    fun newSession(project: String, initial: NewConfig?, settled: Boolean = true): NewSession = newSessions.getOrPut(project) { NewSession(initial, settled) }
+    fun newSession(project: String, initial: NewConfig?, settled: Boolean = true): NewSession = newSessions.getOrPut(project) { NewSession(initial, settled, ImageDrafts.forProject(project).text) }
 
     fun clear() {
         texts.clear()
@@ -480,10 +479,9 @@ object Outbox {
     fun find(sid: String, requestId: String): Outgoing? = of(sid).firstOrNull { it.requestId == requestId }
 
     private val prompts = HashMap<String, String>()
-    private val drafts = HashMap<String, androidx.compose.runtime.MutableState<String>>()
 
     /** What is being typed in a session's message box, so a message can be put back into it. */
-    fun draft(sid: String) = drafts.getOrPut(sid) { mutableStateOf("") }
+    fun draft(sid: String) = ImageDrafts.forSession(sid).text
 
     /** The first message of a session started here, sent by the daemon once the CLI is ready. */
     fun rememberPrompt(sid: String, text: String) {
@@ -498,7 +496,6 @@ object Outbox {
         watching.values.forEach { it.cancel() }
         watching.clear()
         prompts.clear()
-        drafts.clear()
     }
 
     /** Local text of a request, for queued messages. */

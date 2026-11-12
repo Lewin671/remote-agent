@@ -1,5 +1,5 @@
-// What a project's new-session box keeps between visits, for this run and
-// only in memory (Android's `Drafts.NewSession` and `Starts` in
+// What a project's new-session box keeps between visits. Text is sealed
+// locally; launch settings stay in memory (Android's `Drafts.NewSession` and `Starts` in
 // ui/Actions.kt and ui/Project.kt): the first message as far as it is
 // written, the configuration it will start with, the CLI picked next to
 // the box, and the start itself while its outcome is unknown.
@@ -22,7 +22,8 @@ final class NewSessionDraft {
         var fileIds: [String] = []
     }
 
-    var text = ""
+    var text: String { didSet { if text != oldValue { saveText?(text) } } }
+    @ObservationIgnored private let saveText: ((String) -> Void)?
     var config: DraftConfig
     /// The CLI picked next to the message box for this draft, or nil to use the one the project remembers.
     var agent: PBAgent?
@@ -43,7 +44,9 @@ final class NewSessionDraft {
     private(set) var frozen = false
     private(set) var expired = false
 
-    init(_ initial: NewConfig?, settled: Bool) {
+    init(_ initial: NewConfig?, settled: Bool, text: String = "", saveText: ((String) -> Void)? = nil) {
+        self.text = text
+        self.saveText = saveText
         config = DraftConfig(initial, settled: settled)
     }
 
@@ -165,17 +168,20 @@ final class NewSessionDraft {
 @MainActor
 final class NewSessionDrafts {
     private var byProject: [JvmKey: NewSessionDraft] = [:]
+    private let store: SessionStore?
+    init(store: SessionStore? = nil) { self.store = store }
 
     /// The draft of a project; `initial` only seeds one that does not exist yet (`settled`: see `ProjectStart`).
     func of(_ key: String, initial: NewConfig?, settled: Bool) -> NewSessionDraft {
+        let name = "new:" + key
         let key = JvmKey(key)
         if let d = byProject[key] { return d }
-        let d = NewSessionDraft(initial, settled: settled)
+        let d = NewSessionDraft(initial, settled: settled, text: store?.draft(name) ?? "", saveText: { [store] text in store?.setDraft(name, text) })
         byProject[key] = d
         return d
     }
 }
 
 extension AccountContext {
-    var newSessionDrafts: NewSessionDrafts { memory.value { NewSessionDrafts() } }
+    var newSessionDrafts: NewSessionDrafts { memory.value { NewSessionDrafts(store: sessionStore) } }
 }

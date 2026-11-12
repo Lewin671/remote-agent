@@ -18,9 +18,10 @@ import { Check, FileIcon, ImageIcon, Plus, X } from "../icons";
 export function useTray(remote: Remote, key: string, machineId: string, max: number): Tray {
   let t = remote.trays.get(key);
   if (!t) {
-    t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => remote.touch(), max);
+    t = new Tray(remote.prepareImage, (m, p, progress, started) => remote.uploadImage(m, p, progress, started), () => { remote.persistDraft(key); remote.touch(); }, max);
     t.machineId = machineId;
     remote.trays.set(key, t);
+    remote.restoreDraft(key, t);
   }
   t.max = max;
   const caps = remote.machines.get(machineId)?.meta?.capabilities;
@@ -122,7 +123,7 @@ export function AttachButton({ tray, blocked, onBlocked, className = "cm-plus", 
     (file ? files : input).current?.click();
   };
   return <span className="attach-wrap" ref={wrap}>
-    <button className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
+    <button disabled={tray.restoring} className={className + (blocked || !tray.fileSupported && tray.full() ? " off" : "")} aria-label={tray.fileSupported ? "添加附件" : "添加图片"} aria-expanded={tray.fileSupported ? open : undefined}
       onMouseDown={(e) => e.preventDefault()} onClick={() => blocked ? onBlocked(blocked) : tray.fileSupported ? setOpen(!open) : pick(false)}>{label}</button>
     {open && (
       <div className="attach-menu glass" role="menu">

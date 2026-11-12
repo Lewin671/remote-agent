@@ -108,6 +108,7 @@ export function Composer({
   // The draft is the session's, not this input's: it survives opening an
   // approval, plan, queue or tool page and coming back.
   const [text, setTextState] = useState(draft);
+  useLayoutEffect(() => setTextState(draft), [draft]);
   const setText = (v: string) => {
     setTextState(v);
     onDraft(v);
@@ -126,7 +127,7 @@ export function Composer({
   // With images, every one must be on the machine first; the text may
   // then be empty.
   const images = tray?.items.length ?? 0;
-  const canSend = online && (images ? tray!.ready() : !!t);
+  const canSend = online && !tray?.restoring && (images ? tray!.ready() : !!t);
   const submit = (force = false, sendMode = SendMode.STEER) => {
     tray?.refreshExpired();
     if (!canSend || (images && !tray!.ready())) return;
@@ -177,6 +178,7 @@ export function Composer({
         {attach}
         <textarea
           ref={input}
+          disabled={tray?.restoring}
           className={"draft" + (t ? " typed" : "")}
           value={text}
           rows={1}

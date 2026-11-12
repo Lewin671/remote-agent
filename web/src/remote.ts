@@ -1,6 +1,7 @@
 import { rejectRetiredHistory, UnsupportedHistoryError, RETIRED_HISTORY_ERROR } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
+import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
 import { readSecurityOperation } from "./security-operation";
 import { AuthorityClient, handoffCandidates as verifiedHandoffCandidates, type HandoffOffer } from "./authority-client";
 import type { AuthorityPairing } from "./authority-pairing";
@@ -828,7 +829,7 @@ export class Remote {
   termFirst = new Set<string>();
   // What the user has typed and not sent, by session ID or "new:" +
   // project path, just like the image trays. Sent messages leave the draft.
-  drafts = new Map<string, string>();
+  drafts = new DraftTexts(key => this.persistDraft(key));
   approvalReasons = new Map<string, string>();
   // Docked items the user closed with 收起 (Dock's keys): they stay one
   // line, while a new item comes open. One that came while a draft was in
@@ -845,6 +846,32 @@ export class Remote {
   // Images chosen for each draft, by draft key (a session ID, or
   // "new:" + project path), and how a chosen file is prepared for sending.
   trays = new Map<string, Tray>();
+  private localDrafts?: ComposerDraftStore;
+  private draftLoads = new Set<string>();
+
+  persistDraft(key: string) {
+    const tray = this.trays.get(key);
+    if (this.closed || tray?.restoring || !this.localDrafts) return;
+    void this.localDrafts.save(key, this.drafts.get(key) ?? "", tray).catch(() => {
+      if (!this.closed && tray) { tray.note = "草稿没能保存到本机，关闭页面前请保留原图和文字"; this.touch(); }
+    });
+  }
+
+  restoreDraft(key: string, tray: Tray) {
+    if (!this.localDrafts || this.draftLoads.has(key)) return;
+    this.draftLoads.add(key);
+    tray.restoring = true;
+    const before = this.drafts.get(key);
+    void this.localDrafts.read(key).then(saved => {
+      if (this.closed) return;
+      if (saved && this.drafts.get(key) === before) {
+        this.drafts.restore(key, saved.text);
+        tray.hydrate(saved.items, saved.original);
+      }
+    }).catch(() => {
+      if (!this.closed) tray.note = "草稿没能恢复，请刷新后重试";
+    }).finally(() => { tray.restoring = false; if (!this.closed) this.touch(); });
+  }
   // The image codecs are fetched when the first image is chosen.
   prepareImage: Prepare = async (file, original) =>
     (await import("./sendimages")).prepareForSending(file, original);
@@ -1204,6 +1231,7 @@ export class Remote {
     );
     // What the last visit kept is there for the first paint.
     await r.warm();
+    r.localDrafts = new ComposerDraftStore(acct);
     return r;
   }
 

@@ -35,16 +35,18 @@ final class AccountContext {
     let account: Account
     let remote: Remote
     let preferenceDefaults: UserDefaults
+    let draftFiles: (any RACore.SealedFiles)?
     /// What this run keeps in memory for the account: drafts and the like.
     let memory = AccountMemory()
 
     /// This client's device ID.
     var me: String { account.deviceId }
 
-    init(account: Account, remote: Remote, preferenceDefaults: UserDefaults = .standard) {
+    init(account: Account, remote: Remote, preferenceDefaults: UserDefaults = .standard, draftFiles: (any RACore.SealedFiles)? = nil) {
         self.account = account
         self.remote = remote
         self.preferenceDefaults = preferenceDefaults
+        self.draftFiles = draftFiles
     }
 }
 
@@ -446,7 +448,7 @@ final class AppModel {
         engine = made.engine
         described = nil
         state = made.remote.state.value
-        context = AccountContext(account: account, remote: made.remote, preferenceDefaults: parts.defaults)
+        context = AccountContext(account: account, remote: made.remote, preferenceDefaults: parts.defaults, draftFiles: parts.storage.pending.scoped())
         installAuthorityProtection(made.remote.authorityGate)
         updateAuthorityAvailability()
         // The account's own view of the store: what is still writing when the account is erased writes nothing.

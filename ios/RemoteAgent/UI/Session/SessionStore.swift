@@ -39,6 +39,15 @@ extension Remote: SessionCommands {}
 @MainActor
 @Observable
 final class SessionStore {
+    @ObservationIgnored private let draftFiles: (any RACore.SealedFiles)?
+    @ObservationIgnored private let draftQueue: DispatchQueue?
+    @ObservationIgnored private var loadedDrafts = Set<String>()
+    private(set) var draftErrors: [String: String] = [:]
+
+    init(draftFiles: (any RACore.SealedFiles)? = nil, draftQueue: DispatchQueue? = DispatchQueue(label: "remote-agent.draft-text")) {
+        self.draftFiles = draftFiles
+        self.draftQueue = draftQueue
+    }
     struct ScheduledJump: Equatable { var runID: String; var seq: UInt64 }
     private var scheduledJumps: [String: ScheduledJump] = [:]
     func jumpToScheduledRun(_ sid: String, runID: String, seq: UInt64) { scheduledJumps[sid] = ScheduledJump(runID: runID, seq: seq) }
@@ -106,10 +115,32 @@ final class SessionStore {
     private var prompts: [String: String] = [:]
 
     /// What is being typed in a session's message box.
-    func draft(_ sid: String) -> String { drafts[sid] ?? "" }
+    func draft(_ sid: String) -> String {
+        if loadedDrafts.insert(sid).inserted, let draftFiles {
+            do { drafts[sid] = try draftFiles.get(folder: "composer-text", name: sid).flatMap { String(data: $0, encoding: .utf8) } }
+            catch { draftErrors[sid] = "草稿没能恢复，请重新打开后重试" }
+        }
+        return drafts[sid] ?? ""
+    }
 
     func setDraft(_ sid: String, _ text: String) {
-        if drafts[sid] ?? "" != text { drafts[sid] = text.isEmpty ? nil : text }
+        guard draft(sid) != text else { return }
+        drafts[sid] = text.isEmpty ? nil : text
+        guard let draftFiles else { return }
+        let bytes = Data(text.utf8)
+        let write: @Sendable () -> Bool = {
+            do {
+                if bytes.isEmpty { try draftFiles.remove(folder: "composer-text", name: sid) }
+                else { try draftFiles.put(folder: "composer-text", name: sid, data: bytes) }
+                return true
+            } catch { return false }
+        }
+        let finish: @MainActor @Sendable (Bool) -> Void = { [weak self] saved in
+            self?.draftErrors[sid] = saved ? nil : "草稿没能保存到本机，关闭应用前请保留文字"
+        }
+        if let draftQueue {
+            draftQueue.async { let saved = write(); DispatchQueue.main.async { finish(saved) } }
+        } else { finish(write()) }
     }
 
     /// The reason being typed for refusing an approval. It stays when another
@@ -498,5 +529,5 @@ extension SessionStore {
 
 extension AccountContext {
     /// The session screens' memory for this account.
-    var sessionStore: SessionStore { memory.value(SessionStore.self) { SessionStore() } }
+    var sessionStore: SessionStore { memory.value(SessionStore.self) { SessionStore(draftFiles: draftFiles) } }
 }

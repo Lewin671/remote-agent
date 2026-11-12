@@ -62,6 +62,7 @@ let keys = 0;
 
 export class Tray {
   items: TrayItem[] = [];
+  restoring = false;
   original = false;
   note = "";
   machineId = "";
@@ -84,6 +85,7 @@ export class Tray {
 
   /** Adds files in the order chosen, up to max in all. */
   add(files: Blob[]) {
+    if (this.restoring) return;
     const room = Math.max(0, this.max - this.images().length);
     const taken = files.slice(0, room);
     if (taken.length) this.onAdd?.();
@@ -117,6 +119,7 @@ export class Tray {
   fileIds(): string[] { return this.files().map((i) => i.fileId!).filter(Boolean); }
 
   addFiles(files: File[]) {
+    if (this.restoring) return;
     if (!this.fileSupported) { this.note = FILE_UPLOAD_UPDATE_REQUIRED; this.onChange(); return; }
     const notes: string[] = [];
     let added = false;
@@ -196,7 +199,16 @@ export class Tray {
 
   /** Every image is on the current machine. */
   ready(): boolean {
-    return this.items.length > 0 && (!this.files().length || this.fileSupported) && this.items.every((i) => i.state === "done" && !!(i.kind === "file" ? i.fileId : i.imageId) && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
+    return !this.restoring && this.items.length > 0 && (!this.files().length || this.fileSupported) && this.items.every((i) => i.state === "done" && !!(i.kind === "file" ? i.fileId : i.imageId) && i.machineId === this.machineId && (i.expiresMs ?? 0) > Date.now());
+  }
+
+  /** A persisted draft owns its source files, not a possibly expired upload. */
+  hydrate(items: { file: Blob; name?: string; kind?: "file" }[], original: boolean) {
+    this.original = original;
+    this.restoring = false;
+    this.items = items.map(i => ({ ...i, key: "t" + ++keys, state: "preparing", progress: 0, thumb: i.kind ? undefined : i.file, bytes: i.file.size }));
+    for (const item of this.items) void this.run(item, true);
+    this.onChange();
   }
 
   /** Expired uploads have local bytes, but need a new transfer before sending. */

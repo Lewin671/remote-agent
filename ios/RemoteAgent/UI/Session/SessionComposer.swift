@@ -223,6 +223,7 @@ struct SessionComposer: View {
                     }
                 }
             if !notice.isEmpty { Notice(notice, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
+            if let error = store.draftErrors[sid] { Notice(error, tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6) }
             if !interrupt.error.isEmpty {
                 Notice("没能中断：\(interrupt.error)", tone: .error).padding(.horizontal, DS.Space.m).padding(.bottom, 6)
             }

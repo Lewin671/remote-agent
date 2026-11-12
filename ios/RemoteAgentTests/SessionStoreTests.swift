@@ -53,6 +53,17 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
     let store = SessionStore()
     let computer = FakeCommands()
 
+    @Test func draftTextUsesTheSealedStoreAndIsRemovedWhenCleared() {
+        let files = VolatileFiles()
+        let first = SessionStore(draftFiles: files, draftQueue: nil)
+        first.setDraft("one", "文字草稿")
+        let next = SessionStore(draftFiles: files, draftQueue: nil)
+        #expect(next.draft("one") == "文字草稿")
+        #expect(next.draft("two").isEmpty)
+        next.setDraft("one", "")
+        #expect(SessionStore(draftFiles: files, draftQueue: nil).draft("one").isEmpty)
+    }
+
     // MARK: Sending
 
     @Test func aMessageIsSendingUntilTheComputerAnswers() async {
