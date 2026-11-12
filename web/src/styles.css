@@ -882,10 +882,9 @@ h1, h2, h3 { font-weight: var(--w7); }
 .pbox .acc .cm-plus { margin-right: 4px; }
 .pbox .acc :is(.cm-plus, .snd) { width: 36px; height: 36px; font-size: 18px; }
 .pbox .acc .project-summary > .ic { transform: rotate(90deg); padding-left: 0; margin-left: 0; }
-/* Phone new-task choices stay in the composer's hierarchy, above their
-   anchors. Reserving the model panel's height keeps refreshes from resizing it. */
+/* Phone new-task choices wrap above the composer without moving it. */
 .composer-picker { position: absolute; z-index: 51; display: flex; flex-direction: column; padding: 8px; background: var(--s3); border: .5px solid var(--rim); border-radius: 14px; box-shadow: var(--float); overflow: hidden; }
-.composer-picker.model-picker { padding: 12px; }
+.composer-picker.model-picker { padding: 8px 12px; }
 .composer-picker > .sheet-head { flex: none; margin: 0 0 8px; }
 .composer-picker-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .composer-picker .list { background: transparent; margin: 0; }
@@ -1888,3 +1887,28 @@ html .mo-leave.mo-ghost.pop { animation: mo-fade-out var(--m-base-out) var(--eas
 .tool-entry { min-width: 0; }
 .desk .tool-command code { font-size: 12px; }
 .desk .command-row:hover { background-color: var(--fill); }
+
+/* New-task controls have their own compact layout; settings sheets keep theirs. */
+.new-task-tools { display: flex; align-items: center; flex: 1; min-width: 0; gap: 2px; }
+.new-task-tools .cli { flex: none; }
+.new-task-tools[data-compact="true"] .cli-name { position: absolute; visibility: hidden; pointer-events: none; }
+.new-task-tools .project-summary { min-width: 0; }
+.project-summary > :is(.fx, .effort) { flex: none; overflow: visible; }
+.pbox .acc .project-summary { gap: 0; }
+:is(.pbox, .wstart) .acc .project-summary[aria-expanded="true"] { background: var(--fill2); transform: none; }
+.new-task-model-panel { display: flex; flex-direction: column; min-height: 0; }
+.new-task-model-panel > .sheet-head { flex: none; margin: 0; min-height: 44px; }
+.new-task-model-panel > .sheet-head > b { text-align: left; }
+.new-task-model-panel .model-back { flex: 1; display: flex; align-items: center; min-height: 44px; text-align: left; font-size: 17px; font-weight: var(--w6); }
+.new-task-model-panel .model-back .ic { color: var(--blue); }
+.new-task-model-panel .model-controls { flex: none; padding-bottom: 4px; }
+.new-task-model-panel .model-controls .fl { font-size: 12px; line-height: 16px; margin: 0 0 2px; }
+.new-task-model-panel .model-controls .seg + .fl { margin-top: 4px; }
+.new-task-model-panel .model-controls .hint { font-size: 13px; margin: 4px 0; }
+.new-task-model-panel .seg { display: flex; padding: 0; }
+.new-task-model-panel .seg button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 2px; font-size: 13px; white-space: nowrap; }
+.new-task-model-panel .model-list-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.new-task-model-panel .list { margin: 0; background: transparent; }
+.new-task-model-panel .mi .mt { padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.new-task-model-panel .model-loading { min-height: 120px; }
+.sheet.new-task-model-sheet { display: flex; flex-direction: column; overflow: hidden; max-height: min(600px, calc(100dvh - 48px)); }

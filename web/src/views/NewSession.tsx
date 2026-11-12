@@ -73,6 +73,7 @@ function startOf(remote: Remote, key: string): Start {
 import { anchorOf, Avatar, Banner, PathText, Segmented, StateMark, fromHere, sendKeys, Sheet, usePointerFine } from "../ui";
 import { isHidden } from "../prefs";
 import { addProject, pinAction, prefsBlocked, ProjectItem, ProjectList, RemoveProjectAlert } from "./Projects";
+import { NewTaskModelPanel, NewTaskTools, newTaskModel } from "./NewTaskModels";
 import { ComposerPicker, keepComposerFocus, type ComposerAnchor } from "./ComposerPicker";
 import { useAutoGrow } from "./Composer";
 import { AttachButton, attachBlocked, maxImages, TrayView, useDropPaste, useTray } from "./Attach";
@@ -455,7 +456,8 @@ export function useNewSession(remote: Remote, key: string, go: Go, fixedMachine?
   // The machine is named only where there is more than one to mean.
   // The model only once one is known: a CLI with none chosen yet says nothing of it.
   // The model's placeholder is written too, so the capsule is never empty.
-  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label };
+  const currentModel = newTaskModel(cfg, info);
+  const summary: Summary = { agent: agentName(cfg.agent), machine: remote.machines.size > 1 ? machineName(machine) : "", model: parts.label, effort: (currentModel.model?.efforts.length ?? 0) > 1 ? currentModel.effort : "" };
   return {
     remote,
     go,
@@ -688,7 +690,7 @@ export function NewBox({
       onPointerDown={phone ? keepComposerFocus : undefined} onMouseDown={phone ? keepComposerFocus : undefined}
       onClick={() => { if (phone) setConfig(""); setChoosing((v) => phone ? !v : true); }}>
       <AgentMark agent={ns.cfg.agent} named />
-      <span>{agentName(ns.cfg.agent)}</span>
+      <span className="cli-name">{agentName(ns.cfg.agent)}</span>
       <ChevronDown />
     </button>
   );
@@ -758,9 +760,7 @@ export function NewBox({
           {trayView}
           <div className="acc">
             {attach}
-            {cli}
-            {summary}
-            <span className="grow" />
+            <NewTaskTools>{cli}{summary}</NewTaskTools>
             {send}
           </div>
         </div>
@@ -857,6 +857,12 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
   useEffect(() => {
     if (pick === "model") info.retry();
   }, [pick]); // Refresh the native CLI list each time the model page opens.
+  if (!scheduled && pick === "model") {
+    const panel = <NewTaskModelPanel key={cfg.machineId + "/" + cfg.agent} cfg={cfg} info={info} pending={open}
+      enabled={!open} onChange={value => set(value)} onClose={onClose} />;
+    return composer ? <ComposerPicker {...composer} title="模型" onClose={onClose}>{panel}</ComposerPicker> :
+      <Sheet onClose={onClose} anchor={anchorOf(".wstart .acc .project-summary")} className="with-head new-task-model-sheet">{panel}</Sheet>;
+  }
   // Machines this project has used; a new project can use any.
   const choices: MachineView[] = (p && machine?.online ? p.machines : [...remote.machines.keys()]).map((id) => remote.machines.get(id)).filter((m): m is MachineView => !!m);
   let body;
@@ -1083,9 +1089,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
       )}
     </>
   );
-  return composer ? (
-    <ComposerPicker {...composer} title="模型" onClose={onClose}>{content}</ComposerPicker>
-  ) : (
+  return (
     <Sheet onClose={onClose} title={titles[pick]} action={{ label: "完成", onClick: onClose }} back={pick && !start ? back2 : undefined} anchor={anchorOf(!scheduled && asked === "machine" ? ".wstart .sent .tok.m" : ".wstart .acc .project-summary")} className="with-head">{content}</Sheet>
   );
 }
@@ -1253,23 +1257,16 @@ export function NewFlow({ remote, go, onClose, onPicked, start }: { remote: Remo
 /** What the new-session settings say: the machine is named in the
  * sentence (where the account has more than one), the CLI and the model in
  * the summary. */
-export type Summary = { agent: string; machine: string; model: string };
+export type Summary = { agent: string; machine: string; model: string; effort: string };
 
-/** The settings of a new session in one capsule, opening the project's
- * settings (design-system §6 新任务): the model; the effort and the window
- * are in the settings. A new task has no approval mode to show, and its
- * machine is in the sentence. The CLI is written at the start only when
- * nothing else names it (bare: the sentence already does). */
-export function ConfigSummary({ summary, bare, ...button }: { summary: { agent: string; model: string }; bare?: boolean } & ComponentProps<"button">) {
-  const { agent, model } = summary;
-  const head = bare ? "" : agent;
-  const sep = " · ";
-  const line = [head, model].filter(Boolean).join(sep);
+/** The model can shorten; the CLI prefix and effective effort stay whole. */
+export function ConfigSummary({ summary, bare, ...button }: { summary: { agent: string; model: string; effort?: string }; bare?: boolean } & ComponentProps<"button">) {
+  const { agent, model, effort } = summary;
   return (
-    <button className="tok project-summary" aria-label={`项目设置：${line}`} {...button}>
-      {head && <span className="fx">{head}</span>}
-      {/* The model brings the dot before it: a part cut short never leaves one hanging at its end. */}
-      {model && <span className="mdl">{(head ? sep : "") + model}</span>}
+    <button className="tok project-summary" aria-label={`模型：${model}${effort ? `，推理强度：${effort}` : ""}`} {...button}>
+      {!bare && <span className="fx">{agent} · </span>}
+      <span className="mdl">{model}</span>
+      {effort && <span className="effort"> · {effort}</span>}
       <ChevronRight />
     </button>
   );

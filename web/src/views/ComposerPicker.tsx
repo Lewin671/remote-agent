@@ -13,8 +13,8 @@ export type ComposerAnchor = {
   boundary: RefObject<HTMLElement | null>;
 };
 
-/** A nonmodal picker in the phone composer's hierarchy. Its reserved height
- * depends on the available viewport, never on models arriving or expanding. */
+/** A nonmodal picker in the phone composer's hierarchy. Content wraps up to
+ * the available viewport; the anchor never participates in its layout. */
 export function ComposerPicker({ anchor, boundary, title, onClose, children }: ComposerAnchor & {
   title?: string;
   onClose: () => void;
@@ -88,9 +88,8 @@ export function ComposerPicker({ anchor, boundary, title, onClose, children }: C
   return createPortal(
     <div ref={root} className={"composer-picker" + (title ? " model-picker" : "")} role="dialog" aria-label={title ?? "CLI"}
       onPointerDown={keepComposerFocus} onMouseDown={keepComposerFocus}
-      style={{ left: place.left, bottom: place.bottom, width: place.width, ...(title ? { height: place.height } : { maxHeight: place.height }), visibility: place.width ? undefined : "hidden" }}>
-      {title && <div className="sheet-head"><span className="side-act" /><b>{title}</b><button className="side-act" onClick={onClose}>完成</button></div>}
-      <div className="composer-picker-scroll">{children}</div>
+      style={{ left: place.left, bottom: place.bottom, width: place.width, maxHeight: place.height, visibility: place.width ? undefined : "hidden" }}>
+      {title ? children : <div className="composer-picker-scroll">{children}</div>}
     </div>, boundary.current,
   );
 }
