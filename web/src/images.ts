@@ -235,7 +235,7 @@ function checkDecodable(bytes: Uint8Array, format: ImageFormat) {
   } catch {
     return; // the decoder decides
   }
-  if (size.width * size.height > MAX_DECODE_PIXELS) throw new ImageError("too_large", `${size.width}x${size.height}`, "图片尺寸太大");
+  if (size.width * size.height > MAX_DECODE_PIXELS) throw new ImageError("too_large", `${size.width}x${size.height}`, "图片尺寸太大", "dimensions");
 }
 
 async function readBlob(file: Blob): Promise<Uint8Array> {
@@ -295,7 +295,7 @@ async function reencode(
   const img = await backend.decode(blob);
   try {
     if (img.width * img.height > MAX_CANVAS_PIXELS) {
-      throw new ImageError("too_large", `${img.width}x${img.height} is over the canvas limit`, "图片尺寸太大，请用压缩方式发送");
+      throw new ImageError("too_large", `${img.width}x${img.height} is over the canvas limit`, "图片尺寸太大，请用压缩方式发送", "dimensions");
     }
     const surface = backend.draw(img, orientation, img.width, img.height);
     const png = mode === "png" || (mode === "auto" && surface.hasAlpha());

@@ -1045,7 +1045,7 @@ export function ConfigSheet({ ns, onClose, start: asked = "", scheduled = false,
               {scheduled && (
                 <button className="mi" onClick={() => setPick("mode")}>
                   <span className="mt">{taskEditing ? "权限" : "审批"}</span>
-                  <span className={"mv" + (modeTextOf(cfg, machine) === modeName(ApprovalMode.FULL_ACCESS) ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
+                  <span className={"mv" + ((cfg.mode || defaultModeOf(machine, cfg.agent).mode) === ApprovalMode.FULL_ACCESS ? " red" : "")}>{modeTextOf(cfg, machine)}</span>
                   <ChevronRight className="chev" />
                 </button>
               )}

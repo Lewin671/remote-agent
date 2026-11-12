@@ -1,3 +1,4 @@
+import { ImageError } from "./imagecodec/error";
 import * as i18n from "./i18n";
 export function fileUploadUpdateRequired(): string { return i18n.t("attachment.update_required"); }
 
@@ -304,7 +305,7 @@ export class Tray {
       );
       set({ state: "done", progress: 1, imageId: uploaded.imageId, fileId: uploaded.fileId, expiresMs: uploaded.expiresMs, machineId, ...(item.kind === "file" ? { prepared: undefined } : {}) });
     } catch (e) {
-      set({ state: "failed", error: e instanceof Error ? e.message : String(e) });
+      set({ state: "failed", error: e instanceof ImageError ? e.problem : e instanceof Error ? e.message : String(e) });
     } finally { if (item.kind === "file" && current()) item.prepared = undefined; release?.(); }
   }
 }

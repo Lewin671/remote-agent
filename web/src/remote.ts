@@ -1,4 +1,4 @@
-import { rejectRetiredHistory, UnsupportedHistoryError, RETIRED_HISTORY_ERROR } from "./crypto";
+import { rejectRetiredHistory, UnsupportedHistoryError } from "./crypto";
 import { ScheduleSeen, taskVisible, taskGroup, type ScheduleTask, type ScheduleSpec, type ScheduleDetailVisit, type TaskEntry } from "./schedules";
 import { Attempt } from "./attempt";
 import { ComposerDraftStore, DraftTexts } from "./composer-drafts";
@@ -204,6 +204,7 @@ interface EventBuffer {
   error: string;
   // An event did not open; history stops before it.
   broken: boolean;
+  retired?: boolean;
   inputStatuses?: Map<string, InputStatus>;
   bytes?: number;
   usedAt?: number;
@@ -2567,9 +2568,10 @@ export class Remote {
       }
       if (retired) {
         const buffer = this.buffers.get(rs.sessionId);
-        if (buffer?.error === RETIRED_HISTORY_ERROR) {
+        if (buffer?.retired) {
           buffer.error = "";
           buffer.broken = false;
+          buffer.retired = false;
           void this.fetchEvents(rs.sessionId);
         }
       }
@@ -2669,7 +2671,7 @@ export class Remote {
       if (b.broken) break;
       after = BigInt(b.events.length);
     }
-    if (stale() || b.error === RETIRED_HISTORY_ERROR) return;
+    if (stale() || b.retired) return;
     Object.assign(b, {
       events: [],
       pending: new Map(),
@@ -2691,7 +2693,7 @@ export class Remote {
     const b = this.buffers.get(sid);
     const s = this.sessions.get(sid);
     if (!b || !s || this.closed) return;
-    if (s.historyError) { b.broken = true; b.error = s.historyError; this.changed(); return; }
+    if (s.historyError) { b.retired = true; b.broken = true; b.error = s.historyError; this.changed(); return; }
     if (b.fetching) {
       b.refetch = true;
       return;
@@ -2708,7 +2710,7 @@ export class Remote {
         // page is to be shown in its place.
         if (b.events.length && !wantsTail()) { b.ready = true; this.changed(); }
       }
-      if (b.error === RETIRED_HISTORY_ERROR) return;
+      if (b.retired) return;
       // lastSeq is a routing hint, not authenticated event content. Every
       // returned envelope still passes the normal historical checks.
       if (wantsTail()) {
@@ -2765,7 +2767,7 @@ export class Remote {
       } while (b.refetch);
       b.loaded = true;
       b.ready = true;
-      if (b.error !== RETIRED_HISTORY_ERROR) b.error = "";
+      if (!b.retired) b.error = "";
     } catch (e) {
       if (this.closed || generation !== this.generation) return;
       b.error = errorText(e);
@@ -2868,7 +2870,7 @@ export class Remote {
           continue;
         }
         b.broken = true;
-        if (e instanceof UnsupportedHistoryError) b.error = e.message;
+        if (e instanceof UnsupportedHistoryError) { b.retired = true; b.error = e.message; }
         this.report(e);
         break;
       }

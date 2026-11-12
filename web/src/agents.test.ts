@@ -67,11 +67,11 @@ describe("agents registry", () => {
     expect(agy.id).toBe("agy");
     expect(agy.name).toBe("Antigravity");
     expect(agy.quotaWindows).toEqual([]);
-    expect(agy.quotaWindow("gemini-5h")).toEqual({ label: "Gemini · 5 小时", group: "Gemini" });
-    expect(agy.quotaWindow("gemini-weekly")).toEqual({ label: "Gemini · 7 天", group: "Gemini" });
-    expect(agy.quotaWindow("gemini-argon-wtu-weekly")).toEqual({ label: "Gemini 4 Argon · 7 天", group: "Gemini" });
-    expect(agy.quotaWindow("3p-5h")).toEqual({ label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）" });
-    expect(agy.quotaWindow("3p-weekly")).toEqual({ label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）" });
+    expect(agy.quotaWindow("gemini-5h")).toEqual({ label: "Gemini · 5 小时", group: "Gemini", pool: "Gemini" });
+    expect(agy.quotaWindow("gemini-weekly")).toEqual({ label: "Gemini · 7 天", group: "Gemini", pool: "Gemini" });
+    expect(agy.quotaWindow("gemini-argon-wtu-weekly")).toEqual({ label: "Gemini 4 Argon · 7 天", group: "Gemini", pool: "Gemini 4 Argon" });
+    expect(agy.quotaWindow("3p-5h")).toEqual({ label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" });
+    expect(agy.quotaWindow("3p-weekly")).toEqual({ label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" });
     expect(agy.quotaWindow("custom-window")).toEqual({ label: "custom-window", group: "custom-window" });
     expect(agy.toolLabelFromItemType).toBe(false);
     expect(agy.planClearContext).toBe(false);

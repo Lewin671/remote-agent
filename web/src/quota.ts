@@ -11,6 +11,7 @@ import { agentInfo, normalizePlanName } from "./agents";
 
 export interface QuotaRow {
   label: string; // 5 小时, 7 天
+  poolName?: string;
   windowName?: string; // 5 小时, 7 天 (duration / short name for summary line)
   left: string; // 剩 38%, 已用尽, 未获取
   /** The share used, 0–100; the bar draws what is left of it. */
@@ -192,7 +193,7 @@ export function quotaViews(quotas: AgentQuota[], agents: Agent[], now: number, o
       for (const w of ordered) {
         const desc = info.quotaWindow(w.name);
         const useMinutes = desc.group === null && known.includes(w.name);
-        const row = windowRow(w, desc.label, now, stale, useMinutes);
+        const row = { ...windowRow(w, desc.label, now, stale, useMinutes), poolName: desc.pool };
         rows.push(row);
         if (desc.group !== null) {
           let list = groupMap.get(desc.group);
@@ -246,7 +247,7 @@ export function quotaSummary(views: QuotaView[]): string {
       if (!got.length) return "暂未获取额度" + (v.stale ? "（上次记录）" : "");
       const tightest = got.reduce((a, b) => ((b.percent ?? -1) > (a.percent ?? -1) ? b : a));
       // A CLI with several pools (Gemini, 第三方模型) names the pool; the window is on the quota page.
-      const pool = tightest.windowName && tightest.label.endsWith(" · " + tightest.windowName) ? tightest.label.slice(0, -(" · " + tightest.windowName).length) : "";
+      const pool = tightest.poolName ?? "";
       const win = pool || tightest.windowName || tightest.label;
       return `${tightest.left} · ${win}`;
     })

@@ -14,7 +14,7 @@ export class ImageError extends Error {
   readonly code: ImageErrorCode;
   readonly detail: string;
 
-  constructor(code: ImageErrorCode, detail: string, message = messages[code]) {
+  constructor(code: ImageErrorCode, detail: string, message = messages[code], readonly problem: "original_too_large" | "dimensions" | "decode" = code === "too_large" ? "original_too_large" : "decode") {
     super(message);
     this.name = "ImageError";
     this.code = code;

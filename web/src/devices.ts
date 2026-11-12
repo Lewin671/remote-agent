@@ -93,7 +93,7 @@ export function lastUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs">> | undefined,
  * day it was added. */
 export function clientUsed(d: Partial<Pick<DeviceInfo, "lastSeenMs" | "createdMs">> | undefined, now = Date.now()): string {
   const used = lastUsed(d, now);
-  if (used) return `${used}${/\d$/.test(used) ? " " : ""}使用`;
+  if (used) return `${used}${now - Number(d?.lastSeenMs ?? 0) >= 3_600_000 && new Date(Number(d?.lastSeenMs ?? 0)).toDateString() === new Date(now).toDateString() ? " " : ""}使用`;
   return Number(d?.createdMs ?? 0) ? `${dayText(d!.createdMs!, now)}添加` : "已配对";
 }
 

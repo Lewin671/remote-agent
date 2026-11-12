@@ -6,6 +6,7 @@ import type { MachineMeta } from "./gen/remoteagent/v1/remote_pb";
 export interface QuotaWindowDescriptor {
   readonly label: string;
   readonly group: string | null;
+  readonly pool?: string;
 }
 
 export interface AgentEntry {
@@ -74,11 +75,11 @@ function fixedWindowLabel(name: string): QuotaWindowDescriptor {
 }
 
 const ANTIGRAVITY_QUOTA_WINDOWS: Record<string, QuotaWindowDescriptor> = {
-  "gemini-5h": { label: "Gemini · 5 小时", group: "Gemini" },
-  "gemini-weekly": { label: "Gemini · 7 天", group: "Gemini" },
-  "gemini-argon-wtu-weekly": { label: "Gemini 4 Argon · 7 天", group: "Gemini" },
-  "3p-5h": { label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）" },
-  "3p-weekly": { label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）" },
+  "gemini-5h": { label: "Gemini · 5 小时", group: "Gemini", pool: "Gemini" },
+  "gemini-weekly": { label: "Gemini · 7 天", group: "Gemini", pool: "Gemini" },
+  "gemini-argon-wtu-weekly": { label: "Gemini 4 Argon · 7 天", group: "Gemini", pool: "Gemini 4 Argon" },
+  "3p-5h": { label: "第三方模型 · 5 小时", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" },
+  "3p-weekly": { label: "第三方模型 · 7 天", group: "第三方模型（Claude、GPT-OSS）", pool: "第三方模型" },
 };
 
 const CODEX_ENTRY: AgentEntry = {

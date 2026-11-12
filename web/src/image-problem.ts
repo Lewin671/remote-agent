@@ -5,6 +5,8 @@ export interface ImageProblem { message: string; retryable: boolean }
 export function originalImageHint(): string { return i18n.t("image.original_hint"); }
 /** Stable local categories; translated messages never decide aggregation. */
 export function imageProblemKind(error: string) {
+  if (["original_too_large", "dimensions", "source_missing", "decode", "storage_full", "upload_failed", "processing_failed"].includes(error))
+    return error as "original_too_large" | "dimensions" | "source_missing" | "decode" | "storage_full" | "upload_failed" | "processing_failed";
   const e = error.toLowerCase();
   if (/20\s*(mb|mib)|原图超过/.test(e)) return "original_too_large" as const;
   if (/尺寸|像素|pixels|dimensions|canvas|too large|图片超过|图片太大/.test(e)) return "dimensions" as const;
