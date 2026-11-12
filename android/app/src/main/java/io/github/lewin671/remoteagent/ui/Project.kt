@@ -1,5 +1,7 @@
 package io.github.lewin671.remoteagent.ui
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.semantics.selected
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
@@ -743,10 +745,15 @@ fun NewSessionBox(
                     AgentMark(c.agent, T.s15, p.ink2)
                     Text(agentName(c.agent), style = T.s15, color = p.ink2, maxLines = 1)
                 }
-                // The model, as the summary of the settings; with no CLI beside it, it names the CLI first.
-                val model = c?.let { (if (agents.size > 1) "" else agentName(it.agent) + " · ") + if (!modelsRead && it.model.isEmpty()) "读取设置…" else modelLabel(it, models) }
-                if (model != null) BoxTool({ picker.toggle("model") }, "模型：$model", Modifier.weight(1f, fill = false).onGloballyPositioned { picker.model = it.boundsInWindow() }.testTag("new-model")) {
-                    Text(model, style = T.s15, color = p.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                // Pending choices are visible immediately; persistence still happens only on close.
+                val current = edited ?: c
+                if (current != null) {
+                    val summary = newTaskModelSummary(current, models, settings, modelsRead, agents.size == 1)
+                    BoxTool({ picker.toggle("model") }, summary.accessibilityLabel,
+                        Modifier.weight(1f, fill = false).onGloballyPositioned { picker.model = it.boundsInWindow() }.testTag("new-model"),
+                        active = picker.open == "model") {
+                        NewTaskModelLabel(summary, Modifier.weight(1f, fill = false))
+                    }
                 }
             },
         )
@@ -770,21 +777,23 @@ fun NewSessionBox(
     if (picker.open == "model" && c != null) ComposerPopover(picker, "模型", panel = true) {
         val current = edited ?: c
         val blockedPrefs = prefsBlocked(state)
-        SheetHead("模型", if (blockedPrefs == null && settled) "完成" else null, picker::close)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            if (blockedPrefs != null) Notice(blockedPrefs)
-            if (!settled) Text("正在读取这个项目上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
-            ModelSettingsBody(current, models, modelsError, settings, machineLabel(state, c.machineId),
-                scheduling = false, enabled = settled && blockedPrefs == null) { edited = it }
-        }
+        NewTaskModelPanel(current, models, modelsError, settings, machineLabel(state, c.machineId),
+            enabled = settled && blockedPrefs == null, onClose = picker::close,
+            notice = {
+                if (blockedPrefs != null) Notice(blockedPrefs)
+                if (!settled) Text("正在读取这个项目上次的设置…", style = T.s13, color = p.ink2, modifier = Modifier.testTag("settings-unread"))
+            }, edit = { edited = it })
     }
 }
 
 /** The CLI or the model in the new task's box: no fill, 15 ink2, a small down arrow, 40 tall. */
 @Composable
-private fun BoxTool(onClick: () -> Unit, label: String, modifier: Modifier = Modifier, content: @Composable RowScope.() -> Unit) {
+private fun BoxTool(onClick: () -> Unit, label: String, modifier: Modifier = Modifier, active: Boolean = false, content: @Composable RowScope.() -> Unit) {
     Row(
-        modifier.heightIn(min = 40.dp).clip(Radii.Pill).clickable(role = Role.Button, onClick = onClick)
+        modifier.heightIn(min = 40.dp).clip(Radii.Pill)
+            .then(if (active) Modifier.background(pal.fill).semantics { selected = true } else Modifier)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = if (active) null else androidx.compose.foundation.LocalIndication.current,
+                role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = label }.padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),

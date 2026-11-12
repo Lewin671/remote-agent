@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -140,7 +139,7 @@ internal fun ComposerPopover(picker: ComposerPicker, title: String, panel: Boole
         properties = PopupProperties(focusable = false, dismissOnClickOutside = true)) {
         CompositionLocalProvider(LocalHintInset provides 12.dp, LocalOnSoft provides false) {
             Column(Modifier.width(width)
-                .then(if (panel) Modifier.height(available.coerceAtMost(600.dp)) else Modifier.heightIn(max = available))
+                .heightIn(max = available.coerceAtMost(if (panel) 600.dp else available))
                 .shadow(16.dp, shape, ambientColor = p.float, spotColor = p.float)
                 .clip(shape).background(if (p.dark) Color(0xFF2B2B30) else Color.White)
                 .border(.5.dp, if (p.dark) Color.White.copy(alpha = .10f) else Color.Black.copy(alpha = .08f), shape)
