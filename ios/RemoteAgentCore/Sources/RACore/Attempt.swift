@@ -64,7 +64,7 @@ public final class Attempt {
         expired = false
     }
 
-    public static let expiredUnknown = L10n.errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt()
+    public static var expiredUnknown: LocalizedMessage { L10nMessage.errorsIosThePreviousOperationIsUnconfirmedAndHasExpiredIt() }
 
     private static func expiry(_ e: CommandError) -> Bool {
         e.code == CommandError.expired || (e.fromDaemon && e.code == "deadline_exceeded")

@@ -143,13 +143,14 @@ struct Notice: View {
 /// The title filter (design-system §6 「筛选框」): a capsule on `fill`, ⌕ at the left, ✕ at the right once something is typed.
 struct FilterField: View {
     @Binding var text: String
-    var prompt = L10n.homeFilterTitle()
+    var prompt: String? = nil
+    var resolvedPrompt: String { prompt ?? L10n.homeFilterTitle() }
     @FocusState private var focused: Bool
 
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(DS.ink3).accessibilityHidden(true)
-            TextField(prompt, text: $text)
+            TextField(resolvedPrompt, text: $text)
                 .focused($focused)
                 .submitLabel(.search)
                 .autocorrectionDisabled()

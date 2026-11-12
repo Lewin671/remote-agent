@@ -42,7 +42,7 @@ public struct CryptoError: Error, CustomStringConvertible, Equatable {
     public var description: String { localized.resolve() }
     public init(_ description: String) { localized = LocalizedMessage(raw: description) }
     public init(_ description: LocalizedMessage) { localized = description }
-    public static func == (lhs: CryptoError, rhs: CryptoError) -> Bool { lhs.description == rhs.description }
+    public static func == (lhs: CryptoError, rhs: CryptoError) -> Bool { lhs.localized == rhs.localized }
 }
 
 /// The account signing key derived from its root key.
@@ -72,7 +72,7 @@ public struct UserError: Error, LocalizedError, Equatable, CustomStringConvertib
     public var message: String { localized.resolve() }
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }
-    public static func == (lhs: UserError, rhs: UserError) -> Bool { lhs.message == rhs.message }
+    public static func == (lhs: UserError, rhs: UserError) -> Bool { lhs.localized == rhs.localized }
     public var errorDescription: String? { message }
     public var description: String { message }
 }
@@ -146,7 +146,7 @@ public struct OpenError: Error, Equatable, CustomStringConvertible {
     public var description: String { localized.resolve() }
     public init(_ description: String) { localized = LocalizedMessage(raw: description) }
     public init(_ description: LocalizedMessage) { localized = description }
-    public static func == (lhs: OpenError, rhs: OpenError) -> Bool { lhs.description == rhs.description }
+    public static func == (lhs: OpenError, rhs: OpenError) -> Bool { lhs.localized == rhs.localized }
 }
 
 /// Where an envelope must have been found; unset fields are not checked, except kind.

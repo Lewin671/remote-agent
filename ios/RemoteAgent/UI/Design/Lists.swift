@@ -477,16 +477,17 @@ struct EmptyState: View {
 /// `inset` is what it keeps from the sides: the page's margin on a page,
 /// nothing in a sheet, which has its own, 30 under a group's label.
 struct LoadingRow: View {
-    private let text: String
+    private let suppliedText: String?
+    var resolvedText: String { suppliedText ?? L10n.projectsReadingDirectory() }
     private let inset: CGFloat
 
-    init(_ text: String = L10n.projectsReadingDirectory(), inset: CGFloat = DS.Space.l) {
-        self.text = text
+    init(_ text: String? = nil, inset: CGFloat = DS.Space.l) {
+        self.suppliedText = text
         self.inset = inset
     }
 
     var body: some View {
-        IconText(Mark.progress, text)
+        IconText(Mark.progress, resolvedText)
             .padding(.horizontal, inset).padding(.vertical, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -517,17 +518,18 @@ struct Skeleton: View {
 /// A row that says reading failed, with 重试: the error notice, at the page's side margin.
 struct ErrorRow: View {
     private let text: String
-    private let action: String
+    private let suppliedAction: String?
+    var resolvedAction: String { suppliedAction ?? L10n.commonRetry() }
     private let onRetry: (() -> Void)?
 
-    init(_ text: String, action: String = L10n.commonRetry(), onRetry: (() -> Void)? = nil) {
+    init(_ text: String, action: String? = nil, onRetry: (() -> Void)? = nil) {
         self.text = text
-        self.action = action
+        self.suppliedAction = action
         self.onRetry = onRetry
     }
 
     var body: some View {
-        Banner(text, tone: .error, action: onRetry == nil ? nil : action, onAction: onRetry)
+        Banner(text, tone: .error, action: onRetry == nil ? nil : resolvedAction, onAction: onRetry)
             .padding(.horizontal, DS.Space.l).padding(.vertical, 4)
     }
 }

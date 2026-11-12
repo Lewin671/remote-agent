@@ -49,7 +49,7 @@ struct MessageSelectableText: UIViewRepresentable {
     let text: String
 
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        let view = MessageSelectionTextView()
         view.isEditable = false
         view.isSelectable = true
         view.isScrollEnabled = true
@@ -59,7 +59,6 @@ struct MessageSelectableText: UIViewRepresentable {
         view.textContainerInset = UIEdgeInsets(top: 8, left: 16, bottom: 24, right: 16)
         view.textContainer.lineFragmentPadding = 0
         view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        view.accessibilityLabel = L10n.sessionIosMessageText()
         return view
     }
 
@@ -76,5 +75,14 @@ struct MessageSelectableText: UIViewRepresentable {
         // Use the available viewport, never the height of the whole message.
         guard let width = proposal.width, let height = proposal.height else { return nil }
         return CGSize(width: width, height: height)
+    }
+}
+
+/// UIKit may retain the view across language updates; its default label is not a saved sentence.
+final class MessageSelectionTextView: UITextView {
+    private var suppliedAccessibilityLabel: String?
+    override var accessibilityLabel: String? {
+        get { suppliedAccessibilityLabel ?? L10n.sessionIosMessageText() }
+        set { suppliedAccessibilityLabel = newValue }
     }
 }

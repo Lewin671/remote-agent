@@ -21,6 +21,7 @@ public enum ImageResult: Equatable, Sendable {
     case missing
     /// The bytes are not the image they claim to be, or do not open.
     case corrupt(why: String)
+    case retiredHistory
 }
 
 extension Remote {
@@ -290,7 +291,7 @@ extension Remote {
                 want: Place(.image, machineId: s.machineId, sessionId: sid, requestId: imageId),
                 as: PBImagePayload.self, history: true)
         } catch is UnsupportedHistoryError {
-            return .corrupt(why: errorText(UnsupportedHistoryError()))
+            return .retiredHistory
         } catch {
             return .corrupt(why: L10n.errorsIosImageContentOrOriginCouldNotBeVerified())
         }

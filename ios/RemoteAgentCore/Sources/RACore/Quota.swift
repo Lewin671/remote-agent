@@ -232,8 +232,8 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
     let title = agentName(agent) + (q.plan.isEmpty ? "" : " · \(agentInfo(agent).planName(q.plan))") + which
 
     var rows = [QuotaRow]()
-    var groupOrder = [String]()
-    var groupRows = [String: [QuotaRow]]()
+    var groupOrder = [QuotaWindowGroup]()
+    var groupRows = [QuotaWindowGroup: [QuotaRow]]()
 
     if status != .unsupported && status != .waiting && !q.windows.isEmpty {
         let ordered = completeWindows(agent: agent, q.windows)
@@ -254,7 +254,7 @@ private func group(agent: PBAgent, _ q: PBAgentQuota, several: Bool, online: Boo
     let subgroups: [QuotaSubgroup]
     if !groupOrder.isEmpty {
         subgroups = groupOrder.enumerated().map { idx, g in
-            let subgroupTitle = idx == 0 ? "\(title) · \(g)" : g
+            let subgroupTitle = idx == 0 ? "\(title) · \(g.title)" : g.title
             return QuotaSubgroup(title: subgroupTitle, rows: groupRows[g] ?? [])
         }
     } else {

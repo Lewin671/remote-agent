@@ -45,7 +45,7 @@ import Testing
     }
 
     @Test func howAFetchEndedBecomesAState() {
-        #expect(viewerNote(.corrupt(why: retiredHistoryError), sync: .synced) == retiredHistoryError)
+        #expect(viewerNote(.retiredHistory, sync: .synced) == retiredHistoryError)
         let payload = PBImagePayload.with {
             $0.format = .png
             $0.data = Data([1, 2, 3])

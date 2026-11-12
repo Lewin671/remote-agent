@@ -15,6 +15,7 @@ public enum BigImage: Equatable, Sendable {
     case offline
     case failed(why: String)
     case corrupt(why: String)
+    case retiredHistory
 }
 
 /// What the viewer writes over the picture for a state; nil while there is nothing to say.
@@ -25,7 +26,8 @@ public func viewerNote(_ big: BigImage, sync: PBImageSync) -> String? {
     case .expired: return L10n.imageOriginalExpired()
     case .offline: return L10n.imageLoadConnected()
     case .failed(let why): return L10n.imageIosDownloadFailed(reason: why)
-    case .corrupt(let why): return why == retiredHistoryError ? why : L10n.imageIosVerificationFailed(reason: why)
+    case .corrupt(let why): return L10n.imageIosVerificationFailed(reason: why)
+    case .retiredHistory: return retiredHistoryError
     }
 }
 
@@ -50,6 +52,7 @@ public func viewerOutcome(_ result: Result<ImageResult, any Error>, online: Bool
     case .success(.loaded(let payload)): return (.ready, payload)
     case .success(.expired): return (.expired, nil)
     case .success(.missing): return (.notSynced, nil)
+    case .success(.retiredHistory): return (.retiredHistory, nil)
     case .success(.corrupt(let why)): return (.corrupt(why: why), nil)
     case .failure(let error): return (online ? .failed(why: errorText(error)) : .offline, nil)
     }

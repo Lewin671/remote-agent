@@ -429,7 +429,7 @@ public struct UploadError: UploadFailure, LocalizedError, Equatable {
     public var message: String { localized.resolve() }
     public init(code: String, message: String) { self.code = code; localized = LocalizedMessage(raw: message) }
     public init(code: String, message: LocalizedMessage) { self.code = code; localized = message }
-    public static func == (lhs: UploadError, rhs: UploadError) -> Bool { lhs.code == rhs.code && lhs.message == rhs.message }
+    public static func == (lhs: UploadError, rhs: UploadError) -> Bool { lhs.code == rhs.code && lhs.localized == rhs.localized }
 
     public var errorDescription: String? { message }
 }

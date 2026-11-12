@@ -170,12 +170,12 @@ import Testing
 
     @Test func anErrorOfTheAppsOwnIsSaidInItsOwnWords() {
         #expect(errorText(CommandError("unimplemented", "这台电脑不支持")) == "这台电脑不支持")
-        #expect(errorText(UserError(L10n.errorsConnectionTimedOutReconnecting())) == L10n.errorsConnectionTimedOutReconnecting())
-        #expect(detailText(UserError(L10n.errorsDisconnectedFromServer())) == L10n.errorsDisconnectedFromServer())
+        #expect(errorText(UserError(L10nMessage.errorsConnectionTimedOutReconnecting())) == L10n.errorsConnectionTimedOutReconnecting())
+        #expect(detailText(UserError(L10nMessage.errorsDisconnectedFromServer())) == L10n.errorsDisconnectedFromServer())
         #expect(errorText(OpenError("envelope does not open")) == "envelope does not open")
         #expect(
             detailText(OpenError("envelope does not open")) == "OpenError: envelope does not open")
-        #expect(errorText(PairError(L10n.queueCanceled())) == L10n.queueCanceled())
+        #expect(errorText(PairError(L10nMessage.queueCanceled())) == L10n.queueCanceled())
         #expect(errorText(PrefsConflictError()) == L10n.errorsIosOtherClientsKeptChangingProjectPreferencesChangesCouldNot())
         // One without words is called by its type, never by NSError's sentence about it.
         struct Wordless: Error {}

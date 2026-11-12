@@ -268,7 +268,7 @@ private let offline = CommandError(CommandError.unavailable, "电脑不在线，
             _ = try await store.resolveApproval(computer, machineId: "m", sid: "s", approvalId: "A", allow: false, message: "")
             Issue.record("an expired retry went through")
         } catch {
-            #expect(errorText(error) == Attempt.expiredUnknown)
+            #expect(errorText(error) == Attempt.expiredUnknown.resolve())
         }
         let r = store.resolve("A")
         #expect(r.attempt.frozen && r.attempt.expired && !r.allow)

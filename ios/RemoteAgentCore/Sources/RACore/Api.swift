@@ -294,7 +294,7 @@ public struct CommandError: Error, LocalizedError, Equatable, Sendable, CustomSt
     public var unknown: Bool {
         code == CommandError.unknownOutcome || (fromDaemon && code == "aborted")
     }
-    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.message == rhs.message && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon }
+    public static func == (lhs: CommandError, rhs: CommandError) -> Bool { lhs.localized == rhs.localized && lhs.code == rhs.code && lhs.fromDaemon == rhs.fromDaemon && lhs.outcomeDetail == rhs.outcomeDetail }
     public var errorDescription: String? { message }
     public var description: String { message }
 

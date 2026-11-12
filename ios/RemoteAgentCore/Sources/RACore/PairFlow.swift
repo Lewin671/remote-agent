@@ -13,7 +13,7 @@ public struct PairError: Error, LocalizedError, Equatable, Sendable, CustomStrin
     public var message: String { localized.resolve() }
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }
-    public static func == (lhs: PairError, rhs: PairError) -> Bool { lhs.message == rhs.message }
+    public static func == (lhs: PairError, rhs: PairError) -> Bool { lhs.localized == rhs.localized }
     public var errorDescription: String? { message }
     public var description: String { message }
 }

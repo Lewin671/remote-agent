@@ -100,25 +100,26 @@ struct InputField: View {
 /// sides: the page's margin on a page, nothing inside a sheet, which has its own.
 struct FilterBox: View {
     @Binding private var text: String
-    private let placeholder: String
+    private let suppliedPlaceholder: String?
+    var resolvedPlaceholder: String { suppliedPlaceholder ?? L10n.homeFilterTitle() }
     private let inset: CGFloat
 
-    init(text: Binding<String>, placeholder: String = L10n.homeFilterTitle(), inset: CGFloat = DS.Space.l) {
+    init(text: Binding<String>, placeholder: String? = nil, inset: CGFloat = DS.Space.l) {
         _text = text
-        self.placeholder = placeholder
+        self.suppliedPlaceholder = placeholder
         self.inset = inset
     }
 
     var body: some View {
         HStack(spacing: 6) {
             SymbolImage("magnifyingglass", style: .body, color: DS.ink2)
-            TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(DS.ink2))
+            TextField("", text: $text, prompt: Text(resolvedPlaceholder).foregroundStyle(DS.ink2))
                 .font(.body).ink(DS.ink)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .submitLabel(.search)
                 .tint(DS.blue)
-                .accessibilityLabel(placeholder)
+                .accessibilityLabel(resolvedPlaceholder)
         }
         .padding(.leading, 14).padding(.trailing, text.isEmpty ? 14 : 40)
         .frame(minHeight: 36)

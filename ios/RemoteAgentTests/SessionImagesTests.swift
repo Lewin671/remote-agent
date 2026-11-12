@@ -504,7 +504,7 @@ import UIKit
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
         try handle.close()
-        #expect(try await picked(large).read == .failure(ImageTooLarge("图片超过 80 MB")))
+        #expect(try await picked(large).read == .failure(ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))))
     }
 
     @Test func theSealedStoreKeepsADraftWithoutItsPixelsInTheClear() async throws {

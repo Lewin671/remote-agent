@@ -146,8 +146,8 @@ enum InputSave {
 private struct InputDialog: View {
     let title: String
     let placeholder: String
-    let confirm: String
-    let dismissLabel: String
+    let confirm: String?
+    let dismissLabel: String?
     let text: String?
     let limit: Int
     let lines: ClosedRange<Int>
@@ -202,8 +202,8 @@ private struct InputDialog: View {
                 Text(text).font(.subheadline).ink(DS.ink2).multilineTextAlignment(.center).padding(.bottom, 8)
             }
             Btns {
-                Btn(dismissLabel, enabled: !running, action: onDismiss)
-                Btn(running ? L10n.commonIosSaving() : confirm, kind: .primary, enabled: !running, action: submit)
+                Btn(dismissLabel ?? L10n.commonCancel(), enabled: !running, action: onDismiss)
+                Btn(running ? L10n.commonIosSaving() : (confirm ?? L10n.commonSave()), kind: .primary, enabled: !running, action: submit)
             }
             .padding(.top, 6)
         }
@@ -231,8 +231,8 @@ private struct InputAlert: ViewModifier {
     let title: String
     let initial: String
     let placeholder: String
-    let confirm: String
-    let dismiss: String
+    let confirm: String?
+    let dismiss: String?
     let text: String?
     let limit: Int
     let lines: ClosedRange<Int>
@@ -276,7 +276,7 @@ extension View {
 
     /// A confirmation with a line or two of text to enter, such as a name; at
     /// most `limit` characters. The dialog closes on 保存 and hands the text over.
-    func inputAlert(isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String, dismiss: String = L10n.commonCancel(), text: String? = nil, limit: Int = 40, onConfirm: @escaping (String) -> Void) -> some View {
+    func inputAlert(isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String, dismiss: String? = nil, text: String? = nil, limit: Int = 40, onConfirm: @escaping (String) -> Void) -> some View {
         modifier(InputAlert(
             isPresented: isPresented, title: title, initial: initial, placeholder: placeholder, confirm: confirm, dismiss: dismiss,
             text: text, limit: limit, lines: 1...4, filter: nil, debugSignal: nil, debugText: { "" }, save: .now(onConfirm)))
@@ -289,8 +289,8 @@ extension View {
     /// keyboard's 完成 save; `filter` says what may be typed. `debugSignal`
     /// names a signal that saves `debugText()` as if typed (debug builds).
     func inputAlert(
-        isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String = L10n.commonSave(),
-        dismiss: String = L10n.commonCancel(), text: String? = nil, limit: Int = 40, lines: ClosedRange<Int> = 1...4,
+        isPresented: Binding<Bool>, title: String, initial: String = "", placeholder: String, confirm: String? = nil,
+        dismiss: String? = nil, text: String? = nil, limit: Int = 40, lines: ClosedRange<Int> = 1...4,
         filter: ((String) -> String)? = nil, debugSignal: String? = nil, debugText: @escaping () -> String = { "" },
         save: @escaping (String) async throws -> Void
     ) -> some View {

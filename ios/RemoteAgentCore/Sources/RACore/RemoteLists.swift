@@ -344,7 +344,7 @@ extension Remote {
                 if let held = sessions[sid], held.machineId != rs.machineID {
                     let (_, info) = try await openSecureMessage(envelope:rs.meta,want:Place(.sessionMeta,machineId:rs.machineID,sessionId:sid),as:PBSession.self)
                     let origins = try await securitySession().replacementOrigins(target:rs.machineID,proofs:info.machineReplacements)
-                    guard origins.contains(held.machineId) else {throw OpenError(L10n.errorsTheSessionRecordSComputerWasChanged())}
+                    guard origins.contains(held.machineId) else {throw OpenError(L10nMessage.errorsTheSessionRecordSComputerWasChanged())}
                 }
                 let opened = try await securitySession().openHistory(rs.key)
                 let h = projection(opened.0), raw = opened.1
@@ -356,7 +356,7 @@ extension Remote {
                 sessionKeys[sid] = raw
                 view = SessionView(id: sid, machineId: rs.machineID)
             }
-            if view.machineId != rs.machineID { throw OpenError(L10n.errorsTheSessionRecordSComputerWasChanged()) }
+            if view.machineId != rs.machineID { throw OpenError(L10nMessage.errorsTheSessionRecordSComputerWasChanged()) }
             view.lastSeq = max(view.lastSeq, rs.lastSeq)
             view.updatedMs = max(view.updatedMs, rs.updatedMs)
             var store = sessions[sid] == nil

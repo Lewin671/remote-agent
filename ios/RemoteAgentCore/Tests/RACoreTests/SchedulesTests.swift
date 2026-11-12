@@ -37,7 +37,7 @@ import RAProto
             #expect(edit.date == chosen && edit.count == 7 && edit.end == .count && edit.weekdays == [2, 4])
         }
         edit.weekdays = []
-        #expect(throws: UserError(L10n.scheduleSelectAtLeastOneDay())) { try edit.trigger(now: now) }
+        #expect(throws: UserError(L10nMessage.scheduleSelectAtLeastOneDay())) { try edit.trigger(now: now) }
         edit.weekdays = [2, 4]
         #expect(try edit.trigger(now: now).weekdays == [2, 4])
     }
@@ -151,7 +151,7 @@ import RAProto
         #expect(try editing.trigger(now:now).until=="2026-10-30T00:15:00Z")
         var gap = ScheduleTrigger(type:"at"); gap.at="2027-03-14T02:30:00Z"; gap.timezone="UTC"
         var missing = ScheduleTiming(trigger:gap,now:now,zone:zone); missing.timezone="America/Los_Angeles"
-        #expect(throws: UserError(L10n.scheduleDaylightSavingTimeSkipsThisTimeInTheSelected())) { try missing.trigger(now:now) }
+        #expect(throws: UserError(L10nMessage.scheduleDaylightSavingTimeSkipsThisTimeInTheSelected())) { try missing.trigger(now:now) }
         var fresh=ScheduleTiming(now:now);fresh.kind = .interval;fresh.interval=15;fresh.unit=60
         #expect(try fresh.trigger(now:now).delaySeconds==900)
     }

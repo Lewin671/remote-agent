@@ -130,7 +130,7 @@ extension Remote {
                 }
             }
         }
-        if b.error == retiredHistoryError { b.restoring = false; publishEvents(sid, b); return }
+        if b.historyFailure == .retired { b.restoring = false; publishEvents(sid, b); return }
         if broken {
             // As before, a cached envelope that fails authentication is discarded
             // so the cache's insert-once policy cannot preserve it indefinitely.
@@ -180,7 +180,7 @@ extension Remote {
                     // that is further on; asked once even when the metadata says
                     // there is nothing newer, as it may be old.
                     tail = max(b.cachedThrough ?? 0, latest > 500 ? latest - 500 : 0)
-                } else if latest > UInt64(b.events.count) + 500 && b.error == nil && heldThrough(latest - 500, b) < latest {
+                } else if latest > UInt64(b.events.count) + 500 && b.historyFailure == nil && heldThrough(latest - 500, b) < latest {
                     tail = latest - 500
                 }
                 if let start = tail {
@@ -190,7 +190,7 @@ extension Remote {
                         guard let page = try await historyPage(sid, after: cursor, limit: pageLimit(after: cursor, b), buffer: b, generation: gen) else { return }
                         let next = page.events.last?.seq ?? cursor
                         if !page.more { end = next }
-                        if !page.more || b.error != nil || next <= cursor { break }
+                        if !page.more || b.historyFailure != nil || next <= cursor { break }
                         cursor = heldThrough(next, b)
                     }
                 }
@@ -212,8 +212,8 @@ extension Remote {
                 }
                 if !running || gen != generation || buffers[sid] !== b { return }
                 let missing = !b.pending.isEmpty || UInt64(b.events.count) < latest
-                b.loaded = !missing && b.error == nil
-                b.fetchError = missing && b.error == nil ? L10n.errorsIosHistoryIsDiscontinuousRetryLoading() : nil
+                b.loaded = !missing && b.historyFailure == nil
+                b.fetchError = missing && b.historyFailure == nil ? L10n.errorsIosHistoryIsDiscontinuousRetryLoading() : nil
             } while b.refetch
         } catch {
             if !running || gen != generation || buffers[sid] !== b { return }
@@ -300,7 +300,7 @@ extension Remote {
                 guard let ev = try? PBEvent(serializedBytes: plain) else {
                     throw OpenError(L10nMessage.errorsIosCryptoMalformedContent())
                 }
-                if ev.seq != se.seq || ev.sessionID != sid { throw OpenError(L10n.errorsTheEventSPositionWasChanged()) }
+                if ev.seq != se.seq || ev.sessionID != sid { throw OpenError(L10nMessage.errorsTheEventSPositionWasChanged()) }
                 if buffers[sid] !== b { return opens }
                 if se.seq <= UInt64(b.events.count) || b.pending[se.seq] != nil { continue }
                 b.verifiedSeqs.insert(se.seq)
@@ -324,13 +324,13 @@ extension Remote {
                     opened.append(se)
                 } catch {
                     report(error)
-                    b.error = error is UnsupportedHistoryError ? errorText(error) : L10n.sessionHistoryUnreadable()
+                    b.historyFailure = error is UnsupportedHistoryError ? .retired : .unreadable
                     opens = false
                     break
                 }
             } catch {
                 report(error)
-                b.error = error is UnsupportedHistoryError ? errorText(error) : L10n.sessionHistoryUnreadable()
+                b.historyFailure = error is UnsupportedHistoryError ? .retired : .unreadable
                 opens = false
                 break
             }

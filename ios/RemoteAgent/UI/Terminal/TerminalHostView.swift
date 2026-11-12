@@ -124,6 +124,17 @@ final class TerminalHostView: UIView {
     /// What the drag in hand is for, decided once by its dominant axis.
     private var dragAxis: TerminalDrag?
 
+    private var suppliedAccessibilityLabel: String?
+    private var suppliedAccessibilityHint: String?
+    override var accessibilityLabel: String? {
+        get { suppliedAccessibilityLabel ?? L10n.terminalIosScreen() }
+        set { suppliedAccessibilityLabel = newValue }
+    }
+    override var accessibilityHint: String? {
+        get { suppliedAccessibilityHint ?? L10n.terminalIosScreenHint() }
+        set { suppliedAccessibilityHint = newValue }
+    }
+
     init(preferred: Int = TerminalFont.preferred) {
         self.preferred = preferred
         let scale = max(1, UITraitCollection.current.displayScale)
@@ -186,8 +197,6 @@ final class TerminalHostView: UIView {
         terminal.addGestureRecognizer(pull)
 
         isAccessibilityElement = true
-        accessibilityLabel = L10n.terminalIosScreen()
-        accessibilityHint = L10n.terminalIosScreenHint()
 
         let center = NotificationCenter.default
         center.addObserver(self, selector: #selector(keyboardMoved(_:)), name: UIResponder.keyboardWillChangeFrameNotification, object: nil)

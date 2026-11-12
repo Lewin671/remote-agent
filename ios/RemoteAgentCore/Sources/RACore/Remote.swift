@@ -296,7 +296,17 @@ public actor Remote {
         var fetching = false
         var refetch = false
         var loaded = false
-        var error: String?
+        enum HistoryFailure: Equatable {
+            case unreadable, retired
+            var message: LocalizedMessage {
+                switch self {
+                case .unreadable: L10nMessage.sessionHistoryUnreadable()
+                case .retired: L10nMessage.errorsThisHistoryUsesAnOldEncryptionFormatAndCan()
+                }
+            }
+        }
+        var historyFailure: HistoryFailure?
+        var error: String? { historyFailure?.message.resolve() }
         // The last fetch failed; cleared by the next one that works.
         var fetchError: String?
     }
@@ -473,7 +483,7 @@ public actor Remote {
         case .followers(let sid):
             followersChanged(sid)
         case .retryEvents(let sid):
-            buffers[sid]?.error = nil
+            buffers[sid]?.historyFailure = nil
             Task { await self.fetchEvents(sid) }
         }
     }

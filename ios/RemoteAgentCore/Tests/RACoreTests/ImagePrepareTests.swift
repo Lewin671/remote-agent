@@ -114,9 +114,9 @@ enum TestPictures {
 
     @Test func aFileTooLargeToReadIsRefusedInWords() throws {
         try checkPicked(bytes: 80 * 1024 * 1024, original: false)
-        #expect(throws: ImageTooLarge("图片超过 80 MB")) { try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))) { try checkPicked(bytes: 80 * 1024 * 1024 + 1, original: false) }
         try checkPicked(bytes: 60 * 1024 * 1024, original: true)
-        #expect(throws: ImageTooLarge("图片超过 60 MB")) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 60))) { try checkPicked(bytes: 60 * 1024 * 1024 + 1, original: true) }
     }
 
     @Test func aPickedFileTooLargeIsRefusedBeforeItIsRead() throws {
@@ -132,7 +132,7 @@ enum TestPictures {
         let handle = try FileHandle(forWritingTo: large)
         try handle.truncate(atOffset: UInt64(pickedReadLimit(original: false)) + 1)
         try handle.close()
-        #expect(throws: ImageTooLarge("图片超过 80 MB")) { try readPicked(large) }
+        #expect(throws: ImageTooLarge(L10nMessage.imageIosImageExceedsMb(count: 80))) { try readPicked(large) }
         try FileHandle(forWritingTo: large).truncate(atOffset: UInt64(pickedReadLimit(original: false)))
         #expect(try readPicked(large).count == 80 * 1024 * 1024)
     }
@@ -274,8 +274,8 @@ enum TestPictures {
     }
 
     @Test func whatIsNotAnImageIsRefused() {
-        #expect(throws: UserError(L10n.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data("hello, not a picture".utf8), original: false) }
-        #expect(throws: UserError(L10n.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data(), original: true) }
+        #expect(throws: UserError(L10nMessage.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data("hello, not a picture".utf8), original: false) }
+        #expect(throws: UserError(L10nMessage.imageIosCannotDecodeThisImage())) { try prepareImageNow(Data(), original: true) }
         // A JPEG cut short is a JPEG that cannot be read.
         let cut = P.encode(P.quarters(w: 40, h: 30), .jpeg).prefix(40)
         #expect(throws: (any Error).self) { try prepareImageNow(Data(cut), original: true) }

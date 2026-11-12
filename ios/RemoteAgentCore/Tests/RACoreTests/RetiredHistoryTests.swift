@@ -56,7 +56,7 @@ extension ServerTests {
             #expect(r.events("s1").value.error == retiredHistoryError)
             #expect(r.events("s1").value.events.isEmpty)
             #expect(await cache.events(sessionId: "s1").count == 1)
-            #expect(try await r.image("s1", imageId: "retired") == .corrupt(why: retiredHistoryError))
+            #expect(try await r.image("s1", imageId: "retired") == .retiredHistory)
         }
     }
 

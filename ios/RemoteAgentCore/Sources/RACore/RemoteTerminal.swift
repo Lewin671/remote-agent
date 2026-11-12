@@ -165,7 +165,7 @@ extension Remote {
                     guard h.purpose == .terminalOutput, h.machine == machineId, h.session == sid,
                         h.request == streamId
                     else { throw DeviceSecurity.Failure.untrusted }
-                    if h.seq <= last { throw OpenError(L10n.errorsTerminalFramesAreOutOfOrder()) }
+                    if h.seq <= last { throw OpenError(L10nMessage.errorsTerminalFramesAreOutOfOrder()) }
                     last = h.seq
                     listener.onFrame(frame)
                 } catch {

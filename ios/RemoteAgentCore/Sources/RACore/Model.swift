@@ -390,8 +390,9 @@ private func givenName(_ d: DeviceView?) -> String { (d?.meta?.name ?? "").jvmTr
 /// (Chrome · macOS, Android · Pixel 9, iPhone). The end of its ID follows
 /// only when another client of the account has the same default name.
 public func defaultClientName(_ d: DeviceView?, id: String, among devices: [String: DeviceView]) -> String {
-    let base = plainClientName(d?.meta)
-    let twin = devices.values.contains { o in o.id != id && o.kind == .client && plainClientName(o.meta) == base }
+    let identity = clientDefaultIdentity(d?.meta)
+    let base = identity.text
+    let twin = devices.values.contains { o in o.id != id && o.kind == .client && clientDefaultIdentity(o.meta) == identity }
     return twin ? "\(base) · \(shortId(id))" : base
 }
 
@@ -399,21 +400,30 @@ public func defaultClientName(_ d: DeviceView?, id: String, among devices: [Stri
 /// system for a web client (「Chrome on macOS」), Android and the phone's
 /// model (「Android 16 · Pixel 9」), the kind of Apple device
 /// (「iOS 27.0 · iPhone」); its kind alone when it says nothing more.
-public func plainClientName(_ meta: PBDeviceMeta?) -> String {
+private enum ClientDefaultIdentity: Equatable {
+    case raw(String), browser, client
+    var text: String {
+        switch self { case .raw(let value): value; case .browser: L10n.securityBrowser(); case .client: L10n.securityClient() }
+    }
+}
+
+public func plainClientName(_ meta: PBDeviceMeta?) -> String { clientDefaultIdentity(meta).text }
+
+private func clientDefaultIdentity(_ meta: PBDeviceMeta?) -> ClientDefaultIdentity {
     let description = (meta?.description_p ?? "").jvmTrim()
     // What follows the system's version.
     let model = description.components(separatedBy: " · ").dropFirst().joined(separator: " · ").jvmTrim()
     switch meta?.platform {
     case "ios":
-        return model.ifEmpty("iOS")
+        return .raw(model.ifEmpty("iOS"))
     case "android":
-        return model.isEmpty ? "Android" : "Android · \(model)"
+        return .raw(model.isEmpty ? "Android" : "Android · \(model)")
     case "web":
         let words = description.components(separatedBy: " on ").map { $0.jvmTrim() }
         let browser = words[0]
-        return browser.isEmpty ? L10n.securityBrowser() : ([browser] + words.dropFirst().prefix(1).filter { !$0.isEmpty }).joined(separator: " · ")
+        return browser.isEmpty ? .browser : .raw(([browser] + words.dropFirst().prefix(1).filter { !$0.isEmpty }).joined(separator: " · "))
     default:
-        return L10n.securityClient()
+        return .client
     }
 }
 

@@ -28,7 +28,7 @@ public struct ImageTooLarge: Error, LocalizedError, Equatable {
     public init(_ message: String) { localized = LocalizedMessage(raw: message) }
     public init(_ message: LocalizedMessage) { localized = message }
 
-    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.message == rhs.message }
+    public static func == (lhs: ImageTooLarge, rhs: ImageTooLarge) -> Bool { lhs.localized == rhs.localized }
     public var errorDescription: String? { message }
 }
 
