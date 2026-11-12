@@ -306,6 +306,9 @@ fun ScheduleDetailScreen(machine: String, id: String) {
         if (systemCancelled && (current.trigger.text("type") == "at" || current.trigger.text("type") == "after_turn" && current.trigger["repeat"]?.jsonPrimitive?.booleanOrNull != true)) beginEdit("time")
         else operate(if (systemCancelled) "update" else if (onceFailed) "run" else "resume", if (systemCancelled) current.spec else null)
     }
+    val pinned = if (resultCaptured) selectedResult else null
+    val result = pinned?.let { selected -> task?.allRuns?.firstOrNull { it.id == selected.id } ?: selected } ?: task?.latestNotification
+    val resultText = result?.let { rememberScheduleResultText(it) }
     val enabled = writable && !busy && !uncertain
     val definitionEnabled = enabled && task?.let(::scheduleDefinitionAllowed) == true
     Column(Modifier.fillMaxSize().background(pal.paper)) {
@@ -316,13 +319,17 @@ fun ScheduleDetailScreen(machine: String, id: String) {
             return@Column
         }
         Column(Modifier.weight(1f).fillMaxWidth().readableColumn().verticalScrollFaded()) {
+            // Reveal the card and earlier runs together, never an interim summary that changes height.
+            if (result != null && resultText == null) {
+                Skeleton()
+                return@Column
+            }
             if (error.isNotEmpty()) Notice(error, tone = NoticeTone.ERROR)
             if (uncertain) TextAction("重新读取", { scope.launch(Dispatchers.Main.immediate) { remote.schedules.refresh(machine); if (remote.schedules.state.value[machine]?.error.isNullOrEmpty()) uncertain = false } }, Modifier.padding(horizontal = 16.dp))
             if (attention) {
                 ScheduleAttentionBanner(scheduleAttentionText(task, t))
                 if (!targetMissing) PillButton(if (onceFailed) "立即运行一次" else "恢复", { recover() }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), ButtonKind.INK, enabled)
             }
-            val pinned = if (resultCaptured) selectedResult else null
             if (pinned != null && task.latestNotification != null && task.latestNotification?.id != pinned.id) {
                 TextAction("有新结果", { selectedResult = task.latestNotification }, Modifier.fillMaxWidth().padding(horizontal = 16.dp), style = T.s13)
             }
@@ -335,8 +342,7 @@ fun ScheduleDetailScreen(machine: String, id: String) {
                     }
                 }
             }
-            val result = pinned?.let { selected -> task.allRuns.firstOrNull { it.id == selected.id } ?: selected } ?: task.latestNotification
-            if (result != null) ScheduleLatestResult(result, t, capturedDetail == ScheduleTaskKey(machine, id) && result.id in entryUnread,
+            if (result != null) ScheduleLatestResult(result, resultText.orEmpty(), t, capturedDetail == ScheduleTaskKey(machine, id) && result.id in entryUnread,
                 showConversation = !(task.target.text("type") == "resume_session" && task.active != null)) {
                 nav.scheduledSession(result.session, result.seq)
             }

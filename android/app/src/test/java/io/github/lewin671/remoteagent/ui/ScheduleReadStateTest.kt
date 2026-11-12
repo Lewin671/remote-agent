@@ -55,7 +55,7 @@ class ScheduleReadStateTest {
         val events = if (cachedTranscript) mapOf("shared" to listOf(
             Event.newBuilder().setSeq(1).setOrigin(Origin.newBuilder().setScheduledRunId("r1")).setUserMessage(UserMessage.newBuilder().setText("检查项目")).build(),
             Event.newBuilder().setSeq(2).setAgentMessage(AgentMessage.newBuilder().setPhase("final_answer").setText("缓存会话里的完整回复")).build(),
-        )) else emptyMap()
+        )) else mapOf("shared" to emptyList())
         remote.showForTest(RemoteState(conn = if (cacheOnly) ConnState.OFFLINE else ConnState.ONLINE, loaded = true,
             machines = mapOf("computer" to MachineView("computer", !cacheOnly, 0, meta)), sessions = sessions), events)
         val nav = Nav({ page.value = "list" }, {}, {}, {}, {}, {}, {}, {}, { _, _ -> }, {}, {}, {},
