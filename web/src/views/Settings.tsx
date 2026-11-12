@@ -456,11 +456,12 @@ export function DevicesPage({
 }) {
   useRemote(remote);
   const me = remote.account.deviceId;
-  const machines = [...remote.machines.values()].sort((a, b) =>
+  const incomplete = [...remote.devices.values()].filter(d => d.pairingIncomplete);
+  const machines = [...remote.machines.values()].filter(m => !remote.devices.get(m.id)?.pairingIncomplete).sort((a, b) =>
     machineName(a).localeCompare(machineName(b)),
   );
   const clients = sortClients(
-    [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT),
+    [...remote.devices.values()].filter((d) => d.kind === DeviceKind.CLIENT && !d.pairingIncomplete),
     me,
   );
   // The times on this page are as of opening it.
@@ -471,6 +472,14 @@ export function DevicesPage({
     <div className="page set">
       <NavBar onBack={onBack} title="设备" />
       <div className="body">
+        {incomplete.length > 0 && <>
+          <div className="label">未完成的配对</div>
+          <p className="gf">新设备尚未完成加入。若无法继续，可移除后重新配对。</p>
+          {incomplete.map(d => <div key={d.id}>
+            <p className="gf">{d.kind === DeviceKind.MACHINE ? "电脑" : "客户端"} · 未完成的配对</p>
+            <DeviceActions remote={remote} id={d.id} incomplete />
+          </div>)}
+        </>}
         <div className="label">电脑 · 运行 CLI</div>
         <div className="grp">
           {machines.map((m) => (

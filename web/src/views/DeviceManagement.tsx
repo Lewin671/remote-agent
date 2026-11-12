@@ -37,12 +37,14 @@ export function DeviceActions({
   machine,
   go,
   onRemoved,
+  incomplete = false,
 }: {
   remote: Remote;
   id: string;
   machine?: boolean;
   go?: (r: string) => void;
   onRemoved?: () => void;
+  incomplete?: boolean;
 }) {
   const [confirm, setConfirm] = useState<"remove" | "delete">();
   const [busy, setBusy] = useState(false);
@@ -67,7 +69,7 @@ export function DeviceActions({
             disabled={busy}
             onClick={() => setConfirm("remove")}
           >
-            移除设备…
+            {incomplete ? "移除未完成的配对…" : "移除设备…"}
           </button>
         ) : (
           machine && (
@@ -96,7 +98,7 @@ export function DeviceActions({
           title={confirm === "remove" ? "移除设备？" : "删除这台电脑的记录"}
           text={
             confirm === "remove"
-              ? "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。"
+              ? incomplete ? "移除这个未完成的配对后，可在「添加设备」生成新配对码，让新设备重新加入。" : "移除后立即停止这台设备的远程访问。电脑的会话和历史档案仍保留，本地 CLI 不受影响。"
               : "将删除中继上的会话、事件和图片，无法撤销。不会删除电脑本地文件，也不会代替移除设备。"
           }
           ok={confirm === "remove" ? "移除" : "删除记录"}
@@ -141,11 +143,12 @@ export function PairCodePage({
   const [error, setError] = useState("");
   const current = useRef<AuthorityPairing | undefined>(undefined);
   const alive = useRef(true);
+  const handedOff = useRef(false);
   useEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
-      if (current.current) void current.current.cancel().catch(() => {});
+      if (current.current && !handedOff.current) void current.current.cancel().catch(() => {});
     };
   }, []);
   useEffect(() => {
@@ -235,6 +238,7 @@ export function PairCodePage({
                     replaces,
                   );
                   current.current = p;
+                  handedOff.current = false;
                   if (!alive.current) {
                     await p.cancel();
                     return;
@@ -278,6 +282,9 @@ export function PairCodePage({
                       disabled={busy || !confirmed}
                       onClick={() =>
                         void run(async () => {
+                          // Approval and its durable delivery belong to the account,
+                          // including while approve() is still awaiting its reply.
+                          handedOff.current = true;
                           await pair.approve(confirmed);
                           setApproved(true);
                         })

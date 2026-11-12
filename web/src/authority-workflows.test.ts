@@ -752,3 +752,20 @@ it("retains a surviving pin after partial storage loss and refuses initializatio
   await expect(claimSecurityOperation(operation("lease", server.url, account.deviceId, record.stateHash, {}))).rejects.toThrow("storage");
   expect(await rawSecurity("readonly", (store) => store.get("pinned-identity"))).toEqual(record.pin);
 });
+
+it("continues an approved pairing from the account without its page", async () => {
+  const { account } = await createAccount();
+  const c = await clients(account);
+  await pairCandidate(c, DeviceKind.CLIENT, "", true);
+  expect((await readSecurityOperation())?.delivery).toBeDefined();
+  class PairRemote extends Remote { constructor(a: StoredAccount) { super(a, undefined); } }
+  const remote = new PairRemote(account);
+  (remote as unknown as { token: string }).token = c.token;
+  vi.stubGlobal("document", { visibilityState: "visible", hidden: false });
+  const resume = vi.spyOn(remote.authority, "renewLeaseIfNeeded");
+  try {
+    await (remote as unknown as { continuePairing(): Promise<void> }).continuePairing();
+    expect(resume).toHaveBeenCalledOnce();
+    expect((await readSecurityOperation())?.delivery).toBeDefined();
+  } finally { remote.stop(); }
+});

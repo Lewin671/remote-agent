@@ -14,6 +14,8 @@ export interface DeviceInfo {
   createdMs: bigint;
   meta?: DeviceMeta;
   metaRev: bigint;
+  /** Signed member not yet present in the registered device directory. */
+  pairingIncomplete?: boolean;
   // When it was last used, 0 without a record.
   lastSeenMs: bigint;
 }

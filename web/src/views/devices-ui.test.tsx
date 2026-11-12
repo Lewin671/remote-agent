@@ -69,3 +69,36 @@ it("leaves a failed cancellation retryable after the local SAS key is gone", asy
   await mount(<PairCodePage remote={r} onBack={() => {}} />); await click("生成配对码"); await click("取消配对");
   expect(host.textContent).toContain("cancel acknowledgement lost"); expect(button("生成配对码")).toBeTruthy();
 });
+
+it.each([false, true])("keeps approved delivery after leaving the page (approval still pending: %s)", async (pending) => {
+  const r = demo("role=authority&pair=compare");
+  const pair = await r.startPairing("https://app.example.com");
+  const cancel = vi.spyOn(pair, "cancel");
+  let release!: () => void;
+  const wait = new Promise<void>(resolve => { release = resolve; });
+  pair.approve = async () => { if (pending) await wait; };
+  vi.spyOn(r, "startPairing").mockResolvedValue(pair);
+  vi.spyOn(r.authority, "pending").mockResolvedValue({} as never);
+  await mount(<PairCodePage remote={r} onBack={() => {}} />);
+  await click("生成配对码");
+  await act(async () => host.querySelector<HTMLInputElement>('input[type="checkbox"]')!.click());
+  await click("允许加入");
+  await act(async () => root.render(<p>设备列表</p>));
+  expect(cancel).not.toHaveBeenCalled();
+  await act(async () => release());
+});
+it("labels an unfinished candidate and offers explicit removal to pair again", async () => {
+  const { DevicesPage } = await import("./Settings");
+  const { DeviceKind } = await import("../gen/remoteagent/v1/relay_pb");
+  const r = demo("role=authority");
+  vi.spyOn(r, "loadDevices").mockResolvedValue();
+  r.devices.set("candidate", { id: "candidate", kind: DeviceKind.CLIENT, createdMs: 0n, lastSeenMs: 0n, metaRev: 0n, pairingIncomplete: true });
+  await mount(<DevicesPage remote={r} go={() => {}} onBack={() => {}} />);
+  expect(host.textContent).toContain("未完成的配对");
+  expect(host.textContent).toContain("移除后重新配对");
+  expect(host.querySelectorAll(".row.client")).toHaveLength(3);
+  const remove = vi.spyOn(r, "removeDevice").mockResolvedValue();
+  await click("移除未完成的配对…");
+  await act(async () => [...document.querySelectorAll<HTMLButtonElement>("button")].find(b => b.textContent === "移除")!.click());
+  expect(remove).toHaveBeenCalledWith("candidate");
+});

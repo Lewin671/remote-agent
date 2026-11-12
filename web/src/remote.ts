@@ -1069,6 +1069,7 @@ export class Remote {
   private generation = 0;
   private retryTimer?: ReturnType<typeof setTimeout>;
   private securityTimer?: ReturnType<typeof setInterval>;
+  private pairingTimer?: ReturnType<typeof setInterval>;
   private openTimer?: ReturnType<typeof setTimeout>;
   private idleTimer?: ReturnType<typeof setTimeout>;
   private setupProgress?: () => void;
@@ -1579,7 +1580,22 @@ export class Remote {
     // Foreground state pull: a lease renewal or removal reaches this page
     // within a minute, and an unknown state is fetched at once.
     this.securityTimer = setInterval(() => void this.syncSecurity(), 60_000);
+    clearInterval(this.pairingTimer);
+    this.pairingTimer = setInterval(() => void this.continuePairing(), 1500);
     void this.connect();
+  }
+
+  /** Delivery outlives its page. Resume only approved pairing operations;
+   * the authority lifecycle still gates work on foreground visibility. */
+  private async continuePairing() {
+    if (this.closed || (typeof document !== "undefined" && document.hidden)) return;
+    try {
+      if ((await this.authority.pending())?.delivery) {
+        this.maintainAuthority();
+        await this.maintaining;
+        if (!this.closed) await this.loadDevices(false);
+      }
+    } catch (e) { this.authorityError = errorText(e); }
   }
 
   private maintaining?: Promise<void>;
@@ -1661,6 +1677,8 @@ export class Remote {
     this.unwatchSecurityPush = undefined;
     clearInterval(this.securityTimer);
     this.securityTimer = undefined;
+    clearInterval(this.pairingTimer);
+    this.pairingTimer = undefined;
     clearTimeout(this.historyTrim);
     this.historyTrim = undefined;
     this.generation++;
@@ -3776,6 +3794,7 @@ export class Remote {
         const d: DeviceInfo = {
           id: m.id,
           kind: m.kind,
+          pairingIncomplete: !hint,
           createdMs: hint?.createdMs ?? 0n,
           lastSeenMs: hint?.lastSeenMs ?? 0n,
           metaRev: 0n,
