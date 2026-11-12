@@ -204,7 +204,7 @@ fun ImageStrip(draft: ImageDraft, remote: Remote, machineId: String?, max: Int) 
             Spacer(Modifier.weight(1f))
             Text("${draft.pictures.size} / $max", style = T.s13, color = p.ink2)
         }
-        val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.error }
+        val failed = draft.pictures.mapNotNull { (it.state as? PendingImage.State.Failed)?.failure }
         val notes = draft.pictures.mapNotNull { it.processed?.note?.takeIf { n -> n.isNotEmpty() } }.distinct()
         val messageContext = androidx.compose.ui.platform.LocalContext.current
         val messageLocale = LocalMessageLocale.current

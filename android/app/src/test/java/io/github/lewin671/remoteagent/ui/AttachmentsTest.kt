@@ -83,7 +83,7 @@ class AttachmentsTest {
         val image = img("a")
         draft.images += image
         draft.invalidate(image)
-        image.state = PendingImage.State.Failed("原图超过 20 MiB")
+        image.state = PendingImage.State.Failed.raw("原图超过 20 MiB")
         assertFalse(needsUpload(image, "mac"))
         assertFalse(draft.ready("mac"))
         assertTrue(image.needsProcessing)

@@ -86,8 +86,8 @@ fun withoutFileLines(text: String, files: List<SentFile>): String {
 data class UploadedFile(val fileId: String, val expiresMs: Long)
 
 /** IO from the provider is distinguished from network IO by where it happened. */
-class FileSourceException(cause: Exception) : MessageException(UiMessages.errorsAndroidCannotReadTheSourceFileRemoveItAndSelectThe().messageText(), cause)
-class FileContentChanged : MessageException(UiMessages.errorsAndroidTheFileChangedDuringUploadRetryOrSelectTheFile().messageText())
+class FileSourceException(cause: Exception) : MessageException(UiMessages.errorsAndroidCannotReadTheSourceFileRemoveItAndSelectThe().messageText(), cause, imageKind = ImageFailureKind.SOURCE)
+class FileContentChanged : MessageException(UiMessages.errorsAndroidTheFileChangedDuringUploadRetryOrSelectTheFile().messageText(), imageKind = ImageFailureKind.SOURCE)
 fun isUploadHashMismatch(e: Throwable) = e is CommandException && e.code == "invalid_argument" && e.message.orEmpty().contains("hash", ignoreCase = true)
 fun restartUpload(e: Throwable) = e is CommandException && (e.code == "already_exists" || e.code == "not_found" || isUploadHashMismatch(e))
 fun uploadErrorText(e: Throwable): MessageText = when {

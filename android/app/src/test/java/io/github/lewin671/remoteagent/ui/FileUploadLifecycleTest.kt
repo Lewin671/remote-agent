@@ -66,7 +66,7 @@ class FileUploadLifecycleTest {
         assertTrue(back.sizeVerified)
         assertEquals(3L, back.fileBytes)
         // A receiving transfer restores its original ID as well.
-        f.fileId = null; f.expiresMs = 0; f.state = PendingImage.State.Failed("连接中断"); d.persistOrder()
+        f.fileId = null; f.expiresMs = 0; f.state = PendingImage.State.Failed.raw("连接中断"); d.persistOrder()
         assertEquals("same-transfer", loadImages(store, d.key).first.single().transferId)
     }
 

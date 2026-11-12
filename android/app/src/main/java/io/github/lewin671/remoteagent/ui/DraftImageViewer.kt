@@ -33,7 +33,7 @@ internal fun DraftImageViewer(draft: ImageDraft, remote: Remote, machineId: Stri
             picture = { index -> key(images[index].id) { DraftViewerPage(images[index]) } },
             info = { index ->
                 val img = images[index]
-                val problem = (img.state as? PendingImage.State.Failed)?.let { imageProblem(it.error, copy = copy) }
+                val problem = (img.state as? PendingImage.State.Failed)?.let { imageProblem(it.failure, copy = copy) }
                 Text(copy(UiMessages.imagePosition(count = images.size, index = (index + 1).toInt())), color = Color.White, style = T.s15b)
                 Text(problem?.message ?: imageStateWords(img, copy = copy), color = Color.White, style = T.s15)
                 Row {
@@ -48,7 +48,7 @@ internal fun imageStateWords(image: PendingImage, copy: (io.github.lewin671.remo
     PendingImage.State.Processing -> copy(UiMessages.imagePreparing())
     is PendingImage.State.Uploading -> copy(UiMessages.imageAndroidUploadProgress(percent = ((state.progress * 100).toInt()).toString()))
     PendingImage.State.Ready -> copy(UiMessages.imageUploaded())
-    is PendingImage.State.Failed -> copy(UiMessages.attachmentFailure(reason = (imageProblem(state.error, copy = copy).message).toString()))
+    is PendingImage.State.Failed -> copy(UiMessages.attachmentFailure(reason = (imageProblem(state.failure, copy = copy).message).toString()))
 }
 
 @Composable

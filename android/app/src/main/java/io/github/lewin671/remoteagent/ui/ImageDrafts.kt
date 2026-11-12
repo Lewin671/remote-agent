@@ -101,8 +101,8 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         val turn = stopUpload(abort = false)
         if (!valid(turn)) return
         state = when {
-            !hasSource() -> State.Failed(if (isFile) sessionText(UiMessages.attachmentFileMissing()) else sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyRemoveItAndSelect()))
-            needsProcessing -> State.Failed(sessionText(UiMessages.imageAndroidReprocessOrSelectTheImageAgain()))
+            !hasSource() -> State.Failed(if (isFile) AppImageFailure.FILE_MISSING else AppImageFailure.SOURCE_MISSING)
+            needsProcessing -> State.Failed(AppImageFailure.REPROCESS_SELECTION)
             else -> State.Processing
         }
     }
@@ -112,7 +112,13 @@ class PendingImage(val id: String, val uri: String?, val fileName: String? = nul
         data object Processing : State
         data class Uploading(val progress: Float) : State
         data object Ready : State
-        data class Failed(val error: String) : State
+        data class Failed(val failure: AttachmentFailure) : State {
+            constructor(problem: AppImageFailure) : this(problem.failure())
+            val error: io.github.lewin671.remoteagent.core.MessageText get() = failure.detail
+            companion object {
+                fun raw(diagnostic: String) = Failed(rawAttachmentFailure(diagnostic))
+            }
+        }
     }
 
     var processed by mutableStateOf<Processed?>(null)
@@ -239,7 +245,7 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
             val img = java.io.DataInputStream(java.io.ByteArrayInputStream(file)).use {
                 PendingImage(id, it.readUTF(), it.readUTF(), it.readLong(), retainSource = false).apply { sizeVerified = it.readBoolean() }
             }
-            img.state = PendingImage.State.Failed(sessionText(UiMessages.imageAndroidUploadToTheComputerAgainIfTheSourceCannotBe()))
+            img.state = PendingImage.State.Failed(AppImageFailure.FILE_UPLOAD_AGAIN)
             restoreUpload(files, folder, img)
             out += img
             continue
@@ -252,7 +258,7 @@ internal fun loadImages(files: SealedFiles, folder: String, thumb: (ByteArray) -
         img.stale = (meta[3] == "1") != original
         img.thumb = bytes?.let(thumb)
         // Uploads are the daemon's for a while only: send them again.
-        img.state = PendingImage.State.Failed(if (img.stale) sessionText(UiMessages.imageAndroidReprocessUsingTheCurrentMode()) else sessionText(UiMessages.imageAndroidUploadToTheComputerAgain()))
+        img.state = PendingImage.State.Failed(if (img.stale) AppImageFailure.REPROCESS_MODE else AppImageFailure.UPLOAD_AGAIN)
         restoreUpload(files, folder, img)
         out += img
     }
@@ -435,11 +441,11 @@ class ImageDraft(
                 img.processed = p
                 img.thumb = preview
                 prepared(img)
-                (selectedMachine ?: machine())?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentAndroidChooseComputer())) }
+                (selectedMachine ?: machine())?.let { upload(remote, img, it) } ?: run { img.state = PendingImage.State.Failed(AppImageFailure.CHOOSE_COMPUTER) }
             } catch (e: kotlin.coroutines.cancellation.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (img.ownerAccount === AccountMemory.token && img.generation == turn) img.state = PendingImage.State.Failed(displayError(e))
+                if (img.ownerAccount === AccountMemory.token && img.generation == turn) img.state = PendingImage.State.Failed(attachmentFailure(e))
             }
         }
     }
@@ -482,7 +488,7 @@ class ImageDraft(
                 if (img.current(turn, machineId)) persistOrder()
             } catch (e: kotlin.coroutines.cancellation.CancellationException) { throw e
             } catch (e: Exception) {
-                img.change(turn, machineId) { img.state = PendingImage.State.Failed(sessionText(io.github.lewin671.remoteagent.core.uploadErrorText(e))) }
+                img.change(turn, machineId) { img.state = PendingImage.State.Failed(attachmentFailure(e, upload = true)) }
             }
         }
     }
@@ -542,7 +548,7 @@ class ImageDraft(
         val turn = img.stopUpload(staleBytes = true)
         if (!img.valid(turn)) return
         unmark(img, preparing = true)
-        img.state = PendingImage.State.Failed(sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyAvailableForReprocessingRemove()))
+        img.state = PendingImage.State.Failed(AppImageFailure.REPROCESS_SOURCE_MISSING)
     }
 
     fun retry(context: Context, img: PendingImage, remote: Remote, machine: () -> String?) {
@@ -633,7 +639,7 @@ class ImageDraft(
         for (img in back) {
             img.allowAbort()
             val turn = img.stopUpload(onInvalidated = {
-                if (!img.hasSource()) img.state = PendingImage.State.Failed(if (img.isFile) sessionText(UiMessages.attachmentFileMissing()) else sessionText(UiMessages.imageAndroidThisImageHasNoLocalCopyRemoveItAndSelect()))
+                if (!img.hasSource()) img.state = PendingImage.State.Failed(if (img.isFile) AppImageFailure.FILE_MISSING else AppImageFailure.SOURCE_MISSING)
                 images += img
             })
             if (!img.valid(turn)) continue

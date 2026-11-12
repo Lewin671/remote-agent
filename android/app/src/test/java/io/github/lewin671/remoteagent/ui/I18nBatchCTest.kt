@@ -151,7 +151,7 @@ class I18nBatchCTest(private val locale: String) {
         try { show { UpdateSheet {} }; shot("update") } finally { updates.value = UpdateState.Unknown }
     }
     @Test fun imageErrors() { show { Column(Modifier.padding(20.dp)) { for (error in listOf("20 MB", "dimensions", "source missing", "decode", "quota", "network", "opaque")) {
-        Text(imageProblem(error, copy = uiText()).message, style = T.s15, modifier = Modifier.padding(vertical = 10.dp))
+        Text(imageProblem(rawAttachmentFailure(error), copy = uiText()).message, style = T.s15, modifier = Modifier.padding(vertical = 10.dp))
     } } }; shot("image-errors") }
     @Test fun nativeNotifications() {
         val context = appFixture.app
@@ -198,7 +198,7 @@ class I18nBatchCTest(private val locale: String) {
         val frequency = scheduleFrequency(buildJsonObject { put("type", "interval"); put("interval_seconds", large) }, copy = ::text)
         Assert.assertTrue(frequency.contains(large.toString()))
         Assert.assertEquals("原始 CLI / original CLI", displayError(Exception("原始 CLI / original CLI"), copy = ::text))
-        val grouped = imageFailureLine(listOf("decode", "unsupported"), copy = ::text) { error("Same category must not use count summary") }
-        Assert.assertEquals(imageProblem("decode", copy = ::text).message, grouped)
+        val grouped = imageFailureLine(listOf("decode", "unsupported").map(::rawAttachmentFailure), copy = ::text) { error("Same category must not use count summary") }
+        Assert.assertEquals(imageProblem(rawAttachmentFailure("decode"), copy = ::text).message, grouped)
     }
 }

@@ -70,7 +70,7 @@ internal fun ImageDraft.uploadDocument(remote: Remote, entry: PendingImage, targ
     val machine = remote.state.value.machines[target]
     if (!filesSupported(machine)) {
         val turn = entry.stopUpload()
-        if (entry.valid(turn)) entry.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentUpdateRequired()))
+        if (entry.valid(turn)) entry.state = PendingImage.State.Failed(AppImageFailure.UPDATE_REQUIRED)
         return
     }
     startDocumentUpload(entry, target, RaApp.instance.scope, remote.uploadChannel(target), maxFileBytes(machine), forceFresh = forceFresh) {
@@ -87,7 +87,7 @@ internal fun ImageDraft.startDocumentUpload(
     var turn = entry.stopUpload(abort = changed)
     if (!entry.activate(turn, target, fresh = changed)) return
     if (!entry.hasSource()) {
-        entry.change(turn, target) { entry.state = PendingImage.State.Failed(sessionText(UiMessages.attachmentFileMissing())) }
+        entry.change(turn, target) { entry.state = PendingImage.State.Failed(AppImageFailure.FILE_MISSING) }
         persistOrder()
         return
     }
@@ -140,7 +140,7 @@ internal fun ImageDraft.startDocumentUpload(
             }
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            entry.change(turn, target) { entry.state = PendingImage.State.Failed(sessionText(uploadErrorText(e))) }
+            entry.change(turn, target) { entry.state = PendingImage.State.Failed(attachmentFailure(e, upload = true)) }
         }
     }
 }

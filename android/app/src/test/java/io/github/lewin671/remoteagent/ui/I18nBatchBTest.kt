@@ -161,7 +161,7 @@ class I18nBatchBTest(private val locale: String) {
     @Test fun attachmentRows() {
         show { Column(Modifier.padding(16.dp)) {
             FileChip("example.patch", 2048, PendingImage.State.Uploading(.42f), {}, {})
-            FileChip("notes.txt", 320, PendingImage.State.Failed("Raw transport diagnostic"), {}, {})
+            FileChip("notes.txt", 320, PendingImage.State.Failed.raw("Raw transport diagnostic"), {}, {})
             Text(uiText(FILES_AS_THEY_ARE))
             GeneratedCard(ChatItem.Generated("generated", 1, "Original image prompt", listOf(ImageRef.newBuilder().setImageId("image").setWidth(640).setHeight(360).build()))) {}
         } }; shot("attachments")

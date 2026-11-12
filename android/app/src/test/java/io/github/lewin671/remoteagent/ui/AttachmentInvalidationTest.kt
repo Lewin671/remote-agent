@@ -164,7 +164,7 @@ class AttachmentInvalidationTest {
         assertEquals(2, d.images.size)
         d.images.forEach {
             assertNull(it.imageId); assertNull(it.fileId); assertNull(it.machineId)
-            assertTrue((it.state as PendingImage.State.Failed).error.contains("没有本机副本"))
+            assertTrue((it.state as PendingImage.State.Failed).error.testText().contains("没有本机副本"))
         }
         assertFalse(d.ready("A"))
     }

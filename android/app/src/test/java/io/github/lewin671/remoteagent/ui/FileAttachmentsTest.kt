@@ -32,7 +32,7 @@ class FileAttachmentsTest {
         assertTrue(restored.isFile)
         assertNull(restored.processed)
         assertTrue(needsUpload(restored, "computer"))
-        assertTrue((restored.state as PendingImage.State.Failed).error.contains("重新选择"))
+        assertTrue((restored.state as PendingImage.State.Failed).error.testText().contains("重新选择"))
     }
 
     @Test fun filesAndImagesHaveSeparateLimitsAndRestoringIsAtomic() {

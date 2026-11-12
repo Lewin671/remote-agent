@@ -11,11 +11,11 @@ import org.junit.Test
 class ImageProblemTest {
     @get:org.junit.Rule val batchCResources = io.github.lewin671.remoteagent.ui.SessionMessageContextRule()
     @Test fun invalidImagesAreNotRetriedAndTransportFailuresCanBeRetried() {
-        assertEquals(ImageProblem(ImageProblemKind.ORIGINAL_LIMIT, "图片超过 20 MB，关掉原图再发", false), imageProblem("原图超过20 MB"))
-        assertFalse(imageProblem("the image does not decode").retryable)
-        assertTrue(imageProblem("unavailable: machine offline").retryable)
-        assertEquals(messageTextForTest(UiMessages.imageThisImageCouldNotBeProcessed()), imageProblem("opaque internal exception").message)
-        assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed")) { "$it 张图没加上，点图片看原因" })
+        assertEquals(ImageProblem(ImageProblemKind.ORIGINAL_LIMIT, "图片超过 20 MB，关掉原图再发", false), imageProblem(rawAttachmentFailure("原图超过20 MB")))
+        assertFalse(imageProblem(rawAttachmentFailure("the image does not decode")).retryable)
+        assertTrue(imageProblem(rawAttachmentFailure("unavailable: machine offline")).retryable)
+        assertEquals(messageTextForTest(UiMessages.imageThisImageCouldNotBeProcessed()), imageProblem(rawAttachmentFailure("opaque internal exception")).message)
+        assertEquals("2 张图没加上，点图片看原因", imageFailureLine(listOf("图片尺寸太大", "decode failed").map(::rawAttachmentFailure)) { "$it 张图没加上，点图片看原因" })
     }
 
     @Test fun uncertainMessagesAreRecoverableOnlyWhileTheirLocalAttachmentSurvives() {

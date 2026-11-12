@@ -234,11 +234,11 @@ suspend fun loginResponse(api: Api, account: Account): LoginResponse {
 /** A daemon's answer, or a failure to get one. [code] is a Connect code name. */
 enum class CommandFailureKind { RAW, CONNECTION_DROPPED, REPLY_UNVERIFIED, UNKNOWN, COMPUTER_OFFLINE, IMAGE_MISSING }
 
-class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW) :
+class CommandException(val code: String, message: String, val fromDaemon: Boolean = false, val failureKind: CommandFailureKind = CommandFailureKind.RAW, override val imageKind: ImageFailureKind? = null) :
     Exception(message), MessageFailure {
     override var display: MessageText = message.messageText()
         private set
-    constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW) : this(code, "command_failure", fromDaemon, failureKind) { display = message }
+    constructor(code: String, message: MessageText, fromDaemon: Boolean = false, failureKind: CommandFailureKind = CommandFailureKind.RAW, imageKind: ImageFailureKind? = null) : this(code, "command_failure", fromDaemon, failureKind, imageKind) { display = message }
     // fromDaemon: the daemon's own answer for this request, the final word
     // on it (except that it expired before reaching the daemon).
 

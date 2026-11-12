@@ -75,7 +75,7 @@ internal fun FileChip(name: String, size: Long, state: PendingImage.State? = nul
             if (state is PendingImage.State.Uploading) Box(Modifier.padding(top = 5.dp).fillMaxWidth().height(3.dp).clip(Radii.Pill).background(p.fill2)) {
                 Box(Modifier.fillMaxWidth(state.progress).height(3.dp).clip(Radii.Pill).background(p.ink))
             }
-            if (state is PendingImage.State.Failed) Text(state.error, style = T.s13, color = p.red)
+            if (state is PendingImage.State.Failed) Text(uiText(state.error), style = T.s13, color = p.red)
         }
         if (state is PendingImage.State.Failed && onRetry != null) Box(Modifier.heightIn(min = 44.dp).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onRetry).padding(horizontal = 4.dp), contentAlignment = Alignment.Center) {
             Text(copy(UiMessages.commonRetry()), style = T.s15b, color = p.ink)
