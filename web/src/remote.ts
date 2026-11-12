@@ -234,6 +234,8 @@ export function newSlot(now = Date.now()): RequestSlot {
   return { requestId: newRequestID(), deadline: now + COMMAND_TTL_MS };
 }
 
+export class ScheduleRevisionError extends Error {}
+
 export class CommandError extends Error {
   constructor(
     readonly code: string,
@@ -566,7 +568,7 @@ export class Remote {
       ({ task }) =>
         task.spec.target.type === "resume_session" &&
         task.spec.target.session === sid &&
-        taskGroup(task) !== "已结束",
+        taskGroup(task) !== "ended",
     );
   }
   /** Called on remote changes. Only capabilities, connectivity and the monotonic
@@ -737,7 +739,7 @@ export class Remote {
       if (error instanceof CommandError && error.fromDaemon && error.code === "aborted") {
         attempt.abandon(); // definite schedule revision conflict
         await this.refreshSchedules(machineId);
-        throw new Error("任务刚被修改，已更新为最新内容");
+        throw new ScheduleRevisionError("任务刚被修改，已更新为最新内容");
       }
       throw error;
     }
@@ -857,16 +859,16 @@ export class Remote {
   private outboxLoads = new Map<string, Promise<void>>();
   private outboxSaves = new Map<string, Promise<void>>();
   private outboxWriteFailed = new Set<string>();
-  private localNotices = new Map<string, string>();
+  private localNotices = new Map<string, { message: string; kind: "draft" | "outbox_save" }>();
 
-  private localNotice(key: string, message: string) {
+  private localNotice(key: string, message: string, kind: "draft" | "outbox_save" = "draft") {
     const tray = this.trays.get(key);
-    if (!this.closed && tray) { this.localNotices.set(key, message); tray.note = message; this.touch(); }
+    if (!this.closed && tray) { this.localNotices.set(key, { message, kind }); tray.note = message; this.touch(); }
   }
 
   private clearLocalNotice(key: string) {
     const tray = this.trays.get(key), notice = this.localNotices.get(key);
-    if (tray && notice && tray.note === notice) { tray.note = ""; this.touch(); }
+    if (tray && notice && tray.note === notice.message) { tray.note = ""; this.touch(); }
     this.localNotices.delete(key);
   }
 
@@ -946,11 +948,11 @@ export class Remote {
     void saved.then(() => {
       if (this.outboxSaves.get(sid) === saved) {
         this.outboxWriteFailed.delete(sid);
-        if (this.localNotices.get(sid)?.startsWith("待发记录没能保存")) this.clearLocalNotice(sid);
+        if (this.localNotices.get(sid)?.kind === "outbox_save") this.clearLocalNotice(sid);
       }
     }, () => {
       if (this.outboxSaves.get(sid) === saved) this.outboxWriteFailed.add(sid);
-      this.localNotice(sid, "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果");
+      this.localNotice(sid, "待发记录没能保存到本机，消息仍会发送；关闭页面前请核对发送结果", "outbox_save");
     });
     return saved;
   }

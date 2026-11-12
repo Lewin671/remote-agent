@@ -5,6 +5,7 @@ import { Startup } from "../Startup";
 import { page } from "./pages";
 import {
   AuthoritySetup,
+  RecoverySignatureMissing,
   authorityStartup,
   type AuthorityStartup,
   type RecoveryStatus,
@@ -47,6 +48,7 @@ export function AccountEntry({
   const [status, setStatus] = useState<RecoveryStatus>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [signatureMissing, setSignatureMissing] = useState(false);
   const refresh = async () => {
     const state = await authorityStartup();
     setStartup(state);
@@ -64,10 +66,12 @@ export function AccountEntry({
   const run = async (work: () => Promise<void>) => {
     setBusy(true);
     setError("");
+    setSignatureMissing(false);
     try {
       await work();
       await refresh();
     } catch (e) {
+      setSignatureMissing(e instanceof RecoverySignatureMissing);
       setError(errorText(e));
       await refresh().catch(() => {});
     } finally {
@@ -230,7 +234,7 @@ export function AccountEntry({
                     : `恢复申请待处理。可生效时间：${futureTime(status.readyMs)}`}
                 </Banner>
               )}
-              {error.includes("签名尚未保存") && (
+              {signatureMissing && (
                 <>
                   <textarea
                     className="field"

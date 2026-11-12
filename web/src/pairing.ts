@@ -130,6 +130,12 @@ export function checkPairChainSize(
 type Poll = (want: PairingState) => Promise<GetPairingResponse>;
 
 /** The user stopped waiting on this device (not a refusal by the other). */
+export class PairingStatusError extends Error {
+  constructor(readonly code: "expired_or_canceled" | "refused") {
+    super(code === "refused" ? "管理端取消了配对" : "配对已过期或被取消");
+  }
+}
+
 export class PairCanceled extends Error {
   constructor() {
     super("已取消");
@@ -148,11 +154,11 @@ function poller(
         res = await get();
       } catch (e) {
         if (ConnectError.from(e).code === Code.NotFound)
-          throw new Error("配对已过期或被取消");
+          throw new PairingStatusError("expired_or_canceled");
         throw e;
       }
       if (res.state === PairingState.CANCELED)
-        throw new Error("管理端取消了配对");
+        throw new PairingStatusError("refused");
       if (res.state >= want) return res;
       await sleep(1000);
     }

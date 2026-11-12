@@ -15,11 +15,11 @@ it("moves completed tasks with new results into recent and back into the folded 
   seen.observe("m", [ended]);
   const entries = [{ machineId: "m", task: ended }];
   const groups = () => groupTasks(entries, e => seen.hasNew(e.machineId, e.task));
-  expect(groups().get("最近")).toHaveLength(1);
-  expect(groups().get("已结束")).toHaveLength(0);
+  expect(groups().get("recent")).toHaveLength(1);
+  expect(groups().get("ended")).toHaveLength(0);
   seen.markRead("m", ended);
-  expect(groups().get("最近")).toHaveLength(0);
-  expect(groups().get("已结束")).toHaveLength(1);
+  expect(groups().get("recent")).toHaveLength(0);
+  expect(groups().get("ended")).toHaveLength(1);
   const cleanup = new ScheduleSeen([], store(), r => read.push(r.id));
   cleanup.observe("m", []); cleanup.observe("m", [ended]); cleanup.markRead("m", ended);
   expect(read).toEqual(["result"]);
@@ -46,8 +46,8 @@ it("sorts attention by stop time, recent by result time then next time, and keep
     task({ id: "stopped-old", status: "uncertain", updated_at: "2026-10-30T10:00:00Z" }),
   ];
   const groups = groupTasks(tasks.map(t => ({ machineId: "m", task: t })));
-  expect(groups.get("需要你看一下")!.map(e => e.task.id)).toEqual(["stopped-new", "stopped-old"]);
-  expect(groups.get("最近")!.map(e => e.task.id)).toEqual(["newer", "older", "no-result-early", "no-result-late"]);
+  expect(groups.get("attention")!.map(e => e.task.id)).toEqual(["stopped-new", "stopped-old"]);
+  expect(groups.get("recent")!.map(e => e.task.id)).toEqual(["newer", "older", "no-result-early", "no-result-late"]);
   expect(stoppedTime(tasks[5])).toBe(tasks[5].updated_at);
   expect(notificationTime(run("r", { started_at: "", ended_at: "", scheduled_at: "scheduled" }))).toBe("scheduled");
 });

@@ -1,3 +1,4 @@
+import { ScheduleRevisionError } from "../remote";
 import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { ApprovalMode } from "../gen/remoteagent/v1/event_pb";
 import { agentById, agentInfo } from "../agents";
@@ -125,7 +126,7 @@ export function ScheduleRow({
     ? remote.sessions.get(t.spec.target.session ?? "")?.info ? agentName(agentOf(remote.sessions.get(t.spec.target.session!))) : ""
     : t.spec.target.agent ? agentById(t.spec.target.agent).name : agentInfo().name;
   const multiple = (value: (t: ScheduleTask) => string) => new Set(entries.map(e => value(e.task)).filter(Boolean)).size > 1;
-  const attention = taskGroup(task) === "需要你看一下";
+  const attention = taskGroup(task) === "attention";
   const fresh = remote.scheduleHasNew(machineId, task);
   const notification = latestNotification(task);
   const at = attention ? stoppedTime(task) : notificationTime(notification);
@@ -137,7 +138,7 @@ export function ScheduleRow({
   const card = layout === "card" && (attention || fresh);
   const dot = (attention || fresh) && <i className={"mark schedule-unread-dot " + (attention ? "wait attention-dot" : "unread")} role="img" aria-label={attention ? "需要你处理" : "有新结果"} />;
   const row1 = <span className="row1">{card && dot}<b>{task.spec.title}</b><span>{at ? scheduleTime(at, now) : ""}</span></span>;
-  const pv = <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? "没能运行" : "已停下"}</strong> · {reasonText(task.reason).replace(/，任务已停下$/, "")}</> : notification ? runSummary(notification) || runResult(notification) : running ? <span className="none">还没有结果</span> : allRuns(task).length ? lastResult(task, now) : `还没有运行${task.next_run_at ? " · 下次 " + dateTime(task.next_run_at, now) : ""}`}</span>;
+  const pv = <span className="pv">{attention ? <><strong>{task.status === "failed" && oneShot(task) ? "没能运行" : "已停下"}</strong> · {reasonText(task.reason, true)}</> : notification ? runSummary(notification) || runResult(notification) : running ? <span className="none">还没有结果</span> : allRuns(task).length ? lastResult(task, now) : `还没有运行${task.next_run_at ? " · 下次 " + dateTime(task.next_run_at, now) : ""}`}</span>;
   const mc = <span className="mc">{running && <><LoaderCircle className="spin" />正在运行 · </>}{[
     timingText(task.spec.trigger), multiple(location) ? projectName(location(task)) : "", multiple(agent) ? agent(task) : "",
     new Set(entries.map(e => e.machineId)).size > 1 ? machineName(m) : "",
@@ -177,9 +178,9 @@ function ScheduleMenu({ remote, machineId, task, onClose, onUnread, onDeleted, o
   const [rearming, setRearming] = useState<ScheduleTask>();
   const online = remote.conn === "online" && remote.machines.get(machineId)?.online;
   const frozen = remote.scheduleAttempts.get(machineId + "/" + task.id)?.frozen;
-  const ended = taskGroup(task) === "已结束";
+  const ended = taskGroup(task) === "ended";
   const fresh = remote.scheduleHasNew(machineId, task);
-  const paused = taskGroup(task) !== "进行中";
+  const paused = taskGroup(task) !== "active";
   const targetSession = remote.sessions.get(task.spec.target.session ?? "");
   const menuProject = task.spec.target.cwd || targetSession?.info?.cwd;
   const menuAgent = task.spec.target.type === "resume_session" ? targetSession?.info ? agentName(agentOf(targetSession)) : "" : (task.spec.target.agent ? agentById(task.spec.target.agent).name : agentInfo().name);
@@ -232,11 +233,11 @@ export function SchedulesPage({ remote, go, sidebar = false, selected }: { remot
   );
   const loading = [...remote.schedules.values()].some((s) => s.loading);
   const errors = supported.filter((id) => remote.schedules.get(id)?.error);
-  const stopped = groups.get("需要你看一下") ?? [];
-  const recent = groups.get("最近") ?? [];
+  const stopped = groups.get("attention") ?? [];
+  const recent = groups.get("recent") ?? [];
   const fresh = recent.filter(hasNew);
   const others = recent.filter((e) => !hasNew(e));
-  const ended = groups.get("已结束") ?? [];
+  const ended = groups.get("ended") ?? [];
   const visible = stopped.length + recent.length + ended.length;
   const title = !visible ? (loading ? "正在读取任务…" : "还没有定时任务")
     : stopped.length ? <><em>{stopped.length}</em> 个任务停下了</>
@@ -717,7 +718,7 @@ export function ScheduleDetail({
         setNotice("已请求立即运行一次，不改变自动计划。");
     } catch (e) {
       setError(errorText(e));
-      if (errorText(e).includes("任务刚被修改")) {
+      if (e instanceof ScheduleRevisionError) {
         setEdit("");
         setEditBase(undefined);
       }
@@ -737,7 +738,7 @@ export function ScheduleDetail({
         </div>
       </div>
     );
-  const attention = taskGroup(task) === "需要你看一下";
+  const attention = taskGroup(task) === "attention";
   const systemCancelled = task.status === "cancelled" && attention;
   const failedOnce = task.status === "failed" && oneShot(task);
   const target = task.spec.target;
@@ -787,7 +788,7 @@ export function ScheduleDetail({
     <div className="page schedules-page schedule-detail">
       <NavBar
         title={task.spec.title}
-        sub={attention ? "已停下" : target.type === "resume_session" ? `${timingText(task.spec.trigger)} · 发到「${targetSession?.info ? titleOf(targetSession) : "对话"}」` : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "进行中" ? task.next_run_at ? "下次 " + dateTime(task.next_run_at, now) : "下次待定" : nextText(task, now)}`}
+        sub={attention ? "已停下" : target.type === "resume_session" ? `${timingText(task.spec.trigger)} · 发到「${targetSession?.info ? titleOf(targetSession) : "对话"}」` : `${timingText(task.spec.trigger)} · ${taskGroup(task) === "active" ? task.next_run_at ? "下次 " + dateTime(task.next_run_at, now) : "下次待定" : nextText(task, now)}`}
         right={<button ref={moreRef} className="more" aria-label="更多" onClick={() => setMenu(true)}><Ellipsis /></button>}
         onBack={onBack}
       />
@@ -930,7 +931,7 @@ export function ScheduleDetail({
           <Field
             name="权限"
             value={
-              <span className={permission === "完全放行" ? "red" : ""}>
+              <span className={(target.type === "new_session" ? target.mode === "full" : !!targetSession && modeOf(targetSession)?.mode === ApprovalMode.FULL_ACCESS) ? "red" : ""}>
                 {permission}
               </span>
             }

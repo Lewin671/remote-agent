@@ -16,6 +16,8 @@ import { relayFetch } from "./transport";
 import { PROTOCOL_VERSION } from "./protocol";
 import { AuthService, ClientService, RecoveryService, DeviceKind, DeviceRegistrationSchema, RegisterDeviceRequestSchema, SubmitRecoveryRequestSchema, CompleteRecoveryRequestSchema, PutSecurityStateRequestSchema, GetRecoveryContextResponse_Phase as RecoveryPhase, type SignupProof, type GetRecoveryContextResponse } from "./gen/remoteagent/v1/relay_pb";
 
+export class RecoverySignatureMissing extends Error {}
+
 type B = Uint8Array<ArrayBuffer>;
 interface CreationDraft {
   account: StoredAccount;
@@ -321,7 +323,7 @@ export class AuthoritySetup {
     return this.lifecycle.run(async (check) => {
       let op = await readSecurityOperation<RecoveryDraft>();
       if (!op || op.kind !== "recovery") throw new SecurityError("conflict");
-      if (!op.signed) throw new Error("恢复签名尚未保存，请重新输入原恢复码继续原草稿");
+      if (!op.signed) throw new RecoverySignatureMissing("恢复签名尚未保存，请重新输入原恢复码继续原草稿");
       if (!op.local.recoveryId) {
         check();
         const reply = await this.services(op.server).recovery.submitRecovery(fromBinary(SubmitRecoveryRequestSchema, op.signed));

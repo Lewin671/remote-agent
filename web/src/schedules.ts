@@ -76,19 +76,19 @@ export interface ScheduleTask {
   manual_request?: { request_id: string };
 }
 export type TaskEntry = { machineId: string; task: ScheduleTask };
-export const scheduleGroups = ["需要你看一下", "最近", "已结束"] as const;
+export const scheduleGroups = ["attention", "recent", "ended"] as const;
 export type ScheduleGroup = (typeof scheduleGroups)[number];
-type TaskState = "需要你看一下" | "进行中" | "已暂停" | "已结束";
+type TaskState = "attention" | "active" | "paused" | "ended";
 export function taskGroup(t: ScheduleTask): TaskState {
   if (t.status === "cancelled" && t.reason && t.reason !== "user_cancelled")
-    return "需要你看一下";
-  if (["completed", "cancelled"].includes(t.status)) return "已结束";
+    return "attention";
+  if (["completed", "cancelled"].includes(t.status)) return "ended";
   if (
     ["failed", "uncertain"].includes(t.status) ||
     (t.status === "paused" && !!t.reason && !["user_paused", "completed_while_paused"].includes(t.reason))
   )
-    return "需要你看一下";
-  return t.status === "paused" ? "已暂停" : "进行中";
+    return "attention";
+  return t.status === "paused" ? "paused" : "active";
 }
 export function taskVisible(t: ScheduleTask): boolean {
   return (
@@ -99,11 +99,11 @@ export function stoppedTime(task: ScheduleTask): string {
   return notificationTime(allRuns(task)[0]) || task.updated_at;
 }
 export function groupTasks(entries: TaskEntry[], hasNew: (entry: TaskEntry) => boolean = () => false): Map<ScheduleGroup, TaskEntry[]> {
-  const group = (e: TaskEntry): ScheduleGroup => taskGroup(e.task) === "需要你看一下" ? "需要你看一下"
-    : taskGroup(e.task) === "已结束" && !hasNew(e) ? "已结束" : "最近";
+  const group = (e: TaskEntry): ScheduleGroup => taskGroup(e.task) === "attention" ? "attention"
+    : taskGroup(e.task) === "ended" && !hasNew(e) ? "ended" : "recent";
   return new Map(scheduleGroups.map(g => [g, entries.filter(e => taskVisible(e.task) && group(e) === g).sort((a, b) => {
-    const time = (e: TaskEntry) => Date.parse(g === "需要你看一下" ? stoppedTime(e.task) : notificationTime(latestNotification(e.task))) || 0;
-    return time(b) - time(a) || (g === "最近"
+    const time = (e: TaskEntry) => Date.parse(g === "attention" ? stoppedTime(e.task) : notificationTime(latestNotification(e.task))) || 0;
+    return time(b) - time(a) || (g === "recent"
       ? (a.task.next_run_at ?? "9999").localeCompare(b.task.next_run_at ?? "9999")
       : b.task.updated_at.localeCompare(a.task.updated_at)) || a.machineId.localeCompare(b.machineId) || a.task.id.localeCompare(b.task.id);
   })]));
@@ -227,7 +227,7 @@ export function taskName(name: string, message: string): string {
 export function nextText(t: ScheduleTask, now = Date.now()): string {
   if (t.active_run && ["dispatching", "queued", "running"].includes(t.active_run.status)) return "运行中";
   const g = taskGroup(t);
-  if (g !== "进行中") return g === "需要你看一下" ? "已停下" : g;
+  if (g !== "active") return g === "attention" ? "已停下" : g === "paused" ? "已暂停" : "已结束";
   return t.next_run_at ? `下次 ${dateTime(t.next_run_at, now)}` : "下次待定";
 }
 export const scheduleOfflineRow = "未连接";
@@ -260,9 +260,16 @@ const reasons: Record<string, string> = {
   user_paused: "已暂停",
   user_cancelled: "已删除",
 };
-export function reasonText(reason?: string): string {
+const compactReasons: Record<string, string> = {
+  "agent_schedule_permissions_changed": "创建任务时的权限已改变",
+  "agent_schedule_interval_below_minimum": "Agent 创建的任务间隔过短",
+  "execution_failed": "运行失败",
+  "execution_interrupted": "运行被中断",
+  "message_cancelled": "定时消息在送达前被取消"
+};
+export function reasonText(reason?: string, compact = false): string {
   return reason
-    ? (reasons[reason] ?? `电脑返回的原因：${reason}`)
+    ? ((compact ? compactReasons[reason] : undefined) ?? reasons[reason] ?? `电脑返回的原因：${reason}`)
     : "运行结果无法确认";
 }
 export function allRuns(t: ScheduleTask): ScheduleRun[] {
@@ -321,7 +328,7 @@ export function runSummary(r: ScheduleRun): string {
   );
 }
 export function lastResult(t: ScheduleTask, now = Date.now()): string {
-  if (taskGroup(t) === "需要你看一下") return reasonText(t.reason);
+  if (taskGroup(t) === "attention") return reasonText(t.reason);
   const runs = allRuns(t);
   const latest = runs[0];
   if (!latest) return "还没有运行";
@@ -750,6 +757,6 @@ export class ScheduleSeen {
     this.save(machine, ids);
   }
   count(entries: TaskEntry[]) {
-    return entries.filter(({ task }) => taskVisible(task) && taskGroup(task) === "需要你看一下").length;
+    return entries.filter(({ task }) => taskVisible(task) && taskGroup(task) === "attention").length;
   }
 }

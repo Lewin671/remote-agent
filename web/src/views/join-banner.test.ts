@@ -1,3 +1,4 @@
+import { PairingStatusError } from "../pairing";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { expect, it } from "vitest";
 import { joinBanner, joinExistingLead, joinLead } from "./Pairing";
@@ -11,12 +12,12 @@ it("tells a release mismatch apart from a wrong code", () => {
 
 
 it("an expired-or-canceled pairing does not accuse the other device of refusing", () => {
-  expect(joinBanner(new Error("配对已过期或被取消"))).toEqual({
+  expect(joinBanner(new PairingStatusError("expired_or_canceled"))).toEqual({
     kind: "err",
     text: "这次配对已失效，请在管理端重新生成配对码",
-    action: "重填",
+    action: "refill",
   });
-  expect(joinBanner(new Error("管理端取消了配对")).text).toBe("对方拒绝了这次加入");
+  expect(joinBanner(new PairingStatusError("refused")).text).toBe("对方拒绝了这次加入");
 });
 
 it("tells a browser to type the code the phone shows, never to scan", () => {

@@ -1,7 +1,7 @@
 import { SetupReset } from "../SetupReset";
 import { Code, ConnectError } from "@connectrpc/connect";
 import { useEffect, useRef, useState } from "react";
-import { joinByPairing, PairCanceled, parsePairLink } from "../pairing";
+import { joinByPairing, PairCanceled, PairingStatusError, parsePairLink } from "../pairing";
 import { errorText } from "../remote";
 import { Banner } from "../ui";
 import { LoaderCircle } from "../icons";
@@ -24,16 +24,16 @@ const defaultServer = () =>
 export function joinBanner(e: unknown): {
   kind: "err" | "warn";
   text: string;
-  action: string;
+  action: "" | "restart" | "retry" | "refill";
 } {
   const text = errorText(e);
   if (e instanceof ConnectError && e.code === Code.PermissionDenied && e.rawMessage === "login failed")
-    return { kind: "err", text, action: "重新开始" };
+    return { kind: "err", text, action: "restart" };
   if (/security: clock/.test(text))
     return {
       kind: "warn",
       text: "本机时间比管理端慢，操作会被拒绝。请校准系统时间和时区后再加入。",
-      action: "重试",
+      action: "retry",
     };
   if (e instanceof Error && /security chain is too large/.test(e.message))
     return {
@@ -50,7 +50,7 @@ export function joinBanner(e: unknown): {
     return {
       kind: "err",
       text: "这个网页和服务器或发起配对的设备版本不同，请刷新页面更新后再试",
-      action: "重填",
+      action: "refill",
     };
   if (
     e instanceof ConnectError &&
@@ -61,21 +61,19 @@ export function joinBanner(e: unknown): {
       Code.FailedPrecondition,
     ].includes(e.code)
   )
-    return { kind: "err", text: "配对码不对，或者已经用过了", action: "重填" };
+    return { kind: "err", text: "配对码不对，或者已经用过了", action: "refill" };
   if (e instanceof ConnectError && e.code === Code.ResourceExhausted)
-    return { kind: "err", text: "试得太多了，等一分钟再试", action: "重填" };
-  if (/过期.*取消|取消.*过期/.test(text))
-    return { kind: "err", text: "这次配对已失效，请在管理端重新生成配对码", action: "重填" };
-  if (/取消/.test(text))
-    return { kind: "err", text: "对方拒绝了这次加入", action: "重新开始" };
-  if (/过期/.test(text))
-    return { kind: "err", text: "配对码过期了", action: "重填" };
+    return { kind: "err", text: "试得太多了，等一分钟再试", action: "refill" };
+  if (e instanceof PairingStatusError && e.code === "expired_or_canceled")
+    return { kind: "err", text: "这次配对已失效，请在管理端重新生成配对码", action: "refill" };
+  if (e instanceof PairingStatusError && e.code === "refused")
+    return { kind: "err", text: "对方拒绝了这次加入", action: "restart" };
   if (
     (e instanceof ConnectError && e.code === Code.Unavailable) ||
     e instanceof TypeError
   )
-    return { kind: "warn", text: "不确定是否成功：网络断了", action: "重试" };
-  return { kind: "err", text, action: "重新开始" };
+    return { kind: "warn", text: "不确定是否成功：网络断了", action: "retry" };
+  return { kind: "err", text, action: "restart" };
 }
 
 /** Joins this browser with explicit approval from an enrolled device. */
@@ -187,9 +185,9 @@ export function Setup({
     <div className="pad">
       <Banner
         kind={error.kind}
-        action={error.action || undefined}
+        action={error.action ? { restart: "重新开始", retry: "重试", refill: "重填" }[error.action] : undefined}
         onAction={() => {
-          if (error.action === "重填") {
+          if (error.action === "refill") {
             setCode("");
             setError(undefined);
           } else if (error.action) void pair({ code, server });
