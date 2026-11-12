@@ -87,6 +87,7 @@ struct NewTaskModelPanel: View {
     @Environment(AppModel.self) private var model
     @Environment(AccountContext.self) private var context
     @State private var error = ""
+    @State private var controlsHeight: CGFloat = 0
     @AccessibilityFocusState private var announced: Bool
 
     var body: some View {
@@ -112,9 +113,6 @@ struct NewTaskModelPanel: View {
                     .accessibilityFocused($announced)
                     if let blocked { Banner(blocked).padding(.bottom, 8) }
                     if !settled { Hint("正在读取这个项目上次的设置…") }
-                    if !picker.allModels, let ms = models.list {
-                        controls(c, ms).disabled(!settled || blocked != nil)
-                    }
                 }
                 if let ms = models.list {
                     let selected = projectModel(c, models: ms, settings: picker.settings(for: c))
@@ -122,33 +120,30 @@ struct NewTaskModelPanel: View {
                     let more = !picker.allModels && shown.count < ms.models.count
                     ScrollView {
                         VStack(spacing: 0) {
-                            let defaultID = defaultModelName(c, models: ms, settings: picker.settings(for: c))
-                            let standing = findModel(ms.models, id: defaultID) { $0.slug }
-                            let name = standing.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? defaultID
-                            row("默认" + (name.isEmpty ? "" : "（\(name)）"), checked: c.model.isEmpty) { pick("", ms) }
-                            ForEach(shown, id: \.slug) { m in
-                                row(m.displayName.isEmpty ? m.slug : m.displayName,
-                                    checked: !c.model.isEmpty && selected?.slug == m.slug) { pick(m.slug, ms) }
+                            if !picker.allModels {
+                                controls(c, ms)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .disabled(!settled || blocked != nil)
+                                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { controlsHeight = $0 }
+                                    .background(DS.popover)
+                                    // One scroll owner in both modes. Change only the paint
+                                    // position, preserving the list's layout and scroll offset.
+                                    .visualEffect { effect, geometry in
+                                        let pinned = shouldPinModelControls(
+                                            bodyHeight: geometry.bounds(of: .scrollView)?.height ?? 0,
+                                            controlsHeight: geometry.size.height)
+                                        return effect.offset(y: pinned ? max(0, -geometry.frame(in: .scrollView).minY) : 0)
+                                    }
+                                    .zIndex(1)
                             }
-                            if more {
-                                Button { picker.allModels = true } label: {
-                                    HStack {
-                                        Text("全部模型")
-                                        Spacer()
-                                        Image(systemName: "chevron.right")
-                                    }.foregroundStyle(DS.ink2).frame(height: 44).contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("new-model-show-all")
-                            }
+                            modelRows(c, ms, selected: selected, shown: shown, more: more)
+                                .disabled(!settled || blocked != nil)
                         }
-                        .font(.subheadline)
-                        .disabled(!settled || blocked != nil)
                     }
                     .id(picker.allModels)
                     .scrollBounceBehavior(.basedOnSize)
                     .scrollDismissesKeyboard(.never)
-                    .frame(idealHeight: CGFloat(shown.count + 1 + (more ? 1 : 0)) * 44)
+                    .frame(idealHeight: CGFloat(shown.count + 1 + (more ? 1 : 0)) * 44 + (picker.allModels ? 0 : controlsHeight))
                     .accessibilityIdentifier("new-model-list")
                 } else {
                     Group {
@@ -182,6 +177,31 @@ struct NewTaskModelPanel: View {
                    !Task.isCancelled { picker.received(r.settings, machine: c.machineId) }
             }
         }
+    }
+
+    private func modelRows(_ c: NewConfig, _ ms: PBListModelsResponse, selected: PBModelInfo?, shown: [PBModelInfo], more: Bool) -> some View {
+        VStack(spacing: 0) {
+            let defaultID = defaultModelName(c, models: ms, settings: picker.settings(for: c))
+            let standing = findModel(ms.models, id: defaultID) { $0.slug }
+            let name = standing.map { $0.displayName.isEmpty ? $0.slug : $0.displayName } ?? defaultID
+            row("默认" + (name.isEmpty ? "" : "（\(name)）"), checked: c.model.isEmpty) { pick("", ms) }
+            ForEach(shown, id: \.slug) { m in
+                row(m.displayName.isEmpty ? m.slug : m.displayName,
+                    checked: !c.model.isEmpty && selected?.slug == m.slug) { pick(m.slug, ms) }
+            }
+            if more {
+                Button { picker.allModels = true } label: {
+                    HStack {
+                        Text("全部模型")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                    }.foregroundStyle(DS.ink2).frame(height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("new-model-show-all")
+            }
+        }
+        .font(.subheadline)
     }
 
     @ViewBuilder private func controls(_ c: NewConfig, _ ms: PBListModelsResponse) -> some View {
@@ -249,8 +269,12 @@ private struct NewTaskModelSegments: View {
     }
 }
 
-/// Pin the header/controls, give only the list the remaining height, and wrap
-/// short lists. The overlay receives the available height, never sizes the composer.
+func shouldPinModelControls(bodyHeight: CGFloat, controlsHeight: CGFloat, rowHeight: CGFloat = 44) -> Bool {
+    rowHeight > 0 && bodyHeight - controlsHeight >= rowHeight * 2 + 8
+}
+
+/// Pin the header, give the scrolling body the remaining height, and wrap
+/// short content. The overlay receives the available height, never sizes the composer.
 struct NewTaskPanelLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let width = proposal.width ?? 320

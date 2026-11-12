@@ -88,6 +88,13 @@ import Testing
         #expect(picker.close(target: c, settled: true, blocked: false) == nil)
     }
 
+    @Test func modelControlsPinOnlyWithRoomForTwoRowsAndPadding() {
+        #expect(shouldPinModelControls(bodyHeight: 228, controlsHeight: 132))
+        #expect(!shouldPinModelControls(bodyHeight: 227, controlsHeight: 132))
+        #expect(!shouldPinModelControls(bodyHeight: 228, controlsHeight: 132, rowHeight: 52))
+        #expect(!shouldPinModelControls(bodyHeight: 228, controlsHeight: 132, rowHeight: 0))
+    }
+
     @Test func modelToolWidthsDropCLINameBeforeTruncatingModel() {
         let full = NewTaskToolsLayout.widths(available: 300, cli: 100, compactCLI: 36, model: 180)
         #expect(full.cli == 100 && full.model == 180)
